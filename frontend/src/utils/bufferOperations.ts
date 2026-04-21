@@ -5,7 +5,7 @@
  * suitable for functional programming and easy testing
  */
 
-import { Result, ok, err } from "../types/result";
+import { ok, err, type Result } from "neverthrow";
 
 /**
  * Read a big-endian 32-bit unsigned integer from a buffer at the specified offset
@@ -13,7 +13,7 @@ import { Result, ok, err } from "../types/result";
 export function readUint32BE(
   buffer: ArrayBuffer,
   offset: number
-): Result<number> {
+): Result<number, Error> {
   if (offset < 0 || offset + 4 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint32 read"));
   }
@@ -27,7 +27,7 @@ export function readUint32BE(
 export function readUint32LE(
   buffer: ArrayBuffer,
   offset: number
-): Result<number> {
+): Result<number, Error> {
   if (offset + 4 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint32 read"));
   }
@@ -41,7 +41,7 @@ export function readUint32LE(
 export function readUint16BE(
   buffer: ArrayBuffer,
   offset: number
-): Result<number> {
+): Result<number, Error> {
   if (offset + 2 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint16 read"));
   }
@@ -55,7 +55,7 @@ export function readUint16BE(
 export function readUint16LE(
   buffer: ArrayBuffer,
   offset: number
-): Result<number> {
+): Result<number, Error> {
   if (offset + 2 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint16 read"));
   }
@@ -66,7 +66,7 @@ export function readUint16LE(
 /**
  * Read an 8-bit unsigned integer from a buffer at the specified offset
  */
-export function readUint8(buffer: ArrayBuffer, offset: number): Result<number> {
+export function readUint8(buffer: ArrayBuffer, offset: number): Result<number, Error> {
   if (offset + 1 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint8 read"));
   }
@@ -101,7 +101,7 @@ export function sliceBuffer(
   buffer: ArrayBuffer,
   start: number,
   end?: number
-): Result<ArrayBuffer> {
+): Result<ArrayBuffer, Error> {
   if (start < 0 || start > buffer.byteLength) {
     return err(new Error("Invalid start offset"));
   }
@@ -118,7 +118,7 @@ export function copyBuffer(
   buffer: ArrayBuffer,
   offset: number,
   length: number
-): Result<ArrayBuffer> {
+): Result<ArrayBuffer, Error> {
   if (offset + length > buffer.byteLength) {
     return err(
       new Error(
@@ -198,7 +198,7 @@ export function bufferToHex(buffer: ArrayBuffer): string {
 /**
  * Hex decode a string to buffer
  */
-export function hexToBuffer(hex: string): Result<ArrayBuffer> {
+export function hexToBuffer(hex: string): Result<ArrayBuffer, Error> {
   if (hex.length % 2 !== 0) {
     return err(new Error("Hex string must have even length"));
   }

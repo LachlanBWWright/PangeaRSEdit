@@ -30,7 +30,7 @@ describe("prepareDownloadData", () => {
       height: 16,
     });
     if (blankResult.isErr()) {
-      throw blankResult.error;
+      expect.fail(String(blankResult.error));
     }
     const blank = blankResult.value;
     const combinedResult = combineLevelData({
@@ -42,12 +42,12 @@ describe("prepareDownloadData", () => {
       terrainData: blank.terrainData,
     });
     if (combinedResult.isErr()) {
-      throw combinedResult.error;
+      expect.fail(String(combinedResult.error));
     }
     const mutable = structuredClone(combinedResult.value);
     const items = mutable.Itms?.[1000]?.obj;
     if (!Array.isArray(items)) {
-      throw new Error("Expected Itms[1000].obj to be an array");
+      expect.fail("Expected Itms[1000].obj to be an array");
     }
     items.push({
       x: 2,

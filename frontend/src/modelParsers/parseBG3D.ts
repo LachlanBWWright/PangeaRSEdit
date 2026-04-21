@@ -2,7 +2,7 @@
 // Full BG3D file parser for Otto Matic and related games
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { Result, ok, err } from "../types/result";
+import { Result, ok, err } from "neverthrow";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {

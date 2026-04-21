@@ -20,7 +20,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
   if (!isRecord(x)) {
-    throw new Error("Parsed data is not an object");
+    expect.fail("Parsed data is not an object");
   }
 }
 import { bugdom2Specs } from "../../src/python/structSpecs/bugdom2";
@@ -86,7 +86,7 @@ describe("Bugdom 2 Map Roundtrip", () => {
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null)
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
     assertIsRecord(jsonData.Hedr);
@@ -126,7 +126,7 @@ describe("Bugdom 2 Map Roundtrip", () => {
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null) {
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
       }
     }
     expect(() => {

@@ -13,7 +13,8 @@ import { DEFAULT_BG3D_EXPORT_TARGET } from "../modelParsers/bg3dExportTargets";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import { DropArea } from "./SkeletonConversionPanel/DropArea";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 interface SkeletonConversionPanelProps {
   title: string;
@@ -52,40 +53,45 @@ export function SkeletonConversionPanel({
       }.`,
     );
 
-    const conversionResult = await fromPromise((async () => {
-      const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
-      if (bg3dBufferResult.isErr()) {
-        const message = `Failed to read model file: ${bg3dBufferResult.error.message}`;
+    await (async () => {
+      const bg3dResult = await ResultAsync.fromPromise(
+        bg3dFile.arrayBuffer(),
+        mapErr,
+      );
+      if (bg3dResult.isErr()) {
+        const message = `Failed to read model file: ${bg3dResult.error.message}`;
         pushLog(message);
         toast.dismiss(toastId);
-        toast.error(`${title} conversion failed: ${bg3dBufferResult.error.message}`);
+        toast.error(`${title} conversion failed: ${message}`);
         return;
       }
-      const bg3dBuffer = bg3dBufferResult.value;
+      const bg3dBuffer = bg3dResult.value;
       pushLog(`Read ${bg3dBuffer.byteLength} bytes from ${bg3dFile.name}.`);
 
       let skeletonData: SkeletonResource | undefined;
 
       if (skeletonFile) {
         pushLog(`Reading skeleton file ${skeletonFile.name}.`);
-        const skeletonBufferResult = await fromPromise(
+        const skeletonRawResult = await ResultAsync.fromPromise(
           skeletonFile.arrayBuffer(),
+          mapErr,
         );
-        if (skeletonBufferResult.isErr()) {
-          const message = `Failed to read skeleton file: ${skeletonBufferResult.error.message}`;
+        if (skeletonRawResult.isErr()) {
+          const message = `Failed to read skeleton file: ${skeletonRawResult.error.message}`;
           pushLog(message);
           toast.dismiss(toastId);
           toast.error(message);
           return;
         }
-        const skeletonRawBuffer = skeletonBufferResult.value;
+        const skeletonRawBuffer = skeletonRawResult.value;
         pushLog(
           `Read ${skeletonRawBuffer.byteLength} bytes from ${skeletonFile.name}.`,
         );
 
         pushLog("Parsing skeleton resource.");
-        const skeletonParseResult = await fromPromise(
+        const skeletonParseResult = await ResultAsync.fromPromise(
           parseSkeletonRsrc(skeletonRawBuffer),
+          mapErr,
         );
         if (skeletonParseResult.isErr()) {
           const message = `Failed to parse skeleton file: ${skeletonParseResult.error.message}`;
@@ -268,14 +274,14 @@ export function SkeletonConversionPanel({
         setPendingBg3dFile(null);
         pushLog("Conversion completed successfully.");
       }
-    })());
-    if (conversionResult.isErr()) {
-      const message = conversionResult.error.message;
+    })().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
       pushLog(`Unexpected conversion error: ${message}`);
       toast.dismiss(toastId);
       toast.error(`${title} conversion failed: ${message}`);
-    }
-    setLoading(false);
+    }).finally(() => {
+      setLoading(false);
+    });
   };
 
   const handleBg3dFileSelect = async (bg3dFile: File) => {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Stage, Layer, Image, Line } from "react-konva";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +10,11 @@ import {
 import { Save, X, Undo, Redo, ZoomIn, ZoomOut } from "lucide-react";
 import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
+import { ResultAsync } from "neverthrow";
 import Konva from "konva";
-import { fromPromise } from "@/types/result";
+import { mapErr } from "@/utils/mapErr";
+// removed result shim; use direct promise handling
+import { hexToRgb } from "@/utils/colorUtils";
 // Event typing removed - handlers don't need explicit event param here
 
 interface BrushStroke {
@@ -69,6 +72,8 @@ export function ImageEditor({
   const [saving, setSaving] = useState(false);
   const [scale, setScale] = useState(1);
   const [baseScale, setBaseScale] = useState(1);
+  const [highlightSelectedColorUsage, setHighlightSelectedColorUsage] =
+    useState(false);
 
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
@@ -271,7 +276,10 @@ export function ImageEditor({
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     // Call the save callback
-    const saveResult = await fromPromise(customSaveHandler(imageData));
+    const saveResult = await ResultAsync.fromPromise(
+      customSaveHandler(imageData),
+      mapErr,
+    );
     if (saveResult.isErr()) {
       console.error("Error saving edited image:", saveResult.error);
       toast.error("Failed to save edited image");
@@ -316,22 +324,73 @@ export function ImageEditor({
       e.preventDefault();
       const scaleBy = 1.1;
       const direction = e.deltaY > 0 ? -1 : 1;
-      
+
       setScale((current) => {
         const newScale = direction > 0 ? current * scaleBy : current / scaleBy;
         return Math.min(baseScale * 20, Math.max(baseScale * 0.1, newScale));
       });
     };
 
-    container.addEventListener("wheel", handleWheelNative, { passive: false, capture: true });
+    container.addEventListener("wheel", handleWheelNative, {
+      passive: false,
+      capture: true,
+    });
     return () => {
-      container.removeEventListener("wheel", handleWheelNative, { capture: true });
+      container.removeEventListener("wheel", handleWheelNative, {
+        capture: true,
+      });
     };
   }, [baseScale]);
 
+  const selectedColorHighlightCanvas = useMemo(() => {
+    if (!image || !paletteColors || !highlightSelectedColorUsage) {
+      return null;
+    }
+
+    const rgb = hexToRgb(brushColor);
+    if (!rgb) {
+      return null;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return null;
+    }
+
+    ctx.drawImage(image, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const { data } = imageData;
+    for (let index = 0; index < data.length; index += 4) {
+      const matches =
+        data[index] === rgb.r &&
+        data[index + 1] === rgb.g &&
+        data[index + 2] === rgb.b &&
+        (data[index + 3] ?? 0) > 0;
+
+      if (matches) {
+        data[index] = 255;
+        data[index + 1] = 255;
+        data[index + 2] = 0;
+        data[index + 3] = 220;
+      } else {
+        data[index + 3] = 0;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+  }, [brushColor, highlightSelectedColorUsage, image, paletteColors]);
+
   if (!image) {
     return (
-      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) handleClose();
+        }}
+      >
         <DialogContent className="max-w-4xl h-[80vh] text-white">
           <DialogHeader>
             <DialogTitle className="text-white">
@@ -347,7 +406,12 @@ export function ImageEditor({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
+    >
       <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white pr-14">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-white">
@@ -367,6 +431,8 @@ export function ImageEditor({
             colorPalette={colorPalette}
             paletteColors={paletteColors}
             onReplacePaletteColor={onReplacePaletteColor}
+            highlightSelectedColorUsage={highlightSelectedColorUsage}
+            setHighlightSelectedColorUsage={setHighlightSelectedColorUsage}
           />
 
           {/* Canvas Area */}
@@ -417,7 +483,7 @@ export function ImageEditor({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-[3rem]"
+                  className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-12"
                   onClick={resetZoom}
                 >
                   {Math.round(scale * 100)}%
@@ -425,18 +491,17 @@ export function ImageEditor({
               </div>
             </div>
 
-            <div 
+            <div
               ref={containerRef}
               className="w-full h-full overflow-auto custom-scrollbar"
             >
-
-              <div 
+              <div
                 className="flex p-20"
                 style={{
                   minWidth: "100%",
                   minHeight: "100%",
                   width: image.width * scale + 160,
-                  height: image.height * scale + 160
+                  height: image.height * scale + 160,
                 }}
               >
                 <div className="m-auto shadow-2xl border border-gray-800">
@@ -452,6 +517,12 @@ export function ImageEditor({
                   >
                     <Layer ref={layerRef}>
                       <Image image={image} />
+                      {selectedColorHighlightCanvas && (
+                        <Image
+                          image={selectedColorHighlightCanvas}
+                          opacity={0.45}
+                        />
+                      )}
 
                       {/* Render completed strokes */}
                       {strokes.map((stroke, i) => (
@@ -460,8 +531,12 @@ export function ImageEditor({
                           points={stroke.points}
                           stroke={stroke.color}
                           strokeWidth={stroke.size}
-                          lineCap={stroke.shape === "circle" ? "round" : "square"}
-                          lineJoin={stroke.shape === "circle" ? "round" : "miter"}
+                          lineCap={
+                            stroke.shape === "circle" ? "round" : "square"
+                          }
+                          lineJoin={
+                            stroke.shape === "circle" ? "round" : "miter"
+                          }
                           globalCompositeOperation="source-over"
                         />
                       ))}
@@ -473,7 +548,9 @@ export function ImageEditor({
                           stroke={currentStroke.color}
                           strokeWidth={currentStroke.size}
                           lineCap={
-                            currentStroke.shape === "circle" ? "round" : "square"
+                            currentStroke.shape === "circle"
+                              ? "round"
+                              : "square"
                           }
                           lineJoin={
                             currentStroke.shape === "circle" ? "round" : "miter"

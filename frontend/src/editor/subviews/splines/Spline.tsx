@@ -6,10 +6,12 @@ import type {
 } from "@/python/structSpecs/LevelTypes";
 import { Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useCallback, useMemo, useState, useRef } from "react";
 import { getPoints } from "../../../utils/spline";
-import { SelectedSpline } from "../../../data/splines/splineAtoms";
+import { SelectedSpline, SelectedSplineNub } from "../../../data/splines/splineAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Globals } from "@/data/globals/globals";
 import {
@@ -24,22 +26,24 @@ import {
   shouldSyncFirstAndLastNubs,
 } from "@/data/splines/splineTypeDetection";
 import {
-  HoverNameTag,
   ITEM_BOX_OFFSET,
   ITEM_BOX_SIZE,
   ITEM_TAG_GAP,
   ItemTypeNumber,
 } from "../shared/nodeVisuals";
+import type { HoverTagInfo } from "../shared/nodeVisuals";
 
 export const Spline = memo(
   ({
     splineData,
     setSplineData,
     splineIdx,
+    onHoverChange,
   }: {
     splineData: SplineData;
     setSplineData: Updater<SplineData>;
     splineIdx: number;
+    onHoverChange: (tag: HoverTagInfo | null) => void;
   }) => {
     const selectedSpline = useAtomValue(SelectedSpline);
     const [initialDragState, setInitialDragState] = useState<
@@ -185,6 +189,7 @@ export const Spline = memo(
               x={points[pointIdx] ?? 0}
               z={points[pointIdx + 1] ?? 0}
               item={item}
+              onHoverChange={onHoverChange}
             />
           );
         })}
@@ -214,6 +219,8 @@ const SplineNub = memo(
     onNubChange: () => void;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+    const setActiveView = useSetAtom(ActiveView);
+    const setSelectedSplineNub = useSetAtom(SelectedSplineNub);
     const [hovering, setHovering] = useState(false);
     return (
       <>
@@ -226,8 +233,16 @@ const SplineNub = memo(
           stroke="black"
           strokeWidth={2}
           perfectDrawEnabled={false}
-          onMouseDown={() => setSelectedSpline(splineIdx)}
-          onDragStart={() => setSelectedSpline(splineIdx)}
+          onMouseDown={() => {
+            setSelectedSpline(splineIdx);
+            setActiveView(View.splines);
+            setSelectedSplineNub(nubIdx);
+          }}
+          onDragStart={() => {
+            setSelectedSpline(splineIdx);
+            setActiveView(View.splines);
+            setSelectedSplineNub(nubIdx);
+          }}
           onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
             onNubPreviewMove(nubIdx, Math.round(e.target.x()), Math.round(e.target.y()));
           }}
@@ -282,9 +297,23 @@ const SplineNub = memo(
 );
 
 const SplineItem = memo(
-  ({ x, z, item }: { x: number; z: number; item: SplineItemType }) => {
+  ({ x, z, item, onHoverChange }: { x: number; z: number; item: SplineItemType; onHoverChange: (tag: HoverTagInfo | null) => void }) => {
     const [hovering, setHovering] = useState(false);
     const globals = useAtomValue(Globals);
+    const handleMouseOver = () => {
+      setHovering(true);
+      onHoverChange({
+        x: x - ITEM_BOX_OFFSET + ITEM_BOX_SIZE + ITEM_TAG_GAP,
+        y: z - ITEM_BOX_OFFSET,
+        text: getSplineItemName(globals, item.type),
+        fill: "blue",
+        textColor: "white",
+      });
+    };
+    const handleMouseLeave = () => {
+      setHovering(false);
+      onHoverChange(null);
+    };
     return (
       <>
         <Rect
@@ -292,10 +321,11 @@ const SplineItem = memo(
           y={z - ITEM_BOX_OFFSET}
           width={ITEM_BOX_SIZE}
           height={ITEM_BOX_SIZE}
-          stroke="blue"
+          stroke="black"
+          strokeWidth={1}
           fill="blue"
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
+          onMouseOver={handleMouseOver}
+          onMouseLeave={handleMouseLeave}
           perfectDrawEnabled={false}
         />
 
@@ -305,16 +335,6 @@ const SplineItem = memo(
             y={z - ITEM_BOX_OFFSET}
             value={item.type.toString()}
             fill="white"
-          />
-        )}
-
-        {hovering && (
-          <HoverNameTag
-            x={x - ITEM_BOX_OFFSET + ITEM_BOX_SIZE + ITEM_TAG_GAP}
-            y={z - ITEM_BOX_OFFSET}
-            text={getSplineItemName(globals, item.type)}
-            fill="blue"
-            textColor="white"
           />
         )}
       </>

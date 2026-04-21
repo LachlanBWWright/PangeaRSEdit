@@ -1,4 +1,5 @@
-import { Result, ok, err } from "../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 /**
  * Compress an HTMLCanvasElement or ImageData to JPEG (browser only)

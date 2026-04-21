@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { parseShapesFile } from "./mightyMikeShapesParser";
-import { isOk, isErr } from "../types/result";
 
 describe("mightyMikeShapesParser", () => {
   let mainShapesBuffer: ArrayBuffer;
@@ -34,11 +33,11 @@ describe("mightyMikeShapesParser", () => {
 
   it("should parse main.shapes file without errors", () => {
     const result = parseShapesFile(mainShapesBuffer);
-    if (isErr(result)) {
+    if (result.isErr()) {
       console.error("Parse failed:", result.error.message);
     }
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value.colorTable.length).toBeGreaterThan(0);
       expect(result.value.shapes.length).toBeGreaterThan(0);
       console.log(
@@ -49,8 +48,8 @@ describe("mightyMikeShapesParser", () => {
 
   it("should parse jurassic1.shapes file without errors", () => {
     const result = parseShapesFile(jurassic1Buffer);
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value.colorTable.length).toBeGreaterThan(0);
       expect(result.value.shapes.length).toBeGreaterThan(0);
       console.log(
@@ -61,8 +60,8 @@ describe("mightyMikeShapesParser", () => {
 
   it("should have valid frame data in shapes", () => {
     const result = parseShapesFile(mainShapesBuffer);
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       const shapes = result.value.shapes;
       expect(shapes.length).toBeGreaterThan(0);
 
@@ -93,8 +92,8 @@ describe("mightyMikeShapesParser", () => {
 
   it("should have consistent color table references", () => {
     const result = parseShapesFile(mainShapesBuffer);
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       const colorTable = result.value.colorTable;
       const shapes = result.value.shapes;
 

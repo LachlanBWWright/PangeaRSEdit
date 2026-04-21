@@ -118,7 +118,6 @@ export const TerrainGeometry = forwardRef<Mesh, {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
-      <ambientLight intensity={1} />
       <meshStandardMaterial
         side={DoubleSide}
         needsUpdate={true}

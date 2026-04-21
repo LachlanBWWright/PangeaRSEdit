@@ -11,23 +11,26 @@ import { selectItem, updateItem } from "../../../data/selectors";
 import { ShowMightyMikeItemImages } from "./MightyMikeItemMenu";
 import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
 import { CurrentScene } from "@/data/game/gameAtoms";
-import { isOk } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 import {
-  HoverNameTag,
   ITEM_BOX_OFFSET,
   ITEM_BOX_SIZE,
   ITEM_TAG_GAP,
   ItemTypeNumber,
 } from "../shared/nodeVisuals";
+import type { HoverTagInfo } from "../shared/nodeVisuals";
+import { mapErr } from "@/utils/mapErr";
 
 export const MightyMikeItem = memo(function MightyMikeItem({
   itemData,
   setItemData,
   itemIdx,
+  onHoverChange,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
   itemIdx: number;
+  onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const item = useMemo(
@@ -40,8 +43,6 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   const currentScene = useAtomValue(CurrentScene);
   const [itemImageData, setItemImageData] = useState<ItemFrameImage | null>(null);
 
-  const handleMouseOver = useCallback(() => setHovering(true), []);
-  const handleMouseLeave = useCallback(() => setHovering(false), []);
   const handleMouseDown = useCallback(
     () => setSelectedItem(itemIdx),
     [itemIdx, setSelectedItem],
@@ -71,26 +72,31 @@ export const MightyMikeItem = memo(function MightyMikeItem({
       Promise.resolve().then(() => setItemImageData(null));
       return;
     }
+    const loadImageData = async () => {
+      const loadResult = await ResultAsync.fromPromise(
+        loadItemImage(item.type, currentScene),
+        mapErr,
+      );
 
-    loadItemImage(item.type, currentScene)
-      .then((result) => {
-        if (isOk(result)) {
-          setItemImageData(result.value);
-        } else {
-          console.warn(
-            `Failed to load image for item ${item.type}:`,
-            result.error.message
-          );
-          setItemImageData(null);
-        }
-      })
-      .catch((error) => {
+      if (loadResult.isErr()) {
         console.warn(
           `Unexpected error loading image for item ${item.type}:`,
-          error instanceof Error ? error.message : String(error)
+          loadResult.error.message,
         );
         setItemImageData(null);
-      });
+        return;
+      }
+
+      const result = loadResult.value;
+      if (result.isOk()) {
+        setItemImageData(result.value);
+      } else {
+        console.warn(`Failed to load image for item ${item.type}:`, result.error.message);
+        setItemImageData(null);
+      }
+    };
+
+    void loadImageData();
   }, [showItemImages, item, currentScene]);
 
   if (item === null || item === undefined) return null;
@@ -102,38 +108,42 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     const { canvas, offsetX, offsetY } = itemImageData;
     const drawX = item.x + offsetX;
     const drawY = item.z + offsetY;
+    const handleMouseOver = () => {
+      setHovering(true);
+      onHoverChange({ x: drawX + canvas.width + ITEM_TAG_GAP, y: drawY, text: itemName, fill: "red", textColor: "black" });
+    };
+    const handleMouseLeave = () => {
+      setHovering(false);
+      onHoverChange(null);
+    };
     return (
-      <>
-        <KonvaImage
-          image={canvas}
-          x={drawX}
-          y={drawY}
-          width={canvas.width}
-          height={canvas.height}
-          draggable
-          onMouseOver={handleMouseOver}
-          onMouseLeave={handleMouseLeave}
-          onMouseDown={handleMouseDown}
-          onDragStart={handleMouseDown}
-          onDragEnd={handleDragEnd}
-        />
-
-        {hovering && (
-          <HoverNameTag
-            x={drawX + canvas.width + ITEM_TAG_GAP}
-            y={drawY}
-            text={itemName}
-            fill="red"
-            textColor="black"
-          />
-        )}
-      </>
+      <KonvaImage
+        image={canvas}
+        x={drawX}
+        y={drawY}
+        width={canvas.width}
+        height={canvas.height}
+        draggable
+        onMouseOver={handleMouseOver}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
+        onDragStart={handleMouseDown}
+        onDragEnd={handleDragEnd}
+      />
     );
   }
 
   // Default: show box like original Item component
   const boxX = item.x - ITEM_BOX_OFFSET;
   const boxY = item.z - ITEM_BOX_OFFSET;
+  const handleMouseOver = () => {
+    setHovering(true);
+    onHoverChange({ x: boxX + ITEM_BOX_SIZE + ITEM_TAG_GAP, y: boxY, text: itemName, fill: "red", textColor: "black" });
+  };
+  const handleMouseLeave = () => {
+    setHovering(false);
+    onHoverChange(null);
+  };
   return (
     <>
       <Rect
@@ -160,16 +170,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
           fill="black"
         />
       )}
-
-      {hovering && (
-        <HoverNameTag
-          x={boxX + ITEM_BOX_SIZE + ITEM_TAG_GAP}
-          y={boxY}
-          text={itemName}
-          fill="red"
-          textColor="black"
-        />
-      )}
     </>
   );
 });
+

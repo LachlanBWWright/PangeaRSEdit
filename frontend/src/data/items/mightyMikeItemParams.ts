@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 const unknown: ItemParams = {
   flags: "Unknown",
@@ -8,22 +8,19 @@ const unknown: ItemParams = {
   p3: "Unknown",
 };
 
-// Line numbers are approximate; exact values require consulting the MightyMike source.
-const APPROX_LINE = 0;
-
-export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
+const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
   // Item 15: Health Powerup
   15: {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Initial animation frame (passed to MakeNewShape as frameNum)",
-      codeSample: {
-        code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
-        fileName: "src/Misc/Bonus.c",
-        lineNumber: APPROX_LINE,
+        description: "Initial animation frame (passed to MakeNewShape as frameNum)",
+        codeSample: {
+          code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
+          fileName: "src/Misc/Bonus.c",
+          lineNumber: 388,
+        },
       },
-    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -34,13 +31,13 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Key frame (initial animation frame passed to MakeNewShape)",
-      codeSample: {
-        code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
-        fileName: "src/Misc/Bonus.c",
-        lineNumber: APPROX_LINE,
+        description: "Key frame (initial animation frame passed to MakeNewShape)",
+        codeSample: {
+          code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
+          fileName: "src/Misc/Bonus.c",
+          lineNumber: 453,
+        },
       },
-    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -56,7 +53,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "newObj = MakeNewShape(GroupNum_WeaponPOWs, ObjType_WeaponPOWs, itemPtr->parm[0], ...);\nnewObj->Kind = itemPtr->parm[0];",
         fileName: "src/MeAndMo/Weapon.c",
-        lineNumber: APPROX_LINE,
+        lineNumber: 174,
       },
     },
     p1: {
@@ -65,7 +62,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
         fileName: "src/MeAndMo/Weapon.c",
-        lineNumber: APPROX_LINE,
+        lineNumber: 176,
       },
     },
     p2: "Unused",
@@ -82,7 +79,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "newObj = MakeNewShape(GroupNum_MiscPOWs, ObjType_MiscPOWs, itemPtr->parm[0], ...);\nnewObj->Kind = itemPtr->parm[0];",
         fileName: "src/Misc/Bonus.c",
-        lineNumber: APPROX_LINE,
+        lineNumber: 555,
       },
     },
     p1: {
@@ -91,7 +88,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
         fileName: "src/Misc/Bonus.c",
-        lineNumber: APPROX_LINE,
+        lineNumber: 557,
       },
     },
     p2: "Unused",
@@ -101,20 +98,15 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
   // Item 55: Key Color
   55: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Key color index (selects which colored key sprite to display)",
-      codeSample: {
-        code: "newObj = MakeNewShape(GroupNum_KeyColor, ObjType_KeyColor, itemPtr->parm[0], ...);",
-        fileName: "src/Misc/Bonus.c",
-        lineNumber: APPROX_LINE,
-      },
-    },
+    p0: "Unknown",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
 };
+
+export const mightyMikeItemParams: Partial<Record<number, ItemParams>> =
+  defineItemParams("mightymike", mightyMikeItemParamsSource);
 
 /** Get param descriptions for a Mighty Mike item type, falling back to unknown. */
 export function getMightyMikeItemParams(itemType: number): ItemParams {

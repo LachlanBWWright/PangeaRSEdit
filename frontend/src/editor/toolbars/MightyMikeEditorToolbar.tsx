@@ -1,6 +1,6 @@
 /**
  * Mighty Mike Editor Toolbar
- * 
+ *
  * Features:
  * - Items view
  * - Supertiles view (for editing background tile grid)
@@ -12,22 +12,23 @@ import { memo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
+import { useAtom } from "jotai";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 interface Props {
-  view: View;
-  setView: (v: View) => void;
+  compact?: boolean;
 }
 
 export const MightyMikeEditorToolbar = memo(function MightyMikeEditorToolbar({
-  view,
-  setView,
+  compact,
 }: Props) {
+  const [view, setView] = useAtom(ActiveView);
   const currentValue =
     view === View.items
       ? "items"
       : view === View.supertiles
-      ? "supertiles"
-      : "tiles";
+        ? "supertiles"
+        : "tiles";
 
   const handleValueChange = (value: string) => {
     if (value === "items") setView(View.items);
@@ -37,14 +38,30 @@ export const MightyMikeEditorToolbar = memo(function MightyMikeEditorToolbar({
 
   return (
     <>
-      <Tabs value={currentValue} onValueChange={handleValueChange}>
-        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
-          <TabsTrigger className="w-full" value="items">Items</TabsTrigger>
-          <TabsTrigger className="w-full" value="supertiles">Supertiles</TabsTrigger>
-          <TabsTrigger className="w-full" value="tiles">Tiles</TabsTrigger>
+      <Tabs
+        className="flex-1"
+        value={currentValue}
+        onValueChange={handleValueChange}
+      >
+        <TabsList
+          className={
+            compact
+              ? "grid grid-flow-col auto-cols-fr w-full overflow-clip"
+              : "grid grid-flow-col auto-cols-max gap-2 w-max min-w-max overflow-x-auto"
+          }
+        >
+          <TabsTrigger className="w-full" value="items">
+            Items
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="supertiles">
+            Supertiles
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="tiles">
+            Tiles
+          </TabsTrigger>
         </TabsList>
       </Tabs>
-      <Separator />
+      {!compact && <Separator />}
     </>
   );
 });

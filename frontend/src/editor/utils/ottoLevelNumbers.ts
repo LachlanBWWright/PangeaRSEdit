@@ -7,33 +7,36 @@
  * (src/Headers/main.h and src/System/File.c).
  */
 
+import { OttoLevelType } from "./levelType";
+
 export interface OttoLevelInfo {
-  readonly levelNumber: number;
+  readonly levelNumber: OttoLevelType;
   readonly name: string;
   readonly terrainFile: string;
 }
 
 export const OTTO_LEVELS: readonly OttoLevelInfo[] = [
-  { levelNumber: 0, name: "Earth Farm", terrainFile: "EarthFarm.ter" },
-  { levelNumber: 1, name: "Blob World", terrainFile: "BlobWorld.ter" },
-  { levelNumber: 2, name: "Blob Boss", terrainFile: "BlobBoss.ter" },
-  { levelNumber: 3, name: "Apocalypse", terrainFile: "Apocalypse.ter" },
-  { levelNumber: 4, name: "Cloud", terrainFile: "Cloud.ter" },
-  { levelNumber: 5, name: "Jungle", terrainFile: "Jungle.ter" },
-  { levelNumber: 6, name: "Jungle Boss", terrainFile: "JungleBoss.ter" },
-  { levelNumber: 7, name: "Fire & Ice", terrainFile: "FireIce.ter" },
-  { levelNumber: 8, name: "Saucer", terrainFile: "Saucer.ter" },
-  { levelNumber: 9, name: "Brain Boss", terrainFile: "BrainBoss.ter" },
+  { levelNumber: OttoLevelType.EarthFarm, name: "Earth Farm", terrainFile: "EarthFarm.ter" },
+  { levelNumber: OttoLevelType.BlobWorld, name: "Blob World", terrainFile: "BlobWorld.ter" },
+  { levelNumber: OttoLevelType.BlobBoss, name: "Blob Boss", terrainFile: "BlobBoss.ter" },
+  { levelNumber: OttoLevelType.Apocalypse, name: "Apocalypse", terrainFile: "Apocalypse.ter" },
+  { levelNumber: OttoLevelType.Cloud, name: "Cloud", terrainFile: "Cloud.ter" },
+  { levelNumber: OttoLevelType.Jungle, name: "Jungle", terrainFile: "Jungle.ter" },
+  { levelNumber: OttoLevelType.JungleBoss, name: "Jungle Boss", terrainFile: "JungleBoss.ter" },
+  { levelNumber: OttoLevelType.FireIce, name: "Fire & Ice", terrainFile: "FireIce.ter" },
+  { levelNumber: OttoLevelType.Saucer, name: "Saucer", terrainFile: "Saucer.ter" },
+  { levelNumber: OttoLevelType.BrainBoss, name: "Brain Boss", terrainFile: "BrainBoss.ter" },
 ] satisfies readonly OttoLevelInfo[];
 
-export const DEFAULT_OTTO_LEVEL = 0;
+export const DEFAULT_OTTO_LEVEL: OttoLevelType = OttoLevelType.EarthFarm;
 
 export function inferLevelNumberFromFilename(
   filename: string,
 ): number | undefined {
-  const base = filename.split("/").pop() ?? filename;
+  const raw = filename.split("/").pop() ?? filename;
+  const base = raw.toLowerCase().replace(/\.rsrc$/, "");
   const match = OTTO_LEVELS.find(
-    (l) => base.toLowerCase() === l.terrainFile.toLowerCase(),
+    (l) => base === l.terrainFile.toLowerCase(),
   );
   return match?.levelNumber;
 }

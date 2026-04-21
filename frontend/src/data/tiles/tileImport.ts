@@ -8,7 +8,8 @@
  * 16-bit ARGB1555 format to match the game's tile format.
  */
 
-import { Result, ok, err } from "@/types/result";
+import { Result } from "neverthrow";
+import { ok, err } from "neverthrow";
 import { GlobalsInterface, Game } from "@/data/globals/globals";
 import { isTileBasedGame, TILE_GAME_CONFIGS } from "./tileStructures";
 

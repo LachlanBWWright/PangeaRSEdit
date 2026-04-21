@@ -9,6 +9,8 @@ import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { parseLevelDataFile } from "./parseLevelDataFile";
 import { toast } from "sonner";
+import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 /**
  * Convert hex string to Uint8Array (browser-compatible)
@@ -61,8 +63,18 @@ export async function openFile({
   setGlobals(gameType);
   setMapImages([]);
 
-  const levelResponse = await fetch(rsrcName).catch(() => null);
-  if (!levelResponse || !levelResponse.ok) {
+  const levelResponseResult = await ResultAsync.fromPromise(
+    fetch(rsrcName),
+    mapErr,
+  );
+  if (levelResponseResult.isErr()) {
+    toast.error("Failed to download level file", {
+      description: rsrcName,
+    });
+    return;
+  }
+  const levelResponse = levelResponseResult.value;
+  if (!levelResponse.ok) {
     toast.error("Failed to download level file", {
       description: rsrcName,
     });
@@ -118,14 +130,17 @@ export async function openFile({
       toast.error("Mighty Mike data has an unexpected format");
     }
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
-    const imgRes = await fetch(url).catch(() => null);
-    if (!imgRes || !imgRes.ok) {
+    const imgResResult = await ResultAsync.fromPromise(
+      fetch(url),
+      mapErr,
+    );
+    if (imgResResult.isErr() || !imgResResult.value.ok) {
       toast.error("Failed to download texture file", {
         description: url,
       });
       return;
     }
-    const img = await imgRes.blob();
+    const img = await imgResResult.value.blob();
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
 
@@ -134,14 +149,17 @@ export async function openFile({
     setMapImagesFile(imgFile);
     setMapImages(canvases);
   } else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
-    const imgRes = await fetch(url).catch(() => null);
-    if (!imgRes || !imgRes.ok) {
+    const imgResResult = await ResultAsync.fromPromise(
+      fetch(url),
+      mapErr,
+    );
+    if (imgResResult.isErr() || !imgResResult.value.ok) {
       toast.error("Failed to download texture file", {
         description: url,
       });
       return;
     }
-    const img = await imgRes.blob();
+    const img = await imgResResult.value.blob();
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
     const imgDataView = new DataView(imgBuffer);

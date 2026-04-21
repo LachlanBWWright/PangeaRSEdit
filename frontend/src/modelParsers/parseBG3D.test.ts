@@ -67,7 +67,8 @@ describe("parseBG3D - Multi-Game Support", () => {
 
     // Parse BG3D - should not throw
     const parsedRes = parseBG3D(arrayBuffer);
-    if (!parsedRes.ok) throw parsedRes.error;
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
     const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     expect(parsed.materials.length).toBeGreaterThan(0);
@@ -106,7 +107,8 @@ describe("parseBG3D - Multi-Game Support", () => {
 
     // Parse BG3D - should not throw
     const parsedRes = parseBG3D(arrayBuffer);
-    if (!parsedRes.ok) throw parsedRes.error;
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
     const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     expect(parsed.materials.length).toBeGreaterThan(0);
@@ -143,7 +145,8 @@ describe("parseBG3D - Multi-Game Support", () => {
 
     // Parse BG3D - should not throw (this was failing before the fix)
     const parsedRes = parseBG3D(arrayBuffer);
-    if (!parsedRes.ok) throw parsedRes.error;
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
     const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     expect(parsed.materials.length).toBeGreaterThan(0);
@@ -173,7 +176,8 @@ describe("parseBG3DAndUnparse", () => {
 
     // Step 1: Parse BG3D
     const parsedRes = parseBG3D(arrayBuffer);
-    if (!parsedRes.ok) throw parsedRes.error;
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
     const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     //expect(Array.isArray(parsed.materials)).toBe(true);

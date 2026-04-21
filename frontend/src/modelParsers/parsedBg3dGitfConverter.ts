@@ -29,8 +29,6 @@ import {
 
 import { decodeJpegNode } from "../utils/jpegDecompress";
 
-import { isErr } from "../types/result";
-
 import {
   Document,
   Mesh,
@@ -359,6 +357,9 @@ export function bg3dParsedToGLTF(
     const m = doc.createMaterial("BG3DMaterial");
     m.setName(`Material_${i.toString().padStart(4, "0")}`);
     m.setBaseColorFactor(mat.diffuseColor);
+    // glTF default metallic=1 makes models black without an environment map; BG3D materials are not PBR.
+    m.setMetallicFactor(0);
+    m.setRoughnessFactor(1);
 
     // Set alpha mode based on BG3D material flags.
     // JPEG textures (Nanosaur 2) are opaque unless they carry a separate alpha channel
@@ -514,11 +515,8 @@ export function bg3dParsedToGLTF(
       baseBuffer,
     );
 
-    if (isErr(skeletonSystemResult)) {
-      console.error(
-        "Failed to create skeleton system:",
-        skeletonSystemResult.error,
-      );
+    if (skeletonSystemResult.isErr()) {
+      console.error("Failed to create skeleton system:", skeletonSystemResult.error);
     } else {
       gltfSkin = skeletonSystemResult.value.skin;
     }

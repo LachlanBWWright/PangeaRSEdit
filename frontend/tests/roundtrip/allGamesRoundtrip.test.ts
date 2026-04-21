@@ -51,7 +51,7 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
       expect(parsed).toBeDefined();
 
       if (!parsed) {
-        throw new Error(`Failed to parse ${filename}`);
+        expect.fail(`Failed to parse ${filename}`);
       }
 
       const levelData = nanosaur1LevelToLevelData(parsed);
@@ -63,8 +63,8 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
       // Compile back
       const result = compileNanosaur1Level(levelData, parsed);
 
-      if (!result.ok) {
-        throw new Error(`Compilation failed: ${String(result.error)}`);
+      if (!result.isOk()) {
+        expect.fail(`Compilation failed: ${String(result.error)}`);
       }
       const recompiledData = new Uint8Array(result.value);
 
@@ -128,36 +128,14 @@ describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
       const originalAB = bufferToArrayBuffer(originalBuffer);
       const parsed = parseMightyMikeMap(originalAB);
       
-      if (!parsed.ok) {
-        throw new Error(`Parse failed: ${String(parsed.error)}`);
+      if (parsed.isErr()) {
+        expect.fail(`Parse failed: ${String(parsed.error)}`);
       }
 
       // Compile back
       const result = mightyMikeMapToCompressedBinary(parsed.value);
 
-      function isResultLike(x: unknown): x is { ok: boolean; value?: unknown; error?: unknown } {
-        return typeof x === "object" && x !== null && "ok" in x;
-      }
-
-      let recompiledData: Uint8Array;
-      if (isResultLike(result)) {
-        if (!result.ok) {
-          throw new Error(`Compilation failed: ${String(result.error)}`);
-        }
-        if (result.value instanceof ArrayBuffer) {
-          recompiledData = new Uint8Array(result.value);
-        } else if (ArrayBuffer.isView(result.value)) {
-          recompiledData = new Uint8Array(Array.prototype.slice.call(result.value));
-        } else {
-          throw new Error("Unexpected result.value type");
-        }
-      } else if (result instanceof ArrayBuffer) {
-        recompiledData = new Uint8Array(result);
-      } else if (ArrayBuffer.isView(result)) {
-        recompiledData = new Uint8Array(Array.prototype.slice.call(result));
-      } else {
-        throw new Error("Unexpected compilation result type");
-      }
+      const recompiledData = new Uint8Array(result);
 
       // Byte comparison
       expect(recompiledData.length).toBe(originalData.length);

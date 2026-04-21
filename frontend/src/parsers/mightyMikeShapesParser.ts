@@ -37,7 +37,7 @@
  *   - 1-bit mask (1 = opaque, 0 = transparent)
  */
 
-import { Result, ok, err } from "../types/result";
+import { ok, err, type Result } from "neverthrow";
 
 /**
  * Decompress RLB-compressed data
@@ -410,7 +410,7 @@ function parseShapeList(
 export function shapeFrameToCanvas(
   frame: ShapeFrame,
   colorTable: RGBColor[]
-): Result<HTMLCanvasElement> {
+): Result<HTMLCanvasElement, Error> {
   const canvas = document.createElement("canvas");
   canvas.width = frame.header.width;
   canvas.height = frame.header.height;

@@ -4,7 +4,7 @@
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { loadBytesFromJson, isOk } from "@lachlanbwwright/rsrcdump-ts";
 import { skeletonSpecs } from "../python/structSpecs/skeleton/skeleton";
-import { ok, err, type Result } from "../types/result";
+import { ok, err, type Result } from "neverthrow";
 import { encodePascalStringHex } from "./skeletonRsrc/parseHelpers";
 
 // Global storage for Finder Info to preserve during round-trip

@@ -79,7 +79,7 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null)
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
     assertIsRecord(jsonData.Hedr);
@@ -119,7 +119,7 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null) {
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
       }
     }
     expect(() => {

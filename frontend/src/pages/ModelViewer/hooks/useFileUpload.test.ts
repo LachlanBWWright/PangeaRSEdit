@@ -26,7 +26,7 @@ describe("GLB import parsing", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
-      throw result.error;
+      expect.fail(String(result.error));
     }
     expect(result.value.skeleton).toBeUndefined();
   });
@@ -47,7 +47,7 @@ describe("GLB import parsing", () => {
     const parsed = parseBG3DWithSkeletonResource(bg3dBuffer, skeletonResource);
     expect(parsed.isOk()).toBe(true);
     if (parsed.isErr()) {
-      throw parsed.error;
+      expect.fail(String(parsed.error));
     }
 
     const result = await parseGlbImportResult({
@@ -58,7 +58,7 @@ describe("GLB import parsing", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
-      throw result.error;
+      expect.fail(String(result.error));
     }
 
     expect(result.value.skeleton).toBeDefined();

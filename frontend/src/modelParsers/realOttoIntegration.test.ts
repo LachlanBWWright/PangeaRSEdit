@@ -2,7 +2,7 @@
 import { describe, it } from "vitest";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3D } from "./parseBG3D";
-import { unwrap } from "../types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
@@ -40,7 +40,9 @@ describe("Real Otto Integration", () => {
     console.log("4. Parsing BG3D with skeleton...");
 
     const result = parseBG3D(bg3dBuffer.buffer, skeleton);
-    const parsed = unwrap(result);
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) return;
+    const parsed = result.value;
 
     console.log("5. BG3D parsing completed successfully!");
     console.log(`   Materials: ${parsed.materials.length}`);

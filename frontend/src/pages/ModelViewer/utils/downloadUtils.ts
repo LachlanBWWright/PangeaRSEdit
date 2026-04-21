@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * File download and export utilities for the ModelViewer
  *
@@ -13,7 +14,8 @@ import { skeletonResourceToBinary } from "../../../modelParsers/skeletonBinaryEx
 import { DEFAULT_BG3D_EXPORT_TARGET, type BG3DExportTarget } from "../../../modelParsers/bg3dExportTargets";
 import { getGlbToBg3dWorkerResponse } from "./bg3dGltfWorkerResponses";
 import type { Texture } from "../types";
-import { err, ok, fromPromise, type Result } from "@/types/result";
+import { ResultAsync, err, ok, type Result } from "neverthrow";
+
 
 async function loadGlbBytes(
   gltfSource: string | ArrayBuffer,
@@ -22,7 +24,10 @@ async function loadGlbBytes(
     return ok(gltfSource);
   }
 
-  const responseResult = await fromPromise(fetch(gltfSource));
+  const responseResult = await ResultAsync.fromPromise(
+    fetch(gltfSource),
+    mapErr,
+  );
   if (responseResult.isErr()) {
     return err(
       responseResult.error instanceof Error
@@ -35,7 +40,10 @@ async function loadGlbBytes(
     return err(new Error(`Failed to fetch GLB data: ${responseResult.value.status}`));
   }
 
-  const bytesResult = await fromPromise(responseResult.value.arrayBuffer());
+  const bytesResult = await ResultAsync.fromPromise(
+    responseResult.value.arrayBuffer(),
+    mapErr,
+  );
   if (bytesResult.isErr()) {
     return err(
       bytesResult.error instanceof Error
@@ -55,7 +63,7 @@ async function glbUrlToBg3dResponse(
     return err(glbBytesResult.error);
   }
 
-  const workerResult = await fromPromise(
+  const workerResult = await ResultAsync.fromPromise(
     new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
       const worker = new BG3DGltfWorker();
       worker.onmessage = (e) => {
@@ -72,6 +80,7 @@ async function glbUrlToBg3dResponse(
       } satisfies BG3DGltfWorkerMessage;
       worker.postMessage(message);
     }),
+    mapErr,
   );
   if (workerResult.isErr()) {
     return err(

@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Hook for lazy-loading and caching item 3D models
  *
@@ -16,7 +17,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
 import { getParamByIndex } from "@/data/items/standardParamTypes";
@@ -44,7 +45,7 @@ interface ItemParams {
 
 interface UseItemModelCacheReturn {
   modelCache: Map<string, CachedModel>;
-  loadModel: (itemType: number, params?: ItemParams) => Promise<GLTF | null>;
+  loadModel: (itemType: number, params?: ItemParams, levelNum?: number) => Promise<GLTF | null>;
   isLoading: (itemType: number, params?: ItemParams) => boolean;
   hasError: (itemType: number, params?: ItemParams) => boolean;
 }
@@ -65,9 +66,9 @@ const GAME_BASE_PATHS: Record<Game, string> = {
 
 /**
  * Generate a cache key that includes game, item type, and relevant params
- * Uses the mapper to determine which items are param-dependent
+ * Uses the mapper to determine which items are param-dependent or level-dependent
  */
-function getCacheKey(game: Game, itemType: number, params?: ItemParams): string {
+function getCacheKey(game: Game, itemType: number, params?: ItemParams, levelNum?: number): string {
   const mapper = getGameMapper(game);
   const gamePrefix = `g${game}_`;
   
@@ -79,6 +80,11 @@ function getCacheKey(game: Game, itemType: number, params?: ItemParams): string 
     }
     return `${gamePrefix}${itemType}_p1_${params.p1}`;
   }
+  
+  if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
+    return `${gamePrefix}${itemType}_lv${levelNum}`;
+  }
+  
   return `${gamePrefix}${itemType}`;
 }
 
@@ -161,8 +167,11 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
   const cached = fileGltfCache.get(fileUrl);
   if (cached) return cached;
 
-  const promise = (async () => {
-    const fetchResult = await fromPromise(fetch(fileUrl));
+  const createPromise = async () => {
+    const fetchResult = await ResultAsync.fromPromise(
+      fetch(fileUrl),
+      mapErr,
+    );
     if (fetchResult.isErr()) {
       return Promise.reject(new Error(`Failed to fetch: ${fetchResult.error.message} (${fileUrl})`));
     }
@@ -170,7 +179,10 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
     if (!response.ok) {
       return Promise.reject(new Error(`Failed to fetch: ${response.statusText} (${fileUrl})`));
     }
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       return Promise.reject(new Error(`Failed to read buffer: ${bufferResult.error.message}`));
     }
@@ -207,13 +219,15 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
 
     URL.revokeObjectURL(glbUrl);
     return gltf;
-  })();
+  };
+
+  const promise = createPromise();
 
   // Cache the promise so concurrent requests share the same load
   fileGltfCache.set(fileUrl, promise);
 
   // Remove from cache on failure so it can be retried
-  promise.catch(() => {
+  promise.then(undefined, () => {
     fileGltfCache.delete(fileUrl);
   });
 
@@ -308,8 +322,8 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
    * Load a 3D model for an item type
    */
   const loadModel = useCallback(
-    async (itemType: number, params?: ItemParams): Promise<GLTF | null> => {
-      const cacheKey = getCacheKey(game, itemType, params);
+    async (itemType: number, params?: ItemParams, levelNum?: number): Promise<GLTF | null> => {
+      const cacheKey = getCacheKey(game, itemType, params, levelNum);
 
       // Skip if already in-flight (avoids stale closure issues)
       if (inFlightRef.current.has(cacheKey)) {
@@ -325,7 +339,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
 
       // Get mapping
       const mapper = getGameMapper(game);
-      const mapping = mapper?.getMapping(itemType, undefined, params);
+      const mapping = mapper?.getMapping(itemType, levelNum, params);
       if (!mapping) {
         return null;
       }
@@ -348,7 +362,10 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
       );
 
       // Load the full BG3D file (cached at the file level)
-      const fullGltfResult = await fromPromise(loadFileGltf(getWorker(), bg3dUrl));
+    const fullGltfResult = await ResultAsync.fromPromise(
+      loadFileGltf(getWorker(), bg3dUrl),
+      mapErr,
+    );
 
       if (fullGltfResult.isErr()) {
         console.error(

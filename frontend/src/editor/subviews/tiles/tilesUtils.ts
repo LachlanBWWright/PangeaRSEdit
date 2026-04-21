@@ -23,7 +23,8 @@ export function elevationToRGBA(header: StandardHeader, elev: number) {
 }
 
 export default {};
-import { Result, ok, err } from "@/types/result";
+import { Result } from "neverthrow";
+import { ok, err } from "neverthrow";
 
 export function createImageCanvas(
   width: number,

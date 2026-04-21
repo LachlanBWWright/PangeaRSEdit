@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef, useCallback } from "react";
 import { Mesh, Group, DoubleSide } from "three";
+import { ResultAsync } from "neverthrow";
 import {
   ItemData,
   HeaderData,
@@ -9,15 +10,21 @@ import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
 import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
+import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
-import { getParamByIndex } from "@/data/items/standardParamTypes";
+import {
+  getParamByIndex,
+  calculateRotation,
+  isRotationParam,
+} from "@/data/items/standardParamTypes";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
   LiquidPatchStyle,
 } from "@/data/items/liquidPatchItems";
+import { mapErr } from "@/utils/mapErr";
 
 interface ItemGeometryProps {
   itemData: ItemData;
@@ -108,15 +115,31 @@ const LoadingCube: React.FC<{
 
 /**
  * Individual item model renderer - clones the pre-cloned scene for each instance
+ * and applies a per-item rotation on top of the model-level rotationY baked in.
+ *
+ * The clonedScene may carry a baked-in position offset (from positionOffset / yOffset).
+ * Wrapping in a group ensures that offset is applied on top of the world position
+ * instead of being overwritten by the position prop.
  */
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
   clonedScene: Group;
-}> = ({ position, clonedScene }) => {
-  const instanceScene = useMemo(() => clonedScene.clone(true), [clonedScene]);
+  extraRotationY?: number;
+}> = ({ position, clonedScene, extraRotationY }) => {
+  const instanceScene = useMemo(() => {
+    const clone = clonedScene.clone(true);
+    if (extraRotationY !== undefined && extraRotationY !== 0) {
+      clone.rotateY(extraRotationY);
+    }
+    return clone;
+  }, [clonedScene, extraRotationY]);
 
-  return <primitive object={instanceScene} position={position} dispose={null} />;
+  return (
+    <group position={position}>
+      <primitive object={instanceScene} dispose={null} />
+    </group>
+  );
 };
 
 /**
@@ -184,6 +207,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 }) => {
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
+  const levelNum = useAtomValue(LevelNumber);
   
   // Use GAME_TYPE directly from globals
   const currentGame = globals.GAME_TYPE;
@@ -195,10 +219,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   // Get the mapper for the current game
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
 
-  // Generate a cache key for an item including its params
-  // Uses the mapper to determine which items are param-dependent
+  // Generate a cache key for an item including its params and level
+  // Uses the mapper to determine which items are param-dependent or level-dependent
   const getItemCacheKey = useCallback((itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
-    // Use the mapper to check if this item is param-dependent
     const gamePrefix = `g${currentGame}_`;
     if (mapper?.isParamDependent?.(itemType)) {
       const config = mapper.getParamDependentConfig?.(itemType);
@@ -207,11 +230,13 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         const paramValue = getParamByIndex(params, config.paramIndex);
         return `${gamePrefix}${itemType}_p${config.paramIndex}_${paramValue}`;
       }
-      // Fallback: use p1 for backwards compatibility
       return `${gamePrefix}${itemType}_p1_${p1}`;
     }
+    if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
+      return `${gamePrefix}${itemType}_lv${levelNum}`;
+    }
     return `${gamePrefix}${itemType}`;
-  }, [currentGame, mapper]);
+  }, [currentGame, mapper, levelNum]);
 
   // Group items by cache key for easier processing
   // This handles param-dependent items by grouping by the full key
@@ -242,7 +267,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
-        const mapping = mapper?.getMapping(firstItem.type, undefined, params);
+        const mapping = mapper?.getMapping(firstItem.type, levelNum, params);
         if (mapping && cachedModel.gltf.scene) {
           const cloned = cachedModel.gltf.scene.clone(true);
 
@@ -258,13 +283,18 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             cloned.rotateY(mapping.rotationY);
           }
 
-          // Apply position offset if specified
+          // Apply position offset and/or yOffset so the model base sits at ground level.
+          // The offset is stored on the cloned scene and is treated as a local child
+          // offset when ItemModel wraps the primitive in a group at the world position.
+          const yOff = mapping.yOffset ?? 0;
           if (mapping.positionOffset) {
             cloned.position.set(
               mapping.positionOffset[0],
-              mapping.positionOffset[1],
+              mapping.positionOffset[1] + yOff,
               mapping.positionOffset[2],
             );
+          } else if (yOff !== 0) {
+            cloned.position.set(0, yOff, 0);
           }
 
           scenes.set(cacheKey, cloned);
@@ -272,7 +302,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       }
     });
     return scenes;
-  }, [modelCache, itemsByCacheKey, mapper]);
+  }, [modelCache, itemsByCacheKey, mapper, levelNum]);
 
   useEffect(() => {
     // Load 3D models for all games that have model support
@@ -284,12 +314,20 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         if (!firstItem) return;
         
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
-        loadModel(firstItem.type, params).catch((err) => {
-          console.error(`Failed to load model for item type ${firstItem.type}:`, err);
-        });
+        const loadItemModel = async () => {
+          const loadResult = await ResultAsync.fromPromise(
+            loadModel(firstItem.type, params, levelNum),
+            mapErr,
+          );
+          if (loadResult.isErr()) {
+            console.error(`Failed to load model for item type ${firstItem.type}:`, loadResult.error);
+          }
+        };
+
+        void loadItemModel();
       });
     }
-  }, [show3DItemModels, itemsByCacheKey, loadModel]);
+  }, [show3DItemModels, itemsByCacheKey, loadModel, levelNum]);
 
   // Early return after all hooks
   if (!items || items.length === 0) {
@@ -415,12 +453,25 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (modelGltf && !hasError) {
             const clonedScene = clonedScenesByCacheKey.get(itemCacheKey);
             if (clonedScene) {
+              // Compute per-item rotation from rotationParam if defined
+              const params = { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 };
+              const mapping = mapper?.getMapping(item.type, levelNum, params);
+              let extraRotationY = 0;
+              if (mapping?.rotationParam) {
+                const rp = mapping.rotationParam;
+                if (isRotationParam(rp.rotationType)) {
+                  const paramValue = getParamByIndex(params, rp.paramIndex);
+                  extraRotationY = calculateRotation(paramValue, rp.rotationType);
+                }
+              }
+
               return wrapWithDrag(
                 <ItemModel
                   key={`item-model-${idx}`}
                   position={position}
                   itemType={item.type}
                   clonedScene={clonedScene}
+                  extraRotationY={extraRotationY !== 0 ? extraRotationY : undefined}
                 />,
               );
             }

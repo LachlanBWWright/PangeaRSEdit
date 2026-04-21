@@ -135,7 +135,13 @@ describe("citationVerifier", () => {
       itemType: "TestItem",
       itemTypeNumber: 1,
       parameterName: "p0",
-      codeSample: { code: "test", fileName: "test.c", lineNumber: 1 },
+      citation: {
+        label: "test",
+        url: "https://github.com/example/repo/blob/master/test.c#L1",
+        code: "test",
+        fileName: "test.c",
+        lineNumber: 1,
+      },
       sourceFile: "test.ts",
     });
     
@@ -202,7 +208,13 @@ describe("citationVerifier", () => {
       itemType: "TestItem",
       itemTypeNumber: 1,
       parameterName: "p0",
-      codeSample: { code: "test", fileName: "test.c", lineNumber: 1 },
+      citation: {
+        label: "test",
+        url: "https://github.com/example/repo/blob/master/test.c#L1",
+        code: "test",
+        fileName: "test.c",
+        lineNumber: 1,
+      },
       sourceFile: "test.ts",
     });
     
@@ -225,7 +237,13 @@ describe("citationVerifier", () => {
       itemType: "TestItem",
       itemTypeNumber: 1,
       parameterName: "p0",
-      codeSample: { code: "test", fileName: "test.c", lineNumber: 1 },
+      citation: {
+        label: "test",
+        url: "https://github.com/example/repo/blob/master/test.c#L1",
+        code: "test",
+        fileName: "test.c",
+        lineNumber: 1,
+      },
       sourceFile: "test.ts",
     });
     

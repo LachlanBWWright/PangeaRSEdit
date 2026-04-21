@@ -21,6 +21,9 @@ import {
 import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
 import { Input } from "@/components/ui/input";
 import { memo, useMemo } from "react";
+import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 export const WaterMenu = memo(function WaterMenu({
   liquidData,
@@ -44,8 +47,9 @@ export const WaterMenu = memo(function WaterMenu({
 
   const waterBodyData =
     selectedWaterBody !== null
-      ? liquidData.Liqd[1000].obj[selectedWaterBody]
+      ? liquidData.Liqd?.[1000]?.obj?.[selectedWaterBody]
       : null;
+  const waterBodyCount = liquidData.Liqd?.[1000]?.obj?.length ?? 0;
 
   const selectedNubData =
     waterBodyData &&
@@ -54,48 +58,61 @@ export const WaterMenu = memo(function WaterMenu({
       ? waterBodyData.nubs[selectedWaterNub]
       : null;
 
+  if (waterBodyData === null || waterBodyData === undefined) {
+    const hasWaterBodies = waterBodyCount > 0;
+    return (
+      <EmptyDataPrompt
+        title={hasWaterBodies ? "No Water Body Selected" : "No Water Bodies"}
+        description={
+          hasWaterBodies
+            ? "Select a water body on the canvas or add another one."
+            : "This level doesn't have any water bodies yet. Add your first water body to get started."
+        }
+        buttonText={hasWaterBodies ? "Add New Water Body" : "Add First Water Body"}
+        onInitialize={() =>
+          setLiquidData((draft) => {
+            const nextWaterBodyIndex = draft.Liqd[1000].obj.length;
+
+            draft.Liqd[1000].obj.push({
+              type: 0,
+              nubs: [
+                [100, 100],
+                [100, 200],
+                [200, 200],
+                [200, 100],
+              ],
+              numNubs: 4,
+              hotSpotX: 150,
+              hotSpotZ: 150,
+              bBoxTop: 200,
+              bBoxLeft: 200,
+              bBoxBottom: 200,
+              bBoxRight: 200,
+              height: 0,
+              flags: 0,
+              reserved: 0,
+            });
+
+            for (let i = 4; i < globals.LIQD_NUBS; i++) {
+              draft.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
+            }
+
+            setSelectedWaterBody(nextWaterBodyIndex);
+            setSelectedWaterNub(null);
+          })
+        }
+        fillHeight
+      />
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-2 w-full">
-      {waterBodyData === null || waterBodyData === undefined ? (
-        <Button
-          onClick={() =>
-            setLiquidData((draft) => {
-              draft.Liqd[1000].obj.push({
-                type: 0,
-                nubs: [
-                  [100, 100],
-                  [100, 200],
-                  [200, 200],
-                  [200, 100],
-                ],
-                numNubs: 4,
-                hotSpotX: 150,
-                hotSpotZ: 150,
-                bBoxTop: 200,
-                bBoxLeft: 200,
-                bBoxBottom: 200,
-                bBoxRight: 200,
-                height: 0,
-                flags: 0,
-                reserved: 0,
-              });
+    <div className="flex flex-col gap-2 w-full min-h-full">
+      <p>
+        Water Body {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
+      </p>
 
-              //Push additional water nubs
-              for (let i = 4; i < globals.LIQD_NUBS; i++) {
-                draft.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
-              }
-            })
-          }
-        >
-          Add New Water Body
-        </Button>
-      ) : (
-        <p>
-          Item {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
-        </p>
-      )}
-
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 flex-1 min-h-0">
         {waterBodyData !== null && waterBodyData !== undefined && (
           <>
             <Select
@@ -130,7 +147,18 @@ export const WaterMenu = memo(function WaterMenu({
             {/* Hotspot Adjustments */}
             {waterBodyData && selectedWaterBody !== null && (
               <>
-                <p>Adjust Hotspot Position</p>
+                <div className="flex items-center gap-1">
+                  <p>Adjust Hotspot Position</p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3.5 h-3.5 text-gray-400 cursor-help shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      The liquid&apos;s height is determined by sampling the terrain height at this
+                      hotspot position and adding the liquid&apos;s Y offset to it.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2  items-center">
                   <label
                     htmlFor="hotspotX"
@@ -241,7 +269,7 @@ export const WaterMenu = memo(function WaterMenu({
                 </>
               )}
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 mt-auto">
               <Button
                 onClick={() =>
                   setLiquidData((liquidData) => {

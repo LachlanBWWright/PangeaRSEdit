@@ -8,17 +8,25 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
+  CurrentTopologyDualEditMode,
+  CurrentTopologyHeightmapDisplayMode,
+  CurrentTopologyLayerEditMode,
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
   TopologyBrushMode,
+  TopologyDualEditMode,
+  TopologyHeightmapDisplayMode,
+  TopologyLayerEditMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
+  ShowAccessibilityOverlay,
+  ShowRoofInTopology,
 } from "../../data/tiles/tileAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   Select,
   SelectContent,
@@ -29,23 +37,27 @@ import {
   CanvasView,
   CanvasViewMode,
   Export3DScene,
-  Show3DSplines,
-  Show3DItems,
-  Show3DFences,
-  Show3DLiquid,
   Show3DItemModels,
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { HeaderData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
+import { Game, Globals } from "@/data/globals/globals";
+import {
+  getAccessibilityOverlayLabel,
+  hasAccessibleOverlayData,
+  supportsAccessibilityOverlay,
+} from "../utils/terrainAccessibility";
 
 export function IndividualTilesMenu({
   headerData,
   setHeaderData,
+  terrainData,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -55,15 +67,28 @@ export function IndividualTilesMenu({
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
-  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
-  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
-  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
-  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
+  const [layerEditMode, setLayerEditMode] = useAtom(CurrentTopologyLayerEditMode);
+  const [dualEditMode, setDualEditMode] = useAtom(CurrentTopologyDualEditMode);
+  const [heightmapDisplayMode, setHeightmapDisplayMode] = useAtom(
+    CurrentTopologyHeightmapDisplayMode,
+  );
+  const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
+  const [showAccessibilityOverlay, setShowAccessibilityOverlay] = useAtom(
+    ShowAccessibilityOverlay,
+  );
+  const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
+  const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
+  const canShowAccessibilityOverlay = hasAccessibleOverlayData(
+    globals.GAME_TYPE,
+    header,
+    terrainData.YCrd?.[1000]?.obj,
+    terrainData.YCrd?.[1001]?.obj,
+  );
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
@@ -73,6 +98,33 @@ export function IndividualTilesMenu({
     }
     setCanvasViewMode(CanvasView.TWO_D);
   }, [tileView, setCanvasViewMode, setTileView]);
+
+  useEffect(() => {
+    if (!hasRoofLayer) {
+      setShowRoof(false);
+      setLayerEditMode(TopologyLayerEditMode.FLOOR);
+    }
+  }, [hasRoofLayer, setLayerEditMode, setShowRoof]);
+
+  useEffect(() => {
+    if (
+      hasRoofLayer &&
+      heightmapDisplayMode === TopologyHeightmapDisplayMode.AUTO &&
+      layerEditMode === TopologyLayerEditMode.ROOF
+    ) {
+      setShowRoof(true);
+    }
+  }, [hasRoofLayer, heightmapDisplayMode, layerEditMode, setShowRoof]);
+
+  useEffect(() => {
+    if (!canShowAccessibilityOverlay && showAccessibilityOverlay) {
+      setShowAccessibilityOverlay(false);
+    }
+  }, [
+    canShowAccessibilityOverlay,
+    setShowAccessibilityOverlay,
+    showAccessibilityOverlay,
+  ]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -157,12 +209,96 @@ export function IndividualTilesMenu({
             defaultValue={brushRadius}
             onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
           />
-          <p>Height Value</p>
+          <p>
+            {layerEditMode === TopologyLayerEditMode.BOTH &&
+            dualEditMode === TopologyDualEditMode.DIFFERENCE
+              ? "Difference Value"
+              : layerEditMode === TopologyLayerEditMode.BOTH
+              ? "Midpoint Value"
+              : "Height Value"}
+          </p>
           <Input
             type="number"
             defaultValue={value}
             onChange={(e) => setValue(parseInt(e.target.value) || 0)}
           />
+
+          {hasRoofLayer && (
+            <>
+              <p>Edit Target</p>
+              <Select
+                value={layerEditMode}
+                onValueChange={(value) => {
+                  if (
+                    value === TopologyLayerEditMode.FLOOR ||
+                    value === TopologyLayerEditMode.ROOF ||
+                    value === TopologyLayerEditMode.BOTH
+                  ) {
+                    setLayerEditMode(value);
+                    if (value === TopologyLayerEditMode.ROOF) {
+                      setShowRoof(true);
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  {layerEditMode === TopologyLayerEditMode.FLOOR && "Floor Only"}
+                  {layerEditMode === TopologyLayerEditMode.ROOF && "Ceiling Only"}
+                  {layerEditMode === TopologyLayerEditMode.BOTH &&
+                    "Both (Midpoint ± Difference)"}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TopologyLayerEditMode.FLOOR}>
+                    Floor Only
+                  </SelectItem>
+                  <SelectItem value={TopologyLayerEditMode.ROOF}>
+                    Ceiling Only
+                  </SelectItem>
+                  <SelectItem value={TopologyLayerEditMode.BOTH}>
+                    Both (Midpoint ± Difference)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
+
+          {hasRoofLayer && (
+            <>
+              <p>Heightmap Display</p>
+              <Select
+                value={heightmapDisplayMode}
+                onValueChange={(value) => {
+                  if (
+                    value === TopologyHeightmapDisplayMode.AUTO ||
+                    value === TopologyHeightmapDisplayMode.FLOOR ||
+                    value === TopologyHeightmapDisplayMode.ROOF
+                  ) {
+                    setHeightmapDisplayMode(value);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  {heightmapDisplayMode === TopologyHeightmapDisplayMode.AUTO &&
+                    "Auto"}
+                  {heightmapDisplayMode === TopologyHeightmapDisplayMode.FLOOR &&
+                    "Floor"}
+                  {heightmapDisplayMode === TopologyHeightmapDisplayMode.ROOF &&
+                    "Ceiling"}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TopologyHeightmapDisplayMode.AUTO}>
+                    Auto
+                  </SelectItem>
+                  <SelectItem value={TopologyHeightmapDisplayMode.FLOOR}>
+                    Floor
+                  </SelectItem>
+                  <SelectItem value={TopologyHeightmapDisplayMode.ROOF}>
+                    Ceiling
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
 
           <p>Min Height</p>
           <Input type="number" value={minY} onChange={handleMinYChange} />
@@ -176,6 +312,55 @@ export function IndividualTilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+          {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
+            canShowAccessibilityOverlay && (
+              <div className="flex items-center justify-between col-span-4 rounded border border-gray-700 px-3 py-2">
+                <p>{getAccessibilityOverlayLabel()}</p>
+                <Switch
+                  checked={showAccessibilityOverlay}
+                  onCheckedChange={setShowAccessibilityOverlay}
+                />
+              </div>
+            )}
+          {hasRoofLayer && (
+            <>
+              {layerEditMode === TopologyLayerEditMode.BOTH && (
+                <>
+                  <p>Both-Mode Brush</p>
+                  <Select
+                    value={dualEditMode}
+                    onValueChange={(value) => {
+                      if (
+                        value === TopologyDualEditMode.MIDPOINT ||
+                        value === TopologyDualEditMode.DIFFERENCE
+                      ) {
+                        setDualEditMode(value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      {dualEditMode === TopologyDualEditMode.MIDPOINT &&
+                        "Edit Midpoint"}
+                      {dualEditMode === TopologyDualEditMode.DIFFERENCE &&
+                        "Edit Difference"}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={TopologyDualEditMode.MIDPOINT}>
+                        Edit Midpoint
+                      </SelectItem>
+                      <SelectItem value={TopologyDualEditMode.DIFFERENCE}>
+                        Edit Difference
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="col-span-2 text-sm text-gray-400">
+                    Both mode keeps floor and ceiling paired. Switch the brush
+                    between midpoint and clearance editing without leaving the mode.
+                  </p>
+                </>
+              )}
+            </>
+          )}
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D View (Experimental)</p>
@@ -194,34 +379,12 @@ export function IndividualTilesMenu({
           </div>
           {canvasViewMode === CanvasView.THREE_D && (
             <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Splines</p>
-                <Switch
-                  checked={show3DSplines}
-                  onCheckedChange={setShow3DSplines}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Items</p>
-                <Switch
-                  checked={show3DItems}
-                  onCheckedChange={setShow3DItems}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Fences</p>
-                <Switch
-                  checked={show3DFences}
-                  onCheckedChange={setShow3DFences}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Liquid</p>
-                <Switch
-                  checked={show3DLiquid}
-                  onCheckedChange={setShow3DLiquid}
-                />
-              </div>
+              {hasRoofLayer && (
+                <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                  <p>Show Ceiling Layer</p>
+                  <Switch checked={showRoof} onCheckedChange={setShowRoof} />
+                </div>
+              )}
               <div className="flex flex-row justify-center gap-2 items-center col-span-2">
                 <p>Show 3D Models</p>
                 <Switch

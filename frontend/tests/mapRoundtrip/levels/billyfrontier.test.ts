@@ -104,7 +104,7 @@ describe("Billy Frontier Level Roundtrip", () => {
         x: unknown,
       ): asserts x is Record<string, unknown> {
         if (typeof x !== "object" || x === null)
-          throw new Error("Parsed data is not an object");
+          expect.fail("Parsed data is not an object");
       }
       assertIsRecord(jsonData);
 

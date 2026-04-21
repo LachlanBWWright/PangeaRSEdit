@@ -23,7 +23,7 @@ import {
   bg3dParsedToGLTF,
   gltfToBG3D,
 } from "@/modelParsers/parsedBg3dGitfConverter";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -47,7 +47,10 @@ describe("Keyframe edit roundtrip", () => {
     }
 
     const originalSkeleton = await parseSkeletonRsrc(bufferFromFile(SKEL_PATH));
-    const parsed = unwrap(parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton));
+    const parsedRes = parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
 
@@ -86,7 +89,10 @@ describe("Keyframe edit roundtrip", () => {
     }
 
     const originalSkeleton = await parseSkeletonRsrc(bufferFromFile(SKEL_PATH));
-    const parsed = unwrap(parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton));
+    const parsedRes = parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
 
@@ -145,7 +151,10 @@ describe("Keyframe edit roundtrip", () => {
     }
 
     const originalSkeleton = await parseSkeletonRsrc(bufferFromFile(SKEL_PATH));
-    const parsed = unwrap(parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton));
+    const parsedRes = parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
 
@@ -281,7 +290,10 @@ describe("Keyframe edit roundtrip", () => {
     }
 
     const originalSkeleton = await parseSkeletonRsrc(bufferFromFile(SKEL_PATH));
-    const parsed = unwrap(parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton));
+    const parsedRes = parseBG3D(bufferFromFile(BG3D_PATH), originalSkeleton);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
 

@@ -14,10 +14,12 @@ import {
   type GameItemModelMapper, 
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import { OTTO_ITEM_MODEL_MAPPINGS, type ItemModelMapping } from "../ottoItemModelMapping";
+import { OTTO_ITEM_MODEL_MAPPINGS } from "../ottoItemModelMapping";
 import { ItemType } from "../ottoItemType";
 import { 
   OTTO_HUMAN_TYPE, 
+  OTTO_ROCK_TYPE,
+  OTTO_HAY_TYPE,
   type ModelVariant,
   type TypeSelectorParam,
   getModelVariant,
@@ -43,6 +45,14 @@ const PARAM_DEPENDENT_ITEMS: Record<number, ParamDependentConfig> = {
     paramIndex: 1, // p1 controls human type
     paramType: OTTO_HUMAN_TYPE,
   },
+  [ItemType.Rock]: {
+    paramIndex: 0, // p0 selects Small/Medium/Large
+    paramType: OTTO_ROCK_TYPE,
+  },
+  [ItemType.Hay]: {
+    paramIndex: 0, // p0 selects Brick/Cylinder
+    paramType: OTTO_HAY_TYPE,
+  },
 };
 
 /**
@@ -61,27 +71,9 @@ function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
     scaleY: variant.scaleY,
     rotationY: variant.rotationY,
     positionOffset: variant.positionOffset,
+    yOffset: variant.yOffset,
+    rotationParam: variant.rotationParam,
     citations: variant.citations ? [...variant.citations] : undefined,
-  };
-}
-
-/**
- * Convert Otto-specific mapping to universal format
- */
-function convertToUniversal(mapping: ItemModelMapping): UniversalItemModelMapping {
-  return {
-    modelFile: mapping.modelFile,
-    modelPath: mapping.modelPath,
-    modelIndex: mapping.modelIndex,
-    groupSize: mapping.groupSize,
-    requiresSkeleton: mapping.requiresSkeleton,
-    skeletonFile: mapping.skeletonFile,
-    scale: mapping.scale,
-    scaleXZ: mapping.scaleXZ,
-    scaleY: mapping.scaleY,
-    rotationY: mapping.rotationY,
-    positionOffset: mapping.positionOffset,
-    citations: mapping.citations ? [...mapping.citations] : undefined,
   };
 }
 
@@ -121,11 +113,8 @@ export class OttoItemMapper implements GameItemModelMapper {
       return getParamDependentMapping(paramConfig, params);
     }
     
-    // Standard mapping lookup
-    const mapping = OTTO_ITEM_MODEL_MAPPINGS[itemType];
-    if (!mapping) return undefined;
-    
-    return convertToUniversal(mapping);
+    // Standard mapping lookup — OTTO_ITEM_MODEL_MAPPINGS already uses UniversalItemModelMapping
+    return OTTO_ITEM_MODEL_MAPPINGS[itemType];
   }
   
   /**

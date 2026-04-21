@@ -2,7 +2,6 @@
  * Pure functions for palette manipulation
  * These functions don't depend on external state and can be composed
  */
-import { tryFn } from "@/types/result";
 import { hexToRgb as hexToRgbUtil, rgbToHex as rgbToHexUtil } from "@/utils/colorUtils";
 
 export interface PaletteColor {
@@ -16,13 +15,20 @@ export interface Palette {
   colors: PaletteColor[];
 }
 
+export interface PredefinedPaletteOption {
+  key: string;
+  label: string;
+  sourceFile: string;
+  palette: Palette;
+}
+
 /**
  * Create a new palette with default name
  */
 export function createPalette(name: string, colors?: PaletteColor[]): Palette {
   return {
     name,
-    colors: colors || Array(256).fill({ r: 0, g: 0, b: 0 }),
+    colors: colors ? colors.map((color) => ({ ...color })) : Array.from({ length: 256 }, () => ({ r: 0, g: 0, b: 0 })),
   };
 }
 
@@ -104,13 +110,52 @@ export function hexToRgb(hex: string): PaletteColor | null {
 /**
  * Create predefined palettes
  */
-export const PREDEFINED_PALETTES: Record<string, Palette> = {
+export const PREDEFINED_PALETTES: {
+  candy: Palette;
+  bargain: Palette;
+  clown: Palette;
+  fairy: Palette;
+  jurassic: Palette;
+} = {
   candy: createPalette("Candy"),
   bargain: createPalette("Bargain"),
   clown: createPalette("Clown"),
   fairy: createPalette("Fairy"),
   jurassic: createPalette("Jurassic"),
 };
+
+export const PREDEFINED_PALETTE_OPTIONS: PredefinedPaletteOption[] = [
+  {
+    key: "candy",
+    label: "Candy",
+    sourceFile: "candyscene.tga",
+    palette: PREDEFINED_PALETTES.candy,
+  },
+  {
+    key: "bargain",
+    label: "Bargain",
+    sourceFile: "bargainscene.tga",
+    palette: PREDEFINED_PALETTES.bargain,
+  },
+  {
+    key: "clown",
+    label: "Clown",
+    sourceFile: "clownscene.tga",
+    palette: PREDEFINED_PALETTES.clown,
+  },
+  {
+    key: "fairy",
+    label: "Fairy",
+    sourceFile: "fairyscene.tga",
+    palette: PREDEFINED_PALETTES.fairy,
+  },
+  {
+    key: "jurassic",
+    label: "Jurassic",
+    sourceFile: "dinoscene.tga",
+    palette: PREDEFINED_PALETTES.jurassic,
+  },
+];
 
 /**
  * Serialize palette to JSON
@@ -138,14 +183,11 @@ export function isPalette(x: unknown): x is Palette {
 }
 
 export function deserializePalette(json: string): Palette | null {
-  const parseResult = tryFn(() => JSON.parse(json) as unknown);
-  if (parseResult.isErr()) {
-    console.error("Failed to deserialize palette:", parseResult.error);
-    return null;
+  const parsed: unknown = JSON.parse(json);
+  if (isPalette(parsed)) {
+    return parsed;
   }
-  if (isPalette(parseResult.value)) {
-    return parseResult.value;
-  }
+  console.error("Failed to deserialize palette: invalid structure");
   return null;
 }
 

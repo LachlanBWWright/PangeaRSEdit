@@ -114,6 +114,11 @@ export interface UniversalItemModelMapping {
   /** Position offset in world units [x, y, z] */
   positionOffset?: [number, number, number];
   
+  /** Vertical offset so the model base sits at ground level (world units).
+   *  Equivalent to positionOffset[1] but more legible for the common case.
+   *  Mirrors the game's `Coord.y -= BBox.min.y` correction for skeleton objects. */
+  yOffset?: number;
+  
   /** Which parameter controls rotation */
   rotationParam?: {
     paramIndex: 0 | 1 | 2 | 3;
@@ -167,6 +172,12 @@ export interface GameItemModelMapper {
    * Get the total number of item types with mappings
    */
   getMappingCount(): number;
+  
+  /**
+   * Check if an item type requires a different model per level.
+   * For level-dependent items, the model varies based on the current level number.
+   */
+  isLevelDependent?(itemType: number): boolean;
   
   /**
    * Check if an item type has param-dependent model selection.

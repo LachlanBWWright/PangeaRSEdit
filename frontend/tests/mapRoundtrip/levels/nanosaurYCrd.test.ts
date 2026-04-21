@@ -19,8 +19,8 @@ describe("Nanosaur 1 heightmap parsing", () => {
       void _data;
     };
     const result = await parseNanosaurLevelFile(blob, NanosaurGlobals, setData);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) return;
 
     // Extract YCrd array
     const ycrd = result.value.YCrd?.[1000]?.obj;

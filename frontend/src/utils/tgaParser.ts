@@ -92,6 +92,22 @@ export function setApplyColorCorrection(value: boolean) {
  * 9 = RLE compressed color-mapped
  */
 export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
+  return extractTGAPaletteInternal(buffer, true);
+}
+
+/**
+ * Extract palette from TGA file without color correction.
+ * Useful when the caller needs the raw palette bytes to feed into another
+ * color-correction step, such as the game palette manager.
+ */
+export function extractTGAPaletteRaw(buffer: ArrayBuffer): TGAPalette | null {
+  return extractTGAPaletteInternal(buffer, false);
+}
+
+function extractTGAPaletteInternal(
+  buffer: ArrayBuffer,
+  shouldApplyColorCorrection: boolean,
+): TGAPalette | null {
   const data = new DataView(buffer);
 
   // Parse header
@@ -189,7 +205,7 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
       const a =
         paletteBytesPerEntry === 4 ? paletteData[srcOffset + 3] ?? 255 : 255;
 
-      const [correctedR, correctedG, correctedB] = APPLY_COLOR_CORRECTION
+      const [correctedR, correctedG, correctedB] = shouldApplyColorCorrection && APPLY_COLOR_CORRECTION
         ? applyColorCorrection(r, g, b)
         : [r, g, b];
 
@@ -210,7 +226,7 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
       const r = (r5 << 3) | (r5 >> 2);
       const g = (g5 << 3) | (g5 >> 2);
       const b = (b5 << 3) | (b5 >> 2);
-      const [correctedR, correctedG, correctedB] = APPLY_COLOR_CORRECTION
+      const [correctedR, correctedG, correctedB] = shouldApplyColorCorrection && APPLY_COLOR_CORRECTION
         ? applyColorCorrection(r, g, b)
         : [r, g, b];
       colors[dstOffset + 0] = correctedR;

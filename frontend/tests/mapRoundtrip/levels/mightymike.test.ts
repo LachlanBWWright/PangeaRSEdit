@@ -44,8 +44,8 @@ describe("Mighty Mike Level Roundtrip", () => {
       const originalData = readFileSync(filePath);
       const parseResult = parseMightyMikeMap(toArrayBuffer(originalData));
 
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) {
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) {
         return;
       }
 

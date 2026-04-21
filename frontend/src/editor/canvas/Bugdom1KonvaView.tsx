@@ -10,7 +10,8 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useCallback } from "react";
+import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
 import Konva from "konva";
 import { Updater } from "use-immer";
@@ -21,6 +22,7 @@ import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
+import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { Tiles } from "../subviews/Tiles";
 import {
   HeaderData,
@@ -73,30 +75,7 @@ export function Bugdom1KonvaView({
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const clickToAddItem = useAtomValue(ClickToAddItem);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({
-    width: 3000,
-    height: 2000,
-  });
-
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
-      }
-    };
-    updateSize();
-    if (typeof ResizeObserver !== "undefined") {
-      const obs = new ResizeObserver(() => updateSize());
-      if (containerRef.current) obs.observe(containerRef.current);
-      return () => obs.disconnect();
-    }
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
+  const [containerRef, containerSize] = useContainerSize();
 
   // Non-null updaters
   const setItemDataNotNull: Updater<ItemData> = useCallback(
@@ -206,6 +185,13 @@ export function Bugdom1KonvaView({
           />
         )}
 
+        {view !== View.tiles && (
+          <AccessibilityMaskOverlay
+            headerData={headerData}
+            terrainData={terrainData}
+          />
+        )}
+
         {/* Topology / flag overlay (tiles view) */}
         {view === View.tiles && (
           <Tiles
@@ -218,111 +204,58 @@ export function Bugdom1KonvaView({
 
         {/* Bugdom 1 has no tile attributes editing - individual tiles are composed into supertiles at render time */}
 
-        {/* Show all layers except when in tiles view */}
+        {/* All non-tiles views: render layers with stable keys so React preserves
+            component instances when switching tabs. The primary view's layer is
+            rendered last to ensure it appears on top (highest z-order). */}
         {view !== View.tiles && (
           <>
-            {/* Fence view - fences are primary */}
-            {view === View.fences && (
-              <>
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-              </>
+            {/* Base layers - rendered first (below primary) */}
+            {fenceData && view !== View.fences && (
+              <Fences
+                key="fences"
+                fenceData={fenceData}
+                setFenceData={setFenceDataNotNull}
+              />
             )}
-
-            {/* Spline view - splines are primary */}
-            {view === View.splines && (
-              <>
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-              </>
+            {itemData && view !== View.items && (
+              <Items
+                key="items"
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
-
-            {/* Items view - items are primary */}
-            {view === View.items && (
-              <>
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-              </>
+            {splineData && view !== View.splines && (
+              <Splines
+                key="splines"
+                splineData={splineData}
+                setSplineData={setSplineDataNotNull}
+              />
             )}
-
-            {/* Supertiles view - show all */}
-            {view === View.supertiles && (
-              <>
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-              </>
+            {/* Primary layer rendered last (highest z-order) */}
+            {view === View.fences && fenceData && (
+              <Fences
+                key="fences"
+                fenceData={fenceData}
+                setFenceData={setFenceDataNotNull}
+              />
+            )}
+            {view === View.items && itemData && (
+              <Items
+                key="items"
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
+            )}
+            {view === View.splines && splineData && (
+              <Splines
+                key="splines"
+                splineData={splineData}
+                setSplineData={setSplineDataNotNull}
+              />
             )}
           </>
         )}

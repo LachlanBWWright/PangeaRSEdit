@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
+  ShowAccessibilityOverlay,
   TileViewMode,
   TileViews,
   TopologyBrushMode,
@@ -21,7 +22,7 @@ import {
   TileEditingEnabled,
   TileBrushType,
 } from "../../data/tiles/tileAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   Select,
   SelectContent,
@@ -32,23 +33,27 @@ import {
   CanvasView,
   CanvasViewMode,
   Export3DScene,
-  Show3DSplines,
-  Show3DItems,
-  Show3DFences,
-  Show3DLiquid,
   Show3DItemModels,
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { HeaderData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
+import { Globals } from "@/data/globals/globals";
+import {
+  getAccessibilityOverlayLabel,
+  hasAccessibleOverlayData,
+  supportsAccessibilityOverlay,
+} from "../utils/terrainAccessibility";
 
 export function StandardTilesMenu({
   headerData,
   setHeaderData,
+  terrainData,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -58,25 +63,35 @@ export function StandardTilesMenu({
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
-  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
-  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
-  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
-  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
   const [tileEditingEnabled, setTileEditingEnabled] =
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
+  const [showAccessibilityOverlay, setShowAccessibilityOverlay] = useAtom(
+    ShowAccessibilityOverlay,
+  );
+  const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
+  const canShowAccessibilityOverlay = hasAccessibleOverlayData(
+    globals.GAME_TYPE,
+    header,
+    terrainData.YCrd?.[1000]?.obj,
+    terrainData.YCrd?.[1001]?.obj,
+  );
 
   useEffect(() => {
-    if (tileView !== TileViews.Topology) {
-      setCanvasViewMode(CanvasView.TWO_D);
+    if (!canShowAccessibilityOverlay && showAccessibilityOverlay) {
+      setShowAccessibilityOverlay(false);
     }
-  }, [tileView, setCanvasViewMode]);
+  }, [
+    canShowAccessibilityOverlay,
+    setShowAccessibilityOverlay,
+    showAccessibilityOverlay,
+  ]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -104,11 +119,14 @@ export function StandardTilesMenu({
     <div className="flex flex-col gap-2">
       <Tabs
         value={tileView === TileViews.Topology ? "topology" : "flags"}
-        onValueChange={(value) =>
-          setTileView(
-            value === "topology" ? TileViews.Topology : TileViews.Flags,
-          )
-        }
+        onValueChange={(value) => {
+          if (value === "topology") {
+            setTileView(TileViews.Topology);
+          } else {
+            setTileView(TileViews.Flags);
+            setCanvasViewMode(CanvasView.TWO_D);
+          }
+        }}
       >
         <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
           <TabsTrigger className="w-full" value="topology">
@@ -193,6 +211,16 @@ export function StandardTilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+          {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
+            canShowAccessibilityOverlay && (
+              <div className="flex items-center justify-between col-span-4 rounded border border-gray-700 px-3 py-2">
+                <p>{getAccessibilityOverlayLabel()}</p>
+                <Switch
+                  checked={showAccessibilityOverlay}
+                  onCheckedChange={setShowAccessibilityOverlay}
+                />
+              </div>
+            )}
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D View (Experimental)</p>
@@ -210,43 +238,13 @@ export function StandardTilesMenu({
             </div>
           </div>
           {canvasViewMode === CanvasView.THREE_D && (
-            <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Splines</p>
-                <Switch
-                  checked={show3DSplines}
-                  onCheckedChange={setShow3DSplines}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Items</p>
-                <Switch
-                  checked={show3DItems}
-                  onCheckedChange={setShow3DItems}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Fences</p>
-                <Switch
-                  checked={show3DFences}
-                  onCheckedChange={setShow3DFences}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Liquid</p>
-                <Switch
-                  checked={show3DLiquid}
-                  onCheckedChange={setShow3DLiquid}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show 3D Models</p>
-                <Switch
-                  checked={show3DItemModels}
-                  onCheckedChange={setShow3DItemModels}
-                />
-              </div>
-            </>
+            <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+              <p>Show 3D Models</p>
+              <Switch
+                checked={show3DItemModels}
+                onCheckedChange={setShow3DItemModels}
+              />
+            </div>
           )}
         </div>
       )}

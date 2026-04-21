@@ -32,7 +32,7 @@
  */
 
 import { gMightyMikePalette } from "./mightyMikePalette";
-import { Result, ok, err } from "../types/result";
+import { ok, err, type Result } from "neverthrow";
 
 /**
  * Load palette data into the global Mighty Mike palette manager
@@ -65,7 +65,7 @@ export function setMightyMikeTileTransparency(colorIndices: number[]): void {
 export function renderTileWithDynamicPalette(
   tileData: Uint8Array,
   tileSize = 32
-): Result<HTMLCanvasElement> {
+): Result<HTMLCanvasElement, Error> {
   const canvas = document.createElement("canvas");
   canvas.width = tileSize;
   canvas.height = tileSize;
@@ -105,7 +105,7 @@ export function rerenderAllTilesWithCurrentPalette(
   tileDataBuffer: Uint8Array,
   numTiles: number,
   tileSize = 32
-): Result<HTMLCanvasElement[]> {
+): Result<HTMLCanvasElement[], Error> {
   const canvases: HTMLCanvasElement[] = [];
   const bytesPerTile = tileSize * tileSize;
 

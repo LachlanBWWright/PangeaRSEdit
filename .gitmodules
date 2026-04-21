@@ -46,3 +46,6 @@
 [submodule "gamePorts/nanosaur2"]
 	path = gamePorts/nanosaur2
 	url = https://github.com/LachlanBWWright/Nanosaur2-Android
+[submodule "frontend/public/games/pangea-ports"]
+	path = games/pangea-ports
+	url = https://github.com/LachlanBWWright/Pangea-Ports

@@ -5,9 +5,10 @@ import Konva from "konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
+import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
 
 const NUB_KEY_BASE = 1000;
 const MIN_NUBS = 2;
@@ -82,9 +83,14 @@ export const Fence = memo(
 
     // All hooks must be called before early returns
     const isSelected = fenceIdx === selectedFence;
-    const color = isSelected ? "red" : getColour(fenceIdx);
     const imageSrc = fenceNubs ? getFenceImagePath(globals, fenceObj?.fenceType ?? 0) : null;
-    const fenceImage = useFenceImage(imageSrc || null);
+    const displayImageSrc = useFenceImageSource(imageSrc);
+    const fenceImage = useFenceImage(displayImageSrc);
+    const imageColor = useMemo(
+      () => (fenceImage ? getDominantColor(fenceImage) : getColour(fenceIdx)),
+      [fenceImage, fenceIdx],
+    );
+    const color = isSelected ? "red" : imageColor;
 
     // Stable callbacks so FenceNub memo is not defeated on every preview update
     const handlePreviewNub = useCallback(
@@ -310,6 +316,31 @@ export const Fence = memo(
     );
   },
 );
+
+
+/** Extract the average non-transparent color from a loaded image element. */
+function getDominantColor(img: HTMLImageElement): string {
+  const canvas = document.createElement("canvas");
+  const size = 16;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "#339933";
+  ctx.drawImage(img, 0, 0, size, size);
+  const data = ctx.getImageData(0, 0, size, size).data;
+  let r = 0, g = 0, b = 0, count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if ((data[i + 3] ?? 0) > 128) {
+      r += data[i] ?? 0;
+      g += data[i + 1] ?? 0;
+      b += data[i + 2] ?? 0;
+      count++;
+    }
+  }
+  if (count === 0) return "#339933";
+  return `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`;
+}
+
 
 export function getColour(index: number) {
   switch (index % 5) {

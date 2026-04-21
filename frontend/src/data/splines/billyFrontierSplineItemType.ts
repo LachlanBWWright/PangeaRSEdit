@@ -1,4 +1,4 @@
-import { ItemParams } from "../items/itemParams";
+import { ItemParamsSource } from "../items/itemParams";
 
 export enum SplineItemType {
   PrimeStampedeKangaCow = 20, // 20:
@@ -21,7 +21,7 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
 // Parameter descriptions for each spline item type
 export const billyFrontierSplineItemTypeParams: Record<
   SplineItemType,
-  ItemParams
+  ItemParamsSource
 > = {
   [SplineItemType.PrimeStampedeKangaCow]: {
     flags: "Stampede Kanga Cow behavior flags",
@@ -88,4 +88,4 @@ export const billyFrontierSplineItemTypeParams: Record<
   },
 };
 
-export type BillyFrontierSplineItemParams = ItemParams;
+export type BillyFrontierSplineItemParams = ItemParamsSource;

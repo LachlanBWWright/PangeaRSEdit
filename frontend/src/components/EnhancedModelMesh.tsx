@@ -9,6 +9,9 @@ import {
   MeshBasicMaterial,
   Vector3,
   CylinderGeometry,
+  Material,
+  MeshStandardMaterial,
+  MeshPhysicalMaterial,
 } from "three";
 import { useEffect, useRef, memo } from "react";
 import { useFrame } from "@react-three/fiber";
@@ -37,6 +40,7 @@ interface EnhancedModelMeshProps {
   showSkeleton?: boolean;
   position?: [number, number, number];
   selectedBoneName?: string | null;
+  previewLighting?: boolean;
 }
 
 function EnhancedModelMeshComponent({
@@ -45,6 +49,7 @@ function EnhancedModelMeshComponent({
   showSkeleton = false,
   position = [0, 0, 0],
   selectedBoneName = null,
+  previewLighting = false,
 }: EnhancedModelMeshProps) {
   const skeletonHelpersRef = useRef<(SkeletonHelper | Mesh)[]>([]);
   const boneTubesRef = useRef<BoneTubeRef[]>([]);
@@ -67,6 +72,53 @@ function EnhancedModelMeshComponent({
       }
     });
   }, [scene, wireframeMode]);
+
+  useEffect(() => {
+    if (!scene || !previewLighting) return;
+
+    const resettableMaterials: {
+      material: Material;
+      metalness?: number;
+      roughness?: number;
+    }[] = [];
+
+    scene.traverse((object) => {
+      if (!(object instanceof Mesh) || !object.material) return;
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+      for (const material of materials) {
+        if (
+          material instanceof MeshStandardMaterial ||
+          material instanceof MeshPhysicalMaterial
+        ) {
+          resettableMaterials.push({
+            material,
+            metalness: material.metalness,
+            roughness: material.roughness,
+          });
+          material.metalness = 0;
+          material.roughness = 1;
+        }
+      }
+    });
+
+    return () => {
+      for (const entry of resettableMaterials) {
+        if (
+          entry.material instanceof MeshStandardMaterial ||
+          entry.material instanceof MeshPhysicalMaterial
+        ) {
+          if (entry.metalness !== undefined) {
+            entry.material.metalness = entry.metalness;
+          }
+          if (entry.roughness !== undefined) {
+            entry.material.roughness = entry.roughness;
+          }
+        }
+      }
+    };
+  }, [scene, previewLighting]);
 
   useEffect(() => {
     if (!scene) return;

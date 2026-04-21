@@ -45,7 +45,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     );
 
     // Handle Result type
-    if (!originalBg3dResult.ok) {
+    if (!originalBg3dResult.isOk()) {
       console.log("Failed to parse BG3D:", originalBg3dResult.error);
       return;
     }
@@ -74,7 +74,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const rt1SkeletonBinaryResult = skeletonResourceToBinary(
       rt1SkeletonResource,
     );
-    if (!rt1SkeletonBinaryResult.ok) {
+    if (!rt1SkeletonBinaryResult.isOk()) {
       console.error("Failed to convert RT1 skeleton to binary:", rt1SkeletonBinaryResult.error);
       return;
     }
@@ -85,7 +85,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type
-    if (!rt1ParsedResult.ok) {
+    if (!rt1ParsedResult.isOk()) {
       console.log("Failed to parse RT1 BG3D:", rt1ParsedResult.error);
       return;
     }
@@ -175,7 +175,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     );
 
     // Handle Result type
-    if (!originalBg3dResult.ok) {
+    if (!originalBg3dResult.isOk()) {
       console.log("Failed to parse BG3D:", originalBg3dResult.error);
       return;
     }
@@ -230,7 +230,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const rt1SkeletonBinaryResult = skeletonResourceToBinary(
       rt1SkeletonResource,
     );
-    if (!rt1SkeletonBinaryResult.ok) {
+    if (!rt1SkeletonBinaryResult.isOk()) {
       console.error("Failed to convert RT1 skeleton to binary:", rt1SkeletonBinaryResult.error);
       return;
     }
@@ -241,7 +241,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type
-    if (!rt1ParsedResult.ok) {
+    if (!rt1ParsedResult.isOk()) {
       console.log("Failed to parse RT1 BG3D:", rt1ParsedResult.error);
       return;
     }

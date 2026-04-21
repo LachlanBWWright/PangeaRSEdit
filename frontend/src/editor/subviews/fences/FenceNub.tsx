@@ -1,6 +1,8 @@
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { Circle, Group, Image as KonvaImage } from "react-konva";
-import { SelectedFence } from "../../../data/fences/fenceAtoms";
+import { SelectedFence, SelectedFenceNub } from "../../../data/fences/fenceAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { memo, useRef } from "react";
 import { getColour } from "./Fence";
 
@@ -23,6 +25,8 @@ export const FenceNub = memo(
     image?: HTMLImageElement | null;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
+    const setActiveView = useSetAtom(ActiveView);
+    const setSelectedFenceNub = useSetAtom(SelectedFenceNub);
     const nubRafRef = useRef<number | null>(null);
     const isSelected = idx === selectedFence;
     const color = isSelected ? "red" : getColour(idx);
@@ -32,8 +36,16 @@ export const FenceNub = memo(
         x={nub[0]}
         y={nub[1]}
         draggable
-        onMouseDown={() => setSelectedFence(idx)}
-        onDragStart={() => setSelectedFence(idx)}
+        onMouseDown={() => {
+          setSelectedFence(idx);
+          setActiveView(View.fences);
+          setSelectedFenceNub(nubIdx);
+        }}
+        onDragStart={() => {
+          setSelectedFence(idx);
+          setActiveView(View.fences);
+          setSelectedFenceNub(nubIdx);
+        }}
         onDragMove={(e) => {
           const newX = Math.round(e.target.x());
           const newY = Math.round(e.target.y());

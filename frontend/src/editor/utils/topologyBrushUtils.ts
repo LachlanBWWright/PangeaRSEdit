@@ -1,16 +1,28 @@
-import { TopologyBrushMode, TopologyValueMode } from "@/data/tiles/tileAtoms";
+import {
+  TopologyBrushMode,
+  TopologyDualEditMode,
+  TopologyLayerEditMode,
+  TopologyValueMode,
+} from "@/data/tiles/tileAtoms";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 
 // Minimum vertical distance between roof and floor (in game units)
 // Ensures roof is always above floor with reasonable separation
 export const MIN_ROOF_FLOOR_DISTANCE = 10;
+const MIN_INT16 = -32768;
+const MAX_INT16 = 32767;
 
 export interface PixelType {
   x: number;
   y: number;
   value: number;
   distance: number;
+}
+
+export interface StrokePoint {
+  x: number;
+  y: number;
 }
 
 export interface BrushParams {
@@ -69,7 +81,6 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
     return pixelList;
   }
   const hasLine =
-    params.valueMode !== TopologyValueMode.SET_VALUE &&
     lineStart !== undefined &&
     lineEnd !== undefined;
   const lineStartPoint = lineStart ?? { x: centerX, y: centerY };
@@ -134,6 +145,39 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
   return pixelList;
 }
 
+function getPixelKey(pixel: PixelType): string {
+  return `${String(pixel.x)},${String(pixel.y)}`;
+}
+
+export function mergeBrushPixels(
+  pixelGroups: readonly (readonly PixelType[])[],
+): PixelType[] {
+  const mergedPixels = new Map<string, PixelType>();
+
+  pixelGroups.forEach((pixels) => {
+    pixels.forEach((pixel) => {
+      const key = getPixelKey(pixel);
+      const existingPixel = mergedPixels.get(key);
+
+      if (!existingPixel || pixel.distance < existingPixel.distance) {
+        mergedPixels.set(key, pixel);
+      }
+    });
+  });
+
+  return Array.from(mergedPixels.values());
+}
+
+export function cloneHeightArray(
+  heightArray: Int16Array | number[] | undefined,
+): number[] | undefined {
+  if (!heightArray) {
+    return undefined;
+  }
+
+  return Array.from(heightArray);
+}
+
 /**
  * Apply brush modifications to the terrain height array
  */
@@ -190,6 +234,189 @@ export function applyTopologyBrush(
       Math.min(32767, Math.round(newValue))
     );
   });
+}
+
+function getUpdatedBrushValue(
+  currentValue: number,
+  pixel: PixelType,
+  valueMode: TopologyValueMode,
+): number {
+  switch (valueMode) {
+    case TopologyValueMode.SET_VALUE:
+      return pixel.value;
+    case TopologyValueMode.DELTA_VALUE:
+      return currentValue + pixel.value;
+    case TopologyValueMode.DELTA_WITH_DROPOFF:
+      return currentValue + pixel.value * (1 - pixel.distance);
+    default:
+      return currentValue;
+  }
+}
+
+function clampInt16(value: number): number {
+  return Math.max(MIN_INT16, Math.min(MAX_INT16, Math.round(value)));
+}
+
+function getBrushTileCoordinates(
+  pixel: PixelType,
+  params: BrushParams,
+): { xTile: number; yTile: number } | null {
+  const xTile = Math.floor(pixel.x / params.tileSize);
+  const yTile = Math.floor(pixel.y / params.tileSize);
+
+  if (
+    xTile < 0 ||
+    xTile >= params.header.mapWidth ||
+    yTile < 0 ||
+    yTile >= params.header.mapHeight
+  ) {
+    return null;
+  }
+
+  return { xTile, yTile };
+}
+
+function getPixelIndex(
+  pixel: PixelType,
+  params: BrushParams,
+): number | null {
+  const tileCoordinates = getBrushTileCoordinates(pixel, params);
+  if (!tileCoordinates) {
+    return null;
+  }
+
+  return tileCoordinates.yTile * (params.header.mapWidth + 1) + tileCoordinates.xTile;
+}
+
+function getCurrentRoofShape(
+  currentFloor: number,
+  currentRoof: number,
+): { midpoint: number; halfDifference: number } {
+  return {
+    midpoint: (currentFloor + currentRoof) / 2,
+    halfDifference: Math.max(
+      MIN_ROOF_FLOOR_DISTANCE / 2,
+      (currentRoof - currentFloor) / 2,
+    ),
+  };
+}
+
+export function applyTopologyBrushWithTarget(
+  floorArray: Int16Array | number[],
+  roofArray: Int16Array | number[] | undefined,
+  pixels: PixelType[],
+  params: BrushParams,
+  editMode: TopologyLayerEditMode,
+  dualEditMode: TopologyDualEditMode = TopologyDualEditMode.MIDPOINT,
+): void {
+  if (!roofArray || editMode === TopologyLayerEditMode.FLOOR) {
+    pixels.forEach((pixel) => {
+      const index = getPixelIndex(pixel, params);
+      if (index === null || index >= floorArray.length) {
+        return;
+      }
+
+      const floorHeight = floorArray[index];
+      if (floorHeight === undefined) {
+        return;
+      }
+
+      const updatedFloor = clampInt16(
+        getUpdatedBrushValue(floorHeight, pixel, params.valueMode),
+      );
+      if (!roofArray) {
+        floorArray[index] = updatedFloor;
+        return;
+      }
+
+      const roofHeight = roofArray[index];
+      if (roofHeight === undefined) {
+        floorArray[index] = updatedFloor;
+        return;
+      }
+
+      floorArray[index] = Math.min(
+        updatedFloor,
+        roofHeight - MIN_ROOF_FLOOR_DISTANCE,
+      );
+    });
+    return;
+  }
+
+  pixels.forEach((pixel) => {
+    const index = getPixelIndex(pixel, params);
+    if (
+      index === null ||
+      index >= floorArray.length ||
+      index >= roofArray.length
+    ) {
+      return;
+    }
+
+    const currentFloor = floorArray[index];
+    const currentRoof = roofArray[index];
+    if (currentFloor === undefined || currentRoof === undefined) {
+      return;
+    }
+
+    if (editMode === TopologyLayerEditMode.ROOF) {
+      roofArray[index] = Math.max(
+        clampInt16(getUpdatedBrushValue(currentRoof, pixel, params.valueMode)),
+        currentFloor + MIN_ROOF_FLOOR_DISTANCE,
+      );
+      return;
+    }
+
+    const { midpoint: currentMidpoint, halfDifference: currentHalfDifference } =
+      getCurrentRoofShape(currentFloor, currentRoof);
+
+    if (dualEditMode === TopologyDualEditMode.MIDPOINT) {
+      const nextMidpoint = getUpdatedBrushValue(
+        currentMidpoint,
+        pixel,
+        params.valueMode,
+      );
+      floorArray[index] = clampInt16(nextMidpoint - currentHalfDifference);
+      roofArray[index] = clampInt16(nextMidpoint + currentHalfDifference);
+      return;
+    }
+
+    const nextHalfDifference = Math.max(
+      MIN_ROOF_FLOOR_DISTANCE / 2,
+      Math.abs(
+        getUpdatedBrushValue(
+          currentHalfDifference,
+          pixel,
+          params.valueMode,
+        ),
+      ),
+    );
+    floorArray[index] = clampInt16(currentMidpoint - nextHalfDifference);
+    roofArray[index] = clampInt16(currentMidpoint + nextHalfDifference);
+  });
+}
+
+export function applyTopologyBrushToSnapshot(
+  floorArray: Int16Array | number[],
+  roofArray: Int16Array | number[] | undefined,
+  pixels: PixelType[],
+  params: BrushParams,
+  editMode: TopologyLayerEditMode,
+  dualEditMode: TopologyDualEditMode = TopologyDualEditMode.MIDPOINT,
+): { floor: number[]; roof: number[] | undefined } {
+  const nextFloor = cloneHeightArray(floorArray) ?? [];
+  const nextRoof = cloneHeightArray(roofArray);
+
+  applyTopologyBrushWithTarget(
+    nextFloor,
+    nextRoof,
+    pixels,
+    params,
+    editMode,
+    dualEditMode,
+  );
+
+  return { floor: nextFloor, roof: nextRoof };
 }
 
 /**

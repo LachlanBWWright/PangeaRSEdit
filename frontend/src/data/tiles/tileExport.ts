@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Tile Export System
  * 
@@ -5,7 +6,8 @@
  * Supports exporting individual tiles, tile palettes, or entire tilesets.
  */
 
-import { Result, ok, err, fromPromise } from "@/types/result";
+import { Result } from "neverthrow";
+import { ok, err, ResultAsync } from "neverthrow";
 import { Game } from "@/data/globals/globals";
 import { isTileBasedGame } from "./tileStructures";
 
@@ -217,24 +219,22 @@ export async function exportTilePalette(
     }
     
     // Draw tile to canvas using createImageBitmap for proper async loading
-    const fetchResult = await fromPromise(fetch(tileResult.value.dataUrl));
-    if (fetchResult.isErr()) {
-      // If fetch fails, skip this tile
-      continue;
-    }
-
-    const blobResult = await fromPromise(fetchResult.value.blob());
-    if (blobResult.isErr()) {
-      // If blob conversion fails, skip this tile
-      continue;
-    }
-
-    const bitmapResult = await fromPromise(createImageBitmap(blobResult.value));
-    if (bitmapResult.isErr()) {
-      // If createImageBitmap fails, skip this tile
-      continue;
-    }
-
+    const fetched = await ResultAsync.fromPromise(
+      fetch(tileResult.value.dataUrl),
+      mapErr,
+    );
+    if (fetched.isErr()) continue;
+    const blobResult = await ResultAsync.fromPromise(
+      fetched.value.blob(),
+      mapErr,
+    );
+    if (blobResult.isErr()) continue;
+    const blob = blobResult.value;
+    const bitmapResult = await ResultAsync.fromPromise(
+      createImageBitmap(blob),
+      mapErr,
+    );
+    if (bitmapResult.isErr()) continue;
     const bitmap = bitmapResult.value;
     ctx.drawImage(bitmap, col * scaledTileSize, row * scaledTileSize);
     bitmap.close();

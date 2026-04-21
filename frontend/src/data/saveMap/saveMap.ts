@@ -1,14 +1,19 @@
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
-import LzssWorker from "../utils/lzssWorker?worker";
+import LzssWorker from "../../utils/lzssWorker?worker";
 import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
-import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
+import {
+  DataType,
+  Game,
+  TileImageFormat,
+  type GlobalsInterface,
+} from "../globals/globals";
 import { validateResourceForkJson } from "../utils/levelDataUtils";
 import { toast } from "../../hooks/use-toast";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
 import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
-import { err, ok } from "@/types/result";
+import { err, ok } from "neverthrow";
 import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
 import { mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
 
@@ -73,6 +78,162 @@ function getMightyMikeMapData(
   const nestedMap = nested?.mightyMikeMapData;
   return isMightyMikeMap(nestedMap) ? nestedMap : undefined;
 }
+
+export function serializePrimaryMapBlob(
+  data: LevelData,
+  globals: GlobalsInterface,
+): Blob | null {
+  const cloneableCombined = isRecord(data.tileset)
+    ? {
+        ...data,
+        tileset: Object.fromEntries(
+          Object.entries(data.tileset).filter(
+            ([key]) => key !== "tileImages" && key !== "collisionImages",
+          ),
+        ),
+      }
+    : data;
+
+  const combinedData = structuredClone(cloneableCombined);
+
+  // Keep the serialized preview aligned with the download/save path.
+  if (globals.DATA_TYPE !== DataType.RSRC_FORK) {
+    delete combinedData.Timg;
+  }
+
+  if (globals.GAME_TYPE === Game.NANOSAUR) {
+    const metadata = isRecord(combinedData._metadata)
+      ? combinedData._metadata
+      : undefined;
+    const rawLevelData = metadata?.nanosaur1RawLevel;
+    if (!isNanosaur1LevelData(rawLevelData)) return null;
+
+    const compileResult = compileNanosaur1Level(combinedData, rawLevelData);
+    if (compileResult.isErr()) return null;
+    return new Blob([compileResult.value], { type: ".ter" });
+  }
+
+  if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
+    const mightyMikeData = getMightyMikeMapData(combinedData._metadata);
+    if (!mightyMikeData) return null;
+    return new Blob([mightyMikeMapToCompressedBinary(mightyMikeData)], {
+      type: ".map",
+    });
+  }
+
+  if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+    const sanitized = sanitizeResourceForkJson(combinedData);
+    const validation = validateResourceForkJson(sanitized);
+    if (validation.isErr()) return null;
+
+    const saveResult = loadBytesFromJson(
+      sanitized,
+      globals.STRUCT_SPECS,
+      [],
+      [],
+      true,
+    );
+    const serializedResult = saveResult.ok
+      ? ok(saveResult.value)
+      : err(saveResult.error);
+    if (serializedResult.isErr()) return null;
+
+    return new Blob([serializedResult.value.slice(0)], { type: ".ter.rsrc" });
+  }
+
+  const sanitized = sanitizeResourceForkJson(combinedData);
+  const validation = validateResourceForkJson(sanitized);
+  if (validation.isErr()) return null;
+
+  const saveResult = loadBytesFromJson(
+    sanitized,
+    globals.STRUCT_SPECS,
+    [],
+    [],
+    true,
+  );
+  const serializedResult = saveResult.ok
+    ? ok(saveResult.value)
+    : err(saveResult.error);
+  if (serializedResult.isErr()) return null;
+
+  return new Blob([serializedResult.value.slice(0)], { type: ".ter.rsrc" });
+}
+/**
+ * Builds the terrain byte arrays for VFS injection in the in-browser game preview.
+ * Mirrors the download path exactly: the same serialization used when the user
+ * clicks "Download" is used here, except the bytes are returned for injection
+ * into the Emscripten virtual filesystem instead of being saved to disk.
+ *
+ * Returns:
+ *   dataBytes  – bytes for the data-fork path (.ter images for STANDARD/LZSS,
+ *                compiled level for TRT_FILE, null otherwise)
+ *   rsrcBytes  – bytes for the resource-fork sidecar (.ter.rsrc map data for
+ *                STANDARD/LZSS and RSRC_FORK, null otherwise)
+ *
+ * Returns null when serialization fails (callers should abort the preview).
+ */
+export async function buildPreviewTerrainBlobs(
+  data: LevelData,
+  globals: GlobalsInterface,
+  mapImages: HTMLCanvasElement[] | undefined,
+): Promise<{ dataBytes: Uint8Array | null; rsrcBytes: Uint8Array | null } | null> {
+  if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+    const rsrcBuffer = await processMapData({ data, globals });
+    if (rsrcBuffer.byteLength === 0) return null;
+    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+  }
+
+  if (globals.DATA_TYPE === DataType.TRT_FILE) {
+    const rawLevelData = getNanosaurRawLevel(data._metadata);
+    if (!rawLevelData) return null;
+    const compileResult = compileNanosaur1Level(data, rawLevelData);
+    if (compileResult.isErr()) return null;
+    return { dataBytes: new Uint8Array(compileResult.value), rsrcBytes: null };
+  }
+
+  if (
+    globals.DATA_TYPE === DataType.STANDARD &&
+    globals.TILE_IMAGE_FORMAT !== TileImageFormat.JPG
+  ) {
+    const rsrcBuffer = await processMapData({ data, globals });
+    if (rsrcBuffer.byteLength === 0) return null;
+
+    if (!mapImages || mapImages.length === 0) {
+      // Tile images not available — inject map layout only, game uses preloaded tile textures.
+      return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+    }
+
+    const bufferList = await compressMapImages(mapImages);
+    const imageBuffer = combineBuffersForDownload(bufferList);
+    return {
+      dataBytes: new Uint8Array(imageBuffer),
+      rsrcBytes: new Uint8Array(rsrcBuffer),
+    };
+  }
+
+  if (globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
+    const mightyMikeData = getMightyMikeMapData(data._metadata);
+    if (!mightyMikeData) return null;
+    const buffer = mightyMikeMapToCompressedBinary(mightyMikeData);
+    return { dataBytes: new Uint8Array(buffer), rsrcBytes: null };
+  }
+
+  if (
+    globals.DATA_TYPE === DataType.STANDARD &&
+    globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG
+  ) {
+    // Tile images use JPEG format (e.g. Nanosaur 2) — image compression is not
+    // yet implemented for preview.  Inject the map data (.ter.rsrc) so the
+    // game uses the edited layout with its default preloaded tile textures.
+    const rsrcBuffer = await processMapData({ data, globals });
+    if (rsrcBuffer.byteLength === 0) return null;
+    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+  }
+
+  return { dataBytes: null, rsrcBytes: null };
+}
+
 /**
  * Save and download map and images as in IntroPrompt
  */

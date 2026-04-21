@@ -6,7 +6,8 @@
  */
 
 import { z } from "zod";
-import { Result, ok, err } from "../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 // ============================================================================
 // Base Type Schemas

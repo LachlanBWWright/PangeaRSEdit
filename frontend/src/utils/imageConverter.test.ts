@@ -16,7 +16,7 @@ test("convert", () => {
   canvas.width = 100;
   canvas.height = 100;
   const canvasCtx = canvas.getContext("2d");
-  if (!canvasCtx) throw new Error("Could not get canvas context");
+  if (!canvasCtx) expect.fail("Could not get canvas context");
 
   const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
   sixteenBitToImageData(data, imageData);

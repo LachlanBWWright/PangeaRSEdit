@@ -71,12 +71,12 @@ describe("Three.js exporter skeleton roundtrip", () => {
     const skeleton = await parseSkeletonRsrc(bufferFromFile(SKEL_PATH));
     const parsedResult = parseBG3D(bufferFromFile(BG3D_PATH), skeleton);
     if (parsedResult.isErr()) {
-      throw new Error(`Failed to parse Otto skeleton input: ${parsedResult.error.message}`);
+      expect.fail(`Failed to parse Otto skeleton input: ${parsedResult.error.message}`);
     }
     const parsed = parsedResult.value;
     expect(parsed.skeleton).toBeTruthy();
     if (!parsed.skeleton) {
-      throw new Error("Expected Otto input skeleton to be present");
+      expect.fail("Expected Otto input skeleton to be present");
     }
     const originalSkeleton = parsed.skeleton;
 
@@ -97,7 +97,7 @@ describe("Three.js exporter skeleton roundtrip", () => {
     expect(roundtripped.materials.length).toBeGreaterThan(0);
     expect(roundtripped.skeleton).toBeTruthy();
     if (!roundtripped.skeleton) {
-      throw new Error("Expected GLTFExporter roundtrip skeleton to be present");
+      expect.fail("Expected GLTFExporter roundtrip skeleton to be present");
     }
     const roundtrippedSkeleton = roundtripped.skeleton;
 

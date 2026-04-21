@@ -15,12 +15,12 @@ import {
 } from "@/data/items/liquidPatchItems";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import {
-  HoverNameTag,
   ITEM_BOX_OFFSET,
   ITEM_BOX_SIZE,
   ITEM_TAG_GAP,
   ItemTypeNumber,
 } from "../shared/nodeVisuals";
+import type { HoverTagInfo } from "../shared/nodeVisuals";
 
 export const Item = memo(function Item({
   itemData,
@@ -28,12 +28,14 @@ export const Item = memo(function Item({
   terrainData,
   setItemData,
   itemIdx,
+  onHoverChange,
 }: {
   itemData: ItemData;
   headerData: HeaderData;
   terrainData: TerrainData;
   setItemData: Updater<ItemData>;
   itemIdx: number;
+  onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
   const item = itemData.Itms[1000].obj[itemIdx];
   const setSelectedItem = useSetAtom(SelectedItem);
@@ -47,8 +49,6 @@ export const Item = memo(function Item({
   const itemPosX = item?.x ?? 0;
   const itemPosZ = item?.z ?? 0;
 
-  const handleMouseOver = useCallback(() => setHovering(true), []);
-  const handleMouseLeave = useCallback(() => setHovering(false), []);
   const handleMouseDown = useCallback(
     () => setSelectedItem(itemIdx),
     [itemIdx, setSelectedItem],
@@ -137,38 +137,42 @@ export const Item = memo(function Item({
     const rectX = itemPosX - dims.width2D / 2;
     const rectZ = itemPosZ - dims.depth2D / 2;
 
+    const handleLiquidMouseOver = () => {
+      setHovering(true);
+      onHoverChange({
+        x: rectX + (liquidPatchCanvas ? liquidPatchCanvas.width : dims.width2D) + ITEM_TAG_GAP,
+        y: item.z - ITEM_BOX_OFFSET,
+        text: liquidPatchStyle.name,
+        fill: liquidPatchStyle.color2D,
+        textColor: "white",
+      });
+    };
+    const handleLiquidMouseLeave = () => {
+      setHovering(false);
+      onHoverChange(null);
+    };
+
     if (liquidPatchCanvas) {
       return (
-        <>
-          <KonvaImage
-            image={liquidPatchCanvas.canvas}
-            x={rectX}
-            y={rectZ}
-            width={liquidPatchCanvas.width}
-            height={liquidPatchCanvas.height}
-            draggable
-            onMouseOver={handleMouseOver}
-            onMouseLeave={handleMouseLeave}
-            onMouseDown={handleMouseDown}
-            onDragStart={handleMouseDown}
-            onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-              updateItem(setItemData, itemIdx, {
-                x: Math.round(e.target.x() + liquidPatchCanvas.width / 2),
-                z: Math.round(e.target.y() + liquidPatchCanvas.height / 2),
-              });
-            }}
-            perfectDrawEnabled={false}
-          />
-          {hovering && (
-            <HoverNameTag
-              x={rectX + liquidPatchCanvas.width + ITEM_TAG_GAP}
-              y={item.z - ITEM_BOX_OFFSET}
-              text={liquidPatchStyle.name}
-              fill={liquidPatchStyle.color2D}
-              textColor="white"
-            />
-          )}
-        </>
+        <KonvaImage
+          image={liquidPatchCanvas.canvas}
+          x={rectX}
+          y={rectZ}
+          width={liquidPatchCanvas.width}
+          height={liquidPatchCanvas.height}
+          draggable
+          onMouseOver={handleLiquidMouseOver}
+          onMouseLeave={handleLiquidMouseLeave}
+          onMouseDown={handleMouseDown}
+          onDragStart={handleMouseDown}
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+            updateItem(setItemData, itemIdx, {
+              x: Math.round(e.target.x() + liquidPatchCanvas.width / 2),
+              z: Math.round(e.target.y() + liquidPatchCanvas.height / 2),
+            });
+          }}
+          perfectDrawEnabled={false}
+        />
       );
     }
 
@@ -184,8 +188,8 @@ export const Item = memo(function Item({
           strokeWidth={3}
           fill={liquidPatchStyle.fill2D}
           draggable
-          onMouseOver={handleMouseOver}
-          onMouseLeave={handleMouseLeave}
+          onMouseOver={handleLiquidMouseOver}
+          onMouseLeave={handleLiquidMouseLeave}
           onMouseDown={handleMouseDown}
           onDragStart={handleMouseDown}
           onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
@@ -214,18 +218,24 @@ export const Item = memo(function Item({
           fill={liquidPatchStyle.color2D}
           listening={false}
         />
-        {hovering && (
-          <HoverNameTag
-            x={rectX + dims.width2D + ITEM_TAG_GAP}
-            y={item.z - ITEM_BOX_OFFSET}
-            text={liquidPatchStyle.name}
-            fill={liquidPatchStyle.color2D}
-            textColor="white"
-          />
-        )}
       </>
     );
   }
+
+  const handleMouseOver = () => {
+    setHovering(true);
+    onHoverChange({
+      x: itemX + ITEM_BOX_SIZE + ITEM_TAG_GAP,
+      y: itemZ,
+      text: itemName,
+      fill: "red",
+      textColor: "black",
+    });
+  };
+  const handleMouseLeave = () => {
+    setHovering(false);
+    onHoverChange(null);
+  };
 
   // Default rendering for regular items
   return (
@@ -235,7 +245,8 @@ export const Item = memo(function Item({
         y={itemZ}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
-        stroke="red"
+        stroke="black"
+        strokeWidth={1}
         fill="red"
         draggable
         onMouseOver={handleMouseOver}
@@ -254,16 +265,8 @@ export const Item = memo(function Item({
           fill="black"
         />
       )}
-
-      {hovering && (
-        <HoverNameTag
-          x={itemX + ITEM_BOX_SIZE + ITEM_TAG_GAP}
-          y={itemZ}
-          text={itemName}
-          fill="red"
-          textColor="black"
-        />
-      )}
     </>
   );
 });
+
+

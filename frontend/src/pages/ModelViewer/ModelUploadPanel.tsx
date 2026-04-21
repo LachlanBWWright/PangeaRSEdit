@@ -40,7 +40,7 @@ interface Props {
     bg3dFile: File,
     skeletonFile?: File,
     gameLabel?: string,
-  ) => Promise<import("@/types/result").Result<void, Error>>;
+  ) => Promise<import("neverthrow").Result<void, Error>>;
   modelBaseName: string;
   onModelBaseNameChange: (baseName: string) => void;
   exportTargets: { id: string; label: string }[];

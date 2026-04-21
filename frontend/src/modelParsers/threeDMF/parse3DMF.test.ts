@@ -39,8 +39,8 @@ describe("3DMF Parser", () => {
 
       const result = parse3DMFToMetaFile(fileBuffer);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.numMeshes).toBeGreaterThan(0);
         console.log(`Parsed MainMenu.3dmf: ${result.value.numMeshes} meshes, ${result.value.numTextures} textures, ${result.value.numTopLevelGroups} groups`);
       }
@@ -56,8 +56,8 @@ describe("3DMF Parser", () => {
 
       const result = parse3DMFToMetaFile(fileBuffer);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.numMeshes).toBeGreaterThan(0);
         console.log(`Parsed Ant.3dmf: ${result.value.numMeshes} meshes`);
       }
@@ -73,8 +73,8 @@ describe("3DMF Parser", () => {
 
       const result = parse3DMFToMetaFile(fileBuffer);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         console.log(`Parsed Global_Models.3dmf: ${result.value.numMeshes} meshes, ${result.value.numTextures} textures`);
       }
     });
@@ -83,7 +83,7 @@ describe("3DMF Parser", () => {
       const invalidBuffer = new ArrayBuffer(100);
       const result = parse3DMFToMetaFile(invalidBuffer);
 
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
   });
 
@@ -97,12 +97,12 @@ describe("3DMF Parser", () => {
       const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const convertResult = metaFileToBG3DParseResult(parseResult.value);
-      expect(convertResult.ok).toBe(true);
-      if (convertResult.ok) {
+      expect(convertResult.isOk()).toBe(true);
+      if (convertResult.isOk()) {
         expect(convertResult.value.materials.length).toBeGreaterThan(0);
         expect(convertResult.value.groups.length).toBeGreaterThan(0);
       }
@@ -120,8 +120,8 @@ describe("3DMF Parser", () => {
 
       const result = parse3DMF(fileBuffer);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.materials).toBeDefined();
         expect(result.value.groups).toBeDefined();
       }
@@ -139,20 +139,20 @@ describe("3DMF Parser", () => {
 
       // Parse original
       const parseResult = parse3DMFToMetaFile(originalBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const originalMetaFile = parseResult.value;
 
       // Write back to 3DMF
       const writeResult = write3DMFFromMetaFile(originalMetaFile);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       // Parse written file
       const reParseResult = parse3DMFToMetaFile(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       const reloadedMetaFile = reParseResult.value;
 
@@ -194,20 +194,20 @@ describe("3DMF Parser", () => {
 
       // Parse to BG3D format
       const parseResult = parse3DMF(originalBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const bg3dData = parseResult.value;
 
       // Convert back to 3DMF
       const writeResult = bg3dParsedTo3DMF(bg3dData);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       // Re-parse
       const reParseResult = parse3DMF(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       const reloadedBg3d = reParseResult.value;
 
@@ -242,8 +242,8 @@ describe("3DMF Parser", () => {
         const fileBuffer = readFileSync(testFile).buffer;
 
         const result = parse3DMFToMetaFile(fileBuffer);
-        expect(result.ok).toBe(true);
-        if (result.ok) {
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
           console.log(`${filename}: ${result.value.numMeshes} meshes`);
         }
       });
@@ -259,8 +259,8 @@ describe("3DMF Parser", () => {
         const fileBuffer = readFileSync(testFile).buffer;
 
         const result = parse3DMFToMetaFile(fileBuffer);
-        expect(result.ok).toBe(true);
-        if (result.ok) {
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
           console.log(`${filename}: ${result.value.numMeshes} meshes`);
         }
       });

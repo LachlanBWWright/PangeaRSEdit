@@ -17,7 +17,8 @@ import {
   BG3DKeyframe,
   BG3DAnimationEvent,
 } from "./parseBG3D";
-import { Result, ok, err, isErr } from "../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 const ANIMATION_EXTRA_NAMESPACE = "pangears";
 
@@ -1022,7 +1023,7 @@ export function createSkeletonSystem(
 
   // Step 2: Build hierarchy (returns the skeleton root node)
   const skeletonRootResult = buildJointHierarchy(doc, joints, skeleton.bones);
-  if (isErr(skeletonRootResult)) {
+  if (skeletonRootResult.isErr()) {
     console.error("Error building joint hierarchy:", skeletonRootResult.error);
     return err(skeletonRootResult.error);
   }

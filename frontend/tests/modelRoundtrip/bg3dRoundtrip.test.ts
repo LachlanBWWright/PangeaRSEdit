@@ -13,7 +13,7 @@ import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConve
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "@/modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "@/modelParsers/skeletonBinaryExport";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
@@ -52,7 +52,10 @@ describe("BG3D → GLB → BG3D Roundtrip (GLB-only reconstruction)", () => {
 
       // Parse
       const skelResource = await parseSkeletonRsrc(originalSkel);
-      const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
+      const parsedRes = parseBG3D(originalBg3d, skelResource);
+      expect(parsedRes.isOk()).toBe(true);
+      if (!parsedRes.isOk()) return;
+      const parsed = parsedRes.value;
 
       // Convert to GLB without preserving original binary.
       const gltfDoc = bg3dParsedToGLTF(parsed);
@@ -76,8 +79,8 @@ describe("BG3D → GLB → BG3D Roundtrip (GLB-only reconstruction)", () => {
       const reserializedBg3d = bg3dParsedToBG3D(roundtripped);
       expect(reserializedBg3d.byteLength).toBeGreaterThan(0);
       const reparsed = parseBG3D(reserializedBg3d);
-      expect(reparsed.ok).toBe(true);
-      if (reparsed.ok) {
+      expect(reparsed.isOk()).toBe(true);
+      if (reparsed.isOk()) {
         expect(reparsed.value.materials.length).toBe(parsed.materials.length);
         expect(reparsed.value.groups.length).toBeGreaterThanOrEqual(0);
       }
@@ -108,7 +111,10 @@ describe("BG3D structural roundtrip (without preserved binary)", () => {
 
       // Parse
       const skelResource = await parseSkeletonRsrc(originalSkel);
-      const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
+      const parsedRes = parseBG3D(originalBg3d, skelResource);
+      expect(parsedRes.isOk()).toBe(true);
+      if (!parsedRes.isOk()) return;
+      const parsed = parsedRes.value;
 
       // Convert to GLB WITHOUT preserving original binary
       const gltfDoc = bg3dParsedToGLTF(parsed);
@@ -142,8 +148,8 @@ describe("BG3D structural roundtrip (without preserved binary)", () => {
 
       // Re-parse the roundtripped binary
       const reparsed = parseBG3D(reserializedBg3d);
-      expect(reparsed.ok).toBe(true);
-      if (reparsed.ok) {
+      expect(reparsed.isOk()).toBe(true);
+      if (reparsed.isOk()) {
         expect(reparsed.value.materials.length).toBe(parsed.materials.length);
         expect(reparsed.value.groups.length).toBeGreaterThanOrEqual(0);
       }
@@ -154,7 +160,7 @@ describe("BG3D structural roundtrip (without preserved binary)", () => {
         const numKEntry = roundtrippedSkelResource.NumK?.["1000"];
         expect(numKEntry?.obj?.[0]).toHaveProperty("numKeyFrames");
         const skelBinaryResult = await skeletonResourceToBinary(roundtrippedSkelResource);
-        if (skelBinaryResult.ok) {
+        if (skelBinaryResult.isOk()) {
           expect(skelBinaryResult.value.byteLength).toBeGreaterThan(0);
         }
         // Skeleton serialization may fail for some models - this is a known limitation

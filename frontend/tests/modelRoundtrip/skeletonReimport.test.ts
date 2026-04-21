@@ -10,7 +10,7 @@ import {
 } from "@/modelParsers/parsedBg3dGitfConverter";
 import { bg3dSkeletonToSkeletonResource } from "@/modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "@/modelParsers/skeletonBinaryExport";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -42,7 +42,10 @@ describe("Skeleton re-import and skinning roundtrip", () => {
     }
 
     const originalSkeleton = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(bufferFromFile(bg3dPath), originalSkeleton));
+    const parsedRes = parseBG3D(bufferFromFile(bg3dPath), originalSkeleton);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) {
       return;
@@ -84,7 +87,10 @@ describe("Skeleton re-import and skinning roundtrip", () => {
     }
 
     const originalSkeleton = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(bufferFromFile(bg3dPath), originalSkeleton));
+    const parsedRes = parseBG3D(bufferFromFile(bg3dPath), originalSkeleton);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) {
       return;

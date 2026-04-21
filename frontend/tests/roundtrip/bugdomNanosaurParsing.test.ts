@@ -16,7 +16,6 @@ import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 import { fixNullToZero } from "../../src/data/processors/nullToZeroFixer";
 import { BugdomGlobals, NanosaurGlobals } from "../../src/data/globals/globals";
 import { validateLevelDataForGame } from "../../src/validation/validateLevelForGame";
-import { err, ok } from "../../src/types/result";
 import {
   splitLevelData,
   combineLevelData,
@@ -67,37 +66,35 @@ describe("Bugdom 1 Full Save Pipeline", () => {
       [],
       [],
     );
-    const parsedJsonResult = parseResult.ok
-      ? ok(parseResult.value)
-      : err(parseResult.error);
-    if (parsedJsonResult.isErr()) throw new Error("Parse: " + parsedJsonResult.error);
-    const parsed: Record<string, unknown> = JSON.parse(parsedJsonResult.value);
+    if (!parseResult.ok) expect.fail("Parse: " + String(parseResult.error));
+    const parsedUnknown: unknown = JSON.parse(parseResult.value);
+    if (!isRecord(parsedUnknown)) {
+      expect.fail("Parse: Parsed JSON is not an object");
+    }
+    const parsed = parsedUnknown;
 
     fixNullToZero(parsed);
     const preResult = preprocessJson(parsed, BugdomGlobals);
     if (preResult.isErr())
-      throw new Error("Preprocess: " + preResult.error.message);
+      expect.fail("Preprocess: " + preResult.error.message);
     fixNullToZero(parsed);
 
     const valResult = validateLevelDataForGame(parsed, BugdomGlobals.GAME_TYPE);
-    if (valResult.isErr()) throw new Error("Validate: " + valResult.error.message);
+    if (valResult.isErr()) expect.fail("Validate: " + valResult.error.message);
 
     if (!isLevelDataLike(parsed))
-      throw new Error("Parsed data is not LevelData");
+      expect.fail("Parsed data is not LevelData");
     const split = splitLevelData(parsed);
     const combResult = combineLevelData(split);
-    if (combResult.isErr()) throw new Error("Combine: " + combResult.error.message);
+    if (combResult.isErr()) expect.fail("Combine: " + combResult.error.message);
 
     const sanitized = sanitizeResourceForkJson(combResult.value);
     const serResult = loadBytesFromJson(sanitized, bugdomSpecs, [], [], true);
-    const serializedResult = serResult.ok
-      ? ok(serResult.value)
-      : err(serResult.error);
-    if (serializedResult.isErr()) throw new Error("Serialize: " + serializedResult.error);
+    if (!serResult.ok) expect.fail("Serialize: " + String(serResult.error));
 
     return {
       original: new Uint8Array(data),
-      serialized: serializedResult.value,
+      serialized: serResult.value,
       combined: sanitized,
     };
   }
@@ -129,7 +126,7 @@ describe("Bugdom 1 Full Save Pipeline", () => {
       function isRecord(v: unknown): v is Record<string, unknown> {
         return typeof v === "object" && v !== null;
       }
-      const reparsed = JSON.parse(reparsedResult.value) as unknown;
+      const reparsed: unknown = JSON.parse(reparsedResult.value);
       expect(isRecord(reparsed) && "Timg" in reparsed).toBe(true);
       if (!isRecord(reparsed) || !isRecord(reparsed.Timg)) return;
       const timg1000 = reparsed.Timg["1000"];
@@ -165,22 +162,22 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
       withMetadata,
       NanosaurGlobals.GAME_TYPE,
     );
-    if (valResult.isErr()) throw new Error("Validate: " + valResult.error.message);
+    if (valResult.isErr()) expect.fail("Validate: " + valResult.error.message);
 
     const split = splitLevelData(withMetadata);
     const combResult = combineLevelData(split);
-    if (combResult.isErr()) throw new Error("Combine: " + combResult.error.message);
+    if (combResult.isErr()) expect.fail("Combine: " + combResult.error.message);
 
     const combinedRaw = isRecord(combResult.value._metadata)
       ? combResult.value._metadata.nanosaur1RawLevel
       : undefined;
     if (!isNanosaur1LevelData(combinedRaw)) {
-      throw new Error("rawLevelData lost through split/combine");
+      expect.fail("rawLevelData lost through split/combine");
     }
 
     const compileResult = compileNanosaur1Level(combResult.value, combinedRaw);
     if (compileResult.isErr()) {
-      throw new Error("Compile failed: " + compileResult.error.message);
+      expect.fail("Compile failed: " + compileResult.error.message);
     }
 
     return {

@@ -1,4 +1,4 @@
-import { ItemParams } from "../items/itemParams";
+import { ItemParamsSource } from "../items/itemParams";
 
 export enum SplineItemType {
   PrimeEnemy_Gnome = 4, // 4: gnome
@@ -37,7 +37,7 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
 };
 
 // Parameter descriptions for each spline item type
-export const bugdom2SplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+export const bugdom2SplineItemTypeParams: Record<SplineItemType, ItemParamsSource> = {
   [SplineItemType.PrimeEnemy_Gnome]: {
     flags: "Gnome behavior flags",
     p0: "Unused",
@@ -183,4 +183,4 @@ export const bugdom2SplineItemTypeParams: Record<SplineItemType, ItemParams> = {
   },
 };
 
-export type Bugdom2SplineItemParams = ItemParams;
+export type Bugdom2SplineItemParams = ItemParamsSource;

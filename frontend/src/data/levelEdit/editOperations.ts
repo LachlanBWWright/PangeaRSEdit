@@ -12,7 +12,8 @@ import type {
   TerrainItem,
   SplineNub,
 } from "@/python/structSpecs/LevelTypes";
-import { Result, ok, err } from "@/types/result";
+import { Result } from "neverthrow";
+import { ok, err } from "neverthrow";
 
 /**
  * All possible edit operations that can be performed on level data.

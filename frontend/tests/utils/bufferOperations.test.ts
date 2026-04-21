@@ -23,7 +23,6 @@ import {
   hexToBuffer,
   bufferStats,
 } from "@/utils/bufferOperations";
-import { isErr } from "@/types/result";
 
 describe("Buffer Operations - Pure Functions", () => {
   describe("readUint32BE - Big-endian 32-bit reads", () => {
@@ -31,8 +30,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([0x12, 0x34, 0x56, 0x78]).buffer;
       const result = readUint32BE(buffer, 0);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         expect(result.value).toBe(0x12345678);
       }
     });
@@ -41,8 +40,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([0xFF, 0xFF, 0x12, 0x34, 0x56, 0x78]).buffer;
       const result = readUint32BE(buffer, 2);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         expect(result.value).toBe(0x12345678);
       }
     });
@@ -51,14 +50,14 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([0x12, 0x34]).buffer;
       const result = readUint32BE(buffer, 0);
 
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
 
     it("should error on negative offset", () => {
       const buffer = new Uint8Array([0x12, 0x34, 0x56, 0x78]).buffer;
       const result = readUint32BE(buffer, -1);
 
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
   });
 
@@ -67,8 +66,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([0x78, 0x56, 0x34, 0x12]).buffer;
       const result = readUint32LE(buffer, 0);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         expect(result.value).toBe(0x12345678);
       }
     });
@@ -79,10 +78,10 @@ describe("Buffer Operations - Pure Functions", () => {
       const resultBE = readUint32BE(buffer, 0);
       const resultLE = readUint32LE(buffer, 0);
 
-      expect(isErr(resultBE)).toBe(false);
-      expect(isErr(resultLE)).toBe(false);
+      expect(resultBE.isErr()).toBe(false);
+      expect(resultLE.isErr()).toBe(false);
 
-      if (!isErr(resultBE) && !isErr(resultLE)) {
+      if (!resultBE.isErr() && !resultLE.isErr()) {
         expect(resultBE.value).not.toBe(resultLE.value);
       }
     });
@@ -93,8 +92,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([0x12, 0x34]).buffer;
       const result = readUint16BE(buffer, 0);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         expect(result.value).toBe(0x1234);
       }
     });
@@ -103,8 +102,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([0x34, 0x12]).buffer;
       const result = readUint16LE(buffer, 0);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         expect(result.value).toBe(0x1234);
       }
     });
@@ -115,8 +114,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([0x42, 0x43]).buffer;
       const result = readUint8(buffer, 0);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         expect(result.value).toBe(0x42);
       }
     });
@@ -126,8 +125,8 @@ describe("Buffer Operations - Pure Functions", () => {
 
       for (let i = 0; i < 5; i++) {
         const result = readUint8(buffer, i);
-        expect(isErr(result)).toBe(false);
-        if (!isErr(result)) {
+        expect(result.isErr()).toBe(false);
+        if (!result.isErr()) {
           expect(result.value).toBe((i + 1) * 10);
         }
       }
@@ -161,8 +160,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([1, 2, 3, 4, 5]).buffer;
       const result = sliceBuffer(buffer, 1, 4);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const view = new Uint8Array(result.value);
         expect(view).toEqual(new Uint8Array([2, 3, 4]));
       }
@@ -172,8 +171,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([1, 2, 3, 4, 5]).buffer;
       const result = sliceBuffer(buffer, 2);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const view = new Uint8Array(result.value);
         expect(view).toEqual(new Uint8Array([3, 4, 5]));
       }
@@ -183,7 +182,7 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([1, 2, 3]).buffer;
       const result = sliceBuffer(buffer, 5, 10);
 
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
   });
 
@@ -192,8 +191,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([1, 2, 3, 4, 5]).buffer;
       const result = copyBuffer(buffer, 1, 3);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const view = new Uint8Array(result.value);
         expect(view).toEqual(new Uint8Array([2, 3, 4]));
       }
@@ -203,7 +202,7 @@ describe("Buffer Operations - Pure Functions", () => {
       const buffer = new Uint8Array([1, 2, 3]).buffer;
       const result = copyBuffer(buffer, 0, 10);
 
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
   });
 
@@ -301,8 +300,8 @@ describe("Buffer Operations - Pure Functions", () => {
     it("should decode hex string to buffer", () => {
       const result = hexToBuffer("1234abcd");
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const view = new Uint8Array(result.value);
         expect(view).toEqual(new Uint8Array([0x12, 0x34, 0xAB, 0xCD]));
       }
@@ -311,13 +310,13 @@ describe("Buffer Operations - Pure Functions", () => {
     it("should error on odd-length hex string", () => {
       const result = hexToBuffer("123");
 
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
 
     it("should error on invalid hex characters", () => {
       const result = hexToBuffer("12GG");
 
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
 
     it("should roundtrip through hex encoding", () => {
@@ -325,8 +324,8 @@ describe("Buffer Operations - Pure Functions", () => {
       const hex = bufferToHex(original);
       const decoded = hexToBuffer(hex);
 
-      expect(isErr(decoded)).toBe(false);
-      if (!isErr(decoded)) {
+      expect(decoded.isErr()).toBe(false);
+      if (!decoded.isErr()) {
         const result = findFirstDifference(original, decoded.value);
         expect(result.equal).toBe(true);
       }

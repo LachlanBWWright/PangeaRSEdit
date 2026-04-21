@@ -7,7 +7,7 @@
  * - No fences, water bodies, or splines
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useImmer, Updater } from "use-immer";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
@@ -18,6 +18,7 @@ import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { MenuSection } from "./MenuSection";
 import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
@@ -26,11 +27,33 @@ import {
 } from "../utils/editorViewUtils";
 import { applyResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
+import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
 } from "@/python/structSpecs/LevelTypes";
+import { CurrentScene } from "@/data/game/gameAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
+
+function getCurrentSceneFromTerrainData(
+  terrainData: MightyMikeEditorViewProps["terrainData"],
+): string | undefined {
+  const metadata = terrainData._metadata?.[1000];
+  if (
+    metadata &&
+    typeof metadata === "object" &&
+    "obj" in metadata &&
+    metadata.obj &&
+    typeof metadata.obj === "object" &&
+    "mightyMikeScene" in metadata.obj &&
+    typeof metadata.obj.mightyMikeScene === "string"
+  ) {
+    return metadata.obj.mightyMikeScene;
+  }
+  return undefined;
+}
 
 export function MightyMikeEditorView({
   headerData,
@@ -46,8 +69,10 @@ export function MightyMikeEditorView({
   dataHistory,
 }: MightyMikeEditorViewProps) {
   const globals = useAtomValue(Globals);
+  const setCurrentScene = useSetAtom(CurrentScene);
+  const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
   // Default to items view since MightyMike doesn't have fences
-  const [view, setView] = useState<View>(View.items);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -55,10 +80,20 @@ export function MightyMikeEditorView({
     [undoData, redoData]
   );
 
+  useWindowKeyDown(handleKeyDown);
+
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+    setCurrentScene(getCurrentSceneFromTerrainData(terrainData));
+  }, [setCurrentScene, terrainData]);
+
+  useEffect(() => {
+    setEditorNavbarTabs(
+      <MightyMikeEditorToolbar
+        compact
+      />,
+    );
+    return () => setEditorNavbarTabs(null);
+  }, [setEditorNavbarTabs]);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);
@@ -97,11 +132,7 @@ export function MightyMikeEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MightyMikeEditorToolbar
-        view={view}
-        setView={setView}
-      />
-      <div className="h-80 overflow-y-auto border-b border-gray-600">
+      <MenuSection className="border-b border-gray-600">
         {view === View.items && itemData && (
           <MightyMikeItemMenu
             itemData={itemData}
@@ -124,8 +155,8 @@ export function MightyMikeEditorView({
         {view === View.tiles && (
           <MightyMikeAltMapEditorPanel />
         )}
-      </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+      </MenuSection>
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,7 +8,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 export interface GameModel {
   name: string;
@@ -23,7 +24,7 @@ export interface GameInfo {
   models: GameModel[];
 }
 
-import type { Result } from "@/types/result";
+import { Result } from "neverthrow";
 
 export interface GameModelSelectorProps {
   onLoadModel: (
@@ -44,14 +45,8 @@ export function GameModelSelector({
   const [selectedCategory, setSelectedCategory] =
     useState<string>("Characters");
   const [selectedModel, setSelectedModel] = useState<GameModel | null>(null);
-  const hasSkeletonFile = selectedModel?.skeletonFile !== undefined;
 
   const selectedGame = GAMES.find((game) => game.id === selectedGameId);
-
-  const availableModels =
-    selectedGame?.models.filter(
-      (model) => model.category === selectedCategory,
-    ) || [];
 
   // Derive categories and memoize to keep stable identity across renders
   const availableCategories = useMemo(() => {
@@ -61,57 +56,67 @@ export function GameModelSelector({
       : [];
   }, [selectedGameId]);
 
-  useEffect(() => {
-    // Reset model selection when game or category changes
-    Promise.resolve().then(() => setSelectedModel(null));
-  }, [selectedGameId, selectedCategory]);
+  // Derive effective category: fall back to first available when current is not valid
+  const isValidCategory = (cat: string): cat is GameModel["category"] =>
+    cat === "Characters" || cat === "Levels" || cat === "Objects";
+  const effectiveCategory =
+    isValidCategory(selectedCategory) && availableCategories.includes(selectedCategory)
+      ? selectedCategory
+      : (availableCategories[0] ?? "Characters");
 
-  useEffect(() => {
-    // Reset category when game changes
-    if (selectedGame && availableCategories.length > 0) {
-      const firstCategory = availableCategories[0];
-      if (firstCategory) {
-        Promise.resolve().then(() => setSelectedCategory(firstCategory));
-      }
-    }
-  }, [selectedGameId, selectedGame, availableCategories]);
+  const availableModels =
+    selectedGame?.models.filter(
+      (model) => model.category === effectiveCategory,
+    ) ?? [];
+
+  // Derive effective model: if selected model is not in current list, treat as null
+  const effectiveModel =
+    availableModels.find((m) => m === selectedModel) ?? null;
+
+  const hasSkeletonFile = effectiveModel?.skeletonFile !== undefined;
 
   const handleLoadSelectedModel = async (loadSkeletons: boolean) => {
-    if (!selectedModel) {
+    if (!effectiveModel) {
       toast.error("Please select a model to load");
       return;
     }
 
     // Fetch the model file (could be BG3D or 3DMF)
-    const bg3dFetchResult = await fromPromise(fetch(selectedModel.bg3dFile));
+    const bg3dFetchResult = await ResultAsync.fromPromise(
+      fetch(effectiveModel.bg3dFile),
+      mapErr,
+    );
     if (bg3dFetchResult.isErr()) {
       console.error("Error loading selected model:", bg3dFetchResult.error);
-      toast.error(`Failed to load ${selectedModel.name}`);
+      toast.error(`Failed to load ${effectiveModel.name}`);
       return;
     }
 
     const bg3dResponse = bg3dFetchResult.value;
     if (!bg3dResponse.ok) {
       toast.error(
-        `Failed to fetch ${selectedModel.name}: ${bg3dResponse.status}`,
+        `Failed to fetch ${effectiveModel.name}: ${bg3dResponse.status}`,
       );
       return;
     }
 
-    const bg3dBufferResult = await fromPromise(bg3dResponse.arrayBuffer());
+    const bg3dBufferResult = await ResultAsync.fromPromise(
+      bg3dResponse.arrayBuffer(),
+      mapErr,
+    );
     if (bg3dBufferResult.isErr()) {
       console.error("Error loading selected model:", bg3dBufferResult.error);
-      toast.error(`Failed to load ${selectedModel.name}`);
+      toast.error(`Failed to load ${effectiveModel.name}`);
       return;
     }
 
     const bg3dArrayBuffer = bg3dBufferResult.value;
 
     // Determine file extension from the URL
-    const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf")
+    const fileExtension = effectiveModel.bg3dFile.endsWith(".3dmf")
       ? ".3dmf"
       : ".bg3d";
-    const fileName = `${selectedModel.name}${fileExtension}`;
+    const fileName = `${effectiveModel.name}${fileExtension}`;
 
     const bg3dFile = new File([bg3dArrayBuffer], fileName, {
       type: "application/octet-stream",
@@ -120,13 +125,14 @@ export function GameModelSelector({
     let skeletonFile: File | undefined;
 
     // If skeleton file exists and user wants to load it
-    if (selectedModel.skeletonFile && loadSkeletons) {
-      const skeletonFetchResult = await fromPromise(
-        fetch(selectedModel.skeletonFile),
+    if (effectiveModel.skeletonFile && loadSkeletons) {
+      const skeletonFetchResult = await ResultAsync.fromPromise(
+        fetch(effectiveModel.skeletonFile),
+        mapErr,
       );
       if (skeletonFetchResult.isErr()) {
         console.warn(
-          `${selectedModel.name} skeleton file fetch failed, loading without animations`,
+          `${effectiveModel.name} skeleton file fetch failed, loading without animations`,
         );
         toast.warning(
           "Skeleton file not found, loading model without animations",
@@ -134,30 +140,31 @@ export function GameModelSelector({
       } else {
         const skeletonResponse = skeletonFetchResult.value;
         if (skeletonResponse.ok) {
-          const skeletonBufferResult = await fromPromise(
+          const skeletonBufferResult = await ResultAsync.fromPromise(
             skeletonResponse.arrayBuffer(),
+            mapErr,
           );
-            if (skeletonBufferResult.isErr()) {
-              console.warn(
-                `${selectedModel.name} skeleton file read failed, loading without animations`,
-              );
-              toast.warning(
+          if (skeletonBufferResult.isErr()) {
+            console.warn(
+              `${effectiveModel.name} skeleton file read failed, loading without animations`,
+            );
+            toast.warning(
               "Failed to read skeleton file, loading model without animations",
             );
           } else {
             const skeletonArrayBuffer = skeletonBufferResult.value;
             skeletonFile = new File(
               [skeletonArrayBuffer],
-              `${selectedModel.name}.skeleton.rsrc`,
+              `${effectiveModel.name}.skeleton.rsrc`,
               {
                 type: "application/octet-stream",
               },
             );
-            console.log(`Loaded ${selectedModel.name} skeleton file`);
+            console.log(`Loaded ${effectiveModel.name} skeleton file`);
           }
         } else {
           console.warn(
-            `${selectedModel.name} skeleton file not found, loading without animations`,
+            `${effectiveModel.name} skeleton file not found, loading without animations`,
           );
           toast.warning(
             "Skeleton file not found, loading model without animations",
@@ -173,7 +180,7 @@ export function GameModelSelector({
     );
     if (loadResult.isErr()) {
       console.error("Error loading selected model:", loadResult.error);
-      toast.error(`Failed to load ${selectedModel.name}`);
+      toast.error(`Failed to load ${effectiveModel.name}`);
     }
   };
 
@@ -204,7 +211,7 @@ export function GameModelSelector({
       {selectedGame && availableCategories.length > 1 && (
         <div className="space-y-2">
           <label className="text-sm text-gray-300">Category</label>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select value={effectiveCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
@@ -229,7 +236,7 @@ export function GameModelSelector({
           <label className="text-sm text-gray-300">Model</label>
           {availableModels.length > 0 ? (
             <Select
-              value={selectedModel?.name || ""}
+              value={effectiveModel?.name || ""}
               onValueChange={(modelName) => {
                 const model = availableModels.find((m) => m.name === modelName);
                 setSelectedModel(model || null);
@@ -260,13 +267,13 @@ export function GameModelSelector({
       )}
 
       {/* Skeleton Loading Option */}
-      {selectedModel && (
+      {effectiveModel && (
           <div className="space-y-2">
             <label className="text-sm text-gray-300">Animation Data</label>
             <div className="grid grid-cols-1 gap-2">
               <Button
                 type="button"
-                disabled={!selectedModel || loading || !hasSkeletonFile}
+                disabled={!effectiveModel || loading || !hasSkeletonFile}
                 onClick={() => void handleLoadSelectedModel(true)}
                 className="w-full capitalize"
               >
@@ -274,7 +281,7 @@ export function GameModelSelector({
               </Button>
               <Button
                 type="button"
-                disabled={!selectedModel || loading}
+                disabled={!effectiveModel || loading}
                 onClick={() => void handleLoadSelectedModel(false)}
                 className="w-full capitalize"
               >
@@ -290,18 +297,18 @@ export function GameModelSelector({
       )}
 
       {/* Model Info */}
-      {selectedModel && (
+      {effectiveModel && (
         <div className="space-y-1 rounded bg-gray-700 p-3 text-xs text-gray-400">
           <p>
-            <strong>Model:</strong> {selectedModel.name}
+            <strong>Model:</strong> {effectiveModel.name}
           </p>
           <p>
-            <strong>Model File:</strong> {selectedModel.bg3dFile.split("/").pop()}
+            <strong>Model File:</strong> {effectiveModel.bg3dFile.split("/").pop()}
           </p>
-          {selectedModel.skeletonFile && (
+          {effectiveModel.skeletonFile && (
             <p>
               <strong>Skeleton File:</strong>{" "}
-              {selectedModel.skeletonFile.split("/").pop()}
+              {effectiveModel.skeletonFile.split("/").pop()}
             </p>
           )}
         </div>

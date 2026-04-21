@@ -2,7 +2,6 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
 import { RoofGeometry } from "./RoofGeometry";
-import { RoofGapGeometry } from "./RoofGapGeometry";
 import { FenceGeometry } from "./FenceGeometry";
 import { LiquidGeometry } from "./LiquidGeometry";
 import { ItemGeometry } from "./ItemGeometry";
@@ -22,13 +21,14 @@ import {
 import {
   TileViewMode,
   TileViews,
+  CurrentTopologyDualEditMode,
   CurrentTopologyBrushMode,
+  CurrentTopologyLayerEditMode,
   TopologyBrushRadius,
   CurrentTopologyValueMode,
+  TopologyLayerEditMode,
   TopologyValueMode,
   TopologyValue,
-  EditRoofAndFloorTogether,
-  RoofFloorElevation,
 } from "@/data/tiles/tileAtoms";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
@@ -57,12 +57,19 @@ function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWit
   return "point" in event && event.point instanceof Vector3;
 }
 
+function hasNativePointerEvent(
+  event: Event<string, unknown>,
+): event is ThreeEventWithPoint {
+  return "nativeEvent" in event;
+}
+
 import {
   calculateBrushPixels,
-  applyTopologyBrush,
-  applyDualTopologyBrush,
+  applyTopologyBrushToSnapshot,
+  cloneHeightArray,
   worldToTile,
   brushRadiusToWorldRadius,
+  mergeBrushPixels,
 } from "../utils/topologyBrushUtils";
 
 function SceneExporter() {
@@ -138,6 +145,7 @@ export function ThreeView({
   terrainData,
   mapImages,
   setItemData,
+  setTerrainData,
 }: {
   headerData: HeaderData;
   fenceData: FenceData | null;
@@ -147,6 +155,7 @@ export function ThreeView({
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
   setItemData?: Updater<ItemData | null>;
+  setTerrainData?: Updater<TerrainData>;
 }) {
   const globals = useAtomValue(Globals);
   const show3DSplines = useAtomValue(Show3DSplines);
@@ -157,20 +166,31 @@ export function ThreeView({
   // Topology editing state
   const tileViewMode = useAtomValue(TileViewMode);
   const brushMode = useAtomValue(CurrentTopologyBrushMode);
+  const dualEditMode = useAtomValue(CurrentTopologyDualEditMode);
+  const layerEditMode = useAtomValue(CurrentTopologyLayerEditMode);
   const brushRadius = useAtomValue(TopologyBrushRadius);
   const valueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
-  const editRoofAndFloor = useAtomValue(EditRoofAndFloorTogether);
-  const roofFloorElevation = useAtomValue(RoofFloorElevation);
   
   const terrainMeshRef = useRef<Mesh>(null);
+  const roofMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isShiftHeld, setIsShiftHeld] = useState(false);
   // Incremented when the 3D topology brush finishes a stroke so fence/item geometry
   // re-reads terrain heights (the brush directly mutates terrainData in place for
   // performance, so the useMemo deps don't see the change otherwise).
   const [topologyVersion, setTopologyVersion] = useState(0);
   const lastBrushCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const topologyStrokeRef = useRef<{
+    floorSnapshot: number[];
+    roofSnapshot: number[] | undefined;
+    draftFloor: number[];
+    draftRoof: number[] | undefined;
+    pixels: ReturnType<typeof calculateBrushPixels>;
+    brushRadiusWorld: number;
+    lastPoint: { x: number; y: number };
+  } | null>(null);
 
   // Item drag state
   const [draggingItemIdx, setDraggingItemIdx] = useState<number | null>(null);
@@ -196,6 +216,138 @@ export function ThreeView({
       : Math.abs(topologyValue) * yScale;
   const displacementDirection =
     topologyValue === 0 ? undefined : topologyValue < 0 ? "down" : "up";
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        setIsShiftHeld(true);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        setIsShiftHeld(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  const updateMeshGeometryElevations = useCallback(
+    (mesh: Mesh | null, heights: number[] | undefined) => {
+      if (!mesh || !mesh.geometry || !heights) {
+        return;
+      }
+
+      const positionAttr = mesh.geometry.attributes.position;
+      if (!positionAttr) {
+        return;
+      }
+
+      for (let index = 0; index < positionAttr.count; index++) {
+        const height = heights[index];
+        if (height === undefined) {
+          continue;
+        }
+        positionAttr.setZ(index, height * yScale);
+      }
+
+      mesh.geometry.computeVertexNormals();
+      positionAttr.needsUpdate = true;
+    },
+    [yScale],
+  );
+
+  const applyDraftToMeshes = useCallback((
+    draftFloor: number[],
+    draftRoof: number[] | undefined,
+  ) => {
+    updateMeshGeometryElevations(terrainMeshRef.current, draftFloor);
+    if (layerEditMode !== TopologyLayerEditMode.FLOOR) {
+      updateMeshGeometryElevations(roofMeshRef.current, draftRoof);
+    }
+  }, [layerEditMode, updateMeshGeometryElevations]);
+
+  const updateTopologyStroke = useCallback((
+    currentCenter: { x: number; y: number },
+    previousStroke: typeof topologyStrokeRef.current,
+  ) => {
+    const brushRadiusWorld =
+      previousStroke?.brushRadiusWorld ??
+      brushRadiusToWorldRadius(brushRadius, globals.TILE_INGAME_SIZE);
+    const floorSnapshot =
+      previousStroke?.floorSnapshot ?? cloneHeightArray(terrainData.YCrd?.[1000]?.obj);
+
+    if (!floorSnapshot || floorSnapshot.length === 0) {
+      return null;
+    }
+
+    const roofSnapshot =
+      previousStroke?.roofSnapshot ?? cloneHeightArray(terrainData.YCrd?.[1001]?.obj);
+    const lineStart = previousStroke?.lastPoint;
+    const nextPixels = calculateBrushPixels({
+      centerX: currentCenter.x,
+      centerY: currentCenter.y,
+      radius: brushRadiusWorld,
+      brushMode,
+      valueMode,
+      value: topologyValue,
+      header,
+      globals,
+      tileSize: globals.TILE_INGAME_SIZE,
+      lineStart,
+      lineEnd: currentCenter,
+    });
+    const pixels = mergeBrushPixels([
+      previousStroke?.pixels ?? [],
+      nextPixels,
+    ]);
+    const draft = applyTopologyBrushToSnapshot(
+      floorSnapshot,
+      roofSnapshot,
+      pixels,
+      {
+        centerX: currentCenter.x,
+        centerY: currentCenter.y,
+        radius: brushRadiusWorld,
+        brushMode,
+        valueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_INGAME_SIZE,
+        lineStart,
+        lineEnd: currentCenter,
+      },
+      layerEditMode,
+      dualEditMode,
+    );
+
+    return {
+      floorSnapshot,
+      roofSnapshot,
+      draftFloor: draft.floor,
+      draftRoof: draft.roof,
+      pixels,
+      brushRadiusWorld,
+      lastPoint: currentCenter,
+    };
+  }, [
+    brushMode,
+    brushRadius,
+    dualEditMode,
+    globals,
+    header,
+    layerEditMode,
+    terrainData,
+    topologyValue,
+    valueMode,
+  ]);
 
   const handlePointerMove = useCallback((event: Event<string, unknown>) => {
     // Handle item dragging
@@ -225,103 +377,29 @@ export function ThreeView({
 
       // Calculate affected pixels for preview
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = brushRadiusToWorldRadius(
-        brushRadius,
-        globals.TILE_INGAME_SIZE,
-      );
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
       };
-      const lineStart = isEditing ? lastBrushCenterRef.current ?? currentCenter : undefined;
-      const lineEnd = currentCenter;
-      
-      const pixels = calculateBrushPixels({
-        centerX: currentCenter.x,
-        centerY: currentCenter.y,
-        radius,
-        brushMode,
-        valueMode,
-        value: topologyValue,
-        header,
-        globals,
-        tileSize: globals.TILE_INGAME_SIZE,
-        lineStart,
-        lineEnd,
-      });
-
-      // Apply brush while dragging (if isEditing)
-      // Performance note: This applies on every mouse move during editing.
-      // For very large terrains, consider debouncing or using requestAnimationFrame
-      // to limit update frequency. Current implementation prioritizes responsiveness
-      // for typical game level sizes (tested with maps up to 256x256 tiles).
-      if (isEditing && terrainData.YCrd?.[1000]?.obj) {
+      if (isEditing && topologyStrokeRef.current) {
         event.stopPropagation?.();
-        // Check if we should use dual editing mode (floor + roof)
-        const hasRoof = terrainData.YCrd?.[1001]?.obj !== undefined;
-        const useDualMode = editRoofAndFloor && hasRoof;
-
-        if (useDualMode && terrainData.YCrd[1001]) {
-          // Apply dual brush (affects both floor and roof)
-          applyDualTopologyBrush(
-            terrainData.YCrd[1000].obj,
-            terrainData.YCrd[1001].obj,
-            pixels,
-            {
-              centerX: currentCenter.x,
-              centerY: currentCenter.y,
-              radius,
-              brushMode,
-              valueMode,
-              value: topologyValue,
-              header,
-              globals,
-              tileSize: globals.TILE_INGAME_SIZE,
-              lineStart,
-              lineEnd,
-            },
-            roofFloorElevation
-          );
-        } else {
-          // Apply single brush (floor only)
-          applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
-            centerX: currentCenter.x,
-            centerY: currentCenter.y,
-            radius,
-            brushMode,
-            valueMode,
-            value: topologyValue,
-            header,
-            globals,
-            tileSize: globals.TILE_INGAME_SIZE,
-            lineStart,
-            lineEnd,
-          });
+        const nextStroke = updateTopologyStroke(currentCenter, topologyStrokeRef.current);
+        if (!nextStroke) {
+          return;
         }
+        topologyStrokeRef.current = nextStroke;
         lastBrushCenterRef.current = currentCenter;
-
-        // Trigger geometry update
-        if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
-          const geom = terrainMeshRef.current.geometry;
-          const positionAttr = geom.attributes.position;
-          if (positionAttr) {
-            const ycrd = terrainData.YCrd[1000].obj;
-            const mapTileSize = header.tileSize ?? 1;
-            const yScale = globals.TILE_INGAME_SIZE / Math.max(1, mapTileSize);
-            
-            for (let i = 0; i < positionAttr.count; i++) {
-              const ycrdValue = ycrd[i];
-              if (ycrdValue !== undefined) {
-                positionAttr.setZ(i, ycrdValue * yScale);
-              }
-            }
-            geom.computeVertexNormals();
-            positionAttr.needsUpdate = true;
-          }
-        }
+        applyDraftToMeshes(nextStroke.draftFloor, nextStroke.draftRoof);
       }
     }
-  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation, setItemData]);
+  }, [
+    applyDraftToMeshes,
+    globals,
+    isEditing,
+    isEditingTopology,
+    setItemData,
+    updateTopologyStroke,
+  ]);
 
   const handlePointerDown = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology) return;
@@ -332,6 +410,9 @@ export function ThreeView({
     ) {
       return;
     }
+    if (hasNativePointerEvent(event) && event.nativeEvent?.shiftKey) {
+      return;
+    }
     
     if (hasPointProperty(event) && terrainData.YCrd?.[1000]?.obj) {
       event.stopPropagation?.();
@@ -339,82 +420,26 @@ export function ThreeView({
       
       // Apply brush
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = brushRadiusToWorldRadius(
-        brushRadius,
-        globals.TILE_INGAME_SIZE,
-      );
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
       };
+      const stroke = updateTopologyStroke(currentCenter, null);
+      if (!stroke) {
+        setIsEditing(false);
+        return;
+      }
+      topologyStrokeRef.current = stroke;
       lastBrushCenterRef.current = currentCenter;
-      const pixels = calculateBrushPixels({
-        centerX: currentCenter.x,
-        centerY: currentCenter.y,
-        radius,
-        brushMode,
-        valueMode,
-        value: topologyValue,
-        header,
-        globals,
-        tileSize: globals.TILE_INGAME_SIZE,
-        lineStart: currentCenter,
-        lineEnd: currentCenter,
-      });
-
-      // Check if we should use dual editing mode
-      const hasRoof = terrainData.YCrd?.[1001]?.obj !== undefined;
-      const useDualMode = editRoofAndFloor && hasRoof;
-
-      if (useDualMode && terrainData.YCrd[1001]) {
-        // Apply dual brush
-        applyDualTopologyBrush(
-          terrainData.YCrd[1000].obj,
-          terrainData.YCrd[1001].obj,
-          pixels,
-          {
-            centerX: currentCenter.x,
-            centerY: currentCenter.y,
-            radius,
-            brushMode,
-            valueMode,
-            value: topologyValue,
-            header,
-            globals,
-            tileSize: globals.TILE_INGAME_SIZE,
-            lineStart: currentCenter,
-            lineEnd: currentCenter,
-          },
-          roofFloorElevation
-        );
-      } else {
-        // Apply single brush
-        applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
-          centerX: currentCenter.x,
-          centerY: currentCenter.y,
-          radius,
-          brushMode,
-          valueMode,
-          value: topologyValue,
-          header,
-          globals,
-          tileSize: globals.TILE_INGAME_SIZE,
-          lineStart: currentCenter,
-          lineEnd: currentCenter,
-        });
-      }
-
-      // Force terrain re-render by updating the geometry
-      if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
-        const geom = terrainMeshRef.current.geometry;
-        const positionAttr = geom.attributes.position;
-        if (positionAttr) {
-          positionAttr.needsUpdate = true;
-          geom.computeVertexNormals();
-        }
-      }
+      applyDraftToMeshes(stroke.draftFloor, stroke.draftRoof);
     }
-  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
+  }, [
+    applyDraftToMeshes,
+    globals.TILE_INGAME_SIZE,
+    isEditingTopology,
+    terrainData,
+    updateTopologyStroke,
+  ]);
 
   /** Called when a user starts dragging an item in the 3D view. */
   const handleItemPointerDown = useCallback((itemIdx: number) => {
@@ -431,11 +456,25 @@ export function ThreeView({
       setTopologyVersion((v) => v + 1);
       return;
     }
+    if (topologyStrokeRef.current && setTerrainData) {
+      const completedStroke = topologyStrokeRef.current;
+      setTerrainData((data) => {
+        if (!data.YCrd?.[1000]?.obj) {
+          return;
+        }
+
+        data.YCrd[1000].obj = completedStroke.draftFloor;
+        if (completedStroke.draftRoof && data.YCrd?.[1001]?.obj) {
+          data.YCrd[1001].obj = completedStroke.draftRoof;
+        }
+      });
+    }
+    topologyStrokeRef.current = null;
     setIsEditing(false);
     lastBrushCenterRef.current = null;
     // Increment topologyVersion so FenceGeometry/ItemGeometry re-read terrain heights.
     setTopologyVersion((v) => v + 1);
-  }, []);
+  }, [setTerrainData]);
 
   // Ensure header is defined before rendering TestGeometry
   if (!header) {
@@ -479,7 +518,7 @@ export function ThreeView({
         // Keep panning aligned with the ground plane, so panning feels intuitive
         screenSpacePanning={false}
         mouseButtons={{
-          LEFT: MOUSE.ROTATE,
+          LEFT: isShiftHeld ? MOUSE.PAN : MOUSE.ROTATE,
           MIDDLE: MOUSE.DOLLY,
           RIGHT: MOUSE.PAN,
         }}
@@ -487,11 +526,9 @@ export function ThreeView({
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
 
-      {/* Lighting for 3D item models and terrain */}
-      <ambientLight intensity={1.15} />
-      <hemisphereLight args={[0xffffff, 0x8090a0, 0.7]} />
-      <directionalLight position={[1, 1.5, 0.75]} intensity={1.25} />
-      <directionalLight position={[-1, 0.25, -0.5]} intensity={0.5} />
+      {/* Lighting */}
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[1, 2, 1]} intensity={1} />
 
       {/* Exporter hook component (listens for export triggers) */}
       <SceneExporter />
@@ -506,13 +543,14 @@ export function ThreeView({
       />
       {/* Roof geometry (Bugdom 1 and games with YCrd 1001) */}
       <RoofGeometry
+        key={`roof-${topologyVersion}`}
+        ref={roofMeshRef}
         headerData={headerData}
         terrainData={terrainData}
         onPointerDown={isEditingTopology ? handlePointerDown : undefined}
         onPointerMove={isEditingTopology ? handlePointerMove : undefined}
         onPointerUp={isEditingTopology ? handlePointerUp : undefined}
       />
-      <RoofGapGeometry headerData={headerData} terrainData={terrainData} />
       {isEditingTopology && (
         <>
           <TopologyBrush3D 

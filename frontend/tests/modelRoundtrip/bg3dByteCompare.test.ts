@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "@/modelParsers/parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
@@ -51,7 +51,10 @@ describe("BG3D roundtrip tests", () => {
       const originalBg3d = bufferFromFile(bg3dPath);
       const originalSkel = existsSync(skelPath) ? bufferFromFile(skelPath) : undefined;
       const skelResource = originalSkel ? await parseSkeletonRsrc(originalSkel) : undefined;
-      const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
+      const parsedRes = parseBG3D(originalBg3d, skelResource);
+      expect(parsedRes.isOk()).toBe(true);
+      if (!parsedRes.isOk()) return;
+      const parsed = parsedRes.value;
       const reserialized = bg3dParsedToBG3D(parsed);
       const { match } = compareBuffers(new Uint8Array(originalBg3d), new Uint8Array(reserialized), `${game}/${name} direct`);
       expect(match).toBe(true);
@@ -62,7 +65,10 @@ describe("BG3D roundtrip tests", () => {
       const originalBg3d = bufferFromFile(bg3dPath);
       const originalSkel = existsSync(skelPath) ? bufferFromFile(skelPath) : undefined;
       const skelResource = originalSkel ? await parseSkeletonRsrc(originalSkel) : undefined;
-      const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
+      const parsedRes = parseBG3D(originalBg3d, skelResource);
+      expect(parsedRes.isOk()).toBe(true);
+      if (!parsedRes.isOk()) return;
+      const parsed = parsedRes.value;
       
       // Convert to clean GLB (no extras)
       const gltfDoc = bg3dParsedToGLTF(parsed);
@@ -84,7 +90,7 @@ describe("BG3D roundtrip tests", () => {
       
       // Verify can be re-parsed
       const reparsed = parseBG3D(reserialized);
-      expect(reparsed.ok).toBe(true);
+      expect(reparsed.isOk()).toBe(true);
     });
   });
 });

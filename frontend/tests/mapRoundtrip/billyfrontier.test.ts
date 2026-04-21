@@ -29,7 +29,7 @@ function assertIsHeader(
   numSplines: number;
   numFences: number;
 } {
-  if (typeof x !== "object" || x === null) throw new Error("Header is not an object");
+  if (typeof x !== "object" || x === null) expect.fail("Header is not an object");
   const mapWidth = Reflect.get(x, "mapWidth");
   const mapHeight = Reflect.get(x, "mapHeight");
   const version = Reflect.get(x, "version");
@@ -44,7 +44,7 @@ function assertIsHeader(
     typeof numSplines !== "number" ||
     typeof numFences !== "number"
   ) {
-    throw new Error("Header missing expected numeric fields");
+    expect.fail("Header missing expected numeric fields");
   }
 }
 
@@ -111,7 +111,7 @@ describe("Billy Frontier Map Roundtrip", () => {
     // Check expected structure
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null)
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
 
@@ -135,7 +135,7 @@ describe("Billy Frontier Map Roundtrip", () => {
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null)
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
     assertIsRecord(jsonData.Hedr);
@@ -157,7 +157,7 @@ describe("Billy Frontier Map Roundtrip", () => {
       numFences: number;
     } {
       if (typeof x !== "object" || x === null)
-        throw new Error("Header is not an object");
+        expect.fail("Header is not an object");
       const mapWidth = Reflect.get(x, "mapWidth");
       const mapHeight = Reflect.get(x, "mapHeight");
       const version = Reflect.get(x, "version");
@@ -172,7 +172,7 @@ describe("Billy Frontier Map Roundtrip", () => {
         typeof numSplines !== "number" ||
         typeof numFences !== "number"
       ) {
-        throw new Error("Header missing expected numeric fields");
+        expect.fail("Header missing expected numeric fields");
       }
     }
 
@@ -223,7 +223,7 @@ describe("Billy Frontier Map Roundtrip", () => {
     // Preprocessing should not throw
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null) {
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
       }
     }
     expect(() => {
@@ -358,7 +358,7 @@ describe("Billy Frontier Multiple Levels", () => {
         x: unknown,
       ): asserts x is Record<string, unknown> {
         if (typeof x !== "object" || x === null)
-          throw new Error("Parsed data is not an object");
+          expect.fail("Parsed data is not an object");
       }
       assertIsRecord(json1);
 

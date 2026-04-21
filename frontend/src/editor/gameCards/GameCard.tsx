@@ -4,7 +4,7 @@ import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Result } from "@/types/result";
+import { Result } from "neverthrow";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";

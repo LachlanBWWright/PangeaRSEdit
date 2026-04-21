@@ -1,119 +1,93 @@
 import { describe, expect, it } from "vitest";
-import { TopologyBrushMode, TopologyValueMode } from "@/data/tiles/tileAtoms";
-import { OttoGlobals } from "@/data/globals/globals";
+import { Game, OttoGlobals } from "@/data/globals/globals";
 import {
+  TopologyBrushMode,
+  TopologyDualEditMode,
+  TopologyLayerEditMode,
+  TopologyValueMode,
+} from "@/data/tiles/tileAtoms";
+import type { StandardHeader } from "@/python/structSpecs/LevelTypes";
+import {
+  applyTopologyBrushToSnapshot,
   calculateBrushPixels,
-  brushRadiusToWorldRadius,
-  distanceToLineSegment,
+  mergeBrushPixels,
 } from "./topologyBrushUtils";
 
-describe("topologyBrushUtils line brush math", () => {
-  it("computes shortest distance to a segment", () => {
-    const distance = distanceToLineSegment(5, 5, 0, 0, 10, 0);
-    expect(distance).toBe(5);
+const testHeader: StandardHeader = {
+  version: 1,
+  numItems: 0,
+  mapWidth: 2,
+  mapHeight: 2,
+  tileSize: 1,
+  minY: 0,
+  maxY: 0,
+  numSplines: 0,
+  numFences: 0,
+  numTilePages: 0,
+  numTiles: 0,
+  numUniqueSupertiles: 0,
+  numWaterPatches: 0,
+  numCheckpoints: 0,
+};
+
+describe("topologyBrushUtils", () => {
+  it("keeps the smallest distance when merging stroke pixels", () => {
+    const mergedPixels = mergeBrushPixels([
+      [{ x: 0, y: 0, value: 6, distance: 0.75 }],
+      [{ x: 0, y: 0, value: 6, distance: 0.25 }],
+    ]);
+
+    expect(mergedPixels).toEqual([
+      { x: 0, y: 0, value: 6, distance: 0.25 },
+    ]);
   });
 
-  it("converts brush radius to world radius with a minimum of one tile", () => {
-    expect(brushRadiusToWorldRadius(1, 40)).toBe(40);
-    expect(brushRadiusToWorldRadius(0, 40)).toBe(40);
-  });
-
-  it("applies line-based brush extents for adjust-by modes", () => {
-    const pixels = calculateBrushPixels({
-      centerX: 20,
-      centerY: 0,
-      radius: 10,
-      brushMode: TopologyBrushMode.CIRCLE_BRUSH,
-      valueMode: TopologyValueMode.DELTA_VALUE,
-      value: 4,
-      header: {
-        version: 1,
-        mapWidth: 64,
-        mapHeight: 64,
+  it("applies deltas against the stroke snapshot instead of stacking repeated hits", () => {
+    const mergedPixels = mergeBrushPixels([
+      [{ x: 0, y: 0, value: -5, distance: 0 }],
+      [{ x: 0, y: 0, value: -5, distance: 0.25 }],
+    ]);
+    const originalFloor = new Array(9).fill(10);
+    const result = applyTopologyBrushToSnapshot(
+      originalFloor,
+      undefined,
+      mergedPixels,
+      {
+        centerX: 0,
+        centerY: 0,
+        radius: 1,
+        brushMode: TopologyBrushMode.CIRCLE_BRUSH,
+        valueMode: TopologyValueMode.DELTA_VALUE,
+        value: -5,
+        header: testHeader,
+        globals: OttoGlobals,
         tileSize: 1,
-        minY: 0,
-        maxY: 255,
-        numItems: 0,
-        numSplines: 0,
-        numFences: 0,
-        numTilePages: 0,
-        numTiles: 0,
-        numUniqueSupertiles: 0,
-        numWaterPatches: 0,
-        numCheckpoints: 0,
       },
-      globals: OttoGlobals,
-      tileSize: 1,
-      lineStart: { x: 0, y: 0 },
-      lineEnd: { x: 20, y: 0 },
-    });
-    const centerlinePoint = pixels.find((pixel) => pixel.x === 10 && pixel.y === 0);
-    expect(centerlinePoint).toBeDefined();
-    expect(centerlinePoint?.distance).toBe(0);
+      TopologyLayerEditMode.FLOOR,
+      TopologyDualEditMode.MIDPOINT,
+    );
+
+    expect(originalFloor[0]).toBe(10);
+    expect(result.floor[0]).toBe(5);
   });
 
-  it("falls back to radial behavior for set-value mode", () => {
+  it("treats set-value drags as a continuous stroke", () => {
     const pixels = calculateBrushPixels({
-      centerX: 10,
-      centerY: 10,
-      radius: 4,
-      brushMode: TopologyBrushMode.SQUARE_BRUSH,
-      valueMode: TopologyValueMode.SET_VALUE,
-      value: 1,
-      header: {
-        version: 1,
-        mapWidth: 32,
-        mapHeight: 32,
-        tileSize: 1,
-        minY: 0,
-        maxY: 255,
-        numItems: 0,
-        numSplines: 0,
-        numFences: 0,
-        numTilePages: 0,
-        numTiles: 0,
-        numUniqueSupertiles: 0,
-        numWaterPatches: 0,
-        numCheckpoints: 0,
-      },
-      globals: OttoGlobals,
-      tileSize: 1,
-      lineStart: { x: 0, y: 0 },
-      lineEnd: { x: 40, y: 40 },
-    });
-    const farPoint = pixels.find((pixel) => pixel.x === 14 && pixel.y === 14);
-    expect(farPoint?.distance).toBe(1);
-  });
-
-  it("affects at least one tile when brush radius is 1", () => {
-    const pixels = calculateBrushPixels({
-      centerX: 0,
+      centerX: 2,
       centerY: 0,
       radius: 1,
       brushMode: TopologyBrushMode.CIRCLE_BRUSH,
-      valueMode: TopologyValueMode.DELTA_VALUE,
-      value: 1,
-      header: {
-        version: 1,
-        mapWidth: 8,
-        mapHeight: 8,
-        tileSize: 1,
-        minY: 0,
-        maxY: 255,
-        numItems: 0,
-        numSplines: 0,
-        numFences: 0,
-        numTilePages: 0,
-        numTiles: 0,
-        numUniqueSupertiles: 0,
-        numWaterPatches: 0,
-        numCheckpoints: 0,
-      },
-      globals: OttoGlobals,
+      valueMode: TopologyValueMode.SET_VALUE,
+      value: 100,
+      header: testHeader,
+      globals: { ...OttoGlobals, GAME_TYPE: Game.OTTO_MATIC },
       tileSize: 1,
+      lineStart: { x: 0, y: 0 },
+      lineEnd: { x: 2, y: 0 },
     });
 
-    expect(pixels.length).toBeGreaterThan(0);
-    expect(pixels.some((pixel) => pixel.x === 0 && pixel.y === 0)).toBe(true);
+    expect(
+      pixels.some((pixel) => pixel.x === 1 && pixel.y === 0),
+    ).toBe(true);
   });
 });

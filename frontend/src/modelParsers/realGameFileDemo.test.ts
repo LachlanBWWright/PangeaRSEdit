@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";
-import { unwrap } from "../types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { existsSync, readFileSync, statSync, readdirSync } from "fs";
 import { join } from "path";
@@ -279,7 +279,9 @@ describe("Real Game File Demo - BrainAlien", () => {
         ),
         brainAlienSkeletonDemo,
       );
-      const parsed = unwrap(result);
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+      const parsed = result.value;
 
       console.log("\n=== BG3D + Skeleton Integration Demo ===");
       console.log(`✅ Successfully parsed BG3D file: ${fallbackPath}`);
@@ -359,7 +361,7 @@ describe("Real Game File Demo - BrainAlien", () => {
       expect(parsed.materials.length).toBeGreaterThan(0);
       expect(parsed.groups.length).toBeGreaterThan(0);
       expect(parsed.skeleton).toBeDefined();
-      if (!parsed.skeleton) throw new Error("Missing skeleton");
+      if (!parsed.skeleton) expect.fail("Missing skeleton");
       expect(parsed.skeleton.bones.length).toBe(3);
 
       return;
@@ -374,7 +376,9 @@ describe("Real Game File Demo - BrainAlien", () => {
       ),
       brainAlienSkeletonDemo,
     );
-    const parsed2 = unwrap(result);
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) return;
+    const parsed2 = result.value;
 
     console.log("🎯 Using actual EliteBrainAlien.bg3d file");
     console.log(`File size: ${bg3dBuffer.length} bytes`);

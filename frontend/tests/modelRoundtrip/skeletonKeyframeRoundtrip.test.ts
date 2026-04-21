@@ -14,7 +14,7 @@ import { join } from "path";
 import { parseBG3D, bg3dParsedToBG3D } from "@/modelParsers/parseBG3D";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import type { BG3DParseResult, BG3DSkeleton } from "@/modelParsers/parseBG3D";
 import { parseBG3DWithSkeletonResource } from "@/modelParsers/bg3dWithSkeleton";
 
@@ -46,15 +46,15 @@ function mutateFirstKeyframePosition(
   deltaZ: number,
 ): void {
   const anim = skeleton.animations[0];
-  if (!anim) throw new Error("No animations");
+  if (!anim) expect.fail("No animations");
   const firstBoneIndex = Number(Object.keys(anim.keyframes)[0]);
-  if (!Number.isFinite(firstBoneIndex)) throw new Error("No animation keyframes");
+  if (!Number.isFinite(firstBoneIndex)) expect.fail("No animation keyframes");
 
   const kfList = anim.keyframes[firstBoneIndex];
-  if (!kfList || kfList.length === 0) throw new Error("Empty keyframe list");
+  if (!kfList || kfList.length === 0) expect.fail("Empty keyframe list");
 
   const kf = kfList[0];
-  if (!kf) throw new Error("No first keyframe");
+  if (!kf) expect.fail("No first keyframe");
   kf.coordX = (kf.coordX ?? 0) + deltaX;
   kf.coordY = (kf.coordY ?? 0) + deltaY;
   kf.coordZ = (kf.coordZ ?? 0) + deltaZ;
@@ -92,7 +92,10 @@ describe("Skeleton keyframe round-trip (BG3D)", () => {
 
     const originalBg3d = bufferFromFile(bg3dPath);
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
 
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
@@ -142,7 +145,10 @@ describe("Skeleton keyframe round-trip (BG3D)", () => {
 
     const originalBg3d = bufferFromFile(bg3dPath);
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
 
     // Baseline BG3D export
     const baselineBg3d = bg3dParsedToBG3D(await roundTripThroughGlb(parsed));
@@ -168,7 +174,10 @@ describe("Skeleton keyframe round-trip (BG3D)", () => {
 
     const originalBg3d = bufferFromFile(bg3dPath);
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
 
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
@@ -310,7 +319,10 @@ describe("Parent bone stability when child keyframe changes", () => {
 
     const originalBg3d = bufferFromFile(bg3dPath);
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
 
@@ -417,7 +429,10 @@ describe("Parent bone stability when child keyframe changes", () => {
 
     const originalBg3d = bufferFromFile(bg3dPath);
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
 

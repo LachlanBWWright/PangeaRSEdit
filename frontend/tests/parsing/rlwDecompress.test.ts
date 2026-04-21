@@ -14,7 +14,6 @@ import {
   PACK_TYPE_RLW,
   PACK_TYPE_NONE,
 } from "@/utils/rlwDecompress";
-import { isErr } from "@/types/result";
 
 describe("RLW/RLB Decompression", () => {
   describe("rlbDecompress - Byte-level run-length decoding", () => {
@@ -34,8 +33,8 @@ describe("RLW/RLB Decompression", () => {
 
       const result = rlbDecompress(compressed.buffer);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const decompressed = new Uint8Array(result.value.data);
         expect(decompressed[0]).toBe(0x41);
         expect(decompressed[1]).toBe(0x41);
@@ -61,8 +60,8 @@ describe("RLW/RLB Decompression", () => {
 
       const result = rlbDecompress(compressed.buffer);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const decompressed = new Uint8Array(result.value.data);
         expect(decompressed[0]).toBe(0x41);
         expect(decompressed[1]).toBe(0x42);
@@ -82,8 +81,8 @@ describe("RLW/RLB Decompression", () => {
 
       const result = rlbDecompress(compressed.buffer);
 
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error.message).toContain("Expected RLB");
       }
     });
@@ -114,8 +113,8 @@ describe("RLW/RLB Decompression", () => {
 
       const result = rlwDecompress(compressed.buffer);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const decompressed = new DataView(result.value.data);
         expect(decompressed.getUint16(0, false)).toBe(0x1234);
         expect(decompressed.getUint16(2, false)).toBe(0x1234);
@@ -146,8 +145,8 @@ describe("RLW/RLB Decompression", () => {
 
       const result = rlwDecompress(compressed.buffer);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         const decompressed = new DataView(result.value.data);
         expect(decompressed.getUint16(0, false)).toBe(0x1234);
         expect(decompressed.getUint16(2, false)).toBe(0x5678);
@@ -170,8 +169,8 @@ describe("RLW/RLB Decompression", () => {
 
       const result = rlwDecompress(compressed.buffer);
 
-      expect(isErr(result)).toBe(false);
-      if (!isErr(result)) {
+      expect(result.isErr()).toBe(false);
+      if (!result.isErr()) {
         expect(result.value.compressionType).toBe(PACK_TYPE_NONE);
         const data = new Uint8Array(result.value.data);
         expect(data[0]).toBe(0x41);
@@ -193,8 +192,8 @@ describe("RLW/RLB Decompression", () => {
 
       const result = rlwDecompress(compressed.buffer);
 
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error.message).toContain("Unsupported compression");
       }
     });
@@ -215,8 +214,8 @@ describe("RLW/RLB Decompression", () => {
       // Decompress
       const decompressResult = rlwDecompress(compressed);
 
-      expect(isErr(decompressResult)).toBe(false);
-      if (!isErr(decompressResult)) {
+      expect(decompressResult.isErr()).toBe(false);
+      if (!decompressResult.isErr()) {
         // Compare original and decompressed
         const originalView = new DataView(original);
         const decompressedView = new DataView(decompressResult.value.data);
@@ -261,7 +260,7 @@ describe("RLW/RLB Decompression", () => {
       // Compressed will be larger due to header and overhead
       // But decompression should still work
       const decompressResult = rlwDecompress(compressed);
-      expect(isErr(decompressResult)).toBe(false);
+      expect(decompressResult.isErr()).toBe(false);
     });
   });
 });

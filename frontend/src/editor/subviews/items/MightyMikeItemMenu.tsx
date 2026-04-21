@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * MightyMikeItemMenu.tsx
  *
@@ -10,7 +11,7 @@ import { ItemData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,6 +29,11 @@ import { atom } from "jotai";
 import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
 import { ParamTooltip } from "./ParamTooltip";
 import { getParamTooltip } from "./getParamTooltip";
+import { CurrentScene, MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
+import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
+import { ResultAsync } from "neverthrow";
+import { TileCanvas } from "../shared/TileCanvas";
+import { EmptyDataPrompt } from "../EmptyDataPrompts";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -44,6 +50,8 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const [showItemImages, setShowItemImages] = useAtom(ShowMightyMikeItemImages);
+  const [currentScene, setCurrentScene] = useAtom(CurrentScene);
+  const [previewImage, setPreviewImage] = useState<ItemFrameImage | null>(null);
 
   const itemValues = useMemo(() => {
     const result = getItemTypes(globals);
@@ -52,13 +60,47 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
       : [];
   }, [globals]);
 
+  const selectedItemData =
+    itemData.Itms !== undefined && selectedItem !== undefined
+      ? itemData.Itms?.[1000]?.obj?.[selectedItem]
+      : null;
+  const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
+
+  useEffect(() => {
+    if (!selectedItemData) {
+      Promise.resolve().then(() => setPreviewImage(null));
+      return;
+    }
+
+    let cancelled = false;
+    const loadPreviewImage = async () => {
+      const loadResult = await ResultAsync.fromPromise(
+        loadItemImage(selectedItemData.type, currentScene),
+        mapErr,
+      );
+      if (cancelled) return;
+      if (loadResult.isErr()) {
+        setPreviewImage(null);
+        return;
+      }
+      const result = loadResult.value;
+      if (result.isOk()) {
+        setPreviewImage(result.value);
+      } else {
+        setPreviewImage(null);
+      }
+    };
+
+    void loadPreviewImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentScene, selectedItemData]);
+
   if (itemData.Itms === undefined) return null;
 
-  const selectedItemData =
-    selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
-
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex h-full flex-col gap-2">
       {/* Global Toggle for Item Images */}
       <Button
         size="sm"
@@ -79,16 +121,45 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         )}
       </Button>
 
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+        <label className="text-sm font-medium">Scene</label>
+        <Select
+          value={currentScene ?? ""}
+          onValueChange={(value) => setCurrentScene(value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select scene" />
+          </SelectTrigger>
+          <SelectContent>
+            {MIGHTY_MIKE_SCENES.map((scene) => (
+              <SelectItem key={scene} value={scene}>
+                {scene}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => window.open("#/sprite-viewer", "_blank", "noopener,noreferrer")}
+        >
+          Sprite Viewer
+        </Button>
+      </div>
+
       {selectedItemData === null || selectedItemData === undefined ? (
-        <AddItemMenu />
+        <AddItemMenu hasItems={itemCount > 0} />
       ) : (
-        <p className="text-xs text-gray-400">
-          Item {selectedItemData.type} ({selectedItemData.x},{" "}
-          {selectedItemData.z})
-        </p>
+        <div className="flex items-center gap-3">
+          {previewImage && <TileCanvas image={previewImage.canvas} size={48} />}
+          <p className="text-xs text-gray-400">
+            Item {selectedItemData.type} ({selectedItemData.x},{" "}
+            {selectedItemData.z})
+          </p>
+        </div>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 flex-1 min-h-0">
         {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select
@@ -166,10 +237,6 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   param && typeof param !== "string" && param.type === "Integer"
                     ? param.description.split(" (")[0]
                     : `Parameter ${i}`;
-                const codeSample =
-                  param && typeof param !== "string" && param.type === "Integer"
-                    ? param.codeSample
-                    : undefined;
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
                     if (selectedItem === undefined) return;
@@ -184,7 +251,16 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                     key={`label-${i}`}
                     label={label}
                     tooltip={tooltip}
-                    codeSample={codeSample}
+                    defaultCitation={
+                      param && typeof param !== "string"
+                        ? param.defaultCitation
+                        : undefined
+                    }
+                    additionalCitations={
+                      param && typeof param !== "string"
+                        ? param.additionalCitations
+                        : undefined
+                    }
                   />,
                   <Input
                     key={`input-${i}`}
@@ -216,7 +292,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   );
 });
 
-function AddItemMenu() {
+function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
 
@@ -263,5 +339,17 @@ function AddItemMenu() {
       </>
     );
 
-  return <Button onClick={() => setClickToAddItem(0)}>Add Items</Button>;
+  return (
+    <EmptyDataPrompt
+      title={hasItems ? "No Item Selected" : "No Items"}
+      description={
+        hasItems
+          ? "Select an item on the canvas or add another one."
+          : "This level doesn't have any items yet. Add your first item to get started."
+      }
+      buttonText={hasItems ? "Add More Items" : "Add First Item"}
+      onInitialize={() => setClickToAddItem(0)}
+      fillHeight
+    />
+  );
 }

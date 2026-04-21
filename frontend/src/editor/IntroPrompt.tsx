@@ -11,6 +11,14 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Updater, useImmer } from "use-immer";
 import {
   Globals,
@@ -30,7 +38,6 @@ import {
   validateResourceForkJson,
   sanitizeResourceForkJson,
 } from "../data/utils/levelDataUtils";
-import { err, fromPromise, isOk, ok } from "../types/result";
 import { createBlankLevel, getDefaultDimensions } from "@/data/levelTemplates";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
@@ -43,21 +50,15 @@ import { prepareDownloadData } from "./utils/introPromptUtils";
 import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
 import { TestGameDialog } from "./TestGameDialog";
 import {
-  DEFAULT_OTTO_LEVEL,
-  inferLevelNumberFromFilename,
-} from "./utils/ottoLevelNumbers";
-import {
   GAME_PORT_CONFIGS,
-  getLevelIndex,
-  type AnyLevelInfo,
+  inferPreviewLevelFromFilename,
 } from "./utils/gamePortConfig";
+import { buildPreviewTerrainBlobs } from "@/data/saveMap/saveMap";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  editorNavbarActionsAtom,
+  editorNavbarLeftAtom,
+  editorNavbarOpenAtom,
+} from "@/data/globals/editorNavbarAtoms";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -71,6 +72,9 @@ export interface DataHistory {
 export function IntroPrompt() {
   const globals = useAtomValue(Globals);
   const setGlobals = useSetAtom(Globals);
+  const setEditorNavbarOpen = useSetAtom(editorNavbarOpenAtom);
+  const setEditorNavbarLeft = useSetAtom(editorNavbarLeftAtom);
+  const setEditorNavbarActions = useSetAtom(editorNavbarActionsAtom);
 
   // Atomic data types instead of monolithic data
   const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
@@ -106,9 +110,10 @@ export function IntroPrompt() {
   );
   const [processed, setProcessed] = useState(false);
   const [testDialogOpen, setTestDialogOpen] = useState(false);
-  const [ottoLevelNumber, setOttoLevelNumber] = useState(DEFAULT_OTTO_LEVEL);
-  const [terrainRsrcBlob, setTerrainRsrcBlob] = useState<Blob | null>(null);
-  const [terrainDataBlob, setTerrainDataBlob] = useState<Blob | null>(null);
+  const [newMapConfirmOpen, setNewMapConfirmOpen] = useState(false);
+  const [previewLevelNumber, setPreviewLevelNumber] = useState(0);
+  const [terrainDataBytes, setTerrainDataBytes] = useState<Uint8Array | null | undefined>(undefined);
+  const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<Uint8Array | null | undefined>(undefined);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -220,14 +225,16 @@ export function IntroPrompt() {
     setDataHistory,
   ]);
 
-  // When a new Otto Matic terrain file is loaded, infer the level number from the filename
-  // so the "Test Level" dialog opens at the correct level by default.
+  // When a terrain file is loaded, infer the level number from the filename
+  // so the "Preview in Game" dialog opens at the correct level by default.
+  // Fall back to the game's defaultLevel for games without filename inference
+  // (e.g. Cro-Mag Rally uses 1-based track numbers, not 0).
   useEffect(() => {
-    if (!mapFile || globals.GAME_TYPE !== Game.OTTO_MATIC) return;
-    const inferred = inferLevelNumberFromFilename(mapFile.name);
-    if (inferred !== undefined) {
-      Promise.resolve().then(() => setOttoLevelNumber(inferred));
-    }
+    if (!mapFile) return;
+    const portConfig = GAME_PORT_CONFIGS[globals.GAME_TYPE];
+    const inferred = inferPreviewLevelFromFilename(globals.GAME_TYPE, mapFile.name);
+    const level = inferred ?? portConfig?.defaultLevel ?? 0;
+    Promise.resolve().then(() => setPreviewLevelNumber(level));
   }, [mapFile, globals.GAME_TYPE]);
 
   // Warn before unloading the tab when a level is loaded to prevent accidental data loss.
@@ -289,7 +296,7 @@ export function IntroPrompt() {
     // Combine atomic data for serialization; optional sections may be missing
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
 
-    if (!isOk(combinedDataResult)) {
+    if (combinedDataResult.isErr()) {
       console.error(
         "Download failed: Could not combine level data",
         combinedDataResult.error,
@@ -303,17 +310,16 @@ export function IntroPrompt() {
     // Strip HTMLCanvasElement references (e.g. tileset.tileImages, collisionImages) before cloning
     const rawCombined = combinedDataResult.value;
     const rawTileset = rawCombined.tileset;
-    const cloneableCombined =
-      isRecord(rawTileset)
-        ? {
-            ...rawCombined,
-            tileset: Object.fromEntries(
-              Object.entries(rawTileset).filter(
-                ([key]) => key !== "tileImages" && key !== "collisionImages",
-              ),
+    const cloneableCombined = isRecord(rawTileset)
+      ? {
+          ...rawCombined,
+          tileset: Object.fromEntries(
+            Object.entries(rawTileset).filter(
+              ([key]) => key !== "tileImages" && key !== "collisionImages",
             ),
-          }
-        : rawCombined;
+          ),
+        }
+      : rawCombined;
     const combinedData = structuredClone(cloneableCombined);
 
     //TODO: Find better solution
@@ -381,19 +387,15 @@ export function IntroPrompt() {
         true, // adf
       );
 
-      const serializedResult = saveResult.ok
-        ? ok(saveResult.value)
-        : err(saveResult.error);
-
-      if (serializedResult.isErr()) {
-        console.error("Download failed:", serializedResult.error);
+      if (!saveResult.ok) {
+        console.error("Download failed:", saveResult.error);
         toast.error("Download failed", {
-          description: String(serializedResult.error),
+          description: String(saveResult.error),
         });
         return;
       }
 
-      const loadRes = serializedResult.value;
+      const loadRes = saveResult.value;
 
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
@@ -430,7 +432,9 @@ export function IntroPrompt() {
     if (globals.DATA_TYPE === DataType.TRT_FILE) {
       if (mapImagesFile) {
         const trtBuffer = await mapImagesFile.arrayBuffer();
-        const trtBlob = new Blob([trtBuffer], { type: "application/octet-stream" });
+        const trtBlob = new Blob([trtBuffer], {
+          type: "application/octet-stream",
+        });
         const trtUrl = URL.createObjectURL(trtBlob);
         const trtLink = document.createElement("a");
         trtLink.href = trtUrl;
@@ -565,6 +569,8 @@ export function IntroPrompt() {
     setMapImagesFile(undefined);
     setTunnelData(null);
     setTunnelFileName("");
+    setTerrainDataBytes(undefined);
+    setTerrainRsrcBytes(undefined);
   }, [setAllAtomicData]);
 
   const handleCreateBlankLevel = useCallback(
@@ -605,12 +611,8 @@ export function IntroPrompt() {
       setMapImages(mapImagesArray);
       setDataHistory(() => ({ items: [blankAtomicData], index: 0 }));
       setBlockHistoryUpdate(true);
-      if (gameType.GAME_TYPE === Game.OTTO_MATIC) {
-        setOttoLevelNumber(DEFAULT_OTTO_LEVEL);
-      } else {
-        const portConfig = GAME_PORT_CONFIGS[gameType.GAME_TYPE];
-        setOttoLevelNumber(portConfig?.defaultLevel ?? 0);
-      }
+      const portConfig = GAME_PORT_CONFIGS[gameType.GAME_TYPE];
+      setPreviewLevelNumber(portConfig?.defaultLevel ?? 0);
     },
     [
       setGlobals,
@@ -623,131 +625,35 @@ export function IntroPrompt() {
     ],
   );
 
-  const handleTestLevel = useCallback(async () => {
-    // For non-Otto games: open dialog directly (game uses default terrain)
-    if (globals.GAME_TYPE !== Game.OTTO_MATIC) {
-      setTerrainRsrcBlob(null);
-      setTerrainDataBlob(null);
-      setTestDialogOpen(true);
-      return;
-    }
-
+  const handleTestLevel = useCallback(() => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
-    if (!isOk(combinedDataResult)) {
-      toast.error("Cannot compile level data", {
+    if (combinedDataResult.isErr()) {
+      toast.error("Preview failed", {
         description: combinedDataResult.error.message,
       });
       return;
     }
-
-    const combinedData = prepareDownloadData(
-      combinedDataResult.value,
-      globals,
-    );
-
-    const sanitizedData = sanitizeResourceForkJson(
-      structuredClone(combinedData),
-    );
-
-    const validation = validateResourceForkJson(sanitizedData);
-    if (validation.isErr()) {
-      toast.error("Invalid level data", {
-        description: validation.error.message,
-      });
-      return;
-    }
-
-    const saveResult = loadBytesFromJson(
-      sanitizedData,
-      globals.STRUCT_SPECS,
-      [],
-      [],
-      true,
-    );
-
-    const serializedResult = saveResult.ok
-      ? ok(saveResult.value)
-      : err(saveResult.error);
-
-    if (serializedResult.isErr()) {
-      toast.error("Failed to compile level", {
-        description: String(serializedResult.error),
-      });
-      return;
-    }
-
-    const loadRes = serializedResult.value;
-    if (!loadRes || loadRes.byteLength === 0) {
-      toast.error("Compiled level data is empty");
-      return;
-    }
-
-    setTerrainRsrcBlob(new Blob([loadRes.slice(0)], { type: "application/octet-stream" }));
-
-    if (mapFile) {
-      const inferred = inferLevelNumberFromFilename(mapFile.name);
-      if (inferred !== undefined) {
-        setOttoLevelNumber(inferred);
-      }
-    }
-
-    // Build a fresh .ter blob from the current (possibly edited) mapImages using LZSS.
-    // This ensures the game sees the current tile textures, not the original downloaded file.
-    if (mapImages && mapImages.length > 0) {
-      const compressPromise = new Promise<DataView[]>((res, rej) => {
-        const results: DataView[] = new Array(mapImages.length);
-        let count = 0;
-        for (let i = 0; i < mapImages.length; i++) {
-          const canvas = mapImages[i];
-          if (!canvas) { rej(new Error(`Missing canvas at index ${i} — cannot compress tile textures`)); return; }
-          const ctx = canvas.getContext("2d");
-          if (!ctx) { rej(new Error(`Failed to get 2D context for canvas at index ${i}`)); return; }
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const worker = new LzssWorker();
-          worker.onerror = (ev) => rej(new Error(`LZSS worker error on tile ${i}: ${String(ev.message)}`));
-          worker.onmessage = (e: MessageEvent<LzssResponse>) => {
-            if (e.data.type !== "compressRes") return;
-            results[e.data.id] = new DataView(e.data.dataBuffer);
-            count++;
-            if (count === mapImages.length) res(results);
-            worker.terminate();
-          };
-          worker.postMessage({ uIntArray: imageData.data, type: "compress", id: i } satisfies LzssMessage, [imageData.data.buffer]);
-        }
-      });
-
-      const compressResult = await fromPromise(compressPromise);
-      if (compressResult.isOk()) {
-        const compressedTextures = compressResult.value;
-        let totalSize = 0;
-        for (const buf of compressedTextures) totalSize += 4 + buf.byteLength;
-        const terBuffer = new DataView(new ArrayBuffer(totalSize));
-        let pos = 0;
-        for (const buf of compressedTextures) {
-          if (!buf) continue;
-          terBuffer.setInt32(pos, buf.byteLength);
-          pos += 4;
-          for (let j = 0; j < buf.byteLength; j++) terBuffer.setUint8(pos++, buf.getUint8(j));
-        }
-        setTerrainDataBlob(new Blob([terBuffer.buffer], { type: "application/octet-stream" }));
-      } else {
-        // Log for debugging, then fall back to the original .ter file
-        console.warn("[TestLevel] .ter compression failed, falling back to original file:", compressResult.error);
-        if (mapImagesFile && mapImagesFile.size > 0) {
-          setTerrainDataBlob(new Blob([mapImagesFile], { type: "application/octet-stream" }));
-        } else {
-          setTerrainDataBlob(null);
-        }
-      }
-    } else if (mapImagesFile && mapImagesFile.size > 0) {
-      // No in-memory images available; pass the original .ter file
-      setTerrainDataBlob(new Blob([mapImagesFile], { type: "application/octet-stream" }));
-    } else {
-      setTerrainDataBlob(null);
-    }
-
+    const combinedData = prepareDownloadData(combinedDataResult.value, globals);
+    // Reset bytes to undefined (loading sentinel) and open the dialog immediately so
+    // the user sees the level selector without any delay.  Serialization (including
+    // async LZSS compression for STANDARD games) runs in the background.  The
+    // GamePreviewHost shows "Preparing level data…" until the bytes arrive.
+    setTerrainDataBytes(undefined);
+    setTerrainRsrcBytes(undefined);
     setTestDialogOpen(true);
-  }, [globals, getCurrentAtomicData, mapFile, mapImages, mapImagesFile]);
+    void buildPreviewTerrainBlobs(combinedData, globals, mapImages).then((blobs) => {
+      if (!blobs) {
+        toast.error("Preview failed", {
+          description: "Could not serialize the selected level for preview.",
+        });
+        setTerrainDataBytes(null);
+        setTerrainRsrcBytes(null);
+        return;
+      }
+      setTerrainDataBytes(blobs.dataBytes);
+      setTerrainRsrcBytes(blobs.rsrcBytes);
+    });
+  }, [getCurrentAtomicData, globals, mapImages]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
@@ -761,13 +667,78 @@ export function IntroPrompt() {
 
   const handleDownload = useCallback(() => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
-    if (isOk(combinedDataResult)) {
-      const combinedData = prepareDownloadData(combinedDataResult.value, globals);
+    if (combinedDataResult.isOk()) {
+      const combinedData = prepareDownloadData(
+        combinedDataResult.value,
+        globals,
+      );
       setAllAtomicData(splitLevelData(combinedData));
     }
     setBlockHistoryUpdate(true);
     setProcessed(true);
   }, [getCurrentAtomicData, globals, setAllAtomicData, setBlockHistoryUpdate]);
+
+  const handleConfirmNewMap = useCallback(() => {
+    setNewMapConfirmOpen(false);
+    clearAllState();
+  }, [clearAllState]);
+
+  useEffect(() => {
+    const left =
+      mapFile && mapImages ? (
+        <Button onClick={() => setNewMapConfirmOpen(true)}>←New Map</Button>
+      ) : null;
+    const editorActions =
+      mapFile && mapImages ? (
+        <>
+          {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
+            <Button
+              data-testid="test-level-button"
+              variant="outline"
+              onClick={handleTestLevel}
+            >
+              Preview in Game
+            </Button>
+          )}
+          <Button data-testid="download-button" onClick={handleDownload}>
+            Download
+          </Button>
+          {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
+            <TestGameDialog
+              open={testDialogOpen}
+              onOpenChange={setTestDialogOpen}
+              gameType={globals.GAME_TYPE}
+              levelNumber={previewLevelNumber}
+              onLevelNumberChange={setPreviewLevelNumber}
+              terrainDataBytes={terrainDataBytes}
+              terrainRsrcBytes={terrainRsrcBytes}
+            />
+          )}
+        </>
+      ) : null;
+
+    setEditorNavbarOpen(Boolean(left || editorActions));
+    setEditorNavbarLeft(left);
+    setEditorNavbarActions(editorActions);
+    return () => {
+      setEditorNavbarOpen(false);
+      setEditorNavbarLeft(null);
+      setEditorNavbarActions(null);
+    };
+  }, [
+    globals.GAME_TYPE,
+    handleDownload,
+    handleTestLevel,
+    mapFile,
+    mapImages,
+    previewLevelNumber,
+    setEditorNavbarActions,
+    setEditorNavbarLeft,
+    setEditorNavbarOpen,
+    terrainDataBytes,
+    terrainRsrcBytes,
+    testDialogOpen,
+  ]);
 
   // If we have tunnel data, show the tunnel editor
   if (tunnelData) {
@@ -796,66 +767,27 @@ export function IntroPrompt() {
       />
     );
   return (
-    <div className="flex flex-col gap-2 text-white overflow-auto min-w-full p-2 md:p-6 h-[calc(100vh-56px)]">
-      <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
-        <Button onClick={clearAllState}>←New Map</Button>
-        <div className="flex-1" />
-
-        {/* Test Level group (Otto Matic only) — shown to the LEFT of Download */}
-        {globals.GAME_TYPE === Game.OTTO_MATIC && GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-          <div className="flex items-center gap-2 border border-border rounded px-2 py-1">
-            <Select
-              value={String(ottoLevelNumber)}
-              onValueChange={(v) => setOttoLevelNumber(Number(v))}
-            >
-              <SelectTrigger className="w-44" data-testid="otto-level-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {GAME_PORT_CONFIGS[globals.GAME_TYPE].levels.map(
-                  (l: AnyLevelInfo, idx: number) => (
-                    <SelectItem
-                      key={getLevelIndex(l)}
-                      value={String(getLevelIndex(l))}
-                    >
-                      {`${String(idx + 1)}: ${l.name}`}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
+    <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full p-2 md:p-6 flex-1 min-h-0">
+      <Dialog open={newMapConfirmOpen} onOpenChange={setNewMapConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start a new map?</DialogTitle>
+            <DialogDescription>
+              This will clear the current level from the editor. Any unsaved
+              changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
             <Button
-              data-testid="test-level-button"
               variant="outline"
-              onClick={handleTestLevel}
+              onClick={() => setNewMapConfirmOpen(false)}
             >
-              Test Level
+              Cancel
             </Button>
-          </div>
-        )}
-
-        {/* Download — always rightmost */}
-        <Button
-          data-testid="download-button"
-          onClick={handleDownload}
-        >
-          Download
-        </Button>
-
-        {/* TestGameDialog lives outside the toolbar; always rendered when port config exists */}
-        {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-          <TestGameDialog
-            open={testDialogOpen}
-            onOpenChange={setTestDialogOpen}
-            gameType={globals.GAME_TYPE}
-            levelNumber={ottoLevelNumber}
-            onLevelNumberChange={setOttoLevelNumber}
-            terrainRsrcBlob={terrainRsrcBlob}
-            terrainDataBlob={terrainDataBlob}
-          />
-        )}
-      </div>
-      <hr />
+            <Button onClick={handleConfirmNewMap}>Yes, go back</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
       {mapImages && headerData && terrainData ? (
         <EditorView

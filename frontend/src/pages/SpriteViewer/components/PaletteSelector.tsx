@@ -1,7 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { Palette, PREDEFINED_PALETTES } from "../utils/paletteUtils";
+import {
+  Palette,
+  PREDEFINED_PALETTE_OPTIONS,
+} from "../utils/paletteUtils";
 
 interface PaletteSelectorProps {
   palettes: Palette[];
@@ -16,51 +28,64 @@ export function PaletteSelector({
   onPaletteSelect,
   onCreateNew,
 }: PaletteSelectorProps) {
+  const predefined = PREDEFINED_PALETTE_OPTIONS;
+  const selectedBuiltin = predefined.find(
+    (palette) => palette.palette.name === currentPalette.name,
+  );
+  const selectedValue = selectedBuiltin?.key ?? currentPalette.name;
+
+  const handleValueChange = (name: string) => {
+    const builtin = predefined.find((palette) => palette.key === name);
+    if (builtin) {
+      onPaletteSelect(builtin.palette);
+      return;
+    }
+
+    const custom = palettes.find((palette) => palette.name === name);
+    if (custom) {
+      onPaletteSelect(custom);
+    }
+  };
+
   return (
     <Card className="bg-gray-800 border-gray-700">
       <CardHeader>
         <CardTitle className="text-white text-sm">Palettes</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <div className="space-y-1 max-h-48 overflow-y-auto">
-          {/* Predefined palettes */}
-          <div>
-            <p className="text-xs text-gray-500 px-2 py-1">Built-in</p>
-            {Object.values(PREDEFINED_PALETTES).map((palette) => (
-              <button
-                key={palette.name}
-                onClick={() => onPaletteSelect(palette)}
-                className={`w-full text-left px-3 py-2 rounded text-sm transition ${
-                  currentPalette.name === palette.name
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                {palette.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom palettes */}
-          {palettes.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-500 px-2 py-1">Custom</p>
-              {palettes.map((palette) => (
-                <button
-                  key={palette.name}
-                  onClick={() => onPaletteSelect(palette)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm transition ${
-                    currentPalette.name === palette.name
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                  }`}
+        <Select value={selectedValue} onValueChange={handleValueChange}>
+          <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+            <SelectValue placeholder="Select a palette" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-700 border-gray-600">
+            <SelectGroup>
+              <SelectLabel className="text-gray-400">Built-in</SelectLabel>
+              {predefined.map((palette) => (
+                <SelectItem
+                  key={palette.key}
+                  value={palette.key}
+                  className="text-white focus:bg-gray-600"
                 >
-                  {palette.name}
-                </button>
+                  {palette.label} ({palette.sourceFile})
+                </SelectItem>
               ))}
-            </div>
-          )}
-        </div>
+            </SelectGroup>
+            {palettes.length > 0 && (
+              <SelectGroup>
+                <SelectLabel className="text-gray-400">Custom</SelectLabel>
+                {palettes.map((palette) => (
+                  <SelectItem
+                    key={palette.name}
+                    value={palette.name}
+                    className="text-white focus:bg-gray-600"
+                  >
+                    {palette.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+          </SelectContent>
+        </Select>
 
         <Button
           size="sm"

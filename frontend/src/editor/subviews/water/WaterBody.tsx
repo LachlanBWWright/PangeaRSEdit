@@ -1,8 +1,10 @@
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { Updater } from "use-immer";
 import { LiquidData, HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Circle, Image as KonvaImage, Line } from "react-konva";
 import Konva from "konva";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   SelectedWaterBody,
   SelectedWaterNub,
@@ -31,6 +33,7 @@ export const WaterBody = memo(
     const [selectedWaterBody, setSelectedWaterBody] =
       useAtom(SelectedWaterBody);
     const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
+    const setActiveView = useSetAtom(ActiveView);
     const globals = useAtomValue(Globals);
     const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
     const [initialDragState, setInitialDragState] = useState<
@@ -72,7 +75,10 @@ export const WaterBody = memo(
           strokeWidth={waterBodyIdx === selectedWaterBody ? 5 : 2}
           perfectDrawEnabled={false}
           hitStrokeWidth={10}
-          onClick={() => setSelectedWaterBody(waterBodyIdx)}
+          onClick={() => {
+            setSelectedWaterBody(waterBodyIdx);
+            setActiveView(View.water);
+          }}
           closed
           fill={waterBodyIdx === selectedWaterBody ? "#9999FF08" : "#9999FF04"}
           draggable
@@ -85,6 +91,7 @@ export const WaterBody = memo(
                 .map((nub) => [nub[0], nub[1]]),
             );
             setSelectedWaterBody(waterBodyIdx);
+            setActiveView(View.water);
           }}
           onDragMove={() => {
             // No per-frame state updates — let Konva handle visuals while dragging.
@@ -106,8 +113,7 @@ export const WaterBody = memo(
                   nub[1] = initNub[1] + dragDz;
                 }
               }
-              body.hotSpotX += dragDx;
-              body.hotSpotZ += dragDz;
+              // hotSpotX/Z stays fixed when dragging the body polygon
             });
             e.target.x(0);
             e.target.y(0);
@@ -141,10 +147,12 @@ export const WaterBody = memo(
                 perfectDrawEnabled={false}
                 onClick={() => {
                   setSelectedWaterBody(waterBodyIdx);
+                  setActiveView(View.water);
                   setSelectedWaterNub(nubIdx);
                 }}
                 onDragStart={() => {
                   setSelectedWaterBody(waterBodyIdx);
+                  setActiveView(View.water);
                   setSelectedWaterNub(nubIdx);
                   previewNubsRef.current = waterBody.nubs
                     .filter((_, i) => i < waterBody.numNubs)

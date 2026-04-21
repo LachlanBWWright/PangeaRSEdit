@@ -22,6 +22,8 @@ interface Props {
    * The free color picker is hidden and `colorPalette` is ignored.
    */
   paletteColors?: string[];
+  highlightSelectedColorUsage?: boolean;
+  setHighlightSelectedColorUsage?: (value: boolean) => void;
   /**
    * When `paletteColors` is provided, called when the user wants to replace a
    * palette entry with a new CSS color string.
@@ -39,6 +41,8 @@ export function ToolsPanel({
   colorPalette,
   paletteColors,
   onReplacePaletteColor,
+  highlightSelectedColorUsage,
+  setHighlightSelectedColorUsage,
 }: Props) {
   const isPaletteMode = paletteColors !== undefined && paletteColors.length > 0;
   const rgb = hexToRgb(brushColor) || { r: 255, g: 255, b: 255 };
@@ -171,6 +175,18 @@ export function ToolsPanel({
             <p className="text-[10px] text-gray-500 uppercase font-bold leading-tight">
               Palette Swatches
             </p>
+            {setHighlightSelectedColorUsage && (
+              <label className="flex items-center justify-between rounded bg-gray-900/50 px-2 py-1 text-xs text-gray-300">
+                <span>Highlight selected color</span>
+                <input
+                  type="checkbox"
+                  checked={highlightSelectedColorUsage ?? false}
+                  onChange={(e) =>
+                    setHighlightSelectedColorUsage(e.target.checked)
+                  }
+                />
+              </label>
+            )}
             <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-900/50 rounded-lg">
               {paletteColors.map((color, idx) => (
                 <div key={idx} className="relative aspect-square">
@@ -189,8 +205,7 @@ export function ToolsPanel({
                       type="color"
                       defaultValue={color}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      title="Hold/Right-click replacement not implemented, using hidden picker"
-                      onInput={(e) => {
+                      onChange={(e) => {
                         const input = e.target;
                         if (!(input instanceof HTMLInputElement)) return;
                         const newColor = input.value;

@@ -17,11 +17,7 @@ describe("citation coverage", () => {
 
     for (const game of getKnownGames()) {
       expect(counts).toHaveProperty(game);
-      if (game === "mightymike") {
-        expect(counts[game]).toBe(0);
-      } else {
-        expect(counts[game]).toBeGreaterThan(0);
-      }
+      expect(counts[game]).toBeGreaterThan(0);
     }
   });
 

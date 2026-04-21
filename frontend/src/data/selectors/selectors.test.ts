@@ -236,19 +236,19 @@ describe("Data Selectors", () => {
 
   function assertIsLevel(x: unknown): asserts x is LevelData {
     if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
-      throw new Error('Value is not a LevelData');
+      expect.fail('Value is not a LevelData');
     }
   }
 
   function assertIsItemData(x: unknown): asserts x is ItemData {
     if (typeof x !== 'object' || x === null || !('Itms' in x)) {
-      throw new Error('Value is not ItemData');
+      expect.fail('Value is not ItemData');
     }
   }
 
   function assertIsLiquidData(x: unknown): asserts x is LiquidData {
     if (typeof x !== 'object' || x === null || !('Liqd' in x)) {
-      throw new Error('Value is not LiquidData');
+      expect.fail('Value is not LiquidData');
     }
   }
 
@@ -260,9 +260,9 @@ describe("Data Selectors", () => {
     it("should select header data correctly", () => {
       const headerData = selectHeaderData(mockData);
       expect(headerData).toBeTruthy();
-      if (!headerData) throw new Error("header data missing");
+      if (!headerData) expect.fail("header data missing");
       const hed = headerData.Hedr[1000];
-      if (!hed) throw new Error("missing Hedr[1000]");
+      if (!hed) expect.fail("missing Hedr[1000]");
       expect(hed.obj.version).toBe(1);
       expect(hed.obj.numItems).toBe(2);
     });
@@ -283,9 +283,9 @@ describe("Data Selectors", () => {
       assertIsItemData(mockData);
       const itemData = selectItemData(mockData);
       expect(itemData).toBeTruthy();
-      if (!itemData) throw new Error("item data missing");
+      if (!itemData) expect.fail("item data missing");
       const itmsEntry = itemData.Itms[1000];
-      if (!itmsEntry) throw new Error("missing Itms[1000]");
+      if (!itmsEntry) expect.fail("missing Itms[1000]");
       expect(itmsEntry.obj).toHaveLength(2);
     });
 
@@ -293,9 +293,9 @@ describe("Data Selectors", () => {
       assertIsItemData(mockData);
       const items = selectItems(mockData);
       expect(items).toHaveLength(2);
-      if (items.length < 2) throw new Error("items missing");
+      if (items.length < 2) expect.fail("items missing");
       const [firstItem, secondItem] = items;
-      if (!firstItem || !secondItem) throw new Error("items entries missing");
+      if (!firstItem || !secondItem) expect.fail("items entries missing");
       expect(firstItem.type).toBe(ItemType.BasicPlant);
       expect(secondItem.type).toBe(ItemType.SpacePodGenerator);
     });
@@ -313,9 +313,9 @@ describe("Data Selectors", () => {
       assertIsLiquidData(mockData);
       const liquidData = selectLiquidData(mockData);
       expect(liquidData).toBeTruthy();
-      if (!liquidData) throw new Error("liquid data missing");
+      if (!liquidData) expect.fail("liquid data missing");
       const liqdEntry = liquidData.Liqd[1000];
-      if (!liqdEntry) throw new Error("missing Liqd[1000]");
+      if (!liqdEntry) expect.fail("missing Liqd[1000]");
       expect(liqdEntry.obj).toHaveLength(1);
     });
 
@@ -323,9 +323,9 @@ describe("Data Selectors", () => {
       assertIsLiquidData(mockData);
       const liquids = selectLiquids(mockData);
       expect(liquids).toHaveLength(1);
-      if (liquids.length < 1) throw new Error("liquids missing");
+      if (liquids.length < 1) expect.fail("liquids missing");
       const [firstLiquid] = liquids;
-      if (!firstLiquid) throw new Error("liquid entry missing");
+      if (!firstLiquid) expect.fail("liquid entry missing");
       expect(firstLiquid.type).toBe(WaterBodyType.BLUEWATER);
     });
   });
@@ -334,11 +334,11 @@ describe("Data Selectors", () => {
     it("should select fence data correctly", () => {
       const fenceData = selectFenceData(mockData);
       expect(fenceData).toBeTruthy();
-      if (!fenceData) throw new Error("fence data missing");
+      if (!fenceData) expect.fail("fence data missing");
       const fencEntry = fenceData.Fenc[1000];
-      if (!fencEntry) throw new Error("missing Fenc[1000]");
+      if (!fencEntry) expect.fail("missing Fenc[1000]");
       const fnnbEntry = fenceData.FnNb[1000];
-      if (!fnnbEntry) throw new Error("missing FnNb[1000]");
+      if (!fnnbEntry) expect.fail("missing FnNb[1000]");
       expect(fencEntry.obj).toHaveLength(1);
       expect(fnnbEntry.obj).toHaveLength(2);
     });
@@ -346,9 +346,9 @@ describe("Data Selectors", () => {
     it("should select fences array correctly", () => {
       const fences = selectFences(mockData);
       expect(fences).toHaveLength(1);
-      if (fences.length < 1) throw new Error("fences missing");
+      if (fences.length < 1) expect.fail("fences missing");
       const [firstFence] = fences;
-      if (!firstFence) throw new Error("fence entry missing");
+      if (!firstFence) expect.fail("fence entry missing");
       expect(firstFence.fenceType).toBe(FenceType.FARMWOOD);
     });
   });
@@ -357,15 +357,15 @@ describe("Data Selectors", () => {
     it("should select spline data correctly", () => {
       const splineData = selectSplineData(mockData);
       expect(splineData).toBeTruthy();
-      if (!splineData) throw new Error("spline data missing");
+      if (!splineData) expect.fail("spline data missing");
       const splnEntry = splineData.Spln[1000];
-      if (!splnEntry) throw new Error("missing Spln[1000]");
+      if (!splnEntry) expect.fail("missing Spln[1000]");
       const spnbEntry = splineData.SpNb[1000];
-      if (!spnbEntry) throw new Error("missing SpNb[1000]");
+      if (!spnbEntry) expect.fail("missing SpNb[1000]");
       const spptEntry = splineData.SpPt[1000];
-      if (!spptEntry) throw new Error("missing SpPt[1000]");
+      if (!spptEntry) expect.fail("missing SpPt[1000]");
       const spitEntry = splineData.SpIt[1000];
-      if (!spitEntry) throw new Error("missing SpIt[1000]");
+      if (!spitEntry) expect.fail("missing SpIt[1000]");
       expect(splnEntry.obj).toHaveLength(1);
       expect(spnbEntry.obj).toHaveLength(3);
       expect(spptEntry.obj).toHaveLength(10);
@@ -375,9 +375,9 @@ describe("Data Selectors", () => {
     it("should select splines array correctly", () => {
       const splines = selectSplines(mockData);
       expect(splines).toHaveLength(1);
-      if (splines.length < 1) throw new Error("splines missing");
+      if (splines.length < 1) expect.fail("splines missing");
       const [firstSpline] = splines;
-      if (!firstSpline) throw new Error("spline entry missing");
+      if (!firstSpline) expect.fail("spline entry missing");
       expect(firstSpline.numNubs).toBe(3);
     });
   });

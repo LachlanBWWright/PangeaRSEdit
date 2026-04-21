@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "@/modelParsers/parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
@@ -23,7 +23,10 @@ describe("BG3D produces clean GLB (no extras)", () => {
     const originalSkel = bufferFromFile(skelPath);
 
     const skelResource = await parseSkeletonRsrc(originalSkel);
-    const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
+    const parsedRes = parseBG3D(originalBg3d, skelResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     const gltfDoc = bg3dParsedToGLTF(parsed);
 
     // Verify NO extras on root
@@ -46,7 +49,10 @@ describe("BG3D produces clean GLB (no extras)", () => {
     const originalSkel = bufferFromFile(skelPath);
     
     const skelResource = await parseSkeletonRsrc(originalSkel);
-    const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
+    const parsedRes = parseBG3D(originalBg3d, skelResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     
     // Convert to GLB (clean, no extras)
     const gltfDoc = bg3dParsedToGLTF(parsed);
@@ -104,8 +110,8 @@ describe("BG3D produces clean GLB (no extras)", () => {
     
     // Verify serialized BG3D can be re-parsed
     const reparsed = parseBG3D(reserialized);
-    expect(reparsed.ok).toBe(true);
-    if (reparsed.ok) {
+    expect(reparsed.isOk()).toBe(true);
+    if (reparsed.isOk()) {
       expect(reparsed.value.materials.length).toBe(parsed.materials.length);
     }
     

@@ -4,7 +4,7 @@
  * https://github.com/jorio/Pomme/blob/master/src/QD3D/3DMFParser.cpp
  */
 
-import { Result, ok, err } from "../../types/result";
+import { Result, ok, err } from "neverthrow";
 import { BigEndianReader } from "./binaryUtils";
 import {
   TQ3MetaFile,
@@ -38,6 +38,10 @@ import {
   CHUNK_TOC,
   fourCCToString,
 } from "./types";
+
+function isShaderUVBoundary(value: number): value is ShaderUVBoundary {
+  return value === ShaderUVBoundary.Wrap || value === ShaderUVBoundary.Clamp;
+}
 
 /**
  * Parser state for 3DMF files
@@ -776,8 +780,14 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       if (boundaryUResult.isErr()) return err(boundaryUResult.error);
       if (boundaryVResult.isErr()) return err(boundaryVResult.error);
 
-      shaderResult.value.boundaryU = boundaryUResult.value as ShaderUVBoundary;
-      shaderResult.value.boundaryV = boundaryVResult.value as ShaderUVBoundary;
+      if (!isShaderUVBoundary(boundaryUResult.value)) {
+        return err(new Error(`Invalid shader U boundary ${boundaryUResult.value}`));
+      }
+      if (!isShaderUVBoundary(boundaryVResult.value)) {
+        return err(new Error(`Invalid shader V boundary ${boundaryVResult.value}`));
+      }
+      shaderResult.value.boundaryU = boundaryUResult.value;
+      shaderResult.value.boundaryV = boundaryVResult.value;
       break;
     }
 

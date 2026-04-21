@@ -1,5 +1,6 @@
 import { LevelData } from "../../python/structSpecs/LevelTypes";
-import { Result, ok, err, fromPromise } from "../../types/result";
+import { ok, err, ResultAsync, type Result } from "neverthrow";
+
 import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
@@ -8,17 +9,29 @@ import {
 import type {
   MightyMikeTileSet,
   MightyMikeTileValue,
+  MightyMikeItem,
+  MightyMikeTileAttribute,
 } from "../../python/structSpecs/mightyMikeInterface";
 import {
   splitLevelData,
   AtomicLevelData,
   isLevelDataLike,
 } from "../../data/utils/levelDataUtils";
-import { extractTGAPalette } from "../../utils/tgaParser";
+import { extractTGAPaletteRaw } from "../../utils/tgaParser";
 import { gMightyMikePalette } from "../../utils/mightyMikePalette";
 import { clearItemImageCache } from "../../utils/mightyMikeShapeImageLoader";
+import { MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
 
 import { isRecord, isMightyMikeMap } from "./typeGuards";
+import { mapErr } from "@/utils/mapErr";
+
+function getMightyMikeSceneFromPath(mapFileUrl?: string): string | undefined {
+  return MIGHTY_MIKE_SCENES.find((scene) =>
+    mapFileUrl?.endsWith(`/${scene}.map-1`) ||
+    mapFileUrl?.endsWith(`/${scene}.map-2`) ||
+    mapFileUrl?.endsWith(`/${scene}.map-3`),
+  );
+}
 
 // Type guard for MightyMikeTileSet
 function isMightyMikeTileSet(value: unknown): value is MightyMikeTileSet {
@@ -82,19 +95,14 @@ async function loadBorderPalette(
     tgaUrl = `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
   }
 
-  const fetchResult = await fromPromise(fetch(tgaUrl));
-  if (fetchResult.isErr() || !fetchResult.value.ok) {
-    return null;
-  }
-
+  const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
+  if (fetchResult.isErr()) return null;
   const response = fetchResult.value;
-  const bufferResult = await fromPromise(response.arrayBuffer());
-  if (bufferResult.isErr()) {
-    return null;
-  }
-
+  if (!response.ok) return null;
+  const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+  if (bufferResult.isErr()) return null;
   const tgaBuffer = bufferResult.value;
-  const paletteResult = extractTGAPalette(tgaBuffer);
+  const paletteResult = extractTGAPaletteRaw(tgaBuffer);
 
   if (!paletteResult) {
     return null;
@@ -112,7 +120,7 @@ export async function parseMightyMikeFile(
   mapFileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
 ): Promise<Result<LevelData, Error>> {
-  const bufferResult = await fromPromise(file.arrayBuffer());
+  const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
   if (bufferResult.isErr()) {
     return err(
       new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
@@ -127,6 +135,7 @@ export async function parseMightyMikeFile(
 
   let tilesetData = null;
   let paletteData: Uint8Array | null = null;
+  const mightyMikeScene = getMightyMikeSceneFromPath(mapFileUrl);
 
   if (mapFileUrl) {
     paletteData = await loadBorderPalette(mapFileUrl);
@@ -138,17 +147,12 @@ export async function parseMightyMikeFile(
     }
 
     const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
-    const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));
+    const tilesetFetchResult = await ResultAsync.fromPromise(fetch(tilesetUrl), mapErr);
     if (tilesetFetchResult.isOk() && tilesetFetchResult.value.ok) {
-      const tilesetBufferResult = await fromPromise(
-        tilesetFetchResult.value.arrayBuffer(),
-      );
+      const tilesetBufferResult = await ResultAsync.fromPromise(tilesetFetchResult.value.arrayBuffer(), mapErr);
       if (tilesetBufferResult.isOk()) {
         const tilesetBuffer = tilesetBufferResult.value;
-        const tilesetResult = parseMightyMikeTileSet(
-          tilesetBuffer,
-          paletteData || undefined,
-        );
+        const tilesetResult = parseMightyMikeTileSet(tilesetBuffer, paletteData || undefined);
 
         if (tilesetResult.isOk()) {
           tilesetData = tilesetResult.value;
@@ -185,7 +189,7 @@ export async function parseMightyMikeFile(
         name: "Terrain Layer Matrix",
         obj: mapResult.value.mapImage
           .flat()
-          .map((tileValue) => tileValue.tileIndex),
+          .map((tileValue: MightyMikeTileValue) => tileValue.tileIndex),
         order: 1,
       },
     },
@@ -221,7 +225,7 @@ export async function parseMightyMikeFile(
     Itms: {
       1000: {
         name: "Terrain Items List",
-        obj: mapResult.value.items.map((item) => ({
+        obj: mapResult.value.items.map((item: MightyMikeItem) => ({
           x: item.x,
           z: item.y,
           type: item.type,
@@ -237,11 +241,17 @@ export async function parseMightyMikeFile(
     Atrb: {
       1000: {
         name: "Tile Attribute Data",
-        obj: new Array(tilesetData?.numTileDefinitions || 100).fill({
-          flags: 0,
-          p0: 0,
-          p1: 0,
-        }),
+        obj:
+          tilesetData?.tileAttributes.map((attribute: MightyMikeTileAttribute) => ({
+            flags: attribute.flags,
+            p0: attribute.p0,
+            p1: attribute.p1,
+          })) ??
+          new Array(tilesetData?.numTileDefinitions || 100).fill({
+            flags: 0,
+            p0: 0,
+            p1: 0,
+          }),
         order: 6,
       },
     },
@@ -258,7 +268,7 @@ export async function parseMightyMikeFile(
       Xlat: {
         1000: {
           name: "Tile Translation Table",
-          obj: tilesetData.xlateTable.map((idx) => ({ idx })),
+          obj: tilesetData.xlateTable.map((idx: number) => ({ idx })),
         },
       },
     }),
@@ -291,6 +301,7 @@ export async function parseMightyMikeFile(
       1000: {
         name: "Metadata",
         obj: {
+          mightyMikeScene,
           mightyMikeMapData: mapResult.value,
           mightyMikeTileValues: mapResult.value.mapImage.flat(),
         },

@@ -8,7 +8,7 @@ import {
   bg3dParsedToGLTF,
   gltfToBG3D,
 } from "@/modelParsers/parsedBg3dGitfConverter";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -33,7 +33,10 @@ describe("BG3D roundtrip after GLB normalize (simulating bone edit)", () => {
 
     // Step 1: Parse original BG3D + skeleton
     const skeleton = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(bufferFromFile(bg3dPath), skeleton));
+    const parsedRes = parseBG3D(bufferFromFile(bg3dPath), skeleton);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
 
     expect(parsed.skeleton).toBeDefined();
     expect(parsed.materials.length).toBeGreaterThan(0);

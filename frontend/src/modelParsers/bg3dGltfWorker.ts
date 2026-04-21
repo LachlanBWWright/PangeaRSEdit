@@ -4,7 +4,7 @@ import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { parse3DMF } from "./parse3dmf";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { isErr, Result, fromPromise } from "../types/result";
+import type { Result } from "neverthrow";
 
 function toExactArrayBuffer(data: ArrayBuffer | Uint8Array): ArrayBuffer {
   if (data instanceof ArrayBuffer) {
@@ -128,13 +128,13 @@ export type BG3DGltfWorkerResponse =
       requestId?: string;
     };
 
-self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
+self.onmessage = (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   const msg = e.data;
   const requestId = msg.requestId;
-  const result = await fromPromise((async () => {
+  return (async () => {
     if (msg.type === "bg3d-to-glb") {
       const parseResult = parseModelBuffer(msg.buffer);
-      if (isErr(parseResult)) {
+      if (parseResult.isErr()) {
         const response = {
           type: "error",
           error: parseResult.error.message,
@@ -158,7 +158,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-with-skeleton-to-glb") {
       const parseResult = parseBG3DWithSkeletonResource(msg.bg3dBuffer, msg.skeletonData);
-      if (isErr(parseResult)) {
+      if (parseResult.isErr()) {
         const response = {
           type: "error",
           error: parseResult.error.message,
@@ -185,7 +185,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         msg.modelBuffer,
         msg.skeletonData,
       );
-      if (isErr(parseResult)) {
+      if (parseResult.isErr()) {
         const response = {
           type: "error",
           error: parseResult.error.message,
@@ -262,13 +262,12 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       } satisfies BG3DGltfWorkerResponse;
       self.postMessage(response);
     }
-  })());
-  if (result.isErr()) {
+  })().catch((error: unknown) => {
     const response = {
       type: "error",
-      error: result.error instanceof Error ? result.error.message : String(result.error),
+      error: error instanceof Error ? error.message : String(error),
       requestId,
     } satisfies BG3DGltfWorkerResponse;
     self.postMessage(response);
-  }
+  });
 };

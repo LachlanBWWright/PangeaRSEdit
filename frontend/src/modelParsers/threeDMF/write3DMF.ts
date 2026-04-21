@@ -3,7 +3,8 @@
  * Creates byte-accurate 3DMF files for roundtrip conversion
  */
 
-import { Result, ok } from "../../types/result";
+import { ok } from "neverthrow";
+import { Result } from "neverthrow";
 import { BigEndianWriter } from "./binaryUtils";
 import {
   TQ3MetaFile,

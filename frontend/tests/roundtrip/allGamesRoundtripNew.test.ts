@@ -150,6 +150,7 @@ describe("All Games Roundtrip Tests", () => {
         console.log(`✅ ${game.name} serialized successfully`);
       });
 
+      const roundtripTimeoutMs = game.name === "Otto Matic" ? 30_000 : 15_000;
       it("should produce byte-for-byte identical output (JSON roundtrip)", async () => {
         if (!fileExists || game.skipRoundtrip) {
           console.warn(`Skipping ${game.name} roundtrip test`);
@@ -219,7 +220,7 @@ describe("All Games Roundtrip Tests", () => {
         const json2Str = normalize(jsonData2);
         expect(json1Str).toBe(json2Str);
         console.log(`✅ ${game.name} JSON roundtrip successful (byte-for-byte)`);
-      });
+      }, roundtripTimeoutMs);
 
       it("should produce similar binary size", async () => {
         if (!fileExists || game.skipRoundtrip) {

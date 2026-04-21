@@ -60,12 +60,16 @@ export function FlagTileEditor({
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
 
-    const pos = e.target.getStage()?.getRelativePointerPosition();
+    const stage = e.target.getStage();
+    const pos = stage?.getRelativePointerPosition();
+    const stageScale = stage?.scaleX() ?? 1;
     if (!pos) return;
 
     const centerX = Math.round(pos.x / globals.TILE_SIZE) * globals.TILE_SIZE;
     const centerY = Math.round(pos.y / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+    const radius =
+      ((Math.max(1, topologyBrushRadius) - 1) * globals.TILE_SIZE) /
+      Math.max(1, stageScale);
 
     setTerrainData((data) => {
       if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;

@@ -6,7 +6,7 @@
  */
 
 import { Game } from "../data/globals/globals";
-import { Result, ok } from "../types/result";
+import { ok, type Result } from "neverthrow";
 
 // Import all game validators
 import { validateOttoMaticLevel, LevelDataSchema } from "./games/ottoMatic";

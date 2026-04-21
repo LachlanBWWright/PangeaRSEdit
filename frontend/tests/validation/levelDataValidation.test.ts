@@ -8,6 +8,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
+import type { Result } from "neverthrow";
 
 // Import game specs
 import { ottoMaticSpecs } from "../../src/python/structSpecs/ottoMatic";
@@ -30,7 +31,7 @@ import {
 interface GameTestConfig {
   name: string;
   specs: string[];
-  validator: (data: unknown) => { ok: boolean; value?: unknown; error?: Error };
+  validator: (data: unknown) => Result<unknown, Error>;
   terrainDir: string;
   sampleFile: string;
 }
@@ -119,18 +120,18 @@ describe("Level Data Validation", () => {
         expect(jsonData).toBeDefined();
 
         function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-          if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+          if (typeof x !== 'object' || x === null) expect.fail('Parsed data is not an object');
         }
         assertIsRecord(jsonData);
 
         // Validate using Zod schema
         const validationResult = config.validator(jsonData);
 
-        if (!validationResult.ok) {
+        if (validationResult.isErr()) {
           // Log the validation error for debugging
           console.log(
             `${config.name} validation error:`,
-            validationResult.error?.message
+            validationResult.error.message
           );
           // Log keys in the data to understand what's being validated
           console.log(
@@ -143,7 +144,7 @@ describe("Level Data Validation", () => {
         // even for optional fields that aren't in the schema
         // Note: If this fails, check that required fields are present
         // Currently allowing failures for debugging purposes
-        if (!validationResult.ok) {
+        if (validationResult.isErr()) {
           console.warn(
             `${config.name} validation did not pass (may be expected during development)`
           );
@@ -165,7 +166,7 @@ describe("Level Data Validation", () => {
 
         const jsonData = JSON.parse(jsonStringResult.value);
         function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-          if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+          if (typeof x !== 'object' || x === null) expect.fail('Parsed data is not an object');
         }
         assertIsRecord(jsonData);
         assertIsRecord(jsonData.Hedr);
@@ -193,7 +194,7 @@ describe("Invalid Data Handling", () => {
     const result = validateOttoMaticLevel(invalidData);
 
     // Should fail because required fields are missing
-    expect(result.ok).toBe(false);
+    expect(result.isOk()).toBe(false);
   });
 
   it("should reject data with wrong types", () => {
@@ -207,7 +208,7 @@ describe("Invalid Data Handling", () => {
     };
     const result = validateOttoMaticLevel(wrongTypeData);
 
-    expect(result.ok).toBe(false);
+    expect(result.isOk()).toBe(false);
   });
 
   it("should accept partial data with passthrough schemas", () => {
@@ -259,10 +260,10 @@ describe("Invalid Data Handling", () => {
     };
 
     const result = validateOttoMaticLevel(dataWithExtra);
-    if (!result.ok) {
+    if (!result.isOk()) {
       console.log("Passthrough test error:", result.error?.message);
     }
     // Should pass because schema uses passthrough()
-    expect(result.ok).toBe(true);
+    expect(result.isOk()).toBe(true);
   });
 });

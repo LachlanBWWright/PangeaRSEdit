@@ -29,7 +29,7 @@ describe("Citation Extractor", () => {
       expect(first).toHaveProperty("game", "ottomatic");
       expect(first).toHaveProperty("itemType");
       expect(first).toHaveProperty("parameterName");
-      expect(first).toHaveProperty("codeSample");
+      expect(first).toHaveProperty("citation");
       expect(first).toHaveProperty("sourceFile");
     });
   });
@@ -42,13 +42,15 @@ describe("Citation Extractor", () => {
       // Check that we have citations from multiple games
       const games = new Set(allCitations.map(c => c.game));
       expect(games.size).toBeGreaterThan(1);
-      expect(games.has("mightymike")).toBe(false);
+      expect(games.has("mightymike")).toBe(true);
     });
 
     it("should use path-qualified filenames for all extracted citations", () => {
       const allCitations = extractAllCitations();
       for (const citation of allCitations) {
-        expect(citation.codeSample.fileName.includes("/")).toBe(true);
+        expect(citation.citation.fileName.includes("/")).toBe(true);
+        expect(citation.citation.url.startsWith("https://github.com/")).toBe(true);
+        expect(citation.citation.lineNumber).toBeGreaterThan(0);
       }
     });
   });

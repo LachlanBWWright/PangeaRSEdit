@@ -71,6 +71,14 @@ export interface ModelVariant {
   rotationY?: number;
   /** Position offset [x, y, z] relative to the item's terrain position */
   positionOffset?: [number, number, number];
+  /** Vertical offset so the model base sits at ground level (world units).
+   *  Mirrors the game's `Coord.y -= BBox.min.y` correction for skeleton objects. */
+  yOffset?: number;
+  /** Which parameter controls rotation */
+  rotationParam?: {
+    paramIndex: 0 | 1 | 2 | 3;
+    rotationType: RotationParam;
+  };
   /** References to game source code that define this mapping */
   citations?: readonly import("./itemModelTypes").SourceCitation[];
 }
@@ -185,6 +193,18 @@ export type StandardParamType =
 // ============================================================================
 
 /**
+ * 2-step rotation (0° or 180°)
+ * p * PI radians; only values 0 and 1 are meaningful.
+ * Formula: (value/2) * 2*PI = value * PI
+ */
+export const ROTATION_PI_STEP: RotationParam = {
+  type: "Rotation",
+  divisions: 2,
+  multiplier: "PI",
+  description: "Rotation 0° or 180° (0 = 0°, 1 = 180°)",
+};
+
+/**
  * 4-way rotation (0, 90, 180, 270 degrees)
  * p0 * PI/2 radians
  */
@@ -193,6 +213,17 @@ export const ROTATION_4_WAY: RotationParam = {
   divisions: 4,
   multiplier: "PI/2",
   description: "Rotation in 90° increments (0-3 = 0°, 90°, 180°, 270°)",
+};
+
+/**
+ * 2-way rotation (0° or 90°)
+ * p * PI/2 radians, only values 0 and 1 are meaningful
+ */
+export const ROTATION_2_WAY: RotationParam = {
+  type: "Rotation",
+  divisions: 4,
+  multiplier: "PI/2",
+  description: "Rotation 0° or 90° (0 = 0°, 1 = 90°)",
 };
 
 /**
@@ -309,6 +340,8 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "Farmer.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
     1: {
       modelFile: "BeeWoman.bg3d",
@@ -316,6 +349,8 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "BeeWoman.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
     2: {
       modelFile: "Scientist.bg3d",
@@ -323,6 +358,8 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "Scientist.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
     3: {
       modelFile: "SkirtLady.bg3d",
@@ -330,13 +367,44 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "SkirtLady.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
   },
 };
 
-// ============================================================================
-// Pre-defined Standard ID Parameters
-// ============================================================================
+/**
+ * Otto Matic Rock type selector with model variants
+ * p0 parameter selects Small/Medium/Large rock model
+ * Source: src/Items/Items.c - AddRock uses FARM_ObjType_Rock_Small + parm[0]
+ */
+export const OTTO_ROCK_TYPE: TypeSelectorParam = {
+  type: "TypeSelector",
+  description: "Rock size (determines 3D model)",
+  options: { 0: "Small", 1: "Medium", 2: "Large" },
+  modelVariants: {
+    0: { modelFile: "level1_farm.bg3d", modelPath: "models", modelIndex: 27, scale: 2.0 },
+    1: { modelFile: "level1_farm.bg3d", modelPath: "models", modelIndex: 28, scale: 2.0 },
+    2: { modelFile: "level1_farm.bg3d", modelPath: "models", modelIndex: 29, scale: 2.0 },
+  },
+};
+
+/**
+ * Otto Matic Hay type selector with model variants
+ * p0 parameter selects Brick/Cylinder hay model
+ * Source: src/Items/Items.c - AddHay uses FARM_ObjType_HayBrick + parm[0]
+ */
+export const OTTO_HAY_TYPE: TypeSelectorParam = {
+  type: "TypeSelector",
+  description: "Hay bale shape (determines 3D model)",
+  options: { 0: "Brick", 1: "Cylinder" },
+  modelVariants: {
+    0: { modelFile: "level1_farm.bg3d", modelPath: "models", modelIndex: 30, scale: 1.3, rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY } },
+    1: { modelFile: "level1_farm.bg3d", modelPath: "models", modelIndex: 31, scale: 1.3, rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY } },
+  },
+};
+
+
 
 /**
  * Spline ID reference

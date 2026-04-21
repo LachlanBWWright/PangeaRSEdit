@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Custom hook for handling BG3D/3DMF file uploads
  *
@@ -28,7 +29,8 @@ import {
 import { extractTexturesFromBG3D } from "../utils/textureUtils";
 import type { SkeletonResource } from "../../../python/structSpecs/skeleton/skeletonInterface";
 import type { Texture } from "../types";
-import { fromPromise, ok, err, type Result } from "@/types/result";
+import { ResultAsync, ok, err, type Result } from "neverthrow";
+
 
 function isSkeletonFileName(fileName: string): boolean {
   const lowerCaseName = fileName.toLowerCase();
@@ -159,7 +161,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
       onLoadingChange(true);
 
       if (isGlb) {
-        const glbBufferResult = await fromPromise(bg3dFile.arrayBuffer());
+        const glbBufferResult = await ResultAsync.fromPromise(
+          bg3dFile.arrayBuffer(),
+          mapErr,
+        );
         if (glbBufferResult.isErr()) {
           const message = `Failed to read GLB file: ${glbBufferResult.error.message}`;
           toast.error(message);
@@ -186,7 +191,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
           },
         );
 
-        const workerResult = await fromPromise(workerPromise);
+        const workerResult = await ResultAsync.fromPromise(
+          workerPromise,
+          mapErr,
+        );
         if (workerResult.isErr()) {
           const message =
             workerResult.error instanceof Error
@@ -237,7 +245,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
       // Handle 3DMF conversion path
       if (is3dmf) {
-        const dmfBufferResult = await fromPromise(bg3dFile.arrayBuffer());
+        const dmfBufferResult = await ResultAsync.fromPromise(
+          bg3dFile.arrayBuffer(),
+          mapErr,
+        );
         if (dmfBufferResult.isErr()) {
           const message = `Failed to read 3DMF file: ${dmfBufferResult.error.message}`;
           toast.error(message);
@@ -250,9 +261,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
         let skeletonData: SkeletonResource | undefined;
         let skeletonFailed = false;
         if (skeletonFile) {
-          const skeletonBufferResult = await fromPromise(
-            skeletonFile.arrayBuffer(),
-          );
+            const skeletonBufferResult = await ResultAsync.fromPromise(
+              skeletonFile.arrayBuffer(),
+              mapErr,
+            );
           if (skeletonBufferResult.isErr()) {
             console.error(
               "Error reading skeleton file:",
@@ -263,9 +275,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
             );
             skeletonFailed = true;
           } else {
-            const skeletonParseResult = await fromPromise(
-              parseSkeletonRsrc(skeletonBufferResult.value),
-            );
+              const skeletonParseResult = await ResultAsync.fromPromise(
+                parseSkeletonRsrc(skeletonBufferResult.value),
+                mapErr,
+              );
             if (skeletonParseResult.isErr()) {
               console.error(
                 "Error parsing skeleton:",
@@ -313,7 +326,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
           },
         );
 
-        const workerResult = await fromPromise(workerPromise);
+        const workerResult = await ResultAsync.fromPromise(
+          workerPromise,
+          mapErr,
+        );
         if (workerResult.isErr()) {
           const message =
             workerResult.error instanceof Error
@@ -346,7 +362,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
       }
 
       // Handle standard BG3D file processing
-      const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
+        const bg3dBufferResult = await ResultAsync.fromPromise(
+          bg3dFile.arrayBuffer(),
+          mapErr,
+        );
       if (bg3dBufferResult.isErr()) {
         const message = `Failed to read BG3D file: ${bg3dBufferResult.error.message}`;
         toast.error(message);
@@ -359,9 +378,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
       let skeletonData: SkeletonResource | undefined;
       let skeletonFailed = false;
       if (skeletonFile) {
-        const skeletonBufferResult = await fromPromise(
-          skeletonFile.arrayBuffer(),
-        );
+        const skeletonBufferResult = await ResultAsync.fromPromise(
+            skeletonFile.arrayBuffer(),
+            mapErr,
+          );
         if (skeletonBufferResult.isErr()) {
           console.error(
             "Error reading skeleton file:",
@@ -372,8 +392,9 @@ export function useFileUpload(options: UseFileUploadOptions) {
           );
           skeletonFailed = true;
         } else {
-          const skeletonParseResult = await fromPromise(
+          const skeletonParseResult = await ResultAsync.fromPromise(
             parseSkeletonRsrc(skeletonBufferResult.value),
+            mapErr,
           );
           if (skeletonParseResult.isErr()) {
             console.error("Error parsing skeleton:", skeletonParseResult.error);
@@ -419,7 +440,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         },
       );
 
-      const workerResult = await fromPromise(workerPromise);
+      const workerResult = await ResultAsync.fromPromise(workerPromise, mapErr);
       if (workerResult.isErr()) {
         const message =
           workerResult.error instanceof Error

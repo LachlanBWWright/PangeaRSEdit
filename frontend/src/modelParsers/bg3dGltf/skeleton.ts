@@ -12,7 +12,7 @@ import {
 
 import { Document, Skin } from "@gltf-transform/core";
 import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrcTS";
-import { isErr, Result, ok } from "../../types/result";
+import { ok, err, type Result } from "neverthrow";
 
 // Import modular functions
 import {
@@ -46,8 +46,8 @@ export function bg3dSkeletonToGltf(
     undefined,
   );
 
-  if (isErr(skeletonSystemResult)) {
-    return skeletonSystemResult;
+  if (skeletonSystemResult.isErr()) {
+    return err(skeletonSystemResult.error);
   }
 
   const skeletonSystem = skeletonSystemResult.value;

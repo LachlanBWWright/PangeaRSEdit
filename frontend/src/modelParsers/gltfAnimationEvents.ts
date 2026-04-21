@@ -1,6 +1,6 @@
 import { WebIO, type Animation } from "@gltf-transform/core";
 import type { AnimationEvent } from "@/components/AnimationViewer";
-import { err, ok, type Result } from "@/types/result";
+import { err, ok, type Result } from "neverthrow";
 
 const ANIMATION_EXTRA_NAMESPACE = "pangears";
 

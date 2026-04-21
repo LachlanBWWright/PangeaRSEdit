@@ -5,17 +5,17 @@ import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import {
   TerrainItemTypeParams,
-  ItemType,
 } from "../../../data/items/ottoItemType";
 import { ParamTooltip } from "../items/ParamTooltip";
 import { getParamTooltip } from "../items/getParamTooltip";
 import type { FlagDescription } from "../../../data/items/itemParams";
-import { parseU16, parseU8 } from "../../../utils/numberParsers";
+import { parseU8 } from "../../../utils/numberParsers";
 import {
   SelectedSpline,
   SelectedSplineItem,
+  SelectedSplineNub,
 } from "../../../data/splines/splineAtoms";
-import { SPLINE_KEY_BASE } from "./splineUtils";
+import { SPLINE_KEY_BASE, updateSplinePointsFromNubs } from "./splineUtils";
 import { getPoints } from "../../../utils/spline";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,48 +35,63 @@ import {
 } from "../../../data/items/itemAtoms";
 import { Label } from "@/components/ui/label";
 import { useMemo } from "react";
+import { detectSplineType, SplineType } from "@/data/splines/splineTypeDetection";
+import { EmptyDataPrompt } from "../EmptyDataPrompts";
 
 export function AddNewSplineMenu({
   setSplineData,
+  hasSplines,
 }: {
   setSplineData: Updater<SplineData>;
+  hasSplines: boolean;
 }) {
+  const [, setSelectedSpline] = useAtom(SelectedSpline);
+  const [, setSelectedSplineItem] = useAtom(SelectedSplineItem);
+
   return (
-    <>
-      <Button
-        onClick={() => {
-          setSplineData((splineData) => {
-            splineData.Spln[1000].obj.push({
-              bbBottom: 200,
-              bbLeft: 100,
-              bbRight: 200,
-              bbTop: 100,
-              numItems: 0,
-              numNubs: 3,
-              numPoints: 200,
-            });
-            const splinePos =
-              SPLINE_KEY_BASE + splineData.Spln[1000].obj.length - 1;
+    <EmptyDataPrompt
+      title={hasSplines ? "No Spline Selected" : "No Splines"}
+      description={
+        hasSplines
+          ? "Select a spline on the canvas or add another one."
+          : "This level doesn't have any splines yet. Add your first spline to get started."
+      }
+      buttonText={hasSplines ? "Add New Spline" : "Add First Spline"}
+      onInitialize={() => {
+        setSplineData((splineData) => {
+          const nextSplineIndex = splineData.Spln[1000].obj.length;
 
-            splineData.SpIt[splinePos] = { obj: [] };
-            splineData.SpNb[splinePos] = {
-              obj: [
-                { x: 100, z: 200 },
-                { x: 150, z: 100 },
-                { x: 200, z: 200 },
-                { x: 100, z: 200 },
-              ],
-            };
-
-            splineData.SpPt[splinePos] = {
-              obj: getPoints(splineData.SpNb[splinePos].obj),
-            };
+          splineData.Spln[1000].obj.push({
+            bbBottom: 200,
+            bbLeft: 100,
+            bbRight: 200,
+            bbTop: 100,
+            numItems: 0,
+            numNubs: 3,
+            numPoints: 200,
           });
-        }}
-      >
-        Add New Spline
-      </Button>
-    </>
+          const splinePos = SPLINE_KEY_BASE + nextSplineIndex;
+
+          splineData.SpIt[splinePos] = { obj: [] };
+          splineData.SpNb[splinePos] = {
+            obj: [
+              { x: 100, z: 200 },
+              { x: 150, z: 100 },
+              { x: 200, z: 200 },
+              { x: 100, z: 200 },
+            ],
+          };
+
+          splineData.SpPt[splinePos] = {
+            obj: getPoints(splineData.SpNb[splinePos].obj),
+          };
+
+          setSelectedSpline(nextSplineIndex);
+          setSelectedSplineItem(undefined);
+        });
+      }}
+      fillHeight
+    />
   );
 }
 
@@ -110,12 +125,87 @@ export function EditSplineItemMenu({
     [filterToSafe, safeSplineItemTypes, allSplineItemValues],
   );
 
-  if (selectedSpline === undefined) return <p>No Selected Spline</p>;
-  if (selectedSplineItem === undefined) return <></>;
+  if (selectedSplineItem === undefined) {
+    const hasSplineItems = splineItemData.length > 0;
+    return (
+      <EmptyDataPrompt
+        title={hasSplineItems ? "No Spline Item Selected" : "No Spline Items"}
+        description={
+          hasSplineItems
+            ? "Select a spline item to edit or add another one."
+            : "This spline doesn't have any items yet. Add your first spline item to get started."
+        }
+        buttonText={hasSplineItems ? "Add New Spline Item" : "Add First Spline Item"}
+        onInitialize={() => {
+          setSplineData((splineData) => {
+            if (selectedSpline === undefined) return;
+            const splineItems =
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineItems) return;
+            splineItems.push({
+              placement: 0,
+              type: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+              flags: 0,
+            });
+            const newItemIndex = splineItems.length - 1;
+            const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
+            if (spline) {
+              spline.numItems = splineItems.length;
+            }
+            setSelectedSplineItem(newItemIndex);
+          });
+        }}
+        fillHeight
+      />
+    );
+  }
 
   const currentSplineItemData = splineItemData.at(selectedSplineItem);
 
-  if (currentSplineItemData === undefined) return <></>;
+  if (currentSplineItemData === undefined) {
+    const hasSplineItems = splineItemData.length > 0;
+    return (
+      <EmptyDataPrompt
+        title={hasSplineItems ? "No Spline Item Selected" : "No Spline Items"}
+        description={
+          hasSplineItems
+            ? "Select a spline item to edit or add another one."
+            : "This spline doesn't have any items yet. Add your first spline item to get started."
+        }
+        buttonText={hasSplineItems ? "Add New Spline Item" : "Add First Spline Item"}
+        onInitialize={() => {
+          setSplineData((splineData) => {
+            if (selectedSpline === undefined) return;
+            const splineItems =
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineItems) return;
+            splineItems.push({
+              placement: 0,
+              type: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+              flags: 0,
+            });
+            const newItemIndex = splineItems.length - 1;
+            const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
+            if (spline) {
+              spline.numItems = splineItems.length;
+            }
+            setSelectedSplineItem(newItemIndex);
+          });
+        }}
+        fillHeight
+      />
+    );
+  }
+  const currentSplineItemParams =
+    TerrainItemTypeParams[currentSplineItemData.type];
 
   return (
     <>
@@ -167,41 +257,10 @@ export function EditSplineItemMenu({
         </div>
       )}
 
-      <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
-        <ParamTooltip
-          label={<span>Flags</span>}
-          tooltip={
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags
-          }
-          codeSample={undefined}
-          citationGame={citationGame ?? undefined}
-        />
-        <Input
-          type="number"
-          value={currentSplineItemData.flags}
-          onChange={(e) => {
-            setSplineData((splineData) => {
-              if (
-                selectedSpline === undefined ||
-                selectedSplineItem === undefined
-              )
-                return;
-              const splineItems =
-                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
-              const item = splineItems?.[selectedSplineItem];
-              if (item) {
-                item.flags = parseU16(e.target.value);
-              }
-            });
-          }}
-        />
-
+      <div className="grid grid-cols-6 gap-2 items-center">
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
-          const param =
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType][
-              paramKey
-            ];
+          const param = currentSplineItemParams?.[paramKey] ?? "Unknown";
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {
@@ -226,7 +285,12 @@ export function EditSplineItemMenu({
               codeSample={
                 typeof param === "string" || !param || param.type !== "Integer"
                   ? undefined
-                  : param.codeSample
+                  : {
+                      code: param.defaultCitation.code,
+                      fileName: param.defaultCitation.fileName,
+                      lineNumber: param.defaultCitation.lineNumber,
+                      endLineNumber: param.defaultCitation.endLineNumber,
+                    }
               }
               citationGame={citationGame ?? undefined}
             />,
@@ -350,15 +414,159 @@ export function EditSplineItemMenu({
 }
 
 export function EditSplineMenu({
+  splineData,
   setSplineData,
 }: {
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
+  const [, setSelectedSpline] = useAtom(SelectedSpline);
+  const [, setSelectedSplineItem] = useAtom(SelectedSplineItem);
+  const [selectedSplineNub, setSelectedSplineNub] = useAtom(SelectedSplineNub);
+
+  const removeSplineAtIndex = (splineIdx: number) => {
+    setSplineData((draft) => {
+      const splines = draft.Spln?.[1000]?.obj;
+      const spNb = draft.SpNb;
+      const spPt = draft.SpPt;
+      const spIt = draft.SpIt;
+      if (!splines || splineIdx < 0 || splineIdx >= splines.length) return;
+
+      splines.splice(splineIdx, 1);
+
+      const reindexRecord = <T extends { obj: unknown }>(
+        record: Record<number, T>,
+      ): Record<number, T> => {
+        const entries = Object.entries(record)
+          .map(([key, value]) => [Number(key), value] as const)
+          .filter(([key]) => key !== splineIdx)
+          .sort(([a], [b]) => a - b);
+        return Object.fromEntries(
+          entries.map(([key, value]) => [key > splineIdx ? key - 1 : key, value]),
+        ) as Record<number, T>;
+      };
+
+      if (spNb) draft.SpNb = reindexRecord(spNb);
+      if (spPt) draft.SpPt = reindexRecord(spPt);
+      if (spIt) draft.SpIt = reindexRecord(spIt);
+
+      if (draft.Spln?.[1000]?.obj) {
+        draft.Spln[1000].obj.forEach((spline, idx) => {
+          spline.numNubs = draft.SpNb?.[idx]?.obj.length ?? spline.numNubs;
+          spline.numPoints = draft.SpPt?.[idx]?.obj.length ?? spline.numPoints;
+          spline.numItems = draft.SpIt?.[idx]?.obj.length ?? spline.numItems;
+        });
+      }
+    });
+    if (selectedSpline === splineIdx) setSelectedSpline(undefined);
+  };
+
+  const splineNubs =
+    selectedSpline !== undefined
+      ? (splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj ?? [])
+      : [];
+  const numSplineNubs =
+    selectedSpline !== undefined
+      ? (splineData.Spln[1000]?.obj?.[selectedSpline]?.numNubs ?? splineNubs.length)
+      : 0;
+  const selectedNubData =
+    selectedSplineNub !== null ? splineNubs[selectedSplineNub] : null;
 
   return (
-    <div className="grid grid-cols-6 gap-2">
+    <>
+      {/* Nub coordinate editing (nub selected by clicking in Konva view) */}
+      {selectedSpline !== undefined && (
+        <>
+          {selectedNubData && selectedSplineNub !== null && (
+            <>
+              <p className="text-sm font-medium">
+                Adjust Nub {selectedSplineNub} Position
+              </p>
+              <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+                <label htmlFor="splineNubX" className="text-sm font-medium">
+                  X
+                </label>
+                <Input
+                  id="splineNubX"
+                  type="number"
+                  value={selectedNubData.x}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value);
+                    if (isNaN(newValue)) return;
+                    setSplineData((draft) => {
+                      if (selectedSpline === undefined || selectedSplineNub === null) return;
+                      const nub = draft.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj?.[selectedSplineNub];
+                      if (nub) nub.x = newValue;
+                    });
+                    updateSplinePointsFromNubs(selectedSpline, setSplineData);
+                  }}
+                  placeholder="X"
+                />
+                <label htmlFor="splineNubZ" className="text-sm font-medium">
+                  Z
+                </label>
+                <Input
+                  id="splineNubZ"
+                  type="number"
+                  value={selectedNubData.z}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value);
+                    if (isNaN(newValue)) return;
+                    setSplineData((draft) => {
+                      if (selectedSpline === undefined || selectedSplineNub === null) return;
+                      const nub = draft.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj?.[selectedSplineNub];
+                      if (nub) nub.z = newValue;
+                    });
+                    updateSplinePointsFromNubs(selectedSpline, setSplineData);
+                  }}
+                  placeholder="Z"
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                setSplineData((draft) => {
+                  if (selectedSpline === undefined) return;
+                  const nubEntry = draft.SpNb[SPLINE_KEY_BASE + selectedSpline];
+                  const spline = draft.Spln[1000]?.obj?.[selectedSpline];
+                  if (!nubEntry || !spline) return;
+                  const lastNub = nubEntry.obj[nubEntry.obj.length - 1];
+                  if (!lastNub) return;
+                  nubEntry.obj.push({ x: lastNub.x + 50, z: lastNub.z + 50 });
+                  spline.numNubs = nubEntry.obj.length;
+                });
+                updateSplinePointsFromNubs(selectedSpline, setSplineData);
+              }}
+            >
+              Add Nub
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={selectedSplineNub === null || numSplineNubs <= 3}
+              onClick={() => {
+                setSplineData((draft) => {
+                  if (selectedSpline === undefined || selectedSplineNub === null) return;
+                  const nubEntry = draft.SpNb[SPLINE_KEY_BASE + selectedSpline];
+                  const spline = draft.Spln[1000]?.obj?.[selectedSpline];
+                  if (!nubEntry || !spline || spline.numNubs <= 3) return;
+                  nubEntry.obj.splice(selectedSplineNub, 1);
+                  spline.numNubs = nubEntry.obj.length;
+                });
+                setSelectedSplineNub(null);
+                updateSplinePointsFromNubs(selectedSpline, setSplineData);
+              }}
+            >
+              Remove Nub
+            </Button>
+          </div>
+        </>
+      )}
+
+      <div className="grid grid-cols-6 gap-2">
       <Button
         onClick={() => {
           setSplineData((splineData) => {
@@ -366,15 +574,19 @@ export function EditSplineMenu({
             const splineNubs =
               splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
             if (!splineNubs) return;
-            const firstNub = splineNubs[0];
+            const splineType = detectSplineType(splineNubs);
+            const insertIndex =
+              splineType === SplineType.CIRCULAR ? 1 : 0;
+            const firstNub = splineNubs[insertIndex] ?? splineNubs[0];
             if (!firstNub) return;
+            const isCircular = splineType === SplineType.CIRCULAR;
 
-            splineNubs.splice(1, 0, {
+            splineNubs.splice(insertIndex, 0, {
               x: firstNub.x + 30,
               z: firstNub.z + 30,
             });
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(splineNubs),
+              obj: getPoints(splineNubs, isCircular),
             };
           });
         }}
@@ -388,21 +600,123 @@ export function EditSplineMenu({
             const splineNubs =
               splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
             if (!splineNubs) return;
+            const splineType = detectSplineType(splineNubs);
+            const insertIndex =
+              splineType === SplineType.CIRCULAR
+                ? Math.max(1, splineNubs.length - 1)
+                : splineNubs.length;
             const lastNub = splineNubs[splineNubs.length - 1];
             if (!lastNub) return;
+            const isCircular = splineType === SplineType.CIRCULAR;
 
-            splineNubs.splice(splineNubs.length - 1, 0, {
+            splineNubs.splice(insertIndex, 0, {
               x: lastNub.x + 100,
               z: lastNub.z + 100,
             });
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(splineNubs),
+              obj: getPoints(splineNubs, isCircular),
             };
           });
         }}
       >
         Add Back Nub
       </Button>
+      <Button
+        variant="destructive"
+        disabled={selectedSpline === undefined}
+        onClick={() => {
+          if (selectedSpline === undefined) return;
+          removeSplineAtIndex(selectedSpline);
+        }}
+      >
+        Delete Spline
+      </Button>
+      <Button
+        variant="destructive"
+        disabled={selectedSpline === undefined}
+        onClick={() => {
+          setSplineData((splineData) => {
+            if (selectedSpline === undefined) return;
+            const splineNubs =
+              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineNubs || splineNubs.length <= 2) return;
+            const splineType = detectSplineType(splineNubs);
+            const removeIndex =
+              splineType === SplineType.CIRCULAR
+                ? 1
+                : 0;
+            const isCircular = splineType === SplineType.CIRCULAR;
+            splineNubs.splice(removeIndex, 1);
+            splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
+              obj: getPoints(splineNubs, isCircular),
+            };
+            const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
+            if (spline) {
+              spline.numNubs = splineNubs.length;
+              spline.numPoints = splineData.SpPt[SPLINE_KEY_BASE + selectedSpline]?.obj.length ?? spline.numPoints;
+            }
+          });
+        }}
+      >
+        Remove Front Nub
+      </Button>
+      <Button
+        variant="destructive"
+        disabled={selectedSpline === undefined}
+        onClick={() => {
+          setSplineData((splineData) => {
+            if (selectedSpline === undefined) return;
+            const splineNubs =
+              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineNubs || splineNubs.length <= 2) return;
+            const splineType = detectSplineType(splineNubs);
+            const removeIndex =
+              splineType === SplineType.CIRCULAR
+                ? Math.max(1, splineNubs.length - 2)
+                : splineNubs.length - 1;
+            const isCircular = splineType === SplineType.CIRCULAR;
+            splineNubs.splice(removeIndex, 1);
+            splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
+              obj: getPoints(splineNubs, isCircular),
+            };
+            const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
+            if (spline) {
+              spline.numNubs = splineNubs.length;
+              spline.numPoints = splineData.SpPt[SPLINE_KEY_BASE + selectedSpline]?.obj.length ?? spline.numPoints;
+            }
+          });
+        }}
+      >
+        Remove Back Nub
+      </Button>
+      <Button
+        disabled={selectedSpline === undefined}
+        onClick={() => {
+          setSplineData((splineData) => {
+            if (selectedSpline === undefined) return;
+            const splineItems =
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineItems) return;
+            splineItems.push({
+              placement: 0,
+              type: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+              flags: 0,
+            });
+            setSelectedSplineItem(splineItems.length - 1);
+            const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
+            if (spline) {
+              spline.numItems = splineItems.length;
+            }
+          });
+        }}
+      >
+        Add Spline Item
+      </Button>
     </div>
+    </>
   );
 }

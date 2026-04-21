@@ -1,5 +1,6 @@
 import { BG3DParseResult } from "./parseBG3D";
-import { Result, andThen } from "../types/result";
+import { Result } from "neverthrow";
+// Use neverthrow instance methods (.andThen) instead of named import
 import {
   parse3DMFToMetaFile,
   write3DMFFromMetaFile,
@@ -16,7 +17,9 @@ import {
  */
 export function parse3DMF(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
   // Parse 3DMF to native format, then convert to BG3D format
-  return andThen(parse3DMFToMetaFile(buffer), metaFileToBG3DParseResult);
+  return parse3DMFToMetaFile(buffer).andThen(
+    (metaFile): Result<BG3DParseResult, Error> => metaFileToBG3DParseResult(metaFile),
+  );
 }
 
 /**
@@ -28,7 +31,9 @@ export function bg3dParsedTo3DMF(
   parsed: BG3DParseResult,
 ): Result<ArrayBuffer, Error> {
   // Convert BG3D format to native 3DMF format, then write
-  return andThen(bg3dParseResultToMetaFile(parsed), write3DMFFromMetaFile);
+  return bg3dParseResultToMetaFile(parsed).andThen(
+    (metaFile): Result<ArrayBuffer, Error> => write3DMFFromMetaFile(metaFile),
+  );
 }
 
 /**

@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -178,9 +178,10 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.GliderPart]: "Glider Part",
 };
 
+type Bugdom2ItemParamsSource = ItemParamsSource;
 export type Bugdom2ItemParams = ItemParams;
 
-const bugdom2DefaultParams: Bugdom2ItemParams = {
+const bugdom2DefaultParams: Bugdom2ItemParamsSource = {
   flags: "Unknown",
   p0: "Unknown",
   p1: "Unknown",
@@ -188,16 +189,16 @@ const bugdom2DefaultParams: Bugdom2ItemParams = {
   p3: "Unknown",
 };
 
-export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
+const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   [ItemType.StartCoords]: {
     flags: "Unknown",
     p0: {
       type: "Integer",
       description: "Starting rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f);	// calc starting rotation aim",
+        code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f);\t// calc starting rotation aim",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 242,
+        lineNumber: 241,
       },
     },
     p1: "Unknown",
@@ -219,18 +220,18 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);\ngNewObjectDefinition.rot = (float)rot * (PI2/8);",
+        code: "gNewObjectDefinition.rot \t\t= (float)rot * (PI2/8);",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 95,
+        lineNumber: 121,
       },
     },
     p2: {
       type: "Integer",
       description: "Key color (if applicable)",
       codeSample: {
-        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);\nsnail->KeyColor = keyColor;",
+        code: "snail->KeyColor \t= keyColor;\t\t\t\t\t\t\t\t\t// remember key color",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 95,
+        lineNumber: 127,
       },
     },
     p3: "Unknown",
@@ -279,7 +280,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
           index: 1,
           description: "Place up high (garbage level)",
           codeSample: {
-            code: "Boolean upHigh = itemPtr->parm[3] & (1<<1);\nif (upHigh) yOff = 1100.0f; else yOff = 150.0f;",
+            code: "Boolean\tupHigh = itemPtr->parm[3] & (1<<1);",
             fileName: "Source/Items/Powerups.c",
             lineNumber: 54,
           },
@@ -373,7 +374,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Acorn type (0-2: green, blue, or gold)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 2) return(true);\nnewObj->CloverType = type;",
+        code: "int\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Pickups.c",
         lineNumber: 288,
       },
@@ -439,9 +440,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Door color",
       codeSample: {
-        code: "int doorColor = itemPtr->parm[1];\ngNewObjectDefinition.type = ... + doorColor;",
+        code: "int\t\tdoorColor = itemPtr->parm[1];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 364,
+        lineNumber: 366,
       },
     },
     p2: "Unknown",
@@ -513,7 +514,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Post type (varies by level: brick/block/grass etc.)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\ngNewObjectDefinition.type = GARDEN_ObjType_Post_Brick + type;",
+        code: "int\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
         lineNumber: 561,
       },
@@ -528,27 +529,27 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Chipmunk rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI2/8;",
+        code: "gNewObjectDefinition.rot \t\t= (float)itemPtr->parm[0] * PI2/8;",
         fileName: "Source/Items/Chipmunk.c",
-        lineNumber: 130,
+        lineNumber: 127,
       },
     },
     p1: {
       type: "Integer",
       description: "Chipmunk kind (see CHIPMUNK_KIND_* constants)",
       codeSample: {
-        code: "int kind = itemPtr->parm[1];\nnewObj->Kind = kind;",
+        code: "newObj->Kind = kind;\t\t\t\t\t\t\t\t\t// which kind of chipmunk",
         fileName: "Source/Items/Chipmunk.c",
-        lineNumber: 81,
+        lineNumber: 133,
       },
     },
     p2: {
       type: "Integer",
       description: "Checkpoint number (if kind == CHIPMUNK_KIND_CHECKPOINT)",
       codeSample: {
-        code: "if (kind == CHIPMUNK_KIND_CHECKPOINT)\n    newObj->CheckPointNum = itemPtr->parm[2];",
+        code: "newObj->CheckPointNum = itemPtr->parm[2];",
         fileName: "Source/Items/Chipmunk.c",
-        lineNumber: 134,
+        lineNumber: 135,
       },
     },
     p3: "Unknown",
@@ -566,9 +567,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Stone type",
       codeSample: {
-        code: "gNewObjectDefinition.type = GARDEN_ObjType_LargeStone + itemPtr->parm[0];",
+        code: "gNewObjectDefinition.type \t\t= GARDEN_ObjType_LargeStone + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 678,
+        lineNumber: 628,
       },
     },
     p1: "Unused",
@@ -596,9 +597,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Pool coping rotation (0-3)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4.0f);",
+        code: "gNewObjectDefinition.rot \t\t= (float)itemPtr->parm[0] * (PI2/4.0f);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 728,
+        lineNumber: 684,
       },
     },
     p1: "Unused",
@@ -610,9 +611,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
           index: 0,
           description: "Is corner piece",
           codeSample: {
-            code: "Boolean isCorner = itemPtr->parm[3] & 1;",
+            code: "Boolean\tisCorner = itemPtr->parm[3] & 1;\t\t\t\t\t\t\t// see if it's a corner piece",
             fileName: "Source/Items/Items.c",
-            lineNumber: 721,
+            lineNumber: 670,
           },
         },
       ],
@@ -656,7 +657,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Dog house rotation (0-7, where each unit = 45°)",
+      description: "Dog house rotation (0-3, where each unit = 90°, starting at 180°)",
       codeSample: {
         code: "gNewObjectDefinition.rot = PI + ((float)itemPtr->parm[0] * (PI2/4));",
         fileName: "Source/Items/Items.c",
@@ -839,7 +840,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "int carNum = itemPtr->parm[0];\nGAME_ASSERT(carNum == 0 || carNum == 1);\ngNewObjectDefinition.type = PLAYROOM_ObjType_SlotCarRed + carNum;",
         fileName: "Source/Items/SlotCar.c",
-        lineNumber: 81,
+        lineNumber: 133,
       },
     },
     p1: "Unused",
@@ -1488,3 +1489,8 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p3: "Unknown",
   },
 };
+
+export const bugdom2ItemTypeParams = defineItemParams(
+  "bugdom2",
+  bugdom2ItemTypeParamsSource,
+);

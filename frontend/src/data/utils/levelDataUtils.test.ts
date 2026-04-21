@@ -142,7 +142,7 @@ describe("level data utils", () => {
 
     function assertIsLevel(x: unknown): asserts x is LevelData {
       if (typeof x !== "object" || x === null || !("Hedr" in x)) {
-        throw new Error("Value is not a LevelData");
+        expect.fail("Value is not a LevelData");
       }
     }
 
@@ -174,7 +174,7 @@ describe("level data utils", () => {
     const badUnknown: unknown = bad;
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null) {
-        throw new Error("Value is not a record");
+        expect.fail("Value is not a record");
       }
     }
     assertIsRecord(badUnknown);

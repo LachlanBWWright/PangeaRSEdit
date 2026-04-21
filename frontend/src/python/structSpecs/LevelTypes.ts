@@ -337,7 +337,7 @@ export interface ItemData<TItem = TerrainItem> {
  */
 export interface TerrainData<
   TTileAttribute = TileAttribute,
-  TSupertileGrid = SupertileGridEntry,
+  TSupertileGrid = SupertileGridEntry | SimplifiedSupertileGridEntry,
 > {
   Atrb: {
     1000: {
@@ -430,7 +430,7 @@ export interface LevelData<
   THeader = StandardHeader,
   TItem = TerrainItem,
   TTileAttribute = TileAttribute,
-  TSupertileGrid = SupertileGridEntry,
+  TSupertileGrid = SupertileGridEntry | SimplifiedSupertileGridEntry,
   TSplineItem = SplineItem,
 > extends HeaderData<THeader>,
     Partial<FenceData>,
@@ -462,6 +462,20 @@ export function isSupertileEmpty(
     return grid.isEmpty;
   }
   return grid.superTileId === -1;
+}
+
+/**
+ * Create the correct blank supertile entry for the given game.
+ * Games using SimplifiedSupertileGridEntry (e.g. Bugdom 2) have EMPTY_TILE_IDX = -1.
+ * All other games use SupertileGridEntry with isEmpty = true.
+ */
+export function createBlankSupertileEntry(
+  emptyTileIdx: number,
+): SupertileGridEntry | SimplifiedSupertileGridEntry {
+  if (emptyTileIdx < 0) {
+    return { superTileId: emptyTileIdx };
+  }
+  return { isEmpty: true, superTileId: 0 };
 }
 
 /**

@@ -191,8 +191,8 @@ describe("Operation Reversal Tests", () => {
       expect(canMergeOperations(op1, op2)).toBe(true);
 
       const mergeResult = mergeOperations(op1, op2);
-      expect(mergeResult.ok).toBe(true);
-      if (!mergeResult.ok) return; // Type guard
+      expect(mergeResult.isOk()).toBe(true);
+      if (!mergeResult.isOk()) return; // Type guard
 
       const merged = mergeResult.value;
       expect(merged.type).toBe("MoveItem");
@@ -254,8 +254,8 @@ describe("Operation Reversal Tests", () => {
       };
       
       const mergeResult = mergeOperations(op1, op2);
-      expect(mergeResult.ok).toBe(true);
-      if (!mergeResult.ok) return; // Type guard
+      expect(mergeResult.isOk()).toBe(true);
+      if (!mergeResult.isOk()) return; // Type guard
 
       const merged = mergeResult.value;
       const reversed = reverseOperation(merged);

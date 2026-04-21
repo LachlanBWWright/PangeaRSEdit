@@ -1,4 +1,4 @@
-import { ItemParams } from "../items/itemParams";
+import { ItemParamsSource } from "../items/itemParams";
 
 export enum SplineItemType {
   Human = 4, // 4: human
@@ -53,7 +53,7 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
 };
 
 // Parameter descriptions for each spline item type
-export const SplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+export const SplineItemTypeParams: Record<SplineItemType, ItemParamsSource> = {
   [SplineItemType.Human]: {
     flags: "Spline item flags",
     p0: {
@@ -257,7 +257,7 @@ export const SplineItemTypeParams: Record<SplineItemType, ItemParams> = {
   },
 };
 
-export type OttoSplineItemParams = ItemParams;
+export type OttoSplineItemParams = ItemParamsSource;
 
 /* 
 

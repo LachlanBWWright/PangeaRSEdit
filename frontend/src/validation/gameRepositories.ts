@@ -12,6 +12,20 @@ export interface GameRepository {
   sourcePath: string;  // Path to Source directory
 }
 
+function normalizeRepositoryFilePath(
+  repository: GameRepository,
+  filePath: string,
+): string {
+  const trimmedPath = filePath.replace(/^\/+/, "");
+  const sourcePrefix = `${repository.sourcePath}/`;
+
+  if (trimmedPath.startsWith(sourcePrefix)) {
+    return trimmedPath.slice(sourcePrefix.length);
+  }
+
+  return trimmedPath;
+}
+
 export const GAME_REPOSITORIES: Record<string, GameRepository> = {
   ottomatic: {
     owner: "jorio",
@@ -23,7 +37,7 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
     owner: "jorio",
     repo: "Bugdom2",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   bugdom: {
     owner: "jorio",
@@ -41,19 +55,19 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
     owner: "jorio",
     repo: "Nanosaur2",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   cromag: {
     owner: "jorio",
     repo: "CroMagRally",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   billyfrontier: {
     owner: "jorio",
     repo: "BillyFrontier",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   mightymike: {
     owner: "jorio",
@@ -80,10 +94,11 @@ export function getGameKeyFromName(gameName: string): string | null {
 export function getGitHubRawUrl(game: string, filePath: string): string | null {
   const repo = GAME_REPOSITORIES[game];
   if (!repo) return null;
-  
+  const normalizedPath = normalizeRepositoryFilePath(repo, filePath);
+
   // Construct the raw GitHub URL
   // Format: https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
-  return `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.branch}/${repo.sourcePath}/${filePath}`;
+  return `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.branch}/${repo.sourcePath}/${normalizedPath}`;
 }
 
 /**
@@ -92,9 +107,10 @@ export function getGitHubRawUrl(game: string, filePath: string): string | null {
 export function getGitHubPermalink(game: string, filePath: string, lineNumber: number): string | null {
   const repo = GAME_REPOSITORIES[game];
   if (!repo) return null;
-  
+  const normalizedPath = normalizeRepositoryFilePath(repo, filePath);
+
   // Format: https://github.com/{owner}/{repo}/blob/{branch}/{path}#L{line}
-  return `https://github.com/${repo.owner}/${repo.repo}/blob/${repo.branch}/${repo.sourcePath}/${filePath}#L${lineNumber}`;
+  return `https://github.com/${repo.owner}/${repo.repo}/blob/${repo.branch}/${repo.sourcePath}/${normalizedPath}#L${lineNumber}`;
 }
 
 /**

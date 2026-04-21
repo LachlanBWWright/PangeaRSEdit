@@ -13,10 +13,6 @@ import {
   TopologyValueMode,
   TileEditingEnabled,
   TileBrushType,
-  ShowRoofInTopology,
-  ShowRoofGapInTopology,
-  EditRoofAndFloorTogether,
-  RoofFloorElevation,
 } from "../../../data/tiles/tileAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import {
@@ -34,7 +30,7 @@ import {
   Show3DLiquid,
   Export3DScene,
 } from "@/data/canvasView/canvasViewAtoms";
-import { useEffect } from "react";
+
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
@@ -54,25 +50,18 @@ export function TilesMenu({
   const [value, setValue] = useAtom(TopologyValue);
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
-  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
-  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
-  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
-  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
+  const [, setShow3DSplines] = useAtom(Show3DSplines);
+  const [, setShow3DItems] = useAtom(Show3DItems);
+  const [, setShow3DFences] = useAtom(Show3DFences);
+  const [, setShow3DLiquid] = useAtom(Show3DLiquid);
   const [, setExport3DScene] = useAtom(Export3DScene);
   const [tileEditingEnabled, setTileEditingEnabled] =
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
-  const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
-  const [showRoofGap, setShowRoofGap] = useAtom(ShowRoofGapInTopology);
-  const [editTogether, setEditTogether] = useAtom(EditRoofAndFloorTogether);
-  const [roofFloorElevation, setRoofFloorElevation] = useAtom(RoofFloorElevation);
   const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
-  // Bugdom source uses Layr 1000 for floor and Layr 1001 for ceiling when gDoCeiling is enabled
-  // (games/bugdom/src/System/File.c reads Layr 1001 and YCrd 1001 for roof terrain).
-  const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
 
@@ -90,18 +79,7 @@ export function TilesMenu({
   // Only show tile flags if game uses tile attribute system
   const hasTileFlags = !usesIndividualTiles;
 
-  useEffect(() => {
-    if (tileView !== TileViews.Topology) {
-      setCanvasViewMode(CanvasView.TWO_D);
-    }
-  }, [tileView, setCanvasViewMode]);
 
-  useEffect(() => {
-    if (!hasRoofLayer) {
-      setShowRoof(false);
-      setShowRoofGap(false);
-    }
-  }, [hasRoofLayer, setShowRoof, setShowRoofGap]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -135,9 +113,9 @@ export function TilesMenu({
         }
         onValueChange={(v) => {
           if (v === "topology") setTileView(TileViews.Topology);
-          else if (v === "flags") setTileView(TileViews.Flags);
-          else if (v === "electric0") setTileView(TileViews.ElectricFloor0);
-          else if (v === "electric1") setTileView(TileViews.ElectricFloor1);
+          else if (v === "flags") { setTileView(TileViews.Flags); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (v === "electric0") { setTileView(TileViews.ElectricFloor0); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (v === "electric1") { setTileView(TileViews.ElectricFloor1); setCanvasViewMode(CanvasView.TWO_D); }
         }}
       >
         <TabsList className="grid grid-flow-col auto-cols-fr w-full">
@@ -248,54 +226,6 @@ export function TilesMenu({
             }
           />
 
-          {/* Roof support controls (for games with YCrd 1001 like Bugdom 1) */}
-          {hasRoofLayer && (
-            <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2 mt-2 p-2 bg-gray-800 rounded">
-                <p>Show Roof (YCrd 1001)</p>
-                <Switch
-                  checked={showRoof}
-                  onCheckedChange={setShowRoof}
-                />
-              </div>
-              {showRoof && (
-                <>
-                  <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                    <p>Show Roof/Floor Gap</p>
-                    <Switch
-                      checked={showRoofGap}
-                      onCheckedChange={setShowRoofGap}
-                    />
-                  </div>
-                  <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                    <p>Edit Floor &amp; Roof Together</p>
-                    <Switch
-                      checked={editTogether}
-                      onCheckedChange={setEditTogether}
-                    />
-                  </div>
-                  {editTogether && (
-                    <>
-                      <p>Center Elevation</p>
-                      <Input
-                        type="number"
-                        value={roofFloorElevation}
-                        onChange={(e) =>
-                          setRoofFloorElevation(parseInt(e.target.value) || 100)
-                        }
-                      />
-                      <p className="col-span-2 text-sm text-gray-400">
-                        Center elevation is the reference point used to keep
-                        floor/roof spacing consistent. Roof always stays above
-                        floor.
-                      </p>
-                    </>
-                  )}
-                </>
-              )}
-            </>
-          )}
-
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D View (Experimental)</p>
@@ -303,6 +233,12 @@ export function TilesMenu({
                 checked={canvasViewMode === CanvasView.THREE_D}
                 onCheckedChange={(e) => {
                   setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D);
+                  if (e) {
+                    setShow3DSplines(true);
+                    setShow3DItems(true);
+                    setShow3DFences(true);
+                    setShow3DLiquid(true);
+                  }
                 }}
               />
             </div>
@@ -315,38 +251,6 @@ export function TilesMenu({
             </div>
           </div>
 
-          {canvasViewMode === CanvasView.THREE_D && (
-            <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Splines</p>
-                <Switch
-                  checked={show3DSplines}
-                  onCheckedChange={setShow3DSplines}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Items</p>
-                <Switch
-                  checked={show3DItems}
-                  onCheckedChange={setShow3DItems}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Fences</p>
-                <Switch
-                  checked={show3DFences}
-                  onCheckedChange={setShow3DFences}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Liquid</p>
-                <Switch
-                  checked={show3DLiquid}
-                  onCheckedChange={setShow3DLiquid}
-                />
-              </div>
-            </>
-          )}
         </div>
         </>
       )}

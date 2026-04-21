@@ -1,4 +1,4 @@
-import { ItemParams } from "../items/itemParams";
+import { ItemParamsSource } from "../items/itemParams";
 
 export enum SplineItemType {
   Yeti = 18, // 18: Yeti
@@ -25,7 +25,7 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
 };
 
 // Parameter descriptions for each spline item type
-export const croMagSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+export const croMagSplineItemTypeParams: Record<SplineItemType, ItemParamsSource> = {
   [SplineItemType.Yeti]: {
     flags: "Spline item flags",
     p0: "Unused",
@@ -99,4 +99,4 @@ export const croMagSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
   },
 };
 
-export type CroMagSplineItemParams = ItemParams;
+export type CroMagSplineItemParams = ItemParamsSource;

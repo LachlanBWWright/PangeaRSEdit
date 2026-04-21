@@ -1,7 +1,7 @@
 // parseMightyMike.ts
 // TypeScript parser for MightyMike .map and .tileset files
 
-import { err, isOk, ok, type Result } from "../types/result";
+import { err, ok, type Result } from "neverthrow";
 import type {
   MightyMikeTileSet,
   MightyMikeMap,
@@ -31,7 +31,7 @@ function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
     if (compressionType === PACK_TYPE_RLB) {
       // Tileset files use RLB (byte-level) compression
       const result = rlbDecompress(buffer);
-      if (isOk(result)) {
+      if (result.isOk()) {
         return result.value.data;
       } else {
         console.warn(`RLB decompression failed:`, result.error);
@@ -40,8 +40,8 @@ function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
     } else if (compressionType === PACK_TYPE_RLW) {
       // Map files use RLW (word-level) compression
       const result = rlwDecompress(buffer);
-      if (isOk(result)) {
-        return result.value.data;
+      if (result.isOk()) {
+         return result.value.data;
       } else {
         console.warn(`RLW decompression failed:`, result.error);
         return buffer;

@@ -5,11 +5,12 @@
  * Has fences, items, splines but different tile system (no water)
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
@@ -21,6 +22,7 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { MenuSection } from "./MenuSection";
 import {
   EmptyFencePrompt,
   EmptySplinePrompt,
@@ -38,12 +40,15 @@ import {
 } from "../utils/editorViewUtils";
 import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
+import { useSetAtom } from "jotai";
+import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { BugdomEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
   FenceData,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 
 export function BugdomEditorView({
   headerData,
@@ -64,7 +69,8 @@ export function BugdomEditorView({
 }: BugdomEditorViewProps) {
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
-  const [view, setView] = useState<View>(View.fences);
+  const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -72,10 +78,7 @@ export function BugdomEditorView({
     [undoData, redoData]
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  useWindowKeyDown(handleKeyDown);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);
@@ -94,6 +97,16 @@ export function BugdomEditorView({
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
+  useEffect(() => {
+    setEditorNavbarTabs(
+      <Bugdom1EditorToolbar
+        terrainHasSTgd={showSupertileMenu}
+        compact
+      />,
+    );
+    return () => setEditorNavbarTabs(null);
+  }, [setEditorNavbarTabs, showSupertileMenu]);
+
   const handleSupertileResize = (
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
@@ -128,12 +141,7 @@ export function BugdomEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <Bugdom1EditorToolbar
-        view={view}
-        setView={setView}
-        terrainHasSTgd={showSupertileMenu}
-      />
-      <div className="overflow-y-auto">
+      <MenuSection>
         {view === View.fences && (
           fenceData ? (
             <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
@@ -162,7 +170,11 @@ export function BugdomEditorView({
           )
         )}
         {view === View.tiles && (
-          <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
+          <IndividualTilesMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+            terrainData={terrainData}
+          />
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
@@ -175,8 +187,8 @@ export function BugdomEditorView({
             onResizeSupertiles={handleSupertileResize}
           />
         )}
-      </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+      </MenuSection>
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -197,6 +209,7 @@ export function BugdomEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setTerrainData={setTerrainData}
           />
         ) : (
           <Bugdom1KonvaView

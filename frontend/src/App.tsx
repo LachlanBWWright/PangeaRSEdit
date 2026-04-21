@@ -16,7 +16,7 @@ export function App() {
       <HashRouter>
         <div className="dark flex flex-col h-screen bg-gray-900">
           <Navigation />
-          <div className="flex-1 min-h-0 overflow-auto">
+          <div className="flex-1 min-h-0 overflow-auto flex flex-col">
             <Routes>
               <Route path="/" element={<LevelEditor />} />
               <Route path="/model-viewer" element={<ModelViewer />} />

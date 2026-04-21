@@ -43,7 +43,7 @@ describe("Skeleton direct binary roundtrip", () => {
       expect(boneCount).toBeGreaterThan(0);
 
       const result = await skeletonResourceToBinary(parsed);
-      if (!result.ok) {
+      if (!result.isOk()) {
         // Some games have skeleton formats that can't be re-serialized yet
         return;
       }

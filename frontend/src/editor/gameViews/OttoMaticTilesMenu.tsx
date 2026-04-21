@@ -29,14 +29,10 @@ import {
 import {
   CanvasView,
   CanvasViewMode,
-  Show3DSplines,
-  Show3DItems,
-  Show3DFences,
-  Show3DLiquid,
   Show3DItemModels,
   Export3DScene,
 } from "@/data/canvasView/canvasViewAtoms";
-import { useEffect } from "react";
+
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
@@ -57,10 +53,6 @@ export function OttoMaticTilesMenu({
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
-  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
-  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
-  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
-  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
   const [tileEditingEnabled, setTileEditingEnabled] =
     useAtom(TileEditingEnabled);
@@ -70,12 +62,6 @@ export function OttoMaticTilesMenu({
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
-
-  useEffect(() => {
-    if (tileView !== TileViews.Topology) {
-      setCanvasViewMode(CanvasView.TWO_D);
-    }
-  }, [tileView, setCanvasViewMode]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -113,9 +99,9 @@ export function OttoMaticTilesMenu({
         }
         onValueChange={(value) => {
           if (value === "topology") setTileView(TileViews.Topology);
-          else if (value === "flags") setTileView(TileViews.Flags);
-          else if (value === "electric0") setTileView(TileViews.ElectricFloor0);
-          else if (value === "electric1") setTileView(TileViews.ElectricFloor1);
+          else if (value === "flags") { setTileView(TileViews.Flags); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (value === "electric0") { setTileView(TileViews.ElectricFloor0); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (value === "electric1") { setTileView(TileViews.ElectricFloor1); setCanvasViewMode(CanvasView.TWO_D); }
         }}
       >
         <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
@@ -224,43 +210,13 @@ export function OttoMaticTilesMenu({
             </div>
           </div>
           {canvasViewMode === CanvasView.THREE_D && (
-            <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Splines</p>
-                <Switch
-                  checked={show3DSplines}
-                  onCheckedChange={setShow3DSplines}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Items</p>
-                <Switch
-                  checked={show3DItems}
-                  onCheckedChange={setShow3DItems}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Fences</p>
-                <Switch
-                  checked={show3DFences}
-                  onCheckedChange={setShow3DFences}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Liquid</p>
-                <Switch
-                  checked={show3DLiquid}
-                  onCheckedChange={setShow3DLiquid}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show 3D Models</p>
-                <Switch
-                  checked={show3DItemModels}
-                  onCheckedChange={setShow3DItemModels}
-                />
-              </div>
-            </>
+            <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+              <p>Show 3D Models</p>
+              <Switch
+                checked={show3DItemModels}
+                onCheckedChange={setShow3DItemModels}
+              />
+            </div>
           )}
         </div>
       )}

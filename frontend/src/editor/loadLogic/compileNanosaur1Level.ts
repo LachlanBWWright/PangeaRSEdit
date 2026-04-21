@@ -1,6 +1,7 @@
 import type { TerrainItem, LevelData } from "../../python/structSpecs/LevelTypes";
 import type { Nanosaur1LevelData } from "../../data/processors/classicProprocessor";
-import { Result, ok } from "../../types/result";
+import { ok } from "neverthrow";
+import { Result } from "neverthrow";
 import type { RawNanosaurItem } from "./nanosaurInterfaces";
 import { isRawNanosaurAttribute, isRawNanosaurItem } from "./typeGuards";
 

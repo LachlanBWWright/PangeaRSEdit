@@ -13,57 +13,8 @@
  */
 
 import { ItemType } from "./ottoItemType";
-import type { SourceCitation } from "./itemModelTypes";
-
-/**
- * Describes how to load and render a 3D model for an item type
- */
-export interface ItemModelMapping {
-  /** BG3D filename (e.g., "level1_farm.bg3d", "Otto.bg3d") */
-  modelFile: string;
-
-  /** Subdirectory in /games/ottomatic/ */
-  modelPath: "models" | "skeletons";
-
-  /** Model index within the BG3D file (0-indexed) */
-  modelIndex: number;
-
-  /** Number of consecutive subgroups to include (default: 1).
-   *  Some items are composed of multiple consecutive subgroups in the BG3D file
-   *  (e.g., Windmill base + propeller, TeleportBase + dish). */
-  groupSize?: number;
-
-  /** True if model requires skeleton data for rigging */
-  requiresSkeleton?: boolean;
-
-  /** Skeleton .rsrc filename */
-  skeletonFile?: string;
-
-  /** Uniform scale multiplier (default: 1.0) */
-  scale?: number;
-
-  /** Horizontal scale multiplier (X/Z axes, default: 1.0) */
-  scaleXZ?: number;
-
-  /** Vertical scale multiplier (Y axis, default: 1.0) */
-  scaleY?: number;
-
-  /** Y-axis rotation offset in radians (default: 0) */
-  rotationY?: number;
-
-  /** Position offset in world units [x, y, z] */
-  positionOffset?: [number, number, number];
-
-  /** Source code citations for this mapping */
-  citations?: SourceCitation[];
-}
-
-/**
- * Get item model mapping for a given item type
- */
-export function getItemModelMapping(itemType: number): ItemModelMapping | undefined {
-  return OTTO_ITEM_MODEL_MAPPINGS[itemType];
-}
+import type { UniversalItemModelMapping } from "./itemModelTypes";
+import { ROTATION_2_WAY, ROTATION_4_WAY, ROTATION_8_WAY, ROTATION_16_WAY, ROTATION_PI_STEP } from "./standardParamTypes";
 
 /**
  * Comprehensive mapping of all Otto Matic item types to their 3D models
@@ -77,7 +28,7 @@ export function getItemModelMapping(itemType: number): ItemModelMapping | undefi
  */
 export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   number,
-  ItemModelMapping | undefined
+  UniversalItemModelMapping | undefined
 > = {
   // 0: StartCoords (no visual model)
 
@@ -96,7 +47,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 5,
     scale: 2.0,
-    citations: [{ file: "src/Items/SpacePods.c", line: 137, description: "scale = 2.0" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/SpacePods.c", line: 137, description: "scale = 2.0; parm[0] * (PI/2) sets rotation" }],
   },
   [ItemType.Enemy_Squooshy]: {
     modelFile: "Squooshy.bg3d",
@@ -105,6 +57,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Squooshy.skeleton.rsrc",
     scale: 2.5,
+    yOffset: 250,
     citations: [{ file: "src/Enemies/FireIce/Enemy_Squooshy.c", line: 46, description: "#define SQUOOSHY_SCALE 2.5f" }],
   },
   // Human (type 4) is a PARAM-DEPENDENT item!
@@ -113,13 +66,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   // This mapping serves as a fallback - actual selection happens in OttoItemMapper.getMapping()
   // See: Items/Humans.c - MakeHuman() function uses itemPtr->parm[1] for type
   [ItemType.Human]: undefined, // Param-dependent - handled by mapper
-  [ItemType.Atom]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
-    citations: [{ file: "src/Items/Powerups.c", line: 179, description: "scale = 1.0" }],
-  },
+  // Atom (type 5) uses CUSTOM_GENRE + DrawAtom (sprite rendering), not a BG3D model
+  [ItemType.Atom]: undefined,
   [ItemType.PowerupPod]: {
     modelFile: "global.bg3d",
     modelPath: "models",
@@ -137,6 +85,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "BrainAlien.skeleton.rsrc",
     scale: 1.7,
+    yOffset: 170,
     citations: [{ file: "src/Enemies/Enemy_BrainAlien.c", line: 43, description: "#define BRAINALIEN_SCALE 1.7f" }],
   },
   // Farm enemies (Onion, Corn, Tomato) - skeletal characters
@@ -147,6 +96,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Onion.skeleton.rsrc",
     scale: 2.0,
+    yOffset: 200,
     citations: [{ file: "src/Enemies/Farm/Enemy_Onion.c", line: 47, description: "#define ONION_SCALE 2.0f" }],
   },
   [ItemType.Enemy_Corn]: {
@@ -156,6 +106,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Corn.skeleton.rsrc",
     scale: 1.7,
+    yOffset: 170,
     citations: [{ file: "src/Enemies/Farm/Enemy_Corn.c", line: 47, description: "#define CORN_SCALE 1.7f" }],
   },
   [ItemType.Enemy_Tomato]: {
@@ -165,6 +116,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Tomato.skeleton.rsrc",
     scale: 1.3,
+    yOffset: 130,
     citations: [{ file: "src/Enemies/Farm/Enemy_Tomato.c", line: 46, description: "#define TOMATO_SCALE 1.3f" }],
   },
   [ItemType.Checkpoint]: {
@@ -182,7 +134,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 1,
     scale: 1.5,
-    citations: [{ file: "src/Items/Items.c", line: 146, description: "scale = 1.5" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Items.c", line: 146, description: "scale = 1.5; parm[0] * (PI/2) sets rotation (0-3)" }],
   },
   [ItemType.Silo]: {
     modelFile: "level1_farm.bg3d",
@@ -196,9 +149,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 3,
     scale: 1.5,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_2_WAY },
     citations: [
       { file: "src/Items/Triggers.c", line: 49, description: "#define WOODFENCE_SCALE 1.5f" },
-      { file: "src/Items/Triggers.c", line: 206, description: "scale = WOODFENCE_SCALE" },
+      { file: "src/Items/Triggers.c", line: 206, description: "scale = WOODFENCE_SCALE; parm[0]==1 sets PI/2 rotation (0=0°, 1=90°)" },
     ],
   },
   [ItemType.MetalGate]: {
@@ -206,9 +160,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 6,
     scale: 1.3,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_2_WAY },
     citations: [
       { file: "src/Items/Triggers.c", line: 50, description: "#define METALFENCE_SCALE 1.3f" },
-      { file: "src/Items/Triggers.c", line: 444, description: "scale = METALFENCE_SCALE" },
+      { file: "src/Items/Triggers.c", line: 444, description: "scale = METALFENCE_SCALE; parm[0]==1 sets PI/2 rotation (0=0°, 1=90°)" },
     ],
   },
   [ItemType.FencePost]: {
@@ -258,7 +213,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 22,
     scale: 4.0,
-    citations: [{ file: "src/Items/Items.c", line: 208, description: "scale = 4.0" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_PI_STEP },
+    citations: [{ file: "src/Items/Items.c", line: 208, description: "scale = 4.0; parm[0] * PI sets rotation (0° or 180°)" }],
   },
   [ItemType.Windmill]: {
     modelFile: "level1_farm.bg3d",
@@ -266,18 +222,14 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 23,
     groupSize: 2,
     scale: 4.0,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [
       { file: "src/Items/Items.c", line: 44, description: "#define WINDMILL_SCALE 4.0f" },
-      { file: "src/Items/Items.c", line: 709, description: "scale = WINDMILL_SCALE" },
+      { file: "src/Items/Items.c", line: 709, description: "scale = WINDMILL_SCALE; parm[0] * (PI/2) sets rotation (0-3)" },
     ],
   },
-  [ItemType.Rock]: {
-    modelFile: "level1_farm.bg3d",
-    modelPath: "models",
-    modelIndex: 27,
-    scale: 2.0,
-    citations: [{ file: "src/Items/Items.c", line: 577, description: "scale = 2.0 + sin(x)" }],
-  },
+  // Rock: param-dependent (p0=0→Small, p0=1→Medium, p0=2→Large); handled by OttoItemMapper
+  [ItemType.Rock]: undefined,
   [ItemType.ExitRocket]: {
     modelFile: "global.bg3d",
     modelPath: "models",
@@ -296,16 +248,18 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 0, // SlimeTube_FancyJ
     scale: 2.0,
-    citations: [{ file: "src/Items/Items.c", line: 775, description: "scale = s = 2.0" }],
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
+    citations: [{ file: "src/Items/Items.c", line: 775, description: "scale = s = 2.0; parm[1] * (PI2/8) sets rotation (PI/4 per step)" }],
   },
   [ItemType.FallingCrystal]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
     modelIndex: 14,
     scale: 2.5,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
     citations: [
       { file: "src/Items/Traps.c", line: 57, description: "#define FALLING_CRYSTAL_SCALE 2.5f" },
-      { file: "src/Items/Traps.c", line: 125, description: "scale = FALLING_CRYSTAL_SCALE" },
+      { file: "src/Items/Traps.c", line: 125, description: "scale = FALLING_CRYSTAL_SCALE; parm[0] * (PI2/8.0f) sets rotation (PI/4 per step)" },
     ],
   },
   [ItemType.Enemy_Blob]: {
@@ -315,6 +269,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Blob.skeleton.rsrc",
     scale: 2.4,
+    yOffset: 240,
     citations: [
       { file: "src/Enemies/Slime/Enemy_Blob.c", line: 37, description: "#define BLOB_SCALE 2.4f" },
       { file: "src/Enemies/Slime/Enemy_Blob.c", line: 120, description: "scale = BLOB_SCALE" },
@@ -375,7 +330,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 19,
     groupSize: 2,
     scale: 2.0,
-    citations: [{ file: "src/Items/Traps.c", line: 440, description: "scale = 2.0" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Traps.c", line: 440, description: "scale = 2.0; parm[0] * (PI2/4.0f) sets rotation (PI/2 per step)" }],
   },
   [ItemType.SlimeMech]: {
     modelFile: "level2_slime.bg3d",
@@ -383,12 +339,13 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 7,
     groupSize: 2,
     scale: 2.5,
-    citations: [{ file: "src/Items/Items.c", line: 1161, description: "scale = s = 2.5f" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Items.c", line: 1161, description: "scale = s = 2.5f; parm[0] * (PI/2) sets rotation" }],
   },
   [ItemType.SpinningPlatform]: {
     modelFile: "level3_blobboss.bg3d",
     modelPath: "models",
-    modelIndex: 5,
+    modelIndex: 1, // BLOBBOSS_ObjType_BarPlatform_Blue (default parm[0]=0; type is BLOBBOSS_ObjType_BarPlatform_Blue + parm[0])
     scale: 2.0,
     citations: [{ file: "src/Items/Triggers.c", line: 1357, description: "scale = s = 2.0f" }],
   },
@@ -399,13 +356,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     scale: 2.0,
     citations: [{ file: "src/Items/Items.c", line: 1602, description: "scale = s = 2.0" }],
   },
-  [ItemType.MachineBoss]: {
-    modelFile: "level2_slime.bg3d",
-    modelPath: "models",
-    modelIndex: 9,
-    scale: 2.5,
-    citations: [{ file: "src/Items/Items.c", line: 1198, description: "scale = s = 2.5f" }],
-  },
+  // MachineBoss (type 41): NilAdd in Terrain2.c — the blob boss machine is spawned internally
+  // by MakeBlobBossMachine(), never placed as a static terrain item
+  [ItemType.MachineBoss]: undefined,
 
   // 43-54: Cloud/Jungle/Apocalypse level items
   [ItemType.BlobBossTube]: {
@@ -427,9 +380,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 1,
     scale: 3.0,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [
       { file: "src/Items/Triggers2.c", line: 36, description: "#define JUNGLEGATE_SCALE 3.0f" },
-      { file: "src/Items/Triggers2.c", line: 77, description: "scale = JUNGLEGATE_SCALE" },
+      { file: "src/Items/Triggers2.c", line: 77, description: "scale = JUNGLEGATE_SCALE; parm[0] * (PI/2) sets rotation (0-3 values)" },
     ],
   },
   [ItemType.CrunchDoor]: {
@@ -438,14 +392,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 1,
     groupSize: 3,
     scale: 5.0,
-    citations: [{ file: "src/Items/Traps.c", line: 1204, description: "scale = 5.0" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Traps.c", line: 1204, description: "scale = 5.0; parm[0] * (PI/2) sets rotation" }],
   },
   [ItemType.Manhole]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
     modelIndex: 4,
     scale: 0.5,
-    citations: [{ file: "src/Items/Traps.c", line: 1506, description: "scale = .5" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Traps.c", line: 1506, description: "scale = .5; parm[0] * (PI/2) sets rotation" }],
   },
   [ItemType.Enemy_Flamester]: {
     modelFile: "Flamester.bg3d",
@@ -454,6 +410,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Flamester.skeleton.rsrc",
     scale: 2.1,
+    yOffset: 210,
     citations: [{ file: "src/Enemies/FireIce/Enemy_Flamester.c", line: 43, description: "#define FLAMESTER_SCALE_NORMAL 2.1f" }],
   },
   [ItemType.Enemy_GiantLizard]: {
@@ -463,6 +420,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "GiantLizard.skeleton.rsrc",
     scale: 2.5,
+    yOffset: 250,
     citations: [{ file: "src/Enemies/Jungle/Enemy_GiantLizard.c", line: 53, description: "#define GIANTLIZARD_SCALE 2.5f" }],
   },
   [ItemType.Enemy_FlyTrap]: {
@@ -472,6 +430,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "VenusFlytrap.skeleton.rsrc",
     scale: 2.6,
+    yOffset: 260,
     citations: [{ file: "src/Enemies/Jungle/Enemy_Flytrap.c", line: 36, description: "#define FLYTRAP_SCALE 2.6f" }],
   },
   [ItemType.Enemy_Mantis]: {
@@ -481,6 +440,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Mantis.skeleton.rsrc",
     scale: 2.1,
+    yOffset: 210,
     citations: [{ file: "src/Enemies/Jungle/Enemy_Mantis.c", line: 45, description: "#define MANTIS_SCALE 2.1f" }],
   },
   [ItemType.TurtlePlatform]: {
@@ -490,7 +450,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Turtle.skeleton.rsrc",
     scale: 2.5,
-    citations: [{ file: "src/Items/Triggers2.c", line: 266, description: "scale = 2.5" }],
+    yOffset: 250,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
+    citations: [{ file: "src/Items/Triggers2.c", line: 266, description: "scale = 2.5; parm[0] * (PI2/8.0f) sets rotation (PI/4 per step)" }],
   },
   [ItemType.Smashable]: {
     modelFile: "level6_jungle.bg3d",
@@ -518,7 +480,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 6,
     scale: 1.5,
-    citations: [{ file: "src/Items/Teleporter.c", line: 110, description: "scale = 1.5" }],
+    rotationParam: { paramIndex: 2, rotationType: ROTATION_8_WAY },
+    citations: [{ file: "src/Items/Teleporter.c", line: 110, description: "scale = 1.5; parm[2] * (PI2/8.0f) sets rotation (PI/4 per step)" }],
   },
   [ItemType.ZipLinePost]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -535,6 +498,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Mutant.skeleton.rsrc",
     scale: 1.2,
+    yOffset: 120,
     citations: [{ file: "src/Enemies/Apocalypse/Enemy_Mutant.c", line: 46, description: "#define MUTANT_SCALE 1.2f" }],
   },
   [ItemType.Enemy_MutantRobot]: {
@@ -544,6 +508,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "MutantRobot.skeleton.rsrc",
     scale: 1.9,
+    yOffset: 190,
     citations: [{ file: "src/Enemies/Apocalypse/Enemy_MutantRobot.c", line: 46, description: "#define MUTANTROBOT_SCALE 1.9f" }],
   },
   // HumanScientist (type 61) always uses Scientist skeleton
@@ -556,6 +521,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Scientist.skeleton.rsrc",
     scale: 2.0,
+    yOffset: 200,
     citations: [
       { file: "src/Items/Humans.c", line: 35, description: "#define HUMAN_SCALE (2.0f * gHumanScaleRatio)" },
       { file: "src/Items/Humans.c", line: 267, description: "scale = HUMAN_SCALE" },
@@ -582,9 +548,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 27,
     scale: 2.5,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_2_WAY },
     citations: [
       { file: "src/Items/Triggers2.c", line: 38, description: "#define DEBRISGATE_SCALE 2.5f" },
-      { file: "src/Items/Triggers2.c", line: 599, description: "scale = DEBRISGATE_SCALE" },
+      { file: "src/Items/Triggers2.c", line: 599, description: "scale = DEBRISGATE_SCALE; parm[1]==1 sets PI/2 rotation" },
     ],
   },
   [ItemType.GraveStone]: {
@@ -592,14 +559,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 34,
     scale: 0.6,
-    citations: [{ file: "src/Items/Items.c", line: 2110, description: "scale = .6" }],
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Items.c", line: 2110, description: "scale = .6; parm[1] * (PI2/4.0f) sets rotation (PI/2 per step)" }],
   },
   [ItemType.CrashedShip]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
     modelIndex: 40,
     scale: 1.4,
-    citations: [{ file: "src/Items/Items.c", line: 1873, description: "scale = 1.4" }],
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Items.c", line: 1873, description: "scale = 1.4; parm[1] * (PI2/4.0f) sets rotation (PI/2 per step)" }],
   },
   [ItemType.ChainReactingMine]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -634,11 +603,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     scale: 5.0,
     citations: [{ file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 218, description: "scale = 5.0" }],
   },
+  // PitcherPlantBoss uses SKELETON_TYPE_PITCHERPLANT (PitcherPlant.bg3d).
+  // The game adds JUNGLE_ObjType_PitcherPlant_Grass as a chain node decoration.
   [ItemType.PitcherPlantBoss]: {
-    modelFile: "level6_jungle.bg3d",
-    modelPath: "models",
-    modelIndex: 20,
+    modelFile: "PitcherPlant.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "PitcherPlant.skeleton.rsrc",
     scale: 9.5,
+    yOffset: 950,
     citations: [
       { file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 96, description: "#define PITCHER_PLANT_SCALE 9.5f" },
       { file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 686, description: "scale = PITCHER_PLANT_SCALE" },
@@ -665,9 +639,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 8,
     groupSize: 2,
     scale: 1.9,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [
       { file: "src/Items/HumanCannonball.c", line: 25, description: "#define CANNON_SCALE 1.9f" },
-      { file: "src/Items/HumanCannonball.c", line: 56, description: "scale = CANNON_SCALE" },
+      { file: "src/Items/HumanCannonball.c", line: 56, description: "scale = CANNON_SCALE; parm[0] * (PI2/4.0f) sets rotation (PI/2 per step)" },
     ],
   },
 
@@ -687,7 +662,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 12,
     scale: 2.0,
-    citations: [{ file: "src/Items/BumperCar.c", line: 839, description: "scale = 2.0" }],
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/BumperCar.c", line: 839, description: "scale = 2.0; parm[1] * (PI2/4.0f) sets rotation (PI/2 per step)" }],
   },
   [ItemType.Enemy_Clown]: {
     modelFile: "Clown.bg3d",
@@ -696,6 +672,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Clown.skeleton.rsrc",
     scale: 2.2,
+    yOffset: 220,
     citations: [{ file: "src/Enemies/Cloud/Enemy_Clown.c", line: 48, description: "#define CLOWN_SCALE 2.2f" }],
   },
   [ItemType.Clownfish]: {
@@ -705,12 +682,14 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "ClownFish.skeleton.rsrc",
     scale: 2.0,
+    yOffset: 200,
     citations: [{ file: "src/Enemies/Cloud/Enemy_ClownFish.c", line: 39, description: "#define CLOWNFISH_SCALE 2.0f" }],
   },
   [ItemType.BumperCarPowerPost]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 14,
+    modelIndex: 13, // CLOUD_ObjType_Generator (main post); GeneratorBumper (14) is a chain node
+    groupSize: 2,
     scale: 1.1,
     citations: [{ file: "src/Items/BumperCar.c", line: 936, description: "scale = 1.1" }],
   },
@@ -722,6 +701,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "StrongMan.skeleton.rsrc",
     scale: 2.0,
+    yOffset: 200,
     citations: [{ file: "src/Enemies/Cloud/Enemy_StrongMan.c", line: 45, description: "#define STRONGMAN_SCALE 2.0f" }],
   },
   [ItemType.CloudPlatform]: {
@@ -735,16 +715,18 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 6,
     groupSize: 2,
     scale: 8.0,
-    citations: [{ file: "src/Items/Items.c", line: 1778, description: "scale = 8.0" }],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    citations: [{ file: "src/Items/Items.c", line: 1778, description: "scale = 8.0; parm[0] * (PI/2) sets rotation" }],
   },
   [ItemType.RocketSled]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
     modelIndex: 26,
     scale: 1.3,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
     citations: [
       { file: "src/Items/RocketSled.c", line: 27, description: "#define ROCKETSLED_SCALE 1.3f" },
-      { file: "src/Items/RocketSled.c", line: 68, description: "scale = ROCKETSLED_SCALE" },
+      { file: "src/Items/RocketSled.c", line: 68, description: "scale = ROCKETSLED_SCALE; parm[0] * (PI2/8) sets rotation (PI/4 per step)" },
     ],
   },
 
@@ -754,9 +736,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 1,
     scale: 8.0,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
     citations: [
       { file: "src/Items/Volcano.c", line: 39, description: "#define LAVA_PILLAR_SCALE 8.0f" },
-      { file: "src/Items/Volcano.c", line: 68, description: "scale = LAVA_PILLAR_SCALE" },
+      { file: "src/Items/Volcano.c", line: 68, description: "scale = LAVA_PILLAR_SCALE; parm[0] * (PI2/8.0f) sets rotation (type also encodes orientation)" },
     ],
   },
   [ItemType.JawsBot]: {
@@ -813,6 +796,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "IceCube.skeleton.rsrc",
     scale: 2.5,
+    yOffset: 250,
     citations: [{ file: "src/Enemies/FireIce/Enemy_IceCube.c", line: 54, description: "#define ICECUBE_SCALE_NORMAL 2.5f" }],
   },
   [ItemType.RadarDish]: {
@@ -850,13 +834,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     scale: 2.3,
     citations: [{ file: "src/Items/Items.c", line: 546, description: "scale = 2.3f" }],
   },
-  [ItemType.Hay]: {
-    modelFile: "level1_farm.bg3d",
-    modelPath: "models",
-    modelIndex: 30, // FARM_ObjType_HayBrick
-    scale: 1.3,
-    citations: [{ file: "src/Items/Items.c", line: 607, description: "scale = 1.3" }],
-  },
+  // Hay: param-dependent (p0=0→Brick, p0=1→Cylinder); handled by OttoItemMapper
+  [ItemType.Hay]: undefined,
   
   // Fire/Ice level items (indices from FIREICE_ObjType enum in mobjtypes.h)
   [ItemType.LavaStone]: {
@@ -864,9 +843,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 40,
     scale: 2.5,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_16_WAY },
     citations: [
       { file: "src/Items/items2.c", line: 31, description: "#define LAVA_STONE_SCALE 2.5f" },
-      { file: "src/Items/items2.c", line: 288, description: "scale = LAVA_STONE_SCALE" },
+      { file: "src/Items/items2.c", line: 288, description: "scale = LAVA_STONE_SCALE; parm[1] * (PI2/16) sets rotation (PI/8 per step)" },
     ],
   },
   [ItemType.Snowball]: {
@@ -983,6 +963,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 5,
     scale: 3.5,
-    citations: [{ file: "src/Enemies/Enemy_BrainBoss.c", line: 995, description: "scale = 3.5" }],
+    // parm[0] is both the portal ID (0-7) and encodes the portal's angular position around the brain boss arena
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
+    citations: [{ file: "src/Enemies/Enemy_BrainBoss.c", line: 995, description: "scale = 3.5; parm[0] is portal ID (0-7) which also determines angular placement (PI2/8 per step)" }],
   },
 };

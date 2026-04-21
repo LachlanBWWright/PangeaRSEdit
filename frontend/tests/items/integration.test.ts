@@ -69,9 +69,9 @@ describe("Item Module Integration", () => {
       
       for (const game of gamesWithMappers) {
         const validation = validateGameMappings(game);
-        expect(validation.ok).toBe(true);
+        expect(validation.isOk()).toBe(true);
         
-        if (validation.ok) {
+        if (validation.isOk()) {
           // May have issues but should not have critical errors
           expect(Array.isArray(validation.value.issues)).toBe(true);
         }
@@ -85,7 +85,7 @@ describe("Item Module Integration", () => {
         const mapper = getGameMapper(game);
         const summary = getGameMappingSummary(game);
         
-        if (mapper && summary.ok) {
+        if (mapper && summary.isOk()) {
           expect(summary.value.totalMapped).toBe(mapper.getMappedTypes().length);
         }
       }
@@ -131,11 +131,11 @@ describe("Item Module Integration", () => {
       for (const game of gamesWithMappers) {
         // Can get summary
         const summary = getGameMappingSummary(game);
-        expect(summary.ok).toBe(true);
+        expect(summary.isOk()).toBe(true);
         
         // Can validate
         const validation = validateGameMappings(game);
-        expect(validation.ok).toBe(true);
+        expect(validation.isOk()).toBe(true);
       }
     });
 
@@ -165,7 +165,7 @@ describe("Item Module Integration", () => {
       
       for (const game of gamesWithMappers) {
         const summary = getGameMappingSummary(game);
-        if (summary.ok && summary.value.totalMapped > maxCount) {
+        if (summary.isOk() && summary.value.totalMapped > maxCount) {
           maxCount = summary.value.totalMapped;
         }
       }

@@ -1,8 +1,8 @@
-import { describe, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { parseBG3D } from "@/modelParsers/parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
@@ -34,7 +34,10 @@ describe("BG3D GLB roundtrip detail", () => {
     const originalSkel = bufferFromFile(skelPath);
     
     const skelResource = await parseSkeletonRsrc(originalSkel);
-    const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
+    const parsedRes = parseBG3D(originalBg3d, skelResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     
     console.log("=== ORIGINAL ===");
     parsed.materials.forEach((mat, i) => {

@@ -153,7 +153,7 @@ describe("Apply Edit Functions", () => {
     it("deletes item at specified index", () => {
       const itemData = createTestItemData();
       const deletedItem = itemData.Itms[1000].obj[1];
-      if (!deletedItem) throw new Error("Expected item to exist");
+      if (!deletedItem) expect.fail("Expected item to exist");
 
       const op: DeleteItemOperation = {
         type: "DeleteItem",
@@ -175,7 +175,7 @@ describe("Apply Edit Functions", () => {
     it("handles delete of last item with -1 index", () => {
       const itemData = createTestItemData();
       const deletedItem = itemData.Itms[1000].obj[2];
-      if (!deletedItem) throw new Error("Expected item to exist");
+      if (!deletedItem) expect.fail("Expected item to exist");
 
       const op: DeleteItemOperation = {
         type: "DeleteItem",

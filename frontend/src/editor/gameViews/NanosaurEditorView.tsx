@@ -8,11 +8,12 @@
  * - Just items and terrain
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Nanosaur1EditorToolbar } from "../toolbars/Nanosaur1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
@@ -22,6 +23,7 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { MenuSection } from "./MenuSection";
 import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
@@ -35,6 +37,7 @@ import type { NanosaurEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
 } from "@/python/structSpecs/LevelTypes";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 
 export function NanosaurEditorView({
   headerData,
@@ -51,8 +54,7 @@ export function NanosaurEditorView({
 }: NanosaurEditorViewProps) {
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
-  // Default to items view since Nanosaur doesn't have fences
-  const [view, setView] = useState<View>(View.items);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -60,10 +62,7 @@ export function NanosaurEditorView({
     [undoData, redoData]
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  useWindowKeyDown(handleKeyDown);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);
@@ -107,11 +106,9 @@ export function NanosaurEditorView({
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
       <Nanosaur1EditorToolbar
-        view={view}
-        setView={setView}
         terrainHasSTgd={showSupertileMenu}
       />
-      <div className="overflow-y-auto">
+      <MenuSection>
         {view === View.items && itemData && (
           <ItemMenu
             itemData={itemData}
@@ -121,7 +118,11 @@ export function NanosaurEditorView({
           />
         )}
         {view === View.tiles && (
-          <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
+          <IndividualTilesMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+            terrainData={terrainData}
+          />
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
@@ -134,8 +135,8 @@ export function NanosaurEditorView({
             onResizeSupertiles={handleSupertileResize}
           />
         )}
-      </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+      </MenuSection>
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -156,6 +157,7 @@ export function NanosaurEditorView({
             splineData={null}
             terrainData={terrainData}
             mapImages={mapImages}
+            setTerrainData={setTerrainData}
           />
         ) : (
           <Nanosaur1KonvaView

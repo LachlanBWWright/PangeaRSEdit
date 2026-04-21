@@ -92,6 +92,7 @@ export function MightyMikeAssetBrowser({
             value={selectedType}
             onValueChange={(value) => {
               if (value === "sprites" || value === "tga" || value === "tileset") {
+                setSelectedAsset("");
                 onTypeChange(value);
               } else {
                 console.warn("Unknown asset type selected:", value);
@@ -121,8 +122,8 @@ export function MightyMikeAssetBrowser({
             value={selectedAsset}
             onValueChange={(value) => {
               if (value) {
+                setSelectedAsset(value);
                 onAssetSelect(value);
-                setSelectedAsset("");
               }
             }}
             disabled={loading}

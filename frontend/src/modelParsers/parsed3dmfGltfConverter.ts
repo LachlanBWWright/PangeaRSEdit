@@ -1,6 +1,6 @@
 import { BG3DParseResult } from "./parseBG3D";
 import { Document } from "@gltf-transform/core";
-import { Result, err } from "@/types/result";
+import { err, type Result } from "neverthrow";
 
 /**
  * Placeholder for converting a glTF Document to a parsed 3DMF (BG3DParseResult).

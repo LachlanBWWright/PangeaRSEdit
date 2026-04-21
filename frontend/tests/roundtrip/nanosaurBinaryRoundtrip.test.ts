@@ -33,8 +33,8 @@ describe("Nanosaur 1 Binary Roundtrip", () => {
 
       // Compile back to binary
       const compileResult = compileNanosaur1Level(levelData, rawLevelData);
-      expect(compileResult.ok).toBe(true);
-      if (!compileResult.ok) return;
+      expect(compileResult.isOk()).toBe(true);
+      if (!compileResult.isOk()) return;
 
       const roundtripData = new Uint8Array(compileResult.value);
 

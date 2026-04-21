@@ -245,12 +245,12 @@ describe("BG3D download after GLB import", () => {
       return;
     }
 
-    await workerScope.onmessage(
-        createMessageEvent({
-          type: "glb-to-bg3d" as const,
-          buffer: glbBuffer,
-        }),
-      );
+	    await workerScope.onmessage(
+	        createMessageEvent({
+	          type: "glb-to-bg3d",
+	          buffer: glbBuffer,
+	        }),
+	      );
 
     const response = workerScope.postMessage.mock.calls.at(-1)?.[0];
     expect(response?.type).toBe("glb-to-bg3d");

@@ -7,7 +7,8 @@ import {
   SplineData,
   TerrainData,
 } from "../../python/structSpecs/LevelTypes";
-import { Result, ok, err } from "../../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {

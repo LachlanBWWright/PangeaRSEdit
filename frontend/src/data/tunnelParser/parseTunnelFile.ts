@@ -5,8 +5,8 @@
  * Based on games/bugdom2/Source/System/File.c LoadTunnel function.
  */
 
-import type { Result } from "@/types/result";
-import { ok, err, tryFn } from "@/types/result";
+import { mapErr } from "@/utils/mapErr";
+import { Result, ok, err } from "neverthrow";
 import type {
   TunnelData,
   TunnelHeader,
@@ -120,7 +120,9 @@ class BinaryReader {
   }
 
   readBytes(length: number): Uint8Array {
-    const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
+    const bytes = new Uint8Array(
+      this.view.buffer.slice(this.offset, this.offset + length),
+    );
     this.offset += length;
     return bytes;
   }
@@ -274,73 +276,91 @@ function parseSection(reader: BinaryReader): TunnelSection {
  * @param buffer - The raw binary data from the .tun file
  * @returns Result containing the parsed TunnelData or an error
  */
-export function parseTunnelFile(buffer: ArrayBuffer): Result<TunnelData, Error> {
+export function parseTunnelFile(
+  buffer: ArrayBuffer,
+): Result<TunnelData, Error> {
   if (buffer.byteLength < 92) {
-    return err(new Error(`File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`));
+    return err(
+      new Error(
+        `File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`,
+      ),
+    );
   }
 
-  // Use tryFn to convert BinaryReader DataView errors to Result
-  const parseResult = tryFn(() => {
-    const reader = new BinaryReader(buffer);
+  const parseResult = Result.fromThrowable(
+    () => {
+      const reader = new BinaryReader(buffer);
 
-    // Parse header (88 bytes)
-    const header = parseHeader(reader);
+      // Parse header (88 bytes)
+      const header = parseHeader(reader);
 
-    // Skip alias data (legacy Mac file alias)
-    const aliasSize = reader.readInt32();
-    reader.skip(aliasSize);
+      // Skip alias data (legacy Mac file alias)
+      const aliasSize = reader.readInt32();
+      reader.skip(aliasSize);
 
-    // Parse spline nubs (control points)
-    const nubs: TunnelSplinePoint[] = [];
-    for (let i = 0; i < header.numNubs; i++) {
-      nubs.push(parseSplinePoint(reader));
-    }
+      // Parse spline nubs (control points)
+      const nubs: TunnelSplinePoint[] = [];
+      for (let i = 0; i < header.numNubs; i++) {
+        nubs.push(parseSplinePoint(reader));
+      }
 
-    // Parse tunnel texture
-    const tunnelTexture = parseTexture(reader);
+      // Parse tunnel texture
+      const tunnelTexture = parseTexture(reader);
 
-    // Parse water texture (currently not used but must be read)
-    const waterTexture = parseTexture(reader);
+      // Parse water texture (currently not used but must be read)
+      const waterTexture = parseTexture(reader);
 
-    // Parse items
-    const items: TunnelItem[] = [];
-    for (let i = 0; i < header.numItems; i++) {
-      items.push(parseItem(reader));
-    }
+      // Parse items
+      const items: TunnelItem[] = [];
+      for (let i = 0; i < header.numItems; i++) {
+        items.push(parseItem(reader));
+      }
 
-    // Parse spline points
-    const splinePoints: TunnelSplinePoint[] = [];
-    for (let i = 0; i < header.numSplinePoints; i++) {
-      splinePoints.push(parseSplinePoint(reader));
-    }
+      // Parse spline points
+      const splinePoints: TunnelSplinePoint[] = [];
+      for (let i = 0; i < header.numSplinePoints; i++) {
+        splinePoints.push(parseSplinePoint(reader));
+      }
 
-    // Parse section geometry
-    const sections: TunnelSection[] = [];
-    for (let i = 0; i < header.numSections; i++) {
-      sections.push(parseSection(reader));
-    }
+      // Parse section geometry
+      const sections: TunnelSection[] = [];
+      for (let i = 0; i < header.numSections; i++) {
+        sections.push(parseSection(reader));
+      }
 
-    return {
-      header,
-      nubs,
-      tunnelTexture,
-      waterTexture,
-      items,
-      splinePoints,
-      sections,
-    };
-  });
+      return {
+        header,
+        nubs,
+        tunnelTexture,
+        waterTexture,
+        items,
+        splinePoints,
+        sections,
+      };
+    },
+    mapErr,
+  )();
 
   if (parseResult.isErr()) {
-    return err(new Error(`Failed to parse tunnel file: ${parseResult.error.message}`));
+    return err(
+      new Error(`Failed to parse tunnel file: ${parseResult.error.message}`),
+    );
   }
 
   const tunnelData = parseResult.value;
 
   // Validate header values
-  if (tunnelData.header.numNubs < 0 || tunnelData.header.numSplinePoints < 0 ||
-      tunnelData.header.numSections < 0 || tunnelData.header.numItems < 0) {
-    return err(new Error(`Invalid header: negative counts (nubs=${tunnelData.header.numNubs}, splinePoints=${tunnelData.header.numSplinePoints}, sections=${tunnelData.header.numSections}, items=${tunnelData.header.numItems})`));
+  if (
+    tunnelData.header.numNubs < 0 ||
+    tunnelData.header.numSplinePoints < 0 ||
+    tunnelData.header.numSections < 0 ||
+    tunnelData.header.numItems < 0
+  ) {
+    return err(
+      new Error(
+        `Invalid header: negative counts (nubs=${tunnelData.header.numNubs}, splinePoints=${tunnelData.header.numSplinePoints}, sections=${tunnelData.header.numSections}, items=${tunnelData.header.numItems})`,
+      ),
+    );
   }
 
   return ok(tunnelData);

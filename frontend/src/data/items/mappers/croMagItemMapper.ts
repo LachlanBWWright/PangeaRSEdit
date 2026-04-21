@@ -2,17 +2,24 @@
  * Cro-Mag Rally Item Model Mapper
  *
  * Maps Cro-Mag Rally item types to their corresponding 3D models.
- * Cro-Mag Rally uses track-specific BG3D files organized by theme.
  *
- * Tracks/Themes:
- * - Stone Age (prehistoric)
- * - Bronze Age (desert/Egypt)
- * - Ice Age (arctic)
- * - Crete (Mediterranean)
- * - China
- * - Viking/Celtic
- * - Jungle
- * - Atlantis
+ * Model files (from levelModelFiles[] in File.c):
+ * - global.bg3d        - Global items (MODEL_GROUP_GLOBAL)
+ * - desert.bg3d        - Desert track (TRACK_NUM_DESERT = 0)
+ * - jungle.bg3d        - Jungle track (TRACK_NUM_JUNGLE = 1)
+ * - ice.bg3d           - Ice track (TRACK_NUM_ICE = 2)
+ * - crete.bg3d         - Crete track (TRACK_NUM_CRETE = 4)
+ * - china.bg3d         - China track (TRACK_NUM_CHINA = 5)
+ * - egypt.bg3d         - Egypt track (TRACK_NUM_EGYPT = 6)
+ * - europe.bg3d        - Europe track (TRACK_NUM_EUROPE = 8)
+ * - scandinavia.bg3d   - Scandinavia track (TRACK_NUM_SCANDINAVIA = 9)
+ * - atlantis.bg3d      - Atlantis track (TRACK_NUM_ATLANTIS = 10)
+ * - stonehenge.bg3d    - Stone Henge track (TRACK_NUM_STONEHENGE = 12)
+ * - aztec.bg3d         - Aztec track (TRACK_NUM_AZTEC = 13)
+ * - coliseum.bg3d      - Coliseum track (TRACK_NUM_COLISEUM = 14)
+ * - tarpits.bg3d       - Tar Pits track (TRACK_NUM_TARPITS = 17)
+ *
+ * Model indices correspond to *_ObjType_* enum values in mobjtypes.h.
  */
 
 import { Game } from "../../globals/globals";
@@ -21,589 +28,355 @@ import {
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
 import { ItemType } from "../croMagItemType";
+import { ROTATION_8_WAY } from "../standardParamTypes";
 
 /**
- * Track-specific model files (for future use with level-aware loading)
+ * Track-specific model files, indexed by TRACK_NUM_* constants
  */
 export const CROMAG_TRACK_MODEL_FILES: Record<number, string> = {
-  0: "stonehenge.bg3d",
-  1: "egypt.bg3d",
+  0: "desert.bg3d",
+  1: "jungle.bg3d",
   2: "ice.bg3d",
-  3: "crete.bg3d",
-  4: "china.bg3d",
-  5: "Viking.bg3d",
-  6: "jungle.bg3d",
-  7: "atlantis.bg3d",
+  4: "crete.bg3d",
+  5: "china.bg3d",
+  6: "egypt.bg3d",
+  8: "europe.bg3d",
+  9: "scandinavia.bg3d",
+  10: "atlantis.bg3d",
+  12: "stonehenge.bg3d",
+  13: "aztec.bg3d",
+  14: "coliseum.bg3d",
+  17: "tarpits.bg3d",
 };
 
 /**
- * Base mappings for Cro-Mag Rally items
+ * Base mappings for Cro-Mag Rally items.
+ * Model indices correspond exactly to *_ObjType_* enum values in mobjtypes.h.
  */
 const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
-  // Environmental - Cacti (Desert/Stone Age)
-  [ItemType.Cactus]: {
-    modelFile: "stonehenge.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
-    variants: {
-      0: { modelIndex: 0 },
-      1: { modelIndex: 1 },
-    },
-  },
 
-  // Signs (Global)
-  [ItemType.Sign]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation", description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-    variants: {
-      0: { modelIndex: 0 }, // Fire sign
-      1: { modelIndex: 1 }, // Ice sign
-      2: { modelIndex: 2 }, // Other signs...
-    },
-  },
-
-  // Trees (Track-specific)
-  [ItemType.Tree]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 1.0,
-    variants: {
-      0: { modelIndex: 2 },
-      1: { modelIndex: 3 },
-      2: { modelIndex: 4 },
-      3: { modelIndex: 5 },
-    },
-  },
-
-  // Power-ups (Global)
+  // ---- GLOBAL (global.bg3d) ----
+  // GLOBAL_ObjType_BonePOW = 0 ... MinePOW = 8
   [ItemType.POW]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 6,
-    scale: 0.5,
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 0,
     variants: {
-      0: { modelIndex: 6 },  // Bone
-      1: { modelIndex: 7 },  // Oil slick
-      2: { modelIndex: 8 },  // Bird bomb
-      3: { modelIndex: 9 },  // Freeze
-      4: { modelIndex: 10 }, // Nitro
+      0: { modelIndex: 0 },  // BonePOW
+      1: { modelIndex: 1 },  // OilPOW
+      2: { modelIndex: 2 },  // NitroPOW
+      3: { modelIndex: 3 },  // BirdBombPOW
+      4: { modelIndex: 4 },  // RomanCandlePOW
+      5: { modelIndex: 5 },  // BottleRocketPOW
+      6: { modelIndex: 6 },  // TorpedoPOW
+      7: { modelIndex: 7 },  // FreezePOW
+      8: { modelIndex: 8 },  // MinePOW
     },
   },
 
-  [ItemType.StickyTiresPOW]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 11,
-    scale: 0.5,
-  },
+  // GLOBAL_ObjType_InvisibilityPOW = 9
+  [ItemType.InvisibilityPOW]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 9 },
 
-  [ItemType.SuspensionPOW]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 12,
-    scale: 0.5,
-  },
+  // GLOBAL_ObjType_StickyTiresPOW = 10
+  [ItemType.StickyTiresPOW]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 10 },
 
-  [ItemType.InvisibilityPOW]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 13,
-    scale: 0.5,
-  },
+  // GLOBAL_ObjType_SuspensionPOW = 11
+  [ItemType.SuspensionPOW]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 11 },
 
-  // Finish Line (Global)
-  [ItemType.FinishLine]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 14,
-    scale: 1.0,
-  },
+  // GLOBAL_ObjType_Token_ArrowHead = 12
+  [ItemType.Token]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 12 },
 
-  // Decorative Items
-  [ItemType.Vase]: {
-    modelFile: "egypt.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 0.8,
-    rotationParam: {
-      paramIndex: 0,
-      rotationType: {
-        type: "Rotation", description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-  },
+  // GLOBAL_ObjType_WaterPatch = 13
+  [ItemType.WaterPatch]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 13 },
 
-  [ItemType.Rickshaw]: {
-    modelFile: "china.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
-  },
+  // GLOBAL_ObjType_TeamTorch = 14
+  [ItemType.TeamTorch]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 14 },
 
-  [ItemType.FlagPole]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 15,
-    scale: 1.0,
-  },
-
-  [ItemType.Token]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 16,
-    scale: 0.4,
-  },
-
-  // Easter Island
-  [ItemType.EasterHead]: {
-    modelFile: "stonehenge.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 1.2,
-  },
-
-  // Ice Age
-  [ItemType.SnoMan]: {
-    modelFile: "ice.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
-  },
-
-  [ItemType.CampFire]: {
-    modelFile: "ice.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 0.8,
-  },
-
-  [ItemType.Yeti]: {
-    modelFile: "Yeti.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "yeti.skeleton.rsrc",
-    scale: 1.0,
-  },
-
-  // Egypt/Bronze Age
-  [ItemType.Pillar]: {
-    modelFile: "egypt.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 1.0,
-  },
-
-  [ItemType.Pylon]: {
-    modelFile: "egypt.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 1.0,
-  },
-
-  [ItemType.Boat]: {
-    modelFile: "egypt.bg3d",
-    modelPath: "models",
-    modelIndex: 3,
-    scale: 1.2,
-  },
-
-  [ItemType.Sphinx]: {
-    modelFile: "egypt.bg3d",
-    modelPath: "models",
-    modelIndex: 4,
-    scale: 1.5,
-  },
-
-  [ItemType.Statue]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 17,
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation", description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-    variants: {
-      0: { modelIndex: 17 }, // Bull
-      1: { modelIndex: 18 }, // Cat
-      2: { modelIndex: 19 }, // Other statues
-    },
-  },
-
-  // Team mode items
-  [ItemType.TeamTorch]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 20,
-    scale: 0.8,
-  },
-
+  // GLOBAL_ObjType_TeamBaseRed = 15, TeamBaseGreen = 16
   [ItemType.TeamBase]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 21,
-    scale: 1.0,
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 15,
+    variants: { 0: { modelIndex: 15 }, 1: { modelIndex: 16 } },
   },
 
-  // Rocks (Global)
-  [ItemType.Rock]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 22,
-    scale: 1.0,
+  // GLOBAL_ObjType_Sign_Fire = 17, Twister = 18, Slippery = 19, Curves = 20, Ramp = 21, Snow = 22
+  [ItemType.Sign]: {
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 17,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
     variants: {
-      0: { modelIndex: 22 }, // Grey rock
-      1: { modelIndex: 23 }, // Other rocks
+      0: { modelIndex: 17 }, 1: { modelIndex: 18 }, 2: { modelIndex: 19 },
+      3: { modelIndex: 20 }, 4: { modelIndex: 21 }, 5: { modelIndex: 22 },
     },
   },
 
-  // Stone Age/Prehistoric
-  [ItemType.BrontoNeck]: {
-    modelFile: "stonehenge.bg3d",
-    modelPath: "models",
-    modelIndex: 3,
-    scale: 1.5,
+  // GLOBAL_ObjType_GreyRock = 23, RedRock = 24, IceRock = 25
+  [ItemType.Rock]: {
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 23,
+    variants: { 0: { modelIndex: 23 }, 1: { modelIndex: 24 }, 2: { modelIndex: 25 } },
   },
 
+
+  // ---- DESERT (desert.bg3d) ----
+  // DESERT_ObjType_StartingLine = 1
+  [ItemType.FinishLine]: { modelFile: "desert.bg3d", modelPath: "models", modelIndex: 1 },
+
+  // DESERT_ObjType_Cactus = 2, ShortCactus = 3
+  [ItemType.Cactus]: {
+    modelFile: "desert.bg3d", modelPath: "models", modelIndex: 2,
+    variants: { 0: { modelIndex: 2 }, 1: { modelIndex: 3 } },
+  },
+
+  // DESERT_ObjType_DustDevilTop = 4 (multi-model animation)
+  [ItemType.DustDevil]: { modelFile: "desert.bg3d", modelPath: "models", modelIndex: 4 },
+
+  // DESERT_ObjType_RockOverhang = 9, RockOverhang2 = 10
   [ItemType.RockOverhang]: {
-    modelFile: "stonehenge.bg3d",
-    modelPath: "models",
-    modelIndex: 4,
-    scale: 1.0,
+    modelFile: "desert.bg3d", modelPath: "models", modelIndex: 9,
+    variants: { 0: { modelIndex: 9 }, 1: { modelIndex: 10 } },
   },
 
-  [ItemType.TarPatch]: {
-    modelFile: "stonehenge.bg3d",
-    modelPath: "models",
-    modelIndex: 5,
-    scale: 1.0,
+
+  // ---- JUNGLE (jungle.bg3d) ----
+  // JUNGLE_ObjType_EasterHead = 2
+  [ItemType.EasterHead]: { modelFile: "jungle.bg3d", modelPath: "models", modelIndex: 2 },
+
+  // JUNGLE_ObjType_Tree1 = 3, Tree2 = 4, Tree3 = 5
+  [ItemType.Tree]: {
+    modelFile: "jungle.bg3d", modelPath: "models", modelIndex: 3,
+    variants: { 0: { modelIndex: 3 }, 1: { modelIndex: 4 }, 2: { modelIndex: 5 } },
   },
 
-  // Jungle
-  [ItemType.Vine]: {
-    modelFile: "jungle.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
+  // JUNGLE_ObjType_Vine = 6
+  [ItemType.Vine]: { modelFile: "jungle.bg3d", modelPath: "models", modelIndex: 6 },
+
+  // JUNGLE_ObjType_Volcano = 9
+  [ItemType.Volcano]: { modelFile: "jungle.bg3d", modelPath: "models", modelIndex: 9 },
+
+  // JUNGLE_ObjType_TotemPole = 10
+  [ItemType.TotemPole]: { modelFile: "jungle.bg3d", modelPath: "models", modelIndex: 10 },
+
+
+  // ---- ICE (ice.bg3d) ----
+  // ICE_ObjType_SnoMan = 2
+  [ItemType.SnoMan]: { modelFile: "ice.bg3d", modelPath: "models", modelIndex: 2 },
+
+  // ICE_ObjType_CampFire = 3
+  [ItemType.CampFire]: { modelFile: "ice.bg3d", modelPath: "models", modelIndex: 3 },
+
+
+  // ---- CHINA (china.bg3d) ----
+  // CHINA_ObjType_Rickshaw = 2
+  [ItemType.Rickshaw]: { modelFile: "china.bg3d", modelPath: "models", modelIndex: 2 },
+
+  // CHINA_ObjType_GongFrame = 3 (Gong = 4 added as child at runtime)
+  [ItemType.Gong]: { modelFile: "china.bg3d", modelPath: "models", modelIndex: 3 },
+
+  // CHINA_ObjType_House = 5
+  [ItemType.House]: {
+    modelFile: "china.bg3d", modelPath: "models", modelIndex: 5,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
   },
 
-  [ItemType.AztecHead]: {
-    modelFile: "jungle.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 1.2,
+
+  // ---- EGYPT (egypt.bg3d) ----
+  // EGYPT_ObjType_Obelisk = 2, Pillar = 3
+  [ItemType.Pillar]: {
+    modelFile: "egypt.bg3d", modelPath: "models", modelIndex: 3,
+    variants: { 0: { modelIndex: 3 }, 1: { modelIndex: 2 } },
   },
 
-  [ItemType.TotemPole]: {
-    modelFile: "jungle.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 1.0,
+  // EGYPT_ObjType_Pylon = 4
+  [ItemType.Pylon]: { modelFile: "egypt.bg3d", modelPath: "models", modelIndex: 4 },
+
+  // EGYPT_ObjType_Boat = 5
+  [ItemType.Boat]: { modelFile: "egypt.bg3d", modelPath: "models", modelIndex: 5 },
+
+  // EGYPT_ObjType_Statue = 6, CatStatue = 9
+  [ItemType.Statue]: {
+    modelFile: "egypt.bg3d", modelPath: "models", modelIndex: 6,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
+    variants: { 0: { modelIndex: 6 }, 1: { modelIndex: 9 } },
   },
 
-  [ItemType.Flower]: {
-    modelFile: "jungle.bg3d",
-    modelPath: "models",
-    modelIndex: 3,
-    scale: 0.5,
+  // EGYPT_ObjType_Sphinx = 7
+  [ItemType.Sphinx]: { modelFile: "egypt.bg3d", modelPath: "models", modelIndex: 7 },
+
+  // EGYPT_ObjType_Vase = 8
+  [ItemType.Vase]: {
+    modelFile: "egypt.bg3d", modelPath: "models", modelIndex: 8,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
   },
 
-  // Viking/Celtic
+
+  // ---- EUROPE (europe.bg3d) ----
+  // EUROPE_ObjType_CastleTower = 2, SiegeTower = 3
   [ItemType.CastleTower]: {
-    modelFile: "Viking.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.5,
+    modelFile: "europe.bg3d", modelPath: "models", modelIndex: 2,
+    variants: { 0: { modelIndex: 2 }, 1: { modelIndex: 3 } },
+  },
+
+  // EUROPE_ObjType_Cauldron = 4
+  [ItemType.Cauldron]: { modelFile: "europe.bg3d", modelPath: "models", modelIndex: 4 },
+
+  // EUROPE_ObjType_Well = 8
+  [ItemType.Well]: { modelFile: "europe.bg3d", modelPath: "models", modelIndex: 8 },
+
+  // EUROPE_ObjType_Cannon = 9
+  [ItemType.Cannon]: { modelFile: "europe.bg3d", modelPath: "models", modelIndex: 9 },
+
+
+  // ---- SCANDINAVIA (scandinavia.bg3d) ----
+  // SCANDINAVIA_ObjType_Stump1 = 2 ... Stump5 = 6
+  [ItemType.Stump]: {
+    modelFile: "scandinavia.bg3d", modelPath: "models", modelIndex: 2,
+    variants: { 0: { modelIndex: 2 }, 1: { modelIndex: 3 }, 2: { modelIndex: 4 }, 3: { modelIndex: 5 }, 4: { modelIndex: 6 } },
+  },
+
+  // SCANDINAVIA_ObjType_Baracade1 = 7, Baracade2 = 8
+  [ItemType.Baracade]: {
+    modelFile: "scandinavia.bg3d", modelPath: "models", modelIndex: 7,
+    variants: { 0: { modelIndex: 7 }, 1: { modelIndex: 8 } },
+  },
+
+  // SCANDINAVIA_ObjType_VikingFlag = 12
+  [ItemType.VikingFlag]: { modelFile: "scandinavia.bg3d", modelPath: "models", modelIndex: 12 },
+
+  // SCANDINAVIA_ObjType_TorchPot = 14
+  [ItemType.TorchPot]: { modelFile: "scandinavia.bg3d", modelPath: "models", modelIndex: 14 },
+
+  // SCANDINAVIA_ObjType_WeaponsRack = 16
+  [ItemType.WeaponsRack]: { modelFile: "scandinavia.bg3d", modelPath: "models", modelIndex: 16 },
+
+
+  // ---- CRETE (crete.bg3d) ----
+  // CRETE_ObjType_Clock = 6
+  [ItemType.Clock]: { modelFile: "crete.bg3d", modelPath: "models", modelIndex: 6 },
+
+  // CRETE_ObjType_Goddess = 11
+  [ItemType.Goddess]: { modelFile: "crete.bg3d", modelPath: "models", modelIndex: 11 },
+
+
+  // ---- ATLANTIS (atlantis.bg3d) ----
+  // ATLANTIS_ObjType_Clam = 4
+  [ItemType.Clam]: { modelFile: "atlantis.bg3d", modelPath: "models", modelIndex: 4 },
+
+  // ATLANTIS_ObjType_Capsule = 9
+  [ItemType.Capsule]: { modelFile: "atlantis.bg3d", modelPath: "models", modelIndex: 9 },
+
+  // ATLANTIS_ObjType_SeaMine = 10
+  [ItemType.SeaMine]: { modelFile: "atlantis.bg3d", modelPath: "models", modelIndex: 10 },
+
+
+  // ---- STONEHENGE (stonehenge.bg3d) ----
+  // STONEHENGE_ObjType_Post = 1, InnerHenge = 2, OuterHenge = 3
+  [ItemType.StoneHenge]: {
+    modelFile: "stonehenge.bg3d", modelPath: "models", modelIndex: 1,
+    variants: { 0: { modelIndex: 1 }, 1: { modelIndex: 2 }, 2: { modelIndex: 3 } },
+  },
+
+
+  // ---- AZTEC (aztec.bg3d) ----
+  // AZTEC_ObjType_StoneHead = 1
+  [ItemType.AztecHead]: { modelFile: "aztec.bg3d", modelPath: "models", modelIndex: 1 },
+
+
+  // ---- COLISEUM (coliseum.bg3d) ----
+  // COLISEUM_ObjType_Wall = 1, Column = 2
+  [ItemType.Coliseum]: { modelFile: "coliseum.bg3d", modelPath: "models", modelIndex: 1 },
+
+
+  // ---- TARPITS (tarpits.bg3d) ----
+  // TAR_ObjType_TarPatch = 1
+  [ItemType.TarPatch]: { modelFile: "tarpits.bg3d", modelPath: "models", modelIndex: 1 },
+
+
+  // ---- SKELETONS ----
+  // Scales from Source/Items/Traps.c and Source/Items/Items.c; yOffset = game's coord.y offset above terrainY minus 25
+  [ItemType.Yeti]: {
+    modelFile: "Yeti.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "yeti.skeleton.rsrc",
+    scale: 7.0, yOffset: 325, // YETI_SCALE=7.0; coord.y = terrainY + YETI_YOFF(350)
+  },
+
+  [ItemType.BrontoNeck]: {
+    modelFile: "BrontoNeck.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "brontoneck.skeleton.rsrc",
+    scale: 50.0, yOffset: 475, // scale=50; coord.y = terrainY + 500
   },
 
   [ItemType.Catapult]: {
-    modelFile: "Viking.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 1.0,
+    modelFile: "Catapult.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "catapult.skeleton.rsrc",
+    scale: 4.5, yOffset: -25, // scale=4.5; coord.y = GetMinTerrainY (model base at terrain)
   },
 
-  [ItemType.Baracade]: {
-    modelFile: "Viking.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 1.0,
+  [ItemType.FlagPole]: {
+    modelFile: "Flag.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "flag.skeleton.rsrc",
+    scale: 10.0, yOffset: -25, // scale=10; coord.y = terrainY - bbox.min.y (model base at terrain)
   },
 
-  [ItemType.VikingFlag]: {
-    modelFile: "Viking.bg3d",
-    modelPath: "models",
-    modelIndex: 3,
-    scale: 0.8,
-  },
-
-  [ItemType.WeaponsRack]: {
-    modelFile: "Viking.bg3d",
-    modelPath: "models",
-    modelIndex: 4,
-    scale: 1.0,
-  },
-
-  [ItemType.StoneHenge]: {
-    modelFile: "Viking.bg3d",
-    modelPath: "models",
-    modelIndex: 5,
-    scale: 1.5,
-  },
-
-  [ItemType.Druid]: {
-    modelFile: "Druid.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "druid.skeleton.rsrc",
-    scale: 1.0,
-  },
-
-  // China
-  [ItemType.Gong]: {
-    modelFile: "china.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 1.0,
+  [ItemType.Flower]: {
+    modelFile: "Flower.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "flower.skeleton.rsrc",
+    scale: 20.0, yOffset: -25, // scale=20; coord.y = terrainY
   },
 
   [ItemType.Dragon]: {
-    modelFile: "Dragon.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "dragon.skeleton.rsrc",
-    scale: 1.5,
+    modelFile: "Dragon.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "dragon.skeleton.rsrc",
+    scale: 20.0, yOffset: 4975, // scale=20; coord.y = terrainY + 5000
   },
 
-  // Crete
-  [ItemType.Coliseum]: {
-    modelFile: "crete.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 2.0,
+  [ItemType.Druid]: {
+    modelFile: "Druid.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "druid.skeleton.rsrc",
+    scale: 5.0, yOffset: -25, // scale=5; coord.y = terrainY
   },
 
-  [ItemType.Clock]: {
-    modelFile: "crete.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 1.0,
-  },
-
-  [ItemType.Goddess]: {
-    modelFile: "crete.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 1.0,
-  },
-
-  // Buildings (Track-specific types)
-  [ItemType.House]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 24,
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation", description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-    variants: {
-      0: { modelIndex: 24 }, // Hut
-      1: { modelIndex: 25 }, // Cabin
-      2: { modelIndex: 26 }, // Dome
-      3: { modelIndex: 27 }, // Other houses
-    },
-  },
-
-  [ItemType.Cauldron]: {
-    modelFile: "Viking.bg3d",
-    modelPath: "models",
-    modelIndex: 6,
-    scale: 0.8,
-  },
-
-  [ItemType.Well]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 28,
-    scale: 1.0,
-  },
-
-  [ItemType.Stump]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 29,
-    scale: 0.6,
-  },
-
-  [ItemType.TorchPot]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 30,
-    scale: 0.8,
-  },
-
-  // Atlantis
-  [ItemType.Capsule]: {
-    modelFile: "atlantis.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
-  },
-
-  [ItemType.Clam]: {
-    modelFile: "atlantis.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 0.8,
-  },
-
-  [ItemType.SeaMine]: {
-    modelFile: "atlantis.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 0.6,
-  },
-
-  [ItemType.Cannon]: {
-    modelFile: "atlantis.bg3d",
-    modelPath: "models",
-    modelIndex: 3,
-    scale: 1.0,
-  },
-
-  // Hazards
-  [ItemType.DustDevil]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 31,
-    scale: 1.0,
-  },
-
-  [ItemType.LavaGenerator]: {
-    modelFile: "stonehenge.bg3d",
-    modelPath: "models",
-    modelIndex: 6,
-    scale: 1.0,
-  },
-
-  [ItemType.Volcano]: {
-    modelFile: "stonehenge.bg3d",
-    modelPath: "models",
-    modelIndex: 7,
-    scale: 2.0,
-  },
-
-  [ItemType.BubbleGenerator]: {
-    modelFile: "atlantis.bg3d",
-    modelPath: "models",
-    modelIndex: 4,
-    scale: 0.5,
-  },
-
-  [ItemType.Waterfall]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 32,
-    scale: 1.0,
-  },
-
-  // Spline-based creatures (animated along paths)
   [ItemType.CamelSpline]: {
-    modelFile: "Camel.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "camel.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "Camel.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "camel.skeleton.rsrc",
+    scale: 3.0, yOffset: -25, // CAMEL_SCALE=3; coord.y = terrainY
   },
 
   [ItemType.BeetleSpline]: {
-    modelFile: "Beetle.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "beetle.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "Beetle.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "beetle.skeleton.rsrc",
+    scale: 1.0, yOffset: 15, // BEETLE_SCALE=1; coord.y = terrainY + BEETLE_YOFF(40)
   },
 
   [ItemType.SharkSpline]: {
-    modelFile: "Shark.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "shark.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "Shark.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "shark.skeleton.rsrc",
+    scale: 25.0, yOffset: -25, // SHARK_SCALE=25; placed underwater (SHARK_YOFF=5000 from water)
   },
 
   [ItemType.TrollSpline]: {
-    modelFile: "Troll.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "troll.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "Troll.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "troll.skeleton.rsrc",
+    scale: 4.5, yOffset: -25, // TROLL_SCALE=4.5; coord.y = terrainY
   },
 
   [ItemType.PteradactylSpline]: {
-    modelFile: "Pterodactyl.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "pteradactyl.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "Pterodactyl.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "pterodactyl.skeleton.rsrc",
+    scale: 15.0, yOffset: 3975, // PTERADACTYL_SCALE=15; coord.y = terrainY + PTERADACTYL_YOFF(4000)
   },
 
   [ItemType.MummySpline]: {
-    modelFile: "Mummy.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "mummy.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "Mummy.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "mummy.skeleton.rsrc",
+    scale: 3.0, yOffset: -25, // MUMMY_SCALE=3; coord.y = terrainY
   },
 
   [ItemType.PolarBearSpline]: {
-    modelFile: "PolarBear.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "polarbear.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "PolarBear.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "polarbear.skeleton.rsrc",
+    scale: 3.0, yOffset: -25, // BEAR_SCALE=3; coord.y = terrainY
   },
 
   [ItemType.VikingSpline]: {
-    modelFile: "viking_enemy.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "viking_enemy.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "Viking.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "viking.skeleton.rsrc",
+    scale: 1.6, yOffset: -25, // VIKING_SCALE=1.6; coord.y = terrainY
   },
 };
 

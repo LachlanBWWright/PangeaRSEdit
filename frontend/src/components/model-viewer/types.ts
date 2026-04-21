@@ -34,4 +34,5 @@ export interface ModelCanvasProps {
   selectedBoneName?: string | null;
   gameType?: Game;
   gizmoMode?: GizmoMode;
+  previewLighting?: boolean;
 }

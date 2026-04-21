@@ -20,7 +20,7 @@ describe("Mighty Mike TGA palette raw dump", () => {
         "terrain",
         `${name}.tga`,
       );
-      if (!existsSync(fp)) throw new Error(`Missing scene TGA: ${fp}`);
+      if (!existsSync(fp)) expect.fail(`Missing scene TGA: ${fp}`);
       const buf = readFileSync(fp);
       const arrBuf = buf.buffer.slice(
         buf.byteOffset,
@@ -28,7 +28,7 @@ describe("Mighty Mike TGA palette raw dump", () => {
       );
 
       const pal = extractTGAPalette(arrBuf);
-      if (!pal) throw new Error(`Failed to extract palette for ${name}`);
+      if (!pal) expect.fail(`Failed to extract palette for ${name}`);
 
       const triplets: (number[] | null)[] = [];
       for (let i = 0; i < 256; i++) {

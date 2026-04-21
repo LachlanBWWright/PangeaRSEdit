@@ -5,7 +5,8 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 interface ConversionPanelProps {
   title: string;
@@ -29,16 +30,18 @@ export function ConversionPanel({
   const handleFileConversion = async (file: File) => {
     const downloadName = file.name.replace(new RegExp(`\\.${fileExtension}$`), `.${outputExtension}`);
 
-    const bufferResult = await fromPromise(file.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(
+      file.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       alert(`${title} conversion failed: ${bufferResult.error.message}`);
       return;
     }
-
     const buffer = bufferResult.value;
     const worker = new BG3DGltfWorker();
 
-    const resultPromise = fromPromise(
+    const workerResult = await ResultAsync.fromPromise(
       new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
         worker.onmessage = (event) => {
           resolve(event.data);
@@ -56,10 +59,10 @@ export function ConversionPanel({
         };
 
         worker.postMessage(message, [buffer]);
-      })
+      }),
+      mapErr,
     );
 
-    const workerResult = await resultPromise;
     if (workerResult.isErr()) {
       alert(`${title} conversion failed: ${workerResult.error.message}`);
       return;

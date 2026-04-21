@@ -131,16 +131,16 @@ describe("Tunnel Parser Roundtrip Tests", () => {
 
     // Serialize
     const serializeResult = serializeTunnelFile(originalData);
-    expect(serializeResult.ok).toBe(true);
-    if (!serializeResult.ok) return;
+    expect(serializeResult.isOk()).toBe(true);
+    if (!serializeResult.isOk()) return;
 
     const buffer = serializeResult.value;
     expect(buffer.byteLength).toBeGreaterThan(0);
 
     // Parse back
     const parseResult = parseTunnelFile(buffer);
-    expect(parseResult.ok).toBe(true);
-    if (!parseResult.ok) return;
+    expect(parseResult.isOk()).toBe(true);
+    if (!parseResult.isOk()) return;
 
     const parsedData = parseResult.value;
 
@@ -210,17 +210,17 @@ describe("Tunnel Parser Roundtrip Tests", () => {
 
     // First roundtrip
     const serialize1 = serializeTunnelFile(originalData);
-    expect(serialize1.ok).toBe(true);
-    if (!serialize1.ok) return;
+    expect(serialize1.isOk()).toBe(true);
+    if (!serialize1.isOk()) return;
 
     const parse1 = parseTunnelFile(serialize1.value);
-    expect(parse1.ok).toBe(true);
-    if (!parse1.ok) return;
+    expect(parse1.isOk()).toBe(true);
+    if (!parse1.isOk()) return;
 
     // Second roundtrip
     const serialize2 = serializeTunnelFile(parse1.value);
-    expect(serialize2.ok).toBe(true);
-    if (!serialize2.ok) return;
+    expect(serialize2.isOk()).toBe(true);
+    if (!serialize2.isOk()) return;
 
     // Compare byte-by-byte
     const buffer1 = new Uint8Array(serialize1.value);
@@ -246,12 +246,12 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     data.header.fullPipe = true;
 
     const serializeResult = serializeTunnelFile(data);
-    expect(serializeResult.ok).toBe(true);
-    if (!serializeResult.ok) return;
+    expect(serializeResult.isOk()).toBe(true);
+    if (!serializeResult.isOk()) return;
 
     const parseResult = parseTunnelFile(serializeResult.value);
-    expect(parseResult.ok).toBe(true);
-    if (!parseResult.ok) return;
+    expect(parseResult.isOk()).toBe(true);
+    if (!parseResult.isOk()) return;
 
     expect(parseResult.value.header.fullPipe).toBe(true);
   });
@@ -262,12 +262,12 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     data.header.numItems = 0;
 
     const serializeResult = serializeTunnelFile(data);
-    expect(serializeResult.ok).toBe(true);
-    if (!serializeResult.ok) return;
+    expect(serializeResult.isOk()).toBe(true);
+    if (!serializeResult.isOk()) return;
 
     const parseResult = parseTunnelFile(serializeResult.value);
-    expect(parseResult.ok).toBe(true);
-    if (!parseResult.ok) return;
+    expect(parseResult.isOk()).toBe(true);
+    if (!parseResult.isOk()) return;
 
     expect(parseResult.value.items.length).toBe(0);
     expect(parseResult.value.header.numItems).toBe(0);
@@ -282,12 +282,12 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     }
 
     const serializeResult = serializeTunnelFile(data);
-    expect(serializeResult.ok).toBe(true);
-    if (!serializeResult.ok) return;
+    expect(serializeResult.isOk()).toBe(true);
+    if (!serializeResult.isOk()) return;
 
     const parseResult = parseTunnelFile(serializeResult.value);
-    expect(parseResult.ok).toBe(true);
-    if (!parseResult.ok) return;
+    expect(parseResult.isOk()).toBe(true);
+    if (!parseResult.isOk()) return;
 
     // Verify texture data matches exactly
     const origTex = data.tunnelTexture.data;
@@ -338,12 +338,12 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     data.header.numItems = 3;
 
     const serializeResult = serializeTunnelFile(data);
-    expect(serializeResult.ok).toBe(true);
-    if (!serializeResult.ok) return;
+    expect(serializeResult.isOk()).toBe(true);
+    if (!serializeResult.isOk()) return;
 
     const parseResult = parseTunnelFile(serializeResult.value);
-    expect(parseResult.ok).toBe(true);
-    if (!parseResult.ok) return;
+    expect(parseResult.isOk()).toBe(true);
+    if (!parseResult.isOk()) return;
 
     expect(parseResult.value.items.length).toBe(3);
 
@@ -364,8 +364,8 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     const tooSmall = new ArrayBuffer(50);
     const result = parseTunnelFile(tooSmall);
     
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
+    expect(result.isOk()).toBe(false);
+    if (!result.isOk()) {
       expect(result.error.message).toContain("too small");
     }
   });

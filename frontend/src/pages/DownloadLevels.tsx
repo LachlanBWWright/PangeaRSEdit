@@ -12,6 +12,7 @@ import { getGamesByCategory, type Level } from "@/data/levels";
 import { toast } from "sonner";
 import { zip } from "fflate";
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 /** Fetch a URL as a Uint8Array using ResultAsync. */
 function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
@@ -22,7 +23,7 @@ function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
         return resp.arrayBuffer();
       })
       .then((buf) => new Uint8Array(buf)),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
 }
 
@@ -35,7 +36,7 @@ function zipFiles(files: Record<string, Uint8Array<ArrayBuffer>>): ResultAsync<U
         else resolve(data.slice(0));
       });
     }),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
 }
 

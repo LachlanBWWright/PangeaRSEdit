@@ -11,7 +11,8 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
+import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
@@ -58,26 +59,7 @@ export function MightyMikeKonvaView({
   const clickToAddItem = useAtomValue(ClickToAddItem);
   const showCollisionOverlay = useAtomValue(ShowMightyMikeCollisionOverlay);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({
-    width: 3000,
-    height: 2000,
-  });
-
-  // Update container size on mount and window resize
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
-      }
-    };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
+  const [containerRef, containerSize] = useContainerSize();
 
   // Non-null updater for items
   const setItemDataNotNull: Updater<ItemData> = useMemo(

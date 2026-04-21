@@ -1,7 +1,7 @@
 // Round-trip test for BG3D + skeleton parsing with FULL ACCURACY requirements
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
-import { unwrap } from "../types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
@@ -49,7 +49,9 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       ),
       originalSkeletonResource,
     );
-    const originalBg3d = unwrap(originalBg3dRes);
+    expect(originalBg3dRes.isOk()).toBe(true);
+    if (!originalBg3dRes.isOk()) return;
+    const originalBg3d = originalBg3dRes.value;
 
     // Step 3: Convert to glTF without storing original binaries.
     const gltfDocument = bg3dParsedToGLTF(originalBg3d);
@@ -87,7 +89,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
 
     // Step 6: Convert reconstructed skeleton back to binary and re-parse it.
     if (!roundtripBg3d.skeleton) {
-      throw new Error("Expected skeleton to be defined");
+      expect.fail("Expected skeleton to be defined");
     }
     const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
       roundtripBg3d.skeleton,
@@ -95,8 +97,8 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const roundtripSkeletonResult = await skeletonResourceToBinary(
       roundtripSkeletonResource,
     );
-    if (!roundtripSkeletonResult.ok) {
-      throw roundtripSkeletonResult.error;
+    if (!roundtripSkeletonResult.isOk()) {
+      expect.fail(String(roundtripSkeletonResult.error));
     }
     const roundtripSkeletonBinary = roundtripSkeletonResult.value;
     const reparsedSkeletonResource = await parseSkeletonRsrc(roundtripSkeletonBinary);
@@ -140,7 +142,8 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       ),
     );
     const bg3dParsedRes = parseBG3D(bg3dData.buffer, skeleton);
-    const bg3dParsed = unwrap(bg3dParsedRes);
+    if (bg3dParsedRes.isErr()) expect.fail(String(bg3dParsedRes.error));
+    const bg3dParsed = bg3dParsedRes.value;
 
     // Convert to glTF
     const gltfDocument = bg3dParsedToGLTF(bg3dParsed);
@@ -152,7 +155,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const originalTimingData: Record<string, Record<string, number[]>> = {};
 
     if (!bg3dParsed.skeleton) {
-      throw new Error("Expected skeleton to be defined");
+      expect.fail("Expected skeleton to be defined");
     }
     
     bg3dParsed.skeleton.animations.forEach((anim) => {
@@ -201,7 +204,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
 
       const gltfBones = gltfTimingData[animName];
       if (!gltfBones)
-        throw new Error(`Missing glTF timing for animation ${animName}`);
+        expect.fail(`Missing glTF timing for animation ${animName}`);
 
       Object.entries(originalBones).forEach(([boneName, originalTimes]) => {
         console.log(
@@ -210,7 +213,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
 
         const gltfTimes = gltfBones[boneName];
         if (!gltfTimes)
-          throw new Error(
+          expect.fail(
             `Missing glTF times for bone ${boneName} in animation ${animName}`,
           );
         expect(gltfTimes.length).toBe(originalTimes.length);
@@ -219,7 +222,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
         originalTimes.forEach((originalTime, index) => {
           const gltfTime = gltfTimes[index];
           if (gltfTime === undefined)
-            throw new Error(
+            expect.fail(
               `Missing glTF time at index ${index} for bone ${boneName}`,
             );
           expect(Math.abs(gltfTime - originalTime)).toBeLessThan(0.0001); // Microsecond precision
@@ -246,7 +249,9 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       ),
     );
     const originalBg3dRes = parseBG3D(bg3dData.buffer, skeleton);
-    const originalBg3d = unwrap(originalBg3dRes);
+    expect(originalBg3dRes.isOk()).toBe(true);
+    if (!originalBg3dRes.isOk()) return;
+    const originalBg3d = originalBg3dRes.value;
 
     // Convert to glTF and back
     const gltfDocument = bg3dParsedToGLTF(originalBg3d);
@@ -255,10 +260,10 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
 
     // Compare bone structures with 100% accuracy
     if (!originalBg3d.skeleton) {
-      throw new Error("Expected original skeleton to be defined");
+      expect.fail("Expected original skeleton to be defined");
     }
     if (!roundtripBg3d.skeleton) {
-      throw new Error("Expected roundtrip skeleton to be defined");
+      expect.fail("Expected roundtrip skeleton to be defined");
     }
     const originalBones = originalBg3d.skeleton.bones;
     const roundtripBones = roundtripBg3d.skeleton.bones;
@@ -268,7 +273,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     originalBones.forEach((originalBone, index) => {
       const roundtripBone = roundtripBones[index];
       if (!roundtripBone)
-        throw new Error(`Missing roundtrip bone at index ${index}`);
+        expect.fail(`Missing roundtrip bone at index ${index}`);
 
       // Exact name match
       expect(roundtripBone.name).toBe(originalBone.name);
@@ -291,7 +296,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     expect(originalRoot).toBeDefined();
     expect(roundtripRoot).toBeDefined();
     if (!originalRoot || !roundtripRoot) {
-      throw new Error("Expected root bones to be defined");
+      expect.fail("Expected root bones to be defined");
     }
     expect(roundtripRoot.name).toBe(originalRoot.name);
 
@@ -312,7 +317,9 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       ),
     );
     const bg3dParsedRes = parseBG3D(bg3dData.buffer, skeleton);
-    const bg3dParsed = unwrap(bg3dParsedRes);
+    expect(bg3dParsedRes.isOk()).toBe(true);
+    if (!bg3dParsedRes.isOk()) return;
+    const bg3dParsed = bg3dParsedRes.value;
 
     // Convert to glTF
     const gltfDocument = bg3dParsedToGLTF(bg3dParsed);

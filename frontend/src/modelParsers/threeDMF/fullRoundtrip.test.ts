@@ -206,8 +206,8 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 1: Parse original 3DMF → TQ3MetaFile
         const parse1 = parse3DMFToMetaFile(originalBuffer);
-        expect(parse1.ok).toBe(true);
-        if (!parse1.ok) {
+        expect(parse1.isOk()).toBe(true);
+        if (!parse1.isOk()) {
           console.log(`Parse error: ${parse1.error.message}`);
           return;
         }
@@ -216,8 +216,8 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 2: Convert TQ3MetaFile → BG3DParseResult
         const bg3dResult = metaFileToBG3DParseResult(originalMeta);
-        expect(bg3dResult.ok).toBe(true);
-        if (!bg3dResult.ok) return;
+        expect(bg3dResult.isOk()).toBe(true);
+        if (!bg3dResult.isOk()) return;
         const bg3dParsed = bg3dResult.value;
 
         // Step 3: Convert BG3DParseResult → glTF
@@ -237,14 +237,14 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 5: Convert BG3DParseResult → TQ3MetaFile
         const metaResult = bg3dParseResultToMetaFile(roundtripBg3d);
-        expect(metaResult.ok).toBe(true);
-        if (!metaResult.ok) return;
+        expect(metaResult.isOk()).toBe(true);
+        if (!metaResult.isOk()) return;
         const roundtripMeta = metaResult.value;
 
         // Step 6: Write TQ3MetaFile → 3DMF binary
         const writeResult = write3DMFFromMetaFile(roundtripMeta);
-        expect(writeResult.ok).toBe(true);
-        if (!writeResult.ok) return;
+        expect(writeResult.isOk()).toBe(true);
+        if (!writeResult.isOk()) return;
         const roundtripBuffer = writeResult.value;
         
         console.log(`Roundtrip file size: ${roundtripBuffer.byteLength} bytes`);
@@ -265,11 +265,11 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
         
         // Step 8: Re-parse the roundtrip 3DMF to verify it's valid
         const reParse = parse3DMFToMetaFile(roundtripBuffer);
-        if (!reParse.ok) {
+        if (!reParse.isOk()) {
           console.log(`Re-parse error: ${reParse.error.message}`);
         }
-        expect(reParse.ok).toBe(true);
-        if (!reParse.ok) return;
+        expect(reParse.isOk()).toBe(true);
+        if (!reParse.isOk()) return;
         
         const reParseComparison = compareMetaFiles(originalMeta, reParse.value, `${name} re-parsed`);
         expect(reParseComparison.match).toBe(true);
@@ -326,8 +326,8 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 2: Parse 3DMF with skeleton → BG3DParseResult
         const parseResult = parseBG3DWithSkeletonResource(originalModelBuffer, originalSkeletonResource);
-        expect(parseResult.ok).toBe(true);
-        if (!parseResult.ok) {
+        expect(parseResult.isOk()).toBe(true);
+        if (!parseResult.isOk()) {
           console.log(`Parse error: ${parseResult.error.message}`);
           return;
         }
@@ -359,12 +359,12 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 5: Convert BG3DParseResult → TQ3MetaFile → 3DMF binary
         const metaResult = bg3dParseResultToMetaFile(roundtripBG3D);
-        expect(metaResult.ok).toBe(true);
-        if (!metaResult.ok) return;
+        expect(metaResult.isOk()).toBe(true);
+        if (!metaResult.isOk()) return;
         
         const writeResult = write3DMFFromMetaFile(metaResult.value);
-        expect(writeResult.ok).toBe(true);
-        if (!writeResult.ok) return;
+        expect(writeResult.isOk()).toBe(true);
+        if (!writeResult.isOk()) return;
         const roundtripModelBuffer = writeResult.value;
         
         console.log(`Roundtrip model size: ${roundtripModelBuffer.byteLength} bytes`);
@@ -394,10 +394,10 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 8: Re-parse the roundtrip 3DMF to verify it's valid
         const reParse = parse3DMFToMetaFile(roundtripModelBuffer);
-        if (!reParse.ok) {
+        if (!reParse.isOk()) {
           console.log(`Re-parse error: ${reParse.error.message}`);
         }
-        expect(reParse.ok).toBe(true);
+        expect(reParse.isOk()).toBe(true);
         
         console.log(`✅ ${modelName} + ${skeletonName} TRUE roundtrip successful`);
       });
@@ -425,15 +425,15 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 1: Parse original 3DMF
         const parse1 = parse3DMFToMetaFile(originalBuffer);
-        expect(parse1.ok).toBe(true);
-        if (!parse1.ok) return;
+        expect(parse1.isOk()).toBe(true);
+        if (!parse1.isOk()) return;
         const originalMeta = parse1.value;
         console.log(`Parsed: ${originalMeta.numMeshes} meshes, ${originalMeta.numTextures} textures`);
 
         // Step 2: Convert to BG3D format
         const bg3dResult = metaFileToBG3DParseResult(originalMeta);
-        expect(bg3dResult.ok).toBe(true);
-        if (!bg3dResult.ok) return;
+        expect(bg3dResult.isOk()).toBe(true);
+        if (!bg3dResult.isOk()) return;
 
         // Step 3: Convert to glTF
         const gltfDoc = await bg3dParsedToGLTF(bg3dResult.value);
@@ -451,13 +451,13 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 5: Convert to 3DMF format
         const metaResult = bg3dParseResultToMetaFile(roundtripBg3d);
-        expect(metaResult.ok).toBe(true);
-        if (!metaResult.ok) return;
+        expect(metaResult.isOk()).toBe(true);
+        if (!metaResult.isOk()) return;
 
         // Step 6: Write 3DMF
         const writeResult = write3DMFFromMetaFile(metaResult.value);
-        expect(writeResult.ok).toBe(true);
-        if (!writeResult.ok) return;
+        expect(writeResult.isOk()).toBe(true);
+        if (!writeResult.isOk()) return;
         const roundtripBuffer = writeResult.value;
         
         console.log(`Roundtrip file size: ${roundtripBuffer.byteLength} bytes`);
@@ -474,7 +474,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 8: Verify roundtrip 3DMF is valid
         const reParse = parse3DMFToMetaFile(roundtripBuffer);
-        expect(reParse.ok).toBe(true);
+        expect(reParse.isOk()).toBe(true);
         
         console.log(`✅ ${name} TRUE roundtrip successful`);
       });
@@ -495,45 +495,45 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
       // First roundtrip: 3DMF → glTF → 3DMF
       const parse1 = parse3DMFToMetaFile(originalBuffer);
-      expect(parse1.ok).toBe(true);
-      if (!parse1.ok) return;
+      expect(parse1.isOk()).toBe(true);
+      if (!parse1.isOk()) return;
       
       const bg3d1 = metaFileToBG3DParseResult(parse1.value);
-      expect(bg3d1.ok).toBe(true);
-      if (!bg3d1.ok) return;
+      expect(bg3d1.isOk()).toBe(true);
+      if (!bg3d1.isOk()) return;
       
       const gltf1 = await bg3dParsedToGLTF(bg3d1.value);
       const rt1Bg3d = await gltfToBG3D(gltf1);
       
       const rt1Meta = bg3dParseResultToMetaFile(rt1Bg3d);
-      expect(rt1Meta.ok).toBe(true);
-      if (!rt1Meta.ok) return;
+      expect(rt1Meta.isOk()).toBe(true);
+      if (!rt1Meta.isOk()) return;
       
       const rt1Write = write3DMFFromMetaFile(rt1Meta.value);
-      expect(rt1Write.ok).toBe(true);
-      if (!rt1Write.ok) return;
+      expect(rt1Write.isOk()).toBe(true);
+      if (!rt1Write.isOk()) return;
       
       console.log(`First roundtrip: ${rt1Write.value.byteLength} bytes`);
       
       // Second roundtrip: 3DMF → glTF → 3DMF
       const parse2 = parse3DMFToMetaFile(rt1Write.value);
-      expect(parse2.ok).toBe(true);
-      if (!parse2.ok) return;
+      expect(parse2.isOk()).toBe(true);
+      if (!parse2.isOk()) return;
       
       const bg3d2 = metaFileToBG3DParseResult(parse2.value);
-      expect(bg3d2.ok).toBe(true);
-      if (!bg3d2.ok) return;
+      expect(bg3d2.isOk()).toBe(true);
+      if (!bg3d2.isOk()) return;
       
       const gltf2 = await bg3dParsedToGLTF(bg3d2.value);
       const rt2Bg3d = await gltfToBG3D(gltf2);
       
       const rt2Meta = bg3dParseResultToMetaFile(rt2Bg3d);
-      expect(rt2Meta.ok).toBe(true);
-      if (!rt2Meta.ok) return;
+      expect(rt2Meta.isOk()).toBe(true);
+      if (!rt2Meta.isOk()) return;
       
       const rt2Write = write3DMFFromMetaFile(rt2Meta.value);
-      expect(rt2Write.ok).toBe(true);
-      if (!rt2Write.ok) return;
+      expect(rt2Write.isOk()).toBe(true);
+      if (!rt2Write.isOk()) return;
       
       console.log(`Second roundtrip: ${rt2Write.value.byteLength} bytes`);
       

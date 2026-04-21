@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -105,7 +105,7 @@ export const itemTypeNames: Record<ItemType, string> = {
 };
 
 // Parameter descriptions for each item type
-export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
+const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   [ItemType.StartCoords]: {
     flags: "Unknown",
     p0: {
@@ -302,9 +302,9 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       type: "Integer",
       description: "Rock type/variant (different rock models)",
       codeSample: {
-        code: ".type = base + itemPtr->parm[0],",
+        code: ".type 		= base + itemPtr->parm[0],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 227,
+        lineNumber: 226,
       },
     },
     p1: {
@@ -312,9 +312,9 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       description:
         "Rotation (0=random, 1-8 = specific rotation where each unit = 45°)",
       codeSample: {
-        code: "long rot = itemPtr->parm[1];\n.rot = (rot == 0) ? (RandomFloat()*PI2) : ((float)(rot-1) * (PI2/8.0f)),",
+        code: ".rot		= (rot == 0) ? (RandomFloat()*PI2) : ((float)(rot-1) * (PI2/8.0f)),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 202,
+        lineNumber: 233,
       },
     },
     p2: "Unknown",
@@ -428,7 +428,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       type: "Integer",
       description: "Tree variant type (different bent pine models)",
       codeSample: {
-        code: ".type = LEVEL1_ObjType_BentPine1_Trunk + itemPtr->parm[0],\n// ...\ndef.type = LEVEL1_ObjType_BentPine1_Leaves + itemPtr->parm[0];",
+        code: ".type 		= LEVEL1_ObjType_BentPine1_Trunk + itemPtr->parm[0],",
         fileName: "Source/Items/Trees.c",
         lineNumber: 548,
       },
@@ -465,7 +465,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
           index: 0,
           description: "Always add flag (bypass enemy count limits)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_BRACH] >= MAX_BRACHS)\n    return(false);",
+            code: "if (!(itemPtr->parm[3] & 1))\t\t\t\t\t\t\t\t// see if always add",
             fileName: "Source/Enemies/Enemy_Brach.c",
             lineNumber: 85,
           },
@@ -717,3 +717,8 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
     p3: "Unknown",
   },
 };
+
+export const nanosaur2ItemTypeParams = defineItemParams(
+  "nanosaur2",
+  nanosaur2ItemTypeParamsSource,
+);

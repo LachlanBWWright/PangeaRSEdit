@@ -1,4 +1,6 @@
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
+
 
 export async function uploadFileToGoogleDrive(
   file: File,
@@ -14,12 +16,13 @@ export async function uploadFileToGoogleDrive(
   );
   form.append("file", file);
 
-  const response = await fromPromise(
+  const response = await ResultAsync.fromPromise(
     fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
       body: form,
     }),
+    mapErr,
   );
   if (response.isErr()) {
     return { error: response.error.message };
@@ -28,7 +31,7 @@ export async function uploadFileToGoogleDrive(
     const details = await response.value.text();
     return { error: `Upload failed (${response.value.status}): ${details}` };
   }
-  const parsed = await fromPromise(response.value.json());
+  const parsed = await ResultAsync.fromPromise(response.value.json(), mapErr);
   if (parsed.isErr()) {
     return { error: parsed.error.message };
   }
@@ -43,10 +46,11 @@ export async function downloadFileFromGoogleDrive(
   fileId: string,
   accessToken: string,
 ): Promise<{ blob: Blob; filename: string } | { error: string }> {
-  const response = await fromPromise(
+  const response = await ResultAsync.fromPromise(
     fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     }),
+    mapErr,
   );
   if (response.isErr()) {
     return { error: response.error.message };
@@ -55,19 +59,20 @@ export async function downloadFileFromGoogleDrive(
     const details = await response.value.text();
     return { error: `Download failed (${response.value.status}): ${details}` };
   }
-  const blobResult = await fromPromise(response.value.blob());
+  const blobResult = await ResultAsync.fromPromise(response.value.blob(), mapErr);
   if (blobResult.isErr()) {
     return { error: blobResult.error.message };
   }
 
-  const metadataResponse = await fromPromise(
+  const metadataResponse = await ResultAsync.fromPromise(
     fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     }),
+    mapErr,
   );
   let filename = fileId;
   if (!metadataResponse.isErr() && metadataResponse.value.ok) {
-    const metadata = await fromPromise(metadataResponse.value.json());
+    const metadata = await ResultAsync.fromPromise(metadataResponse.value.json(), mapErr);
     if (!metadata.isErr()) {
       const name = Reflect.get(metadata.value, "name");
       if (typeof name === "string" && name.length > 0) {

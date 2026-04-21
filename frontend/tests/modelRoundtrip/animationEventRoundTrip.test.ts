@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { parseSkeletonRsrc } from "../../src/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3D } from "../../src/modelParsers/parseBG3D";
-import { unwrap } from "../../src/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { bg3dParsedToGLTF, gltfToBG3D } from "../../src/modelParsers/parsedBg3dGitfConverter";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -38,10 +38,12 @@ describe("BG3D animation events round-trip", () => {
       ),
       skeleton,
     );
-    const parsed = unwrap(parsedResult);
+    expect(parsedResult.isOk()).toBe(true);
+    if (!parsedResult.isOk()) return;
+    const parsed = parsedResult.value;
 
     if (!parsed.skeleton) {
-      throw new Error("Expected skeleton data");
+      expect.fail("Expected skeleton data");
     }
 
     const sourceIndex = parsed.skeleton.animations.findIndex(
@@ -51,7 +53,7 @@ describe("BG3D animation events round-trip", () => {
 
     const sourceAnimation = parsed.skeleton.animations[sourceIndex];
     if (!sourceAnimation) {
-      throw new Error("Expected animation with events");
+      expect.fail("Expected animation with events");
     }
 
     const gltfDoc = bg3dParsedToGLTF(parsed);

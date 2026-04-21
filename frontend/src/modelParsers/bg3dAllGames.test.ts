@@ -85,9 +85,9 @@ describe("BG3D Multi-Game Parsing Tests", () => {
 
         // Parse BG3D - this should not throw
         const parsedRes = parseBG3D(buffer);
-        if (!parsedRes.ok) {
+        if (!parsedRes.isOk()) {
           console.error(`Failed to parse ${gameConfig.name}:`, parsedRes.error);
-          throw parsedRes.error;
+          expect.fail(String(parsedRes.error));
         }
         const parsed: BG3DParseResult = parsedRes.value;
 
@@ -113,7 +113,7 @@ describe("BG3D Multi-Game Parsing Tests", () => {
 
         const buffer = readFileAsArrayBuffer(gameConfig.bg3dPath);
         const parsedRes = parseBG3D(buffer);
-        if (!parsedRes.ok) throw parsedRes.error;
+        if (!parsedRes.isOk()) expect.fail(String(parsedRes.error));
         const parsed: BG3DParseResult = parsedRes.value;
 
         // Convert to glTF - this should not throw
@@ -142,7 +142,7 @@ describe("BG3D Multi-Game Parsing Tests", () => {
 
         // Parse -> glTF -> BG3D roundtrip
         const parsedRes = parseBG3D(originalBuffer);
-        if (!parsedRes.ok) throw parsedRes.error;
+        if (!parsedRes.isOk()) expect.fail(String(parsedRes.error));
         const parsed: BG3DParseResult = parsedRes.value;
         const gltfDoc = bg3dParsedToGLTF(parsed);
 
@@ -215,7 +215,7 @@ describe("BG3D Format Difference Tests", () => {
 
     const buffer = readFileAsArrayBuffer(bg3dPath);
     const parsedRes = parseBG3D(buffer);
-    if (!parsedRes.ok) throw parsedRes.error;
+    if (!parsedRes.isOk()) expect.fail(String(parsedRes.error));
     const parsed: BG3DParseResult = parsedRes.value;
 
     // Check if any geometries have bounding boxes (they should after proper parsing)
@@ -257,7 +257,7 @@ describe("BG3D Format Difference Tests", () => {
 
     // This test checks if parsing completes without throwing on JPEG texture tag
     const parsedRes = parseBG3D(buffer);
-    if (!parsedRes.ok) {
+    if (!parsedRes.isOk()) {
       if (
         parsedRes.error instanceof Error &&
         parsedRes.error.message.includes("Unknown BG3D tag: 13")
@@ -265,9 +265,9 @@ describe("BG3D Format Difference Tests", () => {
         console.error(
           "JPEG texture tag (13) not supported - need to implement",
         );
-        throw new Error("JPEG texture support not implemented for Nanosaur 2");
+        expect.fail("JPEG texture support not implemented for Nanosaur 2");
       }
-      throw parsedRes.error;
+      expect.fail(String(parsedRes.error));
     }
     const parsed: BG3DParseResult = parsedRes.value;
 
@@ -304,7 +304,7 @@ describe("BG3D Model File Tests", () => {
       const buffer = readFileAsArrayBuffer(modelPath);
 
       const parsedRes = parseBG3D(buffer);
-      if (!parsedRes.ok) throw parsedRes.error;
+      if (!parsedRes.isOk()) expect.fail(String(parsedRes.error));
       const parsed: BG3DParseResult = parsedRes.value;
 
       expect(parsed).toBeDefined();

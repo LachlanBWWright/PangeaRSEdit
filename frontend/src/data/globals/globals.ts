@@ -77,7 +77,7 @@ export interface GlobalsInterface {
   EMPTY_TILE_IDX: number; //The number that indicates that a tile is blank
 
   LIQD_NUBS: number;
-  
+
   // Type mappings for game-specific enums
   ITEM_TYPES: Record<number, string>; // Maps item type number to name
   FENCE_TYPES?: Record<number, string>; // Maps fence type number to name (optional for games without fences)
@@ -132,7 +132,7 @@ export const Bugdom2Globals: GlobalsInterface = {
   STRUCT_SPECS: bugdom2Specs,
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: 0,
+  EMPTY_TILE_IDX: -1, //Source: games/bugdom2/Source/Headers/terrain.h - EMPTY_SUPERTILE = -1
   TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
@@ -169,7 +169,7 @@ export const Nanosaur2Globals: GlobalsInterface = {
   STRUCT_SPECS: nanosaur2Specs,
   SUPERTILE_TEXMAP_SIZE: 256, // SUPERTILE_TEXMAP_SIZE from terrain.h
   TILES_PER_SUPERTILE: 8, // SUPERTILE_SIZE from terrain.h
-  EMPTY_TILE_IDX: 0, // Uses isEmpty flag like Otto Matic
+  EMPTY_TILE_IDX: -1, // Uses isEmpty flag like Otto Matic
   TILE_INGAME_SIZE: 210.0, // DEFAULT_TERRAIN_SCALE from terrain.h
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
   LIQD_NUBS: 100,
@@ -209,7 +209,7 @@ export const BillyFrontierGlobals: GlobalsInterface = {
   STRUCT_SPECS: billyFrontierSpecs,
   SUPERTILE_TEXMAP_SIZE: 256, // SUPERTILE_TEXMAP_SIZE from terrain.h
   TILES_PER_SUPERTILE: 8, // SUPERTILE_SIZE from terrain.h
-  EMPTY_TILE_IDX: 0, // Uses isEmpty flag like Otto Matic
+  EMPTY_TILE_IDX: -1, // Uses isEmpty flag like Otto Matic
   TILE_INGAME_SIZE: 125.0, // DEFAULT_TERRAIN_SCALE from terrain.h
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
   LIQD_NUBS: 100,

@@ -123,7 +123,7 @@ describe("itemModelTypes", () => {
   describe("getFullModelPath", () => {
     it("should construct correct model path", () => {
       const registry = GAME_MODEL_REGISTRIES[Game.OTTO_MATIC];
-      if (!registry) throw new Error("Registry not found");
+      if (!registry) expect.fail("Registry not found");
       
       const path = getFullModelPath(registry, "global.bg3d", "models");
       expect(path).toBe("games/ottomatic/models/global.bg3d");
@@ -131,7 +131,7 @@ describe("itemModelTypes", () => {
     
     it("should construct correct skeleton path", () => {
       const registry = GAME_MODEL_REGISTRIES[Game.OTTO_MATIC];
-      if (!registry) throw new Error("Registry not found");
+      if (!registry) expect.fail("Registry not found");
       
       const path = getFullModelPath(registry, "Otto.bg3d", "skeletons");
       expect(path).toBe("games/ottomatic/skeletons/Otto.bg3d");
@@ -139,7 +139,7 @@ describe("itemModelTypes", () => {
     
     it("should work with Bugdom 2 paths", () => {
       const registry = GAME_MODEL_REGISTRIES[Game.BUGDOM_2];
-      if (!registry) throw new Error("Registry not found");
+      if (!registry) expect.fail("Registry not found");
       
       const path = getFullModelPath(registry, "garden.bg3d", "models");
       expect(path).toBe("games/bugdom2/models/garden.bg3d");

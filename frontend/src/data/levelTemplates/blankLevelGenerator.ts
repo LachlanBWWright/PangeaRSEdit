@@ -19,7 +19,8 @@ import type {
   LevelMetadata,
 } from "@/python/structSpecs/LevelTypes";
 import { LEVEL_REQUIREMENTS, validateDimensions } from "./levelRequirements";
-import { type Result, ok, err } from "@/types/result";
+import { Result } from "neverthrow";
+import { ok, err } from "neverthrow";
 import type { Nanosaur1LevelData, TileAttribType } from "@/data/processors/classicProprocessor";
 import type { MightyMikeMap, MightyMikeTileValue, MightyMikeTileSet } from "@/python/structSpecs/mightyMikeInterface";
 

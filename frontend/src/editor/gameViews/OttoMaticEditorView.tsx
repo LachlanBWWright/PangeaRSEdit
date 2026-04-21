@@ -7,11 +7,12 @@
  * - 3D terrain view
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { StandardEditorToolbar } from "../toolbars/StandardEditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
@@ -24,6 +25,7 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { MenuSection } from "./MenuSection";
 import {
   EmptyFencePrompt,
   EmptyWaterPrompt,
@@ -43,6 +45,8 @@ import {
 } from "../utils/editorViewUtils";
 import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
+import { useSetAtom } from "jotai";
+import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { EditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
@@ -50,6 +54,7 @@ import {
   FenceData,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 
 export function OttoMaticEditorView({
   headerData,
@@ -72,7 +77,8 @@ export function OttoMaticEditorView({
 }: EditorViewProps) {
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
-  const [view, setView] = useState<View>(View.fences);
+  const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -80,10 +86,7 @@ export function OttoMaticEditorView({
     [undoData, redoData]
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  useWindowKeyDown(handleKeyDown);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);
@@ -106,6 +109,16 @@ export function OttoMaticEditorView({
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
+  useEffect(() => {
+    setEditorNavbarTabs(
+      <StandardEditorToolbar
+        terrainHasSTgd={showSupertileMenu}
+        compact
+      />,
+    );
+    return () => setEditorNavbarTabs(null);
+  }, [setEditorNavbarTabs, showSupertileMenu]);
+
   const handleSupertileResize = (
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
@@ -141,12 +154,7 @@ export function OttoMaticEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <StandardEditorToolbar
-        view={view}
-        setView={setView}
-        terrainHasSTgd={showSupertileMenu}
-      />
-      <div className="overflow-y-auto">
+      <MenuSection>
         {view === View.fences && (
           fenceData ? (
             <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
@@ -195,8 +203,8 @@ export function OttoMaticEditorView({
             onResizeSupertiles={handleSupertileResize}
           />
         )}
-      </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+      </MenuSection>
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -217,6 +225,7 @@ export function OttoMaticEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setTerrainData={setTerrainData}
           />
         ) : (
           <OttoMaticKonvaView

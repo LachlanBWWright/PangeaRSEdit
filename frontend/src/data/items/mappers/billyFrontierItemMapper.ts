@@ -2,11 +2,15 @@
  * Billy Frontier Item Model Mapper
  *
  * Maps Billy Frontier item types to their corresponding 3D models.
- * Billy Frontier is organized by scene types:
- * - Town (shootout scenes)
- * - Swamp (tremor scenes)
- * - Duel scenes
- * - Stampede scenes
+ *
+ * Model files (from GAME_MODEL_REGISTRIES):
+ * - global.bg3d   - Global items (MODEL_GROUP_GLOBAL)
+ * - town.bg3d     - Town level-specific items (MODEL_GROUP_LEVELSPECIFIC)
+ * - swamp.bg3d    - Swamp level-specific items (MODEL_GROUP_LEVELSPECIFIC)
+ * - buildings.bg3d - Building models (MODEL_GROUP_BUILDINGS)
+ *
+ * Model indices correspond to GLOBAL_ObjType_*, TOWN_ObjType_*, SWAMP_ObjType_*,
+ * and BUILDING_ObjType_* enum values in mobjtypes.h.
  */
 
 import { Game } from "../../globals/globals";
@@ -15,448 +19,199 @@ import {
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
 import { ItemType } from "../billyFrontierItemType";
+import { ROTATION_4_WAY, ROTATION_8_WAY } from "../standardParamTypes";
 
 /**
- * Scene-specific model files for Billy Frontier (for future use)
+ * Scene-specific model files for Billy Frontier
  */
 export const BILLY_SCENE_MODEL_FILES: Record<string, string> = {
   town: "town.bg3d",
   swamp: "swamp.bg3d",
-  duel: "duel.bg3d",
-  stampede: "stampede.bg3d",
+  buildings: "buildings.bg3d",
   global: "global.bg3d",
 };
 
 /**
- * Base mappings for Billy Frontier items
+ * Base mappings for Billy Frontier items.
+ * Model indices correspond exactly to the ObjType enum values in mobjtypes.h.
  */
 const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
-  // Duel items
-  [ItemType.Dueler]: {
-    modelFile: "dueler.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "dueler.skeleton.rsrc",
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
+
+  // ---- GLOBAL (global.bg3d) ----
+  // GLOBAL_ObjType_Barrel = 10, BarrelTNT = 11, FrogBarrel = 12
+  [ItemType.Barrel]: {
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 10,
+    variants: { 0: { modelIndex: 10 }, 1: { modelIndex: 11 }, 2: { modelIndex: 12 } },
   },
 
-  // Buildings
-  [ItemType.Building]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.5,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 4,
-        multiplier: "PI2/4",
-      },
-    },
-    variants: {
-      0: { modelIndex: 0 }, // Saloon
-      1: { modelIndex: 1 }, // Bank
-      2: { modelIndex: 2 }, // Hotel
-      3: { modelIndex: 3 }, // General Store
-    },
+  // GLOBAL_ObjType_Crate = 13, CrateStack = 14, MetalCrate = 15, MetalCrateStack = 16
+  [ItemType.WoodCrate]: {
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 13,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
+    variants: { 0: { modelIndex: 13 }, 1: { modelIndex: 14 }, 2: { modelIndex: 15 }, 3: { modelIndex: 16 } },
   },
 
-  [ItemType.ShootoutSaloon]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 4,
-    scale: 1.5,
+  // GLOBAL_ObjType_HayBale = 17, HayBaleStack = 18
+  [ItemType.HayBale]: {
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 17,
+    variants: { 0: { modelIndex: 17 }, 1: { modelIndex: 18 } },
   },
 
-  [ItemType.ShootoutAlley]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 5,
-    scale: 1.5,
+  // GLOBAL_ObjType_Tumbleweed = 29
+  [ItemType.Tumbleweed]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 29 },
+
+  // GLOBAL_ObjType_AmmoBoxPOW = 30
+  [ItemType.Boost]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 30 },
+
+  // GLOBAL_ObjType_PesoPOW = 31
+  [ItemType.Peso]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 31 },
+
+  // GLOBAL_ObjType_FreeLifePOW = 32
+  [ItemType.FreeLifePOW]: { modelFile: "global.bg3d", modelPath: "models", modelIndex: 32 },
+
+  // GLOBAL_ObjType_WoodPost = 34
+  [ItemType.Post]: {
+    modelFile: "global.bg3d", modelPath: "models", modelIndex: 34,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
   },
 
-  // Cemetery items
+
+  // ---- TOWN (town.bg3d) ----
+  // TOWN_ObjType_Headstone1 = 1, Headstone2 = 2, ..., Headstone5 = 5
   [ItemType.HeadStone]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 6,
-    scale: 0.8,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-    variants: {
-      0: { modelIndex: 6 },
-      1: { modelIndex: 7 },
-      2: { modelIndex: 8 },
-    },
+    modelFile: "town.bg3d", modelPath: "models", modelIndex: 1,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
+    variants: { 0: { modelIndex: 1 }, 1: { modelIndex: 2 }, 2: { modelIndex: 3 }, 3: { modelIndex: 4 }, 4: { modelIndex: 5 } },
   },
 
-  [ItemType.Coffin]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 9,
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-  },
-
-  // Plants
+  // TOWN_ObjType_Cactus = 6 (+ DeadTree = 7, DeadTreeOnSide = 8 when in town; SWAMP_ObjType_MushroomTree = 7 when in swamp)
   [ItemType.Plant]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 10,
-    scale: 1.0,
+    modelFile: "town.bg3d", modelPath: "models", modelIndex: 6,
+    variants: { 0: { modelIndex: 6 }, 1: { modelIndex: 7 }, 2: { modelIndex: 8 } },
+  },
+
+  // TOWN_ObjType_RockWall = 9
+  [ItemType.DuelRockWall]: { modelFile: "town.bg3d", modelPath: "models", modelIndex: 9 },
+
+  // TOWN_ObjType_Coffin = 10, CoffinStack = 11
+  [ItemType.Coffin]: {
+    modelFile: "town.bg3d", modelPath: "models", modelIndex: 10,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
+    variants: { 0: { modelIndex: 10 }, 1: { modelIndex: 11 } },
+  },
+
+  // TOWN_ObjType_TallRock1 = 12, TallRock2 = 13, ShortRock1 = 14, ShortRock2 = 15
+  [ItemType.Rock]: {
+    modelFile: "town.bg3d", modelPath: "models", modelIndex: 12,
+    variants: { 0: { modelIndex: 12 }, 1: { modelIndex: 13 }, 2: { modelIndex: 14 }, 3: { modelIndex: 15 } },
+  },
+
+  // TOWN_ObjType_Alley = 16
+  [ItemType.ShootoutAlley]: { modelFile: "town.bg3d", modelPath: "models", modelIndex: 16 },
+
+  // TOWN_ObjType_Table = 17
+  [ItemType.Table]: {
+    modelFile: "town.bg3d", modelPath: "models", modelIndex: 17,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
+  },
+
+  // TOWN_ObjType_Chair = 18
+  [ItemType.Chair]: {
+    modelFile: "town.bg3d", modelPath: "models", modelIndex: 18,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
+  },
+
+  // TOWN_ObjType_DeadTree = 7, DeadTreeOnSide = 8
+  [ItemType.DeadTree]: {
+    modelFile: "town.bg3d", modelPath: "models", modelIndex: 7,
+    variants: { 0: { modelIndex: 7 }, 1: { modelIndex: 8 } },
+  },
+
+
+  // ---- BUILDINGS (buildings.bg3d) ----
+  // BUILDING_ObjType_Saloon = 0 ... Cantina = 7; burning variants = 8-15; SaloonInside = 16
+  [ItemType.Building]: {
+    modelFile: "buildings.bg3d", modelPath: "models", modelIndex: 0,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY },
     variants: {
-      0: { modelIndex: 10 }, // Cactus (town)
-      1: { modelIndex: 11 }, // Mushroom tree (swamp)
-      2: { modelIndex: 12 }, // Other plants
+      0: { modelIndex: 0 }, 1: { modelIndex: 1 }, 2: { modelIndex: 2 }, 3: { modelIndex: 3 },
+      4: { modelIndex: 4 }, 5: { modelIndex: 5 }, 6: { modelIndex: 6 }, 7: { modelIndex: 7 },
     },
   },
 
-  // Duel scene items
-  [ItemType.DuelRockWall]: {
-    modelFile: "duel.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
+  // BUILDING_ObjType_SaloonInside = 16
+  [ItemType.ShootoutSaloon]: { modelFile: "buildings.bg3d", modelPath: "models", modelIndex: 16 },
+
+
+  // ---- SWAMP (swamp.bg3d) ----
+  // SWAMP_ObjType_Cabin = 1
+  [ItemType.SwampCabin]: { modelFile: "swamp.bg3d", modelPath: "models", modelIndex: 1 },
+
+  // SWAMP_ObjType_Grave = 11
+  [ItemType.TremorGrave]: {
+    modelFile: "swamp.bg3d", modelPath: "models", modelIndex: 11,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
   },
 
-  // Shootout enemies
+  // SWAMP_ObjType_TeePee = 12
+  [ItemType.TeePee]: { modelFile: "swamp.bg3d", modelPath: "models", modelIndex: 12 },
+
+  // SWAMP_ObjType_SpearSkull = 13
+  [ItemType.SpearSkull]: { modelFile: "swamp.bg3d", modelPath: "models", modelIndex: 13 },
+
+  // SWAMP_ObjType_ElectricFence = 14
+  [ItemType.ElectricFence]: { modelFile: "swamp.bg3d", modelPath: "models", modelIndex: 14 },
+
+
+  // ---- SKELETONS ----
+  [ItemType.Dueler]: {
+    modelFile: "dueler.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "dueler.skeleton.rsrc",
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
+  },
+
   [ItemType.FrogMan_Shootout]: {
-    modelFile: "FrogMan.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "frogman.skeleton.rsrc",
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
+    modelFile: "FrogMan.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "frogman.skeleton.rsrc",
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
   },
 
   [ItemType.Bandito_Shootout]: {
-    modelFile: "Bandito.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "bandito.skeleton.rsrc",
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 2,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
+    modelFile: "Bandito.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "bandito.skeleton.rsrc",
+    rotationParam: { paramIndex: 2, rotationType: ROTATION_8_WAY },
   },
 
   [ItemType.Shorty_Shootout]: {
-    modelFile: "Shorty.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "shorty.skeleton.rsrc",
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 2,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
+    modelFile: "Shorty.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "shorty.skeleton.rsrc",
+    rotationParam: { paramIndex: 2, rotationType: ROTATION_8_WAY },
   },
 
-  // Props
-  [ItemType.Barrel]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 0.8,
-    variants: {
-      0: { modelIndex: 0 }, // Regular barrel
-      1: { modelIndex: 1 }, // TNT barrel
-    },
-  },
-
-  [ItemType.WoodCrate]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 2,
-    scale: 0.8,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-    variants: {
-      0: { modelIndex: 2 }, // Wood crate
-      1: { modelIndex: 2 }, // Wood crate variant
-      2: { modelIndex: 3 }, // Metal crate
-    },
-  },
-
-  [ItemType.HayBale]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 4,
-    scale: 0.8,
-  },
-
-  [ItemType.Post]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 5,
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 1,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-  },
-
-  // Furniture
-  [ItemType.Table]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 13,
-    scale: 0.8,
-    rotationParam: {
-      paramIndex: 0,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-  },
-
-  [ItemType.Chair]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 14,
-    scale: 0.8,
-    rotationParam: {
-      paramIndex: 0,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-  },
-
-  // Effects
-  [ItemType.Flame]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 6,
-    scale: 0.5,
-  },
-
-  [ItemType.Smoker]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 7,
-    scale: 0.5,
-  },
-
-  [ItemType.Tumbleweed]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 8,
-    scale: 0.6,
-  },
-
-  // Animals
   [ItemType.SceneryKangaCow]: {
-    modelFile: "KangaCow.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "kangacow.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "KangaCow.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "kangacow.skeleton.rsrc",
   },
 
-  // Stampede items
   [ItemType.StampedeKanga]: {
-    modelFile: "stampedekanga.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "stampedekanga.skeleton.rsrc",
-    scale: 1.0,
+    modelFile: "stampedekanga.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "stampedekanga.skeleton.rsrc",
   },
 
   [ItemType.StampedeKangarex]: {
-    modelFile: "KangaRex.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "kangarex.skeleton.rsrc",
-    scale: 1.2,
+    modelFile: "KangaRex.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "kangarex.skeleton.rsrc",
   },
 
-  [ItemType.Boost]: {
-    modelFile: "stampede.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 0.5,
-  },
-
-  [ItemType.StampedeCamera]: {
-    modelFile: "stampede.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 0.3,
-  },
-
-  // Walker enemy
   [ItemType.Wallker]: {
-    modelFile: "Walker.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "walker.skeleton.rsrc",
-    scale: 1.0,
-  },
-
-  // Environment
-  [ItemType.DeadTree]: {
-    modelFile: "town.bg3d",
-    modelPath: "models",
-    modelIndex: 15,
-    scale: 1.0,
-  },
-
-  [ItemType.Rock]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 9,
-    scale: 1.0,
-  },
-
-  [ItemType.ElectricFence]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 10,
-    scale: 1.0,
-  },
-
-  // Swamp/Tremor items
-  [ItemType.TremorGrave]: {
-    modelFile: "swamp.bg3d",
-    modelPath: "models",
-    modelIndex: 0,
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 0,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
+    modelFile: "Walker.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "walker.skeleton.rsrc",
   },
 
   [ItemType.TremorAlien_Shootout]: {
-    modelFile: "TremorAlien.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "tremoralien.skeleton.rsrc",
-    scale: 1.0,
-    rotationParam: {
-      paramIndex: 2,
-      rotationType: {
-        type: "Rotation",
-        description: "Rotation angle",
-        divisions: 8,
-        multiplier: "PI2/8",
-      },
-    },
-  },
-
-  [ItemType.SwampCabin]: {
-    modelFile: "swamp.bg3d",
-    modelPath: "models",
-    modelIndex: 1,
-    scale: 1.2,
-  },
-
-  // Native items
-  [ItemType.TeePee]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 11,
-    scale: 1.0,
-  },
-
-  [ItemType.SpearSkull]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 12,
-    scale: 0.8,
-  },
-
-  // Powerups
-  [ItemType.FreeLifePOW]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 13,
-    scale: 0.5,
-  },
-
-  [ItemType.Peso]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 14,
-    scale: 0.4,
+    modelFile: "TremorAlien.bg3d", modelPath: "skeletons", modelIndex: 0,
+    requiresSkeleton: true, skeletonFile: "tremoralien.skeleton.rsrc",
+    rotationParam: { paramIndex: 2, rotationType: ROTATION_8_WAY },
   },
 };
 

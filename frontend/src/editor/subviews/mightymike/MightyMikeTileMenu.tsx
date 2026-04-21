@@ -16,12 +16,19 @@ import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ImageEditor } from "@/components/ImageEditor";
-import { Edit, Download, Upload, Shield, Info, Paintbrush } from "lucide-react";
+import { Edit, Download, Upload, Shield, Info, Paintbrush, Layers } from "lucide-react";
 import { toast } from "sonner";
-import { fromPromise } from "@/types/result";
 import { useAtom } from "jotai";
-import { CollisionBrushMode, ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
+import {
+  CollisionBrushMode,
+  ShowMightyMikeCollisionOverlay,
+  ShowMightyMikeParamsOverlay,
+  ParamBrushField,
+  ParamBrushValue,
+} from "@/data/game/gameAtoms";
 import {
   Tooltip,
   TooltipContent,
@@ -50,6 +57,82 @@ function getBoolean(value: unknown, defaultValue = false): boolean {
   return typeof value === 'boolean' ? value : defaultValue;
 }
 
+function getNumber(value: unknown, defaultValue = 0): number {
+  return typeof value === "number" ? value : defaultValue;
+}
+
+type CollisionProperties = {
+  hasCollisionMask: boolean;
+  usePixelAccurateCollision: boolean;
+} | null;
+
+interface CollisionPropertiesSectionProps {
+  collisionProps: CollisionProperties;
+  onUpdateCollisionProperty: (
+    property: "hasCollisionMask" | "usePixelAccurateCollision",
+    value: boolean,
+  ) => void;
+}
+
+function CollisionPropertiesSection({
+  collisionProps,
+  onUpdateCollisionProperty,
+}: CollisionPropertiesSectionProps) {
+  return (
+    <div className="border-t border-gray-600 pt-2">
+      <p className="font-bold text-xs mb-1">Collision</p>
+      {collisionProps ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs">Mask:</span>
+            <Select
+              value={collisionProps.hasCollisionMask ? "enabled" : "disabled"}
+              onValueChange={(value) =>
+                onUpdateCollisionProperty("hasCollisionMask", value === "enabled")
+              }
+            >
+              <SelectTrigger className="w-24 h-7 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="enabled">Enabled</SelectItem>
+                <SelectItem value="disabled">Disabled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {collisionProps.hasCollisionMask && (
+            <div className="flex items-center justify-between text-xs">
+              <span>Type:</span>
+              <Select
+                value={
+                  collisionProps.usePixelAccurateCollision ? "pixel" : "tile"
+                }
+                onValueChange={(value) =>
+                  onUpdateCollisionProperty(
+                    "usePixelAccurateCollision",
+                    value === "pixel",
+                  )
+                }
+              >
+                <SelectTrigger className="w-24 h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pixel">Pixel-Accurate</SelectItem>
+                  <SelectItem value="tile">Tile-Based</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-gray-500 text-xs">No collision data</p>
+      )}
+    </div>
+  );
+}
+
 interface MightyMikeTileMenuProps {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
@@ -73,10 +156,11 @@ export function MightyMikeTileMenu({
   onResize,
 }: MightyMikeTileMenuProps) {
   const selectedTile = useAtomValue(SelectedTile);
-  const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
-    ShowMightyMikeCollisionOverlay
-  );
+  const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(ShowMightyMikeCollisionOverlay);
   const [collisionBrushMode, setCollisionBrushMode] = useAtom(CollisionBrushMode);
+  const [showParamsOverlay, setShowParamsOverlay] = useAtom(ShowMightyMikeParamsOverlay);
+  const [paramBrushField, setParamBrushField] = useAtom(ParamBrushField);
+  const [paramBrushValue, setParamBrushValue] = useAtom(ParamBrushValue);
 
   // Local state
   const [manualTilePaletteSelection, setManualTilePaletteSelection] = useState<{
@@ -95,6 +179,13 @@ export function MightyMikeTileMenu({
     [terrainData.Layr],
   );
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
+  const tilesetTileAttributes = useMemo(() => {
+    const tileset = isRecord(terrainData.tileset) ? terrainData.tileset : undefined;
+    const tileAttributes = tileset && isArray(tileset.tileAttributes)
+      ? tileset.tileAttributes
+      : [];
+    return tileAttributes.filter(isRecord);
+  }, [terrainData.tileset]);
 
   // Get collision data from Mighty Mike metadata using type guards
   const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
@@ -340,6 +431,18 @@ export function MightyMikeTileMenu({
       return;
     }
 
+    const sourceBitmap = await createImageBitmap(file).catch((error: unknown) => {
+      toast.error(`Failed to read tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!sourceBitmap) {
+      return;
+    }
+    if (sourceBitmap.width !== TILE_SIZE || sourceBitmap.height !== TILE_SIZE) {
+      toast.error(`Tiles must be ${TILE_SIZE}×${TILE_SIZE}`);
+      return;
+    }
+
     // Create 32x32 canvas for the tile
     const canvas = document.createElement("canvas");
     canvas.width = TILE_SIZE;
@@ -355,20 +458,17 @@ export function MightyMikeTileMenu({
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     // Resize and draw image
-    const bitmapResult = await fromPromise(
-      createImageBitmap(file, {
-        resizeWidth: TILE_SIZE,
-        resizeHeight: TILE_SIZE,
-        resizeQuality: "high",
-      })
-    );
-
-    if (bitmapResult.isErr()) {
-      toast.error(`Failed to upload tile: ${bitmapResult.error.message}`);
+    const imageBitmap = await createImageBitmap(file, {
+      resizeWidth: TILE_SIZE,
+      resizeHeight: TILE_SIZE,
+      resizeQuality: "high",
+    }).catch((error: unknown) => {
+      toast.error(`Failed to upload tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!imageBitmap) {
       return;
     }
-
-    const imageBitmap = bitmapResult.value;
     context.drawImage(imageBitmap, 0, 0);
 
     // Update mapImages
@@ -386,6 +486,17 @@ export function MightyMikeTileMenu({
       toast.error("Invalid palette tile selected");
       return;
     }
+    const sourceBitmap = await createImageBitmap(file).catch((error: unknown) => {
+      toast.error(`Failed to read palette tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!sourceBitmap) {
+      return;
+    }
+    if (sourceBitmap.width !== TILE_SIZE || sourceBitmap.height !== TILE_SIZE) {
+      toast.error(`Palette tiles must be ${TILE_SIZE}×${TILE_SIZE}`);
+      return;
+    }
     const canvas = document.createElement("canvas");
     canvas.width = TILE_SIZE;
     canvas.height = TILE_SIZE;
@@ -396,18 +507,18 @@ export function MightyMikeTileMenu({
     }
     context.fillStyle = "black";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const bitmapResult = await fromPromise(
-      createImageBitmap(file, {
-        resizeWidth: TILE_SIZE,
-        resizeHeight: TILE_SIZE,
-        resizeQuality: "high",
-      }),
-    );
-    if (bitmapResult.isErr()) {
-      toast.error(`Failed to upload palette tile: ${bitmapResult.error.message}`);
+    const bmp = await createImageBitmap(file, {
+      resizeWidth: TILE_SIZE,
+      resizeHeight: TILE_SIZE,
+      resizeQuality: "high",
+    }).catch((error: unknown) => {
+      toast.error(`Failed to upload palette tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!bmp) {
       return;
     }
-    context.drawImage(bitmapResult.value, 0, 0);
+    context.drawImage(bmp, 0, 0);
     const nextImages = [...mapImages];
     nextImages[selectedPaletteTile] = canvas;
     setMapImages(nextImages);
@@ -432,6 +543,100 @@ export function MightyMikeTileMenu({
     toast.success(`Edited palette tile #${selectedPaletteTile}`);
   };
 
+  const createBlankTileCanvas = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+    }
+    return canvas;
+  };
+
+  const isPaletteTileInUse = useMemo(() => {
+    const matchingLogicalIndices = new Set<number>();
+    if (xlatTable) {
+      xlatTable.forEach((entry, logicalIndex) => {
+        if (isRecord(entry) && entry.idx === selectedPaletteTile) {
+          matchingLogicalIndices.add(logicalIndex);
+        }
+      });
+    } else {
+      matchingLogicalIndices.add(selectedPaletteTile);
+    }
+
+    if (matchingLogicalIndices.size === 0) {
+      return false;
+    }
+
+    return layr.some((tileIndex) => matchingLogicalIndices.has(tileIndex));
+  }, [layr, selectedPaletteTile, xlatTable]);
+
+  const handleAddPaletteTile = () => {
+    const newImageIndex = mapImages.length;
+    setMapImages([...mapImages, createBlankTileCanvas()]);
+    setTerrainData((data) => {
+      if (data.Xlat?.[1000]?.obj) {
+        data.Xlat[1000].obj.push({ idx: newImageIndex });
+      }
+    });
+    setManualTilePaletteSelection({
+      tile: selectedTile,
+      palette: newImageIndex,
+    });
+    toast.success(`Added palette tile #${newImageIndex}`);
+  };
+
+  const handleRemovePaletteTile = () => {
+    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
+      toast.error("Invalid palette tile selected");
+      return;
+    }
+    if (isPaletteTileInUse) {
+      toast.error("Cannot remove a palette tile that is still in use");
+      return;
+    }
+
+    setMapImages(mapImages.filter((_, index) => index !== selectedPaletteTile));
+    setTerrainData((data) => {
+      const xlat = data.Xlat?.[1000]?.obj;
+      if (!xlat) {
+        return;
+      }
+
+      const keptEntries = xlat
+        .map((entry, logicalIndex) => ({ entry, logicalIndex }))
+        .filter(({ entry }) => isRecord(entry) && entry.idx !== selectedPaletteTile);
+      const logicalIndexMap = new Map<number, number>();
+      keptEntries.forEach(({ logicalIndex }, nextLogicalIndex) => {
+        logicalIndexMap.set(logicalIndex, nextLogicalIndex);
+      });
+
+      const xlatEntry = data.Xlat?.[1000];
+      if (!xlatEntry) {
+        return;
+      }
+      xlatEntry.obj = keptEntries.map(({ entry }) => ({
+        idx:
+          typeof entry.idx === "number" && entry.idx > selectedPaletteTile
+            ? entry.idx - 1
+            : getNumber(entry.idx),
+      }));
+
+      if (data.Layr?.[1000]?.obj) {
+        data.Layr[1000].obj = data.Layr[1000].obj.map(
+          (logicalIndex) => logicalIndexMap.get(logicalIndex) ?? logicalIndex,
+        );
+      }
+    });
+    setManualTilePaletteSelection({
+      tile: selectedTile,
+      palette: Math.max(0, selectedPaletteTile - 1),
+    });
+    toast.success("Palette tile removed");
+  };
+
   // Validate selected tile is in bounds
   if (selectedTile < 0 || selectedTile >= totalTiles) {
     return (
@@ -442,8 +647,37 @@ export function MightyMikeTileMenu({
   }
 
   const currentImageIndex = getCurrentTileImageIndex();
+  const collisionProps = getCollisionProperties();
   const currentTileCanvas =
     currentImageIndex !== null ? mapImages[currentImageIndex] : null;
+  const currentTileAttributes =
+    currentImageIndex !== null && currentImageIndex < tilesetTileAttributes.length
+      ? tilesetTileAttributes[currentImageIndex]
+      : null;
+
+  const handleUpdateTileAttribute = (
+    property: "flags" | "p0" | "p1" | "p2" | "p3" | "p4",
+    value: number,
+  ) => {
+    if (currentImageIndex === null) {
+      return;
+    }
+
+    setTerrainData((data) => {
+      const tileset = isRecord(data.tileset) ? data.tileset : undefined;
+      const tileAttributes =
+        tileset && isArray(tileset.tileAttributes) ? tileset.tileAttributes : undefined;
+      const tileAttribute = tileAttributes?.[currentImageIndex];
+      if (isRecord(tileAttribute)) {
+        tileAttribute[property] = value;
+      }
+
+      const levelTileAttribute = data.Atrb?.[1000]?.obj?.[currentImageIndex];
+      if (levelTileAttribute && (property === "flags" || property === "p0" || property === "p1")) {
+        levelTileAttribute[property] = value;
+      }
+    });
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -556,73 +790,108 @@ export function MightyMikeTileMenu({
         </TooltipProvider>
 
         {/* Collision Properties Section */}
-        {mightyMikeTileValuesArray.length > 0 && (() => {
-          const collisionProps = getCollisionProperties();
-          return (
-            <div className="border-t border-gray-600 pt-2">
-              <p className="font-bold text-xs mb-1">Collision</p>
-              {collisionProps ? (
-                <div className="space-y-2">
-                  {/* Collision Mask Toggle */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs">Mask:</span>
-                    <Select
-                      value={
-                        collisionProps.hasCollisionMask ? "enabled" : "disabled"
-                      }
-                      onValueChange={(value) =>
-                        handleUpdateCollisionProperty(
-                          "hasCollisionMask",
-                          value === "enabled"
-                        )
-                      }
-                    >
-                      <SelectTrigger className="w-24 h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="enabled">Enabled</SelectItem>
-                        <SelectItem value="disabled">Disabled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+        {mightyMikeTileValuesArray.length > 0 ? (
+          <CollisionPropertiesSection
+            collisionProps={collisionProps}
+            onUpdateCollisionProperty={handleUpdateCollisionProperty}
+          />
+        ) : null}
 
-                  {/* Collision Type Selector */}
-                  {collisionProps.hasCollisionMask && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span>Type:</span>
-                      <Select
-                        value={
-                          collisionProps.usePixelAccurateCollision
-                            ? "pixel"
-                            : "tile"
-                        }
-                        onValueChange={(value) =>
-                          handleUpdateCollisionProperty(
-                            "usePixelAccurateCollision",
-                            value === "pixel"
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-24 h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pixel">Pixel-Accurate</SelectItem>
-                          <SelectItem value="tile">Tile-Based</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-xs">
-                  No collision data
-                </p>
-              )}
+        {currentTileAttributes && (
+          <div className="border-t border-gray-600 pt-2 space-y-2">
+            <p className="font-bold text-xs">Tile Parameters</p>
+
+            {/* Flags as individual bit checkboxes */}
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Flags</p>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((bit) => {
+                  const mask = 1 << bit;
+                  const checked = (getNumber(currentTileAttributes["flags"]) & mask) !== 0;
+                  return (
+                    <label key={bit} className="flex items-center gap-1 text-xs cursor-pointer">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(val) => {
+                          const current = getNumber(currentTileAttributes["flags"]);
+                          const next = val ? current | mask : current & ~mask;
+                          handleUpdateTileAttribute("flags", next);
+                        }}
+                        className="h-3 w-3"
+                      />
+                      <span>Bit {bit}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
-          );
-        })()}
+
+            {/* Numeric params */}
+            <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center text-xs">
+              {(["p0", "p1"] as const).map((property) => (
+                <div key={property} className="contents">
+                  <label className="text-gray-300">Parameter {property[1]}</label>
+                  <Input
+                    type="number"
+                    value={getNumber(currentTileAttributes[property]).toString()}
+                    onChange={(e) =>
+                      handleUpdateTileAttribute(
+                        property,
+                        Number.parseInt(e.target.value || "0", 10) || 0,
+                      )
+                    }
+                    className="h-7 text-xs"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Param Brush Controls */}
+            <div className="border-t border-gray-600 pt-2">
+              <p className="text-xs text-gray-400 mb-1">Param Brush</p>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1">
+                  <Select
+                    value={paramBrushField ?? "none"}
+                    onValueChange={(v) => {
+                      if (v === "flags" || v === "p0" || v === "p1") {
+                        setParamBrushField(v);
+                      } else {
+                        setParamBrushField(null);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue placeholder="Off" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Off</SelectItem>
+                      <SelectItem value="flags">Flags</SelectItem>
+                      <SelectItem value="p0">Parameter 0</SelectItem>
+                      <SelectItem value="p1">Parameter 1</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    className="h-7 text-xs w-16"
+                    value={paramBrushValue}
+                    onChange={(e) => setParamBrushValue(Number.parseInt(e.target.value || "0", 10) || 0)}
+                    disabled={paramBrushField === null}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant={showParamsOverlay ? "default" : "outline"}
+                  className="w-full"
+                  onClick={() => setShowParamsOverlay(!showParamsOverlay)}
+                >
+                  <Layers className="w-3 h-3 mr-1" />
+                  {showParamsOverlay ? "Hide Params Overlay" : "Show Params Overlay"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Column: Tile Palette */}
@@ -679,6 +948,17 @@ export function MightyMikeTileMenu({
             accept="image/*"
             onChange={handleUploadPaletteTile}
           />
+          <Button size="sm" variant="outline" onClick={handleAddPaletteTile}>
+            Add palette tile
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRemovePaletteTile}
+            disabled={isPaletteTileInUse || mapImages.length <= 1}
+          >
+            Remove palette tile
+          </Button>
         </div>
 
         {/* Replace Button */}

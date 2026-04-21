@@ -5,6 +5,7 @@
  * Allows selecting a game, model file, and specific model index to load.
  */
 
+import { mapErr } from "@/utils/mapErr";
 import React, { useState, useCallback, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
@@ -23,7 +24,8 @@ import { Label } from "@/components/ui/label";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
+
 
 /**
  * Describes a model file with its path and label
@@ -479,7 +481,7 @@ export function TestModelViewer() {
     const url = selectedFileEntry.path;
     console.log(`Loading model from: ${url}`);
 
-    const fetchResult = await fromPromise(fetch(url));
+    const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (fetchResult.isErr()) {
       const errorMsg = `Failed to fetch: ${fetchResult.error.message}`;
       setError(errorMsg);
@@ -498,7 +500,7 @@ export function TestModelViewer() {
       return;
     }
 
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       const errorMsg = `Failed to read buffer: ${bufferResult.error.message}`;
       setError(errorMsg);
@@ -512,7 +514,7 @@ export function TestModelViewer() {
     setStatus(`Converting ${gameConfig.format.toUpperCase()} to GLB...`);
 
     // Convert via worker
-    const glbBufferResult = await fromPromise(
+    const glbBufferResult = await ResultAsync.fromPromise(
       new Promise<ArrayBuffer>((resolve, reject) => {
         const worker = getWorker();
         let resolved = false;
@@ -558,7 +560,8 @@ export function TestModelViewer() {
             reject(new Error("Conversion timeout"));
           }
         }, 60000);
-      })
+      }),
+      mapErr,
     );
 
     if (glbBufferResult.isErr()) {
@@ -578,7 +581,7 @@ export function TestModelViewer() {
     const blobUrl = URL.createObjectURL(blob);
 
     const loader = new GLTFLoader();
-    const gltfResult = await fromPromise(
+    const gltfResult = await ResultAsync.fromPromise(
       new Promise<GLTF>((resolve, reject) => {
         loader.load(
           blobUrl,
@@ -586,7 +589,8 @@ export function TestModelViewer() {
           undefined,
           (err) => reject(err)
         );
-      })
+      }),
+      mapErr,
     );
 
     URL.revokeObjectURL(blobUrl);
@@ -788,9 +792,8 @@ export function TestModelViewer() {
           style={{ background: "#1a1a2e" }}
         >
           <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={1} />
-          <directionalLight position={[-10, -10, -5]} intensity={0.5} />
-          
+          <directionalLight position={[1, 2, 1]} intensity={1} />
+
           <ModelDisplay gltfScene={gltfScene} />
           
           <OrbitControls />

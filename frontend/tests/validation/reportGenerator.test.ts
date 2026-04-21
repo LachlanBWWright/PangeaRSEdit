@@ -19,7 +19,9 @@ describe("reportGenerator", () => {
     itemType,
     itemTypeNumber: 1,
     parameterName: "p0",
-    codeSample: {
+    citation: {
+      label: "test",
+      url: "https://github.com/example/repo/blob/master/src/Items/Items.c#L100",
       code: "int x = 5;",
       fileName: "Items/Items.c",
       lineNumber: 100,

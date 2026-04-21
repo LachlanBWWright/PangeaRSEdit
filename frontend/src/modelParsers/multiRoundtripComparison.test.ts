@@ -66,9 +66,9 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
       // Parse current state
       const skeletonParsed: SkeletonResource = await parseSkeletonRsrc(currentSkeletonData);
       const bg3dParsedResult = parseBG3D(currentBg3dData, skeletonParsed);
-      if (!bg3dParsedResult.ok) {
+      if (!bg3dParsedResult.isOk()) {
         // Fail test early if parse fails
-        throw bg3dParsedResult.error;
+        expect.fail(String(bg3dParsedResult.error));
       }
       const bg3dParsed = bg3dParsedResult.value;
 
@@ -163,7 +163,7 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
           skeletonResource,
         );
 
-        if (!skeletonBinaryResult.ok) {
+        if (!skeletonBinaryResult.isOk()) {
           console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
           continue;
         }
@@ -186,7 +186,7 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
     console.log("=".repeat(80));
 
     const original = parsedStates[0];
-    if (!original) throw new Error("No parsed states available");
+    if (!original) expect.fail("No parsed states available");
 
     for (let i = 1; i < parsedStates.length; i++) {
       const current = parsedStates[i];

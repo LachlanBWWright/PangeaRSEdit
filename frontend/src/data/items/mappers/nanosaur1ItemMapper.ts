@@ -13,7 +13,7 @@ import {
   type GameItemModelMapper,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import { NANOSAUR_ITEM_MODEL_MAPPINGS, getNanosaurItemModelMapping } from "../nanosaurItemModelMapping";
+import { NANOSAUR_ITEM_MODEL_MAPPINGS } from "../nanosaurItemModelMapping";
 
 /**
  * Nanosaur 1 Item Mapper Implementation
@@ -29,18 +29,7 @@ export class Nanosaur1ItemMapper implements GameItemModelMapper {
   getMapping(
     itemType: number,
   ): UniversalItemModelMapping | undefined {
-    const mapping = getNanosaurItemModelMapping(itemType);
-    if (!mapping) return undefined;
-    
-    return {
-      modelFile: mapping.modelFile,
-      modelPath: mapping.modelPath,
-      modelIndex: mapping.modelIndex,
-      requiresSkeleton: mapping.requiresSkeleton,
-      skeletonFile: mapping.skeletonFile,
-      scale: mapping.scale,
-      rotationY: mapping.rotationY,
-    };
+    return NANOSAUR_ITEM_MODEL_MAPPINGS[itemType];
   }
 
   /**

@@ -1,6 +1,7 @@
 // bg3dWithSkeleton.ts
 // Combined parser for BG3D/3DMF files with skeleton data
 
+import { mapErr } from "@/utils/mapErr";
 import {
   parseBG3D,
   BG3DParseResult,
@@ -11,7 +12,8 @@ import {
 import { parse3DMF } from "./parse3dmf";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { Result, err, isErr, ok, fromPromise } from "../types/result";
+import { err, ok, ResultAsync, type Result } from "neverthrow";
+
 
 /**
  * Detect if a buffer is a 3DMF file based on magic number
@@ -37,7 +39,10 @@ export async function parseBG3DWithSkeleton(
   console.log("Parsing skeleton resource...");
 
   // Parse skeleton data using the existing skeleton parser
-  const skeletonResult = await fromPromise(parseSkeletonRsrc(skeletonBuffer));
+  const skeletonResult = await ResultAsync.fromPromise(
+    parseSkeletonRsrc(skeletonBuffer),
+    mapErr,
+  );
   if (skeletonResult.isErr()) {
     return err(skeletonResult.error);
   }
@@ -49,7 +54,7 @@ export async function parseBG3DWithSkeleton(
   // Parse model with skeleton data
   const result = parseModelWithSkeletonResource(modelBuffer, skeleton);
 
-  if (isErr(result)) {
+  if (result.isErr()) {
     return result;
   }
 
@@ -88,7 +93,7 @@ function parseModelWithSkeletonResource(
     // Parse 3DMF file - note: 3DMF models with skeletons may need special handling
     // For now, parse the model and add skeleton data manually
     const modelResult = parse3DMF(modelBuffer);
-    if (isErr(modelResult)) {
+    if (modelResult.isErr()) {
       return modelResult;
     }
 
@@ -156,63 +161,7 @@ function parseModelWithSkeletonResource(
             normalIndices,
           };
         }),
-        animations: (() => {
-          const anims: BG3DAnimation[] = [];
-          const animHeaderEntries = Object.entries(skeleton.AnHd || {});
-          animHeaderEntries.sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
-
-          animHeaderEntries.forEach(([animId, animEntry]) => {
-            const animHeader = animEntry.obj;
-            const animResourceId = parseInt(animId, 10);
-            const animIndex = animResourceId - 1000;
-
-            const events: BG3DAnimationEvent[] = [];
-            const eventEntry = skeleton.Evnt?.[animId];
-            if (eventEntry) {
-              eventEntry.obj.forEach((event) => {
-                events.push({
-                  time: event.time,
-                  type: event.type,
-                  value: event.value,
-                });
-              });
-            }
-
-            const keyframes: Record<number, BG3DKeyframe[]> = {};
-            for (let boneIndex = 0; boneIndex < numJoints; boneIndex++) {
-              keyframes[boneIndex] = [];
-              const keyframeResourceId = (1000 + animIndex * 100 + boneIndex).toString();
-              const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
-
-              if (keyframeEntry && keyframeEntry.obj && Array.isArray(keyframeEntry.obj)) {
-                keyframeEntry.obj.forEach((keyframe) => {
-                  keyframes[boneIndex]?.push({
-                    tick: keyframe.tick,
-                    accelerationMode: keyframe.accelerationMode,
-                    coordX: keyframe.coordX,
-                    coordY: keyframe.coordY,
-                    coordZ: keyframe.coordZ,
-                    rotationX: keyframe.rotationX,
-                    rotationY: keyframe.rotationY,
-                    rotationZ: keyframe.rotationZ,
-                    scaleX: keyframe.scaleX,
-                    scaleY: keyframe.scaleY,
-                    scaleZ: keyframe.scaleZ,
-                  });
-                });
-              }
-            }
-
-            anims.push({
-              name: typeof animHeader?.animName === "string" ? animHeader.animName : 
-                    (typeof animEntry.name === "string" ? animEntry.name : `anim_${animIndex}`),
-              numAnimEvents: events.length,
-              events,
-              keyframes,
-            });
-          });
-          return anims;
-        })(),
+        animations: buildAnimations(skeleton, numJoints),
       };
     }
 
@@ -221,4 +170,70 @@ function parseModelWithSkeletonResource(
     // Parse BG3D file
     return parseBG3D(modelBuffer, skeleton);
   }
+}
+
+function buildAnimations(
+  skeleton: SkeletonResource,
+  numJoints: number,
+): BG3DAnimation[] {
+  const anims: BG3DAnimation[] = [];
+  const animHeaderEntries = Object.entries(skeleton.AnHd || {});
+  animHeaderEntries.sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
+
+  animHeaderEntries.forEach(([animId, animEntry]) => {
+    const animHeader = animEntry.obj;
+    const animResourceId = parseInt(animId, 10);
+    const animIndex = animResourceId - 1000;
+
+    const events: BG3DAnimationEvent[] = [];
+    const eventEntry = skeleton.Evnt?.[animId];
+    if (eventEntry) {
+      eventEntry.obj.forEach((event) => {
+        events.push({
+          time: event.time,
+          type: event.type,
+          value: event.value,
+        });
+      });
+    }
+
+    const keyframes: Record<number, BG3DKeyframe[]> = {};
+    for (let boneIndex = 0; boneIndex < numJoints; boneIndex++) {
+      keyframes[boneIndex] = [];
+      const keyframeResourceId = (1000 + animIndex * 100 + boneIndex).toString();
+      const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
+
+      if (keyframeEntry && keyframeEntry.obj && Array.isArray(keyframeEntry.obj)) {
+        keyframeEntry.obj.forEach((keyframe) => {
+          keyframes[boneIndex]?.push({
+            tick: keyframe.tick,
+            accelerationMode: keyframe.accelerationMode,
+            coordX: keyframe.coordX,
+            coordY: keyframe.coordY,
+            coordZ: keyframe.coordZ,
+            rotationX: keyframe.rotationX,
+            rotationY: keyframe.rotationY,
+            rotationZ: keyframe.rotationZ,
+            scaleX: keyframe.scaleX,
+            scaleY: keyframe.scaleY,
+            scaleZ: keyframe.scaleZ,
+          });
+        });
+      }
+    }
+
+    anims.push({
+      name:
+        typeof animHeader?.animName === "string"
+          ? animHeader.animName
+          : typeof animEntry.name === "string"
+            ? animEntry.name
+            : `anim_${animIndex}`,
+      numAnimEvents: events.length,
+      events,
+      keyframes,
+    });
+  });
+
+  return anims;
 }

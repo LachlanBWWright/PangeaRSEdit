@@ -1,6 +1,6 @@
 /**
  * Bugdom 1 Editor Toolbar
- * 
+ *
  * Features:
  * - Items view
  * - Fences view
@@ -14,28 +14,29 @@ import { memo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
+import { useAtom } from "jotai";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 interface Props {
-  view: View;
-  setView: (v: View) => void;
   terrainHasSTgd?: boolean;
+  compact?: boolean;
 }
 
 export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
-  view,
-  setView,
   terrainHasSTgd,
+  compact,
 }: Props) {
+  const [view, setView] = useAtom(ActiveView);
   const currentValue =
     view === View.fences
       ? "fences"
       : view === View.items
-      ? "items"
-      : view === View.splines
-      ? "splines"
-      : view === View.tiles
-      ? "tiles"
-      : "supertiles";
+        ? "items"
+        : view === View.splines
+          ? "splines"
+          : view === View.tiles
+            ? "tiles"
+            : "supertiles";
 
   const handleValueChange = (value: string) => {
     if (value === "fences") setView(View.fences);
@@ -47,18 +48,36 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
 
   return (
     <>
-      <Tabs value={currentValue} onValueChange={handleValueChange}>
-        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
-          <TabsTrigger className="w-full" value="fences">Fences</TabsTrigger>
-          <TabsTrigger className="w-full" value="items">Items</TabsTrigger>
-          <TabsTrigger className="w-full" value="splines">Splines</TabsTrigger>
-          <TabsTrigger className="w-full" value="tiles">Tiles</TabsTrigger>
+      <Tabs
+        className="flex-1"
+        value={currentValue}
+        onValueChange={handleValueChange}
+      >
+        <TabsList
+          className={
+            compact
+              ? "grid grid-flow-col auto-cols-fr w-full overflow-clip"
+              : "grid grid-flow-col auto-cols-max gap-2 w-max min-w-max overflow-x-auto"
+          }
+        >
+          <TabsTrigger className="w-full" value="fences">
+            Fences
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="items">
+            Items
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="splines">
+            Splines
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="tiles">
+            Tiles
+          </TabsTrigger>
           <TabsTrigger className="w-full" value="supertiles" disabled={!terrainHasSTgd}>
             Supertiles
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <Separator />
+      {!compact && <Separator />}
     </>
   );
 });
