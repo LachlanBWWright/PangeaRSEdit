@@ -70,6 +70,16 @@ type PreviewWindow = Window & {
     SetCustomTerrainFile?: (path: string) => unknown;
   };
 
+export class PreviewRuntimeLoadError extends Error {
+  readonly status: number | null;
+
+  constructor(message: string, status: number | null = null) {
+    super(message);
+    this.name = "PreviewRuntimeLoadError";
+    this.status = status;
+  }
+}
+
 export function levelLabel(info: AnyLevelInfo, idx: number): string {
   if ("trackNumber" in info) {
     return `Track ${String(info.trackNumber)}: ${info.name}`;
@@ -595,7 +605,7 @@ export async function loadPreviewRuntime(
   if (response.isErr() || !response.value.ok) {
     const status = response.isOk() ? response.value.status : 0;
     restoreWindowGlobals();
-    throw new Error(`Failed to load ${scriptUrl}: ${String(status)}`);
+    throw new PreviewRuntimeLoadError(`Failed to load ${scriptUrl}: ${String(status)}`, status);
   }
 
   const sourceResult = await ResultAsync.fromPromise(
@@ -604,7 +614,7 @@ export async function loadPreviewRuntime(
   );
   if (sourceResult.isErr()) {
     restoreWindowGlobals();
-    throw sourceResult.error;
+    throw new PreviewRuntimeLoadError(sourceResult.error.message, null);
   }
   const source = sourceResult.value;
 
@@ -634,13 +644,17 @@ export async function loadPreviewRuntime(
 
   if (runner.isErr()) {
     restoreWindowGlobals();
-    throw runner.error;
+    throw new PreviewRuntimeLoadError(runner.error.message, null);
   }
 
-  Result.fromThrowable(
+  const runResult = Result.fromThrowable(
     () => runner.value(module, window, gameRaf, gameCaf, gameSetTimeout, gameClearTimeout),
     (e) => (e instanceof Error ? e : new Error(String(e))),
   )();
+  if (runResult.isErr()) {
+    restoreWindowGlobals();
+    throw new PreviewRuntimeLoadError(runResult.error.message, null);
+  }
 
   return () => {
     stopped = true;

@@ -6,6 +6,7 @@ import {
   createPreviewModule,
   getPreviewTerrainPaths,
   loadPreviewRuntime,
+  PreviewRuntimeLoadError,
   GAME_DISPLAY_NAMES,
   type PreviewRuntimeModule,
 } from "./utils/gamePreviewRuntime";
@@ -33,7 +34,7 @@ interface Props {
 type PreviewWindow = Window & { Module?: PreviewRuntimeModule };
 
 function isScriptNotFoundError(error: Error): boolean {
-  return error.message.includes(": 404");
+  return error instanceof PreviewRuntimeLoadError && error.status === 404;
 }
 
 export function GamePreviewHost({
@@ -100,12 +101,9 @@ export function GamePreviewHost({
       triggerResizePulse();
 
       void (async () => {
-        const baseUrls = assetBaseUrls.length > 0 ? assetBaseUrls : [window.location.href];
+        const baseUrls = assetBaseUrls;
         for (let baseUrlIndex = 0; baseUrlIndex < baseUrls.length; baseUrlIndex += 1) {
           const assetBaseUrl = baseUrls[baseUrlIndex];
-          if (!assetBaseUrl) {
-            continue;
-          }
           activeModule = createPreviewModule({
             config,
             levelNumber,
