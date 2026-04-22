@@ -11,7 +11,7 @@
  */
 
 import { useAtom, useAtomValue } from "jotai";
-import { Layer, Stage, Image } from "react-konva";
+import { Layer, Stage, Image, Rect } from "react-konva";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import {
@@ -521,43 +521,66 @@ export function BugdomTileMenu({
         <div className="flex min-h-0 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto rounded border border-gray-600 p-3">
             <div className="flex flex-col gap-2">
+              {/* Single Konva Stage for the entire supertile tile grid */}
               <div
-                className="grid gap-1 mx-auto"
+                className="mx-auto cursor-pointer"
                 style={{
-                  gridTemplateColumns: `repeat(${globals.TILES_PER_SUPERTILE}, 1fr)`,
+                  width: globals.TILES_PER_SUPERTILE * TILE_IMAGE_SIZE,
+                  height: globals.TILES_PER_SUPERTILE * TILE_IMAGE_SIZE,
                 }}
               >
-                {tilesInSelectedSupertile.map((tile, idx) => (
-                  <div
-                    key={idx}
-                    className={`relative cursor-pointer rounded transition-all ${
-                      selectedTileInSupertile === idx
-                        ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-gray-900"
-                        : "border border-gray-700 hover:border-gray-500"
-                    }`}
-                    title={`Tile ${tile.info.tileIndex}, Image ${tile.info.imageIndex}, Rot: ${tile.info.rotationDegrees}°, FlipX: ${tile.info.flipX}, FlipY: ${tile.info.flipY}`}
-                    onClick={() => setSelectedTileInSupertile(idx)}
-                  >
-                    <Stage width={32} height={32}>
-                      <Layer>
-                        {mapImages[tile.info.imageIndex] && (
-                          <Image
-                            image={mapImages[tile.info.imageIndex]}
-                            width={32}
-                            height={32}
-                            x={16}
-                            y={16}
-                            offsetX={16}
-                            offsetY={16}
-                            rotation={tile.info.rotationDegrees}
-                            scaleX={tile.info.flipX ? -1 : 1}
-                            scaleY={tile.info.flipY ? -1 : 1}
-                          />
-                        )}
-                      </Layer>
-                    </Stage>
-                  </div>
-                ))}
+                <Stage
+                  width={globals.TILES_PER_SUPERTILE * TILE_IMAGE_SIZE}
+                  height={globals.TILES_PER_SUPERTILE * TILE_IMAGE_SIZE}
+                  onClick={(e) => {
+                    const pos = e.target.getStage()?.getPointerPosition();
+                    if (!pos) return;
+                    const col = Math.floor(pos.x / TILE_IMAGE_SIZE);
+                    const row = Math.floor(pos.y / TILE_IMAGE_SIZE);
+                    if (col >= globals.TILES_PER_SUPERTILE || row >= globals.TILES_PER_SUPERTILE) return;
+                    const tileIdx = tilesInSelectedSupertile.findIndex(
+                      (t) => t.col === col && t.row === row,
+                    );
+                    if (tileIdx >= 0) setSelectedTileInSupertile(tileIdx);
+                  }}
+                >
+                  <Layer>
+                    {tilesInSelectedSupertile.map((tile, idx) => {
+                      const img = mapImages[tile.info.imageIndex];
+                      if (!img) return null;
+                      const cx = tile.col * TILE_IMAGE_SIZE + TILE_IMAGE_SIZE / 2;
+                      const cy = tile.row * TILE_IMAGE_SIZE + TILE_IMAGE_SIZE / 2;
+                      return (
+                        <Image
+                          key={idx}
+                          image={img}
+                          width={TILE_IMAGE_SIZE}
+                          height={TILE_IMAGE_SIZE}
+                          x={cx}
+                          y={cy}
+                          offsetX={TILE_IMAGE_SIZE / 2}
+                          offsetY={TILE_IMAGE_SIZE / 2}
+                          rotation={tile.info.rotationDegrees}
+                          scaleX={tile.info.flipX ? -1 : 1}
+                          scaleY={tile.info.flipY ? -1 : 1}
+                          listening={false}
+                        />
+                      );
+                    })}
+                    {/* Selection highlight */}
+                    {currentSelectedTileData && (
+                      <Rect
+                        x={currentSelectedTileData.col * TILE_IMAGE_SIZE}
+                        y={currentSelectedTileData.row * TILE_IMAGE_SIZE}
+                        width={TILE_IMAGE_SIZE}
+                        height={TILE_IMAGE_SIZE}
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        listening={false}
+                      />
+                    )}
+                  </Layer>
+                </Stage>
               </div>
 
               {currentSelectedTileData ? (

@@ -1,6 +1,6 @@
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../../utils/lzssWorker?worker";
-import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import {
   DataType,
   Game,
@@ -11,11 +11,10 @@ import { validateResourceForkJson } from "../utils/levelDataUtils";
 import { toast } from "../../hooks/use-toast";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
-import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
 import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
 import { err, ok } from "neverthrow";
 import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
-import { mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
+import { serializeMightyMikeLevel } from "@/editor/loadLogic/parseMightyMikeFile";
 import { serializeNanosaurTerrainTextures } from "@/data/processors/classicProprocessor";
 import { bufferToHex } from "@/utils/bufferOperations";
 import { canvasDataToSixteenBit } from "@/utils/imageConverter";
@@ -31,42 +30,6 @@ function isNanosaur1LevelData(value: unknown): value is Nanosaur1LevelData {
     "textureLayer" in value &&
     "objectList" in value
   );
-}
-
-function getNestedMetadata(
-  metadata: LevelMetadata | undefined,
-  key: string,
-): Record<string, unknown> | undefined {
-  const entry = metadata?.[key];
-  if (isRecord(entry) && "obj" in entry) {
-    const obj = (entry as Record<string, unknown>).obj;
-    if (isRecord(obj)) {
-      return obj;
-    }
-  }
-  return undefined;
-}
-
-function isMightyMikeMap(value: unknown): value is MightyMikeMap {
-  return (
-    isRecord(value) &&
-    "mapWidth" in value &&
-    "mapHeight" in value &&
-    "mapImage" in value
-  );
-}
-
-function getMightyMikeMapData(
-  metadata: LevelMetadata | undefined,
-): MightyMikeMap | undefined {
-  const direct = (metadata as Record<string, unknown> | undefined)
-    ?.mightyMikeMapData;
-  if (isMightyMikeMap(direct)) {
-    return direct;
-  }
-  const nested = getNestedMetadata(metadata, "1000");
-  const nestedMap = nested?.mightyMikeMapData;
-  return isMightyMikeMap(nestedMap) ? nestedMap : undefined;
 }
 
 function serializeBugdomTileImages(
@@ -124,11 +87,9 @@ export function serializePrimaryMapBlob(
   }
 
   if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
-    const mightyMikeData = getMightyMikeMapData(combinedData._metadata);
-    if (!mightyMikeData) return null;
-    return new Blob([mightyMikeMapToCompressedBinary(mightyMikeData)], {
-      type: ".map",
-    });
+    const result = serializeMightyMikeLevel(combinedData);
+    if (result.isErr()) return null;
+    return new Blob([result.value], { type: ".map" });
   }
 
   if (globals.DATA_TYPE === DataType.RSRC_FORK) {
@@ -241,10 +202,9 @@ export async function buildPreviewTerrainBlobs(
   }
 
   if (globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    const mightyMikeData = getMightyMikeMapData(data._metadata);
-    if (!mightyMikeData) return null;
-    const buffer = mightyMikeMapToCompressedBinary(mightyMikeData);
-    return { dataBytes: new Uint8Array(buffer), rsrcBytes: null, textureBytes: null };
+    const result = serializeMightyMikeLevel(data);
+    if (result.isErr()) return null;
+    return { dataBytes: new Uint8Array(result.value), rsrcBytes: null, textureBytes: null };
   }
 
   if (
@@ -334,20 +294,16 @@ export async function saveMap({
       title: "Map Downloaded!",
     });
   } else if (globals.GAME_NAME === "Mighty Mike") {
-    // Mighty Mike: Compile back to .map format
-    // Extract Mighty Mike-specific data from metadata
-    const mightyMikeData = getMightyMikeMapData(data._metadata);
-
-    if (!mightyMikeData) {
+    const serializeResult = serializeMightyMikeLevel(data);
+    if (serializeResult.isErr()) {
       toast({
         title: "Cannot save Mighty Mike level",
-        description: "Original level data not found in metadata",
+        description: serializeResult.error.message,
       });
       return;
     }
 
-    const mapBuffer = mightyMikeMapToCompressedBinary(mightyMikeData);
-    downloadBlob(mapBuffer, mapFile.name, ".map");
+    downloadBlob(serializeResult.value, mapFile.name, ".map");
     toast({
       title: "Mighty Mike Map Downloaded!",
     });

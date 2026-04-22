@@ -110,7 +110,7 @@ export function NanosaurEditorView({
       <Nanosaur1EditorToolbar
         terrainHasSTgd={showSupertileMenu}
       />
-      <MenuSection>
+      <MenuSection scrollable={view !== View.supertiles}>
         {view === View.items && itemData && (
           <ItemMenu
             itemData={itemData}

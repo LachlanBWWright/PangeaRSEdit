@@ -805,7 +805,24 @@ export function MightyMikeTileMenu({
             <div>
               <p className="text-xs text-gray-400 mb-1">Flags</p>
               <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                {[0, 1, 2, 3, 4, 5, 6, 7].map((bit) => {
+                {([
+                  [0,  "Solid Top"],
+                  [1,  "Solid Bottom"],
+                  [2,  "Solid Left"],
+                  [3,  "Solid Right"],
+                  [4,  "Death"],
+                  [5,  "Hurt"],
+                  [6,  "(unused)"],
+                  [7,  "Water"],
+                  [8,  "Wind"],
+                  [9,  "Bullets Pass Through"],
+                  [10, "Stairs"],
+                  [11, "Friction"],
+                  [12, "Ice"],
+                  [13, "(unused)"],
+                  [14, "(unused)"],
+                  [15, "Track"],
+                ] as [number, string][]).map(([bit, label]) => {
                   const mask = 1 << bit;
                   const checked = (getNumber(currentTileAttributes["flags"]) & mask) !== 0;
                   return (
@@ -819,7 +836,7 @@ export function MightyMikeTileMenu({
                         }}
                         className="h-3 w-3"
                       />
-                      <span>Bit {bit}</span>
+                      <span title={`Bit ${bit}`}>{label}</span>
                     </label>
                   );
                 })}

@@ -143,7 +143,7 @@ export function BugdomEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection>
+      <MenuSection scrollable={view !== View.supertiles}>
         {view === View.fences && (
           fenceData ? (
             <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />

@@ -76,7 +76,7 @@ export function Navigation() {
             >
               <Link to="/download-levels" className="text-white">
                 <Download className="w-4 h-4" />
-                <span>Download Levels</span>
+                <span>Custom Levels</span>
               </Link>
             </Button>
             {showExperimentalLinks && (
