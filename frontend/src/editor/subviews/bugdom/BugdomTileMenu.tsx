@@ -514,264 +514,248 @@ export function BugdomTileMenu({
     );
   }
 
-  const boxHeight = "h-80"; // Consistent height for all columns
-
   return (
-    <div className="flex flex-col gap-4 p-2">
-      <div className="grid grid-cols-2 gap-2">
-        <Button onClick={() => onResizeSupertiles("top", 1)}>
-          Add Supertile Row Top
-        </Button>
-        <Button onClick={() => onResizeSupertiles("bottom", 1)}>
-          Add Supertile Row Bottom
-        </Button>
-        <Button onClick={() => onResizeSupertiles("left", 1)}>
-          Add Supertile Column Left
-        </Button>
-        <Button onClick={() => onResizeSupertiles("right", 1)}>
-          Add Supertile Column Right
-        </Button>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("top")}>
-          Remove Supertile Row Top
-        </Button>
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("bottom")}>
-          Remove Supertile Row Bottom
-        </Button>
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("left")}>
-          Remove Supertile Column Left
-        </Button>
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("right")}>
-          Remove Supertile Column Right
-        </Button>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-      {/* Left column: Selected Supertile Tiles */}
-      <div className={`flex flex-col gap-2 ${boxHeight}`}>
-        <h3 className="font-bold text-white text-center">
-          Supertile #{selectedTile}
-        </h3>
-        <p className="text-sm text-gray-300 text-center">
-          Click a tile to select it
-        </p>
-
-        {/* Show tiles in a 5x5 grid - clickable for selection */}
-        <div className="border border-gray-600 p-3 rounded flex-1 flex flex-col justify-center">
-          <div
-            className="grid gap-1 mx-auto"
-            style={{
-              gridTemplateColumns: `repeat(${globals.TILES_PER_SUPERTILE}, 1fr)`,
-            }}
-          >
-            {tilesInSelectedSupertile.map((tile, idx) => (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-2">
+      <div className="grid h-full min-h-0 grid-cols-3 gap-4">
+        {/* Left column: selected tile grid and edit actions */}
+        <div className="flex min-h-0 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto rounded border border-gray-600 p-3">
+            <div className="flex flex-col gap-2">
               <div
-                key={idx}
-                className={`relative cursor-pointer rounded transition-all ${
-                  selectedTileInSupertile === idx
-                    ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-gray-900"
-                    : "border border-gray-700 hover:border-gray-500"
-                }`}
-                title={`Tile ${tile.info.tileIndex}, Image ${tile.info.imageIndex}, Rot: ${tile.info.rotationDegrees}°, FlipX: ${tile.info.flipX}, FlipY: ${tile.info.flipY}`}
-                onClick={() => setSelectedTileInSupertile(idx)}
+                className="grid gap-1 mx-auto"
+                style={{
+                  gridTemplateColumns: `repeat(${globals.TILES_PER_SUPERTILE}, 1fr)`,
+                }}
               >
-                <Stage width={32} height={32}>
-                  <Layer>
-                    {mapImages[tile.info.imageIndex] && (
-                      <Image
-                        image={mapImages[tile.info.imageIndex]}
-                        width={32}
-                        height={32}
-                        x={16}
-                        y={16}
-                        offsetX={16}
-                        offsetY={16}
-                        rotation={tile.info.rotationDegrees}
-                        scaleX={tile.info.flipX ? -1 : 1}
-                        scaleY={tile.info.flipY ? -1 : 1}
-                      />
-                    )}
-                  </Layer>
-                </Stage>
+                {tilesInSelectedSupertile.map((tile, idx) => (
+                  <div
+                    key={idx}
+                    className={`relative cursor-pointer rounded transition-all ${
+                      selectedTileInSupertile === idx
+                        ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-gray-900"
+                        : "border border-gray-700 hover:border-gray-500"
+                    }`}
+                    title={`Tile ${tile.info.tileIndex}, Image ${tile.info.imageIndex}, Rot: ${tile.info.rotationDegrees}°, FlipX: ${tile.info.flipX}, FlipY: ${tile.info.flipY}`}
+                    onClick={() => setSelectedTileInSupertile(idx)}
+                  >
+                    <Stage width={32} height={32}>
+                      <Layer>
+                        {mapImages[tile.info.imageIndex] && (
+                          <Image
+                            image={mapImages[tile.info.imageIndex]}
+                            width={32}
+                            height={32}
+                            x={16}
+                            y={16}
+                            offsetX={16}
+                            offsetY={16}
+                            rotation={tile.info.rotationDegrees}
+                            scaleX={tile.info.flipX ? -1 : 1}
+                            scaleY={tile.info.flipY ? -1 : 1}
+                          />
+                        )}
+                      </Layer>
+                    </Stage>
+                  </div>
+                ))}
               </div>
-            ))}
+
+              {currentSelectedTileData ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRotateTile(currentFlatIndex)}
+                      title="Rotate 90°"
+                    >
+                      <RotateCw className="w-4 h-4 mr-1" />
+                      Rotate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleFlipX(currentFlatIndex)}
+                      title="Flip Horizontal"
+                    >
+                      <FlipHorizontal className="w-4 h-4 mr-1" />
+                      Flip X
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleFlipY(currentFlatIndex)}
+                      title="Flip Vertical"
+                    >
+                      <FlipVertical className="w-4 h-4 mr-1" />
+                      Flip Y
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={handleReplaceTile}
+                      title="Replace with selected tile image"
+                    >
+                      Replace with Tile Image #{selectedTileImageIndex}
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-400 text-center">
+                    <p>
+                      Position: ({currentSelectedTileData.row},{" "}
+                      {currentSelectedTileData.col})
+                    </p>
+                    <p>
+                      Tile Index: {currentSelectedTileData.info.tileIndex} → Image:{" "}
+                      {currentSelectedTileData.info.imageIndex}
+                    </p>
+                    <p>
+                      Rotation: {currentSelectedTileData.info.rotationDegrees}° |
+                      Flip: {currentSelectedTileData.info.flipX ? "X" : ""}
+                      {currentSelectedTileData.info.flipY ? "Y" : ""}
+                      {!currentSelectedTileData.info.flipX &&
+                      !currentSelectedTileData.info.flipY
+                        ? "None"
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center rounded border border-gray-600 p-3">
+                  <p className="text-gray-400 text-center">No tile selected</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Middle column: Edit Controls for selected tile */}
-      <div className={`flex flex-col gap-2 ${boxHeight}`}>
-        <h3 className="font-bold text-white text-center">Edit Selected Tile</h3>
-        <p className="text-sm text-gray-300 text-center">
-          Transform or replace
-        </p>
+        {/* Middle column: tile image palette */}
+        <div className="flex min-h-0 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto rounded border border-gray-600 p-3">
+            <div className="flex flex-col gap-2">
+              <h3 className="font-bold text-white text-center">Tile Images</h3>
+              <p className="text-xs text-gray-400 text-center">
+                {mapImages.length} tiles • Selected: #{selectedTileImageIndex}
+              </p>
 
-        {currentSelectedTileData ? (
-          <div className="border border-gray-600 p-3 rounded flex-1 flex flex-col">
-            {/* Preview of selected tile */}
-            <div className="flex justify-center mb-3">
-              <div className="border-2 border-blue-500 rounded p-1 bg-gray-800">
-                <Stage width={64} height={64}>
-                  <Layer>
-                    {mapImages[currentSelectedTileData.info.imageIndex] && (
-                      <Image
-                        image={
-                          mapImages[currentSelectedTileData.info.imageIndex]
-                        }
-                        width={64}
-                        height={64}
-                        x={32}
-                        y={32}
-                        offsetX={32}
-                        offsetY={32}
-                        rotation={currentSelectedTileData.info.rotationDegrees}
-                        scaleX={currentSelectedTileData.info.flipX ? -1 : 1}
-                        scaleY={currentSelectedTileData.info.flipY ? -1 : 1}
-                      />
-                    )}
-                  </Layer>
-                </Stage>
+              <div className="grid grid-cols-4 gap-1">
+                {mapImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className={`cursor-pointer rounded transition-all ${
+                      selectedTileImageIndex === idx
+                        ? "ring-2 ring-green-500 ring-offset-1 ring-offset-gray-900"
+                        : "border border-gray-700 hover:border-gray-500"
+                    }`}
+                    onClick={() => setSelectedTileImageIndex(idx)}
+                    title={`Tile #${idx}`}
+                  >
+                    <TileCanvas image={img} size={32} />
+                  </div>
+                ))}
               </div>
             </div>
-
-            {/* Transform buttons */}
-            <div className="flex justify-center gap-2 mb-3">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleRotateTile(currentFlatIndex)}
-                title="Rotate 90°"
-              >
-                <RotateCw className="w-4 h-4 mr-1" />
-                Rotate
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleFlipX(currentFlatIndex)}
-                title="Flip Horizontal"
-              >
-                <FlipHorizontal className="w-4 h-4 mr-1" />
-                Flip X
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleFlipY(currentFlatIndex)}
-                title="Flip Vertical"
-              >
-                <FlipVertical className="w-4 h-4 mr-1" />
-                Flip Y
-              </Button>
-            </div>
-
-          {/* Replace with selected tile image */}
-          <div className="flex justify-center mb-3">
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <Button
               size="sm"
-              variant="default"
-              onClick={handleReplaceTile}
-              title="Replace with selected tile image"
+              variant="outline"
+              onClick={() => {
+                setEditingTileImageIndex(selectedTileImageIndex);
+                setIsEditingTileImage(true);
+              }}
+              disabled={!mapImages[selectedTileImageIndex]}
             >
-              Replace with Tile Image #{selectedTileImageIndex}
+              <Edit className="mr-1 h-4 w-4" />
+              Edit tile image
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => tileImageUploadInputRef.current?.click()}
+              disabled={!mapImages[selectedTileImageIndex]}
+            >
+              <Upload className="mr-1 h-4 w-4" />
+              Upload tile image
+            </Button>
+            <input
+              ref={tileImageUploadInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handleUploadTileImage}
+            />
+            <Button size="sm" variant="outline" onClick={handleAddTileImage}>
+              Add tile image
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRemoveTileImage}
+              disabled={isTileImageInUse || mapImages.length <= 1}
+            >
+              Remove tile image
             </Button>
           </div>
+        </div>
 
-            {/* Tile info */}
-            <div className="text-xs text-gray-400 text-center mt-auto">
-              <p>
-                Position: ({currentSelectedTileData.row},{" "}
-                {currentSelectedTileData.col})
-              </p>
-              <p>
-                Tile Index: {currentSelectedTileData.info.tileIndex} → Image:{" "}
-                {currentSelectedTileData.info.imageIndex}
-              </p>
-              <p>
-                Rotation: {currentSelectedTileData.info.rotationDegrees}° |
-                Flip: {currentSelectedTileData.info.flipX ? "X" : ""}
-                {currentSelectedTileData.info.flipY ? "Y" : ""}
-                {!currentSelectedTileData.info.flipX &&
-                !currentSelectedTileData.info.flipY
-                  ? "None"
-                  : ""}
-              </p>
+        {/* Right column: supertile resize controls */}
+        <div className="flex min-h-0 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto rounded border border-gray-600 p-3">
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={() => onResizeSupertiles("top", 1)}>
+                  Add Supertile Row Top
+                </Button>
+                <Button onClick={() => onResizeSupertiles("bottom", 1)}>
+                  Add Supertile Row Bottom
+                </Button>
+                <Button onClick={() => onResizeSupertiles("left", 1)}>
+                  Add Supertile Column Left
+                </Button>
+                <Button onClick={() => onResizeSupertiles("right", 1)}>
+                  Add Supertile Column Right
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleRemoveSupertile("top")}
+                >
+                  Remove Supertile Row Top
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleRemoveSupertile("bottom")}
+                >
+                  Remove Supertile Row Bottom
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleRemoveSupertile("left")}
+                >
+                  Remove Supertile Column Left
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleRemoveSupertile("right")}
+                >
+                  Remove Supertile Column Right
+                </Button>
+              </div>
+              <div className="flex flex-col gap-1 text-sm">
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <p>Supertiles Wide: {supertileCounts.width}</p>
+                  <p>Supertiles High: {supertileCounts.height}</p>
+                  <p>Unique Supertiles: {hedr.numUniqueSupertiles}</p>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <p>Current Tile: #{selectedTile}</p>
+                  <p>
+                    Texture ID: {currentSelectedTileData?.info.imageIndex ?? 0}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="border border-gray-600 p-3 rounded flex-1 flex items-center justify-center">
-            <p className="text-gray-400 text-center">No tile selected</p>
-          </div>
-        )}
-      </div>
-
-      {/* Right column: Tile Images */}
-      <div className={`flex flex-col gap-2 ${boxHeight}`}>
-        <h3 className="font-bold text-white text-center">Tile Images</h3>
-        <p className="text-xs text-gray-400 text-center">
-          {mapImages.length} tiles • Selected: #{selectedTileImageIndex}
-        </p>
-
-        <div className="flex-1 overflow-y-auto border border-gray-600 rounded p-2">
-          <div className="grid grid-cols-4 gap-1">
-            {mapImages.map((img, idx) => (
-              <div
-                key={idx}
-                className={`cursor-pointer rounded transition-all ${
-                  selectedTileImageIndex === idx
-                    ? "ring-2 ring-green-500 ring-offset-1 ring-offset-gray-900"
-                    : "border border-gray-700 hover:border-gray-500"
-                }`}
-                onClick={() => setSelectedTileImageIndex(idx)}
-                title={`Tile #${idx}`}
-              >
-                <TileCanvas image={img} size={32} />
-              </div>
-            ))}
-          </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setEditingTileImageIndex(selectedTileImageIndex);
-              setIsEditingTileImage(true);
-            }}
-            disabled={!mapImages[selectedTileImageIndex]}
-          >
-            <Edit className="mr-1 h-4 w-4" />
-            Edit tile image
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => tileImageUploadInputRef.current?.click()}
-            disabled={!mapImages[selectedTileImageIndex]}
-          >
-            <Upload className="mr-1 h-4 w-4" />
-            Upload tile image
-          </Button>
-          <input
-            ref={tileImageUploadInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*"
-            onChange={handleUploadTileImage}
-          />
-          <Button size="sm" variant="outline" onClick={handleAddTileImage}>
-            Add tile image
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleRemoveTileImage}
-            disabled={isTileImageInUse || mapImages.length <= 1}
-          >
-            Remove tile image
-          </Button>
-        </div>
-      </div>
       </div>
       <ImageEditor
         isOpen={isEditingTileImage}
