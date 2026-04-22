@@ -92,12 +92,11 @@ export function IndividualTilesMenu({
 
   // Synchronously reset to 2D topology view before the first paint so the
   // correct canvas mode is active when the layout is first drawn.
+  // Jotai setters are stable references, so this only runs once on mount.
   useLayoutEffect(() => {
     setTileView(TileViews.Topology);
     setCanvasViewMode(CanvasView.TWO_D);
-  // Intentionally run once on mount only; setters from Jotai are stable.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setTileView, setCanvasViewMode]);
 
   useEffect(() => {
     if (!hasRoofLayer) {
