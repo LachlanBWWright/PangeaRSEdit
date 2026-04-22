@@ -441,9 +441,6 @@ export function createPreviewModule(
         }
 
         ensurePreviewPrefsDirs(module, config);
-        if (terrainPaths) {
-          writeTerrainToVfs(module, config, currentLevelInfo, terrainPaths, terrainDataBytes, terrainRsrcBytes, onError);
-        }
 
         // Schedule overlay fallback here — preRun is reliably called just before
         // main() so the timer starts as late as possible to minimise false fires.

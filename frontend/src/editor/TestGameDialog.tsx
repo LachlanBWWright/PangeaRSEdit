@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ export function TestGameDialog(props: Props) {
     terrainRsrcBytes,
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
+  const containerRef = useRef<HTMLDivElement>(null);
   const [previewStarted, setPreviewStarted] = useState(false);
   const [runToken, setRunToken] = useState(0);
   const currentLevelInfo =
@@ -73,6 +74,10 @@ export function TestGameDialog(props: Props) {
   const handleLaunch = () => {
     setPreviewStarted(true);
     setRunToken((currentToken) => currentToken + 1);
+  };
+
+  const handleFullscreen = () => {
+    containerRef.current?.requestFullscreen();
   };
 
   return (
@@ -114,9 +119,15 @@ export function TestGameDialog(props: Props) {
           <Button variant="outline" onClick={handleLaunch}>
             {previewStarted ? "Reload Game" : "Launch Game"}
           </Button>
+
+          {previewStarted && (
+            <Button variant="outline" onClick={handleFullscreen}>
+              Fullscreen
+            </Button>
+          )}
         </div>
 
-        <div className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
+        <div ref={containerRef} className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
           {!previewStarted ? (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-center p-6">
               Launch the game to load it directly into the canvas below.

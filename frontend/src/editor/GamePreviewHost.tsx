@@ -85,6 +85,12 @@ export function GamePreviewHost({
     const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
     const handleFullscreenChange = () => {
       if (!cancelled) {
+        // Exit immediately if the game entered fullscreen on the canvas element
+        // directly; we keep the game windowed and let the user control fullscreen
+        // via the explicit button in the dialog toolbar.
+        if (document.fullscreenElement === canvas) {
+          void document.exitFullscreen();
+        }
         triggerResizePulse();
       }
     };
@@ -103,7 +109,7 @@ export function GamePreviewHost({
       void (async () => {
         const baseUrls = assetBaseUrls;
         for (let baseUrlIndex = 0; baseUrlIndex < baseUrls.length; baseUrlIndex += 1) {
-          const assetBaseUrl = baseUrls[baseUrlIndex];
+          const assetBaseUrl = baseUrls[baseUrlIndex] ?? "";
           activeModule = createPreviewModule({
             config,
             levelNumber,
