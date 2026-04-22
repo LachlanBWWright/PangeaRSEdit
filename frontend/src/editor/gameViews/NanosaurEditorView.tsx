@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { Nanosaur1EditorToolbar } from "../toolbars/Nanosaur1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
+import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 
@@ -55,6 +56,7 @@ export function NanosaurEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const view = useAtomValue(ActiveView);
+  const selectedTile = useAtomValue(SelectedTile);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -126,6 +128,7 @@ export function NanosaurEditorView({
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
+            key={selectedTile}
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}

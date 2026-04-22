@@ -34,6 +34,7 @@ interface Props {
   onLevelNumberChange: (n: number) => void;
   terrainDataBytes: Uint8Array | null | undefined;
   terrainRsrcBytes: Uint8Array | null | undefined;
+  terrainTextureBytes: Uint8Array | null | undefined;
 }
 
 export function TestGameDialog(props: Props) {
@@ -45,6 +46,7 @@ export function TestGameDialog(props: Props) {
     onLevelNumberChange,
     terrainDataBytes,
     terrainRsrcBytes,
+    terrainTextureBytes,
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -140,6 +142,7 @@ export function TestGameDialog(props: Props) {
               currentLevelInfo={currentLevelInfo}
               terrainDataBytes={terrainDataBytes}
               terrainRsrcBytes={terrainRsrcBytes}
+              terrainTextureBytes={terrainTextureBytes}
               runToken={runToken}
             />
           )}

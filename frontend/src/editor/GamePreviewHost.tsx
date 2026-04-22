@@ -28,6 +28,12 @@ interface Props {
    * `null`      = no rsrc file needed for this game.
    */
   readonly terrainRsrcBytes: Uint8Array | null | undefined;
+  /**
+   * Bytes for a secondary texture file such as Nanosaur 1's .trt tileset.
+   * `undefined` = serialization is still in progress.
+   * `null`      = no texture file needed for this game.
+   */
+  readonly terrainTextureBytes: Uint8Array | null | undefined;
   readonly runToken: number;
 }
 
@@ -43,6 +49,7 @@ export function GamePreviewHost({
   currentLevelInfo,
   terrainDataBytes,
   terrainRsrcBytes,
+  terrainTextureBytes,
   runToken,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -71,7 +78,11 @@ export function GamePreviewHost({
 
     // Terrain bytes are still being serialized — show a holding status and wait.
     // The effect will re-run automatically when the bytes prop changes to non-undefined.
-    if (terrainDataBytes === undefined || terrainRsrcBytes === undefined) {
+    if (
+      terrainDataBytes === undefined ||
+      terrainRsrcBytes === undefined ||
+      terrainTextureBytes === undefined
+    ) {
       setErrorText(null);
       setStatusText("Preparing level data…");
       return;
@@ -119,6 +130,7 @@ export function GamePreviewHost({
             cacheBustToken,
             terrainDataBytes: terrainDataBytes ?? null,
             terrainRsrcBytes: terrainRsrcBytes ?? null,
+            terrainTextureBytes: terrainTextureBytes ?? null,
             terrainPaths,
             onStatus: (text) => {
               if (!cancelled) {
@@ -203,7 +215,15 @@ export function GamePreviewHost({
         previewWindow.Module = previousModule;
       }
     };
-  }, [config, currentLevelInfo, levelNumber, runToken, terrainDataBytes, terrainRsrcBytes]);
+  }, [
+    config,
+    currentLevelInfo,
+    levelNumber,
+    runToken,
+    terrainDataBytes,
+    terrainRsrcBytes,
+    terrainTextureBytes,
+  ]);
 
   const showStatus = Boolean(statusText) || Boolean(errorText);
 

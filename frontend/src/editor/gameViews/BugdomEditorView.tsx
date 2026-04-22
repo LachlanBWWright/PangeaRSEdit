@@ -9,6 +9,7 @@ import { useEffect, useMemo } from "react";
 import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
+import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 
@@ -71,6 +72,7 @@ export function BugdomEditorView({
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
   const view = useAtomValue(ActiveView);
+  const selectedTile = useAtomValue(SelectedTile);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -178,6 +180,7 @@ export function BugdomEditorView({
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
+            key={selectedTile}
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}

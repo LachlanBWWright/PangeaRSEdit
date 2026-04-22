@@ -1,8 +1,11 @@
 /*
-These are preprocessors for Pangea's oldert games, Nanosaur 1 and Otto Matic.
+These are preprocessors for Pangea's older games, Nanosaur 1 and Otto Matic.
 Each supertile's texture is constructed from reusable 32x32 tiles, while newer games just use a single compressed texture for each tile.
 
 */
+
+import { ok, err, type Result } from "neverthrow";
+import { canvasDataToSixteenBit } from "@/utils/imageConverter";
 
 // Convert a 32x32 ARGB1555 tile (Uint16Array) to a canvas for display
 export function createCanvasFromTile(tile: Uint16Array): HTMLCanvasElement {
@@ -50,6 +53,47 @@ export function parseNanosaurTerrainTextures(
     TILE_SIZE,
     BYTES_PER_TILE,
   );
+}
+
+export function serializeNanosaurTerrainTextures(
+  tiles: HTMLCanvasElement[],
+): Result<ArrayBuffer, Error> {
+  const serializedTiles: Uint8Array[] = [];
+
+  for (let i = 0; i < tiles.length; i++) {
+    const canvas = tiles[i];
+    if (!canvas) {
+      return err(new Error(`Tile image at index ${i} is missing`));
+    }
+    if (canvas.width !== 32 || canvas.height !== 32) {
+      return err(
+        new Error(`Tile image at index ${i} must be 32x32 pixels`),
+      );
+    }
+
+    const encoded = canvasDataToSixteenBit(canvas);
+    if (encoded.isErr()) {
+      return err(
+        new Error(`Failed to serialize tile image #${i}: ${encoded.error.message}`),
+      );
+    }
+    serializedTiles.push(new Uint8Array(encoded.value.buffer.slice(0)));
+  }
+
+  const totalLength =
+    4 + serializedTiles.reduce((sum, tile) => sum + tile.byteLength, 0);
+  const buffer = new ArrayBuffer(totalLength);
+  const view = new DataView(buffer);
+
+  view.setInt32(0, tiles.length, false);
+
+  let offset = 4;
+  for (const tile of serializedTiles) {
+    new Uint8Array(buffer, offset, tile.byteLength).set(tile);
+    offset += tile.byteLength;
+  }
+
+  return ok(buffer);
 }
 
 // Helper to extract Nanosaur 1 tiles from a DataView

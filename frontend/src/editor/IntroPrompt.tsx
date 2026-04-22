@@ -59,6 +59,7 @@ import {
   editorNavbarLeftAtom,
   editorNavbarOpenAtom,
 } from "@/data/globals/editorNavbarAtoms";
+import { serializeNanosaurTerrainTextures } from "@/data/processors/classicProprocessor";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -114,6 +115,7 @@ export function IntroPrompt() {
   const [previewLevelNumber, setPreviewLevelNumber] = useState(0);
   const [terrainDataBytes, setTerrainDataBytes] = useState<Uint8Array | null | undefined>(undefined);
   const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<Uint8Array | null | undefined>(undefined);
+  const [terrainTextureBytes, setTerrainTextureBytes] = useState<Uint8Array | null | undefined>(undefined);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -427,21 +429,33 @@ export function IntroPrompt() {
       return;
     }
 
-    // For Nanosaur 1 (TRT_FILE), download the original .trt file directly — the raw
-    // 16-bit ARGB1555 format is incompatible with the LZSS-based re-encoding below.
+    // For Nanosaur 1 (TRT_FILE), serialize the edited tile images back into the
+    // original raw 16-bit texture file format.
     if (globals.DATA_TYPE === DataType.TRT_FILE) {
-      if (mapImagesFile) {
-        const trtBuffer = await mapImagesFile.arrayBuffer();
-        const trtBlob = new Blob([trtBuffer], {
-          type: "application/octet-stream",
+      if (!mapImages || mapImages.length === 0) {
+        toast.error("Download failed", {
+          description: "No tile images are loaded for this level.",
         });
-        const trtUrl = URL.createObjectURL(trtBlob);
-        const trtLink = document.createElement("a");
-        trtLink.href = trtUrl;
-        trtLink.setAttribute("download", mapImagesFile.name);
-        trtLink.click();
-        URL.revokeObjectURL(trtUrl);
+        return;
       }
+
+      const textureResult = serializeNanosaurTerrainTextures(mapImages);
+      if (textureResult.isErr()) {
+        toast.error("Download failed", {
+          description: textureResult.error.message,
+        });
+        return;
+      }
+
+      const trtBlob = new Blob([textureResult.value], {
+        type: "application/octet-stream",
+      });
+      const trtUrl = URL.createObjectURL(trtBlob);
+      const trtLink = document.createElement("a");
+      trtLink.href = trtUrl;
+      trtLink.setAttribute("download", mapImagesFile?.name || "images.trt");
+      trtLink.click();
+      URL.revokeObjectURL(trtUrl);
       toast.success("Map Downloaded!");
       return;
     }
@@ -571,6 +585,7 @@ export function IntroPrompt() {
     setTunnelFileName("");
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
+    setTerrainTextureBytes(undefined);
   }, [setAllAtomicData]);
 
   const handleCreateBlankLevel = useCallback(
@@ -640,6 +655,7 @@ export function IntroPrompt() {
     // GamePreviewHost shows "Preparing level data…" until the bytes arrive.
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
+    setTerrainTextureBytes(undefined);
     setTestDialogOpen(true);
     void buildPreviewTerrainBlobs(combinedData, globals, mapImages).then((blobs) => {
       if (!blobs) {
@@ -648,10 +664,12 @@ export function IntroPrompt() {
         });
         setTerrainDataBytes(null);
         setTerrainRsrcBytes(null);
+        setTerrainTextureBytes(null);
         return;
       }
       setTerrainDataBytes(blobs.dataBytes);
       setTerrainRsrcBytes(blobs.rsrcBytes);
+      setTerrainTextureBytes(blobs.textureBytes);
     });
   }, [getCurrentAtomicData, globals, mapImages]);
 
@@ -712,6 +730,7 @@ export function IntroPrompt() {
               onLevelNumberChange={setPreviewLevelNumber}
               terrainDataBytes={terrainDataBytes}
               terrainRsrcBytes={terrainRsrcBytes}
+              terrainTextureBytes={terrainTextureBytes}
             />
           )}
         </>
@@ -737,6 +756,7 @@ export function IntroPrompt() {
     setEditorNavbarOpen,
     terrainDataBytes,
     terrainRsrcBytes,
+    terrainTextureBytes,
     testDialogOpen,
   ]);
 

@@ -16,6 +16,7 @@ export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
 export interface PreviewTerrainPaths {
   readonly dataPath: string;
   readonly rsrcPath: string | null;
+  readonly texturePath?: string;
 }
 
 export interface PreviewRuntimeModule {
@@ -123,6 +124,13 @@ export function getPreviewTerrainPaths(
   info: AnyLevelInfo | undefined,
   config: GamePortConfig,
 ): PreviewTerrainPaths | null {
+  if (config.game === Game.NANOSAUR) {
+    return {
+      dataPath: "/Data/Terrain/Level1.ter",
+      rsrcPath: null,
+      texturePath: "/Data/Terrain/Level1.trt",
+    };
+  }
   if (!info || !("terrainFile" in info)) {
     return null;
   }
@@ -271,10 +279,12 @@ export interface PreviewModuleOptions {
   readonly canvas: HTMLCanvasElement;
   readonly assetBaseUrl: string;
   readonly cacheBustToken: string;
-  /** Bytes for the data-fork terrain path (.ter images for STANDARD, compiled .ter for TRT_FILE). */
+  /** Bytes for the data-fork terrain path (.ter images for STANDARD, compiled .ter for Nanosaur 1). */
   readonly terrainDataBytes: Uint8Array | null;
   /** Bytes for the resource-fork terrain path (.ter.rsrc map data for STANDARD / RSRC_FORK). */
   readonly terrainRsrcBytes: Uint8Array | null;
+  /** Optional bytes for a secondary terrain asset, such as Nanosaur 1's texture file. */
+  readonly terrainTextureBytes: Uint8Array | null;
   readonly terrainPaths: PreviewTerrainPaths | null;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
@@ -328,9 +338,10 @@ function writeTerrainToVfs(
   terrainPaths: PreviewTerrainPaths,
   terrainDataBytes: Uint8Array | null,
   terrainRsrcBytes: Uint8Array | null,
+  terrainTextureBytes: Uint8Array | null,
   onError: (text: string) => void,
 ): void {
-  if (!(terrainDataBytes ?? terrainRsrcBytes)) return;
+  if (!(terrainDataBytes ?? terrainRsrcBytes ?? terrainTextureBytes)) return;
 
   const vfs = module.FS;
   if (vfs && typeof vfs.mkdir === "function") {
@@ -354,18 +365,32 @@ function writeTerrainToVfs(
     }
   }
 
+  if (terrainTextureBytes && terrainPaths.texturePath) {
+    const writeTextureResult = writeFileToVfs(
+      module,
+      terrainPaths.texturePath,
+      terrainTextureBytes,
+    );
+    if (writeTextureResult.isErr()) {
+      onError(`Failed to write terrain texture file: ${writeTextureResult.error.message}`);
+      return;
+    }
+  }
+
   if (
     config.terrain?.setPathFn &&
     config.terrain.getSetPathArg &&
     currentLevelInfo &&
     "terrainFile" in currentLevelInfo
   ) {
+    const setPathArg =
+      config.game === Game.NANOSAUR ? terrainPaths.dataPath : config.terrain.getSetPathArg(currentLevelInfo.terrainFile);
     Result.fromThrowable(
       () => module.ccall?.(
         config.terrain!.setPathFn!,
         null,
         ["string"],
-        [config.terrain!.getSetPathArg!(currentLevelInfo.terrainFile)],
+        [setPathArg],
       ),
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
@@ -384,6 +409,7 @@ export function createPreviewModule(
     cacheBustToken,
     terrainDataBytes,
     terrainRsrcBytes,
+    terrainTextureBytes,
     terrainPaths,
     onStatus,
     onError,
@@ -474,7 +500,16 @@ export function createPreviewModule(
       // Also inject terrain here as a fallback for games that initialize the
       // VFS only during runtime (after preRun has already fired).
       if (terrainPaths) {
-        writeTerrainToVfs(module, config, currentLevelInfo, terrainPaths, terrainDataBytes, terrainRsrcBytes, onError);
+        writeTerrainToVfs(
+          module,
+          config,
+          currentLevelInfo,
+          terrainPaths,
+          terrainDataBytes,
+          terrainRsrcBytes,
+          terrainTextureBytes ?? null,
+          onError,
+        );
       }
 
       const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);

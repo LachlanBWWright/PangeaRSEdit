@@ -10,7 +10,7 @@
  * - Edit tile assignments in the layer data
  */
 
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
@@ -20,12 +20,10 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Edit, FlipHorizontal, FlipVertical, RotateCw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ImageEditor } from "@/components/ImageEditor";
-import { bufferToHex } from "@/utils/bufferOperations";
-import { canvasDataToSixteenBit } from "@/utils/imageConverter";
 import {
   canRemoveSupertileColumn,
   canRemoveSupertileRow,
@@ -64,7 +62,6 @@ export function BugdomTileMenu({
   setMapImages,
   onResizeSupertiles,
 }: BugdomTileMenuProps) {
-  const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
   const supertileCounts = getSupertileCounts(
@@ -72,16 +69,25 @@ export function BugdomTileMenu({
     hedr.mapHeight,
     globals.TILES_PER_SUPERTILE,
   );
+  const totalSupertiles = supertileCounts.width * supertileCounts.height;
 
   // Selected individual tile within the supertile (0-24 for 5x5)
   const [selectedTileInSupertile, setSelectedTileInSupertile] =
     useState<number>(0);
 
-  // Selected tile from the palette for replacement
-  const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
-  const paletteUploadInputRef = useRef<HTMLInputElement>(null);
-  const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
-  const [editingPaletteTileIndex, setEditingPaletteTileIndex] = useState<number | null>(null);
+  // Selected tile image for replacement and editing
+  const [selectedTileImageIndex, setSelectedTileImageIndex] = useState<number>(0);
+  const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
+  const tileImageUploadInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingTileImage, setIsEditingTileImage] = useState(false);
+  const [editingTileImageIndex, setEditingTileImageIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (totalSupertiles <= 0) return;
+    if (selectedTile < 0 || selectedTile >= totalSupertiles) {
+      setSelectedTile(0);
+    }
+  }, [selectedTile, setSelectedTile, totalSupertiles]);
 
   const handleRemoveSupertile = (
     direction: "top" | "bottom" | "left" | "right",
@@ -106,39 +112,11 @@ export function BugdomTileMenu({
   const numTileImages = mapImages.length;
 
   // Bugdom 1/Nanosaur 1 store tile art as individual 32x32 images.
-  // Keep replacement and edits constrained to the selected tile image instead of growing a separate palette.
-  const PALETTE_TILE_SIZE = 32;
+  // Keep replacement and edits constrained to the selected tile image list.
+  const TILE_IMAGE_SIZE = 32;
 
-  const syncTileImagesToTerrainData = (nextMapImages: HTMLCanvasElement[]) => {
-    const nextTileData = nextMapImages.map((canvas, tileIndex) => {
-      const encodedTile = canvasDataToSixteenBit(canvas);
-      if (encodedTile.isErr()) {
-        toast.error(
-          `Failed to serialize tile #${tileIndex}: ${encodedTile.error.message}`,
-        );
-        return null;
-      }
-      return bufferToHex(encodedTile.value.buffer);
-    });
-
-    if (nextTileData.some((tileData) => tileData === null)) {
-      return false;
-    }
-
+  const updateTileImages = (nextMapImages: HTMLCanvasElement[]) => {
     setMapImages(nextMapImages);
-    setTerrainData((data) => {
-      data.Timg ??= {};
-      data.Timg[1000] ??= {
-        name: "Extracted Tile Image Data 32x32/16bit",
-        data: "",
-        order: 1000,
-      };
-      if (!data.Timg[1000]) {
-        return;
-      }
-      data.Timg[1000].data = nextTileData.join("");
-    });
-    return true;
   };
 
   // NOTE: tile info helper is defined inside useMemo to avoid changing the memo's dependencies
@@ -305,8 +283,7 @@ export function BugdomTileMenu({
   };
 
   // Get the currently selected tile data
-  const currentSelectedTileData =
-    tilesInSelectedSupertile[selectedTileInSupertile];
+  const currentSelectedTileData = tilesInSelectedSupertile[selectedTileInSupertile];
   const currentFlatIndex = currentSelectedTileData
     ? getFlatIndexForTile(
         currentSelectedTileData.row,
@@ -338,15 +315,15 @@ export function BugdomTileMenu({
     return null;
   };
 
-  // Handle replacing the selected tile with one from the palette
+  // Handle replacing the selected tile with one from the image list
   const handleReplaceTile = () => {
     if (!layerData || currentFlatIndex < 0) return;
 
     // Find the tile index that maps to the selected image
-    const tileIndexForImage = findTileIndexForImage(selectedPaletteTile);
+    const tileIndexForImage = findTileIndexForImage(selectedTileImageIndex);
 
     if (tileIndexForImage === null) {
-      toast.error(`Cannot find tile index for image #${selectedPaletteTile}`);
+      toast.error(`Cannot find tile index for image #${selectedTileImageIndex}`);
       return;
     }
 
@@ -362,23 +339,23 @@ export function BugdomTileMenu({
     });
 
     toast.success(
-      `Replaced with image #${selectedPaletteTile} (tile index ${tileIndexForImage})`,
+      `Replaced with image #${selectedTileImageIndex} (tile index ${tileIndexForImage})`,
     );
   };
 
-  const handleUploadPaletteTile = async (
+  const handleUploadTileImage = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!mapImages[selectedPaletteTile]) {
-      toast.error("Selected palette tile has no image");
+    if (!mapImages[selectedTileImageIndex]) {
+      toast.error("Selected tile image is missing");
       return;
     }
 
     const canvas = document.createElement("canvas");
-    canvas.width = PALETTE_TILE_SIZE;
-    canvas.height = PALETTE_TILE_SIZE;
+    canvas.width = TILE_IMAGE_SIZE;
+    canvas.height = TILE_IMAGE_SIZE;
     const context = canvas.getContext("2d");
     if (!context) {
       toast.error("Failed to create canvas context");
@@ -386,31 +363,31 @@ export function BugdomTileMenu({
     }
     const sourceBitmap = await createImageBitmap(file);
     if (
-      sourceBitmap.width !== PALETTE_TILE_SIZE ||
-      sourceBitmap.height !== PALETTE_TILE_SIZE
+      sourceBitmap.width !== TILE_IMAGE_SIZE ||
+      sourceBitmap.height !== TILE_IMAGE_SIZE
     ) {
       event.target.value = "";
-      toast.error(`Palette tiles must be ${PALETTE_TILE_SIZE}×${PALETTE_TILE_SIZE}`);
+      toast.error(`Tile images must be ${TILE_IMAGE_SIZE}×${TILE_IMAGE_SIZE}`);
       return;
     }
     context.fillStyle = "black";
-    context.fillRect(0, 0, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE);
+    context.fillRect(0, 0, TILE_IMAGE_SIZE, TILE_IMAGE_SIZE);
     const imageBitmap = await createImageBitmap(file, {
-      resizeWidth: PALETTE_TILE_SIZE,
-      resizeHeight: PALETTE_TILE_SIZE,
+      resizeWidth: TILE_IMAGE_SIZE,
+      resizeHeight: TILE_IMAGE_SIZE,
       resizeQuality: "high",
     });
     context.drawImage(imageBitmap, 0, 0);
 
     const newMapImages = [...mapImages];
-    newMapImages[selectedPaletteTile] = canvas;
-    if (!syncTileImagesToTerrainData(newMapImages)) return;
+    newMapImages[selectedTileImageIndex] = canvas;
+    updateTileImages(newMapImages);
     event.target.value = "";
-    toast.success(`Updated tile image #${selectedPaletteTile}`);
+    toast.success(`Updated tile image #${selectedTileImageIndex}`);
   };
 
-  const handleSavePaletteEdit = async (editedImageData: ImageData) => {
-    const targetTileIndex = editingPaletteTileIndex ?? selectedPaletteTile;
+  const handleSaveTileImageEdit = async (editedImageData: ImageData) => {
+    const targetTileIndex = editingTileImageIndex ?? selectedTileImageIndex;
     if (!mapImages[targetTileIndex]) {
       toast.error("Selected tile has no image");
       return;
@@ -427,24 +404,24 @@ export function BugdomTileMenu({
     context.putImageData(editedImageData, 0, 0);
     const newMapImages = [...mapImages];
     newMapImages[targetTileIndex] = canvas;
-    if (!syncTileImagesToTerrainData(newMapImages)) return;
-    setIsEditingPaletteTile(false);
-    setEditingPaletteTileIndex(null);
+    updateTileImages(newMapImages);
+    setIsEditingTileImage(false);
+    setEditingTileImageIndex(null);
     toast.success(`Edited tile #${targetTileIndex}`);
   };
 
   const createBlankTileCanvas = () => {
     const canvas = document.createElement("canvas");
-    canvas.width = PALETTE_TILE_SIZE;
-    canvas.height = PALETTE_TILE_SIZE;
+    canvas.width = TILE_IMAGE_SIZE;
+    canvas.height = TILE_IMAGE_SIZE;
     const context = canvas.getContext("2d");
     if (context) {
-      context.clearRect(0, 0, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE);
+      context.clearRect(0, 0, TILE_IMAGE_SIZE, TILE_IMAGE_SIZE);
     }
     return canvas;
   };
 
-  const isPaletteTileInUse = useMemo(() => {
+  const isTileImageInUse = useMemo(() => {
     if (!layerData) {
       return false;
     }
@@ -452,12 +429,12 @@ export function BugdomTileMenu({
     const matchingLogicalIndices = new Set<number>();
     if (xlatTable) {
       xlatTable.forEach((entry, logicalIndex) => {
-        if (entry?.idx === selectedPaletteTile) {
+        if (entry?.idx === selectedTileImageIndex) {
           matchingLogicalIndices.add(logicalIndex);
         }
       });
     } else {
-      matchingLogicalIndices.add(selectedPaletteTile);
+      matchingLogicalIndices.add(selectedTileImageIndex);
     }
 
     if (matchingLogicalIndices.size === 0) {
@@ -467,38 +444,38 @@ export function BugdomTileMenu({
     return layerData.some((tileValue) =>
       matchingLogicalIndices.has(tileValue & TILENUM_MASK),
     );
-  }, [layerData, selectedPaletteTile, xlatTable]);
+  }, [layerData, selectedTileImageIndex, xlatTable]);
 
-  const handleAddPaletteTile = () => {
+  const handleAddTileImage = () => {
     const newImageIndex = mapImages.length;
-    if (!syncTileImagesToTerrainData([...mapImages, createBlankTileCanvas()])) return;
+    updateTileImages([...mapImages, createBlankTileCanvas()]);
     setTerrainData((data) => {
       if (data.Xlat?.[1000]?.obj) {
         data.Xlat[1000].obj.push({ idx: newImageIndex });
       }
     });
-    setSelectedPaletteTile(newImageIndex);
+    setSelectedTileImageIndex(newImageIndex);
     toast.success(`Added tile image #${newImageIndex}`);
   };
 
-  const handleRemovePaletteTile = () => {
-    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
-      toast.error("Invalid palette tile selected");
+  const handleRemoveTileImage = () => {
+    if (selectedTileImageIndex < 0 || selectedTileImageIndex >= mapImages.length) {
+      toast.error("Invalid tile image selected");
       return;
     }
-    if (isPaletteTileInUse) {
-      toast.error("Cannot remove a palette tile that is still in use");
+    if (isTileImageInUse) {
+      toast.error("Cannot remove a tile image that is still in use");
       return;
     }
 
-    const nextMapImages = mapImages.filter((_, index) => index !== selectedPaletteTile);
-    if (!syncTileImagesToTerrainData(nextMapImages)) return;
+    const nextMapImages = mapImages.filter((_, index) => index !== selectedTileImageIndex);
+    updateTileImages(nextMapImages);
     setTerrainData((data) => {
       const xlat = data.Xlat?.[1000]?.obj;
       if (xlat) {
         const keptEntries = xlat
           .map((entry, logicalIndex) => ({ entry, logicalIndex }))
-          .filter(({ entry }) => entry.idx !== selectedPaletteTile);
+          .filter(({ entry }) => entry.idx !== selectedTileImageIndex);
         const logicalIndexMap = new Map<number, number>();
         keptEntries.forEach(({ logicalIndex }, nextLogicalIndex) => {
           logicalIndexMap.set(logicalIndex, nextLogicalIndex);
@@ -508,7 +485,7 @@ export function BugdomTileMenu({
         if (xlatEntry) {
           xlatEntry.obj = keptEntries.map(({ entry }) => ({
             idx:
-              entry.idx > selectedPaletteTile ? entry.idx - 1 : entry.idx,
+              entry.idx > selectedTileImageIndex ? entry.idx - 1 : entry.idx,
           }));
         }
 
@@ -525,7 +502,7 @@ export function BugdomTileMenu({
       }
 
     });
-    setSelectedPaletteTile((current) => Math.max(0, current - 1));
+    setSelectedTileImageIndex((current) => Math.max(0, current - 1));
     toast.success("Tile image removed");
   };
 
@@ -688,17 +665,17 @@ export function BugdomTileMenu({
               </Button>
             </div>
 
-            {/* Replace with palette tile */}
-            <div className="flex justify-center mb-3">
-              <Button
-                size="sm"
-                variant="default"
-                onClick={handleReplaceTile}
-                title="Replace with selected palette tile"
-              >
-                Replace with Palette Tile #{selectedPaletteTile}
-              </Button>
-            </div>
+          {/* Replace with selected tile image */}
+          <div className="flex justify-center mb-3">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleReplaceTile}
+              title="Replace with selected tile image"
+            >
+              Replace with Tile Image #{selectedTileImageIndex}
+            </Button>
+          </div>
 
             {/* Tile info */}
             <div className="text-xs text-gray-400 text-center mt-auto">
@@ -732,7 +709,7 @@ export function BugdomTileMenu({
       <div className={`flex flex-col gap-2 ${boxHeight}`}>
         <h3 className="font-bold text-white text-center">Tile Images</h3>
         <p className="text-xs text-gray-400 text-center">
-          {mapImages.length} tiles • Selected: #{selectedPaletteTile}
+          {mapImages.length} tiles • Selected: #{selectedTileImageIndex}
         </p>
 
         <div className="flex-1 overflow-y-auto border border-gray-600 rounded p-2">
@@ -741,11 +718,11 @@ export function BugdomTileMenu({
               <div
                 key={idx}
                 className={`cursor-pointer rounded transition-all ${
-                  selectedPaletteTile === idx
+                  selectedTileImageIndex === idx
                     ? "ring-2 ring-green-500 ring-offset-1 ring-offset-gray-900"
                     : "border border-gray-700 hover:border-gray-500"
                 }`}
-                onClick={() => setSelectedPaletteTile(idx)}
+                onClick={() => setSelectedTileImageIndex(idx)}
                 title={`Tile #${idx}`}
               >
                 <TileCanvas image={img} size={32} />
@@ -758,10 +735,10 @@ export function BugdomTileMenu({
             size="sm"
             variant="outline"
             onClick={() => {
-              setEditingPaletteTileIndex(selectedPaletteTile);
-              setIsEditingPaletteTile(true);
+              setEditingTileImageIndex(selectedTileImageIndex);
+              setIsEditingTileImage(true);
             }}
-            disabled={!mapImages[selectedPaletteTile]}
+            disabled={!mapImages[selectedTileImageIndex]}
           >
             <Edit className="mr-1 h-4 w-4" />
             Edit tile image
@@ -769,27 +746,27 @@ export function BugdomTileMenu({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => paletteUploadInputRef.current?.click()}
-            disabled={!mapImages[selectedPaletteTile]}
+            onClick={() => tileImageUploadInputRef.current?.click()}
+            disabled={!mapImages[selectedTileImageIndex]}
           >
             <Upload className="mr-1 h-4 w-4" />
             Upload tile image
           </Button>
           <input
-            ref={paletteUploadInputRef}
+            ref={tileImageUploadInputRef}
             type="file"
             className="hidden"
             accept="image/*"
-            onChange={handleUploadPaletteTile}
+            onChange={handleUploadTileImage}
           />
-          <Button size="sm" variant="outline" onClick={handleAddPaletteTile}>
+          <Button size="sm" variant="outline" onClick={handleAddTileImage}>
             Add tile image
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={handleRemovePaletteTile}
-            disabled={isPaletteTileInUse || mapImages.length <= 1}
+            onClick={handleRemoveTileImage}
+            disabled={isTileImageInUse || mapImages.length <= 1}
           >
             Remove tile image
           </Button>
@@ -797,14 +774,14 @@ export function BugdomTileMenu({
       </div>
       </div>
       <ImageEditor
-        isOpen={isEditingPaletteTile}
+        isOpen={isEditingTileImage}
         onClose={() => {
-          setIsEditingPaletteTile(false);
-          setEditingPaletteTileIndex(null);
+          setIsEditingTileImage(false);
+          setEditingTileImageIndex(null);
         }}
-        imageUrl={mapImages[editingPaletteTileIndex ?? selectedPaletteTile]?.toDataURL("image/png") ?? ""}
-        imageName={`Tile_${editingPaletteTileIndex ?? selectedPaletteTile}`}
-        onSave={handleSavePaletteEdit}
+        imageUrl={mapImages[editingTileImageIndex ?? selectedTileImageIndex]?.toDataURL("image/png") ?? ""}
+        imageName={`Tile_${editingTileImageIndex ?? selectedTileImageIndex}`}
+        onSave={handleSaveTileImageEdit}
       />
     </div>
   );

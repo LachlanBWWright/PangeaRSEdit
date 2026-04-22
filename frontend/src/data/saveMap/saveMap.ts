@@ -16,9 +16,21 @@ import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
 import { err, ok } from "neverthrow";
 import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
 import { mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
+import { serializeNanosaurTerrainTextures } from "@/data/processors/classicProprocessor";
+import { bufferToHex } from "@/utils/bufferOperations";
+import { canvasDataToSixteenBit } from "@/utils/imageConverter";
 
 function isRecord(value: unknown): value is Record<string | number, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isNanosaur1LevelData(value: unknown): value is Nanosaur1LevelData {
+  return (
+    isRecord(value) &&
+    "header" in value &&
+    "textureLayer" in value &&
+    "objectList" in value
+  );
 }
 
 function getNestedMetadata(
@@ -35,15 +47,6 @@ function getNestedMetadata(
   return undefined;
 }
 
-function isNanosaur1LevelData(value: unknown): value is Nanosaur1LevelData {
-  return (
-    isRecord(value) &&
-    "header" in value &&
-    "textureLayer" in value &&
-    "objectList" in value
-  );
-}
-
 function isMightyMikeMap(value: unknown): value is MightyMikeMap {
   return (
     isRecord(value) &&
@@ -51,19 +54,6 @@ function isMightyMikeMap(value: unknown): value is MightyMikeMap {
     "mapHeight" in value &&
     "mapImage" in value
   );
-}
-
-function getNanosaurRawLevel(
-  metadata: LevelMetadata | undefined,
-): Nanosaur1LevelData | undefined {
-  const direct = (metadata as Record<string, unknown> | undefined)
-    ?.nanosaur1RawLevel;
-  if (isNanosaur1LevelData(direct)) {
-    return direct;
-  }
-  const nested = getNestedMetadata(metadata, "1000");
-  const nestedRaw = nested?.nanosaur1RawLevel;
-  return isNanosaur1LevelData(nestedRaw) ? nestedRaw : undefined;
 }
 
 function getMightyMikeMapData(
@@ -77,6 +67,26 @@ function getMightyMikeMapData(
   const nested = getNestedMetadata(metadata, "1000");
   const nestedMap = nested?.mightyMikeMapData;
   return isMightyMikeMap(nestedMap) ? nestedMap : undefined;
+}
+
+function serializeBugdomTileImages(
+  mapImages: HTMLCanvasElement[],
+): Result<string, Error> {
+  const serializedTiles: string[] = [];
+  for (let i = 0; i < mapImages.length; i += 1) {
+    const canvas = mapImages[i];
+    if (!canvas) {
+      return err(new Error(`Tile image at index ${i} is missing`));
+    }
+    const encodedTile = canvasDataToSixteenBit(canvas);
+    if (encodedTile.isErr()) {
+      return err(
+        new Error(`Failed to serialize tile image #${i}: ${encodedTile.error.message}`),
+      );
+    }
+    serializedTiles.push(bufferToHex(encodedTile.value.buffer));
+  }
+  return ok(serializedTiles.join(""));
 }
 
 export function serializePrimaryMapBlob(
@@ -161,15 +171,16 @@ export function serializePrimaryMapBlob(
 }
 /**
  * Builds the terrain byte arrays for VFS injection in the in-browser game preview.
- * Mirrors the download path exactly: the same serialization used when the user
- * clicks "Download" is used here, except the bytes are returned for injection
- * into the Emscripten virtual filesystem instead of being saved to disk.
+ * Uses the same serializers as the download path, but returns the bytes for
+ * injection into the Emscripten virtual filesystem instead of saving them to disk.
  *
  * Returns:
- *   dataBytes  – bytes for the data-fork path (.ter images for STANDARD/LZSS,
- *                compiled level for TRT_FILE, null otherwise)
- *   rsrcBytes  – bytes for the resource-fork sidecar (.ter.rsrc map data for
- *                STANDARD/LZSS and RSRC_FORK, null otherwise)
+ *   dataBytes    – bytes for the data-fork path (.ter images for STANDARD/LZSS,
+ *                  compiled terrain for TRT_FILE, null otherwise)
+ *   rsrcBytes    – bytes for the resource-fork sidecar (.ter.rsrc map data for
+ *                  STANDARD/LZSS and RSRC_FORK, null otherwise)
+ *   textureBytes – bytes for a secondary texture file such as Nanosaur 1's
+ *                  .trt tileset, null otherwise
  *
  * Returns null when serialization fails (callers should abort the preview).
  */
@@ -177,31 +188,47 @@ export async function buildPreviewTerrainBlobs(
   data: LevelData,
   globals: GlobalsInterface,
   mapImages: HTMLCanvasElement[] | undefined,
-): Promise<{ dataBytes: Uint8Array | null; rsrcBytes: Uint8Array | null } | null> {
+): Promise<{
+  dataBytes: Uint8Array | null;
+  rsrcBytes: Uint8Array | null;
+  textureBytes: Uint8Array | null;
+} | null> {
   if (globals.DATA_TYPE === DataType.RSRC_FORK) {
-    const rsrcBuffer = await processMapData({ data, globals });
+    const rsrcBuffer = await processMapData({ data, globals, mapImages });
     if (rsrcBuffer.byteLength === 0) return null;
-    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer), textureBytes: null };
   }
 
   if (globals.DATA_TYPE === DataType.TRT_FILE) {
-    const rawLevelData = getNanosaurRawLevel(data._metadata);
-    if (!rawLevelData) return null;
-    const compileResult = compileNanosaur1Level(data, rawLevelData);
-    if (compileResult.isErr()) return null;
-    return { dataBytes: new Uint8Array(compileResult.value), rsrcBytes: null };
+    const mapBlob = serializePrimaryMapBlob(data, globals);
+    if (!mapBlob) return null;
+    const mapBuffer = await mapBlob.arrayBuffer();
+    if (!mapImages || mapImages.length === 0) {
+      return {
+        dataBytes: new Uint8Array(mapBuffer),
+        rsrcBytes: null,
+        textureBytes: null,
+      };
+    }
+    const textureResult = serializeNanosaurTerrainTextures(mapImages);
+    if (textureResult.isErr()) return null;
+    return {
+      dataBytes: new Uint8Array(mapBuffer),
+      rsrcBytes: null,
+      textureBytes: new Uint8Array(textureResult.value),
+    };
   }
 
   if (
     globals.DATA_TYPE === DataType.STANDARD &&
     globals.TILE_IMAGE_FORMAT !== TileImageFormat.JPG
   ) {
-    const rsrcBuffer = await processMapData({ data, globals });
+    const rsrcBuffer = await processMapData({ data, globals, mapImages });
     if (rsrcBuffer.byteLength === 0) return null;
 
     if (!mapImages || mapImages.length === 0) {
       // Tile images not available — inject map layout only, game uses preloaded tile textures.
-      return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+      return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer), textureBytes: null };
     }
 
     const bufferList = await compressMapImages(mapImages);
@@ -209,6 +236,7 @@ export async function buildPreviewTerrainBlobs(
     return {
       dataBytes: new Uint8Array(imageBuffer),
       rsrcBytes: new Uint8Array(rsrcBuffer),
+      textureBytes: null,
     };
   }
 
@@ -216,7 +244,7 @@ export async function buildPreviewTerrainBlobs(
     const mightyMikeData = getMightyMikeMapData(data._metadata);
     if (!mightyMikeData) return null;
     const buffer = mightyMikeMapToCompressedBinary(mightyMikeData);
-    return { dataBytes: new Uint8Array(buffer), rsrcBytes: null };
+    return { dataBytes: new Uint8Array(buffer), rsrcBytes: null, textureBytes: null };
   }
 
   if (
@@ -228,10 +256,10 @@ export async function buildPreviewTerrainBlobs(
     // game uses the edited layout with its default preloaded tile textures.
     const rsrcBuffer = await processMapData({ data, globals });
     if (rsrcBuffer.byteLength === 0) return null;
-    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer), textureBytes: null };
   }
 
-  return { dataBytes: null, rsrcBytes: null };
+  return { dataBytes: null, rsrcBytes: null, textureBytes: null };
 }
 
 /**
@@ -255,8 +283,33 @@ export async function saveMap({
   // Allow RSRC_FORK games to save even if a separate images file isn't present
   if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) return;
 
+  if (globals.DATA_TYPE === DataType.TRT_FILE) {
+    if (!mapImages || mapImages.length === 0) {
+      toast({
+        title: "Cannot save Nanosaur 1 level",
+        description: "No tile images are loaded.",
+      });
+      return;
+    }
+
+    const textureResult = serializeNanosaurTerrainTextures(mapImages);
+    if (textureResult.isErr()) {
+      toast({
+        title: "Failed to serialize Nanosaur 1 texture file",
+        description: textureResult.error.message,
+      });
+      return;
+    }
+
+    downloadBlob(textureResult.value, mapImagesFile?.name || mapFile.name, ".trt");
+    toast({
+      title: "Nanosaur 1 Map Downloaded!",
+    });
+    return;
+  }
+
   // Download Images
-  if (mapImages) {
+  if (mapImages && globals.DATA_TYPE !== DataType.TRT_FILE) {
     toast({
       title: "Saving Map",
       description: "Compressing textures",
@@ -275,37 +328,10 @@ export async function saveMap({
     // For RSRC_FORK (Bugdom 1), Timg should be embedded in `data` and rsrcdump-ts
     // serializes it into the single .ter.rsrc file. Serialize and
     // download the combined resource fork map file.
-    const mapBuffer = await processMapData({ data, globals });
+    const mapBuffer = await processMapData({ data, globals, mapImages });
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
     toast({
       title: "Map Downloaded!",
-    });
-  } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
-    // Nanosaur 1: Compile back to .ter format
-    // We need the original raw level data to preserve binary-specific information
-    const rawLevelData = getNanosaurRawLevel(data._metadata);
-
-    if (!rawLevelData) {
-      toast({
-        title: "Cannot save Nanosaur 1 level",
-        description: "Original level data not found in metadata",
-      });
-      return;
-    }
-
-    const compileResult = compileNanosaur1Level(data, rawLevelData);
-
-    if (compileResult.isErr()) {
-      toast({
-        title: "Failed to compile Nanosaur 1 level",
-        description: compileResult.error.message,
-      });
-      return;
-    }
-
-    downloadBlob(compileResult.value, mapFile.name, ".ter");
-    toast({
-      title: "Nanosaur 1 Map Downloaded!",
     });
   } else if (globals.GAME_NAME === "Mighty Mike") {
     // Mighty Mike: Compile back to .map format
@@ -326,7 +352,7 @@ export async function saveMap({
       title: "Mighty Mike Map Downloaded!",
     });
   } else {
-    const mapBuffer = await processMapData({ data, globals });
+    const mapBuffer = await processMapData({ data, globals, mapImages });
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
     toast({
       title: "Map Downloaded!",
@@ -346,9 +372,11 @@ function downloadBlob(buffer: ArrayBuffer, filename: string, mime: string) {
 async function processMapData({
   data,
   globals,
+  mapImages,
 }: {
   data: LevelData;
   globals: GlobalsInterface;
+  mapImages?: HTMLCanvasElement[];
 }): Promise<ArrayBuffer> {
   // Validate the JSON before passing to rsrcdump to avoid uncaught errors
   const sanitized = sanitizeResourceForkJson(data);
@@ -360,6 +388,25 @@ async function processMapData({
       description: `Invalid map data structure: ${validation.error.message}`,
     });
     return new ArrayBuffer(0);
+  }
+
+  if (globals.DATA_TYPE === DataType.RSRC_FORK && mapImages && mapImages.length > 0) {
+    const tileDataResult = serializeBugdomTileImages(mapImages);
+    if (tileDataResult.isErr()) {
+      console.error("Failed to serialize tile images:", tileDataResult.error);
+      toast({
+        title: "Saving failed",
+        description: tileDataResult.error.message,
+      });
+      return new ArrayBuffer(0);
+    }
+    sanitized.Timg ??= {};
+    sanitized.Timg[1000] ??= {
+      name: "Extracted Tile Image Data 32x32/16bit",
+      data: "",
+      order: 1000,
+    };
+    sanitized.Timg[1000].data = tileDataResult.value;
   }
 
   const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);
