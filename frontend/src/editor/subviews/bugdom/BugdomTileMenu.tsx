@@ -20,10 +20,12 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Edit, FlipHorizontal, FlipVertical, RotateCw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ImageEditor } from "@/components/ImageEditor";
+import { bufferToHex } from "@/utils/bufferOperations";
+import { canvasDataToSixteenBit } from "@/utils/imageConverter";
 import {
   canRemoveSupertileColumn,
   canRemoveSupertileRow,
@@ -79,6 +81,7 @@ export function BugdomTileMenu({
   const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
   const paletteUploadInputRef = useRef<HTMLInputElement>(null);
   const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
+  const [editingPaletteTileIndex, setEditingPaletteTileIndex] = useState<number | null>(null);
 
   const handleRemoveSupertile = (
     direction: "top" | "bottom" | "left" | "right",
@@ -102,9 +105,41 @@ export function BugdomTileMenu({
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
   const numTileImages = mapImages.length;
 
-  // Bugdom 1/Nanosaur 1 source assets store palette entries as fixed-size 32x32 tiles.
-  // Keep replacement and edits constrained to the existing palette range instead of growing it.
+  // Bugdom 1/Nanosaur 1 store tile art as individual 32x32 images.
+  // Keep replacement and edits constrained to the selected tile image instead of growing a separate palette.
   const PALETTE_TILE_SIZE = 32;
+
+  const syncTileImagesToTerrainData = (nextMapImages: HTMLCanvasElement[]) => {
+    const nextTileData = nextMapImages.map((canvas, tileIndex) => {
+      const encodedTile = canvasDataToSixteenBit(canvas);
+      if (encodedTile.isErr()) {
+        toast.error(
+          `Failed to serialize tile #${tileIndex}: ${encodedTile.error.message}`,
+        );
+        return null;
+      }
+      return bufferToHex(encodedTile.value.buffer);
+    });
+
+    if (nextTileData.some((tileData) => tileData === null)) {
+      return false;
+    }
+
+    setMapImages(nextMapImages);
+    setTerrainData((data) => {
+      data.Timg ??= {};
+      data.Timg[1000] ??= {
+        name: "Extracted Tile Image Data 32x32/16bit",
+        data: "",
+        order: 1000,
+      };
+      if (!data.Timg[1000]) {
+        return;
+      }
+      data.Timg[1000].data = nextTileData.join("");
+    });
+    return true;
+  };
 
   // NOTE: tile info helper is defined inside useMemo to avoid changing the memo's dependencies
 
@@ -369,12 +404,18 @@ export function BugdomTileMenu({
 
     const newMapImages = [...mapImages];
     newMapImages[selectedPaletteTile] = canvas;
-    setMapImages(newMapImages);
+    if (!syncTileImagesToTerrainData(newMapImages)) return;
     event.target.value = "";
-    toast.success(`Updated palette tile #${selectedPaletteTile}`);
+    toast.success(`Updated tile image #${selectedPaletteTile}`);
   };
 
   const handleSavePaletteEdit = async (editedImageData: ImageData) => {
+    const targetTileIndex = editingPaletteTileIndex ?? selectedPaletteTile;
+    if (!mapImages[targetTileIndex]) {
+      toast.error("Selected tile has no image");
+      return;
+    }
+
     const canvas = document.createElement("canvas");
     canvas.width = editedImageData.width;
     canvas.height = editedImageData.height;
@@ -385,10 +426,11 @@ export function BugdomTileMenu({
     }
     context.putImageData(editedImageData, 0, 0);
     const newMapImages = [...mapImages];
-    newMapImages[selectedPaletteTile] = canvas;
-    setMapImages(newMapImages);
+    newMapImages[targetTileIndex] = canvas;
+    if (!syncTileImagesToTerrainData(newMapImages)) return;
     setIsEditingPaletteTile(false);
-    toast.success(`Edited palette tile #${selectedPaletteTile}`);
+    setEditingPaletteTileIndex(null);
+    toast.success(`Edited tile #${targetTileIndex}`);
   };
 
   const createBlankTileCanvas = () => {
@@ -429,14 +471,14 @@ export function BugdomTileMenu({
 
   const handleAddPaletteTile = () => {
     const newImageIndex = mapImages.length;
-    setMapImages([...mapImages, createBlankTileCanvas()]);
+    if (!syncTileImagesToTerrainData([...mapImages, createBlankTileCanvas()])) return;
     setTerrainData((data) => {
       if (data.Xlat?.[1000]?.obj) {
         data.Xlat[1000].obj.push({ idx: newImageIndex });
       }
     });
     setSelectedPaletteTile(newImageIndex);
-    toast.success(`Added palette tile #${newImageIndex}`);
+    toast.success(`Added tile image #${newImageIndex}`);
   };
 
   const handleRemovePaletteTile = () => {
@@ -449,7 +491,8 @@ export function BugdomTileMenu({
       return;
     }
 
-    setMapImages(mapImages.filter((_, index) => index !== selectedPaletteTile));
+    const nextMapImages = mapImages.filter((_, index) => index !== selectedPaletteTile);
+    if (!syncTileImagesToTerrainData(nextMapImages)) return;
     setTerrainData((data) => {
       const xlat = data.Xlat?.[1000]?.obj;
       if (xlat) {
@@ -483,83 +526,8 @@ export function BugdomTileMenu({
 
     });
     setSelectedPaletteTile((current) => Math.max(0, current - 1));
-    toast.success("Palette tile removed");
+    toast.success("Tile image removed");
   };
-
-  /**
-   * Extract unique colors from the tile image currently being edited.
-   * Bugdom/Nanosaur tiles use a fixed palette so the set is small.
-   * Returns an array of CSS hex color strings (opaque pixels only).
-   */
-  const paletteColorsForEdit = useMemo<string[]>(() => {
-    const canvas = mapImages[selectedPaletteTile];
-    if (!canvas) return [];
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return [];
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const { data } = imageData;
-    const seen = new Set<string>();
-    const colors: string[] = [];
-    for (let i = 0; i < data.length; i += 4) {
-      const a = data[i + 3] ?? 0;
-      if (a < 128) continue; // skip transparent pixels
-      const r = data[i] ?? 0;
-      const g = data[i + 1] ?? 0;
-      const b = data[i + 2] ?? 0;
-      const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-      if (!seen.has(hex)) {
-        seen.add(hex);
-        colors.push(hex);
-      }
-    }
-    return colors;
-  }, [mapImages, selectedPaletteTile]);
-
-  /**
-   * Replace a palette color across the entire tile image.
-   * Remaps every pixel matching `paletteColorsForEdit[index]` to `newColor`.
-   */
-  const handleReplacePaletteColor = useCallback(
-    (index: number, newColor: string) => {
-      const canvas = mapImages[selectedPaletteTile];
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      const oldColor = paletteColorsForEdit[index];
-      if (!oldColor) return;
-
-      // Parse old color
-      const oldR = parseInt(oldColor.slice(1, 3), 16);
-      const oldG = parseInt(oldColor.slice(3, 5), 16);
-      const oldB = parseInt(oldColor.slice(5, 7), 16);
-
-      // Parse new color
-      const newR = parseInt(newColor.slice(1, 3), 16);
-      const newG = parseInt(newColor.slice(3, 5), 16);
-      const newB = parseInt(newColor.slice(5, 7), 16);
-
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const { data } = imageData;
-      for (let i = 0; i < data.length; i += 4) {
-        if (
-          data[i] === oldR &&
-          data[i + 1] === oldG &&
-          data[i + 2] === oldB &&
-          (data[i + 3] ?? 0) >= 128
-        ) {
-          data[i] = newR;
-          data[i + 1] = newG;
-          data[i + 2] = newB;
-        }
-      }
-      ctx.putImageData(imageData, 0, 0);
-
-      const newMapImages = [...mapImages];
-      newMapImages[selectedPaletteTile] = canvas;
-      setMapImages(newMapImages);
-    },
-    [mapImages, selectedPaletteTile, paletteColorsForEdit, setMapImages],
-  );
 
   if (!layerData) {
     return (
@@ -760,9 +728,9 @@ export function BugdomTileMenu({
         )}
       </div>
 
-      {/* Right column: Tile Palette */}
+      {/* Right column: Tile Images */}
       <div className={`flex flex-col gap-2 ${boxHeight}`}>
-        <h3 className="font-bold text-white text-center">Tile Palette</h3>
+        <h3 className="font-bold text-white text-center">Tile Images</h3>
         <p className="text-xs text-gray-400 text-center">
           {mapImages.length} tiles • Selected: #{selectedPaletteTile}
         </p>
@@ -789,11 +757,14 @@ export function BugdomTileMenu({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setIsEditingPaletteTile(true)}
+            onClick={() => {
+              setEditingPaletteTileIndex(selectedPaletteTile);
+              setIsEditingPaletteTile(true);
+            }}
             disabled={!mapImages[selectedPaletteTile]}
           >
             <Edit className="mr-1 h-4 w-4" />
-            Edit palette tile
+            Edit tile image
           </Button>
           <Button
             size="sm"
@@ -802,7 +773,7 @@ export function BugdomTileMenu({
             disabled={!mapImages[selectedPaletteTile]}
           >
             <Upload className="mr-1 h-4 w-4" />
-            Upload palette tile
+            Upload tile image
           </Button>
           <input
             ref={paletteUploadInputRef}
@@ -812,7 +783,7 @@ export function BugdomTileMenu({
             onChange={handleUploadPaletteTile}
           />
           <Button size="sm" variant="outline" onClick={handleAddPaletteTile}>
-            Add palette tile
+            Add tile image
           </Button>
           <Button
             size="sm"
@@ -820,19 +791,20 @@ export function BugdomTileMenu({
             onClick={handleRemovePaletteTile}
             disabled={isPaletteTileInUse || mapImages.length <= 1}
           >
-            Remove palette tile
+            Remove tile image
           </Button>
         </div>
       </div>
       </div>
       <ImageEditor
         isOpen={isEditingPaletteTile}
-        onClose={() => setIsEditingPaletteTile(false)}
-        imageUrl={mapImages[selectedPaletteTile]?.toDataURL("image/png") ?? ""}
-        imageName={`Palette_${selectedPaletteTile}`}
+        onClose={() => {
+          setIsEditingPaletteTile(false);
+          setEditingPaletteTileIndex(null);
+        }}
+        imageUrl={mapImages[editingPaletteTileIndex ?? selectedPaletteTile]?.toDataURL("image/png") ?? ""}
+        imageName={`Tile_${editingPaletteTileIndex ?? selectedPaletteTile}`}
         onSave={handleSavePaletteEdit}
-        paletteColors={paletteColorsForEdit}
-        onReplacePaletteColor={handleReplacePaletteColor}
       />
     </div>
   );
