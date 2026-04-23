@@ -35,6 +35,8 @@ interface Props {
    */
   readonly terrainTextureBytes: Uint8Array | null | undefined;
   readonly runToken: number;
+  /** When true, launch from the title screen without level injection or level-jump globals. */
+  readonly normalLaunch?: boolean;
 }
 
 type PreviewWindow = Window & { Module?: PreviewRuntimeModule };
@@ -51,6 +53,7 @@ export function GamePreviewHost({
   terrainRsrcBytes,
   terrainTextureBytes,
   runToken,
+  normalLaunch = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [statusText, setStatusText] = useState("Preparing game runtime…");
@@ -78,10 +81,13 @@ export function GamePreviewHost({
 
     // Terrain bytes are still being serialized — show a holding status and wait.
     // The effect will re-run automatically when the bytes prop changes to non-undefined.
+    // For normal launches (title screen) no terrain injection is needed so skip this guard.
     if (
-      terrainDataBytes === undefined ||
-      terrainRsrcBytes === undefined ||
-      terrainTextureBytes === undefined
+      !normalLaunch && (
+        terrainDataBytes === undefined ||
+        terrainRsrcBytes === undefined ||
+        terrainTextureBytes === undefined
+      )
     ) {
       setErrorText(null);
       setStatusText("Preparing level data…");
@@ -91,7 +97,7 @@ export function GamePreviewHost({
     const previewWindow = window as unknown as PreviewWindow;
     const previousModule = previewWindow.Module;
     const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
-    const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber, terrainPaths);
+    const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber, terrainPaths, normalLaunch);
     const assetBaseUrls = buildPreviewAssetBaseUrls(config);
     const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
     const handleFullscreenChange = () => {
@@ -132,6 +138,7 @@ export function GamePreviewHost({
             terrainRsrcBytes: terrainRsrcBytes ?? null,
             terrainTextureBytes: terrainTextureBytes ?? null,
             terrainPaths,
+            normalLaunch,
             onStatus: (text) => {
               if (!cancelled) {
                 setErrorText(null);

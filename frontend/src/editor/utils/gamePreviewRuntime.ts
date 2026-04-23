@@ -95,7 +95,10 @@ export function buildGameArguments(
   config: GamePortConfig,
   levelNumber: number,
   terrainPath: string | null,
+  normalLaunch = false,
 ): string[] {
+  // Normal launch = start from the title screen / main menu without level injection.
+  if (normalLaunch) return [];
   switch (config.game) {
     case Game.OTTO_MATIC:
       return terrainPath
@@ -202,6 +205,7 @@ export function applyPreviewGlobals(
   config: GamePortConfig,
   levelNumber: number,
   terrainPaths: PreviewTerrainPaths | null,
+  normalLaunch = false,
 ): () => void {
   const previousValues = new Map<string, unknown>();
   const setGlobal = (key: string, value: unknown) => {
@@ -223,36 +227,39 @@ export function applyPreviewGlobals(
     });
   }
 
-  if (config.game === Game.BUGDOM) {
-    setGlobal("BUGDOM_NO_FENCE_COLLISION", false);
-    // Bugdom reads BUGDOM_TERRAIN_FILE and appends ".rsrc" internally to open the
-    // resource fork.  Pass the data-fork path (without .rsrc) so the game resolves
-    // the correct VFS path: e.g. "/Data/Terrain/Training.ter" → opens "Training.ter.rsrc".
-    const bugdomTerrainPath = terrainPaths?.dataPath ?? null;
-    if (bugdomTerrainPath) {
-      setGlobal("BUGDOM_TERRAIN_FILE", bugdomTerrainPath);
+  // For normal launches (main menu), skip terrain overrides and level-jump globals.
+  if (!normalLaunch) {
+    if (config.game === Game.BUGDOM) {
+      setGlobal("BUGDOM_NO_FENCE_COLLISION", false);
+      // Bugdom reads BUGDOM_TERRAIN_FILE and appends ".rsrc" internally to open the
+      // resource fork.  Pass the data-fork path (without .rsrc) so the game resolves
+      // the correct VFS path: e.g. "/Data/Terrain/Training.ter" → opens "Training.ter.rsrc".
+      const bugdomTerrainPath = terrainPaths?.dataPath ?? null;
+      if (bugdomTerrainPath) {
+        setGlobal("BUGDOM_TERRAIN_FILE", bugdomTerrainPath);
+      }
     }
-  }
 
-  const preloadVars = config.getPreLoadVars?.(levelNumber) ?? {};
-  for (const [key, value] of Object.entries(preloadVars)) {
-    setGlobal(key, value);
-  }
+    const preloadVars = config.getPreLoadVars?.(levelNumber) ?? {};
+    for (const [key, value] of Object.entries(preloadVars)) {
+      setGlobal(key, value);
+    }
 
-  if (
-    config.game === Game.OTTO_MATIC ||
-    config.game === Game.NANOSAUR ||
-    config.game === Game.BUGDOM ||
-    config.game === Game.BUGDOM_2 ||
-    config.game === Game.NANOSAUR_2
-  ) {
-    setGlobal("_startLevel", levelNumber);
-  }
-  if (config.game === Game.NANOSAUR) {
-    setGlobal("_skipMenu", 1);
-  }
-  if (config.game === Game.CRO_MAG) {
-    setGlobal("_track", levelNumber);
+    if (
+      config.game === Game.OTTO_MATIC ||
+      config.game === Game.NANOSAUR ||
+      config.game === Game.BUGDOM ||
+      config.game === Game.BUGDOM_2 ||
+      config.game === Game.NANOSAUR_2
+    ) {
+      setGlobal("_startLevel", levelNumber);
+    }
+    if (config.game === Game.NANOSAUR) {
+      setGlobal("_skipMenu", 1);
+    }
+    if (config.game === Game.CRO_MAG) {
+      setGlobal("_track", levelNumber);
+    }
   }
 
   return () => {
@@ -288,13 +295,16 @@ export interface PreviewModuleOptions {
   readonly terrainPaths: PreviewTerrainPaths | null;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
+  /** When true, start the game from the title screen without level injection or level-jump globals. */
+  readonly normalLaunch?: boolean;
 }
 
 /**
  * Writes a single file into the Emscripten VFS.
  * Tries Module.FS.writeFile first (available in most builds).
  * Falls back to FS_unlink + FS_createDataFile for builds that don't expose Module.FS
- * (e.g. CroMag Rally).
+ * (e.g. CroMag Rally).  FS_unlink failure (file not yet present) is silenced so that
+ * FS_createDataFile always runs.
  */
 function writeFileToVfs(
   module: PreviewRuntimeModule,
@@ -308,7 +318,7 @@ function writeFileToVfs(
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
   }
-  if (typeof module.FS_unlink !== "function" || typeof module.FS_createDataFile !== "function") {
+  if (typeof module.FS_createDataFile !== "function") {
     return Result.fromThrowable(
       (): void => { throw new Error("No VFS write mechanism available"); },
       (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -317,9 +327,15 @@ function writeFileToVfs(
   const lastSlash = path.lastIndexOf("/");
   const parentDir = path.substring(0, lastSlash);
   const filename = path.substring(lastSlash + 1);
+  // Silently ignore FS_unlink errors (file may not exist on first launch).
+  if (typeof module.FS_unlink === "function") {
+    Result.fromThrowable(
+      () => { module.FS_unlink!(path); },
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+  }
   return Result.fromThrowable(
     () => {
-      module.FS_unlink!(path);
       module.FS_createDataFile!(parentDir, filename, data, true, true, false);
     },
     (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -413,6 +429,7 @@ export function createPreviewModule(
     terrainPaths,
     onStatus,
     onError,
+    normalLaunch = false,
   } = options;
 
   let runtimeInitialized = false;
@@ -448,7 +465,7 @@ export function createPreviewModule(
       antialias: false,
       preserveDrawingBuffer: false,
     },
-    arguments: buildGameArguments(config, levelNumber, terrainPaths?.dataPath ?? null),
+    arguments: buildGameArguments(config, levelNumber, terrainPaths?.dataPath ?? null, normalLaunch),
     preInit: [
       () => {
         const module = moduleRef.current;
@@ -467,6 +484,22 @@ export function createPreviewModule(
         }
 
         ensurePreviewPrefsDirs(module, config);
+
+        // Write terrain into the VFS here so the files are guaranteed to be in
+        // place before main() starts reading them.  onRuntimeInitialized writes
+        // again as a fallback for games whose VFS isn't fully ready at preRun.
+        if (terrainPaths && !normalLaunch) {
+          writeTerrainToVfs(
+            module,
+            config,
+            currentLevelInfo,
+            terrainPaths,
+            terrainDataBytes,
+            terrainRsrcBytes,
+            terrainTextureBytes ?? null,
+            onError,
+          );
+        }
 
         // Schedule overlay fallback here — preRun is reliably called just before
         // main() so the timer starts as late as possible to minimise false fires.
@@ -499,7 +532,7 @@ export function createPreviewModule(
 
       // Also inject terrain here as a fallback for games that initialize the
       // VFS only during runtime (after preRun has already fired).
-      if (terrainPaths) {
+      if (terrainPaths && !normalLaunch) {
         writeTerrainToVfs(
           module,
           config,
@@ -512,17 +545,19 @@ export function createPreviewModule(
         );
       }
 
-      const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
-      if (skipToLevel) {
-        Result.fromThrowable(
-          () => module.ccall?.(
-            skipToLevel.fn,
-            skipToLevel.returnType,
-            skipToLevel.argTypes,
-            skipToLevel.args,
-          ),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
-        )();
+      if (!normalLaunch) {
+        const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
+        if (skipToLevel) {
+          Result.fromThrowable(
+            () => module.ccall?.(
+              skipToLevel.fn,
+              skipToLevel.returnType,
+              skipToLevel.argTypes,
+              skipToLevel.args,
+            ),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
+          )();
+        }
       }
     },
     postRun: [

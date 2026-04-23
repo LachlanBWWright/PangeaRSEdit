@@ -160,11 +160,10 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex flex-wrap gap-2 mb-2">
+        <div className="flex flex-col gap-2 mb-2">
           <Button
             onClick={() => void downloadLevel()}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-            size="sm"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Download
@@ -175,8 +174,7 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
                 onPlayInBrowser(gameEnum, level.previewLevelNumber ?? 0)
               }
               variant="outline"
-              className="flex items-center gap-2"
-              size="sm"
+              className="w-full flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
               Play Level in Browser
@@ -214,9 +212,8 @@ interface GameSectionProps {
 function GameSection({ gameName, levels, onPlayInBrowser }: GameSectionProps) {
   return (
     <div className="mb-8">
-      <div className="flex items-center gap-3 mb-4">
-        <Gamepad2 className="w-6 h-6 text-blue-400" />
-        <h2 className="text-2xl font-bold text-white">{gameName}</h2>
+      <div className="flex items-center gap-3 mb-4 pl-1">
+        <h3 className="text-lg font-semibold text-gray-200">{gameName}</h3>
         <div className="h-px bg-gray-700 flex-1"></div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -232,28 +229,27 @@ function GameSection({ gameName, levels, onPlayInBrowser }: GameSectionProps) {
   );
 }
 
-/** Card for launching any game directly in the browser or online */
+/** Card for launching any game directly in the browser (from title screen). */
 function GameLaunchCard({
   game,
-  onPlayInBrowser,
+  onPlayNormally,
 }: {
   game: Game;
-  onPlayInBrowser: (game: Game, levelNumber: number) => void;
+  onPlayNormally: (game: Game) => void;
 }) {
   const config = GAME_PORT_CONFIGS[game];
   const displayName = GAME_DISPLAY_NAMES[game];
-  const defaultLevel = config.defaultLevel;
 
   return (
     <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
       <CardHeader className="pb-2">
         <CardTitle className="text-white text-base">{displayName}</CardTitle>
       </CardHeader>
-      <CardContent className="pt-0 flex flex-wrap gap-2">
+      <CardContent className="pt-0">
         <Button
-          onClick={() => onPlayInBrowser(game, defaultLevel)}
-          size="sm"
+          onClick={() => onPlayNormally(game)}
           className="flex w-full items-center gap-1 bg-green-700 hover:bg-green-600 text-white"
+          disabled={!config.wasmAvailable}
         >
           <Play className="w-4 h-4" />
           Play in Browser
@@ -269,10 +265,22 @@ export function DownloadLevels() {
   const [dialogGame, setDialogGame] = useState<Game | null>(null);
   const [dialogLevel, setDialogLevel] = useState<number>(0);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogNormalLaunch, setDialogNormalLaunch] = useState(false);
 
+  /** Open the dialog for playing a custom level (with terrain injection). */
   const handlePlayInBrowser = (game: Game, levelNumber: number) => {
     setDialogGame(game);
     setDialogLevel(levelNumber);
+    setDialogNormalLaunch(false);
+    setDialogOpen(true);
+  };
+
+  /** Open the dialog to play a game from its title screen (no terrain injection). */
+  const handlePlayNormally = (game: Game) => {
+    const config = GAME_PORT_CONFIGS[game];
+    setDialogGame(game);
+    setDialogLevel(config.defaultLevel);
+    setDialogNormalLaunch(true);
     setDialogOpen(true);
   };
 
@@ -305,22 +313,21 @@ export function DownloadLevels() {
         </div>
 
         {/* Game Launcher Section */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <Gamepad2 className="w-6 h-6 text-green-400" />
-            <h2 className="text-2xl font-bold text-white">Play Games</h2>
-            <div className="h-px bg-gray-700 flex-1"></div>
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-2">
+            <Gamepad2 className="w-7 h-7 text-green-400" />
+            <h2 className="text-3xl font-bold text-white">Play Games</h2>
+            <div className="h-px bg-gray-600 flex-1"></div>
           </div>
-          <p className="text-gray-400 text-sm mb-4">
-            Launch any of the 8 Pangea ports directly in your browser, or open
-            the hosted version online.
+          <p className="text-gray-400 text-sm mb-5">
+            Launch any of the 8 Pangea ports directly in your browser from the title screen.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {ALL_GAME_CONFIGS.map((config) => (
               <GameLaunchCard
                 key={config.game}
                 game={config.game}
-                onPlayInBrowser={handlePlayInBrowser}
+                onPlayNormally={handlePlayNormally}
               />
             ))}
           </div>
@@ -329,13 +336,16 @@ export function DownloadLevels() {
         {/* Custom Levels Section */}
         {gamesByCategory.length > 0 && (
           <div>
-            <div className="flex items-center gap-3 mb-4">
-              <Download className="w-6 h-6 text-blue-400" />
-              <h2 className="text-2xl font-bold text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <Download className="w-7 h-7 text-blue-400" />
+              <h2 className="text-3xl font-bold text-white">
                 Download Custom Levels
               </h2>
-              <div className="h-px bg-gray-700 flex-1"></div>
+              <div className="h-px bg-gray-600 flex-1"></div>
             </div>
+            <p className="text-gray-400 text-sm mb-6">
+              Download fan-made levels and replace the originals in your local game installation.
+            </p>
             {gamesByCategory.map((game) => (
               <GameSection
                 key={game.id}
@@ -359,6 +369,7 @@ export function DownloadLevels() {
           terrainDataBytes={null}
           terrainRsrcBytes={null}
           terrainTextureBytes={null}
+          normalLaunch={dialogNormalLaunch}
         />
       )}
     </div>
