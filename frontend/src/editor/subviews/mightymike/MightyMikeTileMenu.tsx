@@ -9,10 +9,10 @@
  * - Pick replacement tile from palette
  */
 
-import { useAtomValue } from "jotai";
-import { useMemo, useRef, useState } from "react";
+import { useAtom } from "jotai";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
-import { Updater } from "use-immer";
+import type { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ImageEditor } from "@/components/ImageEditor";
 import { Edit, Download, Upload, Shield, Info, Paintbrush, Layers } from "lucide-react";
 import { toast } from "sonner";
-import { useAtom } from "jotai";
 import {
   CollisionBrushMode,
   ShowMightyMikeCollisionOverlay,
@@ -155,7 +154,7 @@ export function MightyMikeTileMenu({
   setMapImages,
   onResize,
 }: MightyMikeTileMenuProps) {
-  const selectedTile = useAtomValue(SelectedTile);
+  const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
   const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(ShowMightyMikeCollisionOverlay);
   const [collisionBrushMode, setCollisionBrushMode] = useAtom(CollisionBrushMode);
   const [showParamsOverlay, setShowParamsOverlay] = useAtom(ShowMightyMikeParamsOverlay);
@@ -198,6 +197,14 @@ export function MightyMikeTileMenu({
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
   const totalTiles = mapWidth * mapHeight;
+
+  // Clamp SelectedTile to valid range on mount so stale values from a previous
+  // level (or a different level size) don't prevent the menu from rendering.
+  useEffect(() => {
+    if (totalTiles > 0 && (selectedTile < 0 || selectedTile >= totalTiles)) {
+      setSelectedTile(0);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedPaletteTile = useMemo(() => {
     if (selectedTile < 0 || selectedTile >= layr.length) return 0;
@@ -681,15 +688,15 @@ export function MightyMikeTileMenu({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="grid grid-cols-4 gap-2 p-2 border-b border-gray-600 flex-none">
-        <Button size="sm" onClick={() => onResize("top", 1)}>Add Row Top</Button>
-        <Button size="sm" onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
-        <Button size="sm" onClick={() => onResize("left", 1)}>Add Column Left</Button>
-        <Button size="sm" onClick={() => onResize("right", 1)}>Add Column Right</Button>
-        <Button size="sm" variant="outline" onClick={() => onResize("top", -1)}>Remove Row Top</Button>
-        <Button size="sm" variant="outline" onClick={() => onResize("bottom", -1)}>Remove Row Bottom</Button>
-        <Button size="sm" variant="outline" onClick={() => onResize("left", -1)}>Remove Column Left</Button>
-        <Button size="sm" variant="outline" onClick={() => onResize("right", -1)}>Remove Column Right</Button>
+      <div className="grid grid-cols-2 gap-1 p-1 border-b border-gray-600 flex-none">
+        <Button size="sm" onClick={() => onResize("top", 1)}>+ Row Top</Button>
+        <Button size="sm" onClick={() => onResize("bottom", 1)}>+ Row Bottom</Button>
+        <Button size="sm" onClick={() => onResize("left", 1)}>+ Col Left</Button>
+        <Button size="sm" onClick={() => onResize("right", 1)}>+ Col Right</Button>
+        <Button size="sm" variant="destructive" onClick={() => onResize("top", -1)}>− Row Top</Button>
+        <Button size="sm" variant="destructive" onClick={() => onResize("bottom", -1)}>− Row Bottom</Button>
+        <Button size="sm" variant="destructive" onClick={() => onResize("left", -1)}>− Col Left</Button>
+        <Button size="sm" variant="destructive" onClick={() => onResize("right", -1)}>− Col Right</Button>
       </div>
 
       {/* Main Content Grid — each column manages its own overflow */}

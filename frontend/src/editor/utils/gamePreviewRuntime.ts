@@ -17,6 +17,12 @@ export interface PreviewTerrainPaths {
   readonly dataPath: string;
   readonly rsrcPath: string | null;
   readonly texturePath?: string;
+  /**
+   * Additional data-fork path to write the same bytes to.
+   * Used for MightyMike where the WASM may look for either lowercase or
+   * capitalized terrain filenames on the case-sensitive Emscripten VFS.
+   */
+  readonly altDataPath?: string;
 }
 
 export interface PreviewRuntimeModule {
@@ -143,6 +149,18 @@ export function getPreviewTerrainPaths(
   const rsrcPath = config.terrain?.getRsrcPath
     ? config.terrain.getRsrcPath(info.terrainFile)
     : null;
+
+  // For MightyMike the WASM may store terrain under a capitalized filename
+  // (e.g. "Jurassic.map-1" vs "jurassic.map-1"). Write to both paths so that
+  // whichever case the compiled game uses, the injected file is found.
+  if (config.game === Game.MIGHTY_MIKE) {
+    const filename = info.terrainFile;
+    const capitalizedFilename = filename.charAt(0).toUpperCase() + filename.slice(1);
+    const capitalizedPath = `/Data/Terrain/${capitalizedFilename}`;
+    const altDataPath = capitalizedPath !== dataPath ? capitalizedPath : undefined;
+    return { dataPath, rsrcPath, altDataPath };
+  }
+
   return { dataPath, rsrcPath };
 }
 
@@ -370,6 +388,11 @@ function writeTerrainToVfs(
     if (writeDataResult.isErr()) {
       onError(`Failed to write terrain data file: ${writeDataResult.error.message}`);
       return;
+    }
+    // Write the same bytes to the alt path (e.g. capitalized MightyMike filename)
+    // so that the game finds the file regardless of which case it uses.
+    if (terrainPaths.altDataPath) {
+      writeFileToVfs(module, terrainPaths.altDataPath, terrainDataBytes);
     }
   }
 

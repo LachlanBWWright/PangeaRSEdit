@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, ChevronDown, ChevronUp, Gamepad2, Play } from "lucide-react";
+import { Download, ChevronDown, ChevronUp, Gamepad2, Play, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -64,11 +64,17 @@ function fileTimestamp(): string {
 
 interface LevelCardProps {
   level: Level;
-  onPlayInBrowser: (game: Game, levelNumber: number) => void;
+  onPlayInBrowser: (
+    game: Game,
+    levelNumber: number,
+    dataBytes: Uint8Array | null,
+    rsrcBytes: Uint8Array | null,
+  ) => void;
 }
 
 function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFetchingPlay, setIsFetchingPlay] = useState(false);
 
   const downloadLevel = () => {
     const fetchPairs: { name: string; url: string }[] = [];
@@ -128,6 +134,32 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
   const canPlay =
     gameEnum !== undefined && level.previewLevelNumber !== undefined;
 
+  const handlePlayInBrowser = () => {
+    if (!canPlay || !gameEnum) return;
+    setIsFetchingPlay(true);
+
+    const terFetch = level.terFile
+      ? fetchBytes(level.terFile)
+      : ResultAsync.fromSafePromise<Uint8Array | null>(Promise.resolve(null));
+    const rsrcFetch = level.rsrcFile
+      ? fetchBytes(level.rsrcFile)
+      : ResultAsync.fromSafePromise<Uint8Array | null>(Promise.resolve(null));
+
+    void ResultAsync.combine([terFetch, rsrcFetch])
+      .match(
+        ([dataBytes, rsrcBytes]) => {
+          onPlayInBrowser(
+            gameEnum,
+            level.previewLevelNumber ?? 0,
+            dataBytes,
+            rsrcBytes,
+          );
+        },
+        (e) => toast.error(`Failed to load level for playback: ${e.message}`),
+      )
+      .finally(() => setIsFetchingPlay(false));
+  };
+
   return (
     <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
       <CardHeader className="pb-2">
@@ -170,14 +202,17 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
           </Button>
           {canPlay && (
             <Button
-              onClick={() =>
-                onPlayInBrowser(gameEnum, level.previewLevelNumber ?? 0)
-              }
+              onClick={handlePlayInBrowser}
+              disabled={isFetchingPlay}
               variant="outline"
               className="w-full flex items-center gap-2"
             >
-              <Play className="w-4 h-4" />
-              Play Level in Browser
+              {isFetchingPlay ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              {isFetchingPlay ? "Loading…" : "Play Level in Browser"}
             </Button>
           )}
         </div>
@@ -206,7 +241,12 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
 interface GameSectionProps {
   gameName: string;
   levels: Level[];
-  onPlayInBrowser: (game: Game, levelNumber: number) => void;
+  onPlayInBrowser: (
+    game: Game,
+    levelNumber: number,
+    dataBytes: Uint8Array | null,
+    rsrcBytes: Uint8Array | null,
+  ) => void;
 }
 
 function GameSection({ gameName, levels, onPlayInBrowser }: GameSectionProps) {
@@ -266,12 +306,21 @@ export function DownloadLevels() {
   const [dialogLevel, setDialogLevel] = useState<number>(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogNormalLaunch, setDialogNormalLaunch] = useState(false);
+  const [dialogTerrainDataBytes, setDialogTerrainDataBytes] = useState<Uint8Array | null>(null);
+  const [dialogTerrainRsrcBytes, setDialogTerrainRsrcBytes] = useState<Uint8Array | null>(null);
 
   /** Open the dialog for playing a custom level (with terrain injection). */
-  const handlePlayInBrowser = (game: Game, levelNumber: number) => {
+  const handlePlayInBrowser = (
+    game: Game,
+    levelNumber: number,
+    dataBytes: Uint8Array | null,
+    rsrcBytes: Uint8Array | null,
+  ) => {
     setDialogGame(game);
     setDialogLevel(levelNumber);
     setDialogNormalLaunch(false);
+    setDialogTerrainDataBytes(dataBytes);
+    setDialogTerrainRsrcBytes(rsrcBytes);
     setDialogOpen(true);
   };
 
@@ -281,6 +330,8 @@ export function DownloadLevels() {
     setDialogGame(game);
     setDialogLevel(config.defaultLevel);
     setDialogNormalLaunch(true);
+    setDialogTerrainDataBytes(null);
+    setDialogTerrainRsrcBytes(null);
     setDialogOpen(true);
   };
 
@@ -366,8 +417,8 @@ export function DownloadLevels() {
           gameType={dialogGame}
           levelNumber={dialogLevel}
           onLevelNumberChange={setDialogLevel}
-          terrainDataBytes={null}
-          terrainRsrcBytes={null}
+          terrainDataBytes={dialogTerrainDataBytes}
+          terrainRsrcBytes={dialogTerrainRsrcBytes}
           terrainTextureBytes={null}
           normalLaunch={dialogNormalLaunch}
         />

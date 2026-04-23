@@ -179,7 +179,7 @@ export function ImageEditor({
     const newStroke: BrushStroke = {
       points: [adjustedPos.x, adjustedPos.y],
       color: brushColor,
-      size: (brushSize[0] ?? 10) / scale, // Adjust brush size for scale
+      size: brushSize[0] ?? 10,
       shape: brushShape,
     };
 
