@@ -198,13 +198,16 @@ export function MightyMikeTileMenu({
   const mapHeight = header.mapHeight;
   const totalTiles = mapWidth * mapHeight;
 
-  // Clamp SelectedTile to valid range on mount so stale values from a previous
-  // level (or a different level size) don't prevent the menu from rendering.
+  // Clamp SelectedTile to valid range when the map size changes (e.g., on level
+  // load or after a resize) so stale values from a previous level don't prevent
+  // the menu from rendering.  We intentionally omit selectedTile from the deps
+  // so that every tile click does not re-trigger the check.
   useEffect(() => {
     if (totalTiles > 0 && (selectedTile < 0 || selectedTile >= totalTiles)) {
       setSelectedTile(0);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalTiles, setSelectedTile]);
 
   const selectedPaletteTile = useMemo(() => {
     if (selectedTile < 0 || selectedTile >= layr.length) return 0;
