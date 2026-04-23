@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, ChevronDown, ChevronUp, Gamepad2, Play, ExternalLink } from "lucide-react";
+import { Download, ChevronDown, ChevronUp, Gamepad2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,7 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getGamesByCategory, GAME_KEY_TO_ENUM, ALL_GAME_CONFIGS, type Level } from "@/data/levels";
+import {
+  getGamesByCategory,
+  GAME_KEY_TO_ENUM,
+  ALL_GAME_CONFIGS,
+  type Level,
+} from "@/data/levels";
 import { toast } from "sonner";
 import { zip } from "fflate";
 import { ResultAsync } from "neverthrow";
@@ -23,7 +28,8 @@ function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
   return ResultAsync.fromPromise(
     fetch(url)
       .then((resp) => {
-        if (!resp.ok) return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
+        if (!resp.ok)
+          return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
         return resp.arrayBuffer();
       })
       .then((buf) => new Uint8Array(buf)),
@@ -32,7 +38,9 @@ function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
 }
 
 /** Zip files using fflate, returning a ResultAsync. */
-function zipFiles(files: Record<string, Uint8Array<ArrayBuffer>>): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
+function zipFiles(
+  files: Record<string, Uint8Array<ArrayBuffer>>,
+): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
   return ResultAsync.fromPromise(
     new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => {
       zip(files, (e, data) => {
@@ -64,8 +72,16 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
 
   const downloadLevel = () => {
     const fetchPairs: { name: string; url: string }[] = [];
-    if (level.terFile) fetchPairs.push({ name: level.terFile.split("/").pop() ?? `${level.id}.ter`, url: level.terFile });
-    if (level.rsrcFile) fetchPairs.push({ name: level.rsrcFile.split("/").pop() ?? `${level.id}.ter.rsrc`, url: level.rsrcFile });
+    if (level.terFile)
+      fetchPairs.push({
+        name: level.terFile.split("/").pop() ?? `${level.id}.ter`,
+        url: level.terFile,
+      });
+    if (level.rsrcFile)
+      fetchPairs.push({
+        name: level.rsrcFile.split("/").pop() ?? `${level.id}.ter.rsrc`,
+        url: level.rsrcFile,
+      });
 
     if (fetchPairs.length === 0) {
       toast.error("No downloadable files found for this level");
@@ -73,8 +89,11 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
     }
 
     const levelNumber = level.category?.replace(/\D/g, "") ?? level.id;
-    const zipName = `${level.gameDisplayName} Level ${levelNumber} (${fileTimestamp()}).zip`
-      .replace(/[/\\:*?"<>|]/g, "_");
+    const zipName =
+      `${level.gameDisplayName} Level ${levelNumber} (${fileTimestamp()}).zip`.replace(
+        /[/\\:*?"<>|]/g,
+        "_",
+      );
 
     const fetchAll = ResultAsync.combine(
       fetchPairs.map(({ name, url }) =>
@@ -106,7 +125,8 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
   };
 
   const gameEnum = GAME_KEY_TO_ENUM[level.game];
-  const canPlay = gameEnum !== undefined && level.previewLevelNumber !== undefined;
+  const canPlay =
+    gameEnum !== undefined && level.previewLevelNumber !== undefined;
 
   return (
     <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
@@ -127,8 +147,8 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
                     level.difficulty === "Easy"
                       ? "bg-green-900 text-green-300"
                       : level.difficulty === "Medium"
-                      ? "bg-yellow-900 text-yellow-300"
-                      : "bg-red-900 text-red-300"
+                        ? "bg-yellow-900 text-yellow-300"
+                        : "bg-red-900 text-red-300"
                   }`}
                 >
                   {level.difficulty}
@@ -151,7 +171,9 @@ function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
           </Button>
           {canPlay && (
             <Button
-              onClick={() => onPlayInBrowser(gameEnum, level.previewLevelNumber ?? 0)}
+              onClick={() =>
+                onPlayInBrowser(gameEnum, level.previewLevelNumber ?? 0)
+              }
               variant="outline"
               className="flex items-center gap-2"
               size="sm"
@@ -199,7 +221,11 @@ function GameSection({ gameName, levels, onPlayInBrowser }: GameSectionProps) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {levels.map((level) => (
-          <LevelCard key={level.id} level={level} onPlayInBrowser={onPlayInBrowser} />
+          <LevelCard
+            key={level.id}
+            level={level}
+            onPlayInBrowser={onPlayInBrowser}
+          />
         ))}
       </div>
     </div>
@@ -217,7 +243,6 @@ function GameLaunchCard({
   const config = GAME_PORT_CONFIGS[game];
   const displayName = GAME_DISPLAY_NAMES[game];
   const defaultLevel = config.defaultLevel;
-  const onlineUrl = config.remoteGameUrl(defaultLevel);
 
   return (
     <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
@@ -228,21 +253,10 @@ function GameLaunchCard({
         <Button
           onClick={() => onPlayInBrowser(game, defaultLevel)}
           size="sm"
-          className="flex items-center gap-1 bg-green-700 hover:bg-green-600 text-white"
+          className="flex w-full items-center gap-1 bg-green-700 hover:bg-green-600 text-white"
         >
           <Play className="w-4 h-4" />
           Play in Browser
-        </Button>
-        <Button
-          asChild
-          size="sm"
-          variant="outline"
-          className="flex items-center gap-1"
-        >
-          <a href={onlineUrl} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="w-4 h-4" />
-            Play Online
-          </a>
         </Button>
       </CardContent>
     </Card>
@@ -271,13 +285,12 @@ export function DownloadLevels() {
     <div className="h-full overflow-auto bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col gap-2 mb-8 text-center">
-          <h1 className="text-4xl font-bold text-white pb-2">
-            Custom Levels
-          </h1>
+          <h1 className="text-4xl font-bold text-white pb-2">Custom Levels</h1>
           <p className="text-gray-300 text-lg max-w-3xl mx-auto">
             Play and download custom levels for various Pangea Software games.
-            Downloaded files go in the <code className="bg-gray-700 px-1 rounded">Data/Terrain</code> folder
-            inside the game files to replace the corresponding level.
+            Downloaded files go in the{" "}
+            <code className="bg-gray-700 px-1 rounded">Data/Terrain</code>{" "}
+            folder inside the game files to replace the corresponding level.
           </p>
           <p className="text-gray-300 text-lg max-w-3xl mx-auto">
             To submit a level, open a{" "}
@@ -299,7 +312,8 @@ export function DownloadLevels() {
             <div className="h-px bg-gray-700 flex-1"></div>
           </div>
           <p className="text-gray-400 text-sm mb-4">
-            Launch any of the 8 Pangea ports directly in your browser, or open the hosted version online.
+            Launch any of the 8 Pangea ports directly in your browser, or open
+            the hosted version online.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {ALL_GAME_CONFIGS.map((config) => (
@@ -317,7 +331,9 @@ export function DownloadLevels() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <Download className="w-6 h-6 text-blue-400" />
-              <h2 className="text-2xl font-bold text-white">Download Custom Levels</h2>
+              <h2 className="text-2xl font-bold text-white">
+                Download Custom Levels
+              </h2>
               <div className="h-px bg-gray-700 flex-1"></div>
             </div>
             {gamesByCategory.map((game) => (
