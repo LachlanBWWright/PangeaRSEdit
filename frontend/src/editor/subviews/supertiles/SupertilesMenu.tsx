@@ -1,21 +1,27 @@
 import { useAtomValue } from "jotai";
-import { Layer, Stage, Image } from "react-konva";
+import { Layer, Stage } from "react-konva";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
   isSupertileEmpty,
-  createBlankSupertileEntry,
 } from "@/python/structSpecs/LevelTypes";
-import { RefObject, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { toast } from "sonner";
 import { downloadSelectedTile, downloadMapImage } from "./supertileUtils";
 import { ImageEditor } from "@/components/ImageEditor";
-import { cn } from "@/lib/utils";
+import { ImageDisplay, ImageDropzone } from "./SupertileMenuParts";
+import {
+  applyWholeMapCanvas,
+  buildWholeMapCanvas,
+  loadImageIntoCanvas,
+  saveWholeMapImageData,
+  setSelectedTileBlank,
+} from "./SupertileMenuHelpers";
 import {
   canRemoveSupertileColumn,
   canRemoveSupertileRow,
@@ -25,7 +31,7 @@ import {
 /**
  * Standard Supertile Menu for games with STgd-based terrain
  * (Otto Matic, Bugdom 2, Nanosaur 2, Cro-Mag Rally, Billy Frontier)
- * 
+ *
  * For Bugdom 1 and Nanosaur 1 which use individual tiles, use BugdomTileMenu instead.
  */
 export function SupertileMenu({
@@ -74,30 +80,6 @@ export function SupertileMenu({
   // Now TypeScript knows STgd exists
   const stgd = terrainData.STgd[1000].obj;
 
-  const loadImageIntoCanvas = async (
-    file: File,
-    width: number,
-    height: number,
-  ): Promise<HTMLCanvasElement | null> => {
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) {
-      toast.error("Failed to create canvas context");
-      return null;
-    }
-    context.fillStyle = "black";
-    context.fillRect(0, 0, width, height);
-    const imageBitmap = await createImageBitmap(file, {
-      resizeWidth: width,
-      resizeHeight: height,
-      resizeQuality: "high",
-    });
-    context.drawImage(imageBitmap, 0, 0);
-    return canvas;
-  };
-
   const updateSelectedTileFromCanvas = (canvas: HTMLCanvasElement) => {
     const tileEntry = stgd[selectedTile];
     if (!tileEntry) {
@@ -115,116 +97,20 @@ export function SupertileMenu({
     toast.success("Selected tile texture updated");
   };
 
-  const applyWholeMapCanvas = (
+  const applyCanvasToMap = (
     canvas: HTMLCanvasElement,
     mode: "non-empty" | "regenerate-all",
   ) => {
-    const tilesWide = hedr.mapWidth / globals.TILES_PER_SUPERTILE;
-    const tilesHigh = hedr.mapHeight / globals.TILES_PER_SUPERTILE;
-    const nextImages = [...mapImages];
-    let nextId = 1;
-
-    setTerrainData((terrainDraft) => {
-      const stgdEntry = terrainDraft.STgd?.[1000];
-      if (!stgdEntry?.obj) {
-        return;
-      }
-      for (let y = 0; y < tilesHigh; y++) {
-        for (let x = 0; x < tilesWide; x++) {
-          const tileIndex = y * tilesWide + x;
-          const slice = document.createElement("canvas");
-          slice.width = globals.SUPERTILE_TEXMAP_SIZE;
-          slice.height = globals.SUPERTILE_TEXMAP_SIZE;
-          const sliceContext = slice.getContext("2d");
-          if (!sliceContext) {
-            continue;
-          }
-          sliceContext.drawImage(
-            canvas,
-            x * globals.SUPERTILE_TEXMAP_SIZE,
-            y * globals.SUPERTILE_TEXMAP_SIZE,
-            globals.SUPERTILE_TEXMAP_SIZE,
-            globals.SUPERTILE_TEXMAP_SIZE,
-            0,
-            0,
-            globals.SUPERTILE_TEXMAP_SIZE,
-            globals.SUPERTILE_TEXMAP_SIZE,
-          );
-
-          const tileEntry = stgdEntry.obj[tileIndex];
-          if (!tileEntry) {
-            continue;
-          }
-          if (mode === "non-empty") {
-            if (!isSupertileEmpty(tileEntry)) {
-              nextImages[tileEntry.superTileId] = slice;
-            }
-          } else {
-            tileEntry.superTileId = nextId;
-            nextImages[nextId] = slice;
-            nextId++;
-          }
-        }
-      }
-    });
-
-    setMapImages(nextImages);
-    if (mode === "regenerate-all") {
-      setHeaderData((draft) => {
-        draft.Hedr[1000].obj.numUniqueSupertiles = nextId;
-      });
-    }
-    toast.success("Map image updated");
-  };
-
-  const buildWholeMapCanvas = (): HTMLCanvasElement | null => {
-    const tilesWide = hedr.mapWidth / globals.TILES_PER_SUPERTILE;
-    const tilesHigh = hedr.mapHeight / globals.TILES_PER_SUPERTILE;
-    const canvas = document.createElement("canvas");
-    canvas.width = globals.SUPERTILE_TEXMAP_SIZE * tilesWide;
-    canvas.height = globals.SUPERTILE_TEXMAP_SIZE * tilesHigh;
-    const context = canvas.getContext("2d");
-    if (!context) {
-      toast.error("Failed to create map canvas");
-      return null;
-    }
-    context.fillStyle = "black";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    for (let y = 0; y < tilesHigh; y++) {
-      for (let x = 0; x < tilesWide; x++) {
-        const tileIndex = y * tilesWide + x;
-        const tileEntry = stgd[tileIndex];
-        if (!tileEntry || isSupertileEmpty(tileEntry)) {
-          continue;
-        }
-        const tileImage = mapImages[tileEntry.superTileId];
-        if (!tileImage) {
-          continue;
-        }
-        context.drawImage(
-          tileImage,
-          x * globals.SUPERTILE_TEXMAP_SIZE,
-          y * globals.SUPERTILE_TEXMAP_SIZE,
-        );
-      }
-    }
-    return canvas;
-  };
-
-  const saveWholeMapImageData = (
-    editedImageData: ImageData,
-    mode: "non-empty" | "regenerate-all",
-  ) => {
-    const editedCanvas = document.createElement("canvas");
-    editedCanvas.width = editedImageData.width;
-    editedCanvas.height = editedImageData.height;
-    const context = editedCanvas.getContext("2d");
-    if (!context) {
-      toast.error("Failed to create canvas context");
-      return;
-    }
-    context.putImageData(editedImageData, 0, 0);
-    applyWholeMapCanvas(editedCanvas, mode);
+    applyWholeMapCanvas(
+      canvas,
+      mode,
+      hedr,
+      globals,
+      mapImages,
+      setTerrainData,
+      setMapImages,
+      setHeaderData,
+    );
   };
 
   const handleEditTileTexture = () => {
@@ -339,7 +225,7 @@ export function SupertileMenu({
                   (hedr.mapHeight / globals.TILES_PER_SUPERTILE),
               );
               if (canvas) {
-                applyWholeMapCanvas(canvas, "regenerate-all");
+                applyCanvasToMap(canvas, "regenerate-all");
               }
             }}
           />
@@ -347,7 +233,12 @@ export function SupertileMenu({
             size="sm"
             variant="outline"
             onClick={() => {
-              const mapCanvas = buildWholeMapCanvas();
+              const mapCanvas = buildWholeMapCanvas(
+                hedr,
+                globals,
+                stgd,
+                mapImages,
+              );
               if (!mapCanvas) {
                 return;
               }
@@ -429,13 +320,7 @@ export function SupertileMenu({
               isSupertileEmpty(stgd[selectedTile])
             }
             onClick={() => {
-              setTerrainData((terrainDraft) => {
-                const stgdEntry = terrainDraft.STgd?.[1000];
-                if (!stgdEntry?.obj) return;
-                stgdEntry.obj[selectedTile] = createBlankSupertileEntry(
-                  globals.EMPTY_TILE_IDX,
-                );
-              });
+              setSelectedTileBlank(selectedTile, globals, setTerrainData);
             }}
           >
             Set to Blank
@@ -446,8 +331,9 @@ export function SupertileMenu({
         isOpen={tileEditorOpen}
         onClose={() => setTileEditorOpen(false)}
         imageUrl={
-          mapImages[stgd[selectedTile]?.superTileId ?? 0]?.toDataURL("image/png") ??
-          ""
+          mapImages[stgd[selectedTile]?.superTileId ?? 0]?.toDataURL(
+            "image/png",
+          ) ?? ""
         }
         imageName={`Tile ${selectedTile}`}
         onSave={async (editedImageData) => {
@@ -472,85 +358,25 @@ export function SupertileMenu({
           {
             label: "Update non-empty tiles",
             onSave: async (editedImageData) =>
-              saveWholeMapImageData(editedImageData, "non-empty"),
+              saveWholeMapImageData(
+                editedImageData,
+                "non-empty",
+                applyCanvasToMap,
+              ),
           },
           {
             label: "Save all tiles",
             onSave: async (editedImageData) =>
-              saveWholeMapImageData(editedImageData, "regenerate-all"),
+              saveWholeMapImageData(
+                editedImageData,
+                "regenerate-all",
+                applyCanvasToMap,
+              ),
           },
         ]}
         onSave={async (editedImageData) =>
-          saveWholeMapImageData(editedImageData, "non-empty")
+          saveWholeMapImageData(editedImageData, "non-empty", applyCanvasToMap)
         }
-      />
-    </div>
-  );
-}
-
-function ImageDisplay({ image }: { image?: HTMLCanvasElement }) {
-  if (!image) return <></>;
-
-  return <Image image={image} width={250} height={250} />;
-}
-
-/**
- * Shared image upload dropzone used for tile and whole-map texture updates.
- * It supports click-to-browse and drag/drop in one compact panel.
- */
-function ImageDropzone({
-  inputRef,
-  label,
-  accept,
-  disabled,
-  onFile,
-}: {
-  inputRef: RefObject<HTMLInputElement | null>;
-  label: string;
-  accept: string;
-  disabled?: boolean;
-  onFile: (file: File) => Promise<void>;
-}) {
-  return (
-    <div
-      className={cn(
-        "border-2 border-dashed border-gray-600 rounded-lg p-3 text-center transition-colors",
-        disabled
-          ? "opacity-50 cursor-not-allowed"
-          : "cursor-pointer hover:border-gray-500",
-      )}
-      onClick={() => {
-        if (!disabled) {
-          inputRef.current?.click();
-        }
-      }}
-      onDragOver={(event) => {
-        if (!disabled) {
-          event.preventDefault();
-        }
-      }}
-      onDrop={async (event) => {
-        event.preventDefault();
-        if (disabled) return;
-        const file = event.dataTransfer.files[0];
-        if (!file) return;
-        await onFile(file);
-      }}
-    >
-      <p className="text-sm text-gray-200">{label}</p>
-      <p className="text-xs text-gray-500">Accepted: {accept}</p>
-      <input
-        ref={inputRef}
-        type="file"
-        className="hidden"
-        accept={accept}
-        disabled={disabled}
-        onChange={async (event) => {
-          const file = event.target.files?.[0];
-          if (!file) return;
-          await onFile(file);
-          event.target.value = "";
-        }}
       />
     </div>
   );

@@ -1,0 +1,227 @@
+import type { TerrainData } from "@/python/structSpecs/LevelTypes";
+import { ALT_TILE_OPTIONS } from "../mightymike/MightyMikeAltMapEditor";
+
+export const TILE_SIZE = 32;
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+export function getAltMapArray(metadata: unknown): unknown[] | null {
+  if (!isRecord(metadata)) return null;
+  const entry = isRecord(metadata[1000]) ? metadata[1000] : null;
+  if (!entry) return null;
+  const obj = isRecord(entry.obj) ? entry.obj : null;
+  if (!obj) return null;
+  const mapData = isRecord(obj.mightyMikeMapData)
+    ? obj.mightyMikeMapData
+    : null;
+  if (!mapData) return null;
+  const altMap = mapData.altMap;
+  return isArray(altMap) ? altMap : null;
+}
+
+export function getCollisionImages(
+  tileset: TerrainData["tileset"],
+): HTMLCanvasElement[] {
+  const tilesetRaw = isRecord(tileset) ? tileset : undefined;
+  const raw =
+    tilesetRaw && isArray(tilesetRaw.collisionImages)
+      ? tilesetRaw.collisionImages
+      : [];
+  return raw.filter(
+    (img): img is HTMLCanvasElement =>
+      isRecord(img) && typeof img.getContext === "function",
+  );
+}
+
+export function getTileAttributes(
+  tileset: TerrainData["tileset"],
+): Record<string, unknown>[] {
+  const tilesetRaw = isRecord(tileset) ? tileset : undefined;
+  const attrs =
+    tilesetRaw && isArray(tilesetRaw.tileAttributes)
+      ? tilesetRaw.tileAttributes
+      : [];
+  return attrs.filter(isRecord);
+}
+
+export function flattenAltMap(metadata: unknown): number[] {
+  const altMap2d = getAltMapArray(metadata);
+  if (!altMap2d) return [];
+  const flat: number[] = [];
+  for (const row of altMap2d) {
+    if (isArray(row)) {
+      for (const cell of row) flat.push(typeof cell === "number" ? cell : 0);
+    }
+  }
+  return flat;
+}
+
+export function resolveImageIndices(
+  layr: number[],
+  xlatTable: unknown[] | undefined,
+  mapImagesLength: number,
+): (number | null)[] {
+  return layr.map((logicalTileIndex) => {
+    if (logicalTileIndex < 0 || logicalTileIndex >= 2048) return null;
+    let imageIndex = logicalTileIndex;
+    if (xlatTable && logicalTileIndex < xlatTable.length) {
+      const entry = xlatTable[logicalTileIndex];
+      if (isRecord(entry) && typeof entry.idx === "number")
+        imageIndex = entry.idx;
+    }
+    if (imageIndex < 0 || imageIndex >= mapImagesLength) return null;
+    return imageIndex;
+  });
+}
+
+export function buildBackgroundCanvas(
+  mapImages: HTMLCanvasElement[],
+  layr: number[],
+  mapWidth: number,
+  mapHeight: number,
+  resolvedImageIndices: (number | null)[],
+): HTMLCanvasElement | null {
+  if (mapImages.length === 0 || layr.length === 0) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = mapWidth * TILE_SIZE;
+  canvas.height = mapHeight * TILE_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  layr.forEach((_, i) => {
+    const imgIdx = resolvedImageIndices[i];
+    if (typeof imgIdx !== "number") return;
+    const img = mapImages[imgIdx];
+    if (!img) return;
+    const tx = (i % mapWidth) * TILE_SIZE;
+    const ty = Math.floor(i / mapWidth) * TILE_SIZE;
+    ctx.drawImage(img, tx, ty, TILE_SIZE, TILE_SIZE);
+  });
+  return canvas;
+}
+
+export function buildCollisionCanvas(
+  showCollisionOverlay: boolean,
+  mapWidth: number,
+  mapHeight: number,
+  layr: number[],
+  resolvedImageIndices: (number | null)[],
+  collisionImages: HTMLCanvasElement[],
+): HTMLCanvasElement | null {
+  if (!showCollisionOverlay) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = mapWidth * TILE_SIZE;
+  canvas.height = mapHeight * TILE_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  layr.forEach((rawTileIndex, i) => {
+    if (
+      rawTileIndex === 0 ||
+      rawTileIndex === undefined ||
+      rawTileIndex === null
+    ) {
+      return;
+    }
+    const imgIdx = resolvedImageIndices[i];
+    const tx = (i % mapWidth) * TILE_SIZE;
+    const ty = Math.floor(i / mapWidth) * TILE_SIZE;
+    if (typeof imgIdx === "number" && imgIdx < collisionImages.length) {
+      const collisionImg = collisionImages[imgIdx];
+      if (collisionImg) {
+        ctx.drawImage(collisionImg, tx, ty, TILE_SIZE, TILE_SIZE);
+        return;
+      }
+    }
+    ctx.fillStyle = "rgba(200, 120, 0, 0.5)";
+    ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+  });
+  return canvas;
+}
+
+export function buildAltMapCanvas(
+  showAltMap: boolean,
+  mapWidth: number,
+  mapHeight: number,
+  altMapFlat: number[],
+): HTMLCanvasElement | null {
+  if (!showAltMap) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = mapWidth * TILE_SIZE;
+  canvas.height = mapHeight * TILE_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.font = `bold ${Math.floor(TILE_SIZE * 0.8)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  altMapFlat.forEach((val, i) => {
+    if (val === 0) return;
+    const option = ALT_TILE_OPTIONS.find((o) => o.value === val);
+    if (!option) return;
+    const tx = (i % mapWidth) * TILE_SIZE;
+    const ty = Math.floor(i / mapWidth) * TILE_SIZE;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+    ctx.fillStyle = option.color === "transparent" ? "#ffffff" : option.color;
+    ctx.fillText(option.glyph, tx + TILE_SIZE / 2, ty + TILE_SIZE / 2);
+  });
+  return canvas;
+}
+
+export function buildParamsCanvas(
+  showParamsOverlay: boolean,
+  tileAttributes: Record<string, unknown>[],
+  mapWidth: number,
+  mapHeight: number,
+  layr: number[],
+  resolvedImageIndices: (number | null)[],
+): HTMLCanvasElement | null {
+  if (!showParamsOverlay || tileAttributes.length === 0) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = mapWidth * TILE_SIZE;
+  canvas.height = mapHeight * TILE_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  layr.forEach((rawTileIndex, i) => {
+    if (
+      rawTileIndex === 0 ||
+      rawTileIndex === undefined ||
+      rawTileIndex === null
+    ) {
+      return;
+    }
+    const imgIdx = resolvedImageIndices[i];
+    if (typeof imgIdx !== "number" || imgIdx >= tileAttributes.length) return;
+    const attr = tileAttributes[imgIdx];
+    if (!attr) return;
+
+    const flags = typeof attr["flags"] === "number" ? attr["flags"] : 0;
+    const p0 = typeof attr["p0"] === "number" ? attr["p0"] : 0;
+    const p1 = typeof attr["p1"] === "number" ? attr["p1"] : 0;
+    if (flags === 0 && p0 === 0 && p1 === 0) return;
+
+    const tx = (i % mapWidth) * TILE_SIZE;
+    const ty = Math.floor(i / mapWidth) * TILE_SIZE;
+    if (flags !== 0) {
+      ctx.fillStyle = "rgba(220, 50, 50, 0.55)";
+      ctx.fillRect(tx, ty, TILE_SIZE / 2, TILE_SIZE / 2);
+    }
+    if (p0 !== 0) {
+      ctx.fillStyle = "rgba(50, 200, 50, 0.55)";
+      ctx.fillRect(tx + TILE_SIZE / 2, ty, TILE_SIZE / 2, TILE_SIZE / 2);
+    }
+    if (p1 !== 0) {
+      ctx.fillStyle = "rgba(50, 100, 220, 0.55)";
+      ctx.fillRect(tx, ty + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE / 2);
+    }
+  });
+  return canvas;
+}

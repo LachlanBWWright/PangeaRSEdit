@@ -66,15 +66,15 @@ export function serializeNanosaurTerrainTextures(
       return err(new Error(`Tile image at index ${i} is missing`));
     }
     if (canvas.width !== 32 || canvas.height !== 32) {
-      return err(
-        new Error(`Tile image at index ${i} must be 32x32 pixels`),
-      );
+      return err(new Error(`Tile image at index ${i} must be 32x32 pixels`));
     }
 
     const encoded = canvasDataToSixteenBit(canvas);
     if (encoded.isErr()) {
       return err(
-        new Error(`Failed to serialize tile image #${i}: ${encoded.error.message}`),
+        new Error(
+          `Failed to serialize tile image #${i}: ${encoded.error.message}`,
+        ),
       );
     }
     serializedTiles.push(new Uint8Array(encoded.value.buffer.slice(0)));
@@ -138,293 +138,24 @@ export function parseNanosaurHeightmapTiles(
   return tiles;
 }
 
-import { LevelData } from "@/python/structSpecs/LevelTypes";
-// Convert Nanosaur1LevelData to ottomaticLevel-like structure
-// This allows the editor to use Nanosaur 1 levels in the same way as Otto Matic levels
-export function nanosaur1LevelToLevelData(
-  level: Nanosaur1LevelData,
-  tileSize = 32,
-  tileIngameSize = 140,
-  heightExtrudeFactor = 4.0,
-): LevelData {
-  // Map Nanosaur 1 data to LevelData structure
-  const width = level.header.width;
-  const depth = level.header.depth;
+import {
+  nanosaur1LevelToLevelData,
+  nanosaur1LevelToOttoMaticLevel,
+} from "./classicProprocessorLevelData";
+import type {
+  Nanosaur1LevelData,
+  Nanosaur1LevelHeader,
+  TerrainItemEntryType,
+  TileAttribType,
+} from "./classicProprocessorTypes";
 
-  // Helper for empty record fields
-  const emptyRecord = {};
-
-  // Convert Nanosaur1 heightmap tiles & layer to YCrd format (array of floats)
-  // Nanosaur 1 stores a heightmap layer containing tile indices (with flip/rotate bits) and
-  // an array of 32x32 height tiles (bytes). We sample the appropriate heightmap pixel for
-  // each map vertex and convert to a float using the HEIGHT_EXTRUDE_FACTOR.
-  const HMTILE_SIZE = 32;
-  // const TERRAIN_HMTILE_BYTES = HMTILE_SIZE * HMTILE_SIZE; // not used; keep calculation if needed later
-  const HEIGHT_EXTRUDE_FACTOR = heightExtrudeFactor; // corresponds to engine define
-  // Nanosaur's engine uses a TERRAIN_POLYGON_SIZE of 140 world units and
-  // OREOMAP_TILE_SIZE (OREOMAP pixel tile) of 32. When converting to an
-  // Otto-compatible YCrd array we need to produce *pixel units* instead of
-  // world units so the editor's final y calc (pixel * TILE_INGAME_SIZE/tileSize)
-  // yields the same world Y. Compute a converter that maps engine world Y
-  // (height*HEIGHT_EXTRUDE_FACTOR) back to pixel units used by Otto.
-  const TERRAIN_POLYGON_SIZE = tileIngameSize; // world unit size of a terrain polygon
-  const OREOMAP_TILE_SIZE = tileSize; // Oreo map pixel size (heightmap tiles are tileSize x tileSize)
-  const HEIGHT_WORLD_TO_PIXEL =
-    (OREOMAP_TILE_SIZE / TERRAIN_POLYGON_SIZE) * HEIGHT_EXTRUDE_FACTOR;
-
-  const ycrdData: number[] = [];
-  if (
-    level.heightmapLayer &&
-    level.heightmapTiles &&
-    level.heightmapTiles.length > 0
-  ) {
-    // Create (depth+1) x (width+1) grid of vertex heights matching Otto/Engine convention
-    for (let row = 0; row <= depth; row++) {
-      for (let col = 0; col <= width; col++) {
-        // Choose the tile to sample from - clamp to the last tile for edges
-        const tileRow = row === depth ? depth - 1 : row;
-        const tileCol = col === width ? width - 1 : col;
-        const tileIndex = tileRow * width + tileCol;
-        const tileEntry = level.heightmapLayer[tileIndex];
-        if (tileEntry === undefined || tileEntry === null) {
-          // missing entry - push default height and continue to next vertex
-          ycrdData.push(0);
-          continue;
-        }
-
-        // Tile entries in nanosaur are 16-bit values: lower bits = tile number, top bits = flip/rotate
-        const TILENUM_MASK = 0x0fff;
-        const TILE_FLIPX_MASK = 1 << 15;
-        const TILE_FLIPY_MASK = 1 << 14;
-
-        const tileNum = tileEntry & TILENUM_MASK;
-        const flipX = (tileEntry & TILE_FLIPX_MASK) !== 0;
-        const flipY = (tileEntry & TILE_FLIPY_MASK) !== 0;
-
-        let offx = col === width ? HMTILE_SIZE - 1 : 0;
-        let offy = row === depth ? HMTILE_SIZE - 1 : 0;
-
-        if (flipX) offx = HMTILE_SIZE - 1 - offx;
-        if (flipY) offy = HMTILE_SIZE - 1 - offy;
-
-        let heightVal = 0;
-        if (
-          tileNum >= 0 &&
-          Array.isArray(level.heightmapTiles) &&
-          tileNum < level.heightmapTiles.length
-        ) {
-          const tileArr = level.heightmapTiles[tileNum];
-          if (tileArr && tileArr.length > 0) {
-            const idx = offy * HMTILE_SIZE + offx;
-            heightVal = tileArr[idx] ?? 0;
-          }
-        }
-        // Convert engine world units (height*HEIGHT_EXTRUDE_FACTOR) back to "pixel"
-        // units that Otto's YCrd expects so that downstream scaling converts to
-        // the correct world Y. This prevents double-scaling via yScale in Terrain.
-        ycrdData.push(heightVal * HEIGHT_WORLD_TO_PIXEL);
-      }
-    }
-  } else if (level.heightmapLayer) {
-    // Fallback: if we don't have height tiles, produce a simple grid by mapping tile values
-    // (rare case) - these values will be in integer units and likely need further scaling.
-    for (let row = 0; row <= depth; row++) {
-      for (let col = 0; col <= width; col++) {
-        const tileRow = Math.min(row, depth - 1);
-        const tileCol = Math.min(col, width - 1);
-        const tileIndex = tileRow * width + tileCol;
-        const tileEntry = level.heightmapLayer[tileIndex];
-        const heightValue = tileEntry ?? 0;
-        // Map fallback values using same converter as above so the final output
-        // is consistent with the main path (i.e. in pixel units).
-        ycrdData.push(heightValue * HEIGHT_WORLD_TO_PIXEL);
-      }
-    }
-  }
-
-  // Compose LevelData object
-  const ottoLevel: LevelData = {
-    Atrb: {
-      1000: {
-        name: "Tile Attribute Data",
-        obj: level.textureAttributes.map((attr) => ({
-          bits: attr.bits,
-          parm0: attr.parm0,
-          parm1: attr.parm1,
-          parm2: attr.parm2,
-          undefined: attr.undefined,
-          // TileAttribute required fields (fill with defaults)
-          flags: 0,
-          p0: 0,
-          p1: 0,
-        })),
-        order: 0,
-      },
-    },
-    Fenc: {
-      1000: {
-        name: "Fence List",
-        obj: [],
-        order: 0,
-      },
-    },
-    FnNb: emptyRecord,
-    Timg: {
-      1000: {
-        name: "Extracted Tile Image Data 32x32/16bit",
-        data: "",
-        order: 0,
-      },
-    },
-    Hedr: {
-      1000: {
-        name: "Header",
-        obj: {
-          version: 1,
-          numItems: level.objectList.length,
-          mapWidth: width,
-          mapHeight: depth,
-          numTilePages: 1,
-          numTiles: width * depth,
-          tileSize: 32,
-          minY: Math.min(...ycrdData, 0),
-          maxY: Math.max(...ycrdData, 0),
-          numSplines: 0,
-          numFences: 0,
-          numUniqueSupertiles: 0,
-          numWaterPatches: 0,
-          numCheckpoints: 0,
-        },
-        order: 0,
-      },
-    },
-    ItCo: {
-      1000: {
-        name: "Terrain Items Color Array",
-        data: "",
-        order: 0,
-      },
-    },
-    Itms: {
-      1000: {
-        name: "Terrain Items List",
-        obj: level.objectList.map((item) => ({
-          // Map available fields, fill missing TerrainItem fields with defaults
-          x: item.x,
-          y: item.y,
-          z: item.y, //TODO: test
-          type: item.type,
-          parm: item.parm,
-          flags: item.flags,
-          prevItemIdx: item.prevItemIdx,
-          nextItemIdx: item.nextItemIdx,
-          // TerrainItem required fields (fill with defaults)
-          p0: 0,
-          p1: 0,
-          p2: 0,
-          p3: 0,
-        })),
-        order: 0,
-      },
-    },
-    Layr: {
-      1000: {
-        name: "Terrain Layer Matrix",
-        obj: level.textureLayer, // Already a number[] with proper big-endian values
-        order: 0,
-      },
-    },
-    Liqd: {
-      1000: {
-        name: "Water List",
-        obj: [],
-        order: 0,
-      },
-    },
-    STgd: {
-      1000: {
-        name: "SuperTile Grid",
-        obj: [],
-        order: 0,
-      },
-    },
-    SpIt: emptyRecord,
-    SpNb: emptyRecord,
-    SpPt: emptyRecord,
-    Spln: {
-      1000: {
-        name: "Spline List",
-        obj: [],
-        order: 0,
-      },
-    },
-    YCrd: {
-      1000: {
-        name: "Floor&Ceiling Y Coords",
-        obj: ycrdData,
-        order: 0,
-      },
-    },
-    alis: emptyRecord,
-    _metadata: {
-      file_attributes: 0,
-      junk1: 0,
-      junk2: 0,
-    },
-  };
-
-  return ottoLevel;
-}
-
-// Backward-compatible export name expected by tests
-export const nanosaur1LevelToOttoMaticLevel = nanosaur1LevelToLevelData;
-
-// TypeScript representation of the Nanosaur 1 C struct (TerrainItemEntryType)
-export interface TerrainItemEntryType {
-  x: number; // UInt16
-  y: number; // UInt16
-  type: number; // UInt16
-  parm: [number, number, number, number]; // Byte[4]
-  flags: number; // UInt16
-  prevItemIdx: number; // SInt32
-  nextItemIdx: number; // SInt32
-}
-
-// Level header offsets and info
-export interface Nanosaur1LevelHeader {
-  textureLayerOffset: number;
-  heightmapLayerOffset: number;
-  pathLayerOffset: number;
-  objectListOffset: number;
-  unknown1: number;
-  heightmapTilesOffset: number;
-  unknown2: number;
-  width: number;
-  depth: number;
-  textureAttribOffset: number;
-  tileAnimDataOffset: number;
-}
-
-export interface Nanosaur1LevelData {
-  header: Nanosaur1LevelHeader;
-  textureLayer: number[];
-  heightmapLayer: number[] | null;
-  pathLayer: number[] | null;
-  heightmapTiles?: Uint8Array[] | null;
-  objectList: TerrainItemEntryType[];
-  textureAttributes: TileAttribType[];
-  heightmapPadding?: Uint8Array | null;
-  tileAnimData?: Uint8Array | null;
-}
-
-// TypeScript representation of the Nanosaur 1 C struct (TileAttribType)
-export interface TileAttribType {
-  bits: number; // UInt16
-  parm0: number; // short
-  parm1: number; // Byte
-  parm2: number; // Byte
-  undefined: number; // short
-}
+export { nanosaur1LevelToLevelData, nanosaur1LevelToOttoMaticLevel };
+export type {
+  Nanosaur1LevelData,
+  Nanosaur1LevelHeader,
+  TerrainItemEntryType,
+  TileAttribType,
+};
 
 function readInt16BE(view: DataView, offset: number): number {
   return view.getInt16(offset, false);
@@ -589,21 +320,27 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     // Check for padding/extra bytes
     const consumedBytes = tileCount * BYTES_PER_HMTILE;
     if (consumedBytes < dataSize) {
-        const paddingSize = dataSize - consumedBytes;
-        const paddingOffset = header.heightmapTilesOffset + consumedBytes;
-        // slice of ArrayBuffer
-        const paddingBuffer = buffer.slice(paddingOffset, paddingOffset + paddingSize);
-        heightmapPadding = new Uint8Array(paddingBuffer);
+      const paddingSize = dataSize - consumedBytes;
+      const paddingOffset = header.heightmapTilesOffset + consumedBytes;
+      // slice of ArrayBuffer
+      const paddingBuffer = buffer.slice(
+        paddingOffset,
+        paddingOffset + paddingSize,
+      );
+      heightmapPadding = new Uint8Array(paddingBuffer);
     }
   }
 
   // Tile Anim Data (from offset to EOF)
   let tileAnimData: Uint8Array | null = null;
-  if (header.tileAnimDataOffset > 0 && header.tileAnimDataOffset < buffer.byteLength) {
-      const animSize = buffer.byteLength - header.tileAnimDataOffset;
-      const animOffset = header.tileAnimDataOffset;
-      const animBuffer = buffer.slice(animOffset, animOffset + animSize);
-      tileAnimData = new Uint8Array(animBuffer);
+  if (
+    header.tileAnimDataOffset > 0 &&
+    header.tileAnimDataOffset < buffer.byteLength
+  ) {
+    const animSize = buffer.byteLength - header.tileAnimDataOffset;
+    const animOffset = header.tileAnimDataOffset;
+    const animBuffer = buffer.slice(animOffset, animOffset + animSize);
+    tileAnimData = new Uint8Array(animBuffer);
   }
 
   // Return all parsed data
@@ -616,6 +353,6 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     textureAttributes,
     heightmapTiles: heightmapTiles,
     heightmapPadding: heightmapPadding,
-    tileAnimData: tileAnimData
+    tileAnimData: tileAnimData,
   };
 }

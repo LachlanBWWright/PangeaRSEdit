@@ -11,14 +11,6 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Updater, useImmer } from "use-immer";
 import {
   Globals,
@@ -48,6 +40,7 @@ import { isNanosaur1LevelData } from "./loadLogic/typeGuards";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { prepareDownloadData } from "./utils/introPromptUtils";
 import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
+import { NewMapConfirmDialog } from "./IntroPrompt/NewMapConfirmDialog";
 import { TestGameDialog } from "./TestGameDialog";
 import {
   GAME_PORT_CONFIGS,
@@ -688,10 +681,13 @@ export function IntroPrompt() {
     void buildPreviewTerrainBlobs(combinedData, globals, mapImages)
       .then((blobs) => {
         if (!blobs) {
-          console.error("[GamePreview] Preview serialization returned no bytes", {
-            game: globals.GAME_NAME,
-            dataType: globals.DATA_TYPE,
-          });
+          console.error(
+            "[GamePreview] Preview serialization returned no bytes",
+            {
+              game: globals.GAME_NAME,
+              dataType: globals.DATA_TYPE,
+            },
+          );
           toast.error("Preview failed", {
             description: "Could not serialize the selected level for preview.",
           });
@@ -839,26 +835,11 @@ export function IntroPrompt() {
     );
   return (
     <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full p-2 md:p-6 flex-1 min-h-0">
-      <Dialog open={newMapConfirmOpen} onOpenChange={setNewMapConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Start a new map?</DialogTitle>
-            <DialogDescription>
-              This will clear the current level from the editor. Any unsaved
-              changes will be lost.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setNewMapConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmNewMap}>Yes, go back</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NewMapConfirmDialog
+        open={newMapConfirmOpen}
+        onOpenChange={setNewMapConfirmOpen}
+        onConfirm={handleConfirmNewMap}
+      />
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
       {mapImages && headerData && terrainData ? (
         <EditorView
