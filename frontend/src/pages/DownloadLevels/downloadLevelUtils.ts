@@ -8,14 +8,16 @@ interface DownloadTarget {
   url: string;
 }
 
+function ensureOkResponse(url: string, resp: Response): Promise<Response> {
+  if (resp.ok) return Promise.resolve(resp);
+  return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
+}
+
 function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
   return ResultAsync.fromPromise(
-    fetch(url).then((resp) => {
-      if (!resp.ok) {
-        return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
-      }
-      return resp.arrayBuffer().then((buf) => new Uint8Array(buf));
-    }),
+    fetch(url)
+      .then((resp) => ensureOkResponse(url, resp))
+      .then((resp) => resp.arrayBuffer().then((buf) => new Uint8Array(buf))),
     mapErr,
   );
 }

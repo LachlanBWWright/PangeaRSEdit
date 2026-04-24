@@ -18,13 +18,15 @@ export function handleAnHd(
   resourceName: string,
   resourceData: AnHdRaw | { obj?: AnHdRaw } | undefined,
 ): AnHdRaw {
-  const obj = isRecord(resourceData) && isAnHdRaw(resourceData.obj)
-    ? resourceData.obj
-    : resourceData;
+  const obj =
+    isRecord(resourceData) && isAnHdRaw(resourceData.obj)
+      ? resourceData.obj
+      : resourceData;
   if (isAnHdRaw(obj)) {
     const rd = obj;
+    const isParsedObj = isRecord(resourceData) && isAnHdRaw(resourceData.obj);
     return {
-      animName: isRecord(resourceData) && isAnHdRaw(resourceData.obj)
+      animName: isParsedObj
         ? decodePascalHexString(String(rd.animName))
         : String(rd.animName),
       numAnimEvents: rd.numAnimEvents,
@@ -32,9 +34,12 @@ export function handleAnHd(
   }
 
   // Fallback: keep minimal structure
-  const name = isRecord(resourceData) && "name" in resourceData && typeof resourceData.name === "string"
-    ? resourceData.name
-    : resourceName;
+  const name =
+    isRecord(resourceData) &&
+    "name" in resourceData &&
+    typeof resourceData.name === "string"
+      ? resourceData.name
+      : resourceName;
   return {
     animName: name,
     numAnimEvents: 0,

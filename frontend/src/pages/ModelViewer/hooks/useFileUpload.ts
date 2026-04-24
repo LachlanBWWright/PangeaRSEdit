@@ -1,43 +1,30 @@
-import { mapErr } from "@/utils/mapErr";
-/**
- * Custom hook for handling BG3D/3DMF file uploads
- *
- * Manages the file upload workflow including:
- * - File format detection and validation
- * - 3DMF parsing and direct GLB conversion
- * - Skeleton file loading and merging
- * - GLB conversion via worker
- * - Texture extraction
- *
- * Uses a callback pattern for state updates to avoid closure dependencies
- */
-
 import { useCallback } from "react";
 import { toast } from "sonner";
-import BG3DGltfWorker from "../../../modelParsers/bg3dGltfWorker?worker";
 import type {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../../../modelParsers/bg3dGltfWorker";
-import { parseBG3D, type BG3DParseResult } from "../../../modelParsers/parseBG3D";
-import { parseSkeletonRsrc } from "../../../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
+import {
+  parseBG3D,
+  type BG3DParseResult,
+} from "../../../modelParsers/parseBG3D";
 import {
   getGlbToBg3dWorkerResponse,
   getModelToGlbWorkerResponse,
   type ModelToGlbWorkerResponse,
 } from "../utils/bg3dGltfWorkerResponses";
 import { extractTexturesFromBG3D } from "../utils/textureUtils";
-import type { SkeletonResource } from "../../../python/structSpecs/skeleton/skeletonInterface";
+import type { SkeletonResource } from "@/python/structSpecs/skeleton/skeletonInterface";
 import type { Texture } from "../types";
-import { ResultAsync, ok, err, type Result } from "neverthrow";
-
-
-function isSkeletonFileName(fileName: string): boolean {
-  const lowerCaseName = fileName.toLowerCase();
-  return (
-    lowerCaseName.endsWith(".skeleton.rsrc") || lowerCaseName.endsWith(".rsrc")
-  );
-}
+import { err, ok, type Result } from "neverthrow";
+import {
+  createDisplayFileName,
+  loadOptionalSkeleton,
+  readFileBuffer,
+  runWorkerMessage,
+  validateUploadSelection,
+  type ModelUploadKind,
+} from "./useFileUploadHelpers";
 
 /**
  * Configuration for the useFileUpload hook
@@ -59,6 +46,78 @@ export interface UseFileUploadOptions {
   ) => void;
 }
 
+interface UploadRuntime extends UseFileUploadOptions {
+  finalizeModelLoad: (
+    displayFileName: string,
+    result: ModelToGlbWorkerResponse,
+  ) => Promise<Result<void, Error>>;
+}
+
+function createUploadRuntime(
+  options: UseFileUploadOptions,
+  finalizeModelLoad: UploadRuntime["finalizeModelLoad"],
+): UploadRuntime {
+  return {
+    ...options,
+    finalizeModelLoad,
+  };
+}
+
+function reportInvalidSelection(error: Error): Result<void, Error> {
+  toast.error(error.message);
+  return err(error);
+}
+
+async function applyParsedIfPresent(
+  parsed: BG3DParseResult | undefined,
+  onBg3dParsedChange: (parsed: BG3DParseResult) => void,
+  onTexturesChange: (textures: Texture[]) => void,
+): Promise<void> {
+  if (!parsed) return;
+
+  onBg3dParsedChange(parsed);
+  const textures = await extractTexturesFromBG3D(parsed);
+  onTexturesChange(textures);
+}
+
+function failUpload(
+  runtime: UseFileUploadOptions,
+  message: string,
+): Result<void, Error> {
+  toast.error(message);
+  runtime.onLoadingChange(false);
+  return err(new Error(message));
+}
+
+function getWorkerErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function createGlbToBg3dMessage(buffer: ArrayBuffer): BG3DGltfWorkerMessage {
+  return {
+    type: "glb-to-bg3d",
+    buffer,
+  };
+}
+
+function createModelToGlbMessage(
+  kind: Exclude<ModelUploadKind, "glb">,
+  modelBuffer: ArrayBuffer,
+  skeletonData?: SkeletonResource,
+): BG3DGltfWorkerMessage {
+  if (!skeletonData) return { type: "bg3d-to-glb", buffer: modelBuffer };
+  if (kind === "3dmf") {
+    return { type: "model-with-skeleton-to-glb", modelBuffer, skeletonData };
+  }
+
+  return {
+    type: "bg3d-with-skeleton-to-glb",
+    bg3dBuffer: modelBuffer,
+    skeletonData,
+  };
+}
+
 export async function parseGlbImportResult(
   result: Extract<BG3DGltfWorkerResponse, { type: "glb-to-bg3d" }>,
 ): Promise<Result<BG3DParseResult, Error>> {
@@ -72,6 +131,100 @@ export async function parseGlbImportResult(
   }
 
   return ok(fallback.value);
+}
+
+async function handleGlbUpload(
+  runtime: UseFileUploadOptions,
+  bg3dFile: File,
+): Promise<Result<void, Error>> {
+  const glbBufferResult = await readFileBuffer(bg3dFile, "GLB file");
+  if (glbBufferResult.isErr()) {
+    return failUpload(runtime, glbBufferResult.error.message);
+  }
+
+  const workerResult = await runWorkerMessage(
+    createGlbToBg3dMessage(glbBufferResult.value),
+  );
+  if (workerResult.isErr()) {
+    const message = `Failed to convert GLB to BG3D: ${getWorkerErrorMessage(workerResult.error)}`;
+    return failUpload(runtime, message);
+  }
+
+  const responseResult = getGlbToBg3dWorkerResponse(
+    workerResult.value,
+    "convert GLB to BG3D",
+  );
+  if (responseResult.isErr()) {
+    return failUpload(runtime, responseResult.error.message);
+  }
+
+  const parsedResult = await parseGlbImportResult(responseResult.value);
+  if (parsedResult.isErr()) {
+    const message = `Failed to load BG3D from GLB: ${parsedResult.error.message}`;
+    return failUpload(runtime, message);
+  }
+
+  const parsed = parsedResult.value;
+  runtime.onGltfBufferChange(glbBufferResult.value);
+  runtime.onBg3dParsedChange(parsed);
+  const textures = await extractTexturesFromBG3D(parsed);
+  runtime.onTexturesChange(textures);
+
+  const glbBlob = new Blob([glbBufferResult.value], {
+    type: "model/gltf-binary",
+  });
+  runtime.onGltfUrlChange(URL.createObjectURL(glbBlob));
+
+  toast.success(`Successfully loaded ${bg3dFile.name}`);
+  runtime.onUploadStepChange("completed");
+  runtime.onLoadingChange(false);
+  return ok(undefined);
+}
+
+async function handleModelUpload(
+  runtime: UploadRuntime,
+  kind: Exclude<ModelUploadKind, "glb">,
+  modelFile: File,
+  skeletonFile?: File,
+): Promise<Result<void, Error>> {
+  const modelLabel = kind === "3dmf" ? "3DMF file" : "BG3D file";
+  const modelBufferResult = await readFileBuffer(modelFile, modelLabel);
+  if (modelBufferResult.isErr()) {
+    return failUpload(runtime, modelBufferResult.error.message);
+  }
+
+  const skeletonLoadResult = await loadOptionalSkeleton(skeletonFile);
+  if (skeletonLoadResult.warningMessage !== undefined) {
+    toast.error(skeletonLoadResult.warningMessage);
+  }
+
+  const workerMessage = createModelToGlbMessage(
+    kind,
+    modelBufferResult.value,
+    skeletonLoadResult.skeletonData,
+  );
+  const workerResult = await runWorkerMessage(workerMessage);
+
+  if (workerResult.isErr()) {
+    const message = `Error loading model: ${getWorkerErrorMessage(workerResult.error)}`;
+    return failUpload(runtime, message);
+  }
+
+  const action = kind === "3dmf" ? "load 3DMF model" : "load BG3D model";
+  const responseResult = getModelToGlbWorkerResponse(
+    workerResult.value,
+    action,
+  );
+  if (responseResult.isErr()) {
+    return failUpload(runtime, responseResult.error.message);
+  }
+
+  const displayFileName = createDisplayFileName(
+    modelFile.name,
+    skeletonFile,
+    skeletonLoadResult.skeletonFailed,
+  );
+  return runtime.finalizeModelLoad(displayFileName, responseResult.value);
 }
 
 /**
@@ -95,16 +248,14 @@ export function useFileUpload(options: UseFileUploadOptions) {
       displayFileName: string,
       result: ModelToGlbWorkerResponse,
     ): Promise<Result<void, Error>> => {
-      if (result.parsed) {
-        onBg3dParsedChange(result.parsed);
-        const textures = await extractTexturesFromBG3D(result.parsed);
-        onTexturesChange(textures);
-      }
+      await applyParsedIfPresent(
+        result.parsed,
+        onBg3dParsedChange,
+        onTexturesChange,
+      );
 
       onGltfBufferChange(result.result);
-      const glbBlob = new Blob([result.result], {
-        type: "model/gltf-binary",
-      });
+      const glbBlob = new Blob([result.result], { type: "model/gltf-binary" });
       const url = URL.createObjectURL(glbBlob);
       onGltfUrlChange(url);
 
@@ -123,363 +274,30 @@ export function useFileUpload(options: UseFileUploadOptions) {
     ],
   );
 
-  /**
-   * Main file upload handler
-   *
-   * Supports both .bg3d and .3dmf formats. For 3DMF files, automatically converts
-   * to BG3D format. Optionally accepts a skeleton file for animations.
-   *
-   * @param bg3dFile - The BG3D or 3DMF file to upload
-   * @param skeletonFile - Optional skeleton file for animations
-   */
   const uploadFile = useCallback(
     async (
       bg3dFile: File,
       skeletonFile?: File,
     ): Promise<Result<void, Error>> => {
-      const fileName = bg3dFile.name.toLowerCase();
-      const isBg3d = fileName.endsWith(".bg3d");
-      const is3dmf = fileName.endsWith(".3dmf");
-      const isGlb = fileName.endsWith(".glb");
-
-      if (!isBg3d && !is3dmf && !isGlb) {
-        const message = "Please select a BG3D, 3DMF, or GLB file";
-        toast.error(message);
-        return err(new Error(message));
-      }
-
-      if (
-        skeletonFile &&
-        !isSkeletonFileName(skeletonFile.name)
-      ) {
-        const message =
-          "Skeleton file must be a .skeleton.rsrc or .rsrc file";
-        toast.error(message);
-        return err(new Error(message));
-      }
+      const selectionResult = validateUploadSelection(bg3dFile, skeletonFile);
+      if (selectionResult.isErr())
+        return reportInvalidSelection(selectionResult.error);
 
       onLoadingChange(true);
+      const selection = selectionResult.value;
+      const runtime = createUploadRuntime(options, finalizeModelLoad);
 
-      if (isGlb) {
-        const glbBufferResult = await ResultAsync.fromPromise(
-          bg3dFile.arrayBuffer(),
-          mapErr,
-        );
-        if (glbBufferResult.isErr()) {
-          const message = `Failed to read GLB file: ${glbBufferResult.error.message}`;
-          toast.error(message);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
+      if (selection.kind === "glb")
+        return handleGlbUpload(options, selection.bg3dFile);
 
-        const worker = new BG3DGltfWorker();
-        const workerPromise = new Promise<BG3DGltfWorkerResponse>(
-          (resolve, reject) => {
-            worker.onmessage = (e) => {
-              resolve(e.data);
-              worker.terminate();
-            };
-            worker.onerror = (e) => {
-              reject(e);
-              worker.terminate();
-            };
-
-            worker.postMessage({
-              type: "glb-to-bg3d",
-              buffer: glbBufferResult.value,
-            } satisfies BG3DGltfWorkerMessage);
-          },
-        );
-
-        const workerResult = await ResultAsync.fromPromise(
-          workerPromise,
-          mapErr,
-        );
-        if (workerResult.isErr()) {
-          const message =
-            workerResult.error instanceof Error
-              ? workerResult.error.message
-              : String(workerResult.error);
-          toast.error(`Failed to convert GLB to BG3D: ${message}`);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
-
-        const responseResult = getGlbToBg3dWorkerResponse(
-          workerResult.value,
-          "convert GLB to BG3D",
-        );
-        if (responseResult.isErr()) {
-          const message = responseResult.error.message;
-          toast.error(message);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
-
-        const parsedResult = await parseGlbImportResult(responseResult.value);
-        if (parsedResult.isErr()) {
-          const message = `Failed to load BG3D from GLB: ${parsedResult.error.message}`;
-          toast.error(message);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
-
-        const parsed = parsedResult.value;
-
-        onGltfBufferChange(glbBufferResult.value);
-        onBg3dParsedChange(parsed);
-        const textures = await extractTexturesFromBG3D(parsed);
-        onTexturesChange(textures);
-
-        const glbBlob = new Blob([glbBufferResult.value], {
-          type: "model/gltf-binary",
-        });
-        const url = URL.createObjectURL(glbBlob);
-        onGltfUrlChange(url);
-
-        toast.success(`Successfully loaded ${bg3dFile.name}`);
-        onUploadStepChange("completed");
-        onLoadingChange(false);
-        return ok(undefined);
-      }
-
-      // Handle 3DMF conversion path
-      if (is3dmf) {
-        const dmfBufferResult = await ResultAsync.fromPromise(
-          bg3dFile.arrayBuffer(),
-          mapErr,
-        );
-        if (dmfBufferResult.isErr()) {
-          const message = `Failed to read 3DMF file: ${dmfBufferResult.error.message}`;
-          toast.error(message);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
-        const dmfBuffer = dmfBufferResult.value;
-
-        // Parse skeleton file if provided
-        let skeletonData: SkeletonResource | undefined;
-        let skeletonFailed = false;
-        if (skeletonFile) {
-            const skeletonBufferResult = await ResultAsync.fromPromise(
-              skeletonFile.arrayBuffer(),
-              mapErr,
-            );
-          if (skeletonBufferResult.isErr()) {
-            console.error(
-              "Error reading skeleton file:",
-              skeletonBufferResult.error,
-            );
-            toast.error(
-              `Failed to read skeleton file: ${skeletonBufferResult.error.message}`,
-            );
-            skeletonFailed = true;
-          } else {
-              const skeletonParseResult = await ResultAsync.fromPromise(
-                parseSkeletonRsrc(skeletonBufferResult.value),
-                mapErr,
-              );
-            if (skeletonParseResult.isErr()) {
-              console.error(
-                "Error parsing skeleton:",
-                skeletonParseResult.error,
-              );
-              toast.error(
-                `Failed to parse skeleton file: ${skeletonParseResult.error.message}`,
-              );
-              skeletonFailed = true;
-            } else {
-              skeletonData = skeletonParseResult.value;
-            }
-          }
-        }
-
-        // Process with worker for GLB conversion
-        const worker = new BG3DGltfWorker();
-        const workerPromise = new Promise<BG3DGltfWorkerResponse>(
-          (resolve, reject) => {
-            worker.onmessage = (e) => {
-              resolve(e.data);
-              worker.terminate();
-            };
-            worker.onerror = (e) => {
-              reject(e);
-              worker.terminate();
-            };
-
-            if (skeletonData) {
-              // Send the original 3DMF buffer plus skeleton data directly.
-              const message = {
-                type: "model-with-skeleton-to-glb",
-                modelBuffer: dmfBuffer,
-                skeletonData,
-              } satisfies BG3DGltfWorkerMessage;
-              worker.postMessage(message);
-            } else {
-              // Send the original 3DMF buffer directly.
-              const message = {
-                type: "bg3d-to-glb",
-                buffer: dmfBuffer,
-              } satisfies BG3DGltfWorkerMessage;
-              worker.postMessage(message);
-            }
-          },
-        );
-
-        const workerResult = await ResultAsync.fromPromise(
-          workerPromise,
-          mapErr,
-        );
-        if (workerResult.isErr()) {
-          const message =
-            workerResult.error instanceof Error
-              ? workerResult.error.message
-              : String(workerResult.error);
-          toast.error(`Error loading model: ${message}`);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
-
-        const responseResult = getModelToGlbWorkerResponse(
-          workerResult.value,
-          "load 3DMF model",
-        );
-        if (responseResult.isErr()) {
-          toast.error(responseResult.error.message);
-          onLoadingChange(false);
-          return err(responseResult.error);
-        }
-
-        let displayFileName: string;
-        if (skeletonFile && !skeletonFailed) {
-          displayFileName = `${bg3dFile.name} + ${skeletonFile.name}`;
-        } else if (skeletonFile && skeletonFailed) {
-          displayFileName = `${bg3dFile.name} (skeleton failed to load)`;
-        } else {
-          displayFileName = bg3dFile.name;
-        }
-        return finalizeModelLoad(displayFileName, responseResult.value);
-      }
-
-      // Handle standard BG3D file processing
-        const bg3dBufferResult = await ResultAsync.fromPromise(
-          bg3dFile.arrayBuffer(),
-          mapErr,
-        );
-      if (bg3dBufferResult.isErr()) {
-        const message = `Failed to read BG3D file: ${bg3dBufferResult.error.message}`;
-        toast.error(message);
-        onLoadingChange(false);
-        return err(new Error(message));
-      }
-      const bg3dArrayBuffer = bg3dBufferResult.value;
-
-      // Parse skeleton file if provided
-      let skeletonData: SkeletonResource | undefined;
-      let skeletonFailed = false;
-      if (skeletonFile) {
-        const skeletonBufferResult = await ResultAsync.fromPromise(
-            skeletonFile.arrayBuffer(),
-            mapErr,
-          );
-        if (skeletonBufferResult.isErr()) {
-          console.error(
-            "Error reading skeleton file:",
-            skeletonBufferResult.error,
-          );
-          toast.error(
-            `Failed to read skeleton file: ${skeletonBufferResult.error.message}`,
-          );
-          skeletonFailed = true;
-        } else {
-          const skeletonParseResult = await ResultAsync.fromPromise(
-            parseSkeletonRsrc(skeletonBufferResult.value),
-            mapErr,
-          );
-          if (skeletonParseResult.isErr()) {
-            console.error("Error parsing skeleton:", skeletonParseResult.error);
-            toast.error(
-              `Failed to parse skeleton file: ${skeletonParseResult.error.message}`,
-            );
-            skeletonFailed = true;
-          } else {
-            skeletonData = skeletonParseResult.value;
-          }
-        }
-      }
-
-      // Send to worker for parsing and GLB conversion
-      const worker = new BG3DGltfWorker();
-      const workerPromise = new Promise<BG3DGltfWorkerResponse>(
-        (resolve, reject) => {
-          worker.onmessage = (e) => {
-            resolve(e.data);
-            worker.terminate();
-          };
-          worker.onerror = (e) => {
-            reject(e);
-            worker.terminate();
-          };
- 
-          if (skeletonData) {
-            // Send skeleton data with the model
-            const message = {
-              type: "bg3d-with-skeleton-to-glb",
-              bg3dBuffer: bg3dArrayBuffer,
-              skeletonData,
-            } satisfies BG3DGltfWorkerMessage;
-            worker.postMessage(message);
-          } else {
-            // Send model only
-            const message = {
-              type: "bg3d-to-glb",
-              buffer: bg3dArrayBuffer,
-            } satisfies BG3DGltfWorkerMessage;
-            worker.postMessage(message);
-          }
-        },
+      return handleModelUpload(
+        runtime,
+        selection.kind,
+        selection.bg3dFile,
+        selection.skeletonFile,
       );
-
-      const workerResult = await ResultAsync.fromPromise(workerPromise, mapErr);
-      if (workerResult.isErr()) {
-        const message =
-          workerResult.error instanceof Error
-            ? workerResult.error.message
-            : String(workerResult.error);
-        toast.error(`Error loading model: ${message}`);
-        onLoadingChange(false);
-        return err(new Error(message));
-      }
-
-      const responseResult = getModelToGlbWorkerResponse(
-        workerResult.value,
-        "load BG3D model",
-      );
-      if (responseResult.isErr()) {
-        toast.error(responseResult.error.message);
-        onLoadingChange(false);
-        return err(responseResult.error);
-      }
-
-      let displayFileName: string;
-      if (skeletonFile && !skeletonFailed) {
-        displayFileName = `${bg3dFile.name} + ${skeletonFile.name}`;
-      } else if (skeletonFile && skeletonFailed) {
-        displayFileName = `${bg3dFile.name} (skeleton failed to load)`;
-      } else {
-        displayFileName = bg3dFile.name;
-      }
-      return finalizeModelLoad(displayFileName, responseResult.value);
     },
-    [
-      finalizeModelLoad,
-      onGltfUrlChange,
-      onBg3dParsedChange,
-      onTexturesChange,
-      onLoadingChange,
-      onUploadStepChange,
-      onGltfBufferChange,
-    ],
+    [finalizeModelLoad, onLoadingChange, options],
   );
 
   return { uploadFile };

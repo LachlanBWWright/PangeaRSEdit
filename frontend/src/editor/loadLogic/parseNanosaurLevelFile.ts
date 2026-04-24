@@ -15,9 +15,14 @@ export async function parseNanosaurLevelFile(
   gameType: GlobalsInterface,
   setData: (data: AtomicLevelData) => void,
 ): Promise<Result<LevelData, Error>> {
-  const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
+  const bufferResult = await ResultAsync.fromPromise(
+    file.arrayBuffer(),
+    mapErr,
+  );
   if (bufferResult.isErr()) {
-    return err(new Error(`Failed to read file buffer: ${bufferResult.error.message}`));
+    return err(
+      new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
+    );
   }
 
   const levelBuffer = bufferResult.value;
@@ -41,10 +46,7 @@ export async function parseNanosaurLevelFile(
   };
 
   // Validate the converted level data
-  const validationResult = validateLevelDataForGame(
-    result,
-    gameType.GAME_TYPE,
-  );
+  const validationResult = validateLevelDataForGame(result, gameType.GAME_TYPE);
   if (validationResult.isErr()) {
     return err(
       new Error(

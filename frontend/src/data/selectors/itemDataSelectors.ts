@@ -104,15 +104,22 @@ export function createItemUpdater(
   setLevelData: Updater<ItemData>,
   itemIdx: number,
 ): Updater<TerrainItem> {
+  function applyItemUpdater(
+    current: TerrainItem,
+    updater: TerrainItem | ((draft: TerrainItem) => void),
+  ): TerrainItem {
+    if (typeof updater !== "function") return updater;
+    updater(current);
+    return current;
+  }
+
   return (itemUpdater) => {
     setLevelData((draft) => {
-      if (draft.Itms?.[1000]?.obj?.[itemIdx]) {
-        if (typeof itemUpdater === "function") {
-          itemUpdater(draft.Itms[1000].obj[itemIdx]);
-        } else {
-          draft.Itms[1000].obj[itemIdx] = itemUpdater;
-        }
-      }
+      if (!draft.Itms?.[1000]?.obj?.[itemIdx]) return;
+      draft.Itms[1000].obj[itemIdx] = applyItemUpdater(
+        draft.Itms[1000].obj[itemIdx],
+        itemUpdater,
+      );
     });
   };
 }

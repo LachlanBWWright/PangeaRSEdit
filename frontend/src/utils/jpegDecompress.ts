@@ -38,10 +38,7 @@ export async function decodeJpegBrowser(
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Could not get 2D context"));
-        return;
-      }
+      if (!ctx) return reject(new Error("Could not get 2D context"));
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, img.width, img.height);
       URL.revokeObjectURL(url);
@@ -61,7 +58,6 @@ export async function decodeJpegBrowser(
  * @returns ImageData (RGBA)
  */
 export function decodeJpegNode(jpegData: ArrayBuffer): ImageData {
-   
   const resData = Jpeg.decode(new Uint8Array(jpegData), { useTArray: true });
   // Copy to a new Uint8ClampedArray backed by a real ArrayBuffer
   const clamped = new Uint8ClampedArray(resData.data.length);

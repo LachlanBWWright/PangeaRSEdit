@@ -1,7 +1,10 @@
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
 
-export function sixteenBitToImageData(data: DataView, imageData: ImageData): Result<void, Error> {
+export function sixteenBitToImageData(
+  data: DataView,
+  imageData: ImageData,
+): Result<void, Error> {
   if (imageData.data.length !== data.byteLength * 2) {
     return err(new Error("Data length does not match image data length"));
   }
@@ -20,7 +23,9 @@ export function sixteenBitToImageData(data: DataView, imageData: ImageData): Res
   return ok(undefined);
 }
 
-export function canvasDataToSixteenBit(canvas: HTMLCanvasElement): Result<DataView, Error> {
+export function canvasDataToSixteenBit(
+  canvas: HTMLCanvasElement,
+): Result<DataView, Error> {
   const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
   if (!canvasCtx) {
     return err(new Error("Could not get canvas context"));

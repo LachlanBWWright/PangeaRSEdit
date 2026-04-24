@@ -7,7 +7,6 @@ import {
   mightyMikeMapToCompressedBinary,
 } from "../../modelParsers/parseMightyMike";
 import type {
-  MightyMikeTileSet,
   MightyMikeTileValue,
   MightyMikeItem,
   MightyMikeTileAttribute,
@@ -17,99 +16,16 @@ import {
   AtomicLevelData,
   isLevelDataLike,
 } from "../../data/utils/levelDataUtils";
-import { extractTGAPaletteRaw } from "../../utils/tgaParser";
 import { gMightyMikePalette } from "../../utils/mightyMikePalette";
 import { clearItemImageCache } from "../../utils/mightyMikeShapeImageLoader";
-import { MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
+import {
+  getMightyMikeSceneFromPath,
+  isMightyMikeTileSet,
+  loadBorderPalette,
+} from "./mightyMikeParseHelpers";
 
 import { isRecord, isMightyMikeMap } from "./typeGuards";
 import { mapErr } from "@/utils/mapErr";
-
-function getMightyMikeSceneFromPath(mapFileUrl?: string): string | undefined {
-  return MIGHTY_MIKE_SCENES.find((scene) =>
-    mapFileUrl?.endsWith(`/${scene}.map-1`) ||
-    mapFileUrl?.endsWith(`/${scene}.map-2`) ||
-    mapFileUrl?.endsWith(`/${scene}.map-3`),
-  );
-}
-
-// Type guard for MightyMikeTileSet
-function isMightyMikeTileSet(value: unknown): value is MightyMikeTileSet {
-  if (!isRecord(value)) return false;
-  const rec = value; // narrowed by isRecord(value)
-  // Required numeric fields
-  if (typeof rec.numTileDefinitions !== "number") return false;
-  if (typeof rec.numXlateEntries !== "number") return false;
-  if (typeof rec.numTileAttributeEntries !== "number") return false;
-  if (typeof rec.numTileAnims !== "number") return false;
-  if (typeof rec.numTileXparentColors !== "number") return false;
-
-  // Required arrays
-  if (
-    !Array.isArray(rec.xlateTable) ||
-    !rec.xlateTable.every((n) => typeof n === "number")
-  )
-    return false;
-  if (!Array.isArray(rec.tileAttributes)) return false;
-  if (!Array.isArray(rec.tileAnimations)) return false;
-  if (
-    !Array.isArray(rec.transparencyColors) ||
-    !rec.transparencyColors.every((n) => typeof n === "number")
-  )
-    return false;
-
-  // Optional tileImages: if present, should be array-like and look like canvases
-  if ("tileImages" in rec && rec.tileImages !== undefined) {
-    if (!Array.isArray(rec.tileImages)) return false;
-    if (
-      !rec.tileImages.every((t) => {
-        if (!isRecord(t)) return false;
-        const r = t; // narrowed by isRecord
-        return typeof r["getContext"] === "function";
-      })
-    )
-      return false;
-  }
-
-  return true;
-}
-
-/**
- * Load the palette from border.tga
- *
- * The game sets its palette from border.tga (loaded in InitArea → LoadBorderImage)
- * rather than from the per-scene cinema TGA files.  Some scene TGAs happened to
- * share the same palette as border.tga (fairy, bargain) while others did not
- * (jurassic, candy, clown), which caused color mismatches in the editor.
- */
-async function loadBorderPalette(
-  basePath?: string,
-): Promise<Uint8Array | null> {
-  const tgaFilename = "border.tga";
-
-  let tgaUrl: string;
-  if (basePath && basePath.includes("/")) {
-    const dirPath = basePath.substring(0, basePath.lastIndexOf("/") + 1);
-    tgaUrl = dirPath + tgaFilename;
-  } else {
-    tgaUrl = `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
-  }
-
-  const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
-  if (fetchResult.isErr()) return null;
-  const response = fetchResult.value;
-  if (!response.ok) return null;
-  const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
-  if (bufferResult.isErr()) return null;
-  const tgaBuffer = bufferResult.value;
-  const paletteResult = extractTGAPaletteRaw(tgaBuffer);
-
-  if (!paletteResult) {
-    return null;
-  }
-
-  return new Uint8Array(paletteResult.colors);
-}
 
 /**
  * Parse a MightyMike .map file and optionally load the corresponding .tileset file
@@ -120,7 +36,10 @@ export async function parseMightyMikeFile(
   mapFileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
 ): Promise<Result<LevelData, Error>> {
-  const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
+  const bufferResult = await ResultAsync.fromPromise(
+    file.arrayBuffer(),
+    mapErr,
+  );
   if (bufferResult.isErr()) {
     return err(
       new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
@@ -147,12 +66,21 @@ export async function parseMightyMikeFile(
     }
 
     const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
-    const tilesetFetchResult = await ResultAsync.fromPromise(fetch(tilesetUrl), mapErr);
+    const tilesetFetchResult = await ResultAsync.fromPromise(
+      fetch(tilesetUrl),
+      mapErr,
+    );
     if (tilesetFetchResult.isOk() && tilesetFetchResult.value.ok) {
-      const tilesetBufferResult = await ResultAsync.fromPromise(tilesetFetchResult.value.arrayBuffer(), mapErr);
+      const tilesetBufferResult = await ResultAsync.fromPromise(
+        tilesetFetchResult.value.arrayBuffer(),
+        mapErr,
+      );
       if (tilesetBufferResult.isOk()) {
         const tilesetBuffer = tilesetBufferResult.value;
-        const tilesetResult = parseMightyMikeTileSet(tilesetBuffer, paletteData || undefined);
+        const tilesetResult = parseMightyMikeTileSet(
+          tilesetBuffer,
+          paletteData || undefined,
+        );
 
         if (tilesetResult.isOk()) {
           tilesetData = tilesetResult.value;
@@ -242,11 +170,13 @@ export async function parseMightyMikeFile(
       1000: {
         name: "Tile Attribute Data",
         obj:
-          tilesetData?.tileAttributes.map((attribute: MightyMikeTileAttribute) => ({
-            flags: attribute.flags,
-            p0: attribute.p0,
-            p1: attribute.p1,
-          })) ??
+          tilesetData?.tileAttributes.map(
+            (attribute: MightyMikeTileAttribute) => ({
+              flags: attribute.flags,
+              p0: attribute.p0,
+              p1: attribute.p1,
+            }),
+          ) ??
           new Array(tilesetData?.numTileDefinitions || 100).fill({
             flags: 0,
             p0: 0,

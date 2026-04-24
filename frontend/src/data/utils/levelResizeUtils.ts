@@ -5,12 +5,17 @@ import type {
   HeaderData,
   ItemData,
   TerrainItem,
-  FenceData,
-  SplineData,
-  LiquidData,
 } from "@/python/structSpecs/LevelTypes";
 import { createBlankSupertileEntry } from "@/python/structSpecs/LevelTypes";
-import type { MightyMikeMap, MightyMikeTileValue } from "@/python/structSpecs/mightyMikeInterface";
+import type {
+  MightyMikeMap,
+  MightyMikeTileValue,
+} from "@/python/structSpecs/mightyMikeInterface";
+import {
+  resizeFences,
+  resizeLiquids,
+  resizeSplines,
+} from "./levelEntityResizeUtils";
 
 export type ResizeDirection = "top" | "bottom" | "left" | "right";
 
@@ -36,13 +41,44 @@ interface ResizeDimensions {
   offsetZ: number;
 }
 
+function buildLayr(
+  layr: TerrainData["Layr"],
+  resizedLayr: number[],
+): TerrainData["Layr"] {
+  if (!layr) return layr;
+  return { ...layr, 1000: { ...layr[1000], obj: resizedLayr } };
+}
+
+function buildYCrd(
+  ycrd: TerrainData["YCrd"],
+  resizedYCrd: number[],
+): TerrainData["YCrd"] {
+  if (!ycrd) return ycrd;
+  return { ...ycrd, 1000: { ...ycrd[1000], obj: resizedYCrd } };
+}
+
+function buildResizedItemData(
+  itemData: ItemData,
+  adjustedItems: TerrainItem[],
+): ItemData {
+  return {
+    ...itemData,
+    Itms: {
+      ...itemData.Itms,
+      1000: { ...itemData.Itms[1000], obj: adjustedItems },
+    },
+  };
+}
+
 function getResizeDimensions(
   header: { mapWidth: number; mapHeight: number },
   options: ResizeOptions,
 ): ResizeDimensions {
   const { tileCount, direction } = options;
-  const widthDelta = direction === "left" || direction === "right" ? tileCount : 0;
-  const heightDelta = direction === "top" || direction === "bottom" ? tileCount : 0;
+  const widthDelta =
+    direction === "left" || direction === "right" ? tileCount : 0;
+  const heightDelta =
+    direction === "top" || direction === "bottom" ? tileCount : 0;
   const newWidth = Math.max(1, header.mapWidth + widthDelta);
   const newHeight = Math.max(1, header.mapHeight + heightDelta);
   const offsetX = direction === "left" ? tileCount : 0;
@@ -66,12 +102,12 @@ function resize1DArray<T>(
       const oldX = x - offsetX;
       const oldZ = z - offsetZ;
       const newIndex = z * newWidth + x;
-      if (oldX >= 0 && oldX < oldWidth && oldZ >= 0 && oldZ < oldHeight) {
-        const oldIndex = oldZ * oldWidth + oldX;
-        newArray[newIndex] = array[oldIndex] ?? defaultValue;
-      } else {
-        newArray[newIndex] = defaultValue;
-      }
+      const inBounds =
+        oldX >= 0 && oldX < oldWidth && oldZ >= 0 && oldZ < oldHeight;
+      const oldIndex = oldZ * oldWidth + oldX;
+      newArray[newIndex] = inBounds
+        ? (array[oldIndex] ?? defaultValue)
+        : defaultValue;
     }
   }
   return newArray;
@@ -91,16 +127,18 @@ function resizeYCrdArray(
   const heightPlus = newHeight + 1;
   const oldWidthPlus = oldWidth + 1;
   const oldHeightPlus = oldHeight + 1;
-  const newArray = new Array<number>(widthPlus * heightPlus).fill(defaultHeight);
+  const newArray = new Array<number>(widthPlus * heightPlus).fill(
+    defaultHeight,
+  );
   for (let z = 0; z < heightPlus; z++) {
     for (let x = 0; x < widthPlus; x++) {
       const oldX = x - offsetX;
       const oldZ = z - offsetZ;
-      if (oldX >= 0 && oldX < oldWidthPlus && oldZ >= 0 && oldZ < oldHeightPlus) {
-        const oldIndex = oldZ * oldWidthPlus + oldX;
-        const newIndex = z * widthPlus + x;
-        newArray[newIndex] = array[oldIndex] ?? defaultHeight;
-      }
+      if (oldX < 0 || oldX >= oldWidthPlus || oldZ < 0 || oldZ >= oldHeightPlus)
+        continue;
+      const oldIndex = oldZ * oldWidthPlus + oldX;
+      const newIndex = z * widthPlus + x;
+      newArray[newIndex] = array[oldIndex] ?? defaultHeight;
     }
   }
   return newArray;
@@ -112,7 +150,10 @@ function resizeTerrainData(
   globals: GlobalsInterface,
   options: ResizeOptions,
 ): TerrainData {
-  const { newWidth, newHeight, offsetX, offsetZ } = getResizeDimensions(header, options);
+  const { newWidth, newHeight, offsetX, offsetZ } = getResizeDimensions(
+    header,
+    options,
+  );
   const layr = terrainData.Layr?.[1000]?.obj ?? [];
   const resizedLayr = resize1DArray(
     layr,
@@ -139,24 +180,8 @@ function resizeTerrainData(
 
   const resized: TerrainData = {
     ...terrainData,
-    Layr: terrainData.Layr
-      ? {
-          ...terrainData.Layr,
-          1000: {
-            ...terrainData.Layr[1000],
-            obj: resizedLayr,
-          },
-        }
-      : terrainData.Layr,
-    YCrd: terrainData.YCrd
-      ? {
-          ...terrainData.YCrd,
-          1000: {
-            ...terrainData.YCrd[1000],
-            obj: resizedYCrd,
-          },
-        }
-      : terrainData.YCrd,
+    Layr: buildLayr(terrainData.Layr, resizedLayr),
+    YCrd: buildYCrd(terrainData.YCrd, resizedYCrd),
   };
   if (terrainData.YCrd?.[1001]?.obj) {
     const roof = resizeYCrdArray(
@@ -171,16 +196,15 @@ function resizeTerrainData(
     );
     resized.YCrd = {
       ...resized.YCrd,
-      1001: {
-        ...terrainData.YCrd[1001],
-        obj: roof,
-      },
+      1001: { ...terrainData.YCrd[1001], obj: roof },
     };
   }
   if (terrainData.STgd?.[1000]?.obj) {
     const stgd = terrainData.STgd[1000].obj;
     const oldSTWidth = Math.ceil(header.mapWidth / globals.TILES_PER_SUPERTILE);
-    const oldSTHeight = Math.ceil(header.mapHeight / globals.TILES_PER_SUPERTILE);
+    const oldSTHeight = Math.ceil(
+      header.mapHeight / globals.TILES_PER_SUPERTILE,
+    );
     const newSTWidth = Math.ceil(newWidth / globals.TILES_PER_SUPERTILE);
     const newSTHeight = Math.ceil(newHeight / globals.TILES_PER_SUPERTILE);
     const offsetSTX = Math.ceil(offsetX / globals.TILES_PER_SUPERTILE);
@@ -197,10 +221,7 @@ function resizeTerrainData(
     );
     resized.STgd = {
       ...terrainData.STgd,
-      1000: {
-        ...terrainData.STgd[1000],
-        obj: resizedStgd,
-      },
+      1000: { ...terrainData.STgd[1000], obj: resizedStgd },
     };
   }
   return resized;
@@ -213,7 +234,10 @@ function resizeItems(
   globals: GlobalsInterface,
 ): { data: ItemData | null; outOfBounds: TerrainItem[] } {
   if (!itemData?.Itms?.[1000]?.obj) return { data: itemData, outOfBounds: [] };
-  const { offsetX, offsetZ, newWidth, newHeight } = getResizeDimensions(header, options);
+  const { offsetX, offsetZ, newWidth, newHeight } = getResizeDimensions(
+    header,
+    options,
+  );
   const tileSize = globals.TILE_INGAME_SIZE;
   const offsetXUnits = offsetX * tileSize;
   const offsetZUnits = offsetZ * tileSize;
@@ -227,23 +251,19 @@ function resizeItems(
       x: item.x + offsetXUnits,
       z: item.z + offsetZUnits,
     };
-    if (updated.x < 0 || updated.z < 0 || updated.x > maxX || updated.z > maxZ) {
+    if (
+      updated.x < 0 ||
+      updated.z < 0 ||
+      updated.x > maxX ||
+      updated.z > maxZ
+    ) {
       outOfBounds.push(updated);
     } else {
       adjustedItems.push(updated);
     }
   }
   return {
-    data: {
-      ...itemData,
-      Itms: {
-        ...itemData.Itms,
-        1000: {
-          ...itemData.Itms[1000],
-          obj: adjustedItems,
-        },
-      },
-    },
+    data: buildResizedItemData(itemData, adjustedItems),
     outOfBounds,
   };
 }
@@ -264,103 +284,6 @@ function resizeItCo(data: TerrainData): TerrainData {
   };
 }
 
-function resizeFences(
-  fenceData: FenceData,
-  offsetXUnits: number,
-  offsetZUnits: number,
-): FenceData {
-  const fenceList = fenceData.Fenc[1000]?.obj ?? [];
-  return {
-    Fenc: {
-      1000: {
-        ...fenceData.Fenc[1000],
-        obj: fenceList.map((fence) => ({
-          ...fence,
-          bbLeft: fence.bbLeft + offsetXUnits,
-          bbRight: fence.bbRight + offsetXUnits,
-          bbTop: fence.bbTop + offsetZUnits,
-          bbBottom: fence.bbBottom + offsetZUnits,
-        })),
-      },
-    },
-    FnNb: Object.fromEntries(
-      Object.entries(fenceData.FnNb).map(([key, record]) => [
-        key,
-        {
-          ...record,
-          obj: record.obj.map(([x, y]) => [x + offsetXUnits, y + offsetZUnits] as [number, number]),
-        },
-      ]),
-    ),
-  };
-}
-
-function resizeSplines(
-  splineData: SplineData,
-  offsetXUnits: number,
-  offsetZUnits: number,
-): SplineData {
-  const splineList = splineData.Spln[1000]?.obj ?? [];
-  return {
-    ...splineData,
-    Spln: {
-      1000: {
-        ...splineData.Spln[1000],
-        obj: splineList.map((spline) => ({
-          ...spline,
-          bbLeft: spline.bbLeft + offsetXUnits,
-          bbRight: spline.bbRight + offsetXUnits,
-          bbTop: spline.bbTop + offsetZUnits,
-          bbBottom: spline.bbBottom + offsetZUnits,
-        })),
-      },
-    },
-    SpNb: Object.fromEntries(
-      Object.entries(splineData.SpNb).map(([key, record]) => [
-        key,
-        {
-          ...record,
-          obj: record.obj.map((nub) => ({ ...nub, x: nub.x + offsetXUnits, z: nub.z + offsetZUnits })),
-        },
-      ]),
-    ),
-    SpPt: Object.fromEntries(
-      Object.entries(splineData.SpPt).map(([key, record]) => [
-        key,
-        {
-          ...record,
-          obj: record.obj.map((pt) => ({ ...pt, x: pt.x + offsetXUnits, z: pt.z + offsetZUnits })),
-        },
-      ]),
-    ),
-  };
-}
-
-function resizeLiquids(
-  liquidData: LiquidData,
-  offsetXUnits: number,
-  offsetZUnits: number,
-): LiquidData {
-  const liquidList = liquidData.Liqd[1000]?.obj ?? [];
-  return {
-    Liqd: {
-      1000: {
-        ...liquidData.Liqd[1000],
-        obj: liquidList.map((liquid) => ({
-          ...liquid,
-          hotSpotX: liquid.hotSpotX + offsetXUnits,
-          hotSpotZ: liquid.hotSpotZ + offsetZUnits,
-          bBoxLeft: liquid.bBoxLeft + offsetXUnits,
-          bBoxRight: liquid.bBoxRight + offsetXUnits,
-          bBoxTop: liquid.bBoxTop + offsetZUnits,
-          bBoxBottom: liquid.bBoxBottom + offsetZUnits,
-          nubs: liquid.nubs.map(([x, z]) => [x + offsetXUnits, z + offsetZUnits] as [number, number]),
-        })),
-      },
-    },
-  };
-}
-
 export { resizeFences, resizeSplines, resizeLiquids };
 
 function updateHeader(
@@ -375,12 +298,7 @@ function updateHeader(
     mapHeight: newHeight,
   };
   return {
-    Hedr: {
-      1000: {
-        ...headerData.Hedr[1000],
-        obj: updated,
-      },
-    },
+    Hedr: { 1000: { ...headerData.Hedr[1000], obj: updated } },
   };
 }
 
@@ -403,7 +321,12 @@ export function resizeLevel(
     ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
     ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
   };
-  const resizedTerrain = resizeTerrainData(terrainData, header, globals, options);
+  const resizedTerrain = resizeTerrainData(
+    terrainData,
+    header,
+    globals,
+    options,
+  );
   const resizedTerrainWithItCo = resizeItCo(resizedTerrain);
   const { data: resizedItems, outOfBounds } = resizeItems(
     levelData.Itms ? { Itms: levelData.Itms } : null,

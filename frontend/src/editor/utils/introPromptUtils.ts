@@ -137,13 +137,12 @@ export function createUndoHandler(
 ): () => void {
   return () => {
     const result = calculateUndo(history);
-    if (result) {
-      setDataHistory((draft) => {
-        draft.index = result.newIndex;
-      });
-      setAllAtomicData(result.data);
-      setBlockHistoryUpdate(true);
-    }
+    if (!result) return;
+    setDataHistory((draft) => {
+      draft.index = result.newIndex;
+    });
+    setAllAtomicData(result.data);
+    setBlockHistoryUpdate(true);
   };
 }
 
@@ -159,13 +158,12 @@ export function createRedoHandler(
 ): () => void {
   return () => {
     const result = calculateRedo(history);
-    if (result) {
-      setDataHistory((draft) => {
-        draft.index = result.newIndex;
-      });
-      setAllAtomicData(result.data);
-      setBlockHistoryUpdate(true);
-    }
+    if (!result) return;
+    setDataHistory((draft) => {
+      draft.index = result.newIndex;
+    });
+    setAllAtomicData(result.data);
+    setBlockHistoryUpdate(true);
   };
 }
 

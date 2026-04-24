@@ -25,7 +25,6 @@ import {
   LiquidPatchStyle,
 } from "@/data/items/liquidPatchItems";
 import { mapErr } from "@/utils/mapErr";
-
 interface ItemGeometryProps {
   itemData: ItemData;
   headerData: HeaderData;
@@ -34,15 +33,10 @@ interface ItemGeometryProps {
   draggingItemIdx?: number | null;
   topologyVersion?: number;
 }
-
 const ITEM_SIZE = 50; // World units for item cube size
 const DRAG_HIGHLIGHT_COLOR = 0x00aaff;
 const DRAG_HIGHLIGHT_OPACITY = 0.4;
 const DRAG_HIGHLIGHT_SCALE = 0.8;
-
-/**
- * Colored cube fallback for items without 3D models
- */
 const ColoredCube: React.FC<{
   position: [number, number, number];
   itemType: number;
@@ -58,7 +52,6 @@ const ColoredCube: React.FC<{
     0xa8dadc, // light blue
   ];
   const color = colors[itemType % colors.length];
-
   return (
     <mesh position={position}>
       <boxGeometry args={[ITEM_SIZE, ITEM_SIZE, ITEM_SIZE]} />
@@ -71,23 +64,17 @@ const ColoredCube: React.FC<{
     </mesh>
   );
 };
-
-/**
- * Loading cube with spinning animation - shown while model is loading
- */
 const LoadingCube: React.FC<{
   position: [number, number, number];
   itemType: number;
 }> = ({ position, itemType }) => {
   const meshRef = useRef<Mesh | null>(null);
-
   useFrame(() => {
     if (meshRef.current) {
       meshRef.current.rotation.x += 0.02;
       meshRef.current.rotation.y += 0.03;
     }
   });
-
   const colors = [
     0xff6b6b, // red
     0x4ecdc4, // teal
@@ -99,7 +86,6 @@ const LoadingCube: React.FC<{
     0xa8dadc, // light blue
   ];
   const color = colors[itemType % colors.length];
-
   return (
     <mesh ref={meshRef} position={position}>
       <boxGeometry args={[ITEM_SIZE * 0.8, ITEM_SIZE * 0.8, ITEM_SIZE * 0.8]} />
@@ -112,15 +98,6 @@ const LoadingCube: React.FC<{
     </mesh>
   );
 };
-
-/**
- * Individual item model renderer - clones the pre-cloned scene for each instance
- * and applies a per-item rotation on top of the model-level rotationY baked in.
- *
- * The clonedScene may carry a baked-in position offset (from positionOffset / yOffset).
- * Wrapping in a group ensures that offset is applied on top of the world position
- * instead of being overwritten by the position prop.
- */
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
@@ -134,34 +111,26 @@ const ItemModel: React.FC<{
     }
     return clone;
   }, [clonedScene, extraRotationY]);
-
   return (
     <group position={position}>
       <primitive object={instanceScene} dispose={null} />
     </group>
   );
 };
-
-/**
- * Liquid patch plane for rendering water/lava/honey/slime patches in Bugdom 1 and Nanosaur 1.
- * Rendered as a flat transparent rectangle on the terrain to resemble water bodies.
- */
 const LiquidPatchPlane: React.FC<{
   position: [number, number, number];
   width: number;
   depth: number;
   style: LiquidPatchStyle;
 }> = ({ position, width, depth, style }) => {
-  // Slightly raise the plane above terrain to avoid z-fighting
   const adjustedPosition: [number, number, number] = [
     position[0],
     position[1] + 5,
     position[2],
   ];
-
   return (
     <group position={adjustedPosition}>
-      {/* Main liquid plane */}
+      {}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[width, depth]} />
         <meshStandardMaterial
@@ -171,7 +140,7 @@ const LiquidPatchPlane: React.FC<{
           side={DoubleSide}
         />
       </mesh>
-      {/* Inner rectangle for visual effect */}
+      {}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 1, 0]}>
         <planeGeometry args={[width * 0.7, depth * 0.7]} />
         <meshStandardMaterial
@@ -181,7 +150,7 @@ const LiquidPatchPlane: React.FC<{
           side={DoubleSide}
         />
       </mesh>
-      {/* Center highlight for lava/hot liquids */}
+      {}
       {style.type === "lava" && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 2, 0]}>
           <planeGeometry args={[width * 0.3, depth * 0.3]} />
@@ -197,7 +166,6 @@ const LiquidPatchPlane: React.FC<{
     </group>
   );
 };
-
 export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   itemData,
   headerData,
@@ -208,19 +176,11 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
   const levelNum = useAtomValue(LevelNumber);
-  
-  // Use GAME_TYPE directly from globals
   const currentGame = globals.GAME_TYPE;
   
   const { modelCache, loadModel } = useItemModelCache(currentGame);
-
   const items = itemData.Itms?.[1000]?.obj;
-  
-  // Get the mapper for the current game
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
-
-  // Generate a cache key for an item including its params and level
-  // Uses the mapper to determine which items are param-dependent or level-dependent
   const getItemCacheKey = useCallback((itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
     const gamePrefix = `g${currentGame}_`;
     if (mapper?.isParamDependent?.(itemType)) {
@@ -237,9 +197,6 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
     }
     return `${gamePrefix}${itemType}`;
   }, [currentGame, mapper, levelNum]);
-
-  // Group items by cache key for easier processing
-  // This handles param-dependent items by grouping by the full key
   const itemsByCacheKey = useMemo(() => {
     if (!items) return new Map<string, typeof items>();
     const groups = new Map<string, typeof items>();
@@ -255,9 +212,6 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
     });
     return groups;
   }, [items, getItemCacheKey]);
-
-  // Pre-load models for visible item types when toggle is enabled
-  // Also prepare cloned scenes for instancing
   const clonedScenesByCacheKey = useMemo(() => {
     const scenes = new Map<string, Group | null>();
     itemsByCacheKey.forEach((itemsInGroup, cacheKey) => {
@@ -270,22 +224,14 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         const mapping = mapper?.getMapping(firstItem.type, levelNum, params);
         if (mapping && cachedModel.gltf.scene) {
           const cloned = cachedModel.gltf.scene.clone(true);
-
-          // Apply scaling: uniform scale, then optionally override per-axis
           const baseScale = mapping.scale ?? 1;
           const sx = baseScale * (mapping.scaleXZ ?? 1);
           const sy = baseScale * (mapping.scaleY ?? 1);
           const sz = baseScale * (mapping.scaleXZ ?? 1);
           cloned.scale.set(sx, sy, sz);
-
-          // Apply rotation if specified
           if (mapping.rotationY) {
             cloned.rotateY(mapping.rotationY);
           }
-
-          // Apply position offset and/or yOffset so the model base sits at ground level.
-          // The offset is stored on the cloned scene and is treated as a local child
-          // offset when ItemModel wraps the primitive in a group at the world position.
           const yOff = mapping.yOffset ?? 0;
           if (mapping.positionOffset) {
             cloned.position.set(
@@ -296,19 +242,14 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           } else if (yOff !== 0) {
             cloned.position.set(0, yOff, 0);
           }
-
           scenes.set(cacheKey, cloned);
         }
       }
     });
     return scenes;
   }, [modelCache, itemsByCacheKey, mapper, levelNum]);
-
   useEffect(() => {
-    // Load 3D models for all games that have model support
-    // The worker automatically handles both BG3D and 3DMF formats
     if (show3DItemModels) {
-      // Load models for all unique item cache keys in the level
       itemsByCacheKey.forEach((itemsInGroup) => {
         const firstItem = itemsInGroup[0];
         if (!firstItem) return;
@@ -323,26 +264,19 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             console.error(`Failed to load model for item type ${firstItem.type}:`, loadResult.error);
           }
         };
-
         void loadItemModel();
       });
     }
   }, [show3DItemModels, itemsByCacheKey, loadModel, levelNum]);
-
-  // Early return after all hooks
   if (!items || items.length === 0) {
     return null;
   }
-
   return (
     <group name="items">
       {items.map((item, idx) => {
-        // Convert editor coordinates to world coordinates
         const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
         const worldX = item.x * scale;
         const worldZ = item.z * scale;
-
-        // Get terrain height at item position
         const terrainY = getTerrainHeightAtPoint(
           item.x,
           item.z,
@@ -350,17 +284,12 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           terrainData,
           globals,
         );
-
         const position: [number, number, number] = [
           worldX,
           terrainY + ITEM_SIZE / 2,
           worldZ,
         ];
-
-        // Highlight dragged item
         const isDragging = draggingItemIdx === idx;
-
-        // Wrap in a group for pointer events when drag is enabled
         const wrapWithDrag = (content: React.ReactNode) =>
           onItemPointerDown ? (
             <group
@@ -381,11 +310,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           ) : (
             <React.Fragment key={`item-frag-${idx}`}>{content}</React.Fragment>
           );
-
-        // Check if this is a liquid patch item (water/lava/honey/slime in Bugdom 1/Nanosaur 1)
         const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
         if (liquidPatchStyle) {
-          // Calculate dimensions based on item parameters
           const dims = getLiquidPatchDimensions(
             globals,
             item.type,
@@ -394,9 +320,6 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             item.p2,
             item.p3,
           );
-
-          // Bugdom 1 snaps liquid patch positions to tile centers before terrain lookup
-          // This ensures adjacent patches get consistent terrain height lookups
           const tileSize = globals.TILE_SIZE;
           const snappedEditorX =
             Math.floor(item.x / tileSize) * tileSize + tileSize / 2;
@@ -404,8 +327,6 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             Math.floor(item.z / tileSize) * tileSize + tileSize / 2;
           const snappedWorldX = snappedEditorX * scale;
           const snappedWorldZ = snappedEditorZ * scale;
-
-          // Get terrain height at snapped position (same as game does)
           const snappedTerrainY = getTerrainHeightAtPoint(
             snappedEditorX,
             snappedEditorZ,
@@ -413,12 +334,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             terrainData,
             globals,
           );
-
-          // If isAbsoluteY, use yValue3D directly; otherwise add it to terrain height
           const liquidY = dims.isAbsoluteY
             ? dims.yValue3D
             : snappedTerrainY + dims.yValue3D;
-
           return wrapWithDrag(
             <LiquidPatchPlane
               key={`liquid-patch-${idx}`}
@@ -429,16 +347,12 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             />,
           );
         }
-
-        // Render 3D model if enabled and available (now supports all games)
         if (show3DItemModels) {
           const itemCacheKey = getItemCacheKey(item.type, item.p0, item.p1, item.p2, item.p3);
           const cachedModel = modelCache.get(itemCacheKey);
           const modelGltf = cachedModel?.gltf;
           const isLoading = cachedModel?.loading ?? false;
           const hasError = !!cachedModel?.error;
-
-          // Show spinning cube while loading
           if (isLoading) {
             return wrapWithDrag(
               <LoadingCube
@@ -448,12 +362,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
               />,
             );
           }
-
-          // Show loaded model if available and not errored
           if (modelGltf && !hasError) {
             const clonedScene = clonedScenesByCacheKey.get(itemCacheKey);
             if (clonedScene) {
-              // Compute per-item rotation from rotationParam if defined
               const params = { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 };
               const mapping = mapper?.getMapping(item.type, levelNum, params);
               let extraRotationY = 0;
@@ -464,7 +375,6 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
                   extraRotationY = calculateRotation(paramValue, rp.rotationType);
                 }
               }
-
               return wrapWithDrag(
                 <ItemModel
                   key={`item-model-${idx}`}
@@ -477,8 +387,6 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             }
           }
         }
-
-        // Default: colored cube
         return wrapWithDrag(
           <ColoredCube
             key={`item-cube-${idx}`}

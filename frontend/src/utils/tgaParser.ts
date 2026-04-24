@@ -203,11 +203,12 @@ function extractTGAPaletteInternal(
       const g = paletteData[srcOffset + 1] ?? 0;
       const r = paletteData[srcOffset + 2] ?? 0;
       const a =
-        paletteBytesPerEntry === 4 ? paletteData[srcOffset + 3] ?? 255 : 255;
+        paletteBytesPerEntry === 4 ? (paletteData[srcOffset + 3] ?? 255) : 255;
 
-      const [correctedR, correctedG, correctedB] = shouldApplyColorCorrection && APPLY_COLOR_CORRECTION
-        ? applyColorCorrection(r, g, b)
-        : [r, g, b];
+      const [correctedR, correctedG, correctedB] =
+        shouldApplyColorCorrection && APPLY_COLOR_CORRECTION
+          ? applyColorCorrection(r, g, b)
+          : [r, g, b];
 
       colors[dstOffset + 0] = correctedR;
       colors[dstOffset + 1] = correctedG;
@@ -226,9 +227,10 @@ function extractTGAPaletteInternal(
       const r = (r5 << 3) | (r5 >> 2);
       const g = (g5 << 3) | (g5 >> 2);
       const b = (b5 << 3) | (b5 >> 2);
-      const [correctedR, correctedG, correctedB] = shouldApplyColorCorrection && APPLY_COLOR_CORRECTION
-        ? applyColorCorrection(r, g, b)
-        : [r, g, b];
+      const [correctedR, correctedG, correctedB] =
+        shouldApplyColorCorrection && APPLY_COLOR_CORRECTION
+          ? applyColorCorrection(r, g, b)
+          : [r, g, b];
       colors[dstOffset + 0] = correctedR;
       colors[dstOffset + 1] = correctedG;
       colors[dstOffset + 2] = correctedB;

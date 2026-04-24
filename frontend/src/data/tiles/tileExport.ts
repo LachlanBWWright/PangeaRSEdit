@@ -1,7 +1,7 @@
 import { mapErr } from "@/utils/mapErr";
 /**
  * Tile Export System
- * 
+ *
  * Provides functionality to export tiles from levels as image files.
  * Supports exporting individual tiles, tile palettes, or entire tilesets.
  */
@@ -65,57 +65,59 @@ export function exportSingleTile(
   config: Partial<TileExportConfig> = {},
 ): Result<TileExportResult, Error> {
   const fullConfig = { ...DEFAULT_EXPORT_CONFIG, ...config };
-  
+
   const expectedLength = tileSize * tileSize * 2;
   if (tileData.length !== expectedLength) {
-    return err(new Error(
-      `Invalid tile data length: ${tileData.length}. Expected ${expectedLength}.`
-    ));
+    return err(
+      new Error(
+        `Invalid tile data length: ${tileData.length}. Expected ${expectedLength}.`,
+      ),
+    );
   }
-  
+
   // Create canvas at scaled size
   const scaledSize = tileSize * fullConfig.scale;
   const canvas = document.createElement("canvas");
   canvas.width = scaledSize;
   canvas.height = scaledSize;
-  
+
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return err(new Error("Failed to create canvas context"));
   }
-  
+
   // Set background if not preserving transparency
   if (!fullConfig.preserveTransparency) {
     ctx.fillStyle = fullConfig.backgroundColor;
     ctx.fillRect(0, 0, scaledSize, scaledSize);
   }
-  
+
   // Convert tile data to ImageData at original size
   const imageData = ctx.createImageData(tileSize, tileSize);
   const pixels = imageData.data;
-  
+
   for (let i = 0, j = 0; i < tileData.length; i += 2, j += 4) {
     // Read big endian 16-bit value (ARGB1555)
     const byte1 = tileData[i] ?? 0;
     const byte2 = tileData[i + 1] ?? 0;
     const packed = (byte1 << 8) | byte2;
-    
+
     // Extract components
     const a1 = (packed >> 15) & 0x01;
-    const r5 = (packed >> 10) & 0x1F;
-    const g5 = (packed >> 5) & 0x1F;
-    const b5 = packed & 0x1F;
-    
+    const r5 = (packed >> 10) & 0x1f;
+    const g5 = (packed >> 5) & 0x1f;
+    const b5 = packed & 0x1f;
+
     // Convert to 8-bit per channel
     pixels[j] = (r5 << 3) | (r5 >> 2);
     pixels[j + 1] = (g5 << 3) | (g5 >> 2);
     pixels[j + 2] = (b5 << 3) | (b5 >> 2);
     pixels[j + 3] = fullConfig.preserveTransparency ? (a1 ? 255 : 0) : 255;
   }
-  
+
   // Draw at original size
   ctx.putImageData(imageData, 0, 0);
-  
+
   // Scale if necessary
   if (fullConfig.scale !== 1) {
     const tempCanvas = document.createElement("canvas");
@@ -124,18 +126,29 @@ export function exportSingleTile(
     const tempCtx = tempCanvas.getContext("2d");
     if (tempCtx) {
       tempCtx.imageSmoothingEnabled = false;
-      tempCtx.drawImage(canvas, 0, 0, tileSize, tileSize, 0, 0, scaledSize, scaledSize);
+      tempCtx.drawImage(
+        canvas,
+        0,
+        0,
+        tileSize,
+        tileSize,
+        0,
+        0,
+        scaledSize,
+        scaledSize,
+      );
       canvas.width = scaledSize;
       canvas.height = scaledSize;
       ctx.drawImage(tempCanvas, 0, 0);
     }
   }
-  
+
   // Export as data URL
   const mimeType = fullConfig.format === "jpeg" ? "image/jpeg" : "image/png";
-  const quality = fullConfig.format === "jpeg" ? fullConfig.jpegQuality : undefined;
+  const quality =
+    fullConfig.format === "jpeg" ? fullConfig.jpegQuality : undefined;
   const dataUrl = canvas.toDataURL(mimeType, quality);
-  
+
   return ok({
     dataUrl,
     width: scaledSize,
@@ -167,57 +180,59 @@ export async function exportTilePalette(
   gridColumns?: number,
 ): Promise<Result<TileExportResult, Error>> {
   const fullConfig = { ...DEFAULT_EXPORT_CONFIG, ...config };
-  
+
   if (tilesData.length === 0) {
     return err(new Error("No tiles to export"));
   }
-  
+
   // Validate all tiles
   const expectedLength = tileSize * tileSize * 2;
   for (let i = 0; i < tilesData.length; i++) {
     const tile = tilesData[i];
     if (!tile || tile.length !== expectedLength) {
-      return err(new Error(
-        `Tile ${i} has invalid data length: ${tile?.length ?? 0}. Expected ${expectedLength}.`
-      ));
+      return err(
+        new Error(
+          `Tile ${i} has invalid data length: ${tile?.length ?? 0}. Expected ${expectedLength}.`,
+        ),
+      );
     }
   }
-  
+
   // Calculate grid dimensions
   const grid = calculatePaletteGrid(tilesData.length, gridColumns);
-  
+
   // Create output canvas
   const scaledTileSize = tileSize * fullConfig.scale;
   const outputWidth = grid.columns * scaledTileSize;
   const outputHeight = grid.rows * scaledTileSize;
-  
+
   const canvas = document.createElement("canvas");
   canvas.width = outputWidth;
   canvas.height = outputHeight;
-  
+
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return err(new Error("Failed to create canvas context"));
   }
-  
+
   // Set background
   ctx.fillStyle = fullConfig.backgroundColor;
   ctx.fillRect(0, 0, outputWidth, outputHeight);
-  
+
   // Draw each tile
   for (let i = 0; i < tilesData.length; i++) {
     const col = i % grid.columns;
     const row = Math.floor(i / grid.columns);
-    
+
     // Export individual tile
     const tileData = tilesData[i];
     if (!tileData) continue; // Skip if no tile data
-    
+
     const tileResult = exportSingleTile(tileData, tileSize, fullConfig);
     if (tileResult.isErr()) {
       continue; // Skip failed tiles
     }
-    
+
     // Draw tile to canvas using createImageBitmap for proper async loading
     const fetched = await ResultAsync.fromPromise(
       fetch(tileResult.value.dataUrl),
@@ -239,12 +254,13 @@ export async function exportTilePalette(
     ctx.drawImage(bitmap, col * scaledTileSize, row * scaledTileSize);
     bitmap.close();
   }
-  
+
   // Export as data URL
   const mimeType = fullConfig.format === "jpeg" ? "image/jpeg" : "image/png";
-  const quality = fullConfig.format === "jpeg" ? fullConfig.jpegQuality : undefined;
+  const quality =
+    fullConfig.format === "jpeg" ? fullConfig.jpegQuality : undefined;
   const dataUrl = canvas.toDataURL(mimeType, quality);
-  
+
   return ok({
     dataUrl,
     width: outputWidth,

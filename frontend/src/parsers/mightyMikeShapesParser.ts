@@ -38,51 +38,10 @@
  */
 
 import { ok, err, type Result } from "neverthrow";
-
-/**
- * Decompress RLB-compressed data
- * From Shape.c DecompressRLBFile()
- * RLB format:
- * - Count byte: if > 0x7f, next byte is repeated (256 - count + 1) times
- * - Count byte: if <= 0x7f, next (count+1) bytes are literal
- */
-function decompressRLB(compressedData: Uint8Array, decompSize: number): Uint8Array {
-  const output = new Uint8Array(decompSize);
-  let srcPos = 0;
-  let dstPos = 0;
-
-  while (dstPos < decompSize && srcPos < compressedData.length) {
-    const countByte = compressedData[srcPos];
-    if (countByte === undefined) break;
-    srcPos++;
-
-    if (countByte > 0x7f) {
-      // Compressed: repeat data
-      // From Shape.c line 425: count = (-count)+1 = 256 - count + 1 = 257 - count
-      const repeatCount = 257 - countByte;
-      if (srcPos >= compressedData.length) {
-        break;
-      }
-      const dataByte = compressedData[srcPos];
-      if (dataByte === undefined) break;
-      srcPos++;
-      for (let i = 0; i < repeatCount && dstPos < decompSize; i++) {
-        output[dstPos++] = dataByte;
-      }
-    } else {
-      // Uncompressed: literal data (count+1 bytes)
-      const literalCount = countByte + 1;
-      for (let i = 0; i < literalCount && dstPos < decompSize && srcPos < compressedData.length; i++) {
-        const byte = compressedData[srcPos];
-        if (byte === undefined) break;
-        output[dstPos++] = byte;
-        srcPos++;
-      }
-    }
-  }
-
-  return output.slice(0, dstPos);
-}
+import {
+  decompressRLB,
+  shapeFrameToCanvas,
+} from "./mightyMikeShapesParserHelpers";
 
 export interface RGBColor {
   r: number;
@@ -128,7 +87,9 @@ function readI32BE(view: DataView, offset: number): number {
 /**
  * Parse a Mighty Mike .shapes file
  */
-export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> {
+export function parseShapesFile(
+  buffer: ArrayBuffer,
+): Result<ShapesFile, Error> {
   const view = new DataView(buffer);
 
   if (buffer.byteLength < 20) {
@@ -176,10 +137,7 @@ export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> 
   const offsetToShapeList = readI32BE(shapeView, 4);
 
   // Validate offset
-  if (
-    offsetToShapeList < 0 ||
-    offsetToShapeList >= shapeBuffer.byteLength
-  ) {
+  if (offsetToShapeList < 0 || offsetToShapeList >= shapeBuffer.byteLength) {
     return err(new Error("Invalid shape list offset in shapes file header"));
   }
 
@@ -193,13 +151,12 @@ export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> 
   }
 
   // Parse shapes
-  const shapesResult = parseShapeList(
-    shapeView,
-    shapeBytes,
-    offsetToShapeList
-  );
+  const shapesResult = parseShapeList(shapeView, shapeBytes, offsetToShapeList);
   if (!shapesResult.success) {
-    const errorMsg = shapesResult.error instanceof Error ? shapesResult.error.message : String(shapesResult.error || "Unknown error");
+    const errorMsg =
+      shapesResult.error instanceof Error
+        ? shapesResult.error.message
+        : String(shapesResult.error || "Unknown error");
     return err(new Error(errorMsg));
   }
 
@@ -218,7 +175,7 @@ interface ShapeListResult {
 function parseShapeList(
   view: DataView,
   bytes: Uint8Array,
-  offset: number
+  offset: number,
 ): ShapeListResult {
   const shapeCount = readI16BE(view, offset);
 
@@ -251,7 +208,8 @@ function parseShapeList(
   for (let i = 0; i < shapeCount; i++) {
     const shapeBase = shapeOffsets[i];
 
-    if (shapeBase === undefined ||
+    if (
+      shapeBase === undefined ||
       shapeBase < 0 ||
       shapeBase + 8 > bytes.length
     ) {
@@ -259,7 +217,7 @@ function parseShapeList(
         success: false,
         shapes: [],
         error: new Error(
-          `Invalid shape header offset at shape ${i}: ${shapeBase}`
+          `Invalid shape header offset at shape ${i}: ${shapeBase}`,
         ),
       };
     }
@@ -271,7 +229,7 @@ function parseShapeList(
         success: false,
         shapes: [],
         error: new Error(
-          `Invalid frame list offset in shape ${i}: ${frameListOffset}`
+          `Invalid frame list offset in shape ${i}: ${frameListOffset}`,
         ),
       };
     }
@@ -283,9 +241,7 @@ function parseShapeList(
       return {
         success: false,
         shapes: [],
-        error: new Error(
-          `Invalid frame count in shape ${i}: ${frameCount}`
-        ),
+        error: new Error(`Invalid frame count in shape ${i}: ${frameCount}`),
       };
     }
 
@@ -299,9 +255,7 @@ function parseShapeList(
         return {
           success: false,
           shapes: [],
-          error: new Error(
-            `Unexpected end of frame offset list in shape ${i}`
-          ),
+          error: new Error(`Unexpected end of frame offset list in shape ${i}`),
         };
       }
       frameOffsets.push(readI32BE(view, framePos));
@@ -316,7 +270,7 @@ function parseShapeList(
           success: false,
           shapes: [],
           error: new Error(
-            `Frame offset ${f} not found in frame list for shape ${i}`
+            `Frame offset ${f} not found in frame list for shape ${i}`,
           ),
         };
       }
@@ -327,9 +281,7 @@ function parseShapeList(
         return {
           success: false,
           shapes: [],
-          error: new Error(
-            `Invalid frame header in shape ${i}, frame ${f}`
-          ),
+          error: new Error(`Invalid frame header in shape ${i}, frame ${f}`),
         };
       }
 
@@ -343,13 +295,17 @@ function parseShapeList(
       };
 
       // Validate frame dimensions
-      if (header.width < 0 || header.width > 2048 ||
-          header.height < 0 || header.height > 2048) {
+      if (
+        header.width < 0 ||
+        header.width > 2048 ||
+        header.height < 0 ||
+        header.height > 2048
+      ) {
         return {
           success: false,
           shapes: [],
           error: new Error(
-            `Invalid frame dimensions in shape ${i}, frame ${f}: ${header.width}x${header.height}`
+            `Invalid frame dimensions in shape ${i}, frame ${f}: ${header.width}x${header.height}`,
           ),
         };
       }
@@ -359,19 +315,22 @@ function parseShapeList(
       const pixelDataSize = header.width * header.height;
       const pixelStartOffset = shapeBase + header.pixelOffset;
 
-      if (pixelStartOffset < 0 || pixelStartOffset + pixelDataSize > bytes.length) {
+      if (
+        pixelStartOffset < 0 ||
+        pixelStartOffset + pixelDataSize > bytes.length
+      ) {
         return {
           success: false,
           shapes: [],
           error: new Error(
-            `Pixel data out of bounds in shape ${i}, frame ${f}`
+            `Pixel data out of bounds in shape ${i}, frame ${f}`,
           ),
         };
       }
 
       const pixels = bytes.slice(
         pixelStartOffset,
-        pixelStartOffset + pixelDataSize
+        pixelStartOffset + pixelDataSize,
       );
 
       // Extract mask data if present (byte-per-pixel, not bit-per-pixel).
@@ -383,7 +342,10 @@ function parseShapeList(
         const maskStartOffset = shapeBase + header.maskOffset;
         const maskSize = header.width * header.height;
 
-        if (maskStartOffset >= 0 && maskStartOffset + maskSize <= bytes.length) {
+        if (
+          maskStartOffset >= 0 &&
+          maskStartOffset + maskSize <= bytes.length
+        ) {
           mask = bytes.slice(maskStartOffset, maskStartOffset + maskSize);
         }
       }
@@ -404,50 +366,4 @@ function parseShapeList(
   return { success: true, shapes };
 }
 
-/**
- * Convert a shape frame to an HTML Canvas for display
- */
-export function shapeFrameToCanvas(
-  frame: ShapeFrame,
-  colorTable: RGBColor[]
-): Result<HTMLCanvasElement, Error> {
-  const canvas = document.createElement("canvas");
-  canvas.width = frame.header.width;
-  canvas.height = frame.header.height;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    return err(new Error("Could not get canvas context"));
-  }
-
-  const imageData = ctx.createImageData(
-    frame.header.width,
-    frame.header.height
-  );
-  const data = imageData.data;
-
-  // Fill in pixel data
-  for (let i = 0; i < frame.pixels.length; i++) {
-    const colorIndex = frame.pixels[i] ?? 0;
-    const color = colorTable[colorIndex] || { r: 0, g: 0, b: 0 };
-
-    // The mask is byte-per-pixel (one mask byte per pixel).
-    // In the game: dest = (dest & mask) | src
-    // mask=0x00 means show sprite pixel (opaque), mask=0xFF means transparent
-    let alpha = 255;
-    if (frame.mask) {
-      const maskByte = frame.mask[i];
-      if (maskByte !== undefined) {
-        alpha = maskByte === 0x00 ? 255 : 0;
-      }
-    }
-
-    data[i * 4 + 0] = color.r; // R
-    data[i * 4 + 1] = color.g; // G
-    data[i * 4 + 2] = color.b; // B
-    data[i * 4 + 3] = alpha; // A
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-  return ok(canvas);
-}
+export { shapeFrameToCanvas };

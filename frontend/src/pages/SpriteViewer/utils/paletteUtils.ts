@@ -2,7 +2,10 @@
  * Pure functions for palette manipulation
  * These functions don't depend on external state and can be composed
  */
-import { hexToRgb as hexToRgbUtil, rgbToHex as rgbToHexUtil } from "@/utils/colorUtils";
+import {
+  hexToRgb as hexToRgbUtil,
+  rgbToHex as rgbToHexUtil,
+} from "@/utils/colorUtils";
 
 export interface PaletteColor {
   r: number; // 0-255
@@ -28,7 +31,9 @@ export interface PredefinedPaletteOption {
 export function createPalette(name: string, colors?: PaletteColor[]): Palette {
   return {
     name,
-    colors: colors ? colors.map((color) => ({ ...color })) : Array.from({ length: 256 }, () => ({ r: 0, g: 0, b: 0 })),
+    colors: colors
+      ? colors.map((color) => ({ ...color }))
+      : Array.from({ length: 256 }, () => ({ r: 0, g: 0, b: 0 })),
   };
 }
 
@@ -72,9 +77,8 @@ export function updatePaletteColors(
 
   Object.entries(updates).forEach(([indexStr, color]) => {
     const index = parseInt(indexStr);
-    if (index >= 0 && index < 256) {
+    if (index >= 0 && index < 256)
       newColors[index] = { r: color.r, g: color.g, b: color.b };
-    }
   });
 
   return {
@@ -177,7 +181,12 @@ export function isPalette(x: unknown): x is Palette {
   if (!Array.isArray(x.colors)) return false;
   for (const c of x.colors) {
     if (!isRecord(c)) return false;
-    if (typeof c.r !== "number" || typeof c.g !== "number" || typeof c.b !== "number") return false;
+    if (
+      typeof c.r !== "number" ||
+      typeof c.g !== "number" ||
+      typeof c.b !== "number"
+    )
+      return false;
   }
   return true;
 }

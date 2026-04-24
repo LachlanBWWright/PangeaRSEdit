@@ -7,9 +7,9 @@ import { Updater } from "use-immer";
  */
 export function selectHeaderData(levelData: LevelData): HeaderData | null {
   if (!levelData.Hedr) return null;
-  
+
   return {
-    Hedr: levelData.Hedr
+    Hedr: levelData.Hedr,
   };
 }
 
@@ -25,7 +25,7 @@ export function selectHeader(levelData: LevelData): StandardHeader | null {
  */
 export function updateHeaderData(
   setLevelData: Updater<LevelData>,
-  headerUpdate: Partial<StandardHeader>
+  headerUpdate: Partial<StandardHeader>,
 ): void {
   setLevelData((draft) => {
     if (draft.Hedr?.[1000]?.obj) {
@@ -38,17 +38,24 @@ export function updateHeaderData(
  * Creates a header data updater that only works with header data
  */
 export function createHeaderDataUpdater(
-  setLevelData: Updater<LevelData>
+  setLevelData: Updater<LevelData>,
 ): Updater<StandardHeader> {
+  function applyHeaderUpdater(
+    current: StandardHeader,
+    updater: StandardHeader | ((draft: StandardHeader) => void),
+  ): StandardHeader {
+    if (typeof updater !== "function") return updater;
+    updater(current);
+    return current;
+  }
+
   return (headerUpdater) => {
     setLevelData((draft) => {
-      if (draft.Hedr?.[1000]?.obj) {
-        if (typeof headerUpdater === 'function') {
-          headerUpdater(draft.Hedr[1000].obj);
-        } else {
-          draft.Hedr[1000].obj = headerUpdater;
-        }
-      }
+      if (!draft.Hedr?.[1000]?.obj) return;
+      draft.Hedr[1000].obj = applyHeaderUpdater(
+        draft.Hedr[1000].obj,
+        headerUpdater,
+      );
     });
   };
 }

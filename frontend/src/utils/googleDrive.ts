@@ -1,7 +1,6 @@
 import { ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
 
-
 export async function uploadFileToGoogleDrive(
   file: File,
   accessToken: string,
@@ -17,11 +16,14 @@ export async function uploadFileToGoogleDrive(
   form.append("file", file);
 
   const response = await ResultAsync.fromPromise(
-    fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: form,
-    }),
+    fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: form,
+      },
+    ),
     mapErr,
   );
   if (response.isErr()) {
@@ -37,7 +39,9 @@ export async function uploadFileToGoogleDrive(
   }
   const fileId = Reflect.get(parsed.value, "id");
   if (typeof fileId !== "string") {
-    return { error: "Google Drive upload succeeded but no file id was returned." };
+    return {
+      error: "Google Drive upload succeeded but no file id was returned.",
+    };
   }
   return { fileId };
 }
@@ -59,7 +63,10 @@ export async function downloadFileFromGoogleDrive(
     const details = await response.value.text();
     return { error: `Download failed (${response.value.status}): ${details}` };
   }
-  const blobResult = await ResultAsync.fromPromise(response.value.blob(), mapErr);
+  const blobResult = await ResultAsync.fromPromise(
+    response.value.blob(),
+    mapErr,
+  );
   if (blobResult.isErr()) {
     return { error: blobResult.error.message };
   }
@@ -72,12 +79,15 @@ export async function downloadFileFromGoogleDrive(
   );
   let filename = fileId;
   if (!metadataResponse.isErr() && metadataResponse.value.ok) {
-    const metadata = await ResultAsync.fromPromise(metadataResponse.value.json(), mapErr);
+    const metadata = await ResultAsync.fromPromise(
+      metadataResponse.value.json(),
+      mapErr,
+    );
     if (!metadata.isErr()) {
       const name = Reflect.get(metadata.value, "name");
-      if (typeof name === "string" && name.length > 0) {
-        filename = name;
-      }
+      if (typeof name !== "string" || name.length === 0)
+        return { blob: blobResult.value, filename };
+      filename = name;
     }
   }
   return { blob: blobResult.value, filename };

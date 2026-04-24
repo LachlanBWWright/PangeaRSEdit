@@ -104,15 +104,22 @@ export function createLiquidUpdater(
   setLevelData: Updater<LiquidData>,
   liquidIdx: number,
 ): Updater<Liquid> {
+  function applyLiquidUpdater(
+    current: Liquid,
+    updater: Liquid | ((draft: Liquid) => void),
+  ): Liquid {
+    if (typeof updater !== "function") return updater;
+    updater(current);
+    return current;
+  }
+
   return (liquidUpdater) => {
     setLevelData((draft) => {
-      if (draft.Liqd?.[1000]?.obj?.[liquidIdx]) {
-        if (typeof liquidUpdater === "function") {
-          liquidUpdater(draft.Liqd[1000].obj[liquidIdx]);
-        } else {
-          draft.Liqd[1000].obj[liquidIdx] = liquidUpdater;
-        }
-      }
+      if (!draft.Liqd?.[1000]?.obj?.[liquidIdx]) return;
+      draft.Liqd[1000].obj[liquidIdx] = applyLiquidUpdater(
+        draft.Liqd[1000].obj[liquidIdx],
+        liquidUpdater,
+      );
     });
   };
 }

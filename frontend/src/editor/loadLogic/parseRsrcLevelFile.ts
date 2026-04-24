@@ -56,16 +56,12 @@ export async function parseRsrcLevelFile(
   }
 
   function normalizeSaveToJsonResult(r: unknown): Result<string, Error> {
-    if (isNeverthrowResult(r)) {
-      return r;
-    }
-    if (isPlainSaveToJson(r)) {
-      if (r.ok && typeof r.value === "string") {
-        return ok(r.value);
-      }
+    if (isNeverthrowResult(r)) return r;
+    if (!isPlainSaveToJson(r))
+      return err(new Error("saveToJson returned unexpected shape"));
+    if (!r.ok || typeof r.value !== "string")
       return err(new Error(String(r.error)));
-    }
-    return err(new Error("saveToJson returned unexpected shape"));
+    return ok(r.value);
   }
 
   const parseResult = normalizeSaveToJsonResult(parseRaw);

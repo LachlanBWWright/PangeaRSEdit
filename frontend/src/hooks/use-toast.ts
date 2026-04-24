@@ -139,6 +139,9 @@ function toast({ ...props }: Toast) {
       toast: { ...props, id },
     });
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+  const handleOpenChange = (open: boolean) => {
+    if (!open) dismiss();
+  };
 
   dispatch({
     type: "ADD_TOAST",
@@ -146,9 +149,7 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss();
-      },
+      onOpenChange: handleOpenChange,
     },
   });
 

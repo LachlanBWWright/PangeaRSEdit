@@ -13,9 +13,15 @@ import { validateOttoMaticLevel, LevelDataSchema } from "./games/ottoMatic";
 import { validateBugdomLevel, bugdomLevelSchema } from "./games/bugdom";
 import { validateBugdom2Level, bugdom2LevelSchema } from "./games/bugdom2";
 import { validateNanosaurLevel, nanosaurLevelSchema } from "./games/nanosaur";
-import { validateNanosaur2Level, nanosaur2LevelSchema } from "./games/nanosaur2";
+import {
+  validateNanosaur2Level,
+  nanosaur2LevelSchema,
+} from "./games/nanosaur2";
 import { validateCroMagLevel, croMagLevelSchema } from "./games/croMag";
-import { validateBillyFrontierLevel, billyFrontierLevelSchema } from "./games/billyFrontier";
+import {
+  validateBillyFrontierLevel,
+  billyFrontierLevelSchema,
+} from "./games/billyFrontier";
 
 // Re-export individual validators
 export {
@@ -93,8 +99,7 @@ export function validateLevelDataForGame(
       // This can happen if a new game is added but validation schema is not yet implemented
       // Action: Add a new case above for the new game type and create its validation schema
       console.warn(
-        `Unknown game type ${gameType}, using Otto Matic validation as fallback. ` +
-        `To fix: Add validation schema for this game in src/validation/games/`
+        `Unknown game type ${gameType}, using Otto Matic validation as fallback. To fix: Add validation schema for this game in src/validation/games/`,
       );
       return validateOttoMaticLevel(data);
   }

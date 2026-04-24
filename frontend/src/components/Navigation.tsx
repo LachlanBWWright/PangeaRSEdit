@@ -28,16 +28,20 @@ export function Navigation() {
 
   return (
     <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-1 min-h-14 flex items-center gap-2 md:gap-4 overflow-hidden">
-      <div className="flex-1 min-w-0 overflow-x-auto">
-        {showEditorNavbar ? (
+      {showEditorNavbar ? (
+        <div className="flex-1 min-w-0 overflow-x-auto">
           <div className="flex items-center gap-2 md:gap-4 whitespace-nowrap w-full pr-1 overflow-hidden">
             {editorNavbarLeft}
             <div className="flex flex-1 min-w-0 overflow-x-auto items-stretch rounded-md bg-muted p-1 text-muted-foreground border border-border">
               {editorNavbarTabs}
             </div>
-            <div className="flex items-center gap-2 shrink-0">{editorNavbarActions}</div>
+            <div className="flex items-center gap-2 shrink-0">
+              {editorNavbarActions}
+            </div>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <div className="flex-1 min-w-0 overflow-x-auto">
           <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap min-w-max pr-1">
             <Button
               asChild
@@ -51,7 +55,9 @@ export function Navigation() {
             </Button>
             <Button
               asChild
-              variant={location.pathname === "/model-viewer" ? "default" : "ghost"}
+              variant={
+                location.pathname === "/model-viewer" ? "default" : "ghost"
+              }
               className="flex items-center gap-2"
             >
               <Link to="/model-viewer" className="text-white">
@@ -61,7 +67,9 @@ export function Navigation() {
             </Button>
             <Button
               asChild
-              variant={location.pathname === "/sprite-viewer" ? "default" : "ghost"}
+              variant={
+                location.pathname === "/sprite-viewer" ? "default" : "ghost"
+              }
               className="flex items-center gap-2"
             >
               <Link to="/sprite-viewer" className="text-white">
@@ -71,7 +79,9 @@ export function Navigation() {
             </Button>
             <Button
               asChild
-              variant={location.pathname === "/download-levels" ? "default" : "ghost"}
+              variant={
+                location.pathname === "/download-levels" ? "default" : "ghost"
+              }
               className="flex items-center gap-2"
             >
               <Link to="/download-levels" className="text-white">
@@ -83,7 +93,9 @@ export function Navigation() {
               <>
                 <Button
                   asChild
-                  variant={location.pathname === "/item-models" ? "default" : "ghost"}
+                  variant={
+                    location.pathname === "/item-models" ? "default" : "ghost"
+                  }
                   className="flex items-center gap-2"
                 >
                   <Link to="/item-models" className="text-white">
@@ -93,7 +105,9 @@ export function Navigation() {
                 </Button>
                 <Button
                   asChild
-                  variant={location.pathname === "/test-models" ? "default" : "ghost"}
+                  variant={
+                    location.pathname === "/test-models" ? "default" : "ghost"
+                  }
                   className="flex items-center gap-2"
                 >
                   <Link to="/test-models" className="text-white">
@@ -103,7 +117,9 @@ export function Navigation() {
                 </Button>
                 <Button
                   asChild
-                  variant={location.pathname === "/item-audit" ? "default" : "ghost"}
+                  variant={
+                    location.pathname === "/item-audit" ? "default" : "ghost"
+                  }
                   className="flex items-center gap-2"
                 >
                   <Link to="/item-audit" className="text-white">
@@ -114,8 +130,8 @@ export function Navigation() {
               </>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </nav>
   );
 }

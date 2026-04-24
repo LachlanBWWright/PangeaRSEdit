@@ -17,16 +17,23 @@ export function handleNumK(
   hexData: string,
 ): NumKRaw[] {
   // Check if resourceData has obj field (rsrcdump format)
-  if (isRecord(resourceData) && "obj" in resourceData && Array.isArray(resourceData.obj)) {
+  if (
+    isRecord(resourceData) &&
+    "obj" in resourceData &&
+    Array.isArray(resourceData.obj)
+  ) {
     const objArr = resourceData.obj;
-    if (objArr.length > 0 && isNumKRaw(objArr[0])) {
+    if (objArr.length > 0 && isNumKRaw(objArr[0]))
       return objArr.filter(isNumKRaw);
-    }
   }
-  
-  if (Array.isArray(resourceData) && resourceData.length > 0 && isNumKRaw(resourceData[0])) {
+
+  if (
+    Array.isArray(resourceData) &&
+    resourceData.length > 0 &&
+    isNumKRaw(resourceData[0])
+  ) {
     return resourceData.filter(isNumKRaw);
   }
-  
+
   return parseNumKData(hexData);
 }

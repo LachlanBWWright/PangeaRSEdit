@@ -1,6 +1,6 @@
 /**
  * Game Source Repository Mapping
- * 
+ *
  * Maps game names to their GitHub repositories for citation verification.
  * These are the original Pangea game source code repositories maintained by jorio.
  */
@@ -9,7 +9,7 @@ export interface GameRepository {
   owner: string;
   repo: string;
   branch: string;
-  sourcePath: string;  // Path to Source directory
+  sourcePath: string; // Path to Source directory
 }
 
 function normalizeRepositoryFilePath(
@@ -79,13 +79,11 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
 
 export function getGameKeyFromName(gameName: string): string | null {
   const normalizedName = gameName.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  for (const [key, repo] of Object.entries(GAME_REPOSITORIES)) {
-    const normalizedRepo = repo.repo.replace(/[^a-z0-9]/gi, "").toLowerCase();
-    if (normalizedRepo === normalizedName) {
-      return key;
-    }
-  }
-  return null;
+  const match = Object.entries(GAME_REPOSITORIES).find(
+    ([, repo]) =>
+      repo.repo.replace(/[^a-z0-9]/gi, "").toLowerCase() === normalizedName,
+  );
+  return match?.[0] ?? null;
 }
 
 /**
@@ -104,7 +102,11 @@ export function getGitHubRawUrl(game: string, filePath: string): string | null {
 /**
  * Get the GitHub permalink URL for a file at a specific line number
  */
-export function getGitHubPermalink(game: string, filePath: string, lineNumber: number): string | null {
+export function getGitHubPermalink(
+  game: string,
+  filePath: string,
+  lineNumber: number,
+): string | null {
   const repo = GAME_REPOSITORIES[game];
   if (!repo) return null;
   const normalizedPath = normalizeRepositoryFilePath(repo, filePath);
