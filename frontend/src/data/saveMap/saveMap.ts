@@ -12,7 +12,7 @@ import { toast } from "../../hooks/use-toast";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
-import { err, ok } from "neverthrow";
+import { err, ok, type Result } from "neverthrow";
 import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
 import { serializeMightyMikeLevel } from "@/editor/loadLogic/parseMightyMikeFile";
 import { serializeNanosaurTerrainTextures } from "@/data/processors/classicProprocessor";
@@ -32,6 +32,14 @@ function isNanosaur1LevelData(value: unknown): value is Nanosaur1LevelData {
   );
 }
 
+function copyToArrayBuffer(data: ArrayBufferView): ArrayBuffer {
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(
+    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+  );
+  return copy;
+}
+
 function serializeBugdomTileImages(
   mapImages: HTMLCanvasElement[],
 ): Result<string, Error> {
@@ -47,7 +55,7 @@ function serializeBugdomTileImages(
         new Error(`Failed to serialize tile image #${i}: ${encodedTile.error.message}`),
       );
     }
-    serializedTiles.push(bufferToHex(encodedTile.value.buffer));
+    serializedTiles.push(bufferToHex(copyToArrayBuffer(encodedTile.value)));
   }
   return ok(serializedTiles.join(""));
 }
@@ -269,7 +277,7 @@ export async function saveMap({
   }
 
   // Download Images
-  if (mapImages && globals.DATA_TYPE !== DataType.TRT_FILE) {
+  if (mapImages) {
     toast({
       title: "Saving Map",
       description: "Compressing textures",
@@ -356,13 +364,16 @@ async function processMapData({
       });
       return new ArrayBuffer(0);
     }
-    sanitized.Timg ??= {};
-    sanitized.Timg[1000] ??= {
+    const sanitizedWithTimg = sanitized as typeof sanitized & {
+      Timg?: Record<number, { name: string; data: string; order: number }>;
+    };
+    sanitizedWithTimg.Timg ??= {};
+    sanitizedWithTimg.Timg[1000] ??= {
       name: "Extracted Tile Image Data 32x32/16bit",
       data: "",
       order: 1000,
     };
-    sanitized.Timg[1000].data = tileDataResult.value;
+    sanitizedWithTimg.Timg[1000].data = tileDataResult.value;
   }
 
   const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);

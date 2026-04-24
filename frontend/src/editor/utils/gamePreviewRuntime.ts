@@ -1,5 +1,5 @@
 import { Game } from "../../data/globals/globals";
-import { Result, ResultAsync } from "neverthrow";
+import { Result, ResultAsync, err, ok } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 
 export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
@@ -73,9 +73,9 @@ export interface PreviewRuntimeModule {
 }
 
 type PreviewWindow = Window & {
-    Module?: PreviewRuntimeModule;
-    SetCustomTerrainFile?: (path: string) => unknown;
-  };
+  Module?: PreviewRuntimeModule;
+  SetCustomTerrainFile?: (path: string) => unknown;
+};
 
 export class PreviewRuntimeLoadError extends Error {
   readonly status: number | null;
@@ -120,8 +120,18 @@ export function buildGameArguments(
       return ["--track", String(levelNumber), "--car", "1"];
     case Game.BILLY_FRONTIER:
       return [];
-    case Game.MIGHTY_MIKE:
-      return ["--level", `${String(Math.floor(levelNumber / 3))}:${String(levelNumber % 3)}`];
+    case Game.MIGHTY_MIKE: {
+      const levelArg = `${String(Math.floor(levelNumber / 3))}:${String(levelNumber % 3)}`;
+      if (!terrainPath) {
+        return ["--level", levelArg];
+      }
+      return [
+        "--level",
+        levelArg,
+        "--map-override",
+        `:Maps:${terrainPath.split("/").pop() ?? terrainPath}`,
+      ];
+    }
     case Game.NANOSAUR_2:
       return ["--level", String(levelNumber)];
     default:
@@ -150,14 +160,22 @@ export function getPreviewTerrainPaths(
     ? config.terrain.getRsrcPath(info.terrainFile)
     : null;
 
-  // For MightyMike the WASM may store terrain under a capitalized filename
-  // (e.g. "Jurassic.map-1" vs "jurassic.map-1"). Write to both paths so that
-  // whichever case the compiled game uses, the injected file is found.
+  // For MightyMike the WASM may store terrain under either capitalized or
+  // lowercase filenames. Return an alternate casing path so both can be written.
   if (config.game === Game.MIGHTY_MIKE) {
     const filename = info.terrainFile;
-    const capitalizedFilename = filename.charAt(0).toUpperCase() + filename.slice(1);
-    const capitalizedPath = `/Data/Terrain/${capitalizedFilename}`;
-    const altDataPath = capitalizedPath !== dataPath ? capitalizedPath : undefined;
+    const lastSlash = dataPath.lastIndexOf("/");
+    const dataPathDir = lastSlash >= 0 ? dataPath.slice(0, lastSlash) : "";
+    const capitalizedFilename =
+      filename.charAt(0).toUpperCase() + filename.slice(1);
+    const lowercaseFilename =
+      filename.charAt(0).toLowerCase() + filename.slice(1);
+    const alternateFilename =
+      filename === capitalizedFilename
+        ? lowercaseFilename
+        : capitalizedFilename;
+    const alternatePath = `${dataPathDir}/${alternateFilename}`;
+    const altDataPath = alternatePath !== dataPath ? alternatePath : undefined;
     return { dataPath, rsrcPath, altDataPath };
   }
 
@@ -165,8 +183,12 @@ export function getPreviewTerrainPaths(
 }
 
 export function buildPreviewAssetBaseUrls(config: GamePortConfig): string[] {
-  const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).href;
-  const generatedBase = new URL(`.generated/pangea-ports/wasm/${config.wasmDir}/`, appBaseUrl).href;
+  const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin)
+    .href;
+  const generatedBase = new URL(
+    `.generated/pangea-ports/wasm/${config.wasmDir}/`,
+    appBaseUrl,
+  ).href;
   const legacyBase = new URL(`wasm/${config.wasmDir}/`, appBaseUrl).href;
   return generatedBase === legacyBase
     ? [generatedBase]
@@ -177,7 +199,10 @@ export function buildPreviewAssetBaseUrl(config: GamePortConfig): string {
   return buildPreviewAssetBaseUrls(config)[0] ?? "";
 }
 
-function ensureDir(vfs: NonNullable<PreviewRuntimeModule["FS"]>, path: string): void {
+function ensureDir(
+  vfs: NonNullable<PreviewRuntimeModule["FS"]>,
+  path: string,
+): void {
   if (typeof vfs.analyzePath === "function") {
     const analyzeResult = Result.fromThrowable(
       () => vfs.analyzePath!(path),
@@ -186,12 +211,17 @@ function ensureDir(vfs: NonNullable<PreviewRuntimeModule["FS"]>, path: string): 
     if (analyzeResult.isOk() && analyzeResult.value.exists) return;
   }
   Result.fromThrowable(
-    () => { vfs.mkdir?.(path); },
+    () => {
+      vfs.mkdir?.(path);
+    },
     (e) => (e instanceof Error ? e : new Error(String(e))),
   )();
 }
 
-function ensurePreviewPrefsDirs(module: PreviewRuntimeModule, config: GamePortConfig): void {
+function ensurePreviewPrefsDirs(
+  module: PreviewRuntimeModule,
+  config: GamePortConfig,
+): void {
   const fsCreatePath = module.FS_createPath;
 
   if (typeof fsCreatePath === "function") {
@@ -200,7 +230,12 @@ function ensurePreviewPrefsDirs(module: PreviewRuntimeModule, config: GamePortCo
         fsCreatePath("/", "home", true, true);
         fsCreatePath("/home", "web_user", true, true);
         fsCreatePath("/home/web_user", ".config", true, true);
-        fsCreatePath(`/home/web_user/.config`, config.prefsFolderName, true, true);
+        fsCreatePath(
+          `/home/web_user/.config`,
+          config.prefsFolderName,
+          true,
+          true,
+        );
       },
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
@@ -233,7 +268,9 @@ export function applyPreviewGlobals(
     )();
     previousValues.set(key, previous.isOk() ? previous.value : undefined);
     Result.fromThrowable(
-      () => { Reflect.set(win, key, value); },
+      () => {
+        Reflect.set(win, key, value);
+      },
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
   };
@@ -284,12 +321,16 @@ export function applyPreviewGlobals(
     for (const [key, value] of previousValues.entries()) {
       if (typeof value === "undefined") {
         Result.fromThrowable(
-          () => { delete (win as unknown as Record<string, unknown>)[key]; },
+          () => {
+            delete (win as unknown as Record<string, unknown>)[key];
+          },
           (e) => (e instanceof Error ? e : new Error(String(e))),
         )();
       } else {
         Result.fromThrowable(
-          () => { Reflect.set(win, key, value); },
+          () => {
+            Reflect.set(win, key, value);
+          },
           (e) => (e instanceof Error ? e : new Error(String(e))),
         )();
       }
@@ -332,13 +373,17 @@ function writeFileToVfs(
   const vfs = module.FS;
   if (vfs && typeof vfs.writeFile === "function") {
     return Result.fromThrowable(
-      () => { vfs.writeFile(path, data); },
+      () => {
+        vfs.writeFile(path, data);
+      },
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
   }
   if (typeof module.FS_createDataFile !== "function") {
     return Result.fromThrowable(
-      (): void => { throw new Error("No VFS write mechanism available"); },
+      (): void => {
+        throw new Error("No VFS write mechanism available");
+      },
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
   }
@@ -348,7 +393,9 @@ function writeFileToVfs(
   // Silently ignore FS_unlink errors (file may not exist on first launch).
   if (typeof module.FS_unlink === "function") {
     Result.fromThrowable(
-      () => { module.FS_unlink!(path); },
+      () => {
+        module.FS_unlink!(path);
+      },
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
   }
@@ -358,6 +405,14 @@ function writeFileToVfs(
     },
     (e) => (e instanceof Error ? e : new Error(String(e))),
   )();
+}
+
+function logPreviewRuntime(message: string, details?: unknown): void {
+  if (details === undefined) {
+    console.info(`[GamePreview] ${message}`);
+    return;
+  }
+  console.info(`[GamePreview] ${message}`, details);
 }
 
 /**
@@ -375,43 +430,124 @@ function writeTerrainToVfs(
   terrainTextureBytes: Uint8Array | null,
   onError: (text: string) => void,
 ): void {
-  if (!(terrainDataBytes ?? terrainRsrcBytes ?? terrainTextureBytes)) return;
+  if (!(terrainDataBytes ?? terrainRsrcBytes ?? terrainTextureBytes)) {
+    logPreviewRuntime("No terrain bytes supplied for VFS injection", {
+      game: GAME_DISPLAY_NAMES[config.game],
+      level: currentLevelInfo,
+      terrainPaths,
+    });
+    return;
+  }
 
   const vfs = module.FS;
   if (vfs && typeof vfs.mkdir === "function") {
     ensureDir(vfs, "/Data");
-    ensureDir(vfs, "/Data/Terrain");
+    ensureDir(
+      vfs,
+      config.game === Game.MIGHTY_MIKE ? "/Data/Maps" : "/Data/Terrain",
+    );
+  }
+
+  function writeTerrainDataPath(
+    path: string,
+    data: Uint8Array,
+  ): Result<void, Error> {
+    const pathVariants = new Set<string>([path]);
+
+    if (config.game === Game.MIGHTY_MIKE) {
+      if (path.startsWith("/")) {
+        pathVariants.add(path.slice(1));
+      } else {
+        pathVariants.add(`/${path}`);
+      }
+    }
+
+    const failedWrites: string[] = [];
+    for (const candidatePath of pathVariants) {
+      const writeResult = writeFileToVfs(module, candidatePath, data);
+      if (writeResult.isErr()) {
+        failedWrites.push(`${candidatePath}: ${writeResult.error.message}`);
+        continue;
+      }
+      logPreviewRuntime("Wrote terrain data to VFS", {
+        path: candidatePath,
+        byteLength: data.byteLength,
+      });
+      return ok(undefined);
+    }
+
+    return err(new Error(failedWrites.join("; ")));
   }
 
   if (terrainDataBytes) {
-    const writeDataResult = writeFileToVfs(module, terrainPaths.dataPath, terrainDataBytes);
+    logPreviewRuntime("Injecting terrain data bytes", {
+      game: GAME_DISPLAY_NAMES[config.game],
+      levelNumber:
+        currentLevelInfo && "levelNumber" in currentLevelInfo
+          ? currentLevelInfo.levelNumber
+          : undefined,
+      dataPath: terrainPaths.dataPath,
+      altDataPath: terrainPaths.altDataPath,
+      byteLength: terrainDataBytes.byteLength,
+    });
+    const writeDataResult = writeTerrainDataPath(
+      terrainPaths.dataPath,
+      terrainDataBytes,
+    );
     if (writeDataResult.isErr()) {
-      onError(`Failed to write terrain data file: ${writeDataResult.error.message}`);
+      onError(
+        `Failed to write terrain data file: ${writeDataResult.error.message}`,
+      );
       return;
     }
     // Write the same bytes to the alt path (e.g. capitalized MightyMike filename)
     // so that the game finds the file regardless of which case it uses.
     if (terrainPaths.altDataPath) {
-      writeFileToVfs(module, terrainPaths.altDataPath, terrainDataBytes);
+      const altWriteResult = writeTerrainDataPath(
+        terrainPaths.altDataPath,
+        terrainDataBytes,
+      );
+      if (altWriteResult.isErr()) {
+        console.warn(
+          "[GamePreview] Failed to write alternate terrain data path",
+          altWriteResult.error,
+        );
+      }
     }
   }
 
   if (terrainRsrcBytes && terrainPaths.rsrcPath) {
-    const writeRsrcResult = writeFileToVfs(module, terrainPaths.rsrcPath, terrainRsrcBytes);
+    logPreviewRuntime("Injecting terrain resource bytes", {
+      rsrcPath: terrainPaths.rsrcPath,
+      byteLength: terrainRsrcBytes.byteLength,
+    });
+    const writeRsrcResult = writeFileToVfs(
+      module,
+      terrainPaths.rsrcPath,
+      terrainRsrcBytes,
+    );
     if (writeRsrcResult.isErr()) {
-      onError(`Failed to write terrain rsrc file: ${writeRsrcResult.error.message}`);
+      onError(
+        `Failed to write terrain rsrc file: ${writeRsrcResult.error.message}`,
+      );
       return;
     }
   }
 
   if (terrainTextureBytes && terrainPaths.texturePath) {
+    logPreviewRuntime("Injecting terrain texture bytes", {
+      texturePath: terrainPaths.texturePath,
+      byteLength: terrainTextureBytes.byteLength,
+    });
     const writeTextureResult = writeFileToVfs(
       module,
       terrainPaths.texturePath,
       terrainTextureBytes,
     );
     if (writeTextureResult.isErr()) {
-      onError(`Failed to write terrain texture file: ${writeTextureResult.error.message}`);
+      onError(
+        `Failed to write terrain texture file: ${writeTextureResult.error.message}`,
+      );
       return;
     }
   }
@@ -423,14 +559,21 @@ function writeTerrainToVfs(
     "terrainFile" in currentLevelInfo
   ) {
     const setPathArg =
-      config.game === Game.NANOSAUR ? terrainPaths.dataPath : config.terrain.getSetPathArg(currentLevelInfo.terrainFile);
+      config.game === Game.NANOSAUR
+        ? terrainPaths.dataPath
+        : config.terrain.getSetPathArg(currentLevelInfo.terrainFile);
+    logPreviewRuntime("Setting runtime terrain override path", {
+      fn: config.terrain.setPathFn,
+      arg: setPathArg,
+    });
     Result.fromThrowable(
-      () => module.ccall?.(
-        config.terrain!.setPathFn!,
-        null,
-        ["string"],
-        [setPathArg],
-      ),
+      () =>
+        module.ccall?.(
+          config.terrain!.setPathFn!,
+          null,
+          ["string"],
+          [setPathArg],
+        ),
       (e) => (e instanceof Error ? e : new Error(String(e))),
     )();
   }
@@ -488,7 +631,12 @@ export function createPreviewModule(
       antialias: false,
       preserveDrawingBuffer: false,
     },
-    arguments: buildGameArguments(config, levelNumber, terrainPaths?.dataPath ?? null, normalLaunch),
+    arguments: buildGameArguments(
+      config,
+      levelNumber,
+      terrainPaths?.dataPath ?? null,
+      normalLaunch,
+    ),
     preInit: [
       () => {
         const module = moduleRef.current;
@@ -529,7 +677,8 @@ export function createPreviewModule(
         scheduleOverlayFallback();
       },
     ],
-    locateFile: (path: string) => new URL(path, assetBaseUrl).href + `?v=${cacheBustToken}`,
+    locateFile: (path: string) =>
+      new URL(path, assetBaseUrl).href + `?v=${cacheBustToken}`,
     setStatus: (text: string) => {
       // Block non-empty status updates after the runtime is up (they would re-show
       // the loading overlay). Always pass empty-string through so that builds which
@@ -572,12 +721,13 @@ export function createPreviewModule(
         const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
         if (skipToLevel) {
           Result.fromThrowable(
-            () => module.ccall?.(
-              skipToLevel.fn,
-              skipToLevel.returnType,
-              skipToLevel.argTypes,
-              skipToLevel.args,
-            ),
+            () =>
+              module.ccall?.(
+                skipToLevel.fn,
+                skipToLevel.returnType,
+                skipToLevel.argTypes,
+                skipToLevel.args,
+              ),
             (e) => (e instanceof Error ? e : new Error(String(e))),
           )();
         }
@@ -600,6 +750,16 @@ export function createPreviewModule(
       onError(message);
     },
   };
+
+  logPreviewRuntime("Created preview module", {
+    game: GAME_DISPLAY_NAMES[config.game],
+    arguments: result.arguments,
+    terrainPaths,
+    terrainDataBytes: terrainDataBytes?.byteLength ?? null,
+    terrainRsrcBytes: terrainRsrcBytes?.byteLength ?? null,
+    terrainTextureBytes: terrainTextureBytes?.byteLength ?? null,
+    normalLaunch,
+  });
 
   moduleRef.current = result;
   return result;
@@ -655,12 +815,16 @@ export async function loadPreviewRuntime(
   const prevWindowCaf = window.cancelAnimationFrame;
   const prevWindowSt = window.setTimeout;
   const prevWindowCt = window.clearTimeout;
-  Result.fromThrowable(() => {
-    window.requestAnimationFrame = gameRaf as typeof window.requestAnimationFrame;
-    window.cancelAnimationFrame = gameCaf;
-    window.setTimeout = gameSetTimeout as typeof window.setTimeout;
-    window.clearTimeout = gameClearTimeout as typeof window.clearTimeout;
-  }, (e) => (e instanceof Error ? e : new Error(String(e))))();
+  Result.fromThrowable(
+    () => {
+      window.requestAnimationFrame =
+        gameRaf as typeof window.requestAnimationFrame;
+      window.cancelAnimationFrame = gameCaf;
+      window.setTimeout = gameSetTimeout as typeof window.setTimeout;
+      window.clearTimeout = gameClearTimeout as typeof window.clearTimeout;
+    },
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  )();
 
   // Track AudioContext instances created by the game so they can be closed on cleanup.
   const trackedAudioContexts = new Set<AudioContext>();
@@ -672,7 +836,9 @@ export async function loadPreviewRuntime(
     }
   }
   Result.fromThrowable(
-    () => { window.AudioContext = TrackedAudioContext; },
+    () => {
+      window.AudioContext = TrackedAudioContext;
+    },
     (e) => (e instanceof Error ? e : new Error(String(e))),
   )();
 
@@ -683,19 +849,25 @@ export async function loadPreviewRuntime(
 
   // Restore patched globals on any early-exit path.
   function restoreWindowGlobals(): void {
-    Result.fromThrowable(() => {
-      window.requestAnimationFrame = prevWindowRaf;
-      window.cancelAnimationFrame = prevWindowCaf;
-      window.setTimeout = prevWindowSt;
-      window.clearTimeout = prevWindowCt;
-      window.AudioContext = savedAudioContext;
-    }, (e) => (e instanceof Error ? e : new Error(String(e))))();
+    Result.fromThrowable(
+      () => {
+        window.requestAnimationFrame = prevWindowRaf;
+        window.cancelAnimationFrame = prevWindowCaf;
+        window.setTimeout = prevWindowSt;
+        window.clearTimeout = prevWindowCt;
+        window.AudioContext = savedAudioContext;
+      },
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
   }
 
   if (response.isErr() || !response.value.ok) {
     const status = response.isOk() ? response.value.status : 0;
     restoreWindowGlobals();
-    throw new PreviewRuntimeLoadError(`Failed to load ${scriptUrl}: ${String(status)}`, status);
+    throw new PreviewRuntimeLoadError(
+      `Failed to load ${scriptUrl}: ${String(status)}`,
+      status,
+    );
   }
 
   const sourceResult = await ResultAsync.fromPromise(
@@ -713,22 +885,23 @@ export async function loadPreviewRuntime(
   // game script also use our wrappers (window.* calls are handled by the
   // global patches above).
   const runner = Result.fromThrowable(
-    () => new Function(
-      "module",
-      "window",
-      "requestAnimationFrame",
-      "cancelAnimationFrame",
-      "setTimeout",
-      "clearTimeout",
-      `"use strict"; var Module = module;\n${source}\nreturn Module;`,
-    ) as (
-      module: PreviewRuntimeModule,
-      window: Window,
-      raf: (cb: FrameRequestCallback) => number,
-      caf: (id: number) => void,
-      st: (cb: () => void, delay?: number) => number,
-      ct: (id?: number) => void,
-    ) => PreviewRuntimeModule,
+    () =>
+      new Function(
+        "module",
+        "window",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "setTimeout",
+        "clearTimeout",
+        `"use strict"; var Module = module;\n${source}\nreturn Module;`,
+      ) as (
+        module: PreviewRuntimeModule,
+        window: Window,
+        raf: (cb: FrameRequestCallback) => number,
+        caf: (id: number) => void,
+        st: (cb: () => void, delay?: number) => number,
+        ct: (id?: number) => void,
+      ) => PreviewRuntimeModule,
     (e) => (e instanceof Error ? e : new Error(String(e))),
   )();
 
@@ -738,7 +911,15 @@ export async function loadPreviewRuntime(
   }
 
   const runResult = Result.fromThrowable(
-    () => runner.value(module, window, gameRaf, gameCaf, gameSetTimeout, gameClearTimeout),
+    () =>
+      runner.value(
+        module,
+        window,
+        gameRaf,
+        gameCaf,
+        gameSetTimeout,
+        gameClearTimeout,
+      ),
     (e) => (e instanceof Error ? e : new Error(String(e))),
   )();
   if (runResult.isErr()) {
@@ -756,9 +937,8 @@ export async function loadPreviewRuntime(
     // Close any AudioContexts the game opened; guard against already-closed contexts.
     for (const ctx of trackedAudioContexts) {
       if (ctx.state !== "closed") {
-        void ResultAsync.fromPromise(
-          ctx.close(),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+        void ResultAsync.fromPromise(ctx.close(), (e) =>
+          e instanceof Error ? e : new Error(String(e)),
         );
       }
     }

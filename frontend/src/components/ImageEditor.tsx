@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Stage, Layer, Image, Line } from "react-konva";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,8 +160,19 @@ export function ImageEditor({
     }
   };
 
+  const snapToImagePixel = useCallback(
+    (value: number, maxExclusive: number): number => {
+      const snapped = Math.floor(value);
+      if (snapped < 0) return 0;
+      if (snapped >= maxExclusive) return Math.max(0, maxExclusive - 1);
+      return snapped;
+    },
+    [],
+  );
+
   const handleMouseDown = () => {
     if (tool !== "brush") return;
+    if (!image) return;
 
     const stage = stageRef.current;
     if (!stage) return;
@@ -172,8 +183,8 @@ export function ImageEditor({
 
     // Adjust coordinates for scale
     const adjustedPos = {
-      x: pos.x / scale,
-      y: pos.y / scale,
+      x: snapToImagePixel(pos.x / scale, image.width),
+      y: snapToImagePixel(pos.y / scale, image.height),
     };
 
     const newStroke: BrushStroke = {
@@ -188,6 +199,7 @@ export function ImageEditor({
 
   const handleMouseMove = () => {
     if (!isDrawing || tool !== "brush" || !currentStroke) return;
+    if (!image) return;
 
     const stage = stageRef.current;
     if (!stage) return;
@@ -197,8 +209,8 @@ export function ImageEditor({
 
     // Adjust coordinates for scale
     const adjustedPos = {
-      x: pos.x / scale,
-      y: pos.y / scale,
+      x: snapToImagePixel(pos.x / scale, image.width),
+      y: snapToImagePixel(pos.y / scale, image.height),
     };
 
     const updatedStroke = {
@@ -509,13 +521,11 @@ export function ImageEditor({
                     ref={stageRef}
                     width={image.width * scale}
                     height={image.height * scale}
-                    scaleX={scale}
-                    scaleY={scale}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                   >
-                    <Layer ref={layerRef}>
+                    <Layer ref={layerRef} scaleX={scale} scaleY={scale}>
                       <Image image={image} />
                       {selectedColorHighlightCanvas && (
                         <Image
@@ -537,6 +547,8 @@ export function ImageEditor({
                           lineJoin={
                             stroke.shape === "circle" ? "round" : "miter"
                           }
+                          strokeScaleEnabled={false}
+                          perfectDrawEnabled={false}
                           globalCompositeOperation="source-over"
                         />
                       ))}
@@ -555,6 +567,8 @@ export function ImageEditor({
                           lineJoin={
                             currentStroke.shape === "circle" ? "round" : "miter"
                           }
+                          strokeScaleEnabled={false}
+                          perfectDrawEnabled={false}
                           globalCompositeOperation="source-over"
                         />
                       )}

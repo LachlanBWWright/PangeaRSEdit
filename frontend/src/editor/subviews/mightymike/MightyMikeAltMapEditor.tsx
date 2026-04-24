@@ -20,18 +20,23 @@ import { atom, useAtom } from "jotai";
 export const AltMapBrushValue = atom<number>(0);
 
 /** Arrow glyphs and labels for each alt-tile value. */
-export const ALT_TILE_OPTIONS: { value: number; label: string; glyph: string; color: string }[] = [
-  { value: 0,  label: "None",       glyph: "○", color: "transparent" },
-  { value: 1,  label: "Up",         glyph: "↑", color: "#ff0000" },
-  { value: 2,  label: "Up-Right",   glyph: "↗", color: "#ff2200" },
-  { value: 3,  label: "Right",      glyph: "→", color: "#ff0000" },
-  { value: 4,  label: "Down-Right", glyph: "↘", color: "#ff2200" },
-  { value: 5,  label: "Down",       glyph: "↓", color: "#ff0000" },
-  { value: 6,  label: "Down-Left",  glyph: "↙", color: "#ff2200" },
-  { value: 7,  label: "Left",       glyph: "←", color: "#ff0000" },
-  { value: 8,  label: "Left-Up",    glyph: "↖", color: "#ff2200" },
-  { value: 9,  label: "Stop",       glyph: "✕", color: "#ffffff" },
-  { value: 10, label: "Loop",       glyph: "↺", color: "#ffff00" },
+export const ALT_TILE_OPTIONS: {
+  value: number;
+  label: string;
+  glyph: string;
+  color: string;
+}[] = [
+  { value: 0, label: "None", glyph: "○", color: "transparent" },
+  { value: 1, label: "Up", glyph: "↑", color: "#ff0000" },
+  { value: 2, label: "Up-Right", glyph: "↗", color: "#ff2200" },
+  { value: 3, label: "Right", glyph: "→", color: "#ff0000" },
+  { value: 4, label: "Down-Right", glyph: "↘", color: "#ff2200" },
+  { value: 5, label: "Down", glyph: "↓", color: "#ff0000" },
+  { value: 6, label: "Down-Left", glyph: "↙", color: "#ff2200" },
+  { value: 7, label: "Left", glyph: "←", color: "#ff0000" },
+  { value: 8, label: "Left-Up", glyph: "↖", color: "#ff2200" },
+  { value: 9, label: "Stop", glyph: "✕", color: "#ffffff" },
+  { value: 10, label: "Loop", glyph: "↺", color: "#ffff00" },
 ];
 
 const DEFAULT_ALT_TILE_OPTION = ALT_TILE_OPTIONS[0] ?? {
@@ -44,15 +49,11 @@ const DEFAULT_ALT_TILE_OPTION = ALT_TILE_OPTIONS[0] ?? {
 export function MightyMikeAltMapEditorPanel() {
   const [brushValue, setBrushValue] = useAtom(AltMapBrushValue);
   const selected =
-    ALT_TILE_OPTIONS.find((o) => o.value === brushValue) ?? DEFAULT_ALT_TILE_OPTION;
+    ALT_TILE_OPTIONS.find((o) => o.value === brushValue) ??
+    DEFAULT_ALT_TILE_OPTION;
 
   return (
     <div className="flex flex-col gap-3 p-2">
-      <p className="text-sm text-gray-300">
-        Paint path direction values onto the alt-map layer. Enemy AI uses these
-        to navigate corridors.
-      </p>
-
       <div>
         <label className="block text-xs font-medium text-gray-400 mb-1">
           Brush Direction
@@ -77,11 +78,11 @@ export function MightyMikeAltMapEditorPanel() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-3 gap-1">
+      <div className="grid grid-cols-4 gap-1">
         {ALT_TILE_OPTIONS.filter((o) => o.value > 0).map((opt) => (
           <button
             key={opt.value}
-            className={`flex flex-col items-center p-2 rounded border text-sm transition-colors ${
+            className={`flex flex-col items-center p-1 rounded border text-sm transition-colors ${
               brushValue === opt.value
                 ? "border-white bg-gray-600"
                 : "border-gray-600 hover:border-gray-400"
@@ -107,7 +108,8 @@ export function MightyMikeAltMapEditorPanel() {
       </div>
 
       <p className="text-xs text-gray-500">
-        Click or drag on the map canvas to paint. The alt-map overlay shows colored arrows.
+        Click or drag on the map canvas to paint. The alt-map overlay shows
+        colored arrows.
       </p>
     </div>
   );

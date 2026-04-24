@@ -8,6 +8,8 @@ import {
   type ModelSourceKind,
 } from "@/components/AnimationViewer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -20,11 +22,14 @@ import {
 } from "@/components/ui/resizable";
 import { ResultAsync, err, ok } from "neverthrow";
 
-import { BG3D_EXPORT_TARGETS, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
+import {
+  BG3D_EXPORT_TARGETS,
+  getBG3DExportTarget,
+} from "@/modelParsers/bg3dExportTargets";
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast, Toaster } from "sonner";
-import { AnimationMixer, Group } from "three";
+import { AnimationMixer, Group, SkinnedMesh } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
@@ -72,14 +77,18 @@ export function ModelViewer() {
   const [boneRotation, setBoneRotation] = useState<
     [number, number, number, number] | null
   >(null);
-  const [boneScale, setBoneScale] = useState<
-    [number, number, number] | null
-  >(null);
-  const [gizmoMode, setGizmoMode] = useState<import("@/components/model-viewer/types").GizmoMode>("translate");
+  const [boneScale, setBoneScale] = useState<[number, number, number] | null>(
+    null,
+  );
+  const [gizmoMode, setGizmoMode] =
+    useState<import("@/components/model-viewer/types").GizmoMode>("translate");
   const [uploadStep, setUploadStep] = useState<UploadStep>("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
+  const [showSkeletonOverlay, setShowSkeletonOverlay] =
+    useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
+  const [boneRenameInput, setBoneRenameInput] = useState<string>("");
   const latestAnimationsRef = useRef<AnimationInfo[]>([]);
   const animationPersistRequestIdRef = useRef(0);
   const hasAnimations = animations.length > 0;
@@ -150,7 +159,9 @@ export function ModelViewer() {
     }
 
     setPendingBg3dFile(file);
-    setModelSourceKind(file.name.toLowerCase().endsWith(".3dmf") ? "3dmf" : "bg3d");
+    setModelSourceKind(
+      file.name.toLowerCase().endsWith(".3dmf") ? "3dmf" : "bg3d",
+    );
     setUploadStep("select-skeleton");
   };
 
@@ -173,7 +184,11 @@ export function ModelViewer() {
     const files = Array.from(e.dataTransfer.files);
     const modelFile = files.find((file) => {
       const name = file.name.toLowerCase();
-      return name.endsWith(".bg3d") || name.endsWith(".3dmf") || name.endsWith(".glb");
+      return (
+        name.endsWith(".bg3d") ||
+        name.endsWith(".3dmf") ||
+        name.endsWith(".glb")
+      );
     });
     const skeletonFile = files.find((file) =>
       file.name.toLowerCase().endsWith(".skeleton.rsrc"),
@@ -220,7 +235,9 @@ export function ModelViewer() {
 
       const exporter = new GLTFExporter();
       const exportScene = prepareSceneForAnimationExport(scene);
-      const animationsToExport = animationInfos.map((animation) => animation.clip);
+      const animationsToExport = animationInfos.map(
+        (animation) => animation.clip,
+      );
 
       const exportedResult = await ResultAsync.fromPromise(
         new Promise<ArrayBuffer>((resolve, reject) => {
@@ -232,7 +249,9 @@ export function ModelViewer() {
                 return;
               }
               reject(
-                new Error("GLTFExporter returned JSON output instead of GLB bytes"),
+                new Error(
+                  "GLTFExporter returned JSON output instead of GLB bytes",
+                ),
               );
             },
             (error) => {
@@ -305,7 +324,8 @@ export function ModelViewer() {
 
       const requestId = ++animationPersistRequestIdRef.current;
 
-      const exportedBufferResult = await exportSceneWithAnimations(animationInfos);
+      const exportedBufferResult =
+        await exportSceneWithAnimations(animationInfos);
       if (exportedBufferResult.isErr()) {
         console.error(
           "Failed to export animation edits to GLB",
@@ -338,7 +358,7 @@ export function ModelViewer() {
       const normalizedBufferResult = await ResultAsync.fromPromise(
         normalizeGlbBuffer(bufferWithEventsResult.value),
         mapErr,
-        );
+      );
       if (normalizedBufferResult.isErr()) {
         console.error(
           "Failed to normalize animation-edited GLB",
@@ -372,7 +392,7 @@ export function ModelViewer() {
       const metadataResult = await ResultAsync.fromPromise(
         extractAnimationMetadataFromGlb(normalizedBuffer),
         mapErr,
-        );
+      );
       if (metadataResult.isOk()) {
         setGltfAnimationMetadata(metadataResult.value);
       }
@@ -464,10 +484,187 @@ export function ModelViewer() {
 
   const handleBoneSelectionChange = useCallback((boneName: string | null) => {
     setSelectedBoneName(boneName);
+    setBoneRenameInput(boneName ?? "");
     setBoneTransform(null);
     setBoneRotation(null);
     setBoneScale(null);
   }, []);
+
+  const handleRenameSelectedBone = useCallback(() => {
+    if (!scene || !selectedBoneName) {
+      toast.error("Select a bone before renaming");
+      return;
+    }
+    const nextName = boneRenameInput.trim();
+    if (!nextName) {
+      toast.error("Bone name cannot be empty");
+      return;
+    }
+    if (nextName === selectedBoneName) {
+      return;
+    }
+
+    let renamed = false;
+    scene.traverse((object) => {
+      if (object.name === selectedBoneName) {
+        object.name = nextName;
+        renamed = true;
+      }
+    });
+
+    if (!renamed) {
+      toast.error("Selected bone was not found in the loaded model");
+      return;
+    }
+
+    setAnimations((currentAnimations) =>
+      currentAnimations.map((animation) => {
+        const cloned = animation.clip.clone();
+        cloned.tracks.forEach((track) => {
+          if (track.name.startsWith(`${selectedBoneName}.`)) {
+            track.name = `${nextName}.${track.name.slice(selectedBoneName.length + 1)}`;
+          }
+        });
+        return {
+          ...animation,
+          clip: cloned,
+        };
+      }),
+    );
+    latestAnimationsRef.current = latestAnimationsRef.current.map(
+      (animation) => {
+        const cloned = animation.clip.clone();
+        cloned.tracks.forEach((track) => {
+          if (track.name.startsWith(`${selectedBoneName}.`)) {
+            track.name = `${nextName}.${track.name.slice(selectedBoneName.length + 1)}`;
+          }
+        });
+        return {
+          ...animation,
+          clip: cloned,
+        };
+      },
+    );
+
+    setBg3dParsed((currentParsed) => {
+      if (!currentParsed?.skeleton?.bones) {
+        return currentParsed;
+      }
+      return {
+        ...currentParsed,
+        skeleton: {
+          ...currentParsed.skeleton,
+          bones: currentParsed.skeleton.bones.map((bone) =>
+            bone.name === selectedBoneName ? { ...bone, name: nextName } : bone,
+          ),
+        },
+      };
+    });
+
+    setModelNodes((currentNodes) => {
+      const renameNode = (node: ModelNode): ModelNode => ({
+        ...node,
+        name: node.name === selectedBoneName ? nextName : node.name,
+        children: node.children?.map(renameNode),
+      });
+      return currentNodes.map(renameNode);
+    });
+
+    setSelectedBoneName(nextName);
+    toast.success(`Renamed bone '${selectedBoneName}' to '${nextName}'`);
+  }, [boneRenameInput, scene, selectedBoneName]);
+
+  const boneInfluenceRows = useMemo(() => {
+    if (!scene) {
+      return [] as Array<{
+        boneName: string;
+        vertexCount: number;
+        weightedSum: number;
+      }>;
+    }
+
+    const totals = new Map<
+      string,
+      { vertexCount: number; weightedSum: number }
+    >();
+
+    scene.traverse((object) => {
+      if (!(object instanceof SkinnedMesh) || !object.skeleton) {
+        return;
+      }
+      const geometry = object.geometry;
+      if (!geometry) {
+        return;
+      }
+
+      const skinIndex = geometry.getAttribute("skinIndex");
+      const skinWeight = geometry.getAttribute("skinWeight");
+      if (!skinIndex || !skinWeight) {
+        return;
+      }
+
+      const vertexCount = Math.min(skinIndex.count, skinWeight.count);
+      for (let vertexIndex = 0; vertexIndex < vertexCount; vertexIndex += 1) {
+        for (let influenceIndex = 0; influenceIndex < 4; influenceIndex += 1) {
+          const weight =
+            influenceIndex === 0
+              ? skinWeight.getX(vertexIndex)
+              : influenceIndex === 1
+                ? skinWeight.getY(vertexIndex)
+                : influenceIndex === 2
+                  ? skinWeight.getZ(vertexIndex)
+                  : skinWeight.getW(vertexIndex);
+          const boneIndex =
+            influenceIndex === 0
+              ? skinIndex.getX(vertexIndex)
+              : influenceIndex === 1
+                ? skinIndex.getY(vertexIndex)
+                : influenceIndex === 2
+                  ? skinIndex.getZ(vertexIndex)
+                  : skinIndex.getW(vertexIndex);
+          if (!Number.isFinite(weight) || weight <= 0) {
+            continue;
+          }
+          const bone = object.skeleton?.bones?.[boneIndex];
+          const boneName = bone?.name;
+          if (!boneName) {
+            continue;
+          }
+          const current = totals.get(boneName) ?? {
+            vertexCount: 0,
+            weightedSum: 0,
+          };
+          current.vertexCount += 1;
+          current.weightedSum += weight;
+          totals.set(boneName, current);
+        }
+      }
+    });
+
+    return Array.from(totals.entries())
+      .map(([boneName, total]) => ({
+        boneName,
+        vertexCount: total.vertexCount,
+        weightedSum: total.weightedSum,
+      }))
+      .sort((a, b) => b.weightedSum - a.weightedSum);
+  }, [scene]);
+
+  const displayedBoneInfluenceRows = useMemo(() => {
+    if (!selectedBoneName) {
+      return boneInfluenceRows;
+    }
+    const selectedRow = boneInfluenceRows.find(
+      (row) => row.boneName === selectedBoneName,
+    );
+    if (!selectedRow) {
+      return boneInfluenceRows;
+    }
+    return [
+      selectedRow,
+      ...boneInfluenceRows.filter((row) => row.boneName !== selectedBoneName),
+    ];
+  }, [boneInfluenceRows, selectedBoneName]);
 
   const handleAnimationEventsChange = useCallback(
     async (animationIndex: number, events: AnimationEvent[]) => {
@@ -488,14 +685,15 @@ export function ModelViewer() {
           ...bg3dParsed,
           skeleton: {
             ...bg3dParsed.skeleton,
-            animations: bg3dParsed.skeleton.animations.map((animation, index) =>
-              index === animationIndex
-                ? {
-                    ...animation,
-                    numAnimEvents: nextEvents.length,
-                    events: nextEvents,
-                  }
-                : animation,
+            animations: bg3dParsed.skeleton.animations.map(
+              (animation, index) =>
+                index === animationIndex
+                  ? {
+                      ...animation,
+                      numAnimEvents: nextEvents.length,
+                      events: nextEvents,
+                    }
+                  : animation,
             ),
           },
         };
@@ -583,11 +781,7 @@ export function ModelViewer() {
       }
 
       const updatedBufferResult = await ResultAsync.fromPromise(
-        updateGlbAnimationEvents(
-          gltfBuffer,
-          animationIndex,
-          nextEvents,
-        ),
+        updateGlbAnimationEvents(gltfBuffer, animationIndex, nextEvents),
         mapErr,
       );
       if (updatedBufferResult.isErr()) {
@@ -602,7 +796,9 @@ export function ModelViewer() {
         );
         return;
       }
-      const normalizedBuffer = await normalizeGlbBuffer(updatedBufferResult.value.value);
+      const normalizedBuffer = await normalizeGlbBuffer(
+        updatedBufferResult.value.value,
+      );
 
       if (gltfUrl) {
         URL.revokeObjectURL(gltfUrl);
@@ -646,7 +842,10 @@ export function ModelViewer() {
       );
       if (cancelled) return;
       if (result.isErr()) {
-        console.warn("Failed to extract animation metadata from GLB", result.error);
+        console.warn(
+          "Failed to extract animation metadata from GLB",
+          result.error,
+        );
         if (!cancelled) setGltfAnimationMetadata({});
         return;
       }
@@ -672,7 +871,10 @@ export function ModelViewer() {
         },
         {} as Record<
           string,
-          { eventCount: number; events: { time: number; type: number; value: number }[] }
+          {
+            eventCount: number;
+            events: { time: number; type: number; value: number }[];
+          }
         >,
       );
     }
@@ -798,6 +1000,11 @@ export function ModelViewer() {
     setModelNodes([]);
     setModelBaseName("model");
     setScene(undefined);
+    setWireframeMode(false);
+    setShowSkeletonOverlay(false);
+    setLogBonePositions(false);
+    setSelectedBoneName(null);
+    setBoneRenameInput("");
     setUploadStep("select-bg3d");
     setPendingBg3dFile(null);
     setModelSessionId((current) => current + 1);
@@ -846,10 +1053,86 @@ export function ModelViewer() {
                   <VisualizationOptions
                     wireframeMode={wireframeMode}
                     setWireframeMode={setWireframeMode}
+                    showSkeleton={showSkeletonOverlay}
+                    setShowSkeleton={setShowSkeletonOverlay}
                     logBonePositions={logBonePositions}
                     setLogBonePositions={setLogBonePositions}
                     hasAnimations={hasAnimations}
                   />
+                )}
+
+                {gltfUrl && hasAnimations && (
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white text-sm">
+                        Bone Tools
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-400">
+                          Selected Bone
+                        </label>
+                        <Input
+                          value={boneRenameInput}
+                          onChange={(e) => setBoneRenameInput(e.target.value)}
+                          placeholder="Select a bone in Animation Viewer"
+                          disabled={!selectedBoneName}
+                        />
+                        <Button
+                          onClick={handleRenameSelectedBone}
+                          disabled={
+                            !selectedBoneName || !boneRenameInput.trim()
+                          }
+                          className="w-full"
+                          size="sm"
+                        >
+                          Rename Bone
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-400">
+                          Bone-Vertex Influence Summary
+                        </p>
+                        <div className="max-h-44 overflow-y-auto rounded border border-gray-700">
+                          {displayedBoneInfluenceRows.length === 0 ? (
+                            <div className="p-2 text-xs text-gray-500">
+                              No skinning weights found.
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-gray-700">
+                              {displayedBoneInfluenceRows
+                                .slice(0, 120)
+                                .map((row) => (
+                                  <div
+                                    key={row.boneName}
+                                    className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1 text-xs ${
+                                      row.boneName === selectedBoneName
+                                        ? "bg-blue-900/30"
+                                        : ""
+                                    }`}
+                                  >
+                                    <span
+                                      className="truncate"
+                                      title={row.boneName}
+                                    >
+                                      {row.boneName}
+                                    </span>
+                                    <span className="text-gray-300">
+                                      vtx {row.vertexCount}
+                                    </span>
+                                    <span className="text-gray-400">
+                                      w {row.weightedSum.toFixed(1)}
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Model Hierarchy — visibility toggles + poly counts */}
@@ -905,14 +1188,16 @@ export function ModelViewer() {
                           </p>
                           <div className="text-xs text-gray-500 space-y-1">
                             <p>
-                              • Some BG3D models may not contain extractable textures
+                              • Some BG3D models may not contain extractable
+                              textures
                             </p>
                             <p>
-                              • Textures may be embedded differently or compressed
+                              • Textures may be embedded differently or
+                              compressed
                             </p>
                             <p>
-                              • Try a different model format if texture editing is
-                              needed
+                              • Try a different model format if texture editing
+                              is needed
                             </p>
                           </div>
                         </div>
@@ -921,8 +1206,8 @@ export function ModelViewer() {
                   </Card>
                 )}
               </div>
-             </div>
-           </ResizablePanel>
+            </div>
+          </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
             <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">
@@ -935,7 +1220,7 @@ export function ModelViewer() {
                     onSceneReady={setScene}
                     onAnimationsReady={handleAnimationsReady}
                     wireframeMode={wireframeMode}
-                    showSkeleton={wireframeMode && hasAnimations}
+                    showSkeleton={showSkeletonOverlay && hasAnimations}
                     logBonePositions={logBonePositions}
                     selectedBoneName={hasAnimations ? selectedBoneName : null}
                     onBoneTransformChange={handleBoneTransformChange}

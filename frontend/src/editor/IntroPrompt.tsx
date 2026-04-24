@@ -53,6 +53,7 @@ import {
   GAME_PORT_CONFIGS,
   inferPreviewLevelFromFilename,
 } from "./utils/gamePortConfig";
+import { MIGHTY_MIKE_LEVELS } from "./utils/mightyMikeLevelNumbers";
 import { buildPreviewTerrainBlobs } from "@/data/saveMap/saveMap";
 import {
   editorNavbarActionsAtom,
@@ -63,6 +64,13 @@ import { serializeNanosaurTerrainTextures } from "@/data/processors/classicPropr
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getCanonicalMightyMikeFilename(fileName: string): string {
+  const match = MIGHTY_MIKE_LEVELS.find(
+    (level) => level.terrainFile.toLowerCase() === fileName.toLowerCase(),
+  );
+  return match?.terrainFile ?? fileName;
 }
 
 export interface DataHistory {
@@ -113,9 +121,15 @@ export function IntroPrompt() {
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [newMapConfirmOpen, setNewMapConfirmOpen] = useState(false);
   const [previewLevelNumber, setPreviewLevelNumber] = useState(0);
-  const [terrainDataBytes, setTerrainDataBytes] = useState<Uint8Array | null | undefined>(undefined);
-  const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<Uint8Array | null | undefined>(undefined);
-  const [terrainTextureBytes, setTerrainTextureBytes] = useState<Uint8Array | null | undefined>(undefined);
+  const [terrainDataBytes, setTerrainDataBytes] = useState<
+    Uint8Array | null | undefined
+  >(undefined);
+  const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<
+    Uint8Array | null | undefined
+  >(undefined);
+  const [terrainTextureBytes, setTerrainTextureBytes] = useState<
+    Uint8Array | null | undefined
+  >(undefined);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -234,7 +248,10 @@ export function IntroPrompt() {
   useEffect(() => {
     if (!mapFile) return;
     const portConfig = GAME_PORT_CONFIGS[globals.GAME_TYPE];
-    const inferred = inferPreviewLevelFromFilename(globals.GAME_TYPE, mapFile.name);
+    const inferred = inferPreviewLevelFromFilename(
+      globals.GAME_TYPE,
+      mapFile.name,
+    );
     const level = inferred ?? portConfig?.defaultLevel ?? 0;
     Promise.resolve().then(() => setPreviewLevelNumber(level));
   }, [mapFile, globals.GAME_TYPE]);
@@ -414,7 +431,11 @@ export function IntroPrompt() {
 
     const downloadLink = document.createElement("a");
     downloadLink.href = mapUrl;
-    downloadLink.setAttribute("download", mapFile.name);
+    const mapDownloadName =
+      globals.GAME_TYPE === Game.MIGHTY_MIKE
+        ? getCanonicalMightyMikeFilename(mapFile.name)
+        : mapFile.name;
+    downloadLink.setAttribute("download", mapDownloadName);
     downloadLink.click();
 
     // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
@@ -649,6 +670,13 @@ export function IntroPrompt() {
       return;
     }
     const combinedData = prepareDownloadData(combinedDataResult.value, globals);
+    console.info("[GamePreview] Preparing preview level data", {
+      game: globals.GAME_NAME,
+      dataType: globals.DATA_TYPE,
+      levelNumber: previewLevelNumber,
+      hasMapImages: Boolean(mapImages?.length),
+      mapImagesCount: mapImages?.length ?? 0,
+    });
     // Reset bytes to undefined (loading sentinel) and open the dialog immediately so
     // the user sees the level selector without any delay.  Serialization (including
     // async LZSS compression for STANDARD games) runs in the background.  The
@@ -657,21 +685,44 @@ export function IntroPrompt() {
     setTerrainRsrcBytes(undefined);
     setTerrainTextureBytes(undefined);
     setTestDialogOpen(true);
-    void buildPreviewTerrainBlobs(combinedData, globals, mapImages).then((blobs) => {
-      if (!blobs) {
+    void buildPreviewTerrainBlobs(combinedData, globals, mapImages)
+      .then((blobs) => {
+        if (!blobs) {
+          console.error("[GamePreview] Preview serialization returned no bytes", {
+            game: globals.GAME_NAME,
+            dataType: globals.DATA_TYPE,
+          });
+          toast.error("Preview failed", {
+            description: "Could not serialize the selected level for preview.",
+          });
+          setTerrainDataBytes(null);
+          setTerrainRsrcBytes(null);
+          setTerrainTextureBytes(null);
+          return;
+        }
+        console.info("[GamePreview] Preview level data serialized", {
+          game: globals.GAME_NAME,
+          dataBytes: blobs.dataBytes?.byteLength ?? null,
+          rsrcBytes: blobs.rsrcBytes?.byteLength ?? null,
+          textureBytes: blobs.textureBytes?.byteLength ?? null,
+        });
+        setTerrainDataBytes(blobs.dataBytes);
+        setTerrainRsrcBytes(blobs.rsrcBytes);
+        setTerrainTextureBytes(blobs.textureBytes);
+      })
+      .catch((error: unknown) => {
+        console.error("[GamePreview] Preview serialization failed", error);
         toast.error("Preview failed", {
-          description: "Could not serialize the selected level for preview.",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Could not serialize the selected level for preview.",
         });
         setTerrainDataBytes(null);
         setTerrainRsrcBytes(null);
         setTerrainTextureBytes(null);
-        return;
-      }
-      setTerrainDataBytes(blobs.dataBytes);
-      setTerrainRsrcBytes(blobs.rsrcBytes);
-      setTerrainTextureBytes(blobs.textureBytes);
-    });
-  }, [getCurrentAtomicData, globals, mapImages]);
+      });
+  }, [getCurrentAtomicData, globals, mapImages, previewLevelNumber]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {

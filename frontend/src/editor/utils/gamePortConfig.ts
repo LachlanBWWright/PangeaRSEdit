@@ -316,7 +316,9 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     terrain: {
-      getDataPath: (f) => `/Data/Terrain/${f}`,
+      getDataPath: (f) => `/Data/Maps/${f}`,
+      setPathFn: "Boot_SetCustomMapPath",
+      getSetPathArg: (f) => `:Maps:${f}`,
     },
     wasmAvailable: true,
   },
