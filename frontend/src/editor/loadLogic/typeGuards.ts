@@ -2,6 +2,16 @@ import { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
 import { RawNanosaurItem, RawNanosaurAttribute } from "./nanosaurInterfaces";
 
+function isTileValid(tile: unknown): boolean {
+  if (!isRecord(tile)) return false;
+  const t = tile;
+  return typeof t.rawValue === "number" && typeof t.tileIndex === "number";
+}
+
+function isMapRowValid(row: unknown): boolean {
+  return Array.isArray(row) && row.every(isTileValid);
+}
+
 /**
  * Type guard to check if an object is a valid Nanosaur1LevelData
  */
@@ -54,20 +64,7 @@ export function isMightyMikeMap(data: unknown): data is MightyMikeMap {
   if (!Array.isArray(d.mapImage)) return false;
 
   // mapImage should be a 2D array of tile value objects with numeric fields
-  if (
-    !d.mapImage.every(
-      (row: unknown) =>
-        Array.isArray(row) &&
-        row.every((tile: unknown) => {
-          if (!isRecord(tile)) return false;
-          const t = tile; // narrowed by isRecord(tile)
-          return (
-            typeof t.rawValue === "number" && typeof t.tileIndex === "number"
-          );
-        }),
-    )
-  )
-    return false;
+  if (!d.mapImage.every(isMapRowValid)) return false;
 
   return true;
 }

@@ -59,18 +59,24 @@ export async function parseLevelDataFile(
 
   // For RSRC_FORK (Bugdom 1), tile images are embedded in the Timg resource.
   // Extract them here so the editor always displays tiles after a file upload.
-  if (result.isOk() && gameType.DATA_TYPE === DataType.RSRC_FORK && setMapImages) {
+  if (
+    result.isOk() &&
+    gameType.DATA_TYPE === DataType.RSRC_FORK &&
+    setMapImages
+  ) {
     const levelData = result.value;
     const timg = isRecord(levelData.Timg) ? levelData.Timg : undefined;
     const timg1000 = timg && isRecord(timg["1000"]) ? timg["1000"] : undefined;
-    const imgHex = typeof timg1000?.data === "string" ? timg1000.data : undefined;
+    const imgHex =
+      typeof timg1000?.data === "string" ? timg1000.data : undefined;
     if (imgHex) {
       const imgBuffer = hexToUint8Array(imgHex);
       const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
       new Uint8Array(alignedBuffer).set(imgBuffer);
       const tileCount = imgBuffer.byteLength / 2 / 32 / 32;
+      const tileView = new DataView(alignedBuffer);
       const tiles = extractTilesFromBuffer(
-        new DataView(alignedBuffer),
+        tileView,
         tileCount,
         32,
         32 * 32 * 2,

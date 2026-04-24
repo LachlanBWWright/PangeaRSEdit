@@ -9,13 +9,10 @@ export function getParamTooltip(param: ParamDescription | string): string {
     return t;
   }
   if (param && param.type === "Bit Flags" && Array.isArray(param.flags)) {
-    return param.flags
-      .map(
-        (f) =>
-          `${f.index}: ${f.description}` +
-          (f.defaultCitation.code ? `\nExample: ${f.defaultCitation.code}` : ""),
-      )
-      .join("\n\n");
+    const fmt = (f: (typeof param.flags)[number]) =>
+      `${f.index}: ${f.description}` +
+      (f.defaultCitation.code ? `\nExample: ${f.defaultCitation.code}` : "");
+    return param.flags.map(fmt).join("\n\n");
   }
   return "";
 }

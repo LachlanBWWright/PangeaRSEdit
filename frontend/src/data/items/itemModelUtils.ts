@@ -1,13 +1,13 @@
 /**
  * Item Model Utilities
- * 
+ *
  * Utility functions for working with item model mappings across all games.
  * Provides analysis, validation, and report generation functionality.
  */
 
 import { Game } from "@/data/globals/globals";
-import { 
-  getGameMapper, 
+import {
+  getGameMapper,
   getGamesWithMappers,
   getTotalMappedItems,
   getMapperCoverageSummary,
@@ -16,25 +16,54 @@ import { UniversalItemModelMapping, ItemCategory } from "./itemModelTypes";
 import { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
 
+function validateVariants(
+  mapping: UniversalItemModelMapping,
+  itemType: number,
+  issues: string[],
+): void {
+  if (!mapping.variants) return;
+  for (const [key, variant] of Object.entries(mapping.variants)) {
+    if (variant.modelIndex < 0)
+      issues.push(`Item type ${itemType} variant ${key}: Invalid modelIndex`);
+  }
+}
+
+function collectVariantFiles(
+  mapping: UniversalItemModelMapping,
+  modelFiles: Set<string>,
+  skeletonFiles: Set<string>,
+): void {
+  if (!mapping.variants) return;
+  for (const variant of Object.values(mapping.variants)) {
+    if (!variant.modelFile) continue;
+    const targetSet =
+      mapping.modelPath === "skeletons" ? skeletonFiles : modelFiles;
+    targetSet.add(variant.modelFile);
+  }
+}
+
 /**
  * Get a summary of all mapped items for a specific game
  */
-export function getGameMappingSummary(game: Game): Result<{
-  game: Game;
-  totalMapped: number;
-  mappingsByCategory: Record<ItemCategory, number>;
-  mappingsWithVariants: number;
-  mappingsWithRotation: number;
-  mappingsWithScale: number;
-  skeletonModels: number;
-}, Error> {
+export function getGameMappingSummary(game: Game): Result<
+  {
+    game: Game;
+    totalMapped: number;
+    mappingsByCategory: Record<ItemCategory, number>;
+    mappingsWithVariants: number;
+    mappingsWithRotation: number;
+    mappingsWithScale: number;
+    skeletonModels: number;
+  },
+  Error
+> {
   const mapper = getGameMapper(game);
   if (!mapper) {
     return err(new Error(`No mapper found for game: ${game}`));
   }
-  
+
   const mappedTypes = mapper.getMappedTypes();
-  
+
   let mappingsWithVariants = 0;
   let mappingsWithRotation = 0;
   let mappingsWithScale = 0;
@@ -48,11 +77,11 @@ export function getGameMappingSummary(game: Game): Result<{
     decoration: 0,
     unknown: 0,
   };
-  
+
   for (const itemType of mappedTypes) {
     const mapping = mapper.getMapping(itemType);
     if (!mapping) continue;
-    
+
     if (mapping.variants && Object.keys(mapping.variants).length > 0) {
       mappingsWithVariants++;
     }
@@ -65,7 +94,7 @@ export function getGameMappingSummary(game: Game): Result<{
     if (mapping.requiresSkeleton) {
       skeletonModels++;
     }
-    
+
     // Categorize based on model path
     if (mapping.modelPath === "skeletons") {
       mappingsByCategory.enemy++;
@@ -75,7 +104,7 @@ export function getGameMappingSummary(game: Game): Result<{
       mappingsByCategory.environmental++;
     }
   }
-  
+
   return ok({
     game,
     totalMapped: mappedTypes.length,
@@ -90,68 +119,71 @@ export function getGameMappingSummary(game: Game): Result<{
 /**
  * Validate all mappings for a game
  */
-export function validateGameMappings(game: Game): Result<{
-  valid: boolean;
-  issues: string[];
-  warnings: string[];
-}, Error> {
+export function validateGameMappings(game: Game): Result<
+  {
+    valid: boolean;
+    issues: string[];
+    warnings: string[];
+  },
+  Error
+> {
   const mapper = getGameMapper(game);
   if (!mapper) {
     return err(new Error(`No mapper found for game: ${game}`));
   }
-  
+
   const issues: string[] = [];
   const warnings: string[] = [];
   const mappedTypes = mapper.getMappedTypes();
-  
+
   for (const itemType of mappedTypes) {
     const mapping = mapper.getMapping(itemType);
     if (!mapping) {
       issues.push(`Item type ${itemType}: Mapping returned undefined`);
       continue;
     }
-    
+
     // Validate model file exists (path check)
     if (!mapping.modelFile) {
       issues.push(`Item type ${itemType}: Missing modelFile`);
     }
-    
+
     // Validate model index
     if (mapping.modelIndex < 0) {
-      issues.push(`Item type ${itemType}: Invalid modelIndex (${mapping.modelIndex})`);
+      issues.push(
+        `Item type ${itemType}: Invalid modelIndex (${mapping.modelIndex})`,
+      );
     }
-    
+
     // Validate scale if present
     if (mapping.scale !== undefined && mapping.scale <= 0) {
-      warnings.push(`Item type ${itemType}: Scale is ${mapping.scale} (might be intentional for inverted models)`);
+      warnings.push(
+        `Item type ${itemType}: Scale is ${mapping.scale} (might be intentional for inverted models)`,
+      );
     }
-    
+
     // Validate variants if present
-    if (mapping.variants) {
-      for (const [key, variant] of Object.entries(mapping.variants)) {
-        if (variant.modelIndex < 0) {
-          issues.push(`Item type ${itemType} variant ${key}: Invalid modelIndex`);
-        }
-      }
-    }
-    
+    validateVariants(mapping, itemType, issues);
+
     // Validate rotation param if present
     if (mapping.rotationParam) {
       const paramIndex = mapping.rotationParam.paramIndex;
-      if (paramIndex < 0 || paramIndex > 3) {
-        issues.push(`Item type ${itemType}: Invalid rotation paramIndex (${paramIndex})`);
-      }
+      if (paramIndex < 0 || paramIndex > 3)
+        issues.push(
+          `Item type ${itemType}: Invalid rotation paramIndex (${paramIndex})`,
+        );
     }
-    
+
     // Validate scale param if present
     if (mapping.scaleParam) {
       const paramIndex = mapping.scaleParam.paramIndex;
-      if (paramIndex < 0 || paramIndex > 3) {
-        issues.push(`Item type ${itemType}: Invalid scale paramIndex (${paramIndex})`);
-      }
+      if (paramIndex < 0 || paramIndex > 3)
+        issues.push(
+          `Item type ${itemType}: Invalid scale paramIndex (${paramIndex})`,
+        );
     }
   }
-  
+
   return ok({
     valid: issues.length === 0,
     issues,
@@ -162,86 +194,82 @@ export function validateGameMappings(game: Game): Result<{
 /**
  * Find duplicate model mappings within a game
  */
-export function findDuplicateMappings(game: Game): Result<{
-  duplicates: {
-    modelKey: string;
-    itemTypes: number[];
-  }[];
-}, Error> {
+export function findDuplicateMappings(game: Game): Result<
+  {
+    duplicates: {
+      modelKey: string;
+      itemTypes: number[];
+    }[];
+  },
+  Error
+> {
   const mapper = getGameMapper(game);
   if (!mapper) {
     return err(new Error(`No mapper found for game: ${game}`));
   }
-  
+
   const modelKeyToTypes = new Map<string, number[]>();
   const mappedTypes = mapper.getMappedTypes();
-  
+
   for (const itemType of mappedTypes) {
     const mapping = mapper.getMapping(itemType);
     if (!mapping) continue;
-    
+
     const modelKey = `${mapping.modelFile}:${mapping.modelIndex}`;
     const types = modelKeyToTypes.get(modelKey) || [];
     types.push(itemType);
     modelKeyToTypes.set(modelKey, types);
   }
-  
+
   const duplicates: { modelKey: string; itemTypes: number[] }[] = [];
-  
+
   for (const [modelKey, itemTypes] of modelKeyToTypes.entries()) {
     if (itemTypes.length > 1) {
       duplicates.push({ modelKey, itemTypes });
     }
   }
-  
+
   return ok({ duplicates });
 }
 
 /**
  * Get all unique model files used by a game
  */
-export function getUniqueModelFiles(game: Game): Result<{
-  modelFiles: string[];
-  skeletonFiles: string[];
-  totalFiles: number;
-}, Error> {
+export function getUniqueModelFiles(game: Game): Result<
+  {
+    modelFiles: string[];
+    skeletonFiles: string[];
+    totalFiles: number;
+  },
+  Error
+> {
   const mapper = getGameMapper(game);
   if (!mapper) {
     return err(new Error(`No mapper found for game: ${game}`));
   }
-  
+
   const modelFiles = new Set<string>();
   const skeletonFiles = new Set<string>();
   const mappedTypes = mapper.getMappedTypes();
-  
+
   for (const itemType of mappedTypes) {
     const mapping = mapper.getMapping(itemType);
     if (!mapping) continue;
-    
+
     if (mapping.modelPath === "skeletons") {
       skeletonFiles.add(mapping.modelFile);
     } else {
       modelFiles.add(mapping.modelFile);
     }
-    
+
     if (mapping.skeletonFile) {
       skeletonFiles.add(mapping.skeletonFile);
     }
-    
+
     // Check variants for different files
-    if (mapping.variants) {
-      for (const variant of Object.values(mapping.variants)) {
-        if (variant.modelFile) {
-          if (mapping.modelPath === "skeletons") {
-            skeletonFiles.add(variant.modelFile);
-          } else {
-            modelFiles.add(variant.modelFile);
-          }
-        }
-      }
-    }
+    collectVariantFiles(mapping, modelFiles, skeletonFiles);
   }
-  
+
   return ok({
     modelFiles: Array.from(modelFiles).sort(),
     skeletonFiles: Array.from(skeletonFiles).sort(),
@@ -258,7 +286,7 @@ export function generateMappingCoverageReport(): string {
   lines.push("");
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push("");
-  
+
   // Summary
   const summary = getMapperCoverageSummary();
   lines.push("## Summary");
@@ -271,16 +299,16 @@ export function generateMappingCoverageReport(): string {
   lines.push("");
   lines.push(`**Total mapped items: ${getTotalMappedItems()}**`);
   lines.push("");
-  
+
   // Per-game details
   lines.push("## Per-Game Details");
   lines.push("");
-  
+
   const gamesWithMappers = getGamesWithMappers();
   for (const game of gamesWithMappers) {
     lines.push(`### ${game}`);
     lines.push("");
-    
+
     const summaryResult = getGameMappingSummary(game);
     if (summaryResult.isOk()) {
       const s = summaryResult.value;
@@ -290,30 +318,25 @@ export function generateMappingCoverageReport(): string {
       lines.push(`- With scale: ${s.mappingsWithScale}`);
       lines.push(`- Skeleton models: ${s.skeletonModels}`);
     }
-    
+
     const filesResult = getUniqueModelFiles(game);
     if (filesResult.isOk()) {
       const f = filesResult.value;
       lines.push(`- Model files: ${f.modelFiles.length}`);
       lines.push(`- Skeleton files: ${f.skeletonFiles.length}`);
     }
-    
+
     const validationResult = validateGameMappings(game);
     if (validationResult.isOk()) {
       const v = validationResult.value;
-      if (v.valid) {
-        lines.push(`- Validation: ✅ All mappings valid`);
-      } else {
-        lines.push(`- Validation: ❌ ${v.issues.length} issues found`);
-      }
-      if (v.warnings.length > 0) {
-        lines.push(`- Warnings: ${v.warnings.length}`);
-      }
+      if (v.valid) lines.push(`- Validation: ✅ All mappings valid`);
+      else lines.push(`- Validation: ❌ ${v.issues.length} issues found`);
+      if (v.warnings.length > 0) lines.push(`- Warnings: ${v.warnings.length}`);
     }
-    
+
     lines.push("");
   }
-  
+
   return lines.join("\n");
 }
 
@@ -329,7 +352,10 @@ export function isItemTypeMapped(game: Game, itemType: number): boolean {
 /**
  * Get the mapping for a specific item type
  */
-export function getItemMapping(game: Game, itemType: number): UniversalItemModelMapping | undefined {
+export function getItemMapping(
+  game: Game,
+  itemType: number,
+): UniversalItemModelMapping | undefined {
   const mapper = getGameMapper(game);
   if (!mapper) return undefined;
   return mapper.getMapping(itemType);

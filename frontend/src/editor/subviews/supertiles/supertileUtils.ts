@@ -1,7 +1,4 @@
-import type {
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/LevelTypes";
+import type { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 
 export const downloadSelectedTile = (
   mapImages: HTMLCanvasElement[],

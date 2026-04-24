@@ -20,6 +20,55 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+interface DiffEntry {
+  path: string;
+  original: unknown;
+  roundtrip: unknown;
+}
+
+function compareValues(
+  obj1: unknown,
+  obj2: unknown,
+  path: string,
+  differences: DiffEntry[],
+): void {
+  if (obj1 === obj2) return;
+  if (typeof obj1 !== typeof obj2) {
+    differences.push({ path, original: obj1, roundtrip: obj2 });
+    return;
+  }
+  if (obj1 === null || obj2 === null) {
+    if (obj1 !== obj2)
+      differences.push({ path, original: obj1, roundtrip: obj2 });
+    return;
+  }
+  if (Array.isArray(obj1) && Array.isArray(obj2)) {
+    if (obj1.length !== obj2.length) {
+      differences.push({
+        path: `${path}.length`,
+        original: obj1.length,
+        roundtrip: obj2.length,
+      });
+    }
+    const maxLen = Math.max(obj1.length, obj2.length);
+    for (let i = 0; i < maxLen; i++)
+      compareValues(obj1[i], obj2[i], `${path}[${i}]`, differences);
+    return;
+  }
+  if (isRecord(obj1) && isRecord(obj2)) {
+    const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+    for (const key of allKeys)
+      compareValues(obj1[key], obj2[key], `${path}.${key}`, differences);
+    return;
+  }
+  if (typeof obj1 === "number" && typeof obj2 === "number") {
+    if (Math.abs(obj1 - obj2) > 0.0001)
+      differences.push({ path, original: obj1, roundtrip: obj2 });
+    return;
+  }
+  differences.push({ path, original: obj1, roundtrip: obj2 });
+}
+
 /**
  * Parse a level data buffer to JSON using rsrcdump-ts
  * This is the core parsing function that wraps the rsrcdump-ts library
@@ -253,73 +302,9 @@ export function compareLevelData(
   equal: boolean;
   differences: { path: string; original: unknown; roundtrip: unknown }[];
 } {
-  const differences: {
-    path: string;
-    original: unknown;
-    roundtrip: unknown;
-  }[] = [];
-
-  function compare(obj1: unknown, obj2: unknown, path: string): void {
-    if (obj1 === obj2) return;
-
-    if (typeof obj1 !== typeof obj2) {
-      differences.push({ path, original: obj1, roundtrip: obj2 });
-      return;
-    }
-
-    if (obj1 === null || obj2 === null) {
-      if (obj1 !== obj2) {
-        differences.push({ path, original: obj1, roundtrip: obj2 });
-      }
-      return;
-    }
-
-    if (Array.isArray(obj1) && Array.isArray(obj2)) {
-      if (obj1.length !== obj2.length) {
-        differences.push({
-          path: `${path}.length`,
-          original: obj1.length,
-          roundtrip: obj2.length,
-        });
-      }
-      const maxLen = Math.max(obj1.length, obj2.length);
-      for (let i = 0; i < maxLen; i++) {
-        compare(obj1[i], obj2[i], `${path}[${i}]`);
-      }
-      return;
-    }
-
-    if (isRecord(obj1) && isRecord(obj2)) {
-      const keys1 = Object.keys(obj1);
-      const keys2 = Object.keys(obj2);
-      const allKeys = new Set([...keys1, ...keys2]);
-
-      for (const key of allKeys) {
-        compare(obj1[key], obj2[key], `${path}.${key}`);
-      }
-      return;
-    }
-
-    // Primitive values
-    if (obj1 !== obj2) {
-      // For numbers, allow small floating point differences
-      if (typeof obj1 === "number" && typeof obj2 === "number") {
-        const diff = Math.abs(obj1 - obj2);
-        if (diff > 0.0001) {
-          differences.push({ path, original: obj1, roundtrip: obj2 });
-        }
-      } else {
-        differences.push({ path, original: obj1, roundtrip: obj2 });
-      }
-    }
-  }
-
-  compare(original, roundtrip, "");
-
-  return {
-    equal: differences.length === 0,
-    differences,
-  };
+  const differences: DiffEntry[] = [];
+  compareValues(original, roundtrip, "", differences);
+  return { equal: differences.length === 0, differences };
 }
 
 /**
@@ -349,9 +334,7 @@ export function compareBuffers(
 
   for (let i = 0; i < minLen; i++) {
     if (view1[i] !== view2[i]) {
-      if (firstDifferenceOffset === null) {
-        firstDifferenceOffset = i;
-      }
+      if (firstDifferenceOffset === null) firstDifferenceOffset = i;
       differenceCount++;
     }
   }

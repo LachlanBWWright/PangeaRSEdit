@@ -1,6 +1,6 @@
 /**
  * Citation Verification Engine
- * 
+ *
  * Verifies that code citations in item parameter definitions match
  * the actual source code in the GitHub repositories.
  */
@@ -9,6 +9,13 @@ import { extractCitations, extractAllCitations } from "./citationExtractor";
 import type { Citation } from "./citationExtractor";
 import { GitHubFileCache } from "./githubFetcher";
 import { GAME_REPOSITORIES } from "./gameRepositories";
+import { compareCode, findCodeInFile } from "./citationVerifierUtils";
+export {
+  normalizeCode,
+  calculateSimilarity,
+  compareCode,
+  findCodeInFile,
+} from "./citationVerifierUtils";
 
 /**
  * Verification status enum
@@ -38,169 +45,45 @@ export interface VerificationResult {
   status: VerificationStatus;
   actualCode?: string;
   actualLineNumber?: number;
-  similarity?: number;  // 0-1 similarity score for partial matches
+  similarity?: number; // 0-1 similarity score for partial matches
   message?: string;
 }
 
-/**
- * Normalize code for comparison
- * - Removes leading/trailing whitespace
- * - Normalizes multiple spaces to single space
- * - Removes C-style comments
- * - Trims line-by-line
- */
-export function normalizeCode(code: string): string {
-  return code
-    // Remove C-style block comments
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    // Remove C++ style line comments
-    .replace(/\/\/.*$/gm, '')
-    // Normalize whitespace
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .join('\n')
-    // Normalize multiple spaces
-    .replace(/\s+/g, ' ')
-    .trim();
+function createFetchErrorResult(
+  citation: Citation,
+  error: Error,
+): VerificationResult {
+  if (error.message.includes("not found")) {
+    return {
+      citation,
+      status: VerificationStatus.FILE_NOT_FOUND,
+      message: `File not found: ${citation.citation.fileName}`,
+    };
+  }
+  return {
+    citation,
+    status: VerificationStatus.NETWORK_ERROR,
+    message: error.message,
+  };
 }
 
-/**
- * Calculate similarity between two strings using Levenshtein distance
- * Returns a value between 0 (completely different) and 1 (identical)
- */
-export function calculateSimilarity(str1: string, str2: string): number {
-  if (str1 === str2) return 1;
-  if (str1.length === 0 || str2.length === 0) return 0;
-  
-  const normalized1 = normalizeCode(str1);
-  const normalized2 = normalizeCode(str2);
-  
-  if (normalized1 === normalized2) return 1;
-  
-  // Use a simplified similarity based on common substring ratio
-  const longer = normalized1.length > normalized2.length ? normalized1 : normalized2;
-  const shorter = normalized1.length > normalized2.length ? normalized2 : normalized1;
-  
-  if (longer.length === 0) return 1;
-  
-  // Count matching characters (simplified approach)
-  let matches = 0;
-  const shorterChars = shorter.split('');
-  const longerChars = longer.split('');
-  
-  for (const char of shorterChars) {
-    const idx = longerChars.indexOf(char);
-    if (idx !== -1) {
-      matches++;
-      longerChars.splice(idx, 1);
-    }
+function applyStatusToSummary(
+  summary: VerificationSummary,
+  gameStats: { total: number; verified: number; failures: number },
+  status: VerificationStatus,
+): void {
+  if (status === VerificationStatus.VERIFIED) {
+    summary.verified++;
+    gameStats.verified++;
+    return;
   }
-  
-  return matches / longer.length;
-}
-
-/**
- * Compare citation code with actual source code
- */
-export function compareCode(
-  expected: string,
-  actual: string,
-): { match: boolean; similarity: number } {
-  const normalizedExpected = normalizeCode(expected);
-  const normalizedActual = normalizeCode(actual);
-  
-  // Exact match after normalization
-  if (normalizedExpected === normalizedActual) {
-    return { match: true, similarity: 1 };
-  }
-  
-  // Check if expected is contained in actual (for multi-line snippets)
-  if (normalizedActual.includes(normalizedExpected)) {
-    return { match: true, similarity: 1 };
-  }
-  
-  // Calculate similarity score
-  const similarity = calculateSimilarity(normalizedExpected, normalizedActual);
-  
-  return { match: similarity >= 0.9, similarity };
-}
-
-/**
- * Search for code snippet in a file
- * Returns the line number where the code starts (1-indexed)
- */
-export function findCodeInFile(
-  code: string,
-  fileLines: string[],
-): { lineNumber: number; exactMatch: boolean } | null {
-  const normalizedCode = normalizeCode(code);
-  const codeLines = normalizedCode.split('\n').filter(line => line.length > 0);
-  
-  if (codeLines.length === 0) return null;
-  
-  const firstCodeLine = codeLines[0] ?? "";
-  
-  // Search for match
-  for (let i = 0; i < fileLines.length; i++) {
-    const fileLine = fileLines[i];
-    if (fileLine === undefined) continue;
-    
-    const normalizedFileLine = normalizeCode(fileLine);
-    
-    // Skip empty lines in the file
-    if (normalizedFileLine.length === 0) continue;
-    
-    // Check if this line contains the first line of the code sample
-    // Be stricter: require at least partial word match
-    const isMatch = normalizedFileLine.includes(firstCodeLine) || 
-                    firstCodeLine.includes(normalizedFileLine);
-    
-    if (!isMatch) continue;
-    
-    // For single-line samples, this is a match
-    if (codeLines.length === 1) {
-      return { lineNumber: i + 1, exactMatch: normalizedFileLine === firstCodeLine };
-    }
-    
-    // For multi-line samples, check subsequent lines
-    let allMatch = true;
-    let fileLineIndex = i + 1;
-    
-    for (let j = 1; j < codeLines.length; j++) {
-      const expectedLine = codeLines[j] ?? "";
-      
-      // Skip empty file lines
-      while (fileLineIndex < fileLines.length) {
-        const checkLine = fileLines[fileLineIndex];
-        if (checkLine !== undefined && normalizeCode(checkLine).length > 0) break;
-        fileLineIndex++;
-      }
-      
-      if (fileLineIndex >= fileLines.length) {
-        allMatch = false;
-        break;
-      }
-      
-      const actualFileLine = fileLines[fileLineIndex];
-      if (actualFileLine === undefined) {
-        allMatch = false;
-        break;
-      }
-      const actualLine = normalizeCode(actualFileLine);
-      if (!actualLine.includes(expectedLine) && !expectedLine.includes(actualLine)) {
-        allMatch = false;
-        break;
-      }
-      fileLineIndex++;
-    }
-    
-    if (allMatch) {
-      return { lineNumber: i + 1, exactMatch: true };
-    }
-  }
-  
-  return null;
+  gameStats.failures++;
+  if (status === VerificationStatus.PARTIAL_MATCH) summary.partialMatches++;
+  else if (status === VerificationStatus.CODE_CHANGED) summary.codeChanged++;
+  else if (status === VerificationStatus.FILE_NOT_FOUND) summary.fileNotFound++;
+  else if (status === VerificationStatus.LINE_NOT_FOUND) summary.lineNotFound++;
+  else if (status === VerificationStatus.NETWORK_ERROR) summary.networkErrors++;
+  else if (status === VerificationStatus.NO_REPOSITORY) summary.noRepository++;
 }
 
 /**
@@ -218,33 +101,24 @@ export async function verifyCitation(
       message: `No known repository for game: ${citation.game}`,
     };
   }
-  
+
   // Calculate the end line (estimate based on code length)
-  const codeLineCount = citation.citation.code.split('\n').length;
+  const codeLineCount = citation.citation.code.split("\n").length;
   const startLine = citation.citation.lineNumber;
   const endLine = startLine + codeLineCount + 5; // Add some buffer
-  
+
   // Fetch the file
-  const fileResult = await cache.getGameFile(citation.game, citation.citation.fileName);
-  
+  const fileResult = await cache.getGameFile(
+    citation.game,
+    citation.citation.fileName,
+  );
+
   if (fileResult.isErr()) {
-    const error = fileResult.error;
-    if (error.message.includes('not found')) {
-      return {
-        citation,
-        status: VerificationStatus.FILE_NOT_FOUND,
-        message: `File not found: ${citation.citation.fileName}`,
-      };
-    }
-    return {
-      citation,
-      status: VerificationStatus.NETWORK_ERROR,
-      message: error.message,
-    };
+    return createFetchErrorResult(citation, fileResult.error);
   }
-  
+
   const { lines: fileLines, totalLines } = fileResult.value;
-  
+
   // Check if line number is valid
   if (startLine > totalLines) {
     return {
@@ -253,15 +127,15 @@ export async function verifyCitation(
       message: `Line ${startLine} exceeds file length ${totalLines}`,
     };
   }
-  
+
   // Get the actual code at the specified line
   const actualEndLine = Math.min(endLine, totalLines);
   const actualLines = fileLines.slice(startLine - 1, actualEndLine);
-  const actualCode = actualLines.join('\n');
-  
+  const actualCode = actualLines.join("\n");
+
   // Compare the code
   const comparison = compareCode(citation.citation.code, actualCode);
-  
+
   if (comparison.match) {
     return {
       citation,
@@ -271,21 +145,26 @@ export async function verifyCitation(
       similarity: comparison.similarity,
     };
   }
-  
+
   // Code doesn't match - search the entire file
   const foundLocation = findCodeInFile(citation.citation.code, fileLines);
-  
+
   if (foundLocation) {
     return {
       citation,
       status: VerificationStatus.PARTIAL_MATCH,
-      actualCode: fileLines.slice(foundLocation.lineNumber - 1, foundLocation.lineNumber + codeLineCount).join('\n'),
+      actualCode: fileLines
+        .slice(
+          foundLocation.lineNumber - 1,
+          foundLocation.lineNumber + codeLineCount,
+        )
+        .join("\n"),
       actualLineNumber: foundLocation.lineNumber,
       similarity: foundLocation.exactMatch ? 1 : comparison.similarity,
       message: `Code found at line ${foundLocation.lineNumber} instead of ${startLine}`,
     };
   }
-  
+
   // Code not found anywhere
   return {
     citation,
@@ -306,19 +185,19 @@ export async function verifyGameCitations(
 ): Promise<VerificationResult[]> {
   const citations = extractCitations(game);
   const results: VerificationResult[] = [];
-  
+
   for (let i = 0; i < citations.length; i++) {
     const citation = citations[i];
     if (!citation) continue;
-    
+
     const result = await verifyCitation(citation, cache);
     results.push(result);
-    
+
     if (progressCallback) {
       progressCallback(i + 1, citations.length);
     }
   }
-  
+
   return results;
 }
 
@@ -331,18 +210,18 @@ export async function verifyAllCitations(
 ): Promise<VerificationResult[]> {
   const allCitations = extractAllCitations();
   const results: VerificationResult[] = [];
-  
+
   let currentIndex = 0;
   for (const citation of allCitations) {
     const result = await verifyCitation(citation, cache);
     results.push(result);
     currentIndex++;
-    
+
     if (progressCallback) {
       progressCallback(currentIndex, allCitations.length, citation.game);
     }
   }
-  
+
   return results;
 }
 
@@ -358,17 +237,22 @@ export interface VerificationSummary {
   lineNotFound: number;
   networkErrors: number;
   noRepository: number;
-  byGame: Record<string, {
-    total: number;
-    verified: number;
-    failures: number;
-  }>;
+  byGame: Record<
+    string,
+    {
+      total: number;
+      verified: number;
+      failures: number;
+    }
+  >;
 }
 
 /**
  * Summarize verification results
  */
-export function summarizeResults(results: VerificationResult[]): VerificationSummary {
+export function summarizeResults(
+  results: VerificationResult[],
+): VerificationSummary {
   const summary: VerificationSummary = {
     total: results.length,
     verified: 0,
@@ -380,7 +264,7 @@ export function summarizeResults(results: VerificationResult[]): VerificationSum
     noRepository: 0,
     byGame: {},
   };
-  
+
   for (const result of results) {
     const game = result.citation.game;
     // Update game-specific stats
@@ -390,47 +274,20 @@ export function summarizeResults(results: VerificationResult[]): VerificationSum
       summary.byGame[game] = gameStats;
     }
     gameStats.total++;
-    
-    switch (result.status) {
-      case VerificationStatus.VERIFIED:
-        summary.verified++;
-        gameStats.verified++;
-        break;
-      case VerificationStatus.PARTIAL_MATCH:
-        summary.partialMatches++;
-        gameStats.failures++;
-        break;
-      case VerificationStatus.CODE_CHANGED:
-        summary.codeChanged++;
-        gameStats.failures++;
-        break;
-      case VerificationStatus.FILE_NOT_FOUND:
-        summary.fileNotFound++;
-        gameStats.failures++;
-        break;
-      case VerificationStatus.LINE_NOT_FOUND:
-        summary.lineNotFound++;
-        gameStats.failures++;
-        break;
-      case VerificationStatus.NETWORK_ERROR:
-        summary.networkErrors++;
-        gameStats.failures++;
-        break;
-      case VerificationStatus.NO_REPOSITORY:
-        summary.noRepository++;
-        gameStats.failures++;
-        break;
-    }
+
+    applyStatusToSummary(summary, gameStats, result.status);
   }
-  
+
   return summary;
 }
 
 /**
  * Get failed verifications only
  */
-export function getFailedVerifications(results: VerificationResult[]): VerificationResult[] {
-  return results.filter(r => r.status !== VerificationStatus.VERIFIED);
+export function getFailedVerifications(
+  results: VerificationResult[],
+): VerificationResult[] {
+  return results.filter((r) => r.status !== VerificationStatus.VERIFIED);
 }
 
 /**
@@ -440,5 +297,5 @@ export function getByStatus(
   results: VerificationResult[],
   status: VerificationStatus,
 ): VerificationResult[] {
-  return results.filter(r => r.status === status);
+  return results.filter((r) => r.status === status);
 }

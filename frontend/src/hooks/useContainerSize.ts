@@ -5,6 +5,13 @@ interface ContainerSize {
   height: number;
 }
 
+function readContainerSize(
+  ref: React.RefObject<HTMLDivElement | null>,
+): ContainerSize | null {
+  if (!ref.current) return null;
+  return { width: ref.current.offsetWidth, height: ref.current.offsetHeight };
+}
+
 /**
  * Tracks the pixel dimensions of a DOM element, updating on resize.
  * Uses ResizeObserver when available, otherwise falls back to window resize events.
@@ -21,12 +28,8 @@ export function useContainerSize(
 
   useEffect(() => {
     const updateSize = () => {
-      if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
-      }
+      const size = readContainerSize(containerRef);
+      if (size) setContainerSize(size);
     };
     updateSize();
     if (typeof ResizeObserver !== "undefined") {

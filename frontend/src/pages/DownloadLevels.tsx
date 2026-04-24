@@ -1,303 +1,11 @@
 import { useState } from "react";
-import { Download, ChevronDown, ChevronUp, Gamepad2, Play, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  getGamesByCategory,
-  GAME_KEY_TO_ENUM,
-  ALL_GAME_CONFIGS,
-  type Level,
-} from "@/data/levels";
-import { toast } from "sonner";
-import { zip } from "fflate";
-import { ResultAsync } from "neverthrow";
-import { mapErr } from "@/utils/mapErr";
+import { Download, Gamepad2 } from "lucide-react";
+import { getGamesByCategory, ALL_GAME_CONFIGS } from "@/data/levels";
 import { TestGameDialog } from "@/editor/TestGameDialog";
-import type { Game } from "@/data/globals/globals";
-import { GAME_DISPLAY_NAMES } from "@/editor/utils/gamePreviewRuntime";
 import { GAME_PORT_CONFIGS } from "@/editor/utils/gamePortConfig";
-
-/** Fetch a URL as a Uint8Array using ResultAsync. */
-function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
-  return ResultAsync.fromPromise(
-    fetch(url)
-      .then((resp) => {
-        if (!resp.ok)
-          return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
-        return resp.arrayBuffer();
-      })
-      .then((buf) => new Uint8Array(buf)),
-    mapErr,
-  );
-}
-
-/** Zip files using fflate, returning a ResultAsync. */
-function zipFiles(
-  files: Record<string, Uint8Array<ArrayBuffer>>,
-): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
-  return ResultAsync.fromPromise(
-    new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => {
-      zip(files, (e, data) => {
-        if (e) reject(e);
-        else resolve(data.slice(0));
-      });
-    }),
-    mapErr,
-  );
-}
-
-/** Build a timestamp string suitable for filenames: YYYYMMDD_HHMMSS */
-function fileTimestamp(): string {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
-    `_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-  );
-}
-
-interface LevelCardProps {
-  level: Level;
-  onPlayInBrowser: (
-    game: Game,
-    levelNumber: number,
-    dataBytes: Uint8Array | null,
-    rsrcBytes: Uint8Array | null,
-  ) => void;
-}
-
-function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isFetchingPlay, setIsFetchingPlay] = useState(false);
-
-  const downloadLevel = () => {
-    const fetchPairs: { name: string; url: string }[] = [];
-    if (level.terFile)
-      fetchPairs.push({
-        name: level.terFile.split("/").pop() ?? `${level.id}.ter`,
-        url: level.terFile,
-      });
-    if (level.rsrcFile)
-      fetchPairs.push({
-        name: level.rsrcFile.split("/").pop() ?? `${level.id}.ter.rsrc`,
-        url: level.rsrcFile,
-      });
-
-    if (fetchPairs.length === 0) {
-      toast.error("No downloadable files found for this level");
-      return;
-    }
-
-    const levelNumber = level.category?.replace(/\D/g, "") ?? level.id;
-    const zipName =
-      `${level.gameDisplayName} Level ${levelNumber} (${fileTimestamp()}).zip`.replace(
-        /[/\\:*?"<>|]/g,
-        "_",
-      );
-
-    const fetchAll = ResultAsync.combine(
-      fetchPairs.map(({ name, url }) =>
-        fetchBytes(url).map((data) => ({ name, data })),
-      ),
-    );
-
-    void fetchAll
-      .andThen((pairs) => {
-        const files: Record<string, Uint8Array<ArrayBuffer>> = {};
-        for (const { name, data } of pairs) files[name] = data;
-        return zipFiles(files);
-      })
-      .match(
-        (data) => {
-          const blob = new Blob([data], { type: "application/zip" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = zipName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          toast.success(`Downloaded ${zipName}`);
-        },
-        (e) => toast.error(`Download failed: ${e.message}`),
-      );
-  };
-
-  const gameEnum = GAME_KEY_TO_ENUM[level.game];
-  const canPlay =
-    gameEnum !== undefined && level.previewLevelNumber !== undefined;
-
-  const handlePlayInBrowser = () => {
-    if (!canPlay || !gameEnum) return;
-    setIsFetchingPlay(true);
-
-    const terFetch = level.terFile
-      ? fetchBytes(level.terFile)
-      : ResultAsync.fromSafePromise<Uint8Array | null>(Promise.resolve(null));
-    const rsrcFetch = level.rsrcFile
-      ? fetchBytes(level.rsrcFile)
-      : ResultAsync.fromSafePromise<Uint8Array | null>(Promise.resolve(null));
-
-    void ResultAsync.combine([terFetch, rsrcFetch])
-      .match(
-        ([dataBytes, rsrcBytes]) => {
-          onPlayInBrowser(
-            gameEnum,
-            level.previewLevelNumber ?? 0,
-            dataBytes,
-            rsrcBytes,
-          );
-        },
-        (e) => toast.error(`Failed to load level for playback: ${e.message}`),
-      )
-      .finally(() => setIsFetchingPlay(false));
-  };
-
-  return (
-    <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-white text-lg mb-1">
-              {level.name}
-            </CardTitle>
-            <CardDescription className="text-gray-300 mb-2">
-              {level.gameDisplayName}
-              {level.category && (
-                <span className="ml-2 text-blue-400">• {level.category}</span>
-              )}
-              {level.difficulty && (
-                <span
-                  className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                    level.difficulty === "Easy"
-                      ? "bg-green-900 text-green-300"
-                      : level.difficulty === "Medium"
-                        ? "bg-yellow-900 text-yellow-300"
-                        : "bg-red-900 text-red-300"
-                  }`}
-                >
-                  {level.difficulty}
-                </span>
-              )}
-            </CardDescription>
-            <p className="text-gray-400 text-sm">{level.summary}</p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex flex-col gap-2 mb-2">
-          <Button
-            onClick={() => void downloadLevel()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Download
-          </Button>
-          {canPlay && (
-            <Button
-              onClick={handlePlayInBrowser}
-              disabled={isFetchingPlay}
-              variant="outline"
-              className="w-full flex items-center gap-2"
-            >
-              {isFetchingPlay ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-              {isFetchingPlay ? "Loading…" : "Play Level in Browser"}
-            </Button>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full justify-between text-gray-300 hover:text-white hover:bg-gray-700 p-3"
-        >
-          <span>Details</span>
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4" />
-          ) : (
-            <ChevronDown className="w-4 h-4" />
-          )}
-        </Button>
-        {isExpanded && (
-          <div className="text-gray-300 text-sm leading-relaxed bg-gray-900 rounded-lg p-4">
-            {level.description}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-interface GameSectionProps {
-  gameName: string;
-  levels: Level[];
-  onPlayInBrowser: (
-    game: Game,
-    levelNumber: number,
-    dataBytes: Uint8Array | null,
-    rsrcBytes: Uint8Array | null,
-  ) => void;
-}
-
-function GameSection({ gameName, levels, onPlayInBrowser }: GameSectionProps) {
-  return (
-    <div className="mb-8">
-      <div className="flex items-center gap-3 mb-4 pl-1">
-        <h3 className="text-lg font-semibold text-gray-200">{gameName}</h3>
-        <div className="h-px bg-gray-700 flex-1"></div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {levels.map((level) => (
-          <LevelCard
-            key={level.id}
-            level={level}
-            onPlayInBrowser={onPlayInBrowser}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Card for launching any game directly in the browser (from title screen). */
-function GameLaunchCard({
-  game,
-  onPlayNormally,
-}: {
-  game: Game;
-  onPlayNormally: (game: Game) => void;
-}) {
-  const config = GAME_PORT_CONFIGS[game];
-  const displayName = GAME_DISPLAY_NAMES[game];
-
-  return (
-    <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-white text-base">{displayName}</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <Button
-          onClick={() => onPlayNormally(game)}
-          className="flex w-full items-center gap-1 bg-green-700 hover:bg-green-600 text-white"
-          disabled={!config.wasmAvailable}
-        >
-          <Play className="w-4 h-4" />
-          Play in Browser
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
+import type { Game } from "@/data/globals/globals";
+import { GameLaunchCard } from "@/pages/DownloadLevels/GameLaunchCard";
+import { GameSection } from "@/pages/DownloadLevels/GameSection";
 
 export function DownloadLevels() {
   const gamesByCategory = getGamesByCategory();
@@ -306,8 +14,10 @@ export function DownloadLevels() {
   const [dialogLevel, setDialogLevel] = useState<number>(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogNormalLaunch, setDialogNormalLaunch] = useState(false);
-  const [dialogTerrainDataBytes, setDialogTerrainDataBytes] = useState<Uint8Array | null>(null);
-  const [dialogTerrainRsrcBytes, setDialogTerrainRsrcBytes] = useState<Uint8Array | null>(null);
+  const [dialogTerrainDataBytes, setDialogTerrainDataBytes] =
+    useState<Uint8Array | null>(null);
+  const [dialogTerrainRsrcBytes, setDialogTerrainRsrcBytes] =
+    useState<Uint8Array | null>(null);
 
   /** Open the dialog for playing a custom level (with terrain injection). */
   const handlePlayInBrowser = (
@@ -363,7 +73,6 @@ export function DownloadLevels() {
           </p>
         </div>
 
-        {/* Game Launcher Section */}
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-2">
             <Gamepad2 className="w-7 h-7 text-green-400" />
@@ -371,7 +80,8 @@ export function DownloadLevels() {
             <div className="h-px bg-gray-600 flex-1"></div>
           </div>
           <p className="text-gray-400 text-sm mb-5">
-            Launch any of the 8 Pangea ports directly in your browser from the title screen.
+            Launch any of the 8 Pangea ports directly in your browser from the
+            title screen.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {ALL_GAME_CONFIGS.map((config) => (
@@ -384,7 +94,6 @@ export function DownloadLevels() {
           </div>
         </div>
 
-        {/* Custom Levels Section */}
         {gamesByCategory.length > 0 && (
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -395,7 +104,8 @@ export function DownloadLevels() {
               <div className="h-px bg-gray-600 flex-1"></div>
             </div>
             <p className="text-gray-400 text-sm mb-6">
-              Download fan-made levels and replace the originals in your local game installation.
+              Download fan-made levels and replace the originals in your local
+              game installation.
             </p>
             {gamesByCategory.map((game) => (
               <GameSection
@@ -409,7 +119,6 @@ export function DownloadLevels() {
         )}
       </div>
 
-      {/* Shared play-in-browser dialog */}
       {dialogGame !== null && (
         <TestGameDialog
           open={dialogOpen}

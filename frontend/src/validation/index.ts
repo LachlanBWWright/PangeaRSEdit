@@ -1,6 +1,6 @@
 /**
  * Validation Module - Barrel Export
- * 
+ *
  * Provides unified access to validation functionality including:
  * - Citation extraction and verification
  * - GitHub content fetching
@@ -46,10 +46,6 @@ export {
   VerificationStatus,
   type VerificationResult,
   type VerificationSummary,
-  normalizeCode,
-  calculateSimilarity,
-  compareCode,
-  findCodeInFile,
   verifyCitation,
   verifyGameCitations,
   verifyAllCitations,
@@ -57,6 +53,12 @@ export {
   getFailedVerifications,
   getByStatus,
 } from "./citationVerifier";
+export {
+  normalizeCode,
+  calculateSimilarity,
+  compareCode,
+  findCodeInFile,
+} from "./citationVerifierUtils";
 
 // Report generation
 export {

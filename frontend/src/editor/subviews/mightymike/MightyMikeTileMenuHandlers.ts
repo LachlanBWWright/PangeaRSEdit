@@ -17,33 +17,42 @@ function getNumber(value: unknown, defaultValue = 0): number {
   return typeof value === "number" ? value : defaultValue;
 }
 
+function getTilesetAttribute(
+  data: TerrainData,
+  imageIndex: number,
+): Record<string, unknown> | undefined {
+  if (!isRecord(data.tileset) || !isArray(data.tileset.tileAttributes))
+    return undefined;
+  const attr = data.tileset.tileAttributes[imageIndex];
+  return isRecord(attr) ? attr : undefined;
+}
+
+function getCollisionTileValues(data: TerrainData): unknown[] | undefined {
+  if (!isRecord(data._metadata)) return undefined;
+  const meta1000 = data._metadata[1000];
+  if (!isRecord(meta1000)) return undefined;
+  const obj = meta1000.obj;
+  if (!isRecord(obj) || !isArray(obj.mightyMikeTileValues)) return undefined;
+  return obj.mightyMikeTileValues;
+}
+
 export function createUpdateTileAttributeHandler(
   setTerrainData: Updater<TerrainData>,
   currentImageIndex: number | null,
 ) {
   return (property: TileAttributeProperty, value: number) => {
-    if (currentImageIndex === null) {
-      return;
-    }
+    if (currentImageIndex === null) return;
 
     setTerrainData((data) => {
-      const tileset = isRecord(data.tileset) ? data.tileset : undefined;
-      const tileAttributes =
-        tileset && isArray(tileset.tileAttributes)
-          ? tileset.tileAttributes
-          : undefined;
-      const tileAttribute = tileAttributes?.[currentImageIndex];
-      if (isRecord(tileAttribute)) {
-        tileAttribute[property] = value;
-      }
+      const tileAttribute = getTilesetAttribute(data, currentImageIndex);
+      if (isRecord(tileAttribute)) tileAttribute[property] = value;
 
       const levelTileAttribute = data.Atrb?.[1000]?.obj?.[currentImageIndex];
       if (
         levelTileAttribute &&
         (property === "flags" || property === "p0" || property === "p1")
-      ) {
+      )
         levelTileAttribute[property] = value;
-      }
     });
   };
 }
@@ -54,27 +63,15 @@ export function createUpdateCollisionPropertyHandler(
 ) {
   return (property: CollisionProperty, value: boolean) => {
     setTerrainData((data) => {
-      const meta =
-        isRecord(data._metadata) &&
-        isRecord(data._metadata[1000]) &&
-        isRecord(data._metadata[1000].obj)
-          ? data._metadata[1000].obj
-          : undefined;
-      const tileValues =
-        meta && isArray(meta.mightyMikeTileValues)
-          ? meta.mightyMikeTileValues
-          : undefined;
+      const tileValues = getCollisionTileValues(data);
       if (
         !tileValues ||
         effectiveSelectedTile < 0 ||
         effectiveSelectedTile >= tileValues.length
-      ) {
+      )
         return;
-      }
       const tileVal = tileValues[effectiveSelectedTile];
-      if (!isRecord(tileVal)) {
-        return;
-      }
+      if (!isRecord(tileVal)) return;
       tileVal[property] = value;
     });
   };
@@ -95,7 +92,6 @@ export function createParamBrushFieldChangeHandler(
       setParamBrushField(value);
       return;
     }
-
     setParamBrushField(null);
   };
 }
@@ -106,9 +102,7 @@ export function createCloseEditorHandler(
 ) {
   return () => {
     setOpen(false);
-    if (setUrl) {
-      setUrl(null);
-    }
+    if (setUrl) setUrl(null);
   };
 }
 
@@ -120,10 +114,7 @@ export function createSetManualTilePaletteSelectionHandler(
   effectiveSelectedTile: number,
 ) {
   return (palette: number) => {
-    setManualTilePaletteSelection({
-      tile: effectiveSelectedTile,
-      palette,
-    });
+    setManualTilePaletteSelection({ tile: effectiveSelectedTile, palette });
   };
 }
 
@@ -132,9 +123,6 @@ export function getTileAttributeValue(
   property: "flags" | "p0" | "p1",
   defaultValue = 0,
 ) {
-  if (!currentTileAttributes) {
-    return defaultValue;
-  }
-
+  if (!currentTileAttributes) return defaultValue;
   return getNumber(currentTileAttributes[property], defaultValue);
 }

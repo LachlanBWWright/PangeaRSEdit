@@ -8,25 +8,16 @@ function isRenderableImagePath(src: string): boolean {
   return /\.(png|jpe?g|webp|gif|bmp|svg|tga)$/i.test(src);
 }
 
-async function loadTgaAsDataUrl(src: string): Promise<string | null> {
-  const cached = dataUrlCache.get(src);
-  if (cached) return cached;
-
-  const inflight = inflightLoads.get(src);
-  if (inflight) return inflight;
-
-  const promise = fetch(src)
-    .then((response) => {
+async function loadTgaDataUrlAsync(src: string): Promise<string | null> {
+  return fetch(src)
+    .then(async (response) => {
       if (!response.ok) {
         console.warn(
           `Failed to fetch TGA thumbnail ${src}: ${response.statusText}`,
         );
         return null;
       }
-      return response.arrayBuffer();
-    })
-    .then((buffer) => {
-      if (!buffer) return null;
+      const buffer = await response.arrayBuffer();
       const canvasResult = parseTGAToCanvas(buffer);
       if (canvasResult.isErr()) {
         console.warn(
@@ -44,10 +35,19 @@ async function loadTgaAsDataUrl(src: string): Promise<string | null> {
         error instanceof Error ? error.message : String(error),
       );
       return null;
-    })
-    .finally(() => {
-      inflightLoads.delete(src);
     });
+}
+
+async function loadTgaAsDataUrl(src: string): Promise<string | null> {
+  const cached = dataUrlCache.get(src);
+  if (cached) return cached;
+
+  const inflight = inflightLoads.get(src);
+  if (inflight) return inflight;
+
+  const promise = loadTgaDataUrlAsync(src).finally(() => {
+    inflightLoads.delete(src);
+  });
 
   inflightLoads.set(src, promise);
   return promise;
@@ -84,9 +84,8 @@ export function useFenceImageSource(src: string | null): string | null {
 
     dispatch({ src: null });
     void loadTgaAsDataUrl(src).then((dataUrl) => {
-      if (!cancelled) {
-        dispatch({ src: dataUrl });
-      }
+      if (cancelled) return;
+      dispatch({ src: dataUrl });
     });
 
     return () => {

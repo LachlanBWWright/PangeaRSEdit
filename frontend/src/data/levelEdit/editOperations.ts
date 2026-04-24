@@ -1,17 +1,8 @@
 /**
- * Edit Operations for Level Data
- * 
- * Discriminated union types for all possible level editing operations.
- * Each operation is designed to be reversible for undo/redo support.
- * 
- * These types enable pure function implementations that can be tested
- * independently of React components.
+ * Discriminated union types for reversible level edit operations.
  */
 
-import type {
-  TerrainItem,
-  SplineNub,
-} from "@/python/structSpecs/LevelTypes";
+import type { TerrainItem, SplineNub } from "@/python/structSpecs/LevelTypes";
 import { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
 
@@ -265,9 +256,7 @@ export function canMergeOperations(
 
   switch (first.type) {
     case "MoveItem":
-      return (
-        second.type === "MoveItem" && first.itemIndex === second.itemIndex
-      );
+      return second.type === "MoveItem" && first.itemIndex === second.itemIndex;
 
     case "UpdateItemParams":
       return (
@@ -320,7 +309,11 @@ export function mergeOperations(
   switch (first.type) {
     case "MoveItem":
       if (second.type !== "MoveItem") {
-        return err(new Error("Incompatible merge: expected MoveItem for second operation"));
+        return err(
+          new Error(
+            "Incompatible merge: expected MoveItem for second operation",
+          ),
+        );
       }
       return ok({
         type: "MoveItem",
@@ -333,7 +326,11 @@ export function mergeOperations(
 
     case "UpdateItemParams":
       if (second.type !== "UpdateItemParams") {
-        return err(new Error("Incompatible merge: expected UpdateItemParams for second operation"));
+        return err(
+          new Error(
+            "Incompatible merge: expected UpdateItemParams for second operation",
+          ),
+        );
       }
       return ok({
         type: "UpdateItemParams",
@@ -344,7 +341,11 @@ export function mergeOperations(
 
     case "MoveSplineNub":
       if (second.type !== "MoveSplineNub") {
-        return err(new Error("Incompatible merge: expected MoveSplineNub for second operation"));
+        return err(
+          new Error(
+            "Incompatible merge: expected MoveSplineNub for second operation",
+          ),
+        );
       }
       return ok({
         type: "MoveSplineNub",
@@ -358,7 +359,11 @@ export function mergeOperations(
 
     case "MoveFenceNub":
       if (second.type !== "MoveFenceNub") {
-        return err(new Error("Incompatible merge: expected MoveFenceNub for second operation"));
+        return err(
+          new Error(
+            "Incompatible merge: expected MoveFenceNub for second operation",
+          ),
+        );
       }
       return ok({
         type: "MoveFenceNub",
@@ -372,7 +377,11 @@ export function mergeOperations(
 
     case "UpdateTerrainHeight":
       if (second.type !== "UpdateTerrainHeight") {
-        return err(new Error("Incompatible merge: expected UpdateTerrainHeight for second operation"));
+        return err(
+          new Error(
+            "Incompatible merge: expected UpdateTerrainHeight for second operation",
+          ),
+        );
       }
       return ok({
         type: "UpdateTerrainHeight",
@@ -385,7 +394,11 @@ export function mergeOperations(
 
     case "UpdateTileAttribute":
       if (second.type !== "UpdateTileAttribute") {
-        return err(new Error("Incompatible merge: expected UpdateTileAttribute for second operation"));
+        return err(
+          new Error(
+            "Incompatible merge: expected UpdateTileAttribute for second operation",
+          ),
+        );
       }
       return ok({
         type: "UpdateTileAttribute",

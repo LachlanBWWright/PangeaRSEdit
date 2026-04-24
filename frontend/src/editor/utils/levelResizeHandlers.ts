@@ -2,7 +2,13 @@ import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { combineLevelData, splitLevelData } from "@/data/utils/levelDataUtils";
 import type { ResizeDirection } from "@/data/utils/levelResizeUtils";
-import { ITEM_BOUNDS_WARNING, resizeLevel, resizeFences, resizeSplines, resizeLiquids } from "@/data/utils/levelResizeUtils";
+import {
+  ITEM_BOUNDS_WARNING,
+  resizeLevel,
+  resizeFences,
+  resizeSplines,
+  resizeLiquids,
+} from "@/data/utils/levelResizeUtils";
 import { err, ok, type Result } from "neverthrow";
 
 export interface ResizeUIOptions {
@@ -49,20 +55,36 @@ export function applySupertileResizeToAtomicData(
   // Compute world-unit offset for objects that live in world coordinates.
   // options.tileCount is already in tiles (callers multiply supertileCount * TILES_PER_SUPERTILE).
   const tileSize = globals.TILE_INGAME_SIZE;
-  const offsetXUnits = (options.direction === "left" ? options.tileCount : 0) * tileSize;
-  const offsetZUnits = (options.direction === "top" ? options.tileCount : 0) * tileSize;
+  const offsetXUnits =
+    (options.direction === "left" ? options.tileCount : 0) * tileSize;
+  const offsetZUnits =
+    (options.direction === "top" ? options.tileCount : 0) * tileSize;
 
-  const fencData = originalLevel.Fenc && originalLevel.FnNb
-    ? resizeFences({ Fenc: originalLevel.Fenc, FnNb: originalLevel.FnNb }, offsetXUnits, offsetZUnits)
-    : null;
+  const fencData =
+    originalLevel.Fenc && originalLevel.FnNb
+      ? resizeFences(
+          { Fenc: originalLevel.Fenc, FnNb: originalLevel.FnNb },
+          offsetXUnits,
+          offsetZUnits,
+        )
+      : null;
 
-  const splineResult = originalLevel.SpNb && originalLevel.SpPt && originalLevel.SpIt && originalLevel.Spln
-    ? resizeSplines(
-        { SpNb: originalLevel.SpNb, SpPt: originalLevel.SpPt, SpIt: originalLevel.SpIt, Spln: originalLevel.Spln },
-        offsetXUnits,
-        offsetZUnits,
-      )
-    : null;
+  const splineResult =
+    originalLevel.SpNb &&
+    originalLevel.SpPt &&
+    originalLevel.SpIt &&
+    originalLevel.Spln
+      ? resizeSplines(
+          {
+            SpNb: originalLevel.SpNb,
+            SpPt: originalLevel.SpPt,
+            SpIt: originalLevel.SpIt,
+            Spln: originalLevel.Spln,
+          },
+          offsetXUnits,
+          offsetZUnits,
+        )
+      : null;
 
   const liquidResult = originalLevel.Liqd
     ? resizeLiquids({ Liqd: originalLevel.Liqd }, offsetXUnits, offsetZUnits)
@@ -71,7 +93,14 @@ export function applySupertileResizeToAtomicData(
   const resizedLevel = {
     ...resized.levelData,
     ...(fencData ? { Fenc: fencData.Fenc, FnNb: fencData.FnNb } : {}),
-    ...(splineResult ? { Spln: splineResult.Spln, SpNb: splineResult.SpNb, SpPt: splineResult.SpPt, SpIt: splineResult.SpIt } : {}),
+    ...(splineResult
+      ? {
+          Spln: splineResult.Spln,
+          SpNb: splineResult.SpNb,
+          SpPt: splineResult.SpPt,
+          SpIt: splineResult.SpIt,
+        }
+      : {}),
     ...(liquidResult ? { Liqd: liquidResult.Liqd } : {}),
   };
 

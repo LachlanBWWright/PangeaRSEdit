@@ -1,4 +1,3 @@
-import { mapErr } from "@/utils/mapErr";
 /**
  * Hook for lazy-loading and caching item 3D models
  *
@@ -14,18 +13,15 @@ import { mapErr } from "@/utils/mapErr";
  * - Caches full BG3D file conversions to avoid redundant work
  */
 
+import { mapErr } from "@/utils/mapErr";
 import { useState, useRef, useCallback, useEffect } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
-import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
 import { getParamByIndex } from "@/data/items/standardParamTypes";
-import { Group } from "three";
-import {
-  GLTFLoader,
-  type GLTF,
-} from "three/examples/jsm/loaders/GLTFLoader.js";
+import { type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { extractSubgroupByIndex, loadFileGltf } from "./itemModelLoaderUtils";
 
 interface CachedModel {
   gltf: GLTF | null;
@@ -45,7 +41,11 @@ interface ItemParams {
 
 interface UseItemModelCacheReturn {
   modelCache: Map<string, CachedModel>;
-  loadModel: (itemType: number, params?: ItemParams, levelNum?: number) => Promise<GLTF | null>;
+  loadModel: (
+    itemType: number,
+    params?: ItemParams,
+    levelNum?: number,
+  ) => Promise<GLTF | null>;
   isLoading: (itemType: number, params?: ItemParams) => boolean;
   hasError: (itemType: number, params?: ItemParams) => boolean;
 }
@@ -68,10 +68,15 @@ const GAME_BASE_PATHS: Record<Game, string> = {
  * Generate a cache key that includes game, item type, and relevant params
  * Uses the mapper to determine which items are param-dependent or level-dependent
  */
-function getCacheKey(game: Game, itemType: number, params?: ItemParams, levelNum?: number): string {
+function getCacheKey(
+  game: Game,
+  itemType: number,
+  params?: ItemParams,
+  levelNum?: number,
+): string {
   const mapper = getGameMapper(game);
   const gamePrefix = `g${game}_`;
-  
+
   if (mapper?.isParamDependent?.(itemType) && params) {
     const config = mapper.getParamDependentConfig?.(itemType);
     if (config) {
@@ -80,222 +85,21 @@ function getCacheKey(game: Game, itemType: number, params?: ItemParams, levelNum
     }
     return `${gamePrefix}${itemType}_p1_${params.p1}`;
   }
-  
+
   if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
     return `${gamePrefix}${itemType}_lv${levelNum}`;
   }
-  
+
   return `${gamePrefix}${itemType}`;
-}
-
-/** Monotonically increasing counter for generating unique request IDs */
-let requestIdCounter = 0;
-
-/**
- * Module-level cache for full BG3D file → GLTF conversions.
- * Keyed by file URL. Multiple items may use the same BG3D file
- * at different model indices.
- */
-const fileGltfCache = new Map<string, Promise<GLTF>>();
-
-/**
- * Convert a BG3D file buffer to GLTF via worker, using requestId
- * for correct response matching.
- */
-function convertBg3dToGltf(worker: Worker, buffer: ArrayBuffer): Promise<ArrayBuffer> {
-  const requestId = `req_${++requestIdCounter}`;
-  
-  return new Promise<ArrayBuffer>((resolve, reject) => {
-    let resolved = false;
-
-    const handleMessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
-      // Only process responses with matching requestId
-      if (e.data.requestId !== requestId) return;
-
-      resolved = true;
-      worker.removeEventListener("message", handleMessage);
-      worker.removeEventListener("error", handleError);
-
-      if (e.data.type === "error") {
-        reject(new Error(`Worker error: ${e.data.error}`));
-      } else if (
-        e.data.type === "bg3d-with-skeleton-to-glb" &&
-        e.data.result
-      ) {
-        resolve(e.data.result);
-      }
-    };
-
-    const handleError = (error: ErrorEvent) => {
-      if (!resolved) {
-        resolved = true;
-        worker.removeEventListener("message", handleMessage);
-        worker.removeEventListener("error", handleError);
-        reject(
-          new Error(`Worker error: ${error.message || "Unknown error"}`),
-        );
-      }
-    };
-
-    worker.addEventListener("message", handleMessage);
-    worker.addEventListener("error", handleError);
-
-    worker.postMessage({
-      type: "bg3d-with-skeleton-to-glb",
-      bg3dBuffer: buffer,
-      skeletonData: undefined,
-      requestId,
-    });
-
-    setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        worker.removeEventListener("message", handleMessage);
-        worker.removeEventListener("error", handleError);
-        reject(new Error("Model loading timeout (60s)"));
-      }
-    }, 60000);
-  });
-}
-
-/**
- * Load and parse a full BG3D file into a GLTF object.
- * Uses file-level caching so the same BG3D file is only fetched
- * and converted once, even when multiple items reference it.
- */
-function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
-  const cached = fileGltfCache.get(fileUrl);
-  if (cached) return cached;
-
-  const createPromise = async () => {
-    const fetchResult = await ResultAsync.fromPromise(
-      fetch(fileUrl),
-      mapErr,
-    );
-    if (fetchResult.isErr()) {
-      return Promise.reject(new Error(`Failed to fetch: ${fetchResult.error.message} (${fileUrl})`));
-    }
-    const response = fetchResult.value;
-    if (!response.ok) {
-      return Promise.reject(new Error(`Failed to fetch: ${response.statusText} (${fileUrl})`));
-    }
-    const bufferResult = await ResultAsync.fromPromise(
-      response.arrayBuffer(),
-      mapErr,
-    );
-    if (bufferResult.isErr()) {
-      return Promise.reject(new Error(`Failed to read buffer: ${bufferResult.error.message}`));
-    }
-    const buffer = bufferResult.value;
-
-    const glbArrayBuffer = await convertBg3dToGltf(worker, buffer);
-
-    const glbBlob = new Blob([glbArrayBuffer], {
-      type: "model/gltf-binary",
-    });
-    const glbUrl = URL.createObjectURL(glbBlob);
-    const loader = new GLTFLoader();
-
-    const gltf = await new Promise<GLTF>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`GLTFLoader timeout for ${fileUrl}`));
-      }, 30000);
-
-      loader.load(
-        glbUrl,
-        (result: GLTF) => {
-          clearTimeout(timeoutId);
-          resolve(result);
-        },
-        undefined,
-        (error: unknown) => {
-          clearTimeout(timeoutId);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          reject(new Error(`GLTFLoader error: ${errorMessage}`));
-        },
-      );
-    });
-
-    URL.revokeObjectURL(glbUrl);
-    return gltf;
-  };
-
-  const promise = createPromise();
-
-  // Cache the promise so concurrent requests share the same load
-  fileGltfCache.set(fileUrl, promise);
-
-  // Remove from cache on failure so it can be retried
-  promise.then(undefined, () => {
-    fileGltfCache.delete(fileUrl);
-  });
-
-  return promise;
-}
-
-/**
- * Extract specific model from glTF scene by index.
- *
- * BG3D files have structure:
- * - gltf.scene.children[0] is the groups container
- * - gltf.scene.children[0].children[N] is the model at index N
- *
- * When groupSize > 1, extracts consecutive subgroups and combines them.
- */
-function extractSubgroupByIndex(
-  gltf: GLTF,
-  modelIndex: number,
-  groupSize = 1,
-): GLTF | null {
-  const groupsContainer =
-    gltf.scene.children && gltf.scene.children.length > 0
-      ? gltf.scene.children[0]
-      : null;
-
-  if (!groupsContainer) {
-    console.warn(
-      `Could not find groups container. Scene has ${
-        gltf.scene.children?.length || 0
-      } children`,
-    );
-    return null;
-  }
-
-  if (modelIndex >= groupsContainer.children.length) {
-    console.warn(
-      `Model index ${modelIndex} out of range (max ${
-        groupsContainer.children.length - 1
-      })`,
-    );
-    return null;
-  }
-
-  const newScene = new Group();
-  const endIndex = Math.min(
-    modelIndex + groupSize,
-    groupsContainer.children.length,
-  );
-
-  for (let i = modelIndex; i < endIndex; i++) {
-    const targetModel = groupsContainer.children[i];
-    if (targetModel) {
-      newScene.add(targetModel.clone(true));
-    }
-  }
-
-  if (newScene.children.length === 0) {
-    return null;
-  }
-
-  return { ...gltf, scene: newScene };
 }
 
 /**
  * Hook for managing item model loading and caching
  * @param game - The game to load models for (default: OTTO_MATIC)
  */
-export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCacheReturn => {
+export const useItemModelCache = (
+  game: Game = Game.OTTO_MATIC,
+): UseItemModelCacheReturn => {
   const [modelCache, setModelCache] = useState<Map<string, CachedModel>>(
     new Map(),
   );
@@ -322,7 +126,11 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
    * Load a 3D model for an item type
    */
   const loadModel = useCallback(
-    async (itemType: number, params?: ItemParams, levelNum?: number): Promise<GLTF | null> => {
+    async (
+      itemType: number,
+      params?: ItemParams,
+      levelNum?: number,
+    ): Promise<GLTF | null> => {
       const cacheKey = getCacheKey(game, itemType, params, levelNum);
 
       // Skip if already in-flight (avoids stale closure issues)
@@ -362,10 +170,10 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
       );
 
       // Load the full BG3D file (cached at the file level)
-    const fullGltfResult = await ResultAsync.fromPromise(
-      loadFileGltf(getWorker(), bg3dUrl),
-      mapErr,
-    );
+      const fullGltfResult = await ResultAsync.fromPromise(
+        loadFileGltf(getWorker(), bg3dUrl),
+        mapErr,
+      );
 
       if (fullGltfResult.isErr()) {
         console.error(
@@ -375,7 +183,11 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
 
         setModelCache((prev) => {
           const updated = new Map(prev);
-          updated.set(cacheKey, { gltf: null, loading: false, error: fullGltfResult.error });
+          updated.set(cacheKey, {
+            gltf: null,
+            loading: false,
+            error: fullGltfResult.error,
+          });
           return updated;
         });
 
@@ -406,7 +218,11 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
 
           setModelCache((prev) => {
             const updated = new Map(prev);
-            updated.set(cacheKey, { gltf: null, loading: false, error: extractError });
+            updated.set(cacheKey, {
+              gltf: null,
+              loading: false,
+              error: extractError,
+            });
             return updated;
           });
 

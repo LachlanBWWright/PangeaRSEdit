@@ -8,13 +8,7 @@ import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
 import { Updater } from "use-immer";
-import { Items } from "../subviews/Items";
-import { Fences } from "../subviews/Fences";
-import { Splines } from "../subviews/Splines";
-import { WaterBodies } from "../subviews/WaterBodies";
-import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
-import { Tiles } from "../subviews/Tiles";
-import { Supertiles } from "../subviews/Supertiles";
+import { CanvasStageLayers, CanvasViewMode } from "./CanvasStageLayers";
 import {
   HeaderData,
   ItemData,
@@ -24,14 +18,7 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 
-enum View {
-  fences,
-  water,
-  items,
-  splines,
-  tiles,
-  supertiles,
-}
+type View = CanvasViewMode;
 
 export interface StageData {
   scale: number;
@@ -87,7 +74,7 @@ export function KonvaView({
   });
   const [scrollOffset, setScrollOffset] = useState({ x: 0, y: 0 });
 
-  const isTopologyMode = view === View.tiles;
+  const isTopologyMode = view === CanvasViewMode.tiles;
 
   // Compute the terrain content size for scrollable topology mode
   const contentSize = useMemo(() => {
@@ -119,106 +106,123 @@ export function KonvaView({
   }, []);
 
   // Sync scrollbars to stage offset in topology mode
-  const handleScrollContainerScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    setScrollOffset({ x: el.scrollLeft, y: el.scrollTop });
-  }, []);
+  const handleScrollContainerScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const el = e.currentTarget;
+      setScrollOffset({ x: el.scrollLeft, y: el.scrollTop });
+    },
+    [],
+  );
 
   // Create wrapper setters that handle null
-  const safeSetItemData = useCallback<Updater<ItemData>>((updater) => {
-    setItemData((data) => {
-      if (data) {
-        if (typeof updater === 'function') {
-          updater(data);
+  const safeSetItemData = useCallback<Updater<ItemData>>(
+    (updater) => {
+      setItemData((data) => {
+        if (data) {
+          if (typeof updater === "function") {
+            updater(data);
+          }
         }
-      }
-    });
-  }, [setItemData]);
-  
+      });
+    },
+    [setItemData],
+  );
+
   const safeSetLiquidData: Updater<LiquidData> = (updater) => {
     setLiquidData((data) => {
       if (data) {
-        if (typeof updater === 'function') {
+        if (typeof updater === "function") {
           updater(data);
         }
       }
     });
   };
-  
+
   const safeSetFenceData: Updater<FenceData> = (updater) => {
     setFenceData((data) => {
       if (data) {
-        if (typeof updater === 'function') {
+        if (typeof updater === "function") {
           updater(data);
         }
       }
     });
   };
-  
+
   const safeSetSplineData: Updater<SplineData> = (updater) => {
     setSplineData((data) => {
       if (data) {
-        if (typeof updater === 'function') {
+        if (typeof updater === "function") {
           updater(data);
         }
       }
     });
   };
 
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (clickToAddItem === undefined) return;
-    const stage = e.target.getStage();
+  const handleStageClick = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (clickToAddItem === undefined) return;
+      const stage = e.target.getStage();
 
-    const pos = stage?.getRelativePointerPosition();
-    if (!pos) return;
-    const x = Math.round(pos.x);
-    const z = Math.round(pos.y);
+      const pos = stage?.getRelativePointerPosition();
+      if (!pos) return;
+      const x = Math.round(pos.x);
+      const z = Math.round(pos.y);
 
-    safeSetItemData((itemData) => {
-      itemData.Itms[1000].obj.push({
-        x: x,
-        z: z,
-        type: clickToAddItem,
-        flags: 0,
-        p0: 0,
-        p1: 0,
-        p2: 0,
-        p3: 0,
+      safeSetItemData((itemData) => {
+        itemData.Itms[1000].obj.push({
+          x: x,
+          z: z,
+          type: clickToAddItem,
+          flags: 0,
+          p0: 0,
+          p1: 0,
+          p2: 0,
+          p3: 0,
+        });
       });
-    });
-  }, [clickToAddItem, safeSetItemData]);
+    },
+    [clickToAddItem, safeSetItemData],
+  );
 
   const handleStageDblClick = useCallback(() => {
     setSelectedFence(undefined);
     setSelectedItem(undefined);
     setSelectedSpline(undefined);
     setSelectedWaterBody(null);
-  }, [setSelectedFence, setSelectedItem, setSelectedSpline, setSelectedWaterBody]);
+  }, [
+    setSelectedFence,
+    setSelectedItem,
+    setSelectedSpline,
+    setSelectedWaterBody,
+  ]);
 
-  const handleStageWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault();
+  const handleStageWheel = useCallback(
+    (e: Konva.KonvaEventObject<WheelEvent>) => {
+      e.evt.preventDefault();
 
-    const scaleBy = 1.05;
-    const stage = e.target.getStage();
-    if (!stage) return;
-    const oldScale = stage.scaleX();
-    const pointerPosition = stage.getPointerPosition();
-    if (!pointerPosition) return;
+      const scaleBy = 1.05;
+      const stage = e.target.getStage();
+      if (!stage) return;
+      const oldScale = stage.scaleX();
+      const pointerPosition = stage.getPointerPosition();
+      if (!pointerPosition) return;
 
-    const mousePointTo = {
-      x: pointerPosition.x / oldScale - stage.x() / oldScale,
-      y: pointerPosition.y / oldScale - stage.y() / oldScale,
-    };
+      const mousePointTo = {
+        x: pointerPosition.x / oldScale - stage.x() / oldScale,
+        y: pointerPosition.y / oldScale - stage.y() / oldScale,
+      };
 
-    const newScale =
-      e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+      const newScale =
+        e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
-    setStage({
-      scale: newScale,
-      x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-      y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-    });
-  }, [setStage]);
+      setStage({
+        scale: newScale,
+        x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
+        y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
+      });
+    },
+    [setStage],
+  );
 
   return (
     <div
@@ -255,202 +259,34 @@ export function KonvaView({
           flexShrink: 0,
         }}
       >
-      <Stage
-        width={containerSize.width}
-        height={containerSize.height}
-        scaleX={stage.scale}
-        scaleY={stage.scale}
-        x={isTopologyMode ? -scrollOffset.x : stage.x}
-        y={isTopologyMode ? -scrollOffset.y : stage.y}
-        draggable={!isTopologyMode}
-        onClick={handleStageClick}
-        onDblClick={handleStageDblClick}
-        onWheel={handleStageWheel}
-      >
-        {/* Render supertiles - for Bugdom 1 (has Layr) or other games (has STgd) */}
-        {terrainData && (terrainData.STgd || terrainData.Layr) && (
-          <Supertiles
-            headerData={headerData}
-            terrainData={terrainData}
-            mapImages={mapImages}
-          />
-        )}
-        {view !== View.tiles && (
-          <AccessibilityMaskOverlay
-            headerData={headerData}
-            terrainData={terrainData}
-          />
-        )}
-        {view === View.tiles && (
-          <Tiles
+        <Stage
+          width={containerSize.width}
+          height={containerSize.height}
+          scaleX={stage.scale}
+          scaleY={stage.scale}
+          x={isTopologyMode ? -scrollOffset.x : stage.x}
+          y={isTopologyMode ? -scrollOffset.y : stage.y}
+          draggable={!isTopologyMode}
+          onClick={handleStageClick}
+          onDblClick={handleStageDblClick}
+          onWheel={handleStageWheel}
+        >
+          <CanvasStageLayers
             headerData={headerData}
             terrainData={terrainData}
             setTerrainData={setTerrainData}
-            isEditingTopology={view === View.tiles}
+            itemData={itemData}
+            setItemData={safeSetItemData}
+            liquidData={liquidData}
+            setLiquidData={safeSetLiquidData}
+            fenceData={fenceData}
+            setFenceData={safeSetFenceData}
+            splineData={splineData}
+            setSplineData={safeSetSplineData}
+            mapImages={mapImages}
+            view={view}
           />
-        )}
-        {view === View.tiles ||
-          (view === View.supertiles && (
-            <>
-              {liquidData && (
-                <WaterBodies
-                  headerData={headerData}
-                  terrainData={terrainData}
-                  liquidData={liquidData}
-                  setLiquidData={safeSetLiquidData}
-                />
-              )}
-              {fenceData && (
-                <Fences
-                  fenceData={fenceData}
-                  setFenceData={safeSetFenceData}
-                />
-              )}
-              {itemData && (
-                <Items
-                  headerData={headerData}
-                  terrainData={terrainData}
-                  itemData={itemData}
-                  setItemData={safeSetItemData}
-                />
-              )}
-              {splineData && (
-                <Splines
-                  splineData={splineData}
-                  setSplineData={safeSetSplineData}
-                />
-              )}
-            </>
-          ))}
-        {view === View.fences && (
-          <>
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={safeSetLiquidData}
-              />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={safeSetItemData}
-              />
-            )}
-            {splineData && (
-              <Splines
-                splineData={splineData}
-                setSplineData={safeSetSplineData}
-              />
-            )}
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={safeSetFenceData}
-              />
-            )}
-          </>
-        )}
-        {view === View.water && (
-          <>
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={safeSetFenceData}
-              />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={safeSetItemData}
-              />
-            )}
-            {splineData && (
-              <Splines
-                splineData={splineData}
-                setSplineData={safeSetSplineData}
-              />
-            )}
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={safeSetLiquidData}
-              />
-            )}
-          </>
-        )}
-        {view === View.splines && (
-          <>
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={safeSetLiquidData}
-              />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={safeSetItemData}
-              />
-            )}
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={safeSetFenceData}
-              />
-            )}
-            {splineData && (
-              <Splines
-                splineData={splineData}
-                setSplineData={safeSetSplineData}
-              />
-            )}
-          </>
-        )}
-        {view === View.items && (
-          <>
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={safeSetLiquidData}
-              />
-            )}
-            {splineData && (
-              <Splines
-                splineData={splineData}
-                setSplineData={safeSetSplineData}
-              />
-            )}
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={safeSetFenceData}
-              />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={safeSetItemData}
-              />
-            )}
-          </>
-        )}
-      </Stage>
+        </Stage>
       </div>
     </div>
   );

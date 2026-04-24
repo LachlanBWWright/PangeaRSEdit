@@ -1,7 +1,4 @@
-import {
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { GlobalsInterface, DataType } from "@/data/globals/globals";
 import { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
@@ -44,13 +41,12 @@ export function combineMapImagesFromSTgd(
       const tileId = stgdEntry.superTileId ?? stgdEntry;
       if (tileId === globals.EMPTY_TILE_IDX) continue;
       const tileImg = mapImages[tileId];
-      if (tileImg) {
+      if (tileImg)
         ctx.drawImage(
           tileImg,
           i * globals.SUPERTILE_TEXMAP_SIZE,
           j * globals.SUPERTILE_TEXMAP_SIZE,
         );
-      }
     }
   }
 
@@ -106,12 +102,8 @@ export function combineMapImagesFromTiles(
       let tileIndex = tileValue & TILENUM_MASK;
 
       // Apply Xlat translation if available
-      if (xlatTable && tileIndex < xlatTable.length) {
-        const translatedEntry = xlatTable[tileIndex];
-        if (translatedEntry !== undefined) {
-          tileIndex = translatedEntry.idx;
-        }
-      }
+      const translated = xlatTable?.[tileIndex];
+      if (translated !== undefined) tileIndex = translated.idx;
 
       const tileImg = mapImages[tileIndex];
       if (!tileImg) continue;
@@ -129,17 +121,9 @@ export function combineMapImagesFromTiles(
       ctx.translate(destX + tileSize / 2, destY + tileSize / 2);
 
       // Apply rotation
-      switch (rotation) {
-        case TILE_ROT1:
-          ctx.rotate(Math.PI / 2);
-          break;
-        case TILE_ROT2:
-          ctx.rotate(Math.PI);
-          break;
-        case TILE_ROT3:
-          ctx.rotate((3 * Math.PI) / 2);
-          break;
-      }
+      if (rotation === TILE_ROT1) ctx.rotate(Math.PI / 2);
+      else if (rotation === TILE_ROT2) ctx.rotate(Math.PI);
+      else if (rotation === TILE_ROT3) ctx.rotate((3 * Math.PI) / 2);
 
       // Apply flips
       const scaleX = flipX ? -1 : 1;
@@ -147,13 +131,7 @@ export function combineMapImagesFromTiles(
       ctx.scale(scaleX, scaleY);
 
       // Draw the tile
-      ctx.drawImage(
-        tileImg,
-        -tileSize / 2,
-        -tileSize / 2,
-        tileSize,
-        tileSize,
-      );
+      ctx.drawImage(tileImg, -tileSize / 2, -tileSize / 2, tileSize, tileSize);
 
       ctx.restore();
     }

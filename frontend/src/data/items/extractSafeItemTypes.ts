@@ -6,6 +6,28 @@
 
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 
+function hasNumericType(value: unknown): value is { type: number } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    typeof value.type === "number"
+  );
+}
+
+function addItemTypeFromEntry(itemTypes: Set<number>, item: unknown): void {
+  if (!hasNumericType(item)) return;
+  itemTypes.add(item.type);
+}
+
+function addSplineItemTypeFromEntry(
+  splineItemTypes: Set<number>,
+  splineItem: unknown,
+): void {
+  if (!hasNumericType(splineItem)) return;
+  splineItemTypes.add(splineItem.type);
+}
+
 export interface SafeItemTypesResult {
   itemTypes: Set<number>;
   splineItemTypes: Set<number>;
@@ -22,25 +44,16 @@ export function extractSafeItemTypes(
   const itemTypes = new Set<number>();
   const splineItemTypes = new Set<number>();
 
-  // Extract regular item types
-  if (levelData.Itms?.[1000]?.obj) {
-    const itemsObj = levelData.Itms[1000].obj;
-    if (Array.isArray(itemsObj)) {
-      itemsObj.forEach((item) => {
-        if (item && typeof item.type === "number") {
-          itemTypes.add(item.type);
-        }
-      });
-    }
+  const itemsObj = levelData.Itms?.[1000]?.obj;
+  if (Array.isArray(itemsObj)) {
+    itemsObj.forEach((item) => addItemTypeFromEntry(itemTypes, item));
   }
 
   const splineItems = levelData.SpIt?.[1000]?.obj;
   if (Array.isArray(splineItems)) {
-    splineItems.forEach((splineItem) => {
-      if (splineItem && typeof (splineItem as { type?: unknown }).type === "number") {
-        splineItemTypes.add((splineItem as { type: number }).type);
-      }
-    });
+    splineItems.forEach((item) =>
+      addSplineItemTypeFromEntry(splineItemTypes, item),
+    );
   }
 
   return { itemTypes, splineItemTypes };
