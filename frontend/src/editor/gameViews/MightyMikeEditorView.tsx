@@ -144,7 +144,6 @@ export function MightyMikeEditorView({
         {view === View.supertiles && (
           <MightyMikeTileMenu
             headerData={headerData}
-            setHeaderData={setHeaderData}
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}

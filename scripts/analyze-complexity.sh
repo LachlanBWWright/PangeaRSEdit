@@ -3,15 +3,19 @@
 # Finds ts/tsx files exceeding line-count and indentation-depth thresholds.
 set -euo pipefail
 
-FRONTEND_SRC="${1:-frontend/src}"
+FRONTEND_SRC="${1:-../frontend/src}"
 LINE_THRESHOLDS=(300 600)
 INDENT_THRESHOLDS=(3 5 7)
+
+find_typescript_files() {
+  find "$FRONTEND_SRC" -type f \( -name "*.ts" -o -name "*.tsx" \)
+}
 
 echo "=== Line count analysis ==="
 for threshold in "${LINE_THRESHOLDS[@]}"; do
   echo ""
   echo "--- Files with more than $threshold lines ---"
-  find "$FRONTEND_SRC" -name "*.ts" -o -name "*.tsx" | while read -r file; do
+  find_typescript_files | while read -r file; do
     lines=$(wc -l < "$file")
     if [ "$lines" -gt "$threshold" ]; then
       echo "  $lines  $file"
@@ -25,7 +29,7 @@ for depth in "${INDENT_THRESHOLDS[@]}"; do
   indent_str=$(printf '  %.0s' $(seq 1 $depth))  # 2-space per level
   echo ""
   echo "--- Files with indentation depth > $depth levels (${#indent_str} leading spaces) ---"
-  find "$FRONTEND_SRC" -name "*.ts" -o -name "*.tsx" | while read -r file; do
+  find_typescript_files | while read -r file; do
     spaces=$(( depth * 2 ))
     pattern="^$(printf ' %.0s' $(seq 1 $spaces)) "
     if grep -qP "^ {$spaces} " "$file" 2>/dev/null; then

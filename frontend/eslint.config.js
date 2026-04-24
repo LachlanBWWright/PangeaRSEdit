@@ -24,6 +24,7 @@ export default defineConfig(
       "dist/**",
       "coverage/**",
       "public/.generated/**",
+      "public/wasm/**",
     ],
   },
   [

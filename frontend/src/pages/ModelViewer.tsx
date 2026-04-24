@@ -576,11 +576,11 @@ export function ModelViewer() {
 
   const boneInfluenceRows = useMemo(() => {
     if (!scene) {
-      return [] as Array<{
+      return [] as {
         boneName: string;
         vertexCount: number;
         weightedSum: number;
-      }>;
+      }[];
     }
 
     const totals = new Map<

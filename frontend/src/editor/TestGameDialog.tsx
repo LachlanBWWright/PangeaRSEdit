@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,12 @@ interface Props {
   normalLaunch?: boolean;
 }
 
+interface PreviewSession {
+  readonly gameType: Game;
+  readonly started: boolean;
+  readonly runToken: number;
+}
+
 export function TestGameDialog(props: Props) {
   const {
     open,
@@ -53,8 +59,15 @@ export function TestGameDialog(props: Props) {
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
   const containerRef = useRef<HTMLDivElement>(null);
-  const [previewStarted, setPreviewStarted] = useState(false);
-  const [runToken, setRunToken] = useState(0);
+  const [previewSession, setPreviewSession] = useState<PreviewSession>({
+    gameType,
+    started: false,
+    runToken: 0,
+  });
+  const isCurrentPreviewSession = open && previewSession.gameType === gameType;
+  const previewStarted =
+    isCurrentPreviewSession && previewSession.started;
+  const runToken = isCurrentPreviewSession ? previewSession.runToken : 0;
   const currentLevelInfo =
     config.levels.find((level) => getLevelIndex(level) === levelNumber) ??
     config.levels[0];
@@ -62,23 +75,29 @@ export function TestGameDialog(props: Props) {
     ? levelLabel(currentLevelInfo, config.levels.indexOf(currentLevelInfo))
     : "";
 
-  useEffect(() => {
-    if (!open) {
-      setPreviewStarted(false);
-      setRunToken(0);
-    }
-  }, [gameType, open]);
-
   const handleLevelChange = (value: string) => {
     onLevelNumberChange(Number(value));
     if (previewStarted) {
-      setRunToken((currentToken) => currentToken + 1);
+      setPreviewSession((currentSession) => ({
+        gameType,
+        started: true,
+        runToken:
+          currentSession.gameType === gameType
+            ? currentSession.runToken + 1
+            : 1,
+      }));
     }
   };
 
   const handleLaunch = () => {
-    setPreviewStarted(true);
-    setRunToken((currentToken) => currentToken + 1);
+    setPreviewSession((currentSession) => ({
+      gameType,
+      started: true,
+      runToken:
+        currentSession.gameType === gameType
+          ? currentSession.runToken + 1
+          : 1,
+    }));
   };
 
   const handleFullscreen = () => {

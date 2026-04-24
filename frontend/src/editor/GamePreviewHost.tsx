@@ -1,15 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { ResultAsync } from "neverthrow";
 import {
-  applyPreviewGlobals,
-  buildPreviewAssetBaseUrls,
-  createPreviewModule,
-  getPreviewTerrainPaths,
-  loadPreviewRuntime,
-  PreviewRuntimeLoadError,
   GAME_DISPLAY_NAMES,
-  type PreviewRuntimeModule,
 } from "./utils/gamePreviewRuntime";
+import { startGamePreview } from "./utils/gamePreviewHostRuntime";
 import type { AnyLevelInfo, GamePortConfig } from "./utils/gamePortConfig";
 
 interface Props {
@@ -39,10 +32,10 @@ interface Props {
   readonly normalLaunch?: boolean;
 }
 
-type PreviewWindow = Window & { Module?: PreviewRuntimeModule };
-
-function isScriptNotFoundError(error: Error): boolean {
-  return error instanceof PreviewRuntimeLoadError && error.status === 404;
+interface PreviewState {
+  readonly runToken: number;
+  readonly statusText: string;
+  readonly errorText: string | null;
 }
 
 export function GamePreviewHost({
@@ -56,182 +49,75 @@ export function GamePreviewHost({
   normalLaunch = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [statusText, setStatusText] = useState("Preparing game runtime…");
-  const [errorText, setErrorText] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<PreviewState>({
+    runToken,
+    statusText: "Preparing game runtime…",
+    errorText: null,
+  });
 
   useEffect(() => {
-    let cancelled = false;
-    let stopGame: (() => void) | null = null;
-    let activeModule: PreviewRuntimeModule | null = null;
-    const resizePulseTimerIds = new Set<number>();
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const triggerResizePulse = () => {
-      const emitResize = () => {
-        window.dispatchEvent(new Event("resize"));
-      };
-      emitResize();
-      const timerId = window.setTimeout(() => {
-        resizePulseTimerIds.delete(timerId);
-        emitResize();
-      }, 120);
-      resizePulseTimerIds.add(timerId);
-    };
-
-    // Terrain bytes are still being serialized — show a holding status and wait.
-    // The effect will re-run automatically when the bytes prop changes to non-undefined.
-    // For normal launches (title screen) no terrain injection is needed so skip this guard.
     if (
-      !normalLaunch && (
-        terrainDataBytes === undefined ||
+      !normalLaunch &&
+      (terrainDataBytes === undefined ||
         terrainRsrcBytes === undefined ||
-        terrainTextureBytes === undefined
-      )
+        terrainTextureBytes === undefined)
     ) {
-      setErrorText(null);
-      setStatusText("Preparing level data…");
       return;
     }
 
-    const previewWindow = window as unknown as PreviewWindow;
-    const previousModule = previewWindow.Module;
-    const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
-    const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber, terrainPaths, normalLaunch);
-    const assetBaseUrls = buildPreviewAssetBaseUrls(config);
-    const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
-    const handleFullscreenChange = () => {
-      if (!cancelled) {
-        // Exit immediately if the game entered fullscreen on the canvas element
-        // directly; we keep the game windowed and let the user control fullscreen
-        // via the explicit button in the dialog toolbar.
-        if (document.fullscreenElement === canvas) {
-          void document.exitFullscreen();
-        }
-        triggerResizePulse();
-      }
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    const preparedTerrainDataBytes = terrainDataBytes ?? null;
+    const preparedTerrainRsrcBytes = terrainRsrcBytes ?? null;
+    const preparedTerrainTextureBytes = terrainTextureBytes ?? null;
 
-    setErrorText(null);
-    setStatusText("Preparing game runtime…");
-
-    function startGame(width: number, height: number): void {
-      if (cancelled || !canvas) return;
-
-      canvas.width = width;
-      canvas.height = height;
-      triggerResizePulse();
-
-      void (async () => {
-        const baseUrls = assetBaseUrls;
-        for (let baseUrlIndex = 0; baseUrlIndex < baseUrls.length; baseUrlIndex += 1) {
-          const assetBaseUrl = baseUrls[baseUrlIndex] ?? "";
-          activeModule = createPreviewModule({
-            config,
-            levelNumber,
-            currentLevelInfo,
-            canvas,
-            assetBaseUrl,
-            cacheBustToken,
-            terrainDataBytes: terrainDataBytes ?? null,
-            terrainRsrcBytes: terrainRsrcBytes ?? null,
-            terrainTextureBytes: terrainTextureBytes ?? null,
-            terrainPaths,
-            normalLaunch,
-            onStatus: (text) => {
-              if (!cancelled) {
-                setErrorText(null);
-                setStatusText(text);
-              }
-            },
-            onError: (text) => {
-              if (!cancelled) {
-                setErrorText(text);
-                setStatusText("Failed to start game.");
-              }
-            },
-          });
-
-          previewWindow.Module = activeModule as unknown as PreviewWindow["Module"];
-          const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
-          const stopOrErr = await ResultAsync.fromPromise(
-            loadPreviewRuntime(activeModule, scriptUrl),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
-          );
-          if (cancelled) {
-            if (stopOrErr.isOk()) stopOrErr.value();
-            return;
-          }
-          if (stopOrErr.isErr()) {
-            const canTryNextBase =
-              isScriptNotFoundError(stopOrErr.error) &&
-              baseUrlIndex < baseUrls.length - 1;
-            if (canTryNextBase) {
-              continue;
-            }
-            setErrorText(stopOrErr.error.message);
-            setStatusText("Failed to start game.");
-            return;
-          }
-          stopGame = stopOrErr.value;
-          triggerResizePulse();
-          return;
-        }
-      })();
-    }
-
-    // Use ResizeObserver to wait until the canvas has non-zero layout dimensions
-    // before handing it to the WASM runtime. The dialog's CSS animation may cause
-    // the canvas to initially report zero or intermediate sizes; we debounce the
-    // observer so the game only starts once the size has stabilised for ~150 ms.
-    let startTimer: number | undefined;
-    const observer = new ResizeObserver((entries) => {
-      if (cancelled) return;
-      const rect = entries[0]?.contentRect;
-      const width = rect && rect.width > 0 ? Math.round(rect.width) : canvas.clientWidth;
-      const height = rect && rect.height > 0 ? Math.round(rect.height) : canvas.clientHeight;
-      if (width > 0 && height > 0) {
-        if (startTimer !== undefined) window.clearTimeout(startTimer);
-        startTimer = window.setTimeout(() => {
-          if (cancelled) return;
-          observer.disconnect();
-          startGame(width, height);
-        }, 150);
-      }
+    return startGamePreview({
+      canvas,
+      config,
+      levelNumber,
+      currentLevelInfo,
+      terrainDataBytes: preparedTerrainDataBytes,
+      terrainRsrcBytes: preparedTerrainRsrcBytes,
+      terrainTextureBytes: preparedTerrainTextureBytes,
+      runToken,
+      normalLaunch,
+      onStatus: (text) => {
+        setPreviewState({ runToken, statusText: text, errorText: null });
+      },
+      onError: (text) => {
+        setPreviewState({
+          runToken,
+          statusText: "Failed to start game.",
+          errorText: text,
+        });
+      },
     });
-    observer.observe(canvas);
-
-    return () => {
-      cancelled = true;
-      if (startTimer !== undefined) window.clearTimeout(startTimer);
-      observer.disconnect();
-      stopGame?.();
-      stopGame = null;
-      for (const timerId of resizePulseTimerIds) {
-        window.clearTimeout(timerId);
-      }
-      resizePulseTimerIds.clear();
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-      cleanupGlobals();
-      // Always restore window.Module to its pre-effect value so subsequent game
-      // runs don't inherit stale Emscripten module state.
-      if (previousModule === undefined) {
-        delete previewWindow.Module;
-      } else {
-        previewWindow.Module = previousModule;
-      }
-    };
   }, [
     config,
     currentLevelInfo,
     levelNumber,
+    normalLaunch,
     runToken,
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
   ]);
 
+  const waitingForLevelData =
+    !normalLaunch &&
+    (terrainDataBytes === undefined ||
+      terrainRsrcBytes === undefined ||
+      terrainTextureBytes === undefined);
+  const statusText = waitingForLevelData
+    ? "Preparing level data…"
+    : previewState.runToken === runToken
+      ? previewState.statusText
+      : "Preparing game runtime…";
+  const errorText =
+    waitingForLevelData || previewState.runToken !== runToken
+      ? null
+      : previewState.errorText;
   const showStatus = Boolean(statusText) || Boolean(errorText);
 
   return (
@@ -241,10 +127,12 @@ export function GamePreviewHost({
         ref={canvasRef}
         className="h-full w-full block bg-black outline-none"
         tabIndex={-1}
-        onContextMenu={(e) => { e.preventDefault(); }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+        }}
       />
       {showStatus ? (
-        <div className="absolute inset-0 flex items-center justify-center flex-col gap-3 bg-gradient-to-b from-black/90 to-slate-950/95 text-center p-6">
+        <div className="absolute inset-0 flex items-center justify-center flex-col gap-3 bg-linear-to-b from-black/90 to-slate-950/95 text-center p-6">
           <div className="text-lg font-semibold text-slate-100">
             {`Launching ${GAME_DISPLAY_NAMES[config.game]}`}
           </div>
