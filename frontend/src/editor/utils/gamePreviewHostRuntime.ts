@@ -6,7 +6,6 @@ import {
   createPreviewModule,
   getPreviewTerrainPaths,
   loadPreviewRuntime,
-  PreviewRuntimeLoadError,
   type PreviewRuntimeModule,
 } from "./gamePreviewRuntime";
 import { mapErr } from "../../utils/mapErr";
@@ -25,8 +24,8 @@ interface StartGamePreviewOptions {
   readonly onError: (text: string) => void;
 }
 
-function isScriptNotFoundError(error: Error): boolean {
-  return error instanceof PreviewRuntimeLoadError && error.status === 404;
+function isScriptNotFoundError(error: string): boolean {
+  return error.includes("404") || error.includes("Failed to load");
 }
 
 function triggerResizePulse(timerIds: Set<number>): void {

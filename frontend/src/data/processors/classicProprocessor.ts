@@ -57,25 +57,21 @@ export function parseNanosaurTerrainTextures(
 
 export function serializeNanosaurTerrainTextures(
   tiles: HTMLCanvasElement[],
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   const serializedTiles: Uint8Array[] = [];
 
   for (let i = 0; i < tiles.length; i++) {
     const canvas = tiles[i];
     if (!canvas) {
-      return err(new Error(`Tile image at index ${i} is missing`));
+      return err(`Tile image at index ${i} is missing`);
     }
     if (canvas.width !== 32 || canvas.height !== 32) {
-      return err(new Error(`Tile image at index ${i} must be 32x32 pixels`));
+      return err(`Tile image at index ${i} must be 32x32 pixels`);
     }
 
     const encoded = canvasDataToSixteenBit(canvas);
     if (encoded.isErr()) {
-      return err(
-        new Error(
-          `Failed to serialize tile image #${i}: ${encoded.error}`,
-        ),
-      );
+      return err(`Failed to serialize tile image #${i}: ${encoded.error}`);
     }
     serializedTiles.push(new Uint8Array(encoded.value.buffer.slice(0)));
   }

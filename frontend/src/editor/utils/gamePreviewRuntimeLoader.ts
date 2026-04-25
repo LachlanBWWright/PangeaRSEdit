@@ -2,7 +2,6 @@ import { Result, ResultAsync } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   buildGameArguments,
-  PreviewRuntimeLoadError,
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
@@ -161,10 +160,7 @@ export function createPreviewModule(
       if (typeof reason === "string") {
         message = reason;
       } else {
-        const parseResult = errorSchema.safeParse(reason);
-        message = parseResult.success
-          ? parseResult.data.message
-          : "Game runtime aborted.";
+        message = reason instanceof Error ? reason.message : String(reason);
       }
       onError(message);
     },
@@ -276,10 +272,7 @@ export async function loadPreviewRuntime(
     const status = response.isOk() ? response.value.status : 0;
     restoreWindowGlobals();
     return Promise.reject(
-      new PreviewRuntimeLoadError(
-        `Failed to load ${scriptUrl}: ${String(status)}`,
-        status,
-      ),
+      `Failed to load ${scriptUrl}: ${String(status)}`,
     );
   }
 
@@ -289,9 +282,7 @@ export async function loadPreviewRuntime(
   );
   if (sourceResult.isErr()) {
     restoreWindowGlobals();
-    return Promise.reject(
-      new PreviewRuntimeLoadError(sourceResult.error, null),
-    );
+    return Promise.reject(sourceResult.error);
   }
   const source = sourceResult.value;
 
@@ -335,7 +326,7 @@ export async function loadPreviewRuntime(
 
   if (runner.isErr()) {
     restoreWindowGlobals();
-    return Promise.reject(new PreviewRuntimeLoadError(runner.error, null));
+    return Promise.reject(runner.error);
   }
 
   const runResult = Result.fromThrowable(
@@ -352,9 +343,7 @@ export async function loadPreviewRuntime(
   )();
   if (runResult.isErr()) {
     restoreWindowGlobals();
-    return Promise.reject(
-      new PreviewRuntimeLoadError(runResult.error, null),
-    );
+    return Promise.reject(runResult.error);
   }
 
   return () => {
@@ -366,9 +355,7 @@ export async function loadPreviewRuntime(
     restoreWindowGlobals();
     for (const ctx of trackedAudioContexts) {
       if (ctx.state !== "closed") {
-        void ResultAsync.fromPromise(ctx.close(), (e) =>
-          errorSchema.safeParse(e).data ?? new Error(String(e)),
-        );
+        void ResultAsync.fromPromise(ctx.close(), (e) => mapErr(e));
       }
     }
   };

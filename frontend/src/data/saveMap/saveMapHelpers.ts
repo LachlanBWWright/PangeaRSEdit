@@ -22,18 +22,14 @@ function copyToArrayBuffer(data: ArrayBufferView): ArrayBuffer {
 
 export function serializeBugdomTileImages(
   mapImages: HTMLCanvasElement[],
-): Result<string, Error> {
+): Result<string, string> {
   const serializedTiles: string[] = [];
   for (let i = 0; i < mapImages.length; i += 1) {
     const canvas = mapImages[i];
-    if (!canvas) return err(new Error(`Tile image at index ${i} is missing`));
+    if (!canvas) return err(`Tile image at index ${i} is missing`);
     const encodedTile = canvasDataToSixteenBit(canvas);
     if (encodedTile.isErr())
-      return err(
-        new Error(
-          `Failed to serialize tile image #${i}: ${encodedTile.error}`,
-        ),
-      );
+      return err(`Failed to serialize tile image #${i}: ${encodedTile.error}`);
     serializedTiles.push(bufferToHex(copyToArrayBuffer(encodedTile.value)));
   }
   return ok(serializedTiles.join(""));

@@ -6,7 +6,7 @@ import { writeMeshContainer } from "./write3DMFHelpers";
 
 export function write3DMFFromMetaFile(
   metaFile: TQ3MetaFile,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   const writer = new BigEndianWriter(1024 * 1024);
   const textureOffsets = new Map<number, number>();
 

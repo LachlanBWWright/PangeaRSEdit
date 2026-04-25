@@ -23,7 +23,7 @@ import {
 
 export function metaFileToBG3DParseResult(
   metaFile: TQ3MetaFile,
-): Result<BG3DParseResult, Error> {
+): Result<BG3DParseResult, string> {
   const materials: BG3DMaterial[] = [
     {
       flags: 0,

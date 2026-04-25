@@ -74,18 +74,18 @@ export function getTileImportRequirements(game: Game): Result<{
 export async function loadAndValidateImage(
   file: File,
   globals: GlobalsInterface,
-): Promise<Result<HTMLImageElement, Error>> {
+): Promise<Result<HTMLImageElement, string>> {
   const config = TILE_GAME_CONFIGS[globals.GAME_TYPE];
   
   if (!config) {
-    return err(new Error(`Game ${globals.GAME_TYPE} does not support tile import`));
+    return err(`Game ${globals.GAME_TYPE} does not support tile import`);
   }
   
   const expectedSize = config.tileSize;
   
   // Validate file type
   if (!file.type.startsWith('image/')) {
-    return err(new Error(`Invalid file type: ${file.type}. Expected an image file.`));
+    return err(`Invalid file type: ${file.type}. Expected an image file.`);
   }
   
   // Load image
@@ -98,9 +98,9 @@ export async function loadAndValidateImage(
   
   // Validate dimensions
   if (img.width !== expectedSize || img.height !== expectedSize) {
-    return err(new Error(
+    return err(
       `Image must be ${expectedSize}x${expectedSize} pixels. Got ${img.width}x${img.height}.`
-    ));
+    );
   }
   
   return ok(img);
@@ -109,7 +109,7 @@ export async function loadAndValidateImage(
 /**
  * Load an image file as HTMLImageElement
  */
-function loadImageFile(file: File): Promise<Result<HTMLImageElement, Error>> {
+function loadImageFile(file: File): Promise<Result<HTMLImageElement, string>> {
   return new Promise((resolve) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -121,7 +121,7 @@ function loadImageFile(file: File): Promise<Result<HTMLImageElement, Error>> {
     
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      resolve(err(new Error(`Failed to load image: ${file.name}`)));
+      resolve(err(`Failed to load image: ${file.name}`));
     };
     
     img.src = objectUrl;

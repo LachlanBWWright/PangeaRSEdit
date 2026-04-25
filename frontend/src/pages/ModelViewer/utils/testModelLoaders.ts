@@ -79,17 +79,17 @@ export async function loadOttoTestModelWithoutSkeleton(): Promise<Result<File, E
   );
 
   if (fetchResult.isErr()) {
-    return err(new Error(`Failed to fetch Otto.bg3d: ${fetchResult.error.message}`));
+    return err(`Failed to fetch Otto.bg3d: ${fetchResult.error}`);
   }
 
   const bg3dResponse = fetchResult.value;
   if (!bg3dResponse.ok) {
-    return err(new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`));
+    return err(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
   }
 
   const bufferResult = await ResultAsync.fromPromise(bg3dResponse.arrayBuffer(), mapErr);
   if (bufferResult.isErr()) {
-    return err(new Error(`Failed to read Otto.bg3d: ${bufferResult.error.message}`));
+    return err(`Failed to read Otto.bg3d: ${bufferResult.error}`);
   }
 
   const bg3dArrayBuffer = bufferResult.value;

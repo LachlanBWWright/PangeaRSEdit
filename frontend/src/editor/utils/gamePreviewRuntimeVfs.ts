@@ -6,6 +6,20 @@ import {
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
+import { mapErr } from "../../utils/mapErr";
+
+function isFunctionField<T extends object>(obj: T, field: keyof T): boolean {
+  return typeof obj[field] === "function";
+}
+
+function isFunction(fn: unknown): fn is Function {
+  return typeof fn === "function";
+}
+
+function getStringField<T extends object>(obj: T, field: keyof T): string | null {
+  const value = obj[field];
+  return typeof value === "string" ? value : null;
+}
 
 function ensureDir(
   vfs: NonNullable<PreviewRuntimeModule["FS"]>,
@@ -73,7 +87,7 @@ function writeFileToVfs(
   module: PreviewRuntimeModule,
   path: string,
   data: Uint8Array,
-): Result<void, Error> {
+): Result<void, string> {
   const vfs = module.FS;
   if (vfs && isFunctionField(vfs, "writeFile")) {
     return Result.fromThrowable(
@@ -84,7 +98,7 @@ function writeFileToVfs(
     )();
   }
   if (!isFunction(module.FS_createDataFile)) {
-    return err(new Error("No VFS write mechanism available"));
+    return err("No VFS write mechanism available");
   }
   const lastSlash = path.lastIndexOf("/");
   const parentDir = path.substring(0, lastSlash);
@@ -98,13 +112,13 @@ function writeFileToVfs(
   }
   const createDataFile = module.FS_createDataFile;
   if (!isFunction(createDataFile)) {
-    return err(new Error("No VFS write mechanism available"));
+    return err("No VFS write mechanism available");
   }
   const result = Result.fromThrowable(
     () => createDataFile(parentDir, filename, data, true, true, false),
     (e) => mapErr(e),
   )();
-  return result.isOk() ? ok(undefined) : err(result.error);
+  return result.isOk() ? ok(undefined) : result;
 }
 
 function logPreviewRuntime(message: string, details?: unknown): void {

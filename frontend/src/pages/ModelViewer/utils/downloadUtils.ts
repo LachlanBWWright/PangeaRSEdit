@@ -20,7 +20,7 @@ import { arrayBufferSchema, stringSchema, uint8ArraySchema } from "../../../sche
 
 async function loadGlbBytes(
   gltfSource: string | ArrayBuffer,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer, string>> {
   const arrayBufferResult = arrayBufferSchema.safeParse(gltfSource);
   if (arrayBufferResult.success) {
     return ok(arrayBufferResult.data);
@@ -28,7 +28,7 @@ async function loadGlbBytes(
 
   const stringResult = stringSchema.safeParse(gltfSource);
   if (!stringResult.success) {
-    return err(new Error("Invalid gltfSource type: expected string or ArrayBuffer"));
+    return err("Invalid gltfSource type: expected string or ArrayBuffer");
   }
 
   const responseResult = await ResultAsync.fromPromise(
@@ -40,7 +40,7 @@ async function loadGlbBytes(
   }
 
   if (!responseResult.value.ok) {
-    return err(new Error(`Failed to fetch GLB data: ${responseResult.value.status}`));
+    return err(`Failed to fetch GLB data: ${responseResult.value.status}`);
   }
 
   const bytesResult = await ResultAsync.fromPromise(
@@ -56,7 +56,7 @@ async function loadGlbBytes(
 
 async function glbUrlToBg3dResponse(
   gltfSource: string | ArrayBuffer,
-): Promise<Result<BG3DGltfWorkerResponse, Error>> {
+): Promise<Result<BG3DGltfWorkerResponse, string>> {
   const glbBytesResult = await loadGlbBytes(gltfSource);
   if (glbBytesResult.isErr()) {
     return err(glbBytesResult.error);
@@ -117,7 +117,7 @@ export async function getBG3DDownloadArtifacts(
   gltfSource: string | ArrayBuffer,
   modelFileName = "Model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<BG3DDownloadArtifacts, Error>> {
+): Promise<Result<BG3DDownloadArtifacts, string>> {
   const result = await glbUrlToBg3dResponse(gltfSource);
   if (result.isErr()) {
     return err(result.error);
@@ -136,9 +136,7 @@ export async function getBG3DDownloadArtifacts(
     ? ok(workerResponse.parsed)
     : parseBG3D(workerResponse.result);
   if (parsedResult.isErr()) {
-    return err(
-      new Error(`Failed to parse converted BG3D for export: ${parsedResult.error}`),
-    );
+    return err(`Failed to parse converted BG3D for export: ${parsedResult.error}`);
   }
   const parsed = parsedResult.value;
 
@@ -172,7 +170,7 @@ export async function get3DMFDownloadArtifacts(
   gltfSource: string | ArrayBuffer,
   modelFileName = "model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<ThreeDMFDownloadArtifacts, Error>> {
+): Promise<Result<ThreeDMFDownloadArtifacts, string>> {
   const result = await glbUrlToBg3dResponse(gltfSource);
   if (result.isErr()) {
     return err(result.error);

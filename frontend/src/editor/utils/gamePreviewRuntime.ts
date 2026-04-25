@@ -1,6 +1,5 @@
 export {
   GAME_DISPLAY_NAMES,
-  PreviewRuntimeLoadError,
   buildGameArguments,
   buildPreviewAssetBaseUrl,
   buildPreviewAssetBaseUrls,

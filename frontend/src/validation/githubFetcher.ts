@@ -92,10 +92,10 @@ export async function fetchGitHubFile(
   branch: string,
   path: string,
   rateLimitConfig: RateLimitConfig = DEFAULT_RATE_LIMIT,
-): Promise<Result<FetchResult, Error>> {
+): Promise<Result<FetchResult, string>> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
 
-  let lastError: Error | null = null;
+  let lastError: string | null = null;
 
   for (let attempt = 0; attempt < rateLimitConfig.maxRetries; attempt++) {
     if (attempt > 0) {
@@ -112,7 +112,7 @@ export async function fetchGitHubFile(
     const response = fetchResult.value;
 
     if (!response.ok && response.status === 404) {
-      return err(new Error(`File not found: ${path}`));
+      return err(`File not found: ${path}`);
     }
 
     if (!response.ok && response.status === 403) {
@@ -121,7 +121,7 @@ export async function fetchGitHubFile(
     }
 
     if (!response.ok) {
-      return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
+      return err(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const textResult = await ResultAsync.fromPromise(response.text(), mapErr);
@@ -133,7 +133,7 @@ export async function fetchGitHubFile(
     return ok(createFetchResult(textResult.value));
   }
 
-  return err(lastError ?? new Error("Unknown fetch error"));
+  return err(lastError ?? "Unknown fetch error");
 }
 
 /**

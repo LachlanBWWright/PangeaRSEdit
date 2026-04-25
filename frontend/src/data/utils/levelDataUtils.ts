@@ -168,7 +168,7 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
  */
 export function combineLevelData(
   atomicData: AtomicLevelData,
-): Result<LevelData, Error> {
+): Result<LevelData, string> {
   const {
     headerData,
     itemData,
@@ -182,9 +182,7 @@ export function combineLevelData(
   // are allowed to be missing and will simply not be included in the serialized output.
   if (!headerData || !terrainData) {
     return err(
-      new Error(
-        "Cannot combine level data: critical header or terrain is missing",
-      ),
+      "Cannot combine level data: critical header or terrain is missing"
     );
   }
 
@@ -217,7 +215,7 @@ export function combineLevelData(
   if (isLevelDataLike(combined)) {
     return ok(combined);
   }
-  return err(new Error("Combined data is not valid LevelData"));
+  return err("Combined data is not valid LevelData");
 }
 
 /**
