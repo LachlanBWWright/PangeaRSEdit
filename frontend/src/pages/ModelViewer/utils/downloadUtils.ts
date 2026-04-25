@@ -137,7 +137,7 @@ export async function getBG3DDownloadArtifacts(
     : parseBG3D(workerResponse.result);
   if (parsedResult.isErr()) {
     return err(
-      new Error(`Failed to parse converted BG3D for export: ${parsedResult.error.message}`),
+      new Error(`Failed to parse converted BG3D for export: ${parsedResult.error}`),
     );
   }
   const parsed = parsedResult.value;
@@ -193,7 +193,7 @@ export async function get3DMFDownloadArtifacts(
   if (parsedBg3dResult.isErr()) {
     return err(
       new Error(
-        `Failed to parse GLB-derived BG3D: ${parsedBg3dResult.error.message}`,
+        `Failed to parse GLB-derived BG3D: ${parsedBg3dResult.error}`,
       ),
     );
   }
@@ -202,13 +202,13 @@ export async function get3DMFDownloadArtifacts(
   const metaResult = bg3dParseResultToMetaFile(parsedBg3d);
   if (metaResult.isErr()) {
     return err(
-      new Error(`Failed to convert BG3D export data to 3DMF: ${metaResult.error.message}`),
+      new Error(`Failed to convert BG3D export data to 3DMF: ${metaResult.error}`),
     );
   }
 
   const writeResult = write3DMFFromMetaFile(metaResult.value);
   if (writeResult.isErr()) {
-    return err(new Error(`Failed to serialize 3DMF export: ${writeResult.error.message}`));
+    return err(new Error(`Failed to serialize 3DMF export: ${writeResult.error}`));
   }
 
   let skeletonBytes: ArrayBuffer | undefined;

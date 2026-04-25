@@ -79,7 +79,7 @@ async function loadShapesFile(
 
   const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
   if (fetchResult.isErr()) {
-    return err(new Error(`Failed to load shapes file '${shapesFilename}': ${fetchResult.error.message}`));
+    return err(new Error(`Failed to load shapes file '${shapesFilename}': ${fetchResult.error}`));
   }
 
   const response = fetchResult.value;
@@ -89,7 +89,7 @@ async function loadShapesFile(
 
   const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
   if (bufferResult.isErr()) {
-    return err(new Error(`Failed to read buffer from '${shapesFilename}': ${bufferResult.error.message}`));
+    return err(new Error(`Failed to read buffer from '${shapesFilename}': ${bufferResult.error}`));
   }
 
   const result = parseShapesFile(bufferResult.value);
@@ -235,7 +235,7 @@ export async function preloadItemImages(
     return err(
       new Error(
         `Failed to preload ${failures.length} item image(s): ${
-          failures.map((failure) => failure.error.message).join("; ")
+          failures.map((failure) => failure.error).join("; ")
         }`
       )
     );

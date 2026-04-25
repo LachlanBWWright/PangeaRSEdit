@@ -62,7 +62,7 @@ export function SkeletonConversionPanel({
         mapErr,
       );
       if (bg3dResult.isErr()) {
-        const message = `Failed to read model file: ${bg3dResult.error.message}`;
+        const message = `Failed to read model file: ${bg3dResult.error}`;
         pushLog(message);
         toast.dismiss(toastId);
         toast.error(`${title} conversion failed: ${message}`);
@@ -80,7 +80,7 @@ export function SkeletonConversionPanel({
           mapErr,
         );
         if (skeletonRawResult.isErr()) {
-          const message = `Failed to read skeleton file: ${skeletonRawResult.error.message}`;
+          const message = `Failed to read skeleton file: ${skeletonRawResult.error}`;
           pushLog(message);
           toast.dismiss(toastId);
           toast.error(message);
@@ -97,7 +97,7 @@ export function SkeletonConversionPanel({
           mapErr,
         );
         if (skeletonParseResult.isErr()) {
-          const message = `Failed to parse skeleton file: ${skeletonParseResult.error.message}`;
+          const message = `Failed to parse skeleton file: ${skeletonParseResult.error}`;
           pushLog(message);
           toast.dismiss(toastId);
           toast.error(message);
@@ -202,7 +202,7 @@ export function SkeletonConversionPanel({
               skeletonBinaryResult.error,
             );
             pushLog(
-              `Skeleton file generation failed: ${skeletonBinaryResult.error.message}`,
+              `Skeleton file generation failed: ${skeletonBinaryResult.error}`,
             );
             toast.dismiss(toastId);
             toast.success(
@@ -250,7 +250,7 @@ export function SkeletonConversionPanel({
           if (skeletonBinaryResult.isErr()) {
             toast.dismiss(toastId);
             toast.error(
-              `${title} conversion failed: ${skeletonBinaryResult.error.message}`,
+              `${title} conversion failed: ${skeletonBinaryResult.error}`,
             );
             return;
           }

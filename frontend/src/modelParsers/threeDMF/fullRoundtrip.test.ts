@@ -44,7 +44,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
         const parse1 = parse3DMFToMetaFile(originalBuffer);
         expect(parse1.isOk()).toBe(true);
         if (!parse1.isOk()) {
-          console.log(`Parse error: ${parse1.error.message}`);
+          console.log(`Parse error: ${parse1.error}`);
           return;
         }
         const originalMeta = parse1.value;
@@ -110,7 +110,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
         // Step 8: Re-parse the roundtrip 3DMF to verify it's valid
         const reParse = parse3DMFToMetaFile(roundtripBuffer);
         if (!reParse.isOk()) {
-          console.log(`Re-parse error: ${reParse.error.message}`);
+          console.log(`Re-parse error: ${reParse.error}`);
         }
         expect(reParse.isOk()).toBe(true);
         if (!reParse.isOk()) return;
@@ -177,7 +177,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
           );
           expect(parseResult.isOk()).toBe(true);
           if (!parseResult.isOk()) {
-            console.log(`Parse error: ${parseResult.error.message}`);
+            console.log(`Parse error: ${parseResult.error}`);
             return;
           }
           const originalBG3D = parseResult.value;
@@ -262,7 +262,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
           // Step 8: Re-parse the roundtrip 3DMF to verify it's valid
           const reParse = parse3DMFToMetaFile(roundtripModelBuffer);
           if (!reParse.isOk()) {
-            console.log(`Re-parse error: ${reParse.error.message}`);
+            console.log(`Re-parse error: ${reParse.error}`);
           }
           expect(reParse.isOk()).toBe(true);
 

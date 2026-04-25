@@ -6,7 +6,6 @@ import {
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
-import { errorSchema, isFunctionField, isFunction, getStringField } from "../../schemas/common";
 
 function ensureDir(
   vfs: NonNullable<PreviewRuntimeModule["FS"]>,
@@ -16,7 +15,7 @@ function ensureDir(
     const analyzePath = vfs.analyzePath;
     const analyzeResult = Result.fromThrowable(
       () => analyzePath(path),
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
     if (analyzeResult.isOk() && analyzeResult.value.exists) return;
   }
@@ -24,7 +23,7 @@ function ensureDir(
     () => {
       vfs.mkdir?.(path);
     },
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   )();
 }
 
@@ -47,7 +46,7 @@ function ensurePreviewPrefsDirs(
           true,
         );
       },
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
     if (createResult.isOk()) return;
   }
@@ -81,7 +80,7 @@ function writeFileToVfs(
       () => {
         vfs.writeFile(path, data);
       },
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
   }
   if (!isFunction(module.FS_createDataFile)) {
@@ -94,7 +93,7 @@ function writeFileToVfs(
     const unlink = module.FS_unlink;
     Result.fromThrowable(
       () => unlink(path),
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
   }
   const createDataFile = module.FS_createDataFile;
@@ -103,7 +102,7 @@ function writeFileToVfs(
   }
   const result = Result.fromThrowable(
     () => createDataFile(parentDir, filename, data, true, true, false),
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   )();
   return result.isOk() ? ok(undefined) : err(result.error);
 }
@@ -167,7 +166,7 @@ function writeTerrainToVfs(
     for (const candidatePath of pathVariants) {
       const writeResult = writeFileToVfs(module, candidatePath, data);
       if (writeResult.isErr()) {
-        failedWrites.push(`${candidatePath}: ${writeResult.error.message}`);
+        failedWrites.push(`${candidatePath}: ${writeResult.error}`);
         continue;
       }
       logPreviewRuntime("Wrote terrain data to VFS", {
@@ -197,7 +196,7 @@ function writeTerrainToVfs(
     );
     if (writeDataResult.isErr()) {
       onError(
-        `Failed to write terrain data file: ${writeDataResult.error.message}`,
+        `Failed to write terrain data file: ${writeDataResult.error}`,
       );
       return;
     }
@@ -227,7 +226,7 @@ function writeTerrainToVfs(
     );
     if (writeRsrcResult.isErr()) {
       onError(
-        `Failed to write terrain rsrc file: ${writeRsrcResult.error.message}`,
+        `Failed to write terrain rsrc file: ${writeRsrcResult.error}`,
       );
       return;
     }
@@ -245,7 +244,7 @@ function writeTerrainToVfs(
     );
     if (writeTextureResult.isErr()) {
       onError(
-        `Failed to write terrain texture file: ${writeTextureResult.error.message}`,
+        `Failed to write terrain texture file: ${writeTextureResult.error}`,
       );
       return;
     }
@@ -282,7 +281,7 @@ function writeTerrainToVfs(
     });
     Result.fromThrowable(
       () => module.ccall?.(setPathFnStr, null, ["string"], [setPathArg]),
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
   }
 }

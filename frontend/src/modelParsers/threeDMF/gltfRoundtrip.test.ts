@@ -50,7 +50,7 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
         const parseResult = parse3DMF(fileBuffer);
         expect(parseResult.isOk()).toBe(true);
         if (!parseResult.isOk()) {
-          console.log(`Parse error: ${parseResult.error.message}`);
+          console.log(`Parse error: ${parseResult.error}`);
           return;
         }
         const originalBG3D = parseResult.value;
@@ -160,7 +160,7 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
           );
           expect(parseResult.isOk()).toBe(true);
           if (!parseResult.isOk()) {
-            console.log(`Parse error: ${parseResult.error.message}`);
+            console.log(`Parse error: ${parseResult.error}`);
             return;
           }
           const originalBG3D = parseResult.value;
@@ -311,7 +311,7 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
         const parseResult = parse3DMF(fileBuffer);
         expect(parseResult.isOk()).toBe(true);
         if (!parseResult.isOk()) {
-          console.log(`Parse error: ${parseResult.error.message}`);
+          console.log(`Parse error: ${parseResult.error}`);
           return;
         }
         const originalBG3D = parseResult.value;

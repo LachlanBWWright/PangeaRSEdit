@@ -144,7 +144,7 @@ self.onmessage = (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       if (parseResult.isErr()) {
         const response = {
           type: "error",
-          error: parseResult.error.message,
+          error: parseResult.error,
           requestId,
         } satisfies BG3DGltfWorkerResponse;
         self.postMessage(response);
@@ -168,7 +168,7 @@ self.onmessage = (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       if (parseResult.isErr()) {
         const response = {
           type: "error",
-          error: parseResult.error.message,
+          error: parseResult.error,
           requestId,
         } satisfies BG3DGltfWorkerResponse;
         self.postMessage(response);
@@ -195,7 +195,7 @@ self.onmessage = (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       if (parseResult.isErr()) {
         const response = {
           type: "error",
-          error: parseResult.error.message,
+          error: parseResult.error,
           requestId,
         } satisfies BG3DGltfWorkerResponse;
         self.postMessage(response);

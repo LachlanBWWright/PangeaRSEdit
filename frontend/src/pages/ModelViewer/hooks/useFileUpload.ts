@@ -140,7 +140,7 @@ async function handleGlbUpload(
 ): Promise<Result<void, Error>> {
   const glbBufferResult = await readFileBuffer(bg3dFile, "GLB file");
   if (glbBufferResult.isErr()) {
-    return failUpload(runtime, glbBufferResult.error.message);
+    return failUpload(runtime, glbBufferResult.error);
   }
 
   const workerResult = await runWorkerMessage(
@@ -156,12 +156,12 @@ async function handleGlbUpload(
     "convert GLB to BG3D",
   );
   if (responseResult.isErr()) {
-    return failUpload(runtime, responseResult.error.message);
+    return failUpload(runtime, responseResult.error);
   }
 
   const parsedResult = await parseGlbImportResult(responseResult.value);
   if (parsedResult.isErr()) {
-    const message = `Failed to load BG3D from GLB: ${parsedResult.error.message}`;
+    const message = `Failed to load BG3D from GLB: ${parsedResult.error}`;
     return failUpload(runtime, message);
   }
 
@@ -191,7 +191,7 @@ async function handleModelUpload(
   const modelLabel = kind === "3dmf" ? "3DMF file" : "BG3D file";
   const modelBufferResult = await readFileBuffer(modelFile, modelLabel);
   if (modelBufferResult.isErr()) {
-    return failUpload(runtime, modelBufferResult.error.message);
+    return failUpload(runtime, modelBufferResult.error);
   }
 
   const skeletonLoadResult = await loadOptionalSkeleton(skeletonFile);
@@ -217,7 +217,7 @@ async function handleModelUpload(
     action,
   );
   if (responseResult.isErr()) {
-    return failUpload(runtime, responseResult.error.message);
+    return failUpload(runtime, responseResult.error);
   }
 
   const displayFileName = createDisplayFileName(

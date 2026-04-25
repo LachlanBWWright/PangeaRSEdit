@@ -9,7 +9,7 @@ import {
   PreviewRuntimeLoadError,
   type PreviewRuntimeModule,
 } from "./gamePreviewRuntime";
-import { errorSchema } from "../../schemas/common";
+import { mapErr } from "../../utils/mapErr";
 
 interface StartGamePreviewOptions {
   readonly canvas: HTMLCanvasElement;
@@ -153,7 +153,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
         const stopOrErr = await ResultAsync.fromPromise(
           loadPreviewRuntime(activeModule, scriptUrl),
-          (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+          (e) => mapErr(e),
         );
         if (cancelled) {
           if (stopOrErr.isOk()) stopOrErr.value();
@@ -166,7 +166,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           if (canTryNextBase) {
             continue;
           }
-          onError(stopOrErr.error.message);
+          onError(stopOrErr.error);
           return;
         }
         stopGame = stopOrErr.value;

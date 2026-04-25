@@ -33,7 +33,7 @@ export async function runConversionWorker({
     mapErr,
   );
   if (bufferResult.isErr()) {
-    alert(`Conversion failed: ${bufferResult.error.message}`);
+    alert(`Conversion failed: ${bufferResult.error}`);
     return null;
   }
   const buffer = new Uint8Array(bufferResult.value);
@@ -62,7 +62,7 @@ export async function runConversionWorker({
   );
 
   if (workerResult.isErr()) {
-    alert(`Conversion failed: ${workerResult.error.message}`);
+    alert(`Conversion failed: ${workerResult.error}`);
     return null;
   }
 

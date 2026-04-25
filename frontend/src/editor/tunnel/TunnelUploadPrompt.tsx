@@ -23,7 +23,7 @@ export function TunnelUploadPrompt({
       const result = parseTunnelFile(buffer);
       if (result.isErr()) {
         toast.error("Failed to parse tunnel file", {
-          description: result.error.message,
+          description: result.error,
         });
         return;
       }

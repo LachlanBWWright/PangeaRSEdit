@@ -89,7 +89,7 @@ export function resizeEditorAtomicTiles(args: TileResizeArgs): void {
   );
 
   if (result.isErr()) {
-    console.error("Failed to resize level:", result.error.message);
+    console.error("Failed to resize level:", result.error);
     return;
   }
 
@@ -115,7 +115,7 @@ export function resizeEditorAtomicSupertiles(args: SupertileResizeArgs): void {
   );
 
   if (result.isErr()) {
-    console.error("Failed to resize level:", result.error.message);
+    console.error("Failed to resize level:", result.error);
     return;
   }
 

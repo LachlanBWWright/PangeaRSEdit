@@ -51,7 +51,7 @@ export function FlagTileEditor({
       coordColours,
     );
     if (result.isErr()) {
-      console.error("Failed to create image canvas:", result.error.message);
+      console.error("Failed to create image canvas:", result.error);
       return null;
     }
     return result.value;

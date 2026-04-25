@@ -458,7 +458,7 @@ export function ItemModelViewer() {
       mapErr,
     );
     if (responseResult.isErr()) {
-      const msg = responseResult.error.message;
+      const msg = responseResult.error;
       setError(msg);
       const itemName = selectedItem?.name ?? "item";
       setStatus(`Error loading ${itemName}: ${msg}`);
@@ -480,7 +480,7 @@ export function ItemModelViewer() {
       mapErr,
     );
     if (bufferResult.isErr()) {
-      const msg = bufferResult.error.message;
+      const msg = bufferResult.error;
       setError(msg);
       const itemName = selectedItem?.name ?? "item";
       setStatus(`Error loading ${itemName}: ${msg}`);
@@ -542,7 +542,7 @@ export function ItemModelViewer() {
     );
 
     if (glbBufferResult.isErr()) {
-      const errorMsg = glbBufferResult.error.message;
+      const errorMsg = glbBufferResult.error;
       setError(errorMsg);
       const itemName = selectedItem?.name ?? "item";
       setStatus(`Error loading ${itemName}: ${errorMsg}`);
@@ -574,7 +574,7 @@ export function ItemModelViewer() {
     URL.revokeObjectURL(blobUrl);
 
     if (gltfResult.isErr()) {
-      const errorMsg = gltfResult.error.message;
+      const errorMsg = gltfResult.error;
       setError(errorMsg);
       const itemName = selectedItem?.name ?? "item";
       setStatus(`Error loading ${itemName}: ${errorMsg}`);

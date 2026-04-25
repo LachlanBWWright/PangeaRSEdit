@@ -146,7 +146,7 @@ export function GameCard({
       if (mapImagesResult.isErr()) {
         toast.dismiss(toastId);
         toast.error("Failed to load textures", {
-          description: mapImagesResult.error.message,
+          description: mapImagesResult.error,
         });
         return;
       }
@@ -169,7 +169,7 @@ export function GameCard({
       const result = parseTunnelFile(await file.arrayBuffer());
       if (result.isErr()) {
         toast.error("Failed to parse tunnel file", {
-          description: result.error.message,
+          description: result.error,
         });
         return;
       }

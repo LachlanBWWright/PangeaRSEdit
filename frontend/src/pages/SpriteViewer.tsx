@@ -170,7 +170,7 @@ export function SpriteViewer() {
     const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error loading file:", bufferResult.error);
-      toast.error(bufferResult.error.message);
+      toast.error(bufferResult.error);
       setLoading(false);
       return;
     }
@@ -179,7 +179,7 @@ export function SpriteViewer() {
     if (fileType === "sprites") {
       const result = parseShapesFile(buffer);
       if (result.isErr()) {
-        toast.error(`Failed to parse: ${result.error.message}`);
+        toast.error(`Failed to parse: ${result.error}`);
         setLoading(false);
         return;
       }
@@ -211,7 +211,7 @@ export function SpriteViewer() {
     } else if (fileType === "tga") {
       const result = parseTGAToCanvas(buffer);
       if (result.isErr()) {
-        toast.error(`Failed to parse: ${result.error.message}`);
+        toast.error(`Failed to parse: ${result.error}`);
         setLoading(false);
         return;
       }
@@ -236,7 +236,7 @@ export function SpriteViewer() {
 
     if (fetchResult.isErr()) {
       console.error("Error loading sprites:", fetchResult.error);
-      toast.error(fetchResult.error.message);
+      toast.error(fetchResult.error);
       setLoading(false);
       return;
     }
@@ -251,7 +251,7 @@ export function SpriteViewer() {
     const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error loading sprites:", bufferResult.error);
-      toast.error(bufferResult.error.message);
+      toast.error(bufferResult.error);
       setLoading(false);
       return;
     }
@@ -260,7 +260,7 @@ export function SpriteViewer() {
     const result = parseShapesFile(buffer);
 
     if (result.isErr()) {
-      toast.error(`Failed to parse shapes file: ${result.error.message}`);
+      toast.error(`Failed to parse shapes file: ${result.error}`);
       setLoading(false);
       return;
     }
@@ -300,7 +300,7 @@ export function SpriteViewer() {
 
     if (fetchResult.isErr()) {
       console.error("Error loading TGA:", fetchResult.error);
-      toast.error(fetchResult.error.message);
+      toast.error(fetchResult.error);
       setLoading(false);
       return;
     }
@@ -315,7 +315,7 @@ export function SpriteViewer() {
     const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error loading TGA:", bufferResult.error);
-      toast.error(bufferResult.error.message);
+      toast.error(bufferResult.error);
       setLoading(false);
       return;
     }
@@ -324,7 +324,7 @@ export function SpriteViewer() {
     const result = parseTGAToCanvas(buffer);
 
     if (result.isErr()) {
-      toast.error(`Failed to parse TGA file: ${result.error.message}`);
+      toast.error(`Failed to parse TGA file: ${result.error}`);
       setLoading(false);
       return;
     }
@@ -348,7 +348,7 @@ export function SpriteViewer() {
 
     if (tgaFetchResult.isErr()) {
       console.error("Error loading tileset:", tgaFetchResult.error);
-      toast.error(tgaFetchResult.error.message);
+      toast.error(tgaFetchResult.error);
       setLoading(false);
       return;
     }
@@ -363,7 +363,7 @@ export function SpriteViewer() {
       const tgaBufferResult = await ResultAsync.fromPromise(tgaResponse.arrayBuffer(), mapErr);
     if (tgaBufferResult.isErr()) {
       console.error("Error loading tileset:", tgaBufferResult.error);
-      toast.error(tgaBufferResult.error.message);
+      toast.error(tgaBufferResult.error);
       setLoading(false);
       return;
     }
@@ -371,7 +371,7 @@ export function SpriteViewer() {
       const tgaCanvasResult = parseTGAToCanvas(tgaBuffer);
 
       if (tgaCanvasResult.isErr()) {
-        toast.error(`Failed to parse TGA file: ${tgaCanvasResult.error.message}`);
+        toast.error(`Failed to parse TGA file: ${tgaCanvasResult.error}`);
         return;
       }
 
@@ -450,7 +450,7 @@ export function SpriteViewer() {
 
       if (tilesetFetchResult.isErr()) {
         console.error("Error loading tileset:", tilesetFetchResult.error);
-        toast.error(tilesetFetchResult.error.message);
+        toast.error(tilesetFetchResult.error);
         setLoading(false);
         return;
       }
@@ -465,7 +465,7 @@ export function SpriteViewer() {
       const tilesetBufferResult = await ResultAsync.fromPromise(tilesetResponse.arrayBuffer(), mapErr);
       if (tilesetBufferResult.isErr()) {
         console.error("Error loading tileset:", tilesetBufferResult.error);
-        toast.error(tilesetBufferResult.error.message);
+        toast.error(tilesetBufferResult.error);
         setLoading(false);
         return;
       }
@@ -486,7 +486,7 @@ export function SpriteViewer() {
       const tilesetResult = parseTilesetFile(tilesetBuffer, tilsetPalette);
 
       if (tilesetResult.isErr()) {
-        toast.error(`Failed to parse tileset: ${tilesetResult.error.message}`);
+        toast.error(`Failed to parse tileset: ${tilesetResult.error}`);
         return;
       }
 

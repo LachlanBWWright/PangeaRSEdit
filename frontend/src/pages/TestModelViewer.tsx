@@ -483,7 +483,7 @@ export function TestModelViewer() {
 
     const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (fetchResult.isErr()) {
-      const errorMsg = `Failed to fetch: ${fetchResult.error.message}`;
+      const errorMsg = `Failed to fetch: ${fetchResult.error}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
       console.error("Model fetch error:", fetchResult.error);
@@ -502,7 +502,7 @@ export function TestModelViewer() {
 
     const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
-      const errorMsg = `Failed to read buffer: ${bufferResult.error.message}`;
+      const errorMsg = `Failed to read buffer: ${bufferResult.error}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
       console.error("Buffer read error:", bufferResult.error);
@@ -565,7 +565,7 @@ export function TestModelViewer() {
     );
 
     if (glbBufferResult.isErr()) {
-      const errorMsg = `Conversion failed: ${glbBufferResult.error.message}`;
+      const errorMsg = `Conversion failed: ${glbBufferResult.error}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
       console.error("Conversion error:", glbBufferResult.error);
@@ -596,7 +596,7 @@ export function TestModelViewer() {
     URL.revokeObjectURL(blobUrl);
 
     if (gltfResult.isErr()) {
-      const errorMsg = `Failed to load GLTF: ${gltfResult.error.message}`;
+      const errorMsg = `Failed to load GLTF: ${gltfResult.error}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
       console.error("GLTF load error:", gltfResult.error);

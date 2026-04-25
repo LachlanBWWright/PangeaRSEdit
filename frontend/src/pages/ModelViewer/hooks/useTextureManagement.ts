@@ -210,7 +210,7 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
               mapErr,
             );
             if (result.isErr()) {
-              toast.error(`Error replacing texture: ${result.error.message}`);
+              toast.error(`Error replacing texture: ${result.error}`);
               reject(result.error);
               return;
             }
@@ -298,7 +298,7 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
               );
       if (blobResult.isErr()) {
         console.error("Error editing texture:", blobResult.error);
-        toast.error(blobResult.error.message);
+        toast.error(blobResult.error);
         return;
       }
       const file = new File([blobResult.value], `${texture.name}.png`, {
@@ -312,7 +312,7 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
       );
       if (replaceResult.isErr()) {
         console.error("Error editing texture:", replaceResult.error);
-        toast.error(replaceResult.error.message);
+        toast.error(replaceResult.error);
         return;
       }
     },

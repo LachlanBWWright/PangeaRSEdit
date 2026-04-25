@@ -117,7 +117,7 @@ export function rerenderAllTilesWithCurrentPalette(
     );
     const canvasResult = renderTileWithDynamicPalette(tileSlice, tileSize);
     if (canvasResult.isErr()) {
-      return err(new Error(`Failed to render tile ${tileIndex}: ${canvasResult.error.message}`));
+      return err(new Error(`Failed to render tile ${tileIndex}: ${canvasResult.error}`));
     }
     canvases.push(canvasResult.value);
   }

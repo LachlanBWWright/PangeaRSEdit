@@ -2,24 +2,26 @@ import { toast } from "sonner";
 import type { ChangeEvent } from "react";
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
-import { errorSchema } from "@/schemas/common";
+import { plainObjectSchema, unknownArraySchema, booleanSchema, numberSchema } from "@/schemas/common";
 
 export const TILE_SIZE = 32;
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 export function isArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
+  return unknownArraySchema.safeParse(value).success;
 }
 
 export function getBoolean(value: unknown, defaultValue = false): boolean {
-  return typeof value === "boolean" ? value : defaultValue;
+  const result = booleanSchema.safeParse(value);
+  return result.success ? result.data : defaultValue;
 }
 
 export function getNumber(value: unknown, defaultValue = 0): number {
-  return typeof value === "number" ? value : defaultValue;
+  const result = numberSchema.safeParse(value);
+  return result.success ? result.data : defaultValue;
 }
 
 function getXlatEntryIndex(entry: unknown): number | null {
@@ -128,9 +130,8 @@ async function loadStrictTileBitmap(
   errorPrefix: string,
 ): Promise<ImageBitmap | null> {
   const sourceBitmap = await createImageBitmap(file).catch((error: unknown) => {
-    const parseResult = errorSchema.safeParse(error);
     toast.error(
-      `${errorPrefix}: ${parseResult.success ? parseResult.data.message : String(error)}`,
+      `${errorPrefix}: ${String(error)}`,
     );
     return null;
   });
@@ -146,9 +147,8 @@ async function loadStrictTileBitmap(
     resizeHeight: TILE_SIZE,
     resizeQuality: "high",
   }).catch((error: unknown) => {
-    const parseResult = errorSchema.safeParse(error);
     toast.error(
-      `${errorPrefix}: ${parseResult.success ? parseResult.data.message : String(error)}`,
+      `${errorPrefix}: ${String(error)}`,
     );
     return null;
   });

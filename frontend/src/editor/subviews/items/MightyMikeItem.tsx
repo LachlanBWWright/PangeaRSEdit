@@ -89,7 +89,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
       if (loadResult.isErr()) {
         console.warn(
           `Unexpected error loading image for item ${item.type}:`,
-          loadResult.error.message,
+          loadResult.error,
         );
         setItemImageData(null);
         return;
@@ -101,7 +101,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
       } else {
         console.warn(
           `Failed to load image for item ${item.type}:`,
-          result.error.message,
+          result.error,
         );
         setItemImageData(null);
       }

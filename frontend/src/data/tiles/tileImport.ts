@@ -305,7 +305,7 @@ export async function validateTileImportBatch(
     if (result.isOk()) {
       validFiles.push(file);
     } else {
-      invalidFiles.push({ file, reason: result.error.message });
+      invalidFiles.push({ file, reason: result.error });
     }
   }
   

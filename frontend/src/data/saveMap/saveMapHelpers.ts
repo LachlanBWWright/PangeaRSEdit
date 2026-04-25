@@ -31,7 +31,7 @@ export function serializeBugdomTileImages(
     if (encodedTile.isErr())
       return err(
         new Error(
-          `Failed to serialize tile image #${i}: ${encodedTile.error.message}`,
+          `Failed to serialize tile image #${i}: ${encodedTile.error}`,
         ),
       );
     serializedTiles.push(bufferToHex(copyToArrayBuffer(encodedTile.value)));
@@ -67,7 +67,7 @@ export async function processMapData({
     console.error("Invalid JSON for resource fork:", validation.error);
     toast({
       title: "Saving failed",
-      description: `Invalid map data structure: ${validation.error.message}`,
+      description: `Invalid map data structure: ${validation.error}`,
     });
     return new ArrayBuffer(0);
   }
@@ -82,7 +82,7 @@ export async function processMapData({
       console.error("Failed to serialize tile images:", tileDataResult.error);
       toast({
         title: "Saving failed",
-        description: tileDataResult.error.message,
+        description: tileDataResult.error,
       });
       return new ArrayBuffer(0);
     }

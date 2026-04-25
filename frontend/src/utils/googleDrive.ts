@@ -27,7 +27,7 @@ export async function uploadFileToGoogleDrive(
     mapErr,
   );
   if (response.isErr()) {
-    return { error: response.error.message };
+    return { error: response.error };
   }
   if (!response.value.ok) {
     const details = await response.value.text();
@@ -35,7 +35,7 @@ export async function uploadFileToGoogleDrive(
   }
   const parsed = await ResultAsync.fromPromise(response.value.json(), mapErr);
   if (parsed.isErr()) {
-    return { error: parsed.error.message };
+    return { error: parsed.error };
   }
   const fileId = Reflect.get(parsed.value, "id");
   if (typeof fileId !== "string") {
@@ -57,7 +57,7 @@ export async function downloadFileFromGoogleDrive(
     mapErr,
   );
   if (response.isErr()) {
-    return { error: response.error.message };
+    return { error: response.error };
   }
   if (!response.value.ok) {
     const details = await response.value.text();
@@ -68,7 +68,7 @@ export async function downloadFileFromGoogleDrive(
     mapErr,
   );
   if (blobResult.isErr()) {
-    return { error: blobResult.error.message };
+    return { error: blobResult.error };
   }
 
   const metadataResponse = await ResultAsync.fromPromise(

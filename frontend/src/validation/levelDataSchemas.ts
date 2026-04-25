@@ -300,7 +300,7 @@ export function validateHeader(
   if (result.success) {
     return ok(result.data);
   }
-  return err(`Header validation failed: ${result.error.message}`);
+  return err(`Header validation failed: ${result.error}`);
 }
 
 /**
@@ -312,7 +312,7 @@ export function validateItems(data: unknown): Result<Item[], string> {
   if (result.success) {
     return ok(result.data);
   }
-  return err(`Items validation failed: ${result.error.message}`);
+  return err(`Items validation failed: ${result.error}`);
 }
 
 /**
@@ -324,7 +324,7 @@ export function validateFences(data: unknown): Result<Fence[], string> {
   if (result.success) {
     return ok(result.data);
   }
-  return err(`Fences validation failed: ${result.error.message}`);
+  return err(`Fences validation failed: ${result.error}`);
 }
 
 /**
@@ -336,7 +336,7 @@ export function validateSplines(data: unknown): Result<Spline[], string> {
   if (result.success) {
     return ok(result.data);
   }
-  return err(`Splines validation failed: ${result.error.message}`);
+  return err(`Splines validation failed: ${result.error}`);
 }
 
 /**
@@ -348,7 +348,7 @@ export function validateLiquids(data: unknown): Result<Liquid[], string> {
   if (result.success) {
     return ok(result.data);
   }
-  return err(`Liquids validation failed: ${result.error.message}`);
+  return err(`Liquids validation failed: ${result.error}`);
 }
 
 /**
@@ -363,7 +363,7 @@ export function validateTileAttributes(
     return ok(result.data);
   }
   return err(
-    `Tile attributes validation failed: ${result.error.message}`,
+    `Tile attributes validation failed: ${result.error}`,
   );
 }
 

@@ -121,7 +121,7 @@ export async function loadPreviewScene(
   const modelUrl = `${currentConfig.basePath}/${previewMapping.modelPath}/${previewMapping.modelFile}`;
   const responseResult = await ResultAsync.fromPromise(fetch(modelUrl), mapErr);
   if (responseResult.isErr()) {
-    return finish(null, responseResult.error.message);
+    return finish(null, responseResult.error);
   }
 
   const response = responseResult.value;
@@ -134,7 +134,7 @@ export async function loadPreviewScene(
     mapErr,
   );
   if (arrayBufferResult.isErr()) {
-    return finish(null, arrayBufferResult.error.message);
+    return finish(null, arrayBufferResult.error);
   }
   const arrayBuffer = arrayBufferResult.value;
 
@@ -150,7 +150,7 @@ export async function loadPreviewScene(
     mapErr,
   );
   if (workerResult.isErr()) {
-    return finish(null, workerResult.error.message);
+    return finish(null, workerResult.error);
   }
 
   const converted = workerResult.value;
@@ -171,7 +171,7 @@ export async function loadPreviewScene(
   );
   URL.revokeObjectURL(glbUrl);
   if (gltfResult.isErr()) {
-    return finish(null, gltfResult.error.message);
+    return finish(null, gltfResult.error);
   }
 
   const modelIndex = previewMapping.modelIndex ?? currentEntry.modelIndex ?? 0;

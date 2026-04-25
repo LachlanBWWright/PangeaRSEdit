@@ -22,7 +22,7 @@ async function loadTgaDataUrlAsync(src: string): Promise<string | null> {
       const canvasResult = parseTGAToCanvas(buffer);
       if (canvasResult.isErr()) {
         console.warn(
-          `Failed to parse TGA thumbnail ${src}: ${canvasResult.error.message}`,
+          `Failed to parse TGA thumbnail ${src}: ${canvasResult.error}`,
         );
         return null;
       }

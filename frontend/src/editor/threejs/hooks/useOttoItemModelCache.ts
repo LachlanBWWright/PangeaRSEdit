@@ -178,7 +178,7 @@ export const useItemModelCache = (
       if (fullGltfResult.isErr()) {
         console.error(
           `[ItemModelCache] Error loading model for item type ${itemType}:`,
-          fullGltfResult.error.message,
+          fullGltfResult.error,
         );
 
         setModelCache((prev) => {

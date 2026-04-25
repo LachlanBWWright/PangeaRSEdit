@@ -5,7 +5,7 @@ import {
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
-import { errorSchema } from "../../schemas/common";
+import { mapErr } from "../../utils/mapErr";
 import { z } from "zod";
 
 export function applyPreviewGlobals(
@@ -22,14 +22,14 @@ export function applyPreviewGlobals(
   const setGlobal = (key: string, value: unknown) => {
     const previous = Result.fromThrowable(
       () => Reflect.get(win, key),
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
     previousValues.set(key, previous.isOk() ? previous.value : undefined);
     Result.fromThrowable(
       () => {
         Reflect.set(win, key, value);
       },
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
   };
 
@@ -78,14 +78,14 @@ export function applyPreviewGlobals(
           () => {
             Reflect.deleteProperty(win, key);
           },
-          (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+          (e) => mapErr(e),
         )();
       } else {
         Result.fromThrowable(
           () => {
             Reflect.set(win, key, value);
           },
-          (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+          (e) => mapErr(e),
         )();
       }
     }

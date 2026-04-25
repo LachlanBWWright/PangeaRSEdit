@@ -10,7 +10,7 @@ import {
   ensurePreviewPrefsDirs,
   writeTerrainToVfs,
 } from "./gamePreviewRuntimeVfs";
-import { errorSchema } from "../../schemas/common";
+import { mapErr } from "../../utils/mapErr";
 
 export interface PreviewModuleOptions {
   readonly config: GamePortConfig;
@@ -144,7 +144,7 @@ export function createPreviewModule(
                 skipToLevel.argTypes,
                 skipToLevel.args,
               ),
-            (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+            (e) => mapErr(e),
           )();
         }
       }
@@ -236,7 +236,7 @@ export async function loadPreviewRuntime(
       window.setTimeout = patchedWindowSetTimeout;
       window.clearTimeout = patchedWindowClearTimeout;
     },
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   )();
 
   const trackedAudioContexts = new Set<AudioContext>();
@@ -251,12 +251,12 @@ export async function loadPreviewRuntime(
     () => {
       window.AudioContext = TrackedAudioContext;
     },
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   )();
 
   const response = await ResultAsync.fromPromise(
     fetch(scriptUrl, { credentials: "same-origin" }),
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   );
 
   function restoreWindowGlobals(): void {
@@ -268,7 +268,7 @@ export async function loadPreviewRuntime(
         window.clearTimeout = prevWindowCt;
         window.AudioContext = savedAudioContext;
       },
-      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+      (e) => mapErr(e),
     )();
   }
 
@@ -285,12 +285,12 @@ export async function loadPreviewRuntime(
 
   const sourceResult = await ResultAsync.fromPromise(
     response.value.text(),
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   );
   if (sourceResult.isErr()) {
     restoreWindowGlobals();
     return Promise.reject(
-      new PreviewRuntimeLoadError(sourceResult.error.message, null),
+      new PreviewRuntimeLoadError(sourceResult.error, null),
     );
   }
   const source = sourceResult.value;
@@ -330,12 +330,12 @@ export async function loadPreviewRuntime(
           ct,
         ]);
     },
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   )();
 
   if (runner.isErr()) {
     restoreWindowGlobals();
-    return Promise.reject(new PreviewRuntimeLoadError(runner.error.message, null));
+    return Promise.reject(new PreviewRuntimeLoadError(runner.error, null));
   }
 
   const runResult = Result.fromThrowable(
@@ -348,12 +348,12 @@ export async function loadPreviewRuntime(
         gameSetTimeout,
         gameClearTimeout,
       ),
-    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
+    (e) => mapErr(e),
   )();
   if (runResult.isErr()) {
     restoreWindowGlobals();
     return Promise.reject(
-      new PreviewRuntimeLoadError(runResult.error.message, null),
+      new PreviewRuntimeLoadError(runResult.error, null),
     );
   }
 

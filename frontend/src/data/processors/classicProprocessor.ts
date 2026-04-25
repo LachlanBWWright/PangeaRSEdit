@@ -73,7 +73,7 @@ export function serializeNanosaurTerrainTextures(
     if (encoded.isErr()) {
       return err(
         new Error(
-          `Failed to serialize tile image #${i}: ${encoded.error.message}`,
+          `Failed to serialize tile image #${i}: ${encoded.error}`,
         ),
       );
     }

@@ -343,7 +343,7 @@ export function parseTunnelFile(
 
   if (parseResult.isErr()) {
     return err(
-      new Error(`Failed to parse tunnel file: ${parseResult.error.message}`),
+      new Error(`Failed to parse tunnel file: ${parseResult.error}`),
     );
   }
 

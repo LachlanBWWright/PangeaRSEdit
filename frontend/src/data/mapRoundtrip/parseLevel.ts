@@ -254,7 +254,7 @@ export async function performRoundtrip(
 
   if (originalResult.isErr()) {
     return err(
-      new Error(`Failed to parse original: ${originalResult.error.message}`),
+      new Error(`Failed to parse original: ${originalResult.error}`),
     );
   }
 
@@ -265,7 +265,7 @@ export async function performRoundtrip(
 
   if (serializedResult.isErr()) {
     return err(
-      new Error(`Failed to serialize: ${serializedResult.error.message}`),
+      new Error(`Failed to serialize: ${serializedResult.error}`),
     );
   }
 
@@ -277,7 +277,7 @@ export async function performRoundtrip(
 
   if (roundtripResult.isErr()) {
     return err(
-      new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`),
+      new Error(`Failed to parse roundtrip: ${roundtripResult.error}`),
     );
   }
 

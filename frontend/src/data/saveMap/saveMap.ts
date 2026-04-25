@@ -259,7 +259,7 @@ export async function saveMap({
     if (textureResult.isErr()) {
       toast({
         title: "Failed to serialize Nanosaur 1 texture file",
-        description: textureResult.error.message,
+        description: textureResult.error,
       });
       return;
     }

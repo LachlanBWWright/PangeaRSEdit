@@ -25,7 +25,7 @@ export function createBugdom2TunnelLoader({
     );
     if (responseResult.isErr()) {
       toast.error(`Failed to fetch ${fileName}`, {
-        description: responseResult.error.message,
+        description: responseResult.error,
       });
       return;
     }
@@ -44,7 +44,7 @@ export function createBugdom2TunnelLoader({
     );
     if (bufferResult.isErr()) {
       toast.error("Failed to read response", {
-        description: bufferResult.error.message,
+        description: bufferResult.error,
       });
       return;
     }
@@ -52,7 +52,7 @@ export function createBugdom2TunnelLoader({
     const result = parseTunnelFile(bufferResult.value);
     if (result.isErr()) {
       toast.error("Failed to parse tunnel file", {
-        description: result.error.message,
+        description: result.error,
       });
       return;
     }

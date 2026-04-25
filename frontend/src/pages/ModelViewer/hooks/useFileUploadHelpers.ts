@@ -56,7 +56,7 @@ export async function readFileBuffer(
   );
   if (bufferResult.isErr()) {
     return err(
-      new Error(`Failed to read ${label}: ${bufferResult.error.message}`),
+      new Error(`Failed to read ${label}: ${bufferResult.error}`),
     );
   }
 
@@ -79,7 +79,7 @@ export async function loadOptionalSkeleton(
     return {
       skeletonData: undefined,
       skeletonFailed: true,
-      warningMessage: `Failed to read skeleton file: ${skeletonBufferResult.error.message}`,
+      warningMessage: `Failed to read skeleton file: ${skeletonBufferResult.error}`,
     };
   }
 
@@ -92,7 +92,7 @@ export async function loadOptionalSkeleton(
     return {
       skeletonData: undefined,
       skeletonFailed: true,
-      warningMessage: `Failed to parse skeleton file: ${skeletonParseResult.error.message}`,
+      warningMessage: `Failed to parse skeleton file: ${skeletonParseResult.error}`,
     };
   }
 

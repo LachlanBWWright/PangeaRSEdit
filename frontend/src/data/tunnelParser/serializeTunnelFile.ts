@@ -260,7 +260,7 @@ export function serializeTunnelFile(
   if (serializeResult.isErr()) {
     return err(
       new Error(
-        `Failed to serialize tunnel file: ${serializeResult.error.message}`,
+        `Failed to serialize tunnel file: ${serializeResult.error}`,
       ),
     );
   }

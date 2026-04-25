@@ -332,7 +332,7 @@ export function ModelViewer() {
           exportedBufferResult.error,
         );
         toast.error(
-          `Failed to export animation edits to GLB: ${exportedBufferResult.error.message}`,
+          `Failed to export animation edits to GLB: ${exportedBufferResult.error}`,
         );
         return;
       }
@@ -350,7 +350,7 @@ export function ModelViewer() {
           bufferWithEventsResult.error,
         );
         toast.error(
-          `Failed to update animation event metadata: ${bufferWithEventsResult.error.message}`,
+          `Failed to update animation event metadata: ${bufferWithEventsResult.error}`,
         );
         return;
       }
@@ -365,7 +365,7 @@ export function ModelViewer() {
           normalizedBufferResult.error,
         );
         toast.error(
-          `Failed to normalize animation-edited GLB: ${normalizedBufferResult.error.message}`,
+          `Failed to normalize animation-edited GLB: ${normalizedBufferResult.error}`,
         );
         return;
       }
@@ -722,7 +722,7 @@ export function ModelViewer() {
           toast.error(
             `Failed to update animation events: ${
               workerResult.error instanceof Error
-                ? workerResult.error.message
+                ? workerResult.error
                 : String(workerResult.error)
             }`,
           );
@@ -734,7 +734,7 @@ export function ModelViewer() {
           "update animation events",
         );
         if (responseResult.isErr()) {
-          toast.error(responseResult.error.message);
+          toast.error(responseResult.error);
           return;
         }
         const result = responseResult.value;
@@ -786,13 +786,13 @@ export function ModelViewer() {
       );
       if (updatedBufferResult.isErr()) {
         toast.error(
-          `Failed to update animation events: ${updatedBufferResult.error.message}`,
+          `Failed to update animation events: ${updatedBufferResult.error}`,
         );
         return;
       }
       if (updatedBufferResult.value.isErr()) {
         toast.error(
-          `Failed to update animation events: ${updatedBufferResult.value.error.message}`,
+          `Failed to update animation events: ${updatedBufferResult.value.error}`,
         );
         return;
       }
@@ -923,7 +923,7 @@ export function ModelViewer() {
     );
     if (result.isErr()) {
       console.error("Error downloading BG3D:", result.error);
-      toast.error(result.error.message);
+      toast.error(result.error);
       return;
     }
     toast.success("BG3D model downloaded");
@@ -956,7 +956,7 @@ export function ModelViewer() {
     );
     if (result.isErr()) {
       console.error("Error downloading 3DMF:", result.error);
-      toast.error(result.error.message);
+      toast.error(result.error);
       return;
     }
     toast.success("3DMF model downloaded");

@@ -958,7 +958,7 @@ export function parse3DMFToMetaFile(buffer: ArrayBuffer): Result<TQ3MetaFile, Er
     const result = parseOneChunk(state);
     if (result.isErr()) {
       // Check if it's an early EOF error (which is acceptable at end of some files)
-      if (result.error.message === "Early EOF in 3DMF") {
+      if (result.error === "Early EOF in 3DMF") {
         break;
       }
       return err(result.error);

@@ -315,7 +315,7 @@ export function IntroPrompt() {
         combinedDataResult.error,
       );
       toast.error("Download failed", {
-        description: combinedDataResult.error.message,
+        description: combinedDataResult.error,
       });
       return;
     }
@@ -361,7 +361,7 @@ export function IntroPrompt() {
       const result = compileNanosaur1Level(combinedData, rawLevelData);
       if (result.isErr()) {
         console.error("Nanosaur compilation failed:", result.error);
-        toast.error("Download failed", { description: result.error.message });
+        toast.error("Download failed", { description: result.error });
         return;
       }
 
@@ -386,7 +386,7 @@ export function IntroPrompt() {
       if (validation.isErr()) {
         console.error("Invalid JSON for resource fork:", validation.error);
         toast.error("Download failed", {
-          description: `Invalid map data structure for resource fork: ${validation.error.message}`,
+          description: `Invalid map data structure for resource fork: ${validation.error}`,
         });
         return;
       }
@@ -457,7 +457,7 @@ export function IntroPrompt() {
       const textureResult = serializeNanosaurTerrainTextures(mapImages);
       if (textureResult.isErr()) {
         toast.error("Download failed", {
-          description: textureResult.error.message,
+          description: textureResult.error,
         });
         return;
       }
@@ -610,7 +610,7 @@ export function IntroPrompt() {
       const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
       if (result.isErr()) {
         toast.error("Failed to create blank level", {
-          description: result.error.message,
+          description: result.error,
         });
         return;
       }
@@ -659,7 +659,7 @@ export function IntroPrompt() {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
     if (combinedDataResult.isErr()) {
       toast.error("Preview failed", {
-        description: combinedDataResult.error.message,
+        description: combinedDataResult.error,
       });
       return;
     }

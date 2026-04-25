@@ -105,7 +105,7 @@ export function TunnelEditorView({
   const handleSave = useCallback(() => {
     const result = serializeTunnelFile(tunnelData);
     if (result.isErr()) {
-      toast.error("Failed to save", { description: result.error.message });
+      toast.error("Failed to save", { description: result.error });
       return;
     }
     const blob = new Blob([result.value], { type: "application/octet-stream" });

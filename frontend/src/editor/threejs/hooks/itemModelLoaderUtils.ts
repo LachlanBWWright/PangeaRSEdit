@@ -61,7 +61,7 @@ export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
     const fetchResult = await ResultAsync.fromPromise(fetch(fileUrl), mapErr);
     if (fetchResult.isErr())
       return Promise.reject(
-        new Error(`Failed to fetch: ${fetchResult.error.message} (${fileUrl})`),
+        new Error(`Failed to fetch: ${fetchResult.error} (${fileUrl})`),
       );
     const response = fetchResult.value;
     if (!response.ok)
@@ -74,7 +74,7 @@ export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
     );
     if (bufferResult.isErr())
       return Promise.reject(
-        new Error(`Failed to read buffer: ${bufferResult.error.message}`),
+        new Error(`Failed to read buffer: ${bufferResult.error}`),
       );
 
     const glbArrayBuffer = await convertBg3dToGltf(worker, bufferResult.value);

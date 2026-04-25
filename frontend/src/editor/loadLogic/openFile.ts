@@ -170,7 +170,7 @@ export async function openFile({
     );
     if (mapImagesResult.isErr()) {
       toast.error("Failed to load map images", {
-        description: mapImagesResult.error.message,
+        description: mapImagesResult.error,
       });
       return;
     }

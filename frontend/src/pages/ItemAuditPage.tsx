@@ -124,7 +124,7 @@ export function ItemAuditPage() {
     const loadReport = async () => {
       const textResult = await ResultAsync.fromPromise(file.text(), mapErr);
       if (textResult.isErr()) {
-        setImportStatus(`Failed to read file: ${textResult.error.message}`);
+        setImportStatus(`Failed to read file: ${textResult.error}`);
         return;
       }
       const parsedResult = await ResultAsync.fromPromise(
@@ -132,7 +132,7 @@ export function ItemAuditPage() {
         mapErr,
       );
       if (parsedResult.isErr()) {
-        setImportStatus(`Invalid JSON: ${parsedResult.error.message}`);
+        setImportStatus(`Invalid JSON: ${parsedResult.error}`);
         return;
       }
       const parsed = parsedResult.value;
