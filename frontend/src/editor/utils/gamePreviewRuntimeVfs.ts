@@ -12,7 +12,7 @@ function isFunctionField<T extends object>(obj: T, field: keyof T): boolean {
   return typeof obj[field] === "function";
 }
 
-function isFunction(fn: unknown): fn is Function {
+function isFunction(fn: unknown): fn is (...args: unknown[]) => unknown {
   return typeof fn === "function";
 }
 
@@ -118,7 +118,7 @@ function writeFileToVfs(
     () => createDataFile(parentDir, filename, data, true, true, false),
     (e) => mapErr(e),
   )();
-  return result.isOk() ? ok(undefined) : result;
+  return result.isOk() ? ok(undefined) : err(result.error);
 }
 
 function logPreviewRuntime(message: string, details?: unknown): void {
@@ -165,7 +165,7 @@ function writeTerrainToVfs(
   function writeTerrainDataPath(
     path: string,
     data: Uint8Array,
-  ): Result<void, Error> {
+  ): Result<void, string> {
     const pathVariants = new Set<string>([path]);
 
     if (config.game === Game.MIGHTY_MIKE) {
@@ -190,7 +190,7 @@ function writeTerrainToVfs(
       return ok(undefined);
     }
 
-    return err(new Error(failedWrites.join("; ")));
+    return err(failedWrites.join("; "));
   }
 
   if (terrainDataBytes) {

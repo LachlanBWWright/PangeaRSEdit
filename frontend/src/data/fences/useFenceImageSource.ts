@@ -34,7 +34,7 @@ async function loadTgaDataUrlAsync(src: string): Promise<string | null> {
       const parseResult = errorSchema.safeParse(error);
       console.warn(
         `Failed to load TGA thumbnail ${src}:`,
-        parseResult.success ? parseResult.data.message : String(error),
+        parseResult.success ? parseResult.data : String(error),
       );
       return null;
     });

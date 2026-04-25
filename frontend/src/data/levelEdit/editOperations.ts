@@ -139,16 +139,16 @@ function reverseDeleteSplineNub(
   };
 }
 
-function mergeTypeError(expected: EditOperation["type"]): Result<never, Error> {
+function mergeTypeError(expected: EditOperation["type"]): Result<never, string> {
   return err(
-    new Error(`Incompatible merge: expected ${expected} for second operation`),
+    `Incompatible merge: expected ${expected} for second operation`,
   );
 }
 
 function mergeMoveItem(
   first: MoveItemOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   if (second.type !== "MoveItem") return mergeTypeError("MoveItem");
   return ok({
     type: "MoveItem",
@@ -163,7 +163,7 @@ function mergeMoveItem(
 function mergeUpdateItemParams(
   first: UpdateItemParamsOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   if (second.type !== "UpdateItemParams") {
     return mergeTypeError("UpdateItemParams");
   }
@@ -179,7 +179,7 @@ function mergeUpdateItemParams(
 function mergeMoveSplineNub(
   first: MoveSplineNubOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   if (second.type !== "MoveSplineNub") return mergeTypeError("MoveSplineNub");
   return ok({
     type: "MoveSplineNub",
@@ -195,7 +195,7 @@ function mergeMoveSplineNub(
 function mergeMoveFenceNub(
   first: MoveFenceNubOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   if (second.type !== "MoveFenceNub") return mergeTypeError("MoveFenceNub");
   return ok({
     type: "MoveFenceNub",
@@ -211,7 +211,7 @@ function mergeMoveFenceNub(
 function mergeUpdateTerrainHeight(
   first: UpdateTerrainHeightOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   if (second.type !== "UpdateTerrainHeight") {
     return mergeTypeError("UpdateTerrainHeight");
   }
@@ -229,7 +229,7 @@ function mergeUpdateTerrainHeight(
 function mergeUpdateTileAttribute(
   first: UpdateTileAttributeOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   if (second.type !== "UpdateTileAttribute") {
     return mergeTypeError("UpdateTileAttribute");
   }
@@ -342,7 +342,7 @@ export function canMergeOperations(
 export function mergeOperations(
   first: EditOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   switch (first.type) {
     case "MoveItem":
       return mergeMoveItem(first, second);
@@ -363,6 +363,6 @@ export function mergeOperations(
       return mergeUpdateTileAttribute(first, second);
 
     default:
-      return err(new Error("Cannot merge operations of this type"));
+      return err("Cannot merge operations of this type");
   }
 }

@@ -57,15 +57,13 @@ function extractLines(
   totalLines: number,
   startLine: number,
   endLine: number,
-): Result<string[], Error> {
+): Result<string[], string> {
   if (startLine < 1 || endLine < startLine) {
-    return err(new Error(`Invalid line range: ${startLine}-${endLine}`));
+    return err("Invalid line range: ${startLine}-${endLine}");
   }
 
   if (startLine > totalLines) {
-    return err(
-      new Error(`Start line ${startLine} exceeds file length ${totalLines}`),
-    );
+    return err(`Start line ${startLine} exceeds file length ${totalLines}`);
   }
 
   const actualEnd = Math.min(endLine, totalLines);
@@ -143,10 +141,10 @@ export async function fetchGameSourceFile(
   game: string,
   filePath: string,
   rateLimitConfig: RateLimitConfig = DEFAULT_RATE_LIMIT,
-): Promise<Result<FetchResult, Error>> {
+): Promise<Result<FetchResult, string>> {
   const repo = GAME_REPOSITORIES[game];
   if (!repo) {
-    return err(new Error(`Unknown game: ${game}`));
+    return err("Unknown game: ${game}");
   }
 
   for (const path of normalizeCandidatePaths(repo.sourcePath, filePath)) {
@@ -160,7 +158,7 @@ export async function fetchGameSourceFile(
     if (fetchResult.isOk()) return fetchResult;
   }
 
-  return err(new Error(`File not found: ${filePath}`));
+  return err("File not found: ${filePath}");
 }
 
 /**
@@ -174,7 +172,7 @@ export async function fetchFileLines(
   startLine: number,
   endLine: number,
   rateLimitConfig: RateLimitConfig = DEFAULT_RATE_LIMIT,
-): Promise<Result<string[], Error>> {
+): Promise<Result<string[], string>> {
   const result = await fetchGitHubFile(
     owner,
     repo,

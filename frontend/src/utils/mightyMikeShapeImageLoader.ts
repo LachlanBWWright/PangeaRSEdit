@@ -68,7 +68,7 @@ function getGamePaletteColors(): RGBColor[] {
  */
 async function loadShapesFile(
   shapesFilename: string,
-): Promise<Result<ShapesFile, Error>> {
+): Promise<Result<ShapesFile, string>> {
   // Check cache first
   const cached = shapesFileCache.get(shapesFilename);
   if (cached) {
@@ -79,17 +79,17 @@ async function loadShapesFile(
 
   const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
   if (fetchResult.isErr()) {
-    return err(new Error(`Failed to load shapes file '${shapesFilename}': ${fetchResult.error}`));
+    return err("Failed to load shapes file '${shapesFilename}': ${fetchResult.error}");
   }
 
   const response = fetchResult.value;
   if (!response.ok) {
-    return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
+    return err("HTTP ${response.status}: ${response.statusText}");
   }
 
   const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
   if (bufferResult.isErr()) {
-    return err(new Error(`Failed to read buffer from '${shapesFilename}': ${bufferResult.error}`));
+    return err("Failed to read buffer from '${shapesFilename}': ${bufferResult.error}");
   }
 
   const result = parseShapesFile(bufferResult.value);
@@ -120,7 +120,7 @@ async function loadShapeFrame(
   shapesFilename: string,
   shapeIndex: number,
   frameIndex = 0
-): Promise<Result<ItemFrameImage, Error>> {
+): Promise<Result<ItemFrameImage, string>> {
   const cacheKey = getFrameCacheKey(shapesFilename, shapeIndex, frameIndex);
 
   // Check cache first
@@ -138,35 +138,27 @@ async function loadShapeFrame(
 
   if (shapeIndex < 0 || shapeIndex >= shapesFile.shapes.length) {
     return err(
-      new Error(
-        `Shape index ${shapeIndex} out of bounds (file has ${shapesFile.shapes.length} shapes)`
-      )
+      `Shape index ${shapeIndex} out of bounds (file has ${shapesFile.shapes.length} shapes)`
     );
   }
 
   const shape = shapesFile.shapes[shapeIndex];
   if (!shape) {
     return err(
-      new Error(
-        `Shape ${shapeIndex} not found in shapes file`
-      )
+      `Shape ${shapeIndex} not found in shapes file`
     );
   }
 
   if (frameIndex < 0 || frameIndex >= shape.frames.length) {
     return err(
-      new Error(
-        `Frame index ${frameIndex} out of bounds (shape has ${shape.frames.length} frames)`
-      )
+      `Frame index ${frameIndex} out of bounds (shape has ${shape.frames.length} frames)`
     );
   }
 
   const frame = shape.frames[frameIndex];
   if (!frame) {
     return err(
-      new Error(
-        `Frame ${frameIndex} not found in shape ${shapeIndex}`
-      )
+      `Frame ${frameIndex} not found in shape ${shapeIndex}`
     );
   }
 
@@ -195,7 +187,7 @@ async function loadShapeFrame(
 export async function loadItemImage(
   itemType: number,
   currentScene?: string
-): Promise<Result<ItemFrameImage | null, Error>> {
+): Promise<Result<ItemFrameImage | null, string>> {
   const mapping = getItemSpriteMapping(itemType);
   if (!mapping) {
     return ok(null); // Item has no sprite
@@ -222,7 +214,7 @@ export async function loadItemImage(
 export async function preloadItemImages(
   itemTypes: number[],
   currentScene?: string
-): Promise<Result<void, Error>> {
+): Promise<Result<void, string>> {
   const promises = itemTypes.map(itemType =>
     loadItemImage(itemType, currentScene)
   );
@@ -233,11 +225,9 @@ export async function preloadItemImages(
   const failures = results.filter((result) => result.isErr());
   if (failures.length > 0) {
     return err(
-      new Error(
-        `Failed to preload ${failures.length} item image(s): ${
-          failures.map((failure) => failure.error).join("; ")
-        }`
-      )
+      `Failed to preload ${failures.length} item image(s): ${
+        failures.map((failure) => failure.error).join("; ")
+      }`
     );
   }
 

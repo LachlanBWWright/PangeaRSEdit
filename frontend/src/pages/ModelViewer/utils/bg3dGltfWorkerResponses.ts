@@ -34,18 +34,16 @@ export function isModelToGlbWorkerResponse(
 function unexpectedWorkerResponseError(
   action: string,
   responseType: BG3DGltfWorkerResponse["type"],
-): Error {
-  return new Error(
-    `Failed to ${action}: unexpected worker response type ${responseType}`,
-  );
+): string {
+  return `Failed to ${action}: unexpected worker response type ${responseType}`;
 }
 
 export function getModelToGlbWorkerResponse(
   response: BG3DGltfWorkerResponse,
   action: string,
-): Result<ModelToGlbWorkerResponse, Error> {
+): Result<ModelToGlbWorkerResponse, string> {
   if (response.type === "error") {
-    return err(new Error(`Failed to ${action}: ${response.error}`));
+    return err("Failed to ${action}: ${response.error}");
   }
   if (!isModelToGlbWorkerResponse(response)) {
     return err(unexpectedWorkerResponseError(action, response.type));
@@ -56,9 +54,9 @@ export function getModelToGlbWorkerResponse(
 export function getParsedToGlbWorkerResponse(
   response: BG3DGltfWorkerResponse,
   action: string,
-): Result<ParsedToGlbWorkerResponse, Error> {
+): Result<ParsedToGlbWorkerResponse, string> {
   if (response.type === "error") {
-    return err(new Error(`Failed to ${action}: ${response.error}`));
+    return err("Failed to ${action}: ${response.error}");
   }
   if (response.type !== "bg3d-parsed-to-glb") {
     return err(unexpectedWorkerResponseError(action, response.type));
@@ -69,9 +67,9 @@ export function getParsedToGlbWorkerResponse(
 export function getGlbToBg3dWorkerResponse(
   response: BG3DGltfWorkerResponse,
   action: string,
-): Result<GlbToBg3dWorkerResponse, Error> {
+): Result<GlbToBg3dWorkerResponse, string> {
   if (response.type === "error") {
-    return err(new Error(`Failed to ${action}: ${response.error}`));
+    return err("Failed to ${action}: ${response.error}");
   }
   if (response.type !== "glb-to-bg3d") {
     return err(unexpectedWorkerResponseError(action, response.type));

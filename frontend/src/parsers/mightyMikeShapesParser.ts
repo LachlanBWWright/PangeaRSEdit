@@ -90,11 +90,11 @@ function readI32BE(view: DataView, offset: number): number {
  */
 export function parseShapesFile(
   buffer: ArrayBuffer,
-): Result<ShapesFile, Error> {
+): Result<ShapesFile, string> {
   const view = new DataView(buffer);
 
   if (buffer.byteLength < 20) {
-    return err(new Error("Shapes file too small"));
+    return err("Shapes file too small");
   }
 
   // Shapes files are packed with an 8-byte header (from LoadPackedFile in Misc.c):
@@ -121,7 +121,7 @@ export function parseShapesFile(
     // Uncompressed (PACK_TYPE_NONE)
     shapeBuffer = buffer.slice(8);
   } else {
-    return err(new Error(`Unsupported compression type: ${compressionType}`));
+    return err("Unsupported compression type: ${compressionType}");
   }
 
   const shapeView = new DataView(shapeBuffer);
@@ -139,7 +139,7 @@ export function parseShapesFile(
 
   // Validate offset
   if (offsetToShapeList < 0 || offsetToShapeList >= shapeBuffer.byteLength) {
-    return err(new Error("Invalid shape list offset in shapes file header"));
+    return err("Invalid shape list offset in shapes file header");
   }
 
   // Create a default color table (since the file doesn't contain valid color data)
@@ -156,9 +156,9 @@ export function parseShapesFile(
   if (!shapesResult.success) {
     const parseResult = errorSchema.safeParse(shapesResult.error);
     const errorMsg = parseResult.success
-      ? parseResult.data.message
+      ? parseResult.data
       : String(shapesResult.error || "Unknown error");
-    return err(new Error(errorMsg));
+    return err(errorMsg);
   }
 
   return ok({

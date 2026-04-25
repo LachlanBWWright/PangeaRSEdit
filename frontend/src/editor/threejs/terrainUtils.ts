@@ -8,14 +8,14 @@ export function combineMapImagesFromSTgd(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   if (mapImages.length === 0) {
-    return err(new Error("No map images to combine"));
+    return err("No map images to combine");
   }
 
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header || !terrainData.STgd?.[1000]?.obj) {
-    return err(new Error("Missing header or supertile data"));
+    return err("Missing header or supertile data");
   }
 
   const numWide = header.mapWidth;
@@ -28,7 +28,7 @@ export function combineMapImagesFromSTgd(
   combinedCanvas.height =
     (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numHigh;
   const ctx = combinedCanvas.getContext("2d");
-  if (!ctx) return err(new Error("Could not get canvas context"));
+  if (!ctx) return err("Could not get canvas context");
 
   const supertilesWide = numWide / globals.TILES_PER_SUPERTILE;
   const supertilesHigh = numHigh / globals.TILES_PER_SUPERTILE;
@@ -58,14 +58,14 @@ export function combineMapImagesFromTiles(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   if (mapImages.length === 0) {
-    return err(new Error("No tile images to combine"));
+    return err("No tile images to combine");
   }
 
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header || !terrainData.Layr?.[1000]?.obj) {
-    return err(new Error("Missing header or layer data"));
+    return err("Missing header or layer data");
   }
 
   const numWide = header.mapWidth;
@@ -77,7 +77,7 @@ export function combineMapImagesFromTiles(
   combinedCanvas.width = numWide * tileSize;
   combinedCanvas.height = numHigh * tileSize;
   const ctx = combinedCanvas.getContext("2d");
-  if (!ctx) return err(new Error("Could not get canvas context"));
+  if (!ctx) return err("Could not get canvas context");
 
   const layerData = terrainData.Layr[1000].obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
@@ -145,7 +145,7 @@ export function combineMapImages(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   // Bugdom 1 and Nanosaur 1 use individual tiles (RSRC_FORK and TRT_FILE)
   if (
     globals.DATA_TYPE === DataType.RSRC_FORK ||

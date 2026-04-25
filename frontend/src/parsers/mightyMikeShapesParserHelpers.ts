@@ -50,13 +50,13 @@ export function shapeFrameToCanvas(
     mask?: Uint8Array;
   },
   colorTable: { r: number; g: number; b: number }[],
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   const canvas = document.createElement("canvas");
   canvas.width = frame.header.width;
   canvas.height = frame.header.height;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) return err(new Error("Could not get canvas context"));
+  if (!ctx) return err("Could not get canvas context");
 
   const imageData = ctx.createImageData(
     frame.header.width,

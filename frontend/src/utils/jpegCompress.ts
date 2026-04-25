@@ -6,12 +6,12 @@ import { arrayBufferSchema } from "../schemas/common";
  * Compress an HTMLCanvasElement or ImageData to JPEG (browser only)
  * @param input HTMLCanvasElement or ImageData
  * @param quality JPEG quality (0-1, default 0.92)
- * @returns Promise resolving to Result<ArrayBuffer, Error> (JPEG data)
+ * @returns Promise resolving to Result<ArrayBuffer, string> (JPEG data)
  */
 export async function jpegCompress(
   input: HTMLCanvasElement | ImageData,
   quality = 0.92,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer, string>> {
   let canvas: HTMLCanvasElement;
   if (input instanceof HTMLCanvasElement) {
     canvas = input;
@@ -22,15 +22,15 @@ export async function jpegCompress(
     canvas.height = input.height;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      return err(new Error("Could not get 2D context"));
+      return err("Could not get 2D context");
     }
     ctx.putImageData(input, 0, 0);
   }
-  return new Promise<Result<ArrayBuffer, Error>>((resolve) => {
+  return new Promise<Result<ArrayBuffer, string>>((resolve) => {
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          resolve(err(new Error("Failed to encode JPEG")));
+          resolve(err("Failed to encode JPEG"));
           return;
         }
         const reader = new FileReader();
@@ -40,11 +40,11 @@ export async function jpegCompress(
           if (parseResult.success) {
             resolve(ok(parseResult.data));
           } else {
-            resolve(err(new Error("Unexpected JPEG reader result type")));
+            resolve(err("Unexpected JPEG reader result type"));
           }
         };
         reader.onerror = () => {
-          resolve(err(new Error("Failed to read JPEG blob")));
+          resolve(err("Failed to read JPEG blob"));
         };
         reader.readAsArrayBuffer(blob);
       },

@@ -13,9 +13,9 @@ import { ok, err, type Result } from "neverthrow";
 export function readUint32BE(
   buffer: ArrayBuffer,
   offset: number,
-): Result<number, Error> {
+): Result<number, string> {
   if (offset < 0 || offset + 4 > buffer.byteLength) {
-    return err(new Error("Buffer too small for uint32 read"));
+    return err("Buffer too small for uint32 read");
   }
   const view = new DataView(buffer);
   return ok(view.getUint32(offset, false)); // false = big-endian
@@ -27,9 +27,9 @@ export function readUint32BE(
 export function readUint32LE(
   buffer: ArrayBuffer,
   offset: number,
-): Result<number, Error> {
+): Result<number, string> {
   if (offset + 4 > buffer.byteLength) {
-    return err(new Error("Buffer too small for uint32 read"));
+    return err("Buffer too small for uint32 read");
   }
   const view = new DataView(buffer);
   return ok(view.getUint32(offset, true)); // true = little-endian
@@ -41,9 +41,9 @@ export function readUint32LE(
 export function readUint16BE(
   buffer: ArrayBuffer,
   offset: number,
-): Result<number, Error> {
+): Result<number, string> {
   if (offset + 2 > buffer.byteLength) {
-    return err(new Error("Buffer too small for uint16 read"));
+    return err("Buffer too small for uint16 read");
   }
   const view = new DataView(buffer);
   return ok(view.getUint16(offset, false)); // false = big-endian
@@ -55,9 +55,9 @@ export function readUint16BE(
 export function readUint16LE(
   buffer: ArrayBuffer,
   offset: number,
-): Result<number, Error> {
+): Result<number, string> {
   if (offset + 2 > buffer.byteLength) {
-    return err(new Error("Buffer too small for uint16 read"));
+    return err("Buffer too small for uint16 read");
   }
   const view = new DataView(buffer);
   return ok(view.getUint16(offset, true)); // true = little-endian
@@ -69,9 +69,9 @@ export function readUint16LE(
 export function readUint8(
   buffer: ArrayBuffer,
   offset: number,
-): Result<number, Error> {
+): Result<number, string> {
   if (offset + 1 > buffer.byteLength) {
-    return err(new Error("Buffer too small for uint8 read"));
+    return err("Buffer too small for uint8 read");
   }
   const view = new DataView(buffer);
   return ok(view.getUint8(offset));
@@ -104,15 +104,15 @@ export function sliceBuffer(
   buffer: ArrayBuffer,
   start: number,
   end?: number,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   if (start < 0 || start > buffer.byteLength) {
-    return err(new Error("Invalid start offset"));
+    return err("Invalid start offset");
   }
   if (
     end !== undefined &&
     (end < 0 || end > buffer.byteLength || end < start)
   ) {
-    return err(new Error("Invalid end offset"));
+    return err("Invalid end offset");
   }
   return ok(buffer.slice(start, end));
 }
@@ -124,12 +124,10 @@ export function copyBuffer(
   buffer: ArrayBuffer,
   offset: number,
   length: number,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   if (offset + length > buffer.byteLength) {
     return err(
-      new Error(
-        `Invalid copy range: offset=${offset}, length=${length}, buffer size=${buffer.byteLength}`,
-      ),
+      `Invalid copy range: offset=${offset}, length=${length}, buffer size=${buffer.byteLength}`,
     );
   }
   const source = new Uint8Array(buffer, offset, length);
@@ -206,9 +204,9 @@ export function bufferToHex(buffer: ArrayBuffer): string {
 /**
  * Hex decode a string to buffer
  */
-export function hexToBuffer(hex: string): Result<ArrayBuffer, Error> {
+export function hexToBuffer(hex: string): Result<ArrayBuffer, string> {
   if (hex.length % 2 !== 0) {
-    return err(new Error("Hex string must have even length"));
+    return err("Hex string must have even length");
   }
 
   const bytes = new Uint8Array(hex.length / 2);
@@ -216,9 +214,7 @@ export function hexToBuffer(hex: string): Result<ArrayBuffer, Error> {
     const byte = parseInt(hex.substr(i, 2), 16);
     if (isNaN(byte))
       return err(
-        new Error(
-          `Invalid hex characters at position ${i}: ${hex.substr(i, 2)}`,
-        ),
+        `Invalid hex characters at position ${i}: ${hex.substr(i, 2)}`,
       );
     bytes[i / 2] = byte;
   }

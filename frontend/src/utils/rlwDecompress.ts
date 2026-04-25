@@ -38,7 +38,7 @@ export interface DecompressedFile {
  */
 export function rlbDecompress(
   compressedBuffer: ArrayBuffer,
-): Result<DecompressedFile, Error> {
+): Result<DecompressedFile, string> {
   const input = new DataView(compressedBuffer);
 
   // Read header
@@ -46,7 +46,7 @@ export function rlbDecompress(
   const compressionType = input.getUint32(4, false); // big-endian
 
   if (compressionType !== PACK_TYPE_RLB) {
-    return err(new Error(`Expected RLB compression (type 0), got: ${compressionType}`));
+    return err("Expected RLB compression (type 0), got: ${compressionType}");
   }
   
   // Allocate output buffer
@@ -102,7 +102,7 @@ export function rlbDecompress(
  */
 export function rlwDecompress(
   compressedBuffer: ArrayBuffer,
-): Result<DecompressedFile, Error> {
+): Result<DecompressedFile, string> {
   const input = new DataView(compressedBuffer);
 
   // Read header
@@ -121,7 +121,7 @@ export function rlwDecompress(
   }
 
   if (compressionType !== PACK_TYPE_RLW) {
-    return err(new Error(`Unsupported compression type: ${compressionType}`));
+    return err("Unsupported compression type: ${compressionType}");
   }
   
   // Allocate output buffer

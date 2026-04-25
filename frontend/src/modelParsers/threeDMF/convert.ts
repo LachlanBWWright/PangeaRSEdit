@@ -91,7 +91,7 @@ export function metaFileToBG3DParseResult(
 
 export function bg3dParseResultToMetaFile(
   parsed: BG3DParseResult,
-): Result<TQ3MetaFile, Error> {
+): Result<TQ3MetaFile, string> {
   const metaFile: TQ3MetaFile = {
     numTextures: 0,
     textures: [],

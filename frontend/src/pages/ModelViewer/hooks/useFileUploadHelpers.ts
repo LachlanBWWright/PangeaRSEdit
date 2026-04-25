@@ -25,20 +25,18 @@ export interface SkeletonLoadResult {
 export function validateUploadSelection(
   bg3dFile: File,
   skeletonFile?: File,
-): Result<UploadSelection, Error> {
+): Result<UploadSelection, string> {
   const fileName = bg3dFile.name.toLowerCase();
   const isBg3d = fileName.endsWith(".bg3d");
   const is3dmf = fileName.endsWith(".3dmf");
   const isGlb = fileName.endsWith(".glb");
 
   if (!isBg3d && !is3dmf && !isGlb) {
-    return err(new Error("Please select a BG3D, 3DMF, or GLB file"));
+    return err("Please select a BG3D, 3DMF, or GLB file");
   }
 
   if (skeletonFile && !isSkeletonFileName(skeletonFile.name)) {
-    return err(
-      new Error("Skeleton file must be a .skeleton.rsrc or .rsrc file"),
-    );
+    return err("Skeleton file must be a .skeleton.rsrc or .rsrc file");
   }
 
   if (isGlb) return ok({ kind: "glb", bg3dFile, skeletonFile });
@@ -49,15 +47,13 @@ export function validateUploadSelection(
 export async function readFileBuffer(
   file: File,
   label: string,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer, string>> {
   const bufferResult = await ResultAsync.fromPromise(
     file.arrayBuffer(),
     mapErr,
   );
   if (bufferResult.isErr()) {
-    return err(
-      new Error(`Failed to read ${label}: ${bufferResult.error}`),
-    );
+    return err(`Failed to read ${label}: ${bufferResult.error}`);
   }
 
   return ok(bufferResult.value);
@@ -101,7 +97,7 @@ export async function loadOptionalSkeleton(
 
 export async function runWorkerMessage(
   message: BG3DGltfWorkerMessage,
-): Promise<Result<BG3DGltfWorkerResponse, Error>> {
+): Promise<Result<BG3DGltfWorkerResponse, string>> {
   const worker = new BG3DGltfWorker();
   const workerPromise = new Promise<BG3DGltfWorkerResponse>(
     (resolve, reject) => {

@@ -11,10 +11,10 @@ import { ok, err, type Result } from "neverthrow";
 export async function loadMapImages(
   dataView: DataView,
   globals: GlobalsInterface,
-): Promise<Result<HTMLCanvasElement[], Error>> {
+): Promise<Result<HTMLCanvasElement[], string>> {
   let offset = 0;
 
-  const loadPromise = new Promise<Result<HTMLCanvasElement[], Error>>(
+  const loadPromise = new Promise<Result<HTMLCanvasElement[], string>>(
     (resolve) => {
       if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
         // Nanosaur 2 and other JPG-based games: Each supertile is a JPEG, decompress with jpegDecompressWorker
@@ -69,7 +69,7 @@ export async function loadMapImages(
               errorOccurred = true;
               resolve(
                 err(
-                  new Error("Failed to get canvas context for JPEG decompress"),
+                  "Failed to get canvas context for JPEG decompress",
                 ),
               );
               jpegWorker.terminate();
@@ -152,7 +152,7 @@ export async function loadMapImages(
               errorOccurred = true;
               resolve(
                 err(
-                  new Error("Failed to get canvas context for LZSS decompress"),
+                  "Failed to get canvas context for LZSS decompress",
                 ),
               );
               lzssWorker.terminate();

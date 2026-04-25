@@ -55,11 +55,11 @@ export function getGameMappingSummary(game: Game): Result<
     mappingsWithScale: number;
     skeletonModels: number;
   },
-  Error
+  string
 > {
   const mapper = getGameMapper(game);
   if (!mapper) {
-    return err(new Error(`No mapper found for game: ${game}`));
+    return err("No mapper found for game: ${game}");
   }
 
   const mappedTypes = mapper.getMappedTypes();
@@ -125,11 +125,11 @@ export function validateGameMappings(game: Game): Result<
     issues: string[];
     warnings: string[];
   },
-  Error
+  string
 > {
   const mapper = getGameMapper(game);
   if (!mapper) {
-    return err(new Error(`No mapper found for game: ${game}`));
+    return err("No mapper found for game: ${game}");
   }
 
   const issues: string[] = [];
@@ -201,11 +201,11 @@ export function findDuplicateMappings(game: Game): Result<
       itemTypes: number[];
     }[];
   },
-  Error
+  string
 > {
   const mapper = getGameMapper(game);
   if (!mapper) {
-    return err(new Error(`No mapper found for game: ${game}`));
+    return err("No mapper found for game: ${game}");
   }
 
   const modelKeyToTypes = new Map<string, number[]>();
@@ -241,11 +241,11 @@ export function getUniqueModelFiles(game: Game): Result<
     skeletonFiles: string[];
     totalFiles: number;
   },
-  Error
+  string
 > {
   const mapper = getGameMapper(game);
   if (!mapper) {
-    return err(new Error(`No mapper found for game: ${game}`));
+    return err("No mapper found for game: ${game}");
   }
 
   const modelFiles = new Set<string>();

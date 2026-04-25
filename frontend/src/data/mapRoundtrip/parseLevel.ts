@@ -81,7 +81,7 @@ function compareValues(
 export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   options: ParseLevelOptions,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData, string>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   const bytes = new Uint8Array(buffer);
@@ -94,7 +94,7 @@ export async function parseLevelBuffer(
 
   const parsedJsonResult = parseResult.ok
     ? ok(parseResult.value)
-    : err(new Error(parseResult.error));
+    : err(parseResult.error);
 
   if (parsedJsonResult.isErr()) {
     return err(parsedJsonResult.error);
@@ -102,7 +102,10 @@ export async function parseLevelBuffer(
 
   const parsedResult = Result.fromThrowable(
     (json: string) => JSON.parse(json) as unknown,
-    (error) => errorSchema.safeParse(error).data ?? new Error(String(error)),
+    (error) => {
+      const parsed = errorSchema.safeParse(error);
+      return parsed.success ? parsed.data : String(error);
+    },
   )(parsedJsonResult.value);
   if (parsedResult.isErr()) {
     return err(parsedResult.error);
@@ -115,9 +118,9 @@ export async function parseLevelBuffer(
     if (isLevelDataLike(parsedResult.value)) {
       return ok(parsedResult.value);
     }
-    return err(new Error("Parsed data does not match LevelData structure"));
+    return err("Parsed data does not match LevelData structure");
   }
-  return err(new Error("Parsed data is not an object"));
+  return err("Parsed data is not an object");
 }
 
 // Type guard for LevelData - checks basic structure
@@ -135,10 +138,13 @@ function isLevelDataLike(value: unknown): value is LevelData {
 export function parseNanosaur1Buffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
-): Result<LevelData, Error> {
+): Result<LevelData, string> {
   const parseRawLevel = Result.fromThrowable(
     () => parseNanosaur1Level(buffer),
-    (error) => errorSchema.safeParse(error).data ?? new Error(String(error)),
+    (error) => {
+      const parsed = errorSchema.safeParse(error);
+      return parsed.success ? parsed.data : String(error);
+    },
   );
   const rawLevelResult = parseRawLevel();
 
@@ -165,7 +171,7 @@ export function parseNanosaur1Buffer(
 export async function serializeLevelData(
   levelData: LevelData,
   options: SerializeLevelOptions,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer, string>> {
   const { structSpecs } = options;
 
   const saveResult = loadBytesFromJson(
@@ -178,7 +184,7 @@ export async function serializeLevelData(
 
   const serializedResult = saveResult.ok
     ? ok(saveResult.value)
-    : err(new Error(saveResult.error));
+    : err(saveResult.error);
 
   if (serializedResult.isErr()) {
     return err(serializedResult.error);
@@ -186,7 +192,7 @@ export async function serializeLevelData(
 
   const resultBuffer = serializedResult.value.buffer;
   if (!(resultBuffer instanceof ArrayBuffer)) {
-    return err(new Error("Result buffer is not an ArrayBuffer"));
+    return err("Result buffer is not an ArrayBuffer");
   }
   return ok(resultBuffer);
 }
@@ -202,7 +208,7 @@ export async function serializeLevelData(
 export async function parseLevelForGame(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData, string>> {
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1 uses its own TRT file parser
     return parseNanosaur1Buffer(buffer, gameType);
@@ -218,7 +224,7 @@ export async function parseLevelForGame(
 
   // Apply preprocessing (LevelData must be a record for preprocessJson)
   if (!isRecord(parseResult.value)) {
-    return err(new Error("Parsed data is not an object"));
+    return err("Parsed data is not an object");
   }
   const preprocessResult = preprocessJson(parseResult.value, gameType);
   if (preprocessResult.isErr()) {

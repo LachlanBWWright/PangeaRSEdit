@@ -129,11 +129,9 @@ function buildJointHierarchy(
   doc: Document,
   joints: Node[],
   bones: BG3DBone[],
-): Result<Node, Error> {
+): Result<Node, string> {
   if (joints.length !== bones.length) {
-    return err(
-      new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`),
-    );
+    return err(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
   }
 
   console.log("\n=== Building Joint Hierarchy (glTF 2.0 Compliant) ===");
@@ -625,7 +623,7 @@ export function createSkeletonSystem(
   doc: Document,
   skeleton: BG3DSkeleton,
   buffer?: Buffer,
-): Result<{ skin: Skin; animations: Animation[] }, Error> {
+): Result<{ skin: Skin; animations: Animation[] }, string> {
   console.log("=== Creating Skeleton System (glTF 2.0 Compliant) ===");
   console.log(
     `Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`,
@@ -638,7 +636,7 @@ export function createSkeletonSystem(
     doc.getRoot().setDefaultScene(newScene);
     scene = doc.getRoot().getDefaultScene();
     if (!scene) {
-      return err(new Error("Failed to create default scene in glTF document"));
+      return err("Failed to create default scene in glTF document");
     }
   } else {
     console.log(`Using existing default scene: "${scene.getName()}"`);

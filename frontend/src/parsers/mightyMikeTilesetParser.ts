@@ -36,7 +36,7 @@ export interface MightyMikeTileset {
 export function parseTilesetFile(
   buffer: ArrayBuffer,
   palette: RGBColor[]
-): Result<MightyMikeTileset, Error> {
+): Result<MightyMikeTileset, string> {
   // Decompress the tileset data
   const decompressResult = rlbDecompress(buffer);
   if (decompressResult.isErr()) {
@@ -85,7 +85,7 @@ export function parseTilesetFile(
 
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      return err(new Error("Could not get canvas context"));
+      return err("Could not get canvas context");
     }
 
     // Create image data

@@ -50,7 +50,7 @@ function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
 export function preprocessJson(
   json: Record<string, unknown>,
   globals: GlobalsInterface,
-): Result<void, Error> {
+): Result<void, string> {
   const anyJson = json;
 
   // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
@@ -71,16 +71,16 @@ export function preprocessJson(
     const layr1000 = layrRecord[1000];
     const atrb1000 = atrbRecord[1000];
     if (!layr1000 || !atrb1000 || !isRecord(layr1000) || !isRecord(atrb1000)) {
-      return err(new Error("Layr[1000] or Atrb[1000] is undefined or invalid"));
+      return err("Layr[1000] or Atrb[1000] is undefined or invalid");
     }
     const layrArr = layr1000.obj;
     const atrbArr = atrb1000.obj;
 
     if (!Array.isArray(layrArr)) {
-      return err(new Error("Layr[1000].obj is not an array"));
+      return err("Layr[1000].obj is not an array");
     }
     if (!Array.isArray(atrbArr)) {
-      return err(new Error("Atrb[1000].obj is not an array"));
+      return err("Atrb[1000].obj is not an array");
     }
 
     const newAtrbArr = [];
@@ -90,11 +90,11 @@ export function preprocessJson(
       newLayrArr.push(i);
       const layrIndex = layrArr[i];
       if (layrIndex === undefined) {
-        return err(new Error(`Layr index ${i} is undefined`));
+        return err("Layr index ${i} is undefined");
       }
       const atrbValue = atrbArr[layrIndex];
       if (atrbValue === undefined) {
-        return err(new Error(`Atrb index ${layrIndex} is undefined`));
+        return err("Atrb index ${layrIndex} is undefined");
       }
       newAtrbArr.push(atrbValue);
     }
@@ -107,11 +107,11 @@ export function preprocessJson(
     const liqd = anyJson.Liqd;
     const liqd1000 = liqd[1000];
     if (!liqd1000 || !isRecord(liqd1000)) {
-      return err(new Error("Liqd[1000] is undefined or invalid"));
+      return err("Liqd[1000] is undefined or invalid");
     }
     const liquidObj = liqd1000.obj;
     if (!Array.isArray(liquidObj)) {
-      return err(new Error("Liqd[1000].obj is not an array"));
+      return err("Liqd[1000].obj is not an array");
     }
     for (const waterItem of liquidObj) {
       if (!isRecord(waterItem)) continue;

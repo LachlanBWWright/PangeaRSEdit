@@ -492,7 +492,7 @@ export function ItemModelViewer() {
     setStatus(`Converting ${mapping.modelFile} to GLB...`);
 
     // Convert via worker
-    const glbBufferResult: Result<ArrayBuffer, Error> = await new Promise(
+    const glbBufferResult: Result<ArrayBuffer, string> = await new Promise(
       (resolve) => {
         const worker = getWorker();
         let resolved = false;
@@ -507,7 +507,7 @@ export function ItemModelViewer() {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            resolve(err(new Error(e.data.error)));
+            resolve(err(e.data.error));
           }
         };
 
@@ -516,7 +516,7 @@ export function ItemModelViewer() {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            resolve(err(new Error(error.message || "Worker error")));
+            resolve(err(error.message || "Worker error"));
           }
         };
 
@@ -535,7 +535,7 @@ export function ItemModelViewer() {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            resolve(err(new Error("Conversion timeout")));
+            resolve(err("Conversion timeout"));
           }
         }, WORKER_TIMEOUT_MS);
       },

@@ -720,11 +720,7 @@ export function ModelViewer() {
 
         if (workerResult.isErr()) {
           toast.error(
-            `Failed to update animation events: ${
-              workerResult.error instanceof Error
-                ? workerResult.error
-                : String(workerResult.error)
-            }`,
+            `Failed to update animation events: ${workerResult.error}`,
           );
           return;
         }

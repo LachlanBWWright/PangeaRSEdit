@@ -309,8 +309,11 @@ export type ArrayBufferViewLike =
 /**
  * Validates if a value is an Error
  */
-export const errorSchema = z.instanceof(Error);
-export type ErrorLike = Error;
+export const errorSchema = z.union([
+  z.instanceof(Error),
+  z.string(),
+]).transform((e) => (e instanceof Error ? e.message : e));
+export type ErrorLike = string;
 
 // ============================================================================
 // Citation Verification Schemas

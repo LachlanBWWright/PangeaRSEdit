@@ -30,7 +30,7 @@ import {
 export function bg3dSkeletonToGltf(
   parsedSkeleton: BG3DSkeleton,
   doc: Document,
-): Result<{ skin: Skin | null; animations: unknown[] }, Error> {
+): Result<{ skin: Skin | null; animations: unknown[] }, string> {
   console.log("Creating skeleton system with new implementation...");
   console.log(
     `Input skeleton has ${parsedSkeleton.bones.length} bones, ${parsedSkeleton.animations.length} animations`,

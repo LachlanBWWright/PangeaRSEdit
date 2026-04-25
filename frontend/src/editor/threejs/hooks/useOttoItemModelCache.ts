@@ -26,7 +26,7 @@ import { extractSubgroupByIndex, loadFileGltf } from "./itemModelLoaderUtils";
 interface CachedModel {
   gltf: GLTF | null;
   loading: boolean;
-  error?: Error;
+  error?: string;
 }
 
 /**
@@ -208,12 +208,10 @@ export const useItemModelCache = (
         if (extracted) {
           finalGltf = extracted;
         } else {
-          const extractError = new Error(
-            `Failed to extract model index ${mapping.modelIndex} from ${mapping.modelFile}`,
-          );
+          const extractError = `Failed to extract model index ${mapping.modelIndex} from ${mapping.modelFile}`;
           console.error(
             `[ItemModelCache] Error loading model for item type ${itemType}:`,
-            extractError.message,
+            extractError,
           );
 
           setModelCache((prev) => {

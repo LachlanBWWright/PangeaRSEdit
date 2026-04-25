@@ -44,7 +44,7 @@ export function createDownloadHandler(level: Level): () => void {
         triggerBrowserDownload(data, zipName);
         toast.success(`Downloaded ${zipName}`);
       },
-      (error) => toast.error(`Download failed: ${error.message}`),
+      (error) => toast.error(`Download failed: ${error}`),
     );
   };
 }
@@ -68,7 +68,7 @@ export function createPlayInBrowserHandler({
           onPlayInBrowser(gameEnum, levelNumber, dataBytes, rsrcBytes);
         },
         (error) => {
-          toast.error(`Failed to load level for playback: ${error.message}`);
+          toast.error(`Failed to load level for playback: ${error}`);
         },
       )
       .finally(() => {

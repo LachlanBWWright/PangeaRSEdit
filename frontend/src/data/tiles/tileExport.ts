@@ -63,15 +63,13 @@ export function exportSingleTile(
   tileData: Uint8Array,
   tileSize: number,
   config: Partial<TileExportConfig> = {},
-): Result<TileExportResult, Error> {
+): Result<TileExportResult, string> {
   const fullConfig = { ...DEFAULT_EXPORT_CONFIG, ...config };
 
   const expectedLength = tileSize * tileSize * 2;
   if (tileData.length !== expectedLength) {
     return err(
-      new Error(
-        `Invalid tile data length: ${tileData.length}. Expected ${expectedLength}.`,
-      ),
+      `Invalid tile data length: ${tileData.length}. Expected ${expectedLength}.`,
     );
   }
 
@@ -83,7 +81,7 @@ export function exportSingleTile(
 
   const ctx = canvas.getContext("2d");
   if (!ctx) {
-    return err(new Error("Failed to create canvas context"));
+    return err("Failed to create canvas context");
   }
 
   // Set background if not preserving transparency
@@ -178,11 +176,11 @@ export async function exportTilePalette(
   tileSize: number,
   config: Partial<TileExportConfig> = {},
   gridColumns?: number,
-): Promise<Result<TileExportResult, Error>> {
+): Promise<Result<TileExportResult, string>> {
   const fullConfig = { ...DEFAULT_EXPORT_CONFIG, ...config };
 
   if (tilesData.length === 0) {
-    return err(new Error("No tiles to export"));
+    return err("No tiles to export");
   }
 
   // Validate all tiles
@@ -191,9 +189,7 @@ export async function exportTilePalette(
     const tile = tilesData[i];
     if (!tile || tile.length !== expectedLength) {
       return err(
-        new Error(
-          `Tile ${i} has invalid data length: ${tile?.length ?? 0}. Expected ${expectedLength}.`,
-        ),
+        `Tile ${i} has invalid data length: ${tile?.length ?? 0}. Expected ${expectedLength}.`,
       );
     }
   }
@@ -212,7 +208,7 @@ export async function exportTilePalette(
 
   const ctx = canvas.getContext("2d");
   if (!ctx) {
-    return err(new Error("Failed to create canvas context"));
+    return err("Failed to create canvas context");
   }
 
   // Set background

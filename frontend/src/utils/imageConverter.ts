@@ -4,9 +4,9 @@ import { Result } from "neverthrow";
 export function sixteenBitToImageData(
   data: DataView,
   imageData: ImageData,
-): Result<void, Error> {
+): Result<void, string> {
   if (imageData.data.length !== data.byteLength * 2) {
-    return err(new Error("Data length does not match image data length"));
+    return err("Data length does not match image data length");
   }
 
   for (let i = 0; i < data.byteLength; i += 2) {
@@ -25,10 +25,10 @@ export function sixteenBitToImageData(
 
 export function canvasDataToSixteenBit(
   canvas: HTMLCanvasElement,
-): Result<DataView, Error> {
+): Result<DataView, string> {
   const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
   if (!canvasCtx) {
-    return err(new Error("Could not get canvas context"));
+    return err("Could not get canvas context");
   }
   const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
   return ok(imageDataToSixteenBit(imageData.data));

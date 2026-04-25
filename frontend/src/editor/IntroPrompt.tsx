@@ -492,12 +492,12 @@ export function IntroPrompt() {
       for (let i = 0; i < mapImages.length; i++) {
         const canvas = mapImages[i];
         if (!canvas) {
-          err(new Error(`Canvas at index ${i} is undefined`));
+          err("Canvas at index ${i} is undefined");
           return;
         }
         const canvasCtx = canvas.getContext("2d");
         if (!canvasCtx) {
-          err(new Error("Could not get canvas context"));
+          err("Could not get canvas context");
           return;
         }
 
@@ -712,7 +712,7 @@ export function IntroPrompt() {
         const parseResult = errorSchema.safeParse(error);
         toast.error("Preview failed", {
           description: parseResult.success
-            ? parseResult.data.message
+            ? parseResult.data
             : "Could not serialize the selected level for preview.",
         });
         setTerrainDataBytes(null);

@@ -259,7 +259,6 @@ describe("BG3D Format Difference Tests", () => {
     const parsedRes = parseBG3D(buffer);
     if (!parsedRes.isOk()) {
       if (
-        parsedRes.error instanceof Error &&
         parsedRes.error.includes("Unknown BG3D tag: 13")
       ) {
         console.error(

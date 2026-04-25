@@ -190,23 +190,19 @@ export async function get3DMFDownloadArtifacts(
     : parseBG3D(workerResponse.result);
   if (parsedBg3dResult.isErr()) {
     return err(
-      new Error(
-        `Failed to parse GLB-derived BG3D: ${parsedBg3dResult.error}`,
-      ),
+      `Failed to parse GLB-derived BG3D: ${parsedBg3dResult.error}`,
     );
   }
   const parsedBg3d = parsedBg3dResult.value;
 
   const metaResult = bg3dParseResultToMetaFile(parsedBg3d);
   if (metaResult.isErr()) {
-    return err(
-      new Error(`Failed to convert BG3D export data to 3DMF: ${metaResult.error}`),
-    );
+    return err(`Failed to convert BG3D export data to 3DMF: ${metaResult.error}`);
   }
 
   const writeResult = write3DMFFromMetaFile(metaResult.value);
   if (writeResult.isErr()) {
-    return err(new Error(`Failed to serialize 3DMF export: ${writeResult.error}`));
+    return err("Failed to serialize 3DMF export: ${writeResult.error}");
   }
 
   let skeletonBytes: ArrayBuffer | undefined;
@@ -264,7 +260,7 @@ export async function downloadBG3DModel(
   modelFileName = "model",
   skeletonFileName = "model.skeleton",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<void, Error>> {
+): Promise<Result<void, string>> {
   const downloadBlob = (data: ArrayBuffer | Uint8Array, fileName: string) => {
     const blob = new Blob([toBlobPart(data)], {
       type: "application/octet-stream",
@@ -320,7 +316,7 @@ export async function download3DMFModel(
   gltfSource: string | ArrayBuffer,
   fileName = "model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<void, Error>> {
+): Promise<Result<void, string>> {
   const bytesResult = await get3DMFDownloadArtifacts(
     gltfSource,
     fileName,

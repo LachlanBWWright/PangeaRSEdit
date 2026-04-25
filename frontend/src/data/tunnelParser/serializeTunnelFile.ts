@@ -218,7 +218,7 @@ function serializeSection(writer: BinaryWriter, section: TunnelSection): void {
  */
 export function serializeTunnelFile(
   data: TunnelData,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   const serializeResult = Result.fromThrowable(() => {
     const writer = new BinaryWriter();
 
@@ -259,9 +259,7 @@ export function serializeTunnelFile(
 
   if (serializeResult.isErr()) {
     return err(
-      new Error(
-        `Failed to serialize tunnel file: ${serializeResult.error}`,
-      ),
+      `Failed to serialize tunnel file: ${serializeResult.error}`,
     );
   }
 

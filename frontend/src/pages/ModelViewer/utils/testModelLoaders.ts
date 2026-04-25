@@ -16,7 +16,7 @@ import { err, ok, type Result, ResultAsync } from "neverthrow";
 export async function loadOttoTestModel(): Promise<Result<{
   bg3dFile: File;
   skeletonFile?: File;
-}, Error>> {
+}, string>> {
   // Load both Otto.bg3d and Otto.skeleton.rsrc test files
   const responsesResult = await ResultAsync.fromPromise(
     Promise.all([
@@ -31,7 +31,7 @@ export async function loadOttoTestModel(): Promise<Result<{
   const [bg3dResponse, skeletonResponse] = responsesResult.value;
 
   if (!bg3dResponse.ok) {
-    return err(new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`));
+    return err("Failed to fetch Otto.bg3d: ${bg3dResponse.status}");
   }
 
   const bg3dArrayBufferResult = await ResultAsync.fromPromise(
@@ -72,7 +72,7 @@ export async function loadOttoTestModel(): Promise<Result<{
  *
  * @returns Promise containing Result with just the BG3D file
  */
-export async function loadOttoTestModelWithoutSkeleton(): Promise<Result<File, Error>> {
+export async function loadOttoTestModelWithoutSkeleton(): Promise<Result<File, string>> {
   const fetchResult = await ResultAsync.fromPromise(
     fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d"),
     mapErr,

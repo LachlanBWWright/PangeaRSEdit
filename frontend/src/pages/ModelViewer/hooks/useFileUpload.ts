@@ -51,7 +51,7 @@ interface UploadRuntime extends UseFileUploadOptions {
   finalizeModelLoad: (
     displayFileName: string,
     result: ModelToGlbWorkerResponse,
-  ) => Promise<Result<void, Error>>;
+  ) => Promise<Result<void, string>>;
 }
 
 function createUploadRuntime(
@@ -64,8 +64,8 @@ function createUploadRuntime(
   };
 }
 
-function reportInvalidSelection(error: Error): Result<void, Error> {
-  toast.error(error.message);
+function reportInvalidSelection(error: string): Result<void, string> {
+  toast.error(error);
   return err(error);
 }
 
@@ -84,15 +84,15 @@ async function applyParsedIfPresent(
 function failUpload(
   runtime: UseFileUploadOptions,
   message: string,
-): Result<void, Error> {
+): Result<void, string> {
   toast.error(message);
   runtime.onLoadingChange(false);
-  return err(new Error(message));
+  return err(message);
 }
 
 function getWorkerErrorMessage(error: unknown): string {
   const parseResult = errorSchema.safeParse(error);
-  return parseResult.success ? parseResult.data.message : String(error);
+  return parseResult.success ? parseResult.data : String(error);
 }
 
 function createGlbToBg3dMessage(buffer: ArrayBuffer): BG3DGltfWorkerMessage {
@@ -121,7 +121,7 @@ function createModelToGlbMessage(
 
 export async function parseGlbImportResult(
   result: Extract<BG3DGltfWorkerResponse, { type: "glb-to-bg3d" }>,
-): Promise<Result<BG3DParseResult, Error>> {
+): Promise<Result<BG3DParseResult, string>> {
   if (result.parsed) {
     return ok(result.parsed);
   }
@@ -137,7 +137,7 @@ export async function parseGlbImportResult(
 async function handleGlbUpload(
   runtime: UseFileUploadOptions,
   bg3dFile: File,
-): Promise<Result<void, Error>> {
+): Promise<Result<void, string>> {
   const glbBufferResult = await readFileBuffer(bg3dFile, "GLB file");
   if (glbBufferResult.isErr()) {
     return failUpload(runtime, glbBufferResult.error);
@@ -187,7 +187,7 @@ async function handleModelUpload(
   kind: Exclude<ModelUploadKind, "glb">,
   modelFile: File,
   skeletonFile?: File,
-): Promise<Result<void, Error>> {
+): Promise<Result<void, string>> {
   const modelLabel = kind === "3dmf" ? "3DMF file" : "BG3D file";
   const modelBufferResult = await readFileBuffer(modelFile, modelLabel);
   if (modelBufferResult.isErr()) {
@@ -248,7 +248,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
     async (
       displayFileName: string,
       result: ModelToGlbWorkerResponse,
-    ): Promise<Result<void, Error>> => {
+    ): Promise<Result<void, string>> => {
       await applyParsedIfPresent(
         result.parsed,
         onBg3dParsedChange,
@@ -279,7 +279,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
     async (
       bg3dFile: File,
       skeletonFile?: File,
-    ): Promise<Result<void, Error>> => {
+    ): Promise<Result<void, string>> => {
       const selectionResult = validateUploadSelection(bg3dFile, skeletonFile);
       if (selectionResult.isErr())
         return reportInvalidSelection(selectionResult.error);

@@ -97,7 +97,7 @@ export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
           clearTimeout(timeoutId);
           const parseResult = errorSchema.safeParse(error);
           const errorMessage = parseResult.success
-            ? parseResult.data.message
+            ? parseResult.data
             : String(error);
           reject(new Error(`GLTFLoader error: ${errorMessage}`));
         },

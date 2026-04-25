@@ -47,15 +47,13 @@ function extractLines(
   totalLines: number,
   startLine: number,
   endLine: number,
-): Result<string[], Error> {
+): Result<string[], string> {
   if (startLine < 1 || endLine < startLine) {
-    return err(new Error(`Invalid line range: ${startLine}-${endLine}`));
+    return err("Invalid line range: ${startLine}-${endLine}");
   }
 
   if (startLine > totalLines) {
-    return err(
-      new Error(`Start line ${startLine} exceeds file length ${totalLines}`),
-    );
+    return err(`Start line ${startLine} exceeds file length ${totalLines}`);
   }
 
   const actualEnd = Math.min(endLine, totalLines);
@@ -117,7 +115,7 @@ export class GitHubFileCache {
     repo: string,
     branch: string,
     path: string,
-  ): Promise<Result<FetchResult, Error>> {
+  ): Promise<Result<FetchResult, string>> {
     const key = this.getCacheKey(owner, repo, branch, path);
     const cached = this.cache.get(key);
 
@@ -142,9 +140,9 @@ export class GitHubFileCache {
   async getGameFile(
     game: string,
     filePath: string,
-  ): Promise<Result<FetchResult, Error>> {
+  ): Promise<Result<FetchResult, string>> {
     const repo = GAME_REPOSITORIES[game];
-    if (!repo) return err(new Error(`Unknown game: ${game}`));
+    if (!repo) return err("Unknown game: ${game}");
 
     const candidatePaths = normalizeCandidatePaths(repo.sourcePath, filePath);
 
@@ -158,7 +156,7 @@ export class GitHubFileCache {
       if (result.isOk()) return result;
     }
 
-    return err(new Error(`File not found: ${filePath}`));
+    return err("File not found: ${filePath}");
   }
 
   async getFileLines(
@@ -168,7 +166,7 @@ export class GitHubFileCache {
     path: string,
     startLine: number,
     endLine: number,
-  ): Promise<Result<string[], Error>> {
+  ): Promise<Result<string[], string>> {
     const fileResult = await this.getFile(owner, repo, branch, path);
     if (fileResult.isErr()) return err(fileResult.error);
 
@@ -181,9 +179,9 @@ export class GitHubFileCache {
     filePath: string,
     startLine: number,
     endLine: number,
-  ): Promise<Result<string[], Error>> {
+  ): Promise<Result<string[], string>> {
     const repo = GAME_REPOSITORIES[game];
-    if (!repo) return err(new Error(`Unknown game: ${game}`));
+    if (!repo) return err("Unknown game: ${game}");
 
     const fullPath = `${repo.sourcePath}/${filePath}`;
     return this.getFileLines(

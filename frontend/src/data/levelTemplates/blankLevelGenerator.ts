@@ -44,10 +44,10 @@ export interface BlankLevelData {
 export function createBlankLevel(
   game: Game,
   options: BlankLevelOptions,
-): Result<BlankLevelData, Error> {
+): Result<BlankLevelData, string> {
   const validation = validateDimensions(game, options.width, options.height);
   if (!validation.valid) {
-    return err(new Error(validation.message ?? "Invalid dimensions"));
+    return err(validation.message ?? "Invalid dimensions");
   }
   const req = LEVEL_REQUIREMENTS[game];
   const defaultHeight =
@@ -316,7 +316,7 @@ function createBlankNanosaurLevel(
   width: number,
   height: number,
   defaultHeight: number,
-): Result<BlankLevelData, Error> {
+): Result<BlankLevelData, string> {
   const headerData = createBlankHeader(Game.NANOSAUR, width, height);
   const terrainData = createBlankTerrain(
     Game.NANOSAUR,
@@ -351,7 +351,7 @@ function createBlankMightyMikeLevel(
   width: number,
   height: number,
   defaultHeight: number,
-): Result<BlankLevelData, Error> {
+): Result<BlankLevelData, string> {
   const headerData = createBlankHeader(Game.MIGHTY_MIKE, width, height);
   const terrainData = createBlankTerrain(
     Game.MIGHTY_MIKE,

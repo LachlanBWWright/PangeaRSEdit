@@ -13,7 +13,7 @@ function ensureOkResponse(url: string, resp: Response): Promise<Response> {
   return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
 }
 
-function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
+function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, string> {
   return ResultAsync.fromPromise(
     fetch(url)
       .then((resp) => ensureOkResponse(url, resp))
@@ -45,7 +45,7 @@ function zipAsync(
 
 function zipFiles(
   files: Record<string, Uint8Array<ArrayBuffer>>,
-): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
+): ResultAsync<Uint8Array<ArrayBuffer>, string> {
   return ResultAsync.fromPromise(zipAsync(files), mapErr);
 }
 
@@ -87,7 +87,7 @@ function collectDownloadTargets(level: Level): DownloadTarget[] {
 function fetchNamedBytes(
   name: string,
   url: string,
-): ResultAsync<{ name: string; data: Uint8Array<ArrayBuffer> }, Error> {
+): ResultAsync<{ name: string; data: Uint8Array<ArrayBuffer> }, string> {
   return fetchBytes(url).map((data) => ({ name, data }));
 }
 
@@ -103,11 +103,11 @@ function buildZipMap(
 
 export function downloadLevelArchive(
   level: Level,
-): ResultAsync<{ data: Uint8Array<ArrayBuffer>; zipName: string }, Error> {
+): ResultAsync<{ data: Uint8Array<ArrayBuffer>; zipName: string }, string> {
   const targets = collectDownloadTargets(level);
   if (targets.length === 0) {
     return ResultAsync.fromSafePromise(
-      Promise.reject(new Error("No downloadable files found for this level")),
+      Promise.reject("No downloadable files found for this level"),
     );
   }
 
@@ -119,7 +119,7 @@ export function downloadLevelArchive(
     .map((data) => ({ data, zipName }));
 }
 
-function nullBytes(): ResultAsync<Uint8Array<ArrayBuffer> | null, Error> {
+function nullBytes(): ResultAsync<Uint8Array<ArrayBuffer> | null, string> {
   return ResultAsync.fromSafePromise<Uint8Array<ArrayBuffer> | null>(
     Promise.resolve(null),
   );
@@ -130,7 +130,7 @@ export function fetchPlayBytes(
   rsrcFile: string | undefined,
 ): ResultAsync<
   [Uint8Array<ArrayBuffer> | null, Uint8Array<ArrayBuffer> | null],
-  Error
+  string
 > {
   const terrainFetch = terFile ? fetchBytes(terFile) : nullBytes();
   const rsrcFetch = rsrcFile ? fetchBytes(rsrcFile) : nullBytes();

@@ -1,7 +1,7 @@
 
 import { err, ok, type Result } from "neverthrow";
 import { parseTGAHeader } from "./tgaCommon";
-export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement, Error> {
+export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement, string> {
   const data = new DataView(buffer);
   const header = parseTGAHeader(data);
   console.log("[TGA] Parsing TGA header:", {
@@ -12,7 +12,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
     colorMapType: header.colorMapType,
   });
   if (header.imageWidth === 0 || header.imageHeight === 0) {
-    return err(new Error("Invalid TGA: image dimensions are zero"));
+    return err("Invalid TGA: image dimensions are zero");
   }
   const isRLE =
     header.imageType === 9 ||
@@ -22,9 +22,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
   const isIndexed = header.imageType === 9 || header.colorMapType === 1;
   if (!isRLE && !isUncompressed) {
     return err(
-      new Error(
-        `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
-      )
+      `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
     );
   }
   let bytesPerPixel = header.pixelDepth / 8;
@@ -32,9 +30,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
   if (isIndexed) {
     if (header.pixelDepth !== 8) {
       return err(
-        new Error(
-          `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
-        )
+        `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
       );
     }
     bytesPerPixel = 1; // indexed color is 1 byte per pixel
@@ -44,9 +40,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
       bytesPerPixel = 2;
     } else if (bytesPerPixel !== 3 && bytesPerPixel !== 4) {
       return err(
-        new Error(
-          `Unsupported pixel depth: ${header.pixelDepth} bits (must be 16, 24 or 32)`,
-        )
+        `Unsupported pixel depth: ${header.pixelDepth} bits (must be 16, 24 or 32)`,
       );
     }
   }
@@ -55,7 +49,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
   canvas.height = header.imageHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) {
-    return err(new Error("Failed to get canvas context"));
+    return err("Failed to get canvas context");
   }
   const imageData = ctx.createImageData(header.imageWidth, header.imageHeight);
   const pixels = imageData.data;

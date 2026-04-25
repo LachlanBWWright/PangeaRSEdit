@@ -54,11 +54,11 @@ export function getTileImportRequirements(game: Game): Result<{
   tileSize: number;
   maxTiles: number;
   format: string;
-}, Error> {
+}, string> {
   const config = TILE_GAME_CONFIGS[game];
   
   if (!config) {
-    return err(new Error(`Game ${game} does not support tile import`));
+    return err("Game ${game} does not support tile import");
   }
   
   return ok({
@@ -137,7 +137,7 @@ function loadImageFile(file: File): Promise<Result<HTMLImageElement, string>> {
 export function convertImageTo16BitTileData(
   image: HTMLImageElement,
   config: TileImportConfig = DEFAULT_IMPORT_CONFIG,
-): Result<Uint8Array, Error> {
+): Result<Uint8Array, string> {
   const width = image.width;
   const height = image.height;
   
@@ -148,7 +148,7 @@ export function convertImageTo16BitTileData(
   
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    return err(new Error('Failed to create canvas context'));
+    return err('Failed to create canvas context');
   }
   
   // Draw image to canvas
@@ -194,11 +194,11 @@ export function convertImageTo16BitTileData(
 export function convertTileDataToPreview(
   tileData: Uint8Array,
   tileSize: number,
-): Result<string, Error> {
+): Result<string, string> {
   if (tileData.length !== tileSize * tileSize * 2) {
-    return err(new Error(
+    return err(
       `Invalid tile data length: ${tileData.length}. Expected ${tileSize * tileSize * 2}.`
-    ));
+    );
   }
   
   const canvas = document.createElement('canvas');
@@ -207,7 +207,7 @@ export function convertTileDataToPreview(
   
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    return err(new Error('Failed to create canvas context'));
+    return err('Failed to create canvas context');
   }
   
   const imageData = ctx.createImageData(tileSize, tileSize);
@@ -247,11 +247,11 @@ export async function prepareTileFromImage(
   file: File,
   globals: GlobalsInterface,
   config: TileImportConfig = DEFAULT_IMPORT_CONFIG,
-): Promise<Result<Omit<TileImportResult, 'newTileIndex'>, Error>> {
+): Promise<Result<Omit<TileImportResult, 'newTileIndex'>, string>> {
   // Validate game supports tiles
   const gameConfig = TILE_GAME_CONFIGS[globals.GAME_TYPE];
   if (!gameConfig) {
-    return err(new Error(`Game ${globals.GAME_TYPE} does not support tile import`));
+    return err(`Game ${globals.GAME_TYPE} does not support tile import`);
   }
   
   // Load and validate image
@@ -291,10 +291,10 @@ export async function validateTileImportBatch(
 ): Promise<Result<{
   validFiles: File[];
   invalidFiles: { file: File; reason: string }[];
-}, Error>> {
+}, string>> {
   const gameConfig = TILE_GAME_CONFIGS[globals.GAME_TYPE];
   if (!gameConfig) {
-    return err(new Error(`Game ${globals.GAME_TYPE} does not support tile import`));
+    return err("Game ${globals.GAME_TYPE} does not support tile import");
   }
   
   const validFiles: File[] = [];

@@ -51,9 +51,9 @@ export interface VerificationResult {
 
 function createFetchErrorResult(
   citation: Citation,
-  error: Error,
+  error: string,
 ): VerificationResult {
-  if (error.message.includes("not found")) {
+  if (error.includes("not found")) {
     return {
       citation,
       status: VerificationStatus.FILE_NOT_FOUND,
@@ -63,7 +63,7 @@ function createFetchErrorResult(
   return {
     citation,
     status: VerificationStatus.NETWORK_ERROR,
-    message: error.message,
+    message: error,
   };
 }
 

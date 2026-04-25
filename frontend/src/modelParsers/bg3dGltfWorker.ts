@@ -25,7 +25,7 @@ function toExactArrayBuffer(data: ArrayBuffer | Uint8Array): ArrayBuffer {
 }
 
 // Helper function to detect file format and parse accordingly
-function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
+function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, string> {
   // Check magic number to detect format
   const view = new DataView(buffer);
   if (buffer.byteLength >= 4) {

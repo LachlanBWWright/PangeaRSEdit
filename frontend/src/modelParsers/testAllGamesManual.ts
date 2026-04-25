@@ -56,12 +56,12 @@ async function testGame(game: string, filePath: string) {
   const parsed = parseBG3D(arrayBuffer);
   if (parsed.isErr()) {
     console.error(
-      `❌ Parse failed: ${parsed.error?.message ?? String(parsed.error)}`,
+      `❌ Parse failed: ${parsed.error}`,
     );
     return {
       game,
       success: false,
-      error: parsed.error?.message ?? String(parsed.error),
+      error: parsed.error,
     };
   }
   const parsedValue = parsed.value;

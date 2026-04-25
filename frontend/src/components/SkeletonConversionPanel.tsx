@@ -284,7 +284,7 @@ export function SkeletonConversionPanel({
       .catch((error: unknown) => {
         const parseResult = errorSchema.safeParse(error);
         const message = parseResult.success
-          ? parseResult.data.message
+          ? parseResult.data
           : String(error);
         pushLog(`Unexpected conversion error: ${message}`);
         toast.dismiss(toastId);

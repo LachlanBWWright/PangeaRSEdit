@@ -26,7 +26,7 @@ export function applyResizeToAtomicData(
   atomicData: AtomicLevelData,
   globals: GlobalsInterface,
   options: ResizeUIOptions,
-): Result<ResizeAtomicDataResult, Error> {
+): Result<ResizeAtomicDataResult, string> {
   const combinedResult = combineLevelData(atomicData);
   if (combinedResult.isErr()) {
     return err(combinedResult.error);
@@ -43,7 +43,7 @@ export function applySupertileResizeToAtomicData(
   atomicData: AtomicLevelData,
   globals: GlobalsInterface,
   options: ResizeUIOptions,
-): Result<ResizeAtomicDataResult, Error> {
+): Result<ResizeAtomicDataResult, string> {
   const combinedResult = combineLevelData(atomicData);
   if (combinedResult.isErr()) {
     return err(combinedResult.error);
