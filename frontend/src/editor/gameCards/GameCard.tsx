@@ -43,7 +43,7 @@ export function GameCard({
   handleParseLevelDataFile: (
     file: Blob,
     gameType: GlobalsInterface,
-  ) => Promise<Result<unknown, Error>>;
+  ) => Promise<Result<unknown, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
@@ -133,7 +133,7 @@ export function GameCard({
     if (parseResult.isErr()) {
       toast.dismiss(toastId);
       toast.error("Failed to parse level data", {
-        description: parseResult.error.message,
+        description: parseResult.error,
       });
       return;
     }

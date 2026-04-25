@@ -274,7 +274,7 @@ export const hexDataEntrySchema = z.object({
 export function validateLevelData<T>(
   data: unknown,
   schema: z.ZodSchema<T>,
-): Result<T, Error> {
+): Result<T, string> {
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
@@ -282,7 +282,7 @@ export function validateLevelData<T>(
   const errorMessage = result.error.issues
     .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
     .join("\n");
-  return err(new Error(`Level data validation failed:\n${errorMessage}`));
+  return err(`Level data validation failed:\n${errorMessage}`);
 }
 
 // Per-game level validation functions live in `src/validation/games/*` and
@@ -294,61 +294,61 @@ export function validateLevelData<T>(
 export function validateHeader(
   data: unknown,
   simplified = false,
-): Result<HeaderFull | HeaderSimplified, Error> {
+): Result<HeaderFull | HeaderSimplified, string> {
   const schema = simplified ? headerSimplifiedSchema : headerFullSchema;
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
   }
-  return err(new Error(`Header validation failed: ${result.error.message}`));
+  return err(`Header validation failed: ${result.error.message}`);
 }
 
 /**
  * Validate items array
  */
-export function validateItems(data: unknown): Result<Item[], Error> {
+export function validateItems(data: unknown): Result<Item[], string> {
   const schema = z.array(itemSchema);
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
   }
-  return err(new Error(`Items validation failed: ${result.error.message}`));
+  return err(`Items validation failed: ${result.error.message}`);
 }
 
 /**
  * Validate fences array
  */
-export function validateFences(data: unknown): Result<Fence[], Error> {
+export function validateFences(data: unknown): Result<Fence[], string> {
   const schema = z.array(fenceSchema);
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
   }
-  return err(new Error(`Fences validation failed: ${result.error.message}`));
+  return err(`Fences validation failed: ${result.error.message}`);
 }
 
 /**
  * Validate splines array
  */
-export function validateSplines(data: unknown): Result<Spline[], Error> {
+export function validateSplines(data: unknown): Result<Spline[], string> {
   const schema = z.array(splineSchema);
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
   }
-  return err(new Error(`Splines validation failed: ${result.error.message}`));
+  return err(`Splines validation failed: ${result.error.message}`);
 }
 
 /**
  * Validate liquids array
  */
-export function validateLiquids(data: unknown): Result<Liquid[], Error> {
+export function validateLiquids(data: unknown): Result<Liquid[], string> {
   const schema = z.array(liquidSchema);
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
   }
-  return err(new Error(`Liquids validation failed: ${result.error.message}`));
+  return err(`Liquids validation failed: ${result.error.message}`);
 }
 
 /**
@@ -356,14 +356,14 @@ export function validateLiquids(data: unknown): Result<Liquid[], Error> {
  */
 export function validateTileAttributes(
   data: unknown,
-): Result<TileAttribute[], Error> {
+): Result<TileAttribute[], string> {
   const schema = z.array(tileAttributeSchema);
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
   }
   return err(
-    new Error(`Tile attributes validation failed: ${result.error.message}`),
+    `Tile attributes validation failed: ${result.error.message}`,
   );
 }
 
@@ -374,11 +374,11 @@ export function validateTileAttributes(
  */
 export function validatePartialLevelDataForSchema(
   data: unknown,
-): Result<unknown, Error> {
+): Result<unknown, string> {
   // Since partial() isn't universally available on all Zod types,
   // we simply validate that data is an object and return it
   if (typeof data !== "object" || data === null) {
-    return err(new Error("Partial level data must be an object"));
+    return err("Partial level data must be an object");
   }
   return ok(data);
 }

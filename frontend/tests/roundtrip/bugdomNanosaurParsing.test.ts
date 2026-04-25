@@ -76,17 +76,17 @@ describe("Bugdom 1 Full Save Pipeline", () => {
     fixNullToZero(parsed);
     const preResult = preprocessJson(parsed, BugdomGlobals);
     if (preResult.isErr())
-      expect.fail("Preprocess: " + preResult.error.message);
+      expect.fail("Preprocess: " + preResult.error);
     fixNullToZero(parsed);
 
     const valResult = validateLevelDataForGame(parsed, BugdomGlobals.GAME_TYPE);
-    if (valResult.isErr()) expect.fail("Validate: " + valResult.error.message);
+    if (valResult.isErr()) expect.fail("Validate: " + valResult.error);
 
     if (!isLevelDataLike(parsed))
       expect.fail("Parsed data is not LevelData");
     const split = splitLevelData(parsed);
     const combResult = combineLevelData(split);
-    if (combResult.isErr()) expect.fail("Combine: " + combResult.error.message);
+    if (combResult.isErr()) expect.fail("Combine: " + combResult.error);
 
     const sanitized = sanitizeResourceForkJson(combResult.value);
     const serResult = loadBytesFromJson(sanitized, bugdomSpecs, [], [], true);
@@ -162,11 +162,11 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
       withMetadata,
       NanosaurGlobals.GAME_TYPE,
     );
-    if (valResult.isErr()) expect.fail("Validate: " + valResult.error.message);
+    if (valResult.isErr()) expect.fail("Validate: " + valResult.error);
 
     const split = splitLevelData(withMetadata);
     const combResult = combineLevelData(split);
-    if (combResult.isErr()) expect.fail("Combine: " + combResult.error.message);
+    if (combResult.isErr()) expect.fail("Combine: " + combResult.error);
 
     const combinedRaw = isRecord(combResult.value._metadata)
       ? combResult.value._metadata.nanosaur1RawLevel
@@ -177,7 +177,7 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
 
     const compileResult = compileNanosaur1Level(combResult.value, combinedRaw);
     if (compileResult.isErr()) {
-      expect.fail("Compile failed: " + compileResult.error.message);
+      expect.fail("Compile failed: " + compileResult.error);
     }
 
     return {

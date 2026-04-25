@@ -19,12 +19,12 @@ export async function parseRsrcLevelFile(
   file: Blob,
   gameType: GlobalsInterface,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData, string>> {
   const levelBufferResult = await ResultAsync.fromPromise(
     file.arrayBuffer(),
     mapErr,
   );
-  if (levelBufferResult.isErr()) return err(levelBufferResult.error);
+  if (levelBufferResult.isErr()) return err(String(levelBufferResult.error));
   const bytes = new Uint8Array(levelBufferResult.value);
 
   // Use rsrcdump-ts to parse the resource fork
@@ -37,9 +37,9 @@ export async function parseRsrcLevelFile(
 
   // saveToJson is a third-party function that has, historically, returned
   // different shapes (a neverthrow Result instance or a plain { ok, value, error } object).
-  // Normalize it locally to a neverthrow Result<string, Error> so callers can use
+  // Normalize it locally to a neverthrow Result<string, string> so callers can use
   // the instance API safely.
-  function isNeverthrowResult(value: unknown): value is Result<string, Error> {
+  function isNeverthrowResult(value: unknown): value is Result<string, string> {
     return resultSchema.safeParse(value).success;
   }
 
@@ -51,13 +51,13 @@ export async function parseRsrcLevelFile(
     return plainResultSchema.safeParse(value).success;
   }
 
-  function normalizeSaveToJsonResult(r: unknown): Result<string, Error> {
+  function normalizeSaveToJsonResult(r: unknown): Result<string, string> {
     if (isNeverthrowResult(r)) return r;
     if (!isPlainSaveToJson(r))
-      return err(new Error("saveToJson returned unexpected shape"));
+      return err("saveToJson returned unexpected shape");
     const val = getStringField(r, "value");
     if (!r.ok || !val)
-      return err(new Error(String(r.error)));
+      return err(String(r.error));
     return ok(val);
   }
 
@@ -68,7 +68,7 @@ export async function parseRsrcLevelFile(
 
   // Validate that parsed data is an object
   if (!isRecord(parsedUnknown)) {
-    return err(new Error("Parsed level data is not an object"));
+    return err("Parsed level data is not an object");
   }
   const result = parsedUnknown;
 
@@ -79,7 +79,7 @@ export async function parseRsrcLevelFile(
   // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
   const preprocessResult = preprocessJson(result, gameType);
   if (preprocessResult.isErr()) {
-    return err(preprocessResult.error);
+    return err(String(preprocessResult.error));
   }
 
   // Fix null values AGAIN after preprocessing (safety net)
@@ -90,15 +90,13 @@ export async function parseRsrcLevelFile(
   const validationResult = validateLevelDataForGame(result, gameType.GAME_TYPE);
   if (validationResult.isErr()) {
     return err(
-      new Error(
-        `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`,
-      ),
+      `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error}`,
     );
   }
 
   // After validation, we know the structure matches LevelData
   if (!isLevelDataLike(result)) {
-    return err(new Error("Parsed level data is not LevelData"));
+    return err("Parsed level data is not LevelData");
   }
   const levelData = result;
 

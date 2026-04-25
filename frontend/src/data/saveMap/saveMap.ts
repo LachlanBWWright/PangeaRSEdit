@@ -305,7 +305,7 @@ export async function saveMap({
     if (serializeResult.isErr()) {
       toast({
         title: "Cannot save Mighty Mike level",
-        description: serializeResult.error.message,
+        description: serializeResult.error,
       });
       return;
     }

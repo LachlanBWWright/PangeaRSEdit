@@ -68,7 +68,7 @@ function exportSkeletonBytes(parsed: BG3DParseResult, modelName: string): Uint8A
   );
   const result = skeletonResourceToBinary(resource);
   if (result.isErr()) {
-    expect.fail(`Failed to export skeleton: ${result.error.message}`);
+    expect.fail(`Failed to export skeleton: ${result.error}`);
   }
   return new Uint8Array(result.value);
 }

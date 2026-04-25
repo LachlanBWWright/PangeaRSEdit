@@ -124,7 +124,7 @@ export async function openFile({
   );
   if (parseResult.isErr()) {
     toast.error("Failed to parse level data", {
-      description: parseResult.error?.message ?? String(parseResult.error),
+      description: parseResult.error,
     });
     return;
   }

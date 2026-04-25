@@ -371,7 +371,7 @@ export function IntroPrompt() {
       const result = serializeMightyMikeLevel(combinedData);
       if (result.isErr()) {
         console.error("Mighty Mike serialization failed:", result.error);
-        toast.error("Download failed", { description: result.error.message });
+        toast.error("Download failed", { description: result.error });
         return;
       }
       mapBlob = new Blob([result.value], { type: ".map" });

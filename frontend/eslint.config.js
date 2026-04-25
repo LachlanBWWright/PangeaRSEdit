@@ -20,6 +20,7 @@ export default defineConfig(
       "check-slug-textures.ts",
       "debug-skel.ts",
       "debug-slug.ts",
+      "do-refactor.mjs",
       "test-glb-export.ts",
       "dist/**",
       "coverage/**",

@@ -128,7 +128,7 @@ describe("All Games Validation Tests", () => {
           if (preprocessResult.isErr()) {
             console.error(
               `${game.name} ${fileName} preprocess error:`,
-              preprocessResult.error.message,
+              preprocessResult.error,
             );
             return;
           }
@@ -144,10 +144,10 @@ describe("All Games Validation Tests", () => {
 
           if (validationResult.isErr()) {
             console.error(`${game.name} ${fileName} validation errors:`);
-            console.error(validationResult.error.message);
+            console.error(validationResult.error);
             
             // Log first few errors for debugging
-            const errorLines = validationResult.error.message.split('\n').slice(0, 20);
+            const errorLines = validationResult.error.split('\n').slice(0, 20);
             console.error('First 20 validation errors:', errorLines.join('\n'));
           }
 

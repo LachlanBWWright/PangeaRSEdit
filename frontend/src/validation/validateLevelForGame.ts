@@ -66,7 +66,7 @@ export interface ValidationResult<T> {
 export function validateLevelDataForGame(
   data: unknown,
   gameType: Game,
-): Result<unknown, Error> {
+): Result<unknown, string> {
   switch (gameType) {
     case Game.OTTO_MATIC:
       return validateOttoMaticLevel(data);
@@ -138,7 +138,7 @@ export function getGameName(gameType: Game): string {
 export function validateLevelDataWithWarnings(
   data: unknown,
   gameType: Game,
-): { result: Result<unknown, Error>; warnings: string[] } {
+): { result: Result<unknown, string>; warnings: string[] } {
   const warnings: string[] = [];
 
   // Perform base validation
@@ -147,7 +147,7 @@ export function validateLevelDataWithWarnings(
   // If validation failed, check if it's a recoverable error
   if (validationResult.isErr()) {
     // Check for common recoverable issues
-    const errorMessage = validationResult.error.message;
+    const errorMessage = validationResult.error;
 
     // Check if it's just missing optional fields
     if (errorMessage.includes("optional")) {

@@ -34,7 +34,7 @@ export async function parseLevelDataFile(
   setData: (data: AtomicLevelData) => void,
   fileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData, string>> {
   // Dispatch to game-specific parsers that return Results
 
   // Nanosaur 1 (TRT files) uses classic preprocessor

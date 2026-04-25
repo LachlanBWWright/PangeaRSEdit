@@ -83,7 +83,7 @@ describe("RLW/RLB Decompression", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Expected RLB");
+        expect(result.error).toContain("Expected RLB");
       }
     });
   });
@@ -194,7 +194,7 @@ describe("RLW/RLB Decompression", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Unsupported compression");
+        expect(result.error).toContain("Unsupported compression");
       }
     });
   });

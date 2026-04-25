@@ -37,21 +37,21 @@ export async function parseMightyMikeFile(
   setData: (data: AtomicLevelData) => void,
   mapFileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData, string>> {
   const bufferResult = await ResultAsync.fromPromise(
     file.arrayBuffer(),
     mapErr,
   );
   if (bufferResult.isErr()) {
     return err(
-      new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
+      `Failed to read file buffer: ${bufferResult.error}`,
     );
   }
 
   const levelBuffer = bufferResult.value;
   const mapResult = parseMightyMikeMap(levelBuffer);
   if (mapResult.isErr()) {
-    return err(new Error(`Failed to parse MightyMike map: ${mapResult.error}`));
+    return err(`Failed to parse MightyMike map: ${mapResult.error}`);
   }
 
   let tilesetData = null;
@@ -244,7 +244,7 @@ export async function parseMightyMikeFile(
   };
 
   if (!isLevelDataLike(finalData)) {
-    return err(new Error("Final data is not LevelData"));
+    return err("Final data is not LevelData");
   }
 
   // setData must use finalData (which includes mightyMikeMapData) so that
@@ -259,25 +259,23 @@ export async function parseMightyMikeFile(
  */
 export function serializeMightyMikeLevel(
   levelData: LevelData,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   const metadataRaw = levelData._metadata?.[1000];
   if (!isRecord(metadataRaw) || !isRecord(metadataRaw.obj)) {
     return err(
-      new Error(
-        "Missing Mighty Mike metadata structure (1000.obj) for serialization",
-      ),
+      "Missing Mighty Mike metadata structure (1000.obj) for serialization",
     );
   }
 
   const metadata = metadataRaw.obj;
   if (!isMightyMikeMap(metadata.mightyMikeMapData)) {
     return err(
-      new Error("Missing or invalid Mighty Mike map data for serialization"),
+      "Missing or invalid Mighty Mike map data for serialization",
     );
   }
   if (!Array.isArray(metadata.mightyMikeTileValues)) {
     return err(
-      new Error("Missing or invalid Mighty Mike tile values for serialization"),
+      "Missing or invalid Mighty Mike tile values for serialization",
     );
   }
 
