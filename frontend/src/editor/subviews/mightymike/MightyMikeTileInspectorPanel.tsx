@@ -7,9 +7,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Shield, Info, Paintbrush, Layers } from "lucide-react";
 import { MightyMikeResizeMapControls } from "./MightyMikeResizeMapControls";
+import {
+  getFlagChecked,
+  getTileInfoRows,
+  MIGHTY_MIKE_FLAG_OPTIONS,
+  parseInputNumber,
+  toggleFlagBit,
+} from "./mightyMikeTileInspectorState";
 
 export type CollisionProperties = {
   hasCollisionMask: boolean;
@@ -125,20 +138,18 @@ export function MightyMikeTileInspectorPanel({
             </button>
           </TooltipTrigger>
           <TooltipContent side="right" className="text-xs space-y-0.5 max-w-48">
-            <p>
-              Map: {mapWidth} × {mapHeight}
-            </p>
-            <p>Total: {totalTiles}</p>
-            <p>Images: {mapImagesLength}</p>
-            <p>Pos: {effectiveSelectedTile}</p>
-            <p>
-              Logical:{" "}
-              {effectiveSelectedTile < layr.length
-                ? layr[effectiveSelectedTile]
-                : "N/A"}
-            </p>
-            <p>Physical: {currentImageIndex ?? "N/A"}</p>
-            <p>Xlat: {xlatTable ? "Yes" : "No"}</p>
+            {getTileInfoRows({
+              mapWidth,
+              mapHeight,
+              totalTiles,
+              mapImagesLength,
+              effectiveSelectedTile,
+              layr,
+              currentImageIndex,
+              hasXlatTable: Boolean(xlatTable),
+            }).map((line) => (
+              <p key={line}>{line}</p>
+            ))}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -156,27 +167,11 @@ export function MightyMikeTileInspectorPanel({
           <div>
             <p className="text-xs text-gray-400 mb-1">Flags</p>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-              {([
-                [0, "Solid Top"],
-                [1, "Solid Bottom"],
-                [2, "Solid Left"],
-                [3, "Solid Right"],
-                [4, "Death"],
-                [5, "Hurt"],
-                [6, "(unused)"],
-                [7, "Water"],
-                [8, "Wind"],
-                [9, "Bullets Pass Through"],
-                [10, "Stairs"],
-                [11, "Friction"],
-                [12, "Ice"],
-                [13, "(unused)"],
-                [14, "(unused)"],
-                [15, "Track"],
-              ] as [number, string][]).map(([bit, label]) => {
-                const mask = 1 << bit;
-                const checked =
-                  (getNumber(currentTileAttributes["flags"]) & mask) !== 0;
+              {MIGHTY_MIKE_FLAG_OPTIONS.map(([bit, label]) => {
+                const checked = getFlagChecked(
+                  getNumber(currentTileAttributes["flags"]),
+                  bit,
+                );
                 return (
                   <label
                     key={bit}
@@ -185,8 +180,10 @@ export function MightyMikeTileInspectorPanel({
                     <Checkbox
                       checked={checked}
                       onCheckedChange={(val) => {
-                        const current = getNumber(currentTileAttributes["flags"]);
-                        const next = val ? current | mask : current & ~mask;
+                        const current = getNumber(
+                          currentTileAttributes["flags"],
+                        );
+                        const next = toggleFlagBit(current, bit, val === true);
                         handleUpdateTileAttribute("flags", next);
                       }}
                       className="h-3 w-3"
@@ -208,7 +205,7 @@ export function MightyMikeTileInspectorPanel({
                   onChange={(e) =>
                     handleUpdateTileAttribute(
                       property,
-                      Number.parseInt(e.target.value || "0", 10) || 0,
+                      parseInputNumber(e.target.value),
                     )
                   }
                   className="h-7 text-xs"
@@ -240,9 +237,7 @@ export function MightyMikeTileInspectorPanel({
                   className="h-7 text-xs w-16"
                   value={paramBrushValue}
                   onChange={(e) =>
-                    setParamBrushValue(
-                      Number.parseInt(e.target.value || "0", 10) || 0,
-                    )
+                    setParamBrushValue(parseInputNumber(e.target.value))
                   }
                   disabled={paramBrushField === null}
                 />
@@ -254,7 +249,9 @@ export function MightyMikeTileInspectorPanel({
                 onClick={onToggleParamsOverlay}
               >
                 <Layers className="w-3 h-3 mr-1" />
-                {showParamsOverlay ? "Hide Params Overlay" : "Show Params Overlay"}
+                {showParamsOverlay
+                  ? "Hide Params Overlay"
+                  : "Show Params Overlay"}
               </Button>
             </div>
           </div>

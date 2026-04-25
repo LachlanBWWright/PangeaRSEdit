@@ -1,7 +1,7 @@
-import { MightyMikeTileOperationsPanel } from "./MightyMikeTileOperationsPanel";
-import { MightyMikeTileInspectorPanel } from "./MightyMikeTileInspectorPanel";
-import { MightyMikePalettePanel } from "./MightyMikePalettePanel";
-import { MightyMikeResizeMapControls } from "./MightyMikeResizeMapControls";
+import {
+  MightyMikePanels,
+  MightyMikeTileMenuShell,
+} from "@/editor/subviews/mightymike/mightyMikeTileMenuLayout";
 
 interface MightyMikeTileMenuContentProps {
   currentImageIndex: number | null;
@@ -103,60 +103,58 @@ export function MightyMikeTileMenuContent({
   onSelectPaletteTile,
 }: MightyMikeTileMenuContentProps) {
   return (
-    <div className="flex flex-col gap-2 p-2 flex-1 min-h-0 overflow-hidden">
-      <div className="grid grid-cols-3 gap-2 flex-1 min-h-0 overflow-hidden">
-        <MightyMikeTileOperationsPanel
-          currentImageIndex={currentImageIndex}
-          currentTileCanvas={currentTileCanvas}
-          effectiveSelectedTile={effectiveSelectedTile}
-          handleUploadTile={handleUploadTile}
-          handleEditTile={handleEditTile}
-          handleDownloadTile={handleDownloadTile}
-        />
+    <MightyMikeTileMenuShell>
+      <MightyMikePanels.Operations
+        currentImageIndex={currentImageIndex}
+        currentTileCanvas={currentTileCanvas}
+        effectiveSelectedTile={effectiveSelectedTile}
+        handleUploadTile={handleUploadTile}
+        handleEditTile={handleEditTile}
+        handleDownloadTile={handleDownloadTile}
+      />
 
-        <MightyMikeTileInspectorPanel
-          mapWidth={mapWidth}
-          mapHeight={mapHeight}
-          totalTiles={totalTiles}
-          mapImagesLength={mapImagesLength}
-          effectiveSelectedTile={effectiveSelectedTile}
-          layr={layr}
-          currentImageIndex={currentImageIndex}
-          xlatTable={xlatTable}
-          collisionProps={collisionProps}
-          mightyMikeTileValuesArrayLength={mightyMikeTileValuesArrayLength}
-          currentTileAttributes={currentTileAttributes}
-          showCollisionOverlay={showCollisionOverlay}
-          onToggleCollisionOverlay={onToggleCollisionOverlay}
-          collisionBrushMode={collisionBrushMode}
-          onToggleCollisionBrushMode={onToggleCollisionBrushMode}
-          paramBrushField={paramBrushField}
-          onParamBrushFieldChange={onParamBrushFieldChange}
-          paramBrushValue={paramBrushValue}
-          setParamBrushValue={setParamBrushValue}
-          showParamsOverlay={showParamsOverlay}
-          onToggleParamsOverlay={onToggleParamsOverlay}
-          onResize={onResize}
-          handleUpdateCollisionProperty={handleUpdateCollisionProperty}
-          handleUpdateTileAttribute={handleUpdateTileAttribute}
-          getNumber={getNumber}
-        />
+      <MightyMikePanels.Inspector
+        mapWidth={mapWidth}
+        mapHeight={mapHeight}
+        totalTiles={totalTiles}
+        mapImagesLength={mapImagesLength}
+        effectiveSelectedTile={effectiveSelectedTile}
+        layr={layr}
+        currentImageIndex={currentImageIndex}
+        xlatTable={xlatTable}
+        collisionProps={collisionProps}
+        mightyMikeTileValuesArrayLength={mightyMikeTileValuesArrayLength}
+        currentTileAttributes={currentTileAttributes}
+        showCollisionOverlay={showCollisionOverlay}
+        onToggleCollisionOverlay={onToggleCollisionOverlay}
+        collisionBrushMode={collisionBrushMode}
+        onToggleCollisionBrushMode={onToggleCollisionBrushMode}
+        paramBrushField={paramBrushField}
+        onParamBrushFieldChange={onParamBrushFieldChange}
+        paramBrushValue={paramBrushValue}
+        setParamBrushValue={setParamBrushValue}
+        showParamsOverlay={showParamsOverlay}
+        onToggleParamsOverlay={onToggleParamsOverlay}
+        onResize={onResize}
+        handleUpdateCollisionProperty={handleUpdateCollisionProperty}
+        handleUpdateTileAttribute={handleUpdateTileAttribute}
+        getNumber={getNumber}
+      />
 
-        <MightyMikePalettePanel
-          mapImages={mapImages}
-          selectedPaletteTile={selectedPaletteTile}
-          isPaletteTileInUse={isPaletteTileInUse}
-          paletteUploadInputRef={paletteUploadInputRef}
-          setIsEditingPaletteTile={setIsEditingPaletteTile}
-          handleUploadPaletteTile={handleUploadPaletteTile}
-          handleAddPaletteTile={handleAddPaletteTile}
-          handleRemovePaletteTile={handleRemovePaletteTile}
-          handleReplaceTile={handleReplaceTile}
-          onSelectPaletteTile={onSelectPaletteTile}
-        />
+      <MightyMikePanels.Palette
+        mapImages={mapImages}
+        selectedPaletteTile={selectedPaletteTile}
+        isPaletteTileInUse={isPaletteTileInUse}
+        paletteUploadInputRef={paletteUploadInputRef}
+        setIsEditingPaletteTile={setIsEditingPaletteTile}
+        handleUploadPaletteTile={handleUploadPaletteTile}
+        handleAddPaletteTile={handleAddPaletteTile}
+        handleRemovePaletteTile={handleRemovePaletteTile}
+        handleReplaceTile={handleReplaceTile}
+        onSelectPaletteTile={onSelectPaletteTile}
+      />
 
-        <MightyMikeResizeMapControls onResize={onResize} />
-      </div>
-    </div>
+      <MightyMikePanels.Resize onResize={onResize} />
+    </MightyMikeTileMenuShell>
   );
 }

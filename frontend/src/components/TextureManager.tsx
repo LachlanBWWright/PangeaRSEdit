@@ -5,6 +5,12 @@ import { toast } from "sonner";
 import { ImageEditor } from "./ImageEditor";
 import { ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
+import {
+  createInitiallyExpandedTextureSet,
+  getNextPreviewState,
+  handleTextureFileInputChange,
+  toggleExpandedTextureIndex,
+} from "@/components/TextureManager/textureManagerState";
 
 interface Texture {
   name: string;
@@ -31,8 +37,8 @@ export function TextureManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
   const [showPreviews, setShowPreviews] = useState(true);
-  const [expandedTextures, setExpandedTextures] = useState<Set<number>>(
-    () => new Set(textures.map((_, index) => index)),
+  const [expandedTextures, setExpandedTextures] = useState<Set<number>>(() =>
+    createInitiallyExpandedTextureSet(textures.length),
   );
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [textureToEdit, setTextureToEdit] = useState<Texture | null>(null);
@@ -120,24 +126,15 @@ export function TextureManager({
   };
 
   const toggleTextureExpansion = (index: number) => {
-    const newExpanded = new Set(expandedTextures);
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index);
-    } else {
-      newExpanded.add(index);
-    }
-    setExpandedTextures(newExpanded);
+    setExpandedTextures((current) =>
+      toggleExpandedTextureIndex(current, index),
+    );
   };
 
   const toggleAllPreviews = () => {
-    if (showPreviews) {
-      // If hiding previews, collapse all expanded textures
-      setExpandedTextures(new Set());
-    } else {
-      // If showing previews, expand all textures
-      setExpandedTextures(new Set(textures.map((_, index) => index)));
-    }
-    setShowPreviews(!showPreviews);
+    const nextPreviewState = getNextPreviewState(showPreviews, textures.length);
+    setExpandedTextures(nextPreviewState.expandedTextures);
+    setShowPreviews(nextPreviewState.showPreviews);
   };
 
   if (textures.length === 0) {
@@ -182,26 +179,12 @@ export function TextureManager({
         accept="image/*"
         className="hidden"
         onChange={async (e) => {
-          const file = e.target.files?.[0];
-          // Use selectedTexture from closure - it's captured at event handler time
-          // This avoids race conditions with React state updates
-          const textureToReplace = selectedTexture;
-          if (file && textureToReplace) {
-            await handleReplaceTexture(textureToReplace, file);
-            // Reset input value to allow re-selecting the same file
-            e.target.value = "";
-            // Clear selected texture after replacement
-            setSelectedTexture(null);
-          } else {
-            if (!textureToReplace) {
-              console.error("No texture selected for replacement");
-              toast.error("No texture selected");
-            }
-            if (!file) {
-              console.error("No file selected");
-            }
-            e.target.value = "";
-          }
+          await handleTextureFileInputChange({
+            event: e,
+            selectedTexture,
+            handleReplaceTexture,
+            clearSelectedTexture: () => setSelectedTexture(null),
+          });
         }}
       />
 

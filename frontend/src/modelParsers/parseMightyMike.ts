@@ -10,6 +10,8 @@ import type {
 import { rlwCompress } from "../utils/rlwDecompress";
 import { decompressIfNeeded, parseTileImages } from "./parseMightyMikeHelpers";
 
+export type { MightyMikeMap };
+
 export function parseMightyMikeTileSet(
   buffer: ArrayBuffer,
   palette?: Uint8Array,

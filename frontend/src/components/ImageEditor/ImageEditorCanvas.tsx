@@ -4,6 +4,11 @@ import { Image, Layer, Line, Stage } from "react-konva";
 import type Konva from "konva";
 import type { RefObject } from "react";
 import type { BrushStroke } from "./types";
+import {
+  getCanvasLayoutSize,
+  getLineCap,
+  getLineJoin,
+} from "@/components/ImageEditor/imageEditorCanvasState";
 
 interface ImageEditorCanvasProps {
   image: HTMLImageElement;
@@ -46,6 +51,12 @@ export function ImageEditorCanvas({
   strokes,
   currentStroke,
 }: ImageEditorCanvasProps) {
+  const canvasLayoutSize = getCanvasLayoutSize(
+    image.width,
+    image.height,
+    scale,
+  );
+
   return (
     <div className="flex-1 bg-gray-900 rounded overflow-hidden relative">
       <div className="absolute top-4 right-4 z-10 flex flex-row items-center gap-2 bg-gray-800/90 p-1.5 rounded-lg shadow-xl border border-gray-700">
@@ -110,8 +121,8 @@ export function ImageEditorCanvas({
           style={{
             minWidth: "100%",
             minHeight: "100%",
-            width: image.width * scale + 160,
-            height: image.height * scale + 160,
+            width: canvasLayoutSize.width,
+            height: canvasLayoutSize.height,
           }}
         >
           <div className="m-auto shadow-2xl border border-gray-800">
@@ -135,8 +146,8 @@ export function ImageEditorCanvas({
                     points={stroke.points}
                     stroke={stroke.color}
                     strokeWidth={stroke.size}
-                    lineCap={stroke.shape === "circle" ? "round" : "square"}
-                    lineJoin={stroke.shape === "circle" ? "round" : "miter"}
+                    lineCap={getLineCap(stroke.shape)}
+                    lineJoin={getLineJoin(stroke.shape)}
                     strokeScaleEnabled={false}
                     perfectDrawEnabled={false}
                     globalCompositeOperation="source-over"
@@ -148,12 +159,8 @@ export function ImageEditorCanvas({
                     points={currentStroke.points}
                     stroke={currentStroke.color}
                     strokeWidth={currentStroke.size}
-                    lineCap={
-                      currentStroke.shape === "circle" ? "round" : "square"
-                    }
-                    lineJoin={
-                      currentStroke.shape === "circle" ? "round" : "miter"
-                    }
+                    lineCap={getLineCap(currentStroke.shape)}
+                    lineJoin={getLineJoin(currentStroke.shape)}
                     strokeScaleEnabled={false}
                     perfectDrawEnabled={false}
                     globalCompositeOperation="source-over"

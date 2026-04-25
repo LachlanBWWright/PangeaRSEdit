@@ -5,8 +5,13 @@
  * adding, removing, and duplicating sections.
  */
 
-import type { TunnelData, TunnelSection } from "@/data/tunnelParser/types";
+import type { TunnelData } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";
+import {
+  getSectionStats,
+  getTotalSectionStats,
+  toggleSelectedSection,
+} from "@/editor/tunnel/sectionInspectorState";
 
 interface SectionInspectorProps {
   tunnelData: TunnelData;
@@ -17,35 +22,6 @@ interface SectionInspectorProps {
   onDuplicateSection?: (index: number) => void;
 }
 
-/**
- * Calculate statistics for a section
- */
-function getSectionStats(section: TunnelSection) {
-  const tunnelVertices = section.tunnelMesh.numPoints;
-  const tunnelTriangles = section.tunnelMesh.numTriangles;
-  const waterVertices = section.waterMesh.numPoints;
-  const waterTriangles = section.waterMesh.numTriangles;
-
-  const tBBox = section.tunnelMesh.bBox;
-  const tunnelWidth = tBBox.max.x - tBBox.min.x;
-  const tunnelHeight = tBBox.max.y - tBBox.min.y;
-  const tunnelDepth = tBBox.max.z - tBBox.min.z;
-
-  return {
-    tunnelVertices,
-    tunnelTriangles,
-    waterVertices,
-    waterTriangles,
-    totalVertices: tunnelVertices + waterVertices,
-    totalTriangles: tunnelTriangles + waterTriangles,
-    dimensions: {
-      width: tunnelWidth.toFixed(1),
-      height: tunnelHeight.toFixed(1),
-      depth: tunnelDepth.toFixed(1),
-    },
-  };
-}
-
 export function SectionInspector({
   tunnelData,
   selectedSection,
@@ -54,17 +30,7 @@ export function SectionInspector({
   onDeleteSection,
   onDuplicateSection,
 }: SectionInspectorProps) {
-  // Calculate total statistics
-  const totalStats = tunnelData.sections.reduce(
-    (acc, section) => {
-      const stats = getSectionStats(section);
-      return {
-        vertices: acc.vertices + stats.totalVertices,
-        triangles: acc.triangles + stats.totalTriangles,
-      };
-    },
-    { vertices: 0, triangles: 0 }
-  );
+  const totalStats = getTotalSectionStats(tunnelData);
 
   const selectedSectionData =
     selectedSection !== null ? tunnelData.sections[selectedSection] : null;
@@ -87,13 +53,20 @@ export function SectionInspector({
       <div className="bg-gray-700 p-3 rounded mb-4">
         <div className="text-sm text-gray-300">
           <div>
-            Total Sections: <span className="text-white">{tunnelData.sections.length}</span>
+            Total Sections:{" "}
+            <span className="text-white">{tunnelData.sections.length}</span>
           </div>
           <div>
-            Total Vertices: <span className="text-white">{totalStats.vertices.toLocaleString()}</span>
+            Total Vertices:{" "}
+            <span className="text-white">
+              {totalStats.vertices.toLocaleString()}
+            </span>
           </div>
           <div>
-            Total Triangles: <span className="text-white">{totalStats.triangles.toLocaleString()}</span>
+            Total Triangles:{" "}
+            <span className="text-white">
+              {totalStats.triangles.toLocaleString()}
+            </span>
           </div>
         </div>
       </div>
@@ -111,7 +84,7 @@ export function SectionInspector({
                   : "bg-gray-700 hover:bg-gray-600"
               }`}
               onClick={() =>
-                onSelectSection(selectedSection === index ? null : index)
+                onSelectSection(toggleSelectedSection(selectedSection, index))
               }
             >
               <div className="text-sm text-white font-medium">
@@ -200,15 +173,9 @@ export function SectionInspector({
                 Bounding Box
               </div>
               <div className="text-xs text-gray-300 space-y-1">
-                <div>
-                  Width: {selectedStats.dimensions.width}
-                </div>
-                <div>
-                  Height: {selectedStats.dimensions.height}
-                </div>
-                <div>
-                  Depth: {selectedStats.dimensions.depth}
-                </div>
+                <div>Width: {selectedStats.dimensions.width}</div>
+                <div>Height: {selectedStats.dimensions.height}</div>
+                <div>Depth: {selectedStats.dimensions.depth}</div>
               </div>
             </div>
           </div>

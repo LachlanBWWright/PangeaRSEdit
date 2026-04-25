@@ -6,6 +6,7 @@ import { KeyframeEditor } from "./KeyframeEditor";
 import { AnimationMetadataDisplay } from "./AnimationMetadataDisplay";
 import { AnimationEventEditor } from "./AnimationEventEditor";
 import { AnimationCreator } from "./AnimationCreator";
+import { ViewerSection } from "@/components/AnimationViewer/animationViewerSections";
 import type { AnimationEvent, AnimationInfo, TimelineRow } from "./types";
 import type { ModelSourceKind, TrackProperty } from "./utils";
 
@@ -175,10 +176,7 @@ export function AnimationViewerLayout({
           onCreate={onCreateAnimation}
         />
 
-        <div className="space-y-3 border-t border-gray-700 pt-3">
-          <div className="text-xs font-semibold text-gray-300">
-            Edit Animation Properties
-          </div>
+        <ViewerSection title="Edit Animation Properties">
           <AnimationEditor
             selectedAnimationInfo={selectedAnimationInfo}
             editName={editName}
@@ -192,12 +190,9 @@ export function AnimationViewerLayout({
             onApplyChanges={onApplyEditorChanges}
             onDeleteAnimation={onDeleteAnimation}
           />
-        </div>
+        </ViewerSection>
 
-        <div className="space-y-3 border-t border-gray-700 pt-3">
-          <div className="text-xs font-semibold text-gray-300">
-            Animation Timeline
-          </div>
+        <ViewerSection title="Animation Timeline">
           <KeyframeEditor
             selectedAnimationInfo={selectedAnimationInfo}
             hasActiveAction={hasActiveAction}
@@ -244,15 +239,9 @@ export function AnimationViewerLayout({
             onReset={onReset}
             onSeek={onSeek}
           />
-        </div>
+        </ViewerSection>
 
-        <div
-          ref={eventsSectionRef}
-          className="space-y-3 border-t border-gray-700 pt-3"
-        >
-          <div className="text-xs font-semibold text-gray-300">
-            Animation Events
-          </div>
+        <ViewerSection title="Animation Events" containerRef={eventsSectionRef}>
           <AnimationEventEditor
             selectedAnimationInfo={selectedAnimationInfo}
             selectedEvents={selectedEvents}
@@ -264,19 +253,16 @@ export function AnimationViewerLayout({
             onUpdateEvent={onUpdateEvent}
             onDeleteEvent={onDeleteEvent}
           />
-        </div>
+        </ViewerSection>
 
-        <div className="space-y-3 border-t border-gray-700 pt-3">
-          <div className="text-xs font-semibold text-gray-300">
-            Animation Metadata
-          </div>
+        <ViewerSection title="Animation Metadata">
           <AnimationMetadataDisplay
             selectedAnimationInfo={selectedAnimationInfo}
             selectedMetadata={selectedMetadata}
             timelineRows={timelineRows}
             totalKeyframes={totalKeyframes}
           />
-        </div>
+        </ViewerSection>
       </CardContent>
     </Card>
   );

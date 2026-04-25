@@ -1,7 +1,10 @@
 import { ActiveView } from "@/data/globals/activeViewAtom";
-import { View } from "@/editor/viewEnum";
 import { Updater } from "use-immer";
-import { LiquidData, HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
+import {
+  LiquidData,
+  HeaderData,
+  TerrainData,
+} from "@/python/structSpecs/LevelTypes";
 import { Circle, Image as KonvaImage, Line } from "react-konva";
 import Konva from "konva";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -15,6 +18,16 @@ import {
   buildLiquidBodyCanvas,
   getLiquidVisualStyle,
 } from "./liquidRenderingUtils";
+import {
+  applyDraggedBodyOffset,
+  cloneVisibleWaterNubs,
+  commitWaterHotspotPosition,
+  commitWaterNubPosition,
+  drawPreviewLine,
+  selectWaterBody,
+  selectWaterNub,
+  updatePreviewNub,
+} from "@/editor/subviews/water/waterBodyInteractions";
 
 export const WaterBody = memo(
   ({
@@ -53,7 +66,10 @@ export const WaterBody = memo(
 
     if (!waterBody) return <></>;
 
-    const visibleNubs = waterBody.nubs.filter((_, nubIdx) => nubIdx < waterBody.numNubs);
+    const visibleNubs = cloneVisibleWaterNubs(
+      waterBody.nubs,
+      waterBody.numNubs,
+    );
     const waterNubs = visibleNubs.flatMap((nub) => [nub[0], nub[1]]);
     const style = getLiquidVisualStyle(globals, waterBody.type);
 
@@ -71,13 +87,18 @@ export const WaterBody = memo(
         <Line
           ref={lineRef}
           points={waterNubs}
-          stroke={waterBodyIdx === selectedWaterBody ? "#dce2ff" : style.strokeColor}
+          stroke={
+            waterBodyIdx === selectedWaterBody ? "#dce2ff" : style.strokeColor
+          }
           strokeWidth={waterBodyIdx === selectedWaterBody ? 5 : 2}
           perfectDrawEnabled={false}
           hitStrokeWidth={10}
           onClick={() => {
-            setSelectedWaterBody(waterBodyIdx);
-            setActiveView(View.water);
+            selectWaterBody({
+              waterBodyIdx,
+              setSelectedWaterBody,
+              setActiveView,
+            });
           }}
           closed
           fill={waterBodyIdx === selectedWaterBody ? "#9999FF08" : "#9999FF04"}
@@ -85,13 +106,12 @@ export const WaterBody = memo(
           onDragStart={() => {
             const body = liquidData.Liqd[1000].obj[waterBodyIdx];
             if (!body) return;
-            setInitialDragState(
-              body.nubs
-                .filter((_, nubIdx) => nubIdx < body.numNubs)
-                .map((nub) => [nub[0], nub[1]]),
-            );
-            setSelectedWaterBody(waterBodyIdx);
-            setActiveView(View.water);
+            setInitialDragState(cloneVisibleWaterNubs(body.nubs, body.numNubs));
+            selectWaterBody({
+              waterBodyIdx,
+              setSelectedWaterBody,
+              setActiveView,
+            });
           }}
           onDragMove={() => {
             // No per-frame state updates — let Konva handle visuals while dragging.
@@ -102,19 +122,13 @@ export const WaterBody = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-            setLiquidData((draft) => {
-              const body = draft.Liqd[1000].obj[waterBodyIdx];
-              if (!body) return;
-              for (let i = 0; i < initialDragState.length; i++) {
-                const nub = body.nubs[i];
-                const initNub = initialDragState[i];
-                if (nub && initNub && i < body.numNubs) {
-                  nub[0] = initNub[0] + dragDx;
-                  nub[1] = initNub[1] + dragDz;
-                }
-              }
-              // hotSpotX/Z stays fixed when dragging the body polygon
-            });
+            applyDraggedBodyOffset(
+              setLiquidData,
+              waterBodyIdx,
+              initialDragState,
+              dragDx,
+              dragDz,
+            );
             e.target.x(0);
             e.target.y(0);
             setInitialDragState(null);
@@ -146,43 +160,48 @@ export const WaterBody = memo(
                 draggable={true}
                 perfectDrawEnabled={false}
                 onClick={() => {
-                  setSelectedWaterBody(waterBodyIdx);
-                  setActiveView(View.water);
-                  setSelectedWaterNub(nubIdx);
+                  selectWaterNub({
+                    waterBodyIdx,
+                    nubIdx,
+                    setSelectedWaterBody,
+                    setActiveView,
+                    setSelectedWaterNub,
+                  });
                 }}
                 onDragStart={() => {
-                  setSelectedWaterBody(waterBodyIdx);
-                  setActiveView(View.water);
-                  setSelectedWaterNub(nubIdx);
-                  previewNubsRef.current = waterBody.nubs
-                    .filter((_, i) => i < waterBody.numNubs)
-                    .map((n) => [n[0], n[1]] as [number, number]);
+                  selectWaterNub({
+                    waterBodyIdx,
+                    nubIdx,
+                    setSelectedWaterBody,
+                    setActiveView,
+                    setSelectedWaterNub,
+                  });
+                  previewNubsRef.current = cloneVisibleWaterNubs(
+                    waterBody.nubs,
+                    waterBody.numNubs,
+                  );
                 }}
                 onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
                   const newX = Math.round(e.target.x());
                   const newY = Math.round(e.target.y());
                   if (!previewNubsRef.current) return;
-                  const preview = previewNubsRef.current;
-                  const updated = preview[nubIdx];
-                  if (updated) {
-                    updated[0] = newX;
-                    updated[1] = newY;
-                  }
-                  if (lineRef.current) {
-                    lineRef.current.points(preview.flatMap((n) => [n[0], n[1]]));
-                    lineRef.current.getLayer()?.batchDraw();
-                  }
+                  const preview = updatePreviewNub(
+                    previewNubsRef.current,
+                    nubIdx,
+                    newX,
+                    newY,
+                  );
+                  drawPreviewLine(lineRef.current, preview);
                 }}
                 onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
                   previewNubsRef.current = null;
-                  setLiquidData((liquidData) => {
-                    const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
-                    const nubToUpdate = wb?.nubs[nubIdx];
-                    if (nubToUpdate) {
-                      nubToUpdate[0] = Math.round(e.target.x());
-                      nubToUpdate[1] = Math.round(e.target.y());
-                    }
-                  });
+                  commitWaterNubPosition(
+                    setLiquidData,
+                    waterBodyIdx,
+                    nubIdx,
+                    e.target.x(),
+                    e.target.y(),
+                  );
                 }}
               />
             );
@@ -195,12 +214,12 @@ export const WaterBody = memo(
             fill="orange"
             draggable
             onDragEnd={(e) =>
-              setLiquidData((liquidData) => {
-                const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
-                if (!wb) return;
-                wb.hotSpotX = Math.round(e.target.x());
-                wb.hotSpotZ = Math.round(e.target.y());
-              })
+              commitWaterHotspotPosition(
+                setLiquidData,
+                waterBodyIdx,
+                e.target.x(),
+                e.target.y(),
+              )
             }
           />
         )}

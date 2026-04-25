@@ -7,12 +7,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "@/components/ImageEditor";
-import {
-  canRemoveSupertileColumn,
-  canRemoveSupertileRow,
-  getSupertileCounts,
-} from "../supertiles/supertileResizeGuards";
+import { getSupertileCounts } from "../supertiles/supertileResizeGuards";
 import { BugdomTileMenuContent } from "./BugdomTileMenuContent";
+import {
+  appendBugdomTileImageMapping,
+  canRemoveBugdomSupertile,
+  getEditingTileIndex,
+  isValidTileImageSelection,
+  normalizeSelectedSupertile,
+} from "./bugdomTileMenuState";
 import {
   TILE_IMAGE_SIZE,
   computeIsTileImageInUse,
@@ -69,20 +72,25 @@ export function BugdomTileMenu({
   >(null);
 
   useEffect(() => {
-    if (totalSupertiles <= 0) return;
-    if (selectedTile < 0 || selectedTile >= totalSupertiles) {
-      setSelectedTile(0);
+    const normalized = normalizeSelectedSupertile(
+      selectedTile,
+      totalSupertiles,
+    );
+    if (normalized !== selectedTile) {
+      setSelectedTile(normalized);
     }
   }, [selectedTile, setSelectedTile, totalSupertiles]);
 
   const handleRemoveSupertile = (
     direction: "top" | "bottom" | "left" | "right",
   ) => {
-    const removingRow = direction === "top" || direction === "bottom";
-    const canRemove = removingRow
-      ? canRemoveSupertileRow(supertileCounts.height)
-      : canRemoveSupertileColumn(supertileCounts.width);
-    if (!canRemove) {
+    if (
+      !canRemoveBugdomSupertile(
+        direction,
+        supertileCounts.width,
+        supertileCounts.height,
+      )
+    ) {
       toast.error("Cannot remove supertile", {
         description:
           "At least one supertile row and one supertile column must remain.",
@@ -191,7 +199,10 @@ export function BugdomTileMenu({
   };
 
   const handleSaveTileImageEdit = async (editedImageData: ImageData) => {
-    const targetTileIndex = editingTileImageIndex ?? selectedTileImageIndex;
+    const targetTileIndex = getEditingTileIndex(
+      editingTileImageIndex,
+      selectedTileImageIndex,
+    );
     const saved = saveEditedTileImageToIndex(
       editedImageData,
       targetTileIndex,
@@ -214,19 +225,14 @@ export function BugdomTileMenu({
     const newImageIndex = mapImages.length;
     updateTileImages([...mapImages, createBlankTileCanvas()]);
     setTerrainData((data) => {
-      if (data.Xlat?.[1000]?.obj) {
-        data.Xlat[1000].obj.push({ idx: newImageIndex });
-      }
+      appendBugdomTileImageMapping(data, newImageIndex);
     });
     setSelectedTileImageIndex(newImageIndex);
     toast.success(`Added tile image #${newImageIndex}`);
   };
 
   const handleRemoveTileImage = () => {
-    if (
-      selectedTileImageIndex < 0 ||
-      selectedTileImageIndex >= mapImages.length
-    ) {
+    if (!isValidTileImageSelection(selectedTileImageIndex, mapImages.length)) {
       toast.error("Invalid tile image selected");
       return;
     }
@@ -289,11 +295,11 @@ export function BugdomTileMenu({
           setEditingTileImageIndex(null);
         }}
         imageUrl={
-          mapImages[editingTileImageIndex ?? selectedTileImageIndex]?.toDataURL(
-            "image/png",
-          ) ?? ""
+          mapImages[
+            getEditingTileIndex(editingTileImageIndex, selectedTileImageIndex)
+          ]?.toDataURL("image/png") ?? ""
         }
-        imageName={`Tile_${editingTileImageIndex ?? selectedTileImageIndex}`}
+        imageName={`Tile_${getEditingTileIndex(editingTileImageIndex, selectedTileImageIndex)}`}
         onSave={handleSaveTileImageEdit}
       />
     </>

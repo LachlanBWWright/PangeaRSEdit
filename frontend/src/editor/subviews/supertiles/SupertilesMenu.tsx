@@ -16,17 +16,18 @@ import { downloadSelectedTile, downloadMapImage } from "./supertileUtils";
 import { ImageEditor } from "@/components/ImageEditor";
 import { ImageDisplay, ImageDropzone } from "./SupertileMenuParts";
 import {
-  applyWholeMapCanvas,
-  buildWholeMapCanvas,
   loadImageIntoCanvas,
   saveWholeMapImageData,
   setSelectedTileBlank,
 } from "./SupertileMenuHelpers";
+import { getSupertileCounts } from "./supertileResizeGuards";
 import {
-  canRemoveSupertileColumn,
-  canRemoveSupertileRow,
-  getSupertileCounts,
-} from "./supertileResizeGuards";
+  applyCanvasToWholeMap,
+  buildWholeMapEditorImage,
+  canEditTileTexture,
+  canRemoveSupertile,
+  updateSelectedTileTexture,
+} from "@/editor/subviews/supertiles/supertileMenuState";
 
 /**
  * Standard Supertile Menu for games with STgd-based terrain
@@ -81,19 +82,18 @@ export function SupertileMenu({
   const stgd = terrainData.STgd[1000].obj;
 
   const updateSelectedTileFromCanvas = (canvas: HTMLCanvasElement) => {
-    const tileEntry = stgd[selectedTile];
-    if (!tileEntry) {
-      toast.error("No tile data at this position");
+    const result = updateSelectedTileTexture(
+      selectedTile,
+      stgd,
+      mapImages,
+      canvas,
+    );
+    if ("error" in result) {
+      toast.error(result.error);
       return;
     }
-    const tileId = tileEntry.superTileId;
-    if (tileId === 0) {
-      toast.error("Selected tile is empty and cannot be replaced");
-      return;
-    }
-    const newMapImages = [...mapImages];
-    newMapImages[tileId] = canvas;
-    setMapImages(newMapImages);
+
+    setMapImages(result.mapImages);
     toast.success("Selected tile texture updated");
   };
 
@@ -101,10 +101,10 @@ export function SupertileMenu({
     canvas: HTMLCanvasElement,
     mode: "non-empty" | "regenerate-all",
   ) => {
-    applyWholeMapCanvas(
+    applyCanvasToWholeMap(
       canvas,
       mode,
-      hedr,
+      headerData,
       globals,
       mapImages,
       setTerrainData,
@@ -114,14 +114,9 @@ export function SupertileMenu({
   };
 
   const handleEditTileTexture = () => {
-    const tileEntry = stgd[selectedTile];
-    if (!tileEntry) {
-      toast.error("No tile data at this position");
-      return;
-    }
-    const tileId = tileEntry.superTileId;
-    if (tileId === 0 || !mapImages[tileId]) {
-      toast.error("No texture available for this tile");
+    const canEdit = canEditTileTexture(selectedTile, stgd, mapImages);
+    if (!canEdit.ok) {
+      toast.error(canEdit.error);
       return;
     }
     setTileEditorOpen(true);
@@ -130,11 +125,13 @@ export function SupertileMenu({
   const handleRemoveSupertile = (
     direction: "top" | "bottom" | "left" | "right",
   ) => {
-    const removingRow = direction === "top" || direction === "bottom";
-    const canRemove = removingRow
-      ? canRemoveSupertileRow(supertileCounts.height)
-      : canRemoveSupertileColumn(supertileCounts.width);
-    if (!canRemove) {
+    if (
+      !canRemoveSupertile(
+        direction,
+        supertileCounts.width,
+        supertileCounts.height,
+      )
+    ) {
       toast.error("Cannot remove supertile", {
         description:
           "At least one supertile row and one supertile column must remain.",
@@ -233,16 +230,16 @@ export function SupertileMenu({
             size="sm"
             variant="outline"
             onClick={() => {
-              const mapCanvas = buildWholeMapCanvas(
-                hedr,
+              const imageDataUrl = buildWholeMapEditorImage(
+                headerData,
                 globals,
                 stgd,
                 mapImages,
               );
-              if (!mapCanvas) {
+              if (!imageDataUrl) {
                 return;
               }
-              setMapEditorImageUrl(mapCanvas.toDataURL("image/png"));
+              setMapEditorImageUrl(imageDataUrl);
               setMapEditorOpen(true);
             }}
           >

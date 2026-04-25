@@ -14,6 +14,7 @@ import {
   detectSplineType,
   SplineType,
 } from "@/data/splines/splineTypeDetection";
+import { removeSplineAtIndex } from "@/editor/subviews/splines/editSplineMenuState";
 
 export function EditSplineMenu({
   splineData,
@@ -27,41 +28,9 @@ export function EditSplineMenu({
   const [, setSelectedSplineItem] = useAtom(SelectedSplineItem);
   const [selectedSplineNub, setSelectedSplineNub] = useAtom(SelectedSplineNub);
 
-  const removeSplineAtIndex = (splineIdx: number) => {
+  const handleRemoveSplineAtIndex = (splineIdx: number) => {
     setSplineData((draft) => {
-      const splines = draft.Spln?.[1000]?.obj;
-      const spNb = draft.SpNb;
-      const spPt = draft.SpPt;
-      const spIt = draft.SpIt;
-      if (!splines || splineIdx < 0 || splineIdx >= splines.length) return;
-
-      splines.splice(splineIdx, 1);
-      const reindexRecord = <T extends { obj: unknown }>(
-        record: Record<number, T>,
-      ): Record<number, T> => {
-        const entries = Object.entries(record)
-          .map(([key, value]) => [Number(key), value] as const)
-          .filter(([key]) => key !== splineIdx)
-          .sort(([a], [b]) => a - b);
-        return Object.fromEntries(
-          entries.map(([key, value]) => [
-            key > splineIdx ? key - 1 : key,
-            value,
-          ]),
-        ) as Record<number, T>;
-      };
-
-      if (spNb) draft.SpNb = reindexRecord(spNb);
-      if (spPt) draft.SpPt = reindexRecord(spPt);
-      if (spIt) draft.SpIt = reindexRecord(spIt);
-
-      if (draft.Spln?.[1000]?.obj) {
-        draft.Spln[1000].obj.forEach((spline, idx) => {
-          spline.numNubs = draft.SpNb?.[idx]?.obj.length ?? spline.numNubs;
-          spline.numPoints = draft.SpPt?.[idx]?.obj.length ?? spline.numPoints;
-          spline.numItems = draft.SpIt?.[idx]?.obj.length ?? spline.numItems;
-        });
-      }
+      removeSplineAtIndex(draft, splineIdx);
     });
     if (selectedSpline === splineIdx) setSelectedSpline(undefined);
   };
@@ -247,7 +216,7 @@ export function EditSplineMenu({
           disabled={selectedSpline === undefined}
           onClick={() => {
             if (selectedSpline === undefined) return;
-            removeSplineAtIndex(selectedSpline);
+            handleRemoveSplineAtIndex(selectedSpline);
           }}
         >
           Delete Spline

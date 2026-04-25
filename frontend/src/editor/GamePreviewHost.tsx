@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  GAME_DISPLAY_NAMES,
-} from "./utils/gamePreviewRuntime";
-import { startGamePreview } from "./utils/gamePreviewHostRuntime";
+import { GAME_DISPLAY_NAMES } from "./utils/gamePreviewRuntime";
 import type { AnyLevelInfo, GamePortConfig } from "./utils/gamePortConfig";
+import {
+  getPreviewOverlayState,
+  isWaitingForPreviewLevelData,
+  startPreparedGamePreview,
+  type PreviewState,
+} from "./utils/gamePreviewHostState";
 
 interface Props {
   readonly config: GamePortConfig;
@@ -32,12 +35,6 @@ interface Props {
   readonly normalLaunch?: boolean;
 }
 
-interface PreviewState {
-  readonly runToken: number;
-  readonly statusText: string;
-  readonly errorText: string | null;
-}
-
 export function GamePreviewHost({
   config,
   levelNumber,
@@ -56,30 +53,14 @@ export function GamePreviewHost({
   });
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    if (
-      !normalLaunch &&
-      (terrainDataBytes === undefined ||
-        terrainRsrcBytes === undefined ||
-        terrainTextureBytes === undefined)
-    ) {
-      return;
-    }
-
-    const preparedTerrainDataBytes = terrainDataBytes ?? null;
-    const preparedTerrainRsrcBytes = terrainRsrcBytes ?? null;
-    const preparedTerrainTextureBytes = terrainTextureBytes ?? null;
-
-    return startGamePreview({
-      canvas,
+    return startPreparedGamePreview({
+      canvas: canvasRef.current,
       config,
       levelNumber,
       currentLevelInfo,
-      terrainDataBytes: preparedTerrainDataBytes,
-      terrainRsrcBytes: preparedTerrainRsrcBytes,
-      terrainTextureBytes: preparedTerrainTextureBytes,
+      terrainDataBytes,
+      terrainRsrcBytes,
+      terrainTextureBytes,
       runToken,
       normalLaunch,
       onStatus: (text) => {
@@ -104,21 +85,17 @@ export function GamePreviewHost({
     terrainTextureBytes,
   ]);
 
-  const waitingForLevelData =
-    !normalLaunch &&
-    (terrainDataBytes === undefined ||
-      terrainRsrcBytes === undefined ||
-      terrainTextureBytes === undefined);
-  const statusText = waitingForLevelData
-    ? "Preparing level data…"
-    : previewState.runToken === runToken
-      ? previewState.statusText
-      : "Preparing game runtime…";
-  const errorText =
-    waitingForLevelData || previewState.runToken !== runToken
-      ? null
-      : previewState.errorText;
-  const showStatus = Boolean(statusText) || Boolean(errorText);
+  const waitingForLevelData = isWaitingForPreviewLevelData({
+    normalLaunch,
+    terrainDataBytes,
+    terrainRsrcBytes,
+    terrainTextureBytes,
+  });
+  const { statusText, errorText, showStatus } = getPreviewOverlayState(
+    previewState,
+    runToken,
+    waitingForLevelData,
+  );
 
   return (
     <div className="absolute inset-0 bg-black">

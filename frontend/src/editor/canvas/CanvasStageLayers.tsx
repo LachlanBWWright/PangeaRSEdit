@@ -14,6 +14,16 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
+import {
+  shouldRenderAccessibilityOverlay,
+  shouldRenderFences,
+  shouldRenderItems,
+  shouldRenderSplines,
+  shouldRenderSupertiles,
+  shouldRenderTileEditor,
+  shouldRenderWater,
+  shouldRenderWorldLayersInSupertilesView,
+} from "@/editor/canvas/canvasStageLayerState";
 
 export enum CanvasViewMode {
   fences,
@@ -57,20 +67,24 @@ export function CanvasStageLayers({
 }: CanvasStageLayersProps) {
   return (
     <>
-      {terrainData && (terrainData.STgd || terrainData.Layr) && (
-        <Supertiles
-          headerData={headerData}
-          terrainData={terrainData}
-          mapImages={mapImages}
-        />
-      )}
-      {view !== CanvasViewMode.tiles && (
+      {terrainData &&
+        shouldRenderSupertiles(
+          Boolean(terrainData.STgd),
+          Boolean(terrainData.Layr),
+        ) && (
+          <Supertiles
+            headerData={headerData}
+            terrainData={terrainData}
+            mapImages={mapImages}
+          />
+        )}
+      {shouldRenderAccessibilityOverlay(view) && (
         <AccessibilityMaskOverlay
           headerData={headerData}
           terrainData={terrainData}
         />
       )}
-      {view === CanvasViewMode.tiles && (
+      {shouldRenderTileEditor(view) && (
         <Tiles
           headerData={headerData}
           terrainData={terrainData}
@@ -78,33 +92,32 @@ export function CanvasStageLayers({
           isEditingTopology
         />
       )}
-      {view === CanvasViewMode.tiles ||
-        (view === CanvasViewMode.supertiles && (
-          <>
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={setLiquidData}
-              />
-            )}
-            {fenceData && (
-              <Fences fenceData={fenceData} setFenceData={setFenceData} />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={setItemData}
-              />
-            )}
-            {splineData && (
-              <Splines splineData={splineData} setSplineData={setSplineData} />
-            )}
-          </>
-        ))}
+      {shouldRenderWorldLayersInSupertilesView(view) && (
+        <>
+          {liquidData && shouldRenderWater(view) && (
+            <WaterBodies
+              headerData={headerData}
+              terrainData={terrainData}
+              liquidData={liquidData}
+              setLiquidData={setLiquidData}
+            />
+          )}
+          {fenceData && shouldRenderFences(view) && (
+            <Fences fenceData={fenceData} setFenceData={setFenceData} />
+          )}
+          {itemData && shouldRenderItems(view) && (
+            <Items
+              headerData={headerData}
+              terrainData={terrainData}
+              itemData={itemData}
+              setItemData={setItemData}
+            />
+          )}
+          {splineData && shouldRenderSplines(view) && (
+            <Splines splineData={splineData} setSplineData={setSplineData} />
+          )}
+        </>
+      )}
       {view === CanvasViewMode.fences && (
         <>
           {liquidData && (

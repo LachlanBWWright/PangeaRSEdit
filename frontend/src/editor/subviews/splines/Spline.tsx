@@ -8,8 +8,10 @@ import { Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useCallback, useMemo, useState, useRef } from "react";
-import { getPoints } from "../../../utils/spline";
-import { SelectedSpline, SelectedSplineNub } from "../../../data/splines/splineAtoms";
+import {
+  SelectedSpline,
+  SelectedSplineNub,
+} from "../../../data/splines/splineAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { View } from "@/editor/viewEnum";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
@@ -32,6 +34,16 @@ import {
   ItemTypeNumber,
 } from "../shared/nodeVisuals";
 import type { HoverTagInfo } from "../shared/nodeVisuals";
+import {
+  applySplineLineDrag,
+  buildPreviewNubs,
+  commitSplineNubs,
+  getPreviewSplinePoints,
+  getSplineItemPointIndex,
+  getSplinePoints,
+  offsetRenderedLinePoints,
+  updatePreviewNubs,
+} from "@/editor/subviews/splines/splineRenderState";
 
 export const Spline = memo(
   ({
@@ -58,36 +70,30 @@ export const Spline = memo(
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
 
     const splinePts = splineData.SpPt?.[SPLINE_KEY_BASE + splineIdx]?.obj;
-    
+
     // Detect if this spline is circular (closed loop) or open (distinct start/end)
     const splineType = useMemo(() => detectSplineType(nubs), [nubs]);
     const showFirstNub = shouldShowFirstNub(splineType);
     const syncFirstAndLast = shouldSyncFirstAndLastNubs(splineType);
-    
-    const points = useMemo(() => {
-      if (!splinePts) return [];
-      return splinePts.flatMap((point) => [point.x, point.z]);
-    }, [splinePts]);
+
+    const points = useMemo(() => getSplinePoints(splinePts), [splinePts]);
 
     /** Called by SplineNub on each drag frame — updates the line imperatively with no React state. */
     const handleNubPreviewMove = useCallback(
       (nubIdx: number, newX: number, newZ: number) => {
         if (!lineRef.current) return;
-        if (!previewNubsRef.current) {
-          previewNubsRef.current = nubs.map((n) => ({ x: n.x, z: n.z }));
-        }
-        previewNubsRef.current[nubIdx] = { x: newX, z: newZ };
-        if (syncFirstAndLast && nubIdx === previewNubsRef.current.length - 1) {
-          previewNubsRef.current[0] = { x: newX, z: newZ };
-        }
+        const previewNubs = buildPreviewNubs(previewNubsRef.current, nubs);
+        previewNubsRef.current = updatePreviewNubs(
+          previewNubs,
+          nubIdx,
+          newX,
+          newZ,
+          syncFirstAndLast,
+        );
         const preview = previewNubsRef.current;
-        const workingNubs =
-          syncFirstAndLast && preview.length > 1 ? preview.slice(0, -1) : preview;
-        const newPoints =
-          workingNubs.length === 1 && workingNubs[0]
-            ? [workingNubs[0]]
-            : getPoints(workingNubs, syncFirstAndLast);
-        lineRef.current.points(newPoints.flatMap((p) => [p.x, p.z]));
+        lineRef.current.points(
+          getPreviewSplinePoints(preview, syncFirstAndLast),
+        );
         lineRef.current.getLayer()?.batchDraw();
       },
       [nubs, syncFirstAndLast],
@@ -127,15 +133,16 @@ export const Spline = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-            const updatedNubs = initialDragState.map((initPos) => ({
-              x: initPos.x + dragDx,
-              z: initPos.z + dragDz,
-            }));
+            const updatedNubs = applySplineLineDrag(
+              initialDragState,
+              dragDx,
+              dragDz,
+            );
 
             if (lineRef.current) {
               const rawPts = lineRef.current.points();
               lineRef.current.points(
-                rawPts.map((v, i) => (i % 2 === 0 ? v + dragDx : v + dragDz)),
+                offsetRenderedLinePoints(rawPts, dragDx, dragDz),
               );
               lineRef.current.x(0);
               lineRef.current.y(0);
@@ -143,15 +150,7 @@ export const Spline = memo(
             }
 
             setSplineData((draft) => {
-              const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
-              if (spNb) {
-                spNb.obj = updatedNubs;
-              }
-              const spln =
-                draft.Spln?.[1000]?.obj?.[splineIdx];
-              if (spln) {
-                spln.numNubs = updatedNubs.length;
-              }
+              commitSplineNubs(draft, splineIdx, updatedNubs);
             });
 
             updateSplinePointsFromNubs(splineIdx, setSplineData);
@@ -170,18 +169,14 @@ export const Spline = memo(
               syncFirstAndLast={syncFirstAndLast}
               onNubPreviewMove={handleNubPreviewMove}
               onNubDragEnd={handleNubDragEnd}
-              onNubChange={() => updateSplinePointsFromNubs(splineIdx, setSplineData)}
+              onNubChange={() =>
+                updateSplinePointsFromNubs(splineIdx, setSplineData)
+              }
             />
           );
         })}
         {items.map((item, itemIdx) => {
-          //Get approx nub
-          let pointIdx = Math.floor(
-            points.length * Math.min(0.99, item.placement),
-          );
-
-          //Odd-indexed points are y, we want x
-          if (pointIdx % 2 !== 0) pointIdx--;
+          const pointIdx = getSplineItemPointIndex(points, item.placement);
 
           return (
             <SplineItem
@@ -244,7 +239,11 @@ const SplineNub = memo(
             setSelectedSplineNub(nubIdx);
           }}
           onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
-            onNubPreviewMove(nubIdx, Math.round(e.target.x()), Math.round(e.target.y()));
+            onNubPreviewMove(
+              nubIdx,
+              Math.round(e.target.x()),
+              Math.round(e.target.y()),
+            );
           }}
           onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             const newX = Math.round(e.target.x());
@@ -264,8 +263,7 @@ const SplineNub = memo(
 
               const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
               if (spNbEntry) spNbEntry.obj = updatedNubs;
-              const splnEntry =
-                draft.Spln?.[1000]?.obj?.[splineIdx];
+              const splnEntry = draft.Spln?.[1000]?.obj?.[splineIdx];
               if (splnEntry) splnEntry.numNubs = updatedNubs.length;
             });
 
@@ -297,7 +295,17 @@ const SplineNub = memo(
 );
 
 const SplineItem = memo(
-  ({ x, z, item, onHoverChange }: { x: number; z: number; item: SplineItemType; onHoverChange: (tag: HoverTagInfo | null) => void }) => {
+  ({
+    x,
+    z,
+    item,
+    onHoverChange,
+  }: {
+    x: number;
+    z: number;
+    item: SplineItemType;
+    onHoverChange: (tag: HoverTagInfo | null) => void;
+  }) => {
     const [hovering, setHovering] = useState(false);
     const globals = useAtomValue(Globals);
     const handleMouseOver = () => {

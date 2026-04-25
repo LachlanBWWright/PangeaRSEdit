@@ -8,11 +8,7 @@ import {
   SafeItemTypes,
   FilterToSafeItems,
 } from "../../../data/items/itemAtoms";
-import { TerrainItemTypeParams } from "../../../data/items/ottoItemType";
-import type {
-  FlagDescription,
-  ParamDescription,
-} from "../../../data/items/itemParams";
+import type { FlagDescription } from "../../../data/items/itemParams";
 import { parseU8 } from "../../../utils/numberParsers";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
@@ -26,10 +22,21 @@ import {
 } from "@/components/ui/select";
 import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
-import { getItemTypes } from "@/data/items/getItemTypes";
 import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import {
+  deleteSelectedItem,
+  filterSafeItemValues,
+  getAllItemValues,
+  getParamTooltip,
+  getSelectedItem,
+  getSelectedItemParams,
+  updateSelectedItemBitFlag,
+  updateSelectedItemParam,
+  updateSelectedItemPosition,
+  updateSelectedItemType,
+} from "@/editor/subviews/items/itemMenuState";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -45,28 +52,14 @@ export const ItemMenu = memo(function ItemMenu({
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
 
-  const selectedItemData =
-    selectedItem !== undefined
-      ? itemData.Itms?.[1000]?.obj?.[selectedItem]
-      : null;
+  const selectedItemData = getSelectedItem(itemData, selectedItem);
   const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
-  const selectedItemParams =
-    selectedItemData !== null && selectedItemData !== undefined
-      ? TerrainItemTypeParams[selectedItemData.type]
-      : undefined;
+  const selectedItemParams = getSelectedItemParams(selectedItemData?.type);
 
-  const allItemValues = useMemo(() => {
-    const result = getItemTypes(globals);
-    return result.isOk()
-      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
-      : [];
-  }, [globals]);
+  const allItemValues = useMemo(() => getAllItemValues(globals), [globals]);
 
   const itemValues = useMemo(
-    () =>
-      filterToSafe && safeItemTypes.size > 0
-        ? allItemValues.filter((type) => safeItemTypes.has(type))
-        : allItemValues,
+    () => filterSafeItemValues(allItemValues, filterToSafe, safeItemTypes),
     [filterToSafe, safeItemTypes, allItemValues],
   );
 
@@ -74,9 +67,7 @@ export const ItemMenu = memo(function ItemMenu({
     (e: string) => {
       const newItemType = parseInt(e);
       setItemData((draft) => {
-        if (selectedItem === undefined) return;
-        const item = draft.Itms[1000]?.obj?.[selectedItem];
-        if (item) item.type = newItemType;
+        updateSelectedItemType(draft, selectedItem, newItemType);
       });
     },
     [selectedItem, setItemData],
@@ -85,7 +76,7 @@ export const ItemMenu = memo(function ItemMenu({
   const handleDeleteItem = useCallback(() => {
     if (selectedItem === undefined) return;
     setItemData((draft) => {
-      draft.Itms[1000].obj.splice(selectedItem, 1);
+      deleteSelectedItem(draft, selectedItem);
     });
     setSelectedItem(undefined);
   }, [selectedItem, setItemData, setSelectedItem]);
@@ -105,9 +96,7 @@ export const ItemMenu = memo(function ItemMenu({
               const val = parseInt(e.target.value);
               if (isNaN(val)) return;
               setItemData((draft) => {
-                if (selectedItem === undefined) return;
-                const item = draft.Itms[1000]?.obj?.[selectedItem];
-                if (item) item.x = val;
+                updateSelectedItemPosition(draft, selectedItem, "x", val);
               });
             }}
           />
@@ -120,9 +109,7 @@ export const ItemMenu = memo(function ItemMenu({
               const val = parseInt(e.target.value);
               if (isNaN(val)) return;
               setItemData((draft) => {
-                if (selectedItem === undefined) return;
-                const item = draft.Itms[1000]?.obj?.[selectedItem];
-                if (item) item.z = val;
+                updateSelectedItemPosition(draft, selectedItem, "z", val);
               });
             }}
           />
@@ -159,9 +146,7 @@ export const ItemMenu = memo(function ItemMenu({
               <Checkbox
                 id="filter-safe-items"
                 checked={filterToSafe}
-                onCheckedChange={(checked) =>
-                  setFilterToSafe(checked === true)
-                }
+                onCheckedChange={(checked) => setFilterToSafe(checked === true)}
               />
               <Label
                 htmlFor="filter-safe-items"
@@ -181,11 +166,7 @@ export const ItemMenu = memo(function ItemMenu({
               const value = selectedItemData[paramKey];
               const setValue = (v: number) => {
                 setItemData((draft) => {
-                  if (selectedItem === undefined) return;
-                  const item = draft.Itms[1000]?.obj?.[selectedItem];
-                  if (item) {
-                    item[paramKey] = v;
-                  }
+                  updateSelectedItemParam(draft, selectedItem, paramKey, v);
                 });
               };
               return [
@@ -222,17 +203,13 @@ export const ItemMenu = memo(function ItemMenu({
                               checked={checked}
                               onCheckedChange={(checked) => {
                                 setItemData((draft) => {
-                                  if (selectedItem === undefined) return;
-                                  const item =
-                                    draft.Itms[1000]?.obj?.[selectedItem];
-                                  if (item) {
-                                    const mask = 1 << flag.index;
-                                    if (checked) {
-                                      item[paramKey] |= mask;
-                                    } else {
-                                      item[paramKey] &= ~mask;
-                                    }
-                                  }
+                                  updateSelectedItemBitFlag(
+                                    draft,
+                                    selectedItem,
+                                    paramKey,
+                                    flag,
+                                    checked === true,
+                                  );
                                 });
                               }}
                             />
@@ -284,10 +261,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   }, [setClickToAddItem]);
 
   const itemValues = useMemo(() => {
-    const result = getItemTypes(globals);
-    return result.isOk()
-      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
-      : [];
+    return getAllItemValues(globals);
   }, [globals]);
 
   if (clickToAddItem !== undefined)
@@ -339,26 +313,4 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
       fillHeight={true}
     />
   );
-}
-
-function getParamTooltip(param: ParamDescription): string {
-  if (param === "Unknown" || param === "Unused") return "";
-  if (typeof param === "string") return param;
-  if (param && param.type === "Integer") {
-    let t = param.description;
-    t += `\nExample: ${param.defaultCitation.code}`;
-    return t;
-  }
-  if (param && param.type === "Bit Flags" && Array.isArray(param.flags)) {
-    return param.flags
-      .map(
-        (f) =>
-          `${f.index}: ${f.description}` +
-          (f.defaultCitation.code
-            ? `\nExample: ${f.defaultCitation.code}`
-            : ""),
-      )
-      .join("\n\n");
-  }
-  return "";
 }

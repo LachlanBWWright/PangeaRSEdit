@@ -16,15 +16,17 @@ import { Fragment, memo, useEffect, useMemo } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import {
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/LevelTypes";
-import {
-  TILENUM_MASK,
   buildAllBugdomSupertiles,
   buildSupertileFromTiles,
 } from "./BugdomTileRenderer.utils";
+import {
+  getChangedSupertiles,
+  getExpectedLayrLength,
+  getMaxTileIndex,
+  isLikelyInvalidBugdomLayrData,
+} from "@/editor/subviews/bugdom/bugdomTileCacheState";
 
 interface BugdomSupertileCacheEntry {
   readonly layerSnapshot: number[];
@@ -39,19 +41,6 @@ interface BugdomSupertileCacheEntry {
 }
 
 let bugdomSupertileCache: BugdomSupertileCacheEntry | null = null;
-
-function getSupertileIndexForFlatIndex(
-  flatIndex: number,
-  mapWidth: number,
-  tilesPerSupertile: number,
-): number {
-  const row = Math.floor(flatIndex / mapWidth);
-  const col = flatIndex % mapWidth;
-  const supertilesWide = Math.ceil(mapWidth / tilesPerSupertile);
-  const stRow = Math.floor(row / tilesPerSupertile);
-  const stCol = Math.floor(col / tilesPerSupertile);
-  return stRow * supertilesWide + stCol;
-}
 
 /**
  * Main Bugdom tiles component for rendering in Konva
@@ -84,7 +73,6 @@ export const BugdomSupertiles = memo(
     // Build all supertile images from individual tiles
     // The cache update logic is intentionally hand-rolled so we can reuse
     // unchanged supertile canvases and redraw only the tiles that changed.
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const { supertileImages, nextCache } = useMemo(() => {
       if (!terrainData.Layr?.[layerKey]?.obj || tileImages.length === 0) {
         return {
@@ -98,12 +86,7 @@ export const BugdomSupertiles = memo(
       // Detect invalid/test data by checking if Layr values are sequential
       // Real Bugdom data has tile indices (typically < numTiles) with flip/rotate bits
       // Invalid test data often has sequential values 0, 1, 2, 3...
-      const isLikelyInvalidData =
-        layerData.length > 100 &&
-        layerData[0] === 0 &&
-        layerData[1] === 1 &&
-        layerData[2] === 2 &&
-        layerData[3] === 3;
+      const isLikelyInvalidData = isLikelyInvalidBugdomLayrData(layerData);
 
       if (isLikelyInvalidData) {
         console.error(
@@ -114,9 +97,7 @@ export const BugdomSupertiles = memo(
       }
 
       // Check if Xlat table is too small for the tile indices in Layr
-      const maxTileIndex = Math.max(
-        ...layerData.slice(0, 100).map((v) => v & TILENUM_MASK),
-      );
+      const maxTileIndex = getMaxTileIndex(layerData);
       if (xlatTable && maxTileIndex >= xlatTable.length) {
         console.warn(
           `BugdomTileRenderer: Layr contains tile indices (max: ${maxTileIndex}) larger than Xlat table (${xlatTable.length} entries).\n` +
@@ -125,7 +106,10 @@ export const BugdomSupertiles = memo(
       }
 
       // Validate that Layr has correct number of entries
-      const expectedLayrLength = header.mapWidth * header.mapHeight;
+      const expectedLayrLength = getExpectedLayrLength(
+        header.mapWidth,
+        header.mapHeight,
+      );
       if (layerData.length !== expectedLayrLength) {
         console.error(
           `BugdomTileRenderer: Layr length mismatch! ` +
@@ -171,14 +155,12 @@ export const BugdomSupertiles = memo(
         return { supertileImages: nextCanvases, nextCache };
       }
 
-      const changedSupertiles = new Set<number>();
-      for (let i = 0; i < layerData.length; i += 1) {
-        if (layerData[i] !== cache.layerSnapshot[i]) {
-          changedSupertiles.add(
-            getSupertileIndexForFlatIndex(i, header.mapWidth, tilesPerSupertile),
-          );
-        }
-      }
+      const changedSupertiles = getChangedSupertiles(
+        cache.layerSnapshot,
+        layerData,
+        header.mapWidth,
+        tilesPerSupertile,
+      );
 
       if (changedSupertiles.size === 0) {
         return { supertileImages: cache.canvases, nextCache: cache };

@@ -28,13 +28,22 @@ import {
   getFileFromInputEvent,
   getNumber,
   getCollisionProperties,
-  isArray,
   isPaletteTileInUse,
+  isArray,
   isRecord,
   removePaletteTile,
   replaceTileImage,
   saveEditedImage,
 } from "./MightyMikeTileMenuUtils";
+import {
+  appendPaletteMapping,
+  applySelectedTileLogicalIndex,
+  getCurrentTileAttributes,
+  getCurrentTileCanvas,
+  getEffectiveSelectedTile,
+  getTotalTileCount,
+  isValidPaletteTileIndex,
+} from "./mightyMikeTileMenuState";
 import { MightyMikeTileMenuEditors } from "./MightyMikeTileMenuEditors";
 import { MightyMikeTileMenuContent } from "./MightyMikeTileMenuContent";
 
@@ -86,15 +95,6 @@ export function MightyMikeTileMenu({
   );
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
-  const tilesetTileAttributes = useMemo(() => {
-    const tileset = isRecord(terrainData.tileset)
-      ? terrainData.tileset
-      : undefined;
-    const tileAttributes =
-      tileset && isArray(tileset.tileAttributes) ? tileset.tileAttributes : [];
-    return tileAttributes.filter(isRecord);
-  }, [terrainData.tileset]);
-
   const metadata = isRecord(terrainData._metadata)
     ? terrainData._metadata
     : undefined;
@@ -111,11 +111,11 @@ export function MightyMikeTileMenu({
 
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
-  const totalTiles = mapWidth * mapHeight;
-  const effectiveSelectedTile =
-    totalTiles > 0 && selectedTile >= 0 && selectedTile < totalTiles
-      ? selectedTile
-      : 0;
+  const totalTiles = getTotalTileCount(mapWidth, mapHeight);
+  const effectiveSelectedTile = getEffectiveSelectedTile(
+    selectedTile,
+    totalTiles,
+  );
 
   const selectedPaletteTile = useMemo(
     () =>
@@ -147,14 +147,12 @@ export function MightyMikeTileMenu({
     mightyMikeTileValuesArray,
   );
 
-  const currentTileCanvas =
-    currentImageIndex !== null ? (mapImages[currentImageIndex] ?? null) : null;
+  const currentTileCanvas = getCurrentTileCanvas(mapImages, currentImageIndex);
 
-  const currentTileAttributes =
-    currentImageIndex !== null &&
-    currentImageIndex < tilesetTileAttributes.length
-      ? (tilesetTileAttributes[currentImageIndex] ?? null)
-      : null;
+  const currentTileAttributes = getCurrentTileAttributes(
+    terrainData,
+    currentImageIndex,
+  );
 
   const paletteTileIsInUse = useMemo(
     () => isPaletteTileInUse(layr, selectedPaletteTile, xlatTable),
@@ -163,8 +161,7 @@ export function MightyMikeTileMenu({
 
   const handleReplaceTile = () => {
     if (
-      selectedPaletteTile < 0 ||
-      selectedPaletteTile >= mapImages.length ||
+      !isValidPaletteTileIndex(selectedPaletteTile, mapImages.length) ||
       !mapImages[selectedPaletteTile]
     ) {
       toast.error("Invalid palette tile selected");
@@ -182,14 +179,7 @@ export function MightyMikeTileMenu({
     }
 
     setTerrainData((data) => {
-      if (!data.Layr?.[1000]?.obj) return;
-      const layerArray = data.Layr[1000].obj;
-      if (
-        effectiveSelectedTile >= 0 &&
-        effectiveSelectedTile < layerArray.length
-      ) {
-        layerArray[effectiveSelectedTile] = logicalIndex;
-      }
+      applySelectedTileLogicalIndex(data, effectiveSelectedTile, logicalIndex);
     });
 
     toast.success(`Tile ${effectiveSelectedTile} replaced`);
@@ -272,7 +262,7 @@ export function MightyMikeTileMenu({
     const file = getFileFromInputEvent(event);
     if (!file) return;
 
-    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
+    if (!isValidPaletteTileIndex(selectedPaletteTile, mapImages.length)) {
       toast.error("Invalid palette tile selected");
       return;
     }
@@ -303,9 +293,7 @@ export function MightyMikeTileMenu({
     const newImageIndex = mapImages.length;
     setMapImages([...mapImages, createBlankTileCanvas()]);
     setTerrainData((data) => {
-      if (data.Xlat?.[1000]?.obj) {
-        data.Xlat[1000].obj.push({ idx: newImageIndex });
-      }
+      appendPaletteMapping(data, newImageIndex);
     });
     setManualTilePaletteSelection({
       tile: effectiveSelectedTile,
@@ -315,7 +303,7 @@ export function MightyMikeTileMenu({
   };
 
   const handleRemovePaletteTile = () => {
-    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
+    if (!isValidPaletteTileIndex(selectedPaletteTile, mapImages.length)) {
       toast.error("Invalid palette tile selected");
       return;
     }

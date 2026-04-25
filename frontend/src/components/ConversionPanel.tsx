@@ -1,12 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
-import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
-  BG3DGltfWorkerMessage,
-  BG3DGltfWorkerResponse,
-} from "../modelParsers/bg3dGltfWorker";
-import { ResultAsync } from "neverthrow";
-import { mapErr } from "@/utils/mapErr";
+  getDroppedFile,
+  runConversionWorker,
+  toDownloadName,
+  triggerConversionDownload,
+} from "@/components/conversionPanelActions";
 
 interface ConversionPanelProps {
   title: string;
@@ -28,73 +27,35 @@ export function ConversionPanel({
   outputMimeType,
 }: ConversionPanelProps) {
   const handleFileConversion = async (file: File) => {
-    const downloadName = file.name.replace(new RegExp(`\\.${fileExtension}$`), `.${outputExtension}`);
-
-    const bufferResult = await ResultAsync.fromPromise(
-      file.arrayBuffer(),
-      mapErr,
-    );
-    if (bufferResult.isErr()) {
-      alert(`${title} conversion failed: ${bufferResult.error.message}`);
-      return;
-    }
-    const buffer = bufferResult.value;
-    const worker = new BG3DGltfWorker();
-
-    const workerResult = await ResultAsync.fromPromise(
-      new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
-        worker.onmessage = (event) => {
-          resolve(event.data);
-          worker.terminate();
-        };
-
-        worker.onerror = (error) => {
-          reject(error);
-          worker.terminate();
-        };
-
-        const message: BG3DGltfWorkerMessage = {
-          type: conversionType,
-          buffer,
-        };
-
-        worker.postMessage(message, [buffer]);
-      }),
-      mapErr,
+    const downloadName = toDownloadName(
+      file.name,
+      fileExtension,
+      outputExtension,
     );
 
-    if (workerResult.isErr()) {
-      alert(`${title} conversion failed: ${workerResult.error.message}`);
+    const result = await runConversionWorker({
+      file,
+      conversionType,
+      fileExtension,
+    });
+    if (!result) {
+      alert(`${title} conversion failed`);
       return;
     }
 
-    const result = workerResult.value;
     if (result.type === "error") {
       alert(`${title} conversion failed: ${result.error}`);
       return;
     }
 
     if (result.type === conversionType) {
-      const convertedBlob = new Blob([result.result], {
-        type: outputMimeType,
-      });
-      const url = URL.createObjectURL(convertedBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = downloadName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      triggerConversionDownload(downloadName, outputMimeType, result.result);
     }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    const file = files.find((f) =>
-      f.name.toLowerCase().endsWith(`.${fileExtension}`)
-    );
+    const file = getDroppedFile(e, fileExtension);
     if (file) {
       await handleFileConversion(file);
     }
@@ -102,9 +63,11 @@ export function ConversionPanel({
 
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     await handleFileConversion(file);
-    e.target.value = ''; // Reset input
+    e.target.value = "";
   };
 
   const inputId = `${conversionType}-upload`;

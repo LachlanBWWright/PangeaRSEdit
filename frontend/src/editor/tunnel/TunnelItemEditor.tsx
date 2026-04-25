@@ -9,8 +9,6 @@ import type { TunnelData, TunnelItem } from "@/data/tunnelParser/types";
 import {
   getPlumbingItemName,
   getGutterItemName,
-  PlumbingItemType,
-  GutterItemType,
 } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  canUseSectionNumber,
+  canUseSplineIndex,
+  createDefaultItem,
+  filterTunnelItems,
+  getItemTypeOptions,
+  parsePositiveScale,
+  updateTunnelItemField,
+} from "@/editor/tunnel/tunnelItemEditorState";
 
 interface TunnelItemEditorProps {
   tunnelData: TunnelData;
@@ -31,42 +38,6 @@ interface TunnelItemEditorProps {
   onUpdateItem: (index: number, item: TunnelItem) => void;
   onDeleteItem: (index: number) => void;
   onAddItem: (item: TunnelItem) => void;
-}
-
-/**
- * Get item type options based on level type
- */
-function getItemTypeOptions(isPlumbing: boolean): { value: string; label: string }[] {
-  if (isPlumbing) {
-    return [
-      { value: String(PlumbingItemType.NAIL), label: "Nail" },
-      { value: String(PlumbingItemType.BLOB), label: "Blob" },
-      { value: String(PlumbingItemType.HEALTH_POW), label: "Health POW" },
-      { value: String(PlumbingItemType.RING), label: "Ring" },
-      { value: String(PlumbingItemType.SPRAY), label: "Spray" },
-    ];
-  }
-  return [
-    { value: String(GutterItemType.PINE_CONE), label: "Pine Cone" },
-    { value: String(GutterItemType.LEAF), label: "Leaf" },
-    { value: String(GutterItemType.SPRAY), label: "Spray" },
-  ];
-}
-
-/**
- * Create a default item
- */
-function createDefaultItem(isPlumbing: boolean): TunnelItem {
-  return {
-    type: isPlumbing ? PlumbingItemType.RING : GutterItemType.LEAF,
-    splineIndex: 0,
-    sectionNum: 0,
-    scale: 1.0,
-    rot: { x: 0, y: 0, z: 0 },
-    positionOffset: { x: 0, y: 0, z: 0 },
-    flags: 0,
-    parms: [0, 0, 0],
-  };
 }
 
 export function TunnelItemEditor({
@@ -84,21 +55,20 @@ export function TunnelItemEditor({
   const itemTypeOptions = getItemTypeOptions(isPlumbing);
 
   // Filter items by search term
-  const filteredItems = tunnelData.items
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) =>
-      getItemName(item.type).toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const filteredItems = filterTunnelItems(tunnelData, searchTerm, getItemName);
 
   const selectedItem =
     selectedItemIndex !== null ? tunnelData.items[selectedItemIndex] : null;
 
   const handleUpdateField = <K extends keyof TunnelItem>(
     field: K,
-    value: TunnelItem[K]
+    value: TunnelItem[K],
   ) => {
     if (selectedItemIndex === null || !selectedItem) return;
-    onUpdateItem(selectedItemIndex, { ...selectedItem, [field]: value });
+    onUpdateItem(
+      selectedItemIndex,
+      updateTunnelItemField(selectedItem, field, value),
+    );
   };
 
   return (
@@ -196,7 +166,7 @@ export function TunnelItemEditor({
               value={selectedItem.splineIndex}
               onChange={(e) => {
                 const parsed = parseInt(e.target.value);
-                if (!isNaN(parsed) && parsed >= 0 && parsed < tunnelData.splinePoints.length) {
+                if (!isNaN(parsed) && canUseSplineIndex(parsed, tunnelData)) {
                   handleUpdateField("splineIndex", parsed);
                 }
               }}
@@ -213,8 +183,7 @@ export function TunnelItemEditor({
               value={selectedItem.sectionNum}
               onChange={(e) => {
                 const parsed = parseInt(e.target.value);
-                // Allow -1 for items not assigned to a specific section
-                if (!isNaN(parsed) && parsed >= -1 && parsed < tunnelData.sections.length) {
+                if (!isNaN(parsed) && canUseSectionNumber(parsed, tunnelData)) {
                   handleUpdateField("sectionNum", parsed);
                 }
               }}
@@ -231,8 +200,8 @@ export function TunnelItemEditor({
               step="0.1"
               value={selectedItem.scale}
               onChange={(e) => {
-                const parsed = parseFloat(e.target.value);
-                if (!isNaN(parsed) && parsed > 0) {
+                const parsed = parsePositiveScale(e.target.value);
+                if (parsed !== null) {
                   handleUpdateField("scale", parsed);
                 }
               }}

@@ -8,8 +8,6 @@ import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TopologyBrushMode,
-  TopologyHeightmapDisplayMode,
-  TopologyLayerEditMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
@@ -26,6 +24,11 @@ import {
   PixelType,
   StrokePoint,
 } from "../../utils/topologyBrushUtils";
+import {
+  getBrushRadiusPixels,
+  getDisplayedHeightmap,
+  getMapSizeFromHeader,
+} from "@/editor/subviews/tiles/topologyTilesState";
 
 interface BrushPreviewPoint {
   x: number;
@@ -76,17 +79,12 @@ export function TopologyTiles({
   const activeRoofHeights = strokeState?.draftRoof ?? roofYCrdData;
 
   const displayedHeightmap = useMemo(() => {
-    if (!activeFloorHeights || activeFloorHeights.length === 0)
-      return activeFloorHeights;
-    if (!activeRoofHeights || activeRoofHeights.length === 0)
-      return activeFloorHeights;
-    if (heightmapDisplayMode === TopologyHeightmapDisplayMode.FLOOR)
-      return activeFloorHeights;
-    if (heightmapDisplayMode === TopologyHeightmapDisplayMode.ROOF)
-      return activeRoofHeights;
-    return currentLayerEditMode === TopologyLayerEditMode.ROOF
-      ? activeRoofHeights
-      : activeFloorHeights;
+    return getDisplayedHeightmap(
+      activeFloorHeights,
+      activeRoofHeights,
+      heightmapDisplayMode,
+      currentLayerEditMode,
+    );
   }, [
     activeFloorHeights,
     activeRoofHeights,
@@ -128,8 +126,11 @@ export function TopologyTiles({
     ) => {
       const brushRadiusPixels =
         previousStroke?.brushRadiusPixels ??
-        ((Math.max(1, topologyBrushRadius) - 1) * globals.TILE_SIZE) /
-          Math.max(1, stageScale);
+        getBrushRadiusPixels(
+          topologyBrushRadius,
+          globals.TILE_SIZE,
+          stageScale,
+        );
       const baseFloor =
         previousStroke?.floorSnapshot ?? cloneHeightArray(yCrdData);
       if (!baseFloor || baseFloor.length === 0) return null;
@@ -212,9 +213,13 @@ export function TopologyTiles({
     brushPreviewPoint === null
       ? 0
       : (strokeState?.brushRadiusPixels ??
-        ((Math.max(1, topologyBrushRadius) - 1) * globals.TILE_SIZE) /
-          Math.max(1, brushPreviewPoint.scale));
+        getBrushRadiusPixels(
+          topologyBrushRadius,
+          globals.TILE_SIZE,
+          brushPreviewPoint.scale,
+        ));
   const showBrushPreview = isEditingTopology && brushPreviewPoint !== null;
+  const mapSize = getMapSizeFromHeader(header);
 
   return (
     <Layer imageSmoothingEnabled={false}>
@@ -222,8 +227,8 @@ export function TopologyTiles({
         x={0}
         y={0}
         opacity={opacity}
-        width={(header.mapWidth + 1) * globals.TILE_SIZE}
-        height={(header.mapHeight + 1) * globals.TILE_SIZE}
+        width={mapSize.width * globals.TILE_SIZE}
+        height={mapSize.height * globals.TILE_SIZE}
         onMouseDown={(e) => {
           if (!isEditingTopology) return;
           const stage = e.target.getStage();

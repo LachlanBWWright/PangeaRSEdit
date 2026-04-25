@@ -6,50 +6,19 @@ import { ModelCanvasProps } from "@/components/model-viewer/types";
 import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
-import { Game } from "@/data/globals/globals";
-import { Box3, Object3D, Vector3 } from "three";
+import { Object3D } from "three";
+import {
+  buildModelCanvasCameraConfig,
+  findSceneObjectByName,
+  getModelPosition,
+  isWithinThreshold,
+} from "@/pages/modelCanvasState";
 
 export function ModelCanvas(props: ModelCanvasProps) {
-  // Memoize camera config to prevent Canvas re-initialization on every render
-  const cameraConfig = useMemo(() => {
-    let position: [number, number, number] = [0, 0, 100];
-
-    // Raised camera for Bugdom 1 (keep more overhead view)
-    if (props.gameType === Game.BUGDOM) {
-      // Double the previous vertical offset for a higher overhead view
-      position = [80, 0, 0];
-    }
-
-    // Zoom in for Bugdom 2 to show more detail
-    else if (props.gameType === Game.BUGDOM_2) {
-      position = [0, 0, 60];
-    }
-
-    // Keep Billy Frontier slightly zoomed in like before
-    else if (props.gameType === Game.BILLY_FRONTIER) {
-      position = [0, 0, 80];
-    }
-
-    // Increase distance for Nanosaur games for wider framing
-    else if (
-      props.gameType === Game.NANOSAUR ||
-      props.gameType === Game.NANOSAUR_2
-    ) {
-      position = [0, 0, 140];
-    }
-
-    // Zoom out for Cro-Mag Rally for a wider view
-    else if (props.gameType === Game.CRO_MAG) {
-      position = [0, 0, 160];
-    }
-
-    return {
-      position,
-      fov: 110,
-      near: 0.1,
-      far: 10000,
-    };
-  }, [props.gameType]);
+  const cameraConfig = useMemo(
+    () => buildModelCanvasCameraConfig(props.gameType),
+    [props.gameType],
+  );
   const {
     gltfUrl,
     setModelNodes,
@@ -78,19 +47,12 @@ export function ModelCanvas(props: ModelCanvasProps) {
   const [isTransforming, setIsTransforming] = useState(false);
   const scene = gltfResult?.scene ?? null;
   const selectedBoneObject = useMemo<Object3D | null>(() => {
-    if (!scene || !selectedBoneName) {
-      return null;
-    }
-    let found: Object3D | null = null;
-    scene.traverse((object) => {
-      if (object.name === selectedBoneName) {
-        found = object;
-      }
-    });
-    return found;
+    return findSceneObjectByName(scene, selectedBoneName ?? undefined);
   }, [scene, selectedBoneName]);
   const lastBoneTransformRef = useRef<[number, number, number] | null>(null);
-  const lastBoneRotationRef = useRef<[number, number, number, number] | null>(null);
+  const lastBoneRotationRef = useRef<[number, number, number, number] | null>(
+    null,
+  );
   const lastBoneScaleRef = useRef<[number, number, number] | null>(null);
   const BONE_TRANSFORM_THRESHOLD = 0.0005; // Small threshold to avoid noisy gizmo updates.
 
@@ -102,45 +64,47 @@ export function ModelCanvas(props: ModelCanvasProps) {
     if (gizmoMode === "translate" && onBoneTransformChange) {
       const { x, y, z } = selectedBoneObject.position;
       const previous = lastBoneTransformRef.current;
+      const currentPosition: [number, number, number] = [x, y, z];
       if (
-        previous &&
-        Math.abs(previous[0] - x) < BONE_TRANSFORM_THRESHOLD &&
-        Math.abs(previous[1] - y) < BONE_TRANSFORM_THRESHOLD &&
-        Math.abs(previous[2] - z) < BONE_TRANSFORM_THRESHOLD
+        isWithinThreshold(previous, currentPosition, BONE_TRANSFORM_THRESHOLD)
       ) {
         return;
       }
-      lastBoneTransformRef.current = [x, y, z];
-      onBoneTransformChange([x, y, z]);
+      lastBoneTransformRef.current = [...currentPosition];
+      onBoneTransformChange([...currentPosition]);
     } else if (gizmoMode === "rotate" && onBoneRotationChange) {
       const q = selectedBoneObject.quaternion;
       const previous = lastBoneRotationRef.current;
+      const currentRotation: [number, number, number, number] = [
+        q.x,
+        q.y,
+        q.z,
+        q.w,
+      ];
       if (
-        previous &&
-        Math.abs(previous[0] - q.x) < BONE_TRANSFORM_THRESHOLD &&
-        Math.abs(previous[1] - q.y) < BONE_TRANSFORM_THRESHOLD &&
-        Math.abs(previous[2] - q.z) < BONE_TRANSFORM_THRESHOLD &&
-        Math.abs(previous[3] - q.w) < BONE_TRANSFORM_THRESHOLD
+        isWithinThreshold(previous, currentRotation, BONE_TRANSFORM_THRESHOLD)
       ) {
         return;
       }
-      lastBoneRotationRef.current = [q.x, q.y, q.z, q.w];
-      onBoneRotationChange([q.x, q.y, q.z, q.w]);
+      lastBoneRotationRef.current = [...currentRotation];
+      onBoneRotationChange([...currentRotation]);
     } else if (gizmoMode === "scale" && onBoneScaleChange) {
       const { x, y, z } = selectedBoneObject.scale;
       const previous = lastBoneScaleRef.current;
-      if (
-        previous &&
-        Math.abs(previous[0] - x) < BONE_TRANSFORM_THRESHOLD &&
-        Math.abs(previous[1] - y) < BONE_TRANSFORM_THRESHOLD &&
-        Math.abs(previous[2] - z) < BONE_TRANSFORM_THRESHOLD
-      ) {
+      const currentScale: [number, number, number] = [x, y, z];
+      if (isWithinThreshold(previous, currentScale, BONE_TRANSFORM_THRESHOLD)) {
         return;
       }
-      lastBoneScaleRef.current = [x, y, z];
-      onBoneScaleChange([x, y, z]);
+      lastBoneScaleRef.current = [...currentScale];
+      onBoneScaleChange([...currentScale]);
     }
-  }, [selectedBoneObject, onBoneTransformChange, onBoneRotationChange, onBoneScaleChange, gizmoMode]);
+  }, [
+    selectedBoneObject,
+    onBoneTransformChange,
+    onBoneRotationChange,
+    onBoneScaleChange,
+    gizmoMode,
+  ]);
 
   useEffect(() => {
     lastBoneTransformRef.current = null;
@@ -151,20 +115,8 @@ export function ModelCanvas(props: ModelCanvasProps) {
     }
   }, [selectedBoneObject, handleBoneTransformChange]);
 
-  // Shift Bugdom 1 model down by half its bounding box height so it appears grounded
   const modelPosition = useMemo((): [number, number, number] => {
-    if (props.gameType === Game.BUGDOM && gltfResult?.scene) {
-      // Manual offset in Bugdom 1 world units to align mascot feet with the ground plane.
-      const BUGDOM1_GROUND_OFFSET = -60;
-      return [0, BUGDOM1_GROUND_OFFSET, 0];
-    }
-    if (props.gameType === Game.BUGDOM_2 && gltfResult?.scene) {
-      const box = new Box3().setFromObject(gltfResult.scene);
-      const size = new Vector3();
-      box.getSize(size);
-      return [0, -size.y * 0.25, 0];
-    }
-    return [0, 0, 0];
+    return getModelPosition(props.gameType, gltfResult?.scene ?? null);
   }, [gltfResult, props.gameType]);
 
   // Validate gltfUrl for rendering (after hooks)

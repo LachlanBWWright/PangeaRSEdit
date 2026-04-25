@@ -16,6 +16,11 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import {
+  getTextureSizeLabel,
+  getTextureTypeBadgeClass,
+  triggerTextureReplace,
+} from "@/components/TextureManager/textureItemState";
 
 interface Texture {
   name: string;
@@ -50,17 +55,17 @@ export function TextureItem({
   onDownloadTexture,
   onEditTexture,
 }: Props) {
+  const handleReplaceTexture = () => {
+    triggerTextureReplace(texture, setSelectedTexture, fileInputRef);
+  };
+
   return (
     <div key={index} className="flex flex-col bg-gray-700 rounded p-3">
       <div className="flex items-center space-x-2 mb-2">
         <span
-          className={`text-xs px-2 py-1 rounded capitalize ${
-            texture.type === "diffuse"
-              ? "bg-blue-600"
-              : texture.type === "normal"
-              ? "bg-purple-600"
-              : "bg-gray-600"
-          }`}
+          className={`text-xs px-2 py-1 rounded capitalize ${getTextureTypeBadgeClass(
+            texture.type,
+          )}`}
         >
           {texture.type}
         </span>
@@ -72,11 +77,7 @@ export function TextureItem({
             {texture.material && (
               <span className="truncate">Material: {texture.material}</span>
             )}
-            {texture.size && (
-              <span>
-                {texture.size.width}×{texture.size.height}
-              </span>
-            )}
+            {texture.size && <span>{getTextureSizeLabel(texture.size)}</span>}
           </div>
         </div>
       </div>
@@ -108,10 +109,7 @@ export function TextureItem({
                 <DialogTitle className="flex items-center justify-between text-white">
                   <span>{texture.name}</span>
                   <span className="text-sm text-gray-400">
-                    {texture.type} •{" "}
-                    {texture.size
-                      ? `${texture.size.width}×${texture.size.height}`
-                      : "Unknown size"}
+                    {texture.type} • {getTextureSizeLabel(texture.size)}
                   </span>
                 </DialogTitle>
               </DialogHeader>
@@ -132,10 +130,7 @@ export function TextureItem({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          setSelectedTexture(texture);
-                          fileInputRef.current?.click();
-                        }}
+                        onClick={handleReplaceTexture}
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         Replace
@@ -181,10 +176,7 @@ export function TextureItem({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => {
-                setSelectedTexture(texture);
-                fileInputRef.current?.click();
-              }}
+              onClick={handleReplaceTexture}
               className="w-8 h-8 p-0"
               title="Replace texture"
             >

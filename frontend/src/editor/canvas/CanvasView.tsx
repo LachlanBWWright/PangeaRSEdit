@@ -17,14 +17,19 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
+import {
+  addPlacedItem,
+  clearCanvasSelections,
+  computeWheelZoomStage,
+  createSafeUpdater,
+  getContainerSize,
+  getPointerTilePosition,
+  getStickyStageOffset,
+  getTerrainContentSize,
+  StageData,
+} from "@/editor/canvas/konvaViewState";
 
 type View = CanvasViewMode;
-
-export interface StageData {
-  scale: number;
-  x: number;
-  y: number;
-}
 
 export function KonvaView({
   headerData,
@@ -77,23 +82,14 @@ export function KonvaView({
   const isTopologyMode = view === CanvasViewMode.tiles;
 
   // Compute the terrain content size for scrollable topology mode
-  const contentSize = useMemo(() => {
-    const header = headerData.Hedr?.[1000]?.obj;
-    if (!header) return { width: 3000, height: 2000 };
-    return {
-      width: (header.mapWidth + 1) * globals.TILE_SIZE * stage.scale,
-      height: (header.mapHeight + 1) * globals.TILE_SIZE * stage.scale,
-    };
-  }, [headerData.Hedr, globals.TILE_SIZE, stage.scale]);
+  const contentSize = useMemo(
+    () => getTerrainContentSize(headerData, globals.TILE_SIZE, stage.scale),
+    [headerData, globals.TILE_SIZE, stage.scale],
+  );
 
   useEffect(() => {
     const updateSize = () => {
-      if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
-      }
+      setContainerSize(getContainerSize(containerRef.current));
     };
     updateSize();
     if (typeof ResizeObserver !== "undefined") {
@@ -115,80 +111,43 @@ export function KonvaView({
   );
 
   // Create wrapper setters that handle null
-  const safeSetItemData = useCallback<Updater<ItemData>>(
-    (updater) => {
-      setItemData((data) => {
-        if (data) {
-          if (typeof updater === "function") {
-            updater(data);
-          }
-        }
-      });
-    },
+  const safeSetItemData = useMemo(
+    () => createSafeUpdater(setItemData),
     [setItemData],
   );
-
-  const safeSetLiquidData: Updater<LiquidData> = (updater) => {
-    setLiquidData((data) => {
-      if (data) {
-        if (typeof updater === "function") {
-          updater(data);
-        }
-      }
-    });
-  };
-
-  const safeSetFenceData: Updater<FenceData> = (updater) => {
-    setFenceData((data) => {
-      if (data) {
-        if (typeof updater === "function") {
-          updater(data);
-        }
-      }
-    });
-  };
-
-  const safeSetSplineData: Updater<SplineData> = (updater) => {
-    setSplineData((data) => {
-      if (data) {
-        if (typeof updater === "function") {
-          updater(data);
-        }
-      }
-    });
-  };
+  const safeSetLiquidData = useMemo(
+    () => createSafeUpdater(setLiquidData),
+    [setLiquidData],
+  );
+  const safeSetFenceData = useMemo(
+    () => createSafeUpdater(setFenceData),
+    [setFenceData],
+  );
+  const safeSetSplineData = useMemo(
+    () => createSafeUpdater(setSplineData),
+    [setSplineData],
+  );
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (clickToAddItem === undefined) return;
-      const stage = e.target.getStage();
-
-      const pos = stage?.getRelativePointerPosition();
-      if (!pos) return;
-      const x = Math.round(pos.x);
-      const z = Math.round(pos.y);
+      const position = getPointerTilePosition(e);
+      if (!position) return;
 
       safeSetItemData((itemData) => {
-        itemData.Itms[1000].obj.push({
-          x: x,
-          z: z,
-          type: clickToAddItem,
-          flags: 0,
-          p0: 0,
-          p1: 0,
-          p2: 0,
-          p3: 0,
-        });
+        addPlacedItem(itemData, position.x, position.z, clickToAddItem);
       });
     },
     [clickToAddItem, safeSetItemData],
   );
 
   const handleStageDblClick = useCallback(() => {
-    setSelectedFence(undefined);
-    setSelectedItem(undefined);
-    setSelectedSpline(undefined);
-    setSelectedWaterBody(null);
+    clearCanvasSelections(
+      setSelectedFence,
+      setSelectedItem,
+      setSelectedSpline,
+      setSelectedWaterBody,
+    );
   }, [
     setSelectedFence,
     setSelectedItem,
@@ -198,31 +157,15 @@ export function KonvaView({
 
   const handleStageWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
-      e.evt.preventDefault();
-
-      const scaleBy = 1.05;
-      const stage = e.target.getStage();
-      if (!stage) return;
-      const oldScale = stage.scaleX();
-      const pointerPosition = stage.getPointerPosition();
-      if (!pointerPosition) return;
-
-      const mousePointTo = {
-        x: pointerPosition.x / oldScale - stage.x() / oldScale,
-        y: pointerPosition.y / oldScale - stage.y() / oldScale,
-      };
-
-      const newScale =
-        e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-      setStage({
-        scale: newScale,
-        x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-        y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-      });
+      const nextStage = computeWheelZoomStage(e);
+      if (nextStage) {
+        setStage(nextStage);
+      }
     },
     [setStage],
   );
+
+  const stageOffset = getStickyStageOffset(isTopologyMode, scrollOffset, stage);
 
   return (
     <div
@@ -264,8 +207,8 @@ export function KonvaView({
           height={containerSize.height}
           scaleX={stage.scale}
           scaleY={stage.scale}
-          x={isTopologyMode ? -scrollOffset.x : stage.x}
-          y={isTopologyMode ? -scrollOffset.y : stage.y}
+          x={stageOffset.x}
+          y={stageOffset.y}
           draggable={!isTopologyMode}
           onClick={handleStageClick}
           onDblClick={handleStageDblClick}

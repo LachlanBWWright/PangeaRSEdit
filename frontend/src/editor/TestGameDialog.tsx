@@ -17,6 +17,10 @@ import { Game } from "../data/globals/globals";
 import { GamePreviewHost } from "./GamePreviewHost";
 import { GAME_DISPLAY_NAMES, levelLabel } from "./utils/gamePreviewRuntime";
 import { GAME_PORT_CONFIGS, getLevelIndex } from "./utils/gamePortConfig";
+import {
+  advancePreviewSession,
+  type PreviewSession,
+} from "./utils/previewSessionState";
 
 interface Props {
   open: boolean;
@@ -29,12 +33,6 @@ interface Props {
   terrainTextureBytes: Uint8Array | null | undefined;
   /** When true, launch from the title screen without level selection or terrain injection. */
   normalLaunch?: boolean;
-}
-
-interface PreviewSession {
-  readonly gameType: Game;
-  readonly started: boolean;
-  readonly runToken: number;
 }
 
 export function TestGameDialog(props: Props) {
@@ -69,24 +67,16 @@ export function TestGameDialog(props: Props) {
   const handleLevelChange = (value: string) => {
     onLevelNumberChange(Number(value));
     if (previewStarted) {
-      setPreviewSession((currentSession) => ({
-        gameType,
-        started: true,
-        runToken:
-          currentSession.gameType === gameType
-            ? currentSession.runToken + 1
-            : 1,
-      }));
+      setPreviewSession((currentSession) =>
+        advancePreviewSession(currentSession, gameType),
+      );
     }
   };
 
   const handleLaunch = () => {
-    setPreviewSession((currentSession) => ({
-      gameType,
-      started: true,
-      runToken:
-        currentSession.gameType === gameType ? currentSession.runToken + 1 : 1,
-    }));
+    setPreviewSession((currentSession) =>
+      advancePreviewSession(currentSession, gameType),
+    );
   };
 
   const handleFullscreen = () => {

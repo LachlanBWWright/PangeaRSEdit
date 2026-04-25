@@ -31,6 +31,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import {
+  clampPlacement,
+  deleteSelectedSplineItem,
+  initSplineItem,
+  updateSplineItemParam,
+  updateSplineItemPlacement,
+  updateSplineItemType,
+} from "@/editor/subviews/splines/editSplineItemMenuState";
 
 export function EditSplineItemMenu({
   setSplineData,
@@ -62,25 +70,10 @@ export function EditSplineItemMenu({
     [filterToSafe, safeSplineItemTypes, allSplineItemValues],
   );
 
-  const initSplineItem = () => {
+  const handleInitSplineItem = () => {
     setSplineData((splineData) => {
-      if (selectedSpline === undefined) return;
-      const splineItems =
-        splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
-      if (!splineItems) return;
-      splineItems.push({
-        placement: 0,
-        type: 0,
-        p0: 0,
-        p1: 0,
-        p2: 0,
-        p3: 0,
-        flags: 0,
-      });
-      const newItemIndex = splineItems.length - 1;
-      const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
-      if (spline) spline.numItems = splineItems.length;
-      setSelectedSplineItem(newItemIndex);
+      const newItemIndex = initSplineItem(splineData, selectedSpline);
+      if (newItemIndex !== null) setSelectedSplineItem(newItemIndex);
     });
   };
 
@@ -100,7 +93,7 @@ export function EditSplineItemMenu({
         buttonText={
           hasSplineItems ? "Add New Spline Item" : "Add First Spline Item"
         }
-        onInitialize={initSplineItem}
+        onInitialize={handleInitSplineItem}
         fillHeight
       />
     );
@@ -117,15 +110,12 @@ export function EditSplineItemMenu({
         onValueChange={(e) => {
           const newItemType = parseInt(e);
           setSplineData((splineData) => {
-            if (
-              selectedSpline === undefined ||
-              selectedSplineItem === undefined
-            )
-              return;
-            const splineItems =
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
-            const item = splineItems?.[selectedSplineItem];
-            if (item) item.type = newItemType;
+            updateSplineItemType(
+              splineData,
+              selectedSpline,
+              selectedSplineItem,
+              newItemType,
+            );
           });
         }}
       >
@@ -165,15 +155,13 @@ export function EditSplineItemMenu({
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {
-              if (
-                selectedSpline === undefined ||
-                selectedSplineItem === undefined
-              )
-                return;
-              const splineItems =
-                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
-              const item = splineItems?.[selectedSplineItem];
-              if (item) item[paramKey] = v;
+              updateSplineItemParam(
+                splineData,
+                selectedSpline,
+                selectedSplineItem,
+                paramKey,
+                v,
+              );
             });
           };
           return [
@@ -260,19 +248,13 @@ export function EditSplineItemMenu({
           value={currentSplineItemData.placement}
           onChange={(e) => {
             setSplineData((splineData) => {
-              if (
-                selectedSpline === undefined ||
-                selectedSplineItem === undefined
-              )
-                return;
-              let placement = parseFloat(e.target.value);
-              if (placement < 0) placement = 0;
-              if (placement > 1) placement = 1;
-              if (isNaN(placement)) placement = 0;
-              const splineItems =
-                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
-              const item = splineItems?.[selectedSplineItem];
-              if (item) item.placement = placement;
+              const placement = clampPlacement(e.target.value);
+              updateSplineItemPlacement(
+                splineData,
+                selectedSpline,
+                selectedSplineItem,
+                placement,
+              );
             });
           }}
         />
@@ -283,14 +265,11 @@ export function EditSplineItemMenu({
           disabled={selectedSpline === undefined}
           onClick={() => {
             setSplineData((splineData) => {
-              if (
-                selectedSplineItem === undefined ||
-                selectedSpline === undefined
-              )
-                return;
-              const splineItems =
-                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
-              if (splineItems) splineItems.splice(selectedSplineItem);
+              deleteSelectedSplineItem(
+                splineData,
+                selectedSpline,
+                selectedSplineItem,
+              );
               setSelectedSplineItem(undefined);
             });
           }}

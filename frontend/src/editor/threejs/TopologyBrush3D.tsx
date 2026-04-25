@@ -15,13 +15,14 @@ import {
   TopologyBrushMode,
 } from "@/data/tiles/tileAtoms";
 import { brushRadiusToWorldRadius } from "../utils/topologyBrushUtils";
+import {
+  getBrushInnerOffset,
+  getBrushLineOffset,
+  getBrushPoleHeight,
+  getBrushSurfaceOffset,
+  getTopologyLinePreview,
+} from "@/editor/threejs/topologyBrush3dState";
 
-const BRUSH_SURFACE_OFFSET = 0.08;
-const BRUSH_INNER_OFFSET = BRUSH_SURFACE_OFFSET * 2;
-const BRUSH_LINE_OFFSET = BRUSH_SURFACE_OFFSET * 1.5;
-const MIN_POLE_HEIGHT = 5;
-const DEFAULT_POLE_HEIGHT_SCALE = 0.8;
-const MAX_POLE_HEIGHT_SCALE = 1.8;
 const ARROW_RADIUS = 5;
 const ARROW_HEIGHT = 12;
 const ARROW_SEGMENTS = 10;
@@ -92,13 +93,7 @@ export function TopologyBrush3D({
       ),
     [worldRadius],
   );
-  const poleHeight = Math.max(
-    MIN_POLE_HEIGHT,
-    Math.min(
-      worldRadius * MAX_POLE_HEIGHT_SCALE,
-      displacementMagnitude ?? worldRadius * DEFAULT_POLE_HEIGHT_SCALE,
-    ),
-  );
+  const poleHeight = getBrushPoleHeight(worldRadius, displacementMagnitude);
   const poleGeometry = useMemo(
     () => new CylinderGeometry(2, 2, poleHeight, 8),
     [poleHeight],
@@ -122,25 +117,10 @@ export function TopologyBrush3D({
     return null;
   }
 
-  const lineLength = lineStart
-    ? Math.hypot(
-        intersectionPoint.x - lineStart.x,
-        intersectionPoint.z - lineStart.z,
-      )
-    : 0;
-  const lineAngle = lineStart
-    ? Math.atan2(
-        intersectionPoint.z - lineStart.z,
-        intersectionPoint.x - lineStart.x,
-      )
-    : 0;
-  const lineMidpoint = lineStart
-    ? {
-        x: (intersectionPoint.x + lineStart.x) / 2,
-        y: (intersectionPoint.y + lineStart.y) / 2,
-        z: (intersectionPoint.z + lineStart.z) / 2,
-      }
-    : null;
+  const brushSurfaceOffset = getBrushSurfaceOffset();
+  const brushInnerOffset = getBrushInnerOffset();
+  const brushLineOffset = getBrushLineOffset();
+  const linePreview = getTopologyLinePreview({ intersectionPoint, lineStart });
 
   return (
     <>
@@ -150,7 +130,7 @@ export function TopologyBrush3D({
         // Three.js terrain editing uses Y-up coordinates.
         position={[
           intersectionPoint.x,
-          intersectionPoint.y + BRUSH_SURFACE_OFFSET,
+          intersectionPoint.y + brushSurfaceOffset,
           intersectionPoint.z,
         ]}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -160,31 +140,38 @@ export function TopologyBrush3D({
         material={falloffMaterial}
         position={[
           intersectionPoint.x,
-          intersectionPoint.y + BRUSH_INNER_OFFSET,
+          intersectionPoint.y + brushInnerOffset,
           intersectionPoint.z,
         ]}
         rotation={[-Math.PI / 2, 0, 0]}
         scale={[0.6, 0.6, 1]}
       />
-      {showLinePreview && lineStart && lineMidpoint && lineLength > 0 && (
-        <mesh
-          geometry={lineGeometry}
-          material={fillMaterial}
-          position={[
-            lineMidpoint.x,
-            lineMidpoint.y + BRUSH_LINE_OFFSET,
-            lineMidpoint.z,
-          ]}
-          rotation={[-Math.PI / 2, 0, lineAngle]}
-          scale={[lineLength / Math.max(1, worldRadius * 2), 1, 1]}
-        />
-      )}
+      {showLinePreview &&
+        lineStart &&
+        linePreview.lineMidpoint &&
+        linePreview.lineLength > 0 && (
+          <mesh
+            geometry={lineGeometry}
+            material={fillMaterial}
+            position={[
+              linePreview.lineMidpoint.x,
+              linePreview.lineMidpoint.y + brushLineOffset,
+              linePreview.lineMidpoint.z,
+            ]}
+            rotation={[-Math.PI / 2, 0, linePreview.lineAngle]}
+            scale={[
+              linePreview.lineLength / Math.max(1, worldRadius * 2),
+              1,
+              1,
+            ]}
+          />
+        )}
       <mesh
         geometry={poleGeometry}
         material={poleMaterial}
         position={[
           intersectionPoint.x,
-          intersectionPoint.y + poleHeight / 2 + BRUSH_LINE_OFFSET,
+          intersectionPoint.y + poleHeight / 2 + brushLineOffset,
           intersectionPoint.z,
         ]}
       />
@@ -193,10 +180,12 @@ export function TopologyBrush3D({
         material={poleMaterial}
         position={[
           intersectionPoint.x,
-          intersectionPoint.y + poleHeight + 6 + BRUSH_LINE_OFFSET,
+          intersectionPoint.y + poleHeight + 6 + brushLineOffset,
           intersectionPoint.z,
         ]}
-        rotation={displacementDirection === "down" ? [Math.PI, 0, 0] : [0, 0, 0]}
+        rotation={
+          displacementDirection === "down" ? [Math.PI, 0, 0] : [0, 0, 0]
+        }
       />
     </>
   );

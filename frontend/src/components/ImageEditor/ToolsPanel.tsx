@@ -17,7 +17,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Circle, Pipette, Square } from "lucide-react";
-import { hexToRgb, rgbToHex } from "@/utils/colorUtils";
+import { hexToRgb } from "@/utils/colorUtils";
+import {
+  deriveBrushColorFromRgbChannel,
+  getPaletteCommitState,
+  getPaletteEditorState,
+  getPaletteSwatchColor,
+} from "@/components/ImageEditor/imageToolsPanelState";
 
 interface Props {
   brushSize: number[];
@@ -61,38 +67,41 @@ export function ToolsPanel({
   const [tileColorInteractionMode, setTileColorInteractionMode] = useState<
     "select" | "edit"
   >("select");
-  const [editingPaletteIndex, setEditingPaletteIndex] = useState<number | null>(null);
+  const [editingPaletteIndex, setEditingPaletteIndex] = useState<number | null>(
+    null,
+  );
   const [editingPaletteColor, setEditingPaletteColor] = useState("#000000");
-  const [editingPaletteOriginalColor, setEditingPaletteOriginalColor] = useState("#000000");
+  const [editingPaletteOriginalColor, setEditingPaletteOriginalColor] =
+    useState("#000000");
 
   const handleRgbChange = (channel: "r" | "g" | "b", value: number) => {
-    const newRgb = { ...rgb, [channel]: Math.min(255, Math.max(0, value)) };
-    setBrushColor(rgbToHex(newRgb.r, newRgb.g, newRgb.b));
+    setBrushColor(deriveBrushColorFromRgbChannel(rgb, channel, value));
   };
 
   const openPaletteEditor = (index: number) => {
-    if (!paletteColors || !canEditPalette) return;
-    const color = paletteColors[index];
-    if (!color) return;
+    const editorState = getPaletteEditorState(
+      paletteColors,
+      canEditPalette,
+      index,
+    );
+    if (!editorState) return;
 
-    setEditingPaletteIndex(index);
-    setEditingPaletteOriginalColor(color);
-    setEditingPaletteColor(color);
+    setEditingPaletteIndex(editorState.index);
+    setEditingPaletteOriginalColor(editorState.color);
+    setEditingPaletteColor(editorState.color);
   };
 
   const closePaletteEditor = (commit: boolean) => {
-    if (commit && editingPaletteIndex !== null) {
-      const nextColor = editingPaletteColor;
-      const originalColor = editingPaletteOriginalColor;
-
-      if (
-        onReplacePaletteColor &&
-        nextColor &&
-        nextColor !== originalColor
-      ) {
-        onReplacePaletteColor(editingPaletteIndex, nextColor);
-        if (brushColor === originalColor) {
-          setBrushColor(nextColor);
+    if (commit && onReplacePaletteColor) {
+      const commitState = getPaletteCommitState(
+        editingPaletteIndex,
+        editingPaletteColor,
+        editingPaletteOriginalColor,
+      );
+      if (commitState) {
+        onReplacePaletteColor(commitState.index, commitState.nextColor);
+        if (brushColor === commitState.originalColor) {
+          setBrushColor(commitState.nextColor);
         }
       }
     }
@@ -103,7 +112,7 @@ export function ToolsPanel({
   };
 
   const handlePaletteSwatchClick = (index: number) => {
-    const color = paletteColors?.[index];
+    const color = getPaletteSwatchColor(paletteColors, index);
     if (!color) return;
 
     setBrushColor(color);
@@ -119,7 +128,7 @@ export function ToolsPanel({
           Brush Settings
         </label>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2 flex justify-between">
+          <label className="text-sm font-medium text-gray-300 mb-2 flex justify-between">
             <span>Size</span>
             <span className="text-blue-400">{brushSize[0]}px</span>
           </label>
@@ -186,7 +195,9 @@ export function ToolsPanel({
                 </div>
               </div>
               <div className="flex-1 space-y-1">
-                <label className="text-[10px] text-gray-500 uppercase font-bold">Hex</label>
+                <label className="text-[10px] text-gray-500 uppercase font-bold">
+                  Hex
+                </label>
                 <div className="flex items-center bg-gray-700 border border-gray-600 rounded px-2 h-9">
                   <span className="text-gray-500 mr-1 text-sm">#</span>
                   <input
@@ -217,7 +228,9 @@ export function ToolsPanel({
                     min="0"
                     max="255"
                     value={rgb[channel]}
-                    onChange={(e) => handleRgbChange(channel, parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleRgbChange(channel, parseInt(e.target.value) || 0)
+                    }
                     className="w-full bg-gray-700 border border-gray-600 rounded px-1 py-1 text-xs text-center text-gray-200 focus:border-blue-500 outline-none"
                   />
                 </div>
@@ -259,7 +272,9 @@ export function ToolsPanel({
                 <input
                   type="checkbox"
                   checked={highlightSelectedColorUsage ?? false}
-                  onChange={(e) => setHighlightSelectedColorUsage(e.target.checked)}
+                  onChange={(e) =>
+                    setHighlightSelectedColorUsage(e.target.checked)
+                  }
                 />
               </label>
             )}
@@ -271,7 +286,7 @@ export function ToolsPanel({
                     className={`w-full h-full rounded shadow-sm border transition ${
                       brushColor === color
                         ? "border-white ring-2 ring-blue-500/50"
-                      : "border-gray-700 hover:border-gray-500"
+                        : "border-gray-700 hover:border-gray-500"
                     }`}
                     style={{ backgroundColor: color }}
                     onClick={() => handlePaletteSwatchClick(idx)}
@@ -283,7 +298,9 @@ export function ToolsPanel({
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-[10px] text-gray-500 uppercase font-bold">Presets</p>
+            <p className="text-[10px] text-gray-500 uppercase font-bold">
+              Presets
+            </p>
             <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-900/50 rounded-lg">
               {colorPalette.map((color) => (
                 <button

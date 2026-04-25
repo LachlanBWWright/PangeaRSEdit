@@ -2,9 +2,13 @@ import { useAtom, useSetAtom } from "jotai";
 import { Circle, Group, Image as KonvaImage } from "react-konva";
 import { SelectedFence, SelectedFenceNub } from "../../../data/fences/fenceAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
-import { View } from "@/editor/viewEnum";
 import { memo, useRef } from "react";
 import { getColour } from "./Fence";
+import {
+  commitFenceNubDrag,
+  previewFenceNubDrag,
+  selectFenceNub,
+} from "@/editor/subviews/fences/fenceNubInteractions";
 
 const NUB_RADIUS = 10;
 
@@ -31,35 +35,40 @@ export const FenceNub = memo(
     const isSelected = idx === selectedFence;
     const color = isSelected ? "red" : getColour(idx);
 
+    const handleSelectNub = () => {
+      selectFenceNub({
+        setSelectedFence,
+        setActiveView,
+        setSelectedFenceNub,
+        fenceIndex: idx,
+        nubIndex: nubIdx,
+      });
+    };
+
     return (
       <Group
         x={nub[0]}
         y={nub[1]}
         draggable
-        onMouseDown={() => {
-          setSelectedFence(idx);
-          setActiveView(View.fences);
-          setSelectedFenceNub(nubIdx);
-        }}
-        onDragStart={() => {
-          setSelectedFence(idx);
-          setActiveView(View.fences);
-          setSelectedFenceNub(nubIdx);
-        }}
-        onDragMove={(e) => {
-          const newX = Math.round(e.target.x());
-          const newY = Math.round(e.target.y());
-          if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
-          nubRafRef.current = requestAnimationFrame(() => {
-            onPreviewNub(nubIdx, [newX, newY]);
+        onMouseDown={handleSelectNub}
+        onDragStart={handleSelectNub}
+        onDragMove={(event) => {
+          previewFenceNubDrag({
+            event,
+            nubIndex: nubIdx,
+            rafRef: nubRafRef,
+            onPreviewNub,
           });
         }}
-        onDragEnd={(e) => {
-          if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
-          setNub(nubIdx, [Math.round(e.target.x()), Math.round(e.target.y())]);
+        onDragEnd={(event) => {
+          commitFenceNubDrag({
+            event,
+            nubIndex: nubIdx,
+            rafRef: nubRafRef,
+            setNub,
+          });
         }}
       >
-        {/* Black background circle — always visible behind image or solid fill */}
         <Circle
           radius={NUB_RADIUS}
           fill="black"
@@ -67,12 +76,10 @@ export const FenceNub = memo(
           perfectDrawEnabled={false}
         />
 
-        {/* Solid fill when no image */}
         {!image && (
           <Circle radius={NUB_RADIUS} fill={color} perfectDrawEnabled={false} />
         )}
 
-        {/* Fence image clipped to circle */}
         {image && (
           <Group
             clipFunc={(ctx) => {
@@ -90,7 +97,6 @@ export const FenceNub = memo(
           </Group>
         )}
 
-        {/* Colored border — serves as the hit area for click/drag; must be listening */}
         <Circle
           radius={NUB_RADIUS}
           fill="transparent"

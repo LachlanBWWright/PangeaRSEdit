@@ -26,6 +26,12 @@ import {
   TICKS_PER_SECOND,
   type ModelSourceKind,
 } from "./utils";
+import {
+  getFallbackEventValueForType,
+  parseEventIntegerInput,
+  parseEventTimeInput,
+  updateAnimationEvent,
+} from "@/components/AnimationViewer/animationEventEditorState";
 
 interface AnimationEventEditorProps {
   selectedAnimationInfo: AnimationInfo | null;
@@ -108,48 +114,34 @@ export function AnimationEventEditor({
               );
               const selected = selectedEventIndex === index;
               const updateEvent = (patch: Partial<AnimationEvent>) => {
-                onUpdateEvent(index, {
-                  time: event.time,
-                  type: event.type,
-                  value: event.value,
-                  ...patch,
-                });
+                onUpdateEvent(index, updateAnimationEvent(event, patch));
               };
               const handleTimeChange = (value: string) => {
-                if (value.trim().length === 0) {
-                  return;
-                }
-                const nextTime = Math.round(Number.parseFloat(value));
-                if (!Number.isFinite(nextTime) || nextTime < 0) {
+                const nextTime = parseEventTimeInput(value);
+                if (nextTime === null) {
                   return;
                 }
                 updateEvent({ time: nextTime });
               };
               const handleTypeChange = (value: string) => {
-                const nextType = Number.parseInt(value, 10);
-                if (!Number.isFinite(nextType)) {
+                const nextType = parseEventIntegerInput(value);
+                if (nextType === null) {
                   return;
                 }
-                const nextOptions = getAnimationEventValueOptions(
+                const fallbackValue = getFallbackEventValueForType(
+                  event.value,
                   nextType,
                   modelSourceKind,
                   gameLabel,
                 );
-                const fallbackValue =
-                  nextOptions.length > 0
-                    ? Number.parseInt(nextOptions[0]?.value ?? "0", 10)
-                    : event.value;
                 updateEvent({
                   type: nextType,
-                  value: Number.isFinite(fallbackValue) ? fallbackValue : 0,
+                  value: fallbackValue,
                 });
               };
               const handleValueChange = (value: string) => {
-                if (value.trim().length === 0) {
-                  return;
-                }
-                const nextValue = Number.parseInt(value, 10);
-                if (!Number.isFinite(nextValue)) {
+                const nextValue = parseEventIntegerInput(value);
+                if (nextValue === null) {
                   return;
                 }
                 updateEvent({ value: nextValue });
@@ -210,7 +202,10 @@ export function AnimationEventEditor({
                       <div className="text-[10px] uppercase tracking-wide text-gray-500">
                         Type
                       </div>
-                      <Select value={type.toString()} onValueChange={handleTypeChange}>
+                      <Select
+                        value={type.toString()}
+                        onValueChange={handleTypeChange}
+                      >
                         <SelectTrigger className="h-8 w-full min-w-0 border-gray-600 bg-gray-700 text-white">
                           <SelectValue />
                         </SelectTrigger>
@@ -264,13 +259,12 @@ export function AnimationEventEditor({
                           className="h-8 w-full min-w-0 border-gray-600 bg-gray-700 text-white"
                         />
                       )}
-                      <p className="break-words text-[10px] text-gray-500">
+                      <p className="wrap-break-word text-[10px] text-gray-500">
                         {valueLabel}
                         {details ? ` • ${details}` : ""}
                       </p>
                     </div>
                   </div>
-
                 </div>
               );
             })}

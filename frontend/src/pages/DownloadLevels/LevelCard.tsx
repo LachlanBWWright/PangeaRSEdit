@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, Download, Loader2, Play } from "lucide-react";
 import {
   Card,
@@ -8,14 +8,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GAME_KEY_TO_ENUM, type Level } from "@/data/levels";
+import type { Level } from "@/data/levels";
 import type { Game } from "@/data/globals/globals";
-import { toast } from "sonner";
 import {
-  downloadLevelArchive,
-  fetchPlayBytes,
-  triggerBrowserDownload,
-} from "@/pages/DownloadLevels/downloadLevelUtils";
+  createDownloadHandler,
+  createPlayInBrowserHandler,
+  difficultyClass,
+  isPlayableLevel,
+} from "@/pages/DownloadLevels/levelCardActions";
 
 interface LevelCardProps {
   level: Level;
@@ -27,59 +27,17 @@ interface LevelCardProps {
   ) => void;
 }
 
-function difficultyClass(difficulty: Level["difficulty"]): string {
-  if (difficulty === "Easy") {
-    return "bg-green-900 text-green-300";
-  }
-
-  if (difficulty === "Medium") {
-    return "bg-yellow-900 text-yellow-300";
-  }
-
-  return "bg-red-900 text-red-300";
-}
-
 export function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isFetchingPlay, setIsFetchingPlay] = useState(false);
-  const gameEnum = GAME_KEY_TO_ENUM[level.game];
-  const canPlay =
-    gameEnum !== undefined && level.previewLevelNumber !== undefined;
+  const canPlay = isPlayableLevel(level);
 
-  const playLevelNumber = useMemo(
-    () => level.previewLevelNumber ?? 0,
-    [level.previewLevelNumber],
-  );
-
-  const handleDownload = () => {
-    void downloadLevelArchive(level).match(
-      ({ data, zipName }) => {
-        triggerBrowserDownload(data, zipName);
-        toast.success(`Downloaded ${zipName}`);
-      },
-      (error) => toast.error(`Download failed: ${error.message}`),
-    );
-  };
-
-  const handlePlayInBrowser = () => {
-    if (!canPlay || gameEnum === undefined) {
-      return;
-    }
-
-    setIsFetchingPlay(true);
-    void fetchPlayBytes(level.terFile, level.rsrcFile)
-      .match(
-        ([dataBytes, rsrcBytes]) => {
-          onPlayInBrowser(gameEnum, playLevelNumber, dataBytes, rsrcBytes);
-        },
-        (error) => {
-          toast.error(`Failed to load level for playback: ${error.message}`);
-        },
-      )
-      .finally(() => {
-        setIsFetchingPlay(false);
-      });
-  };
+  const handleDownload = createDownloadHandler(level);
+  const handlePlayInBrowser = createPlayInBrowserHandler({
+    level,
+    onPlayInBrowser,
+    setIsFetchingPlay,
+  });
 
   return (
     <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">

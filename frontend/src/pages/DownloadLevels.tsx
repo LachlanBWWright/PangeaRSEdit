@@ -2,22 +2,20 @@ import { useState } from "react";
 import { Download, Gamepad2 } from "lucide-react";
 import { getGamesByCategory, ALL_GAME_CONFIGS } from "@/data/levels";
 import { TestGameDialog } from "@/editor/TestGameDialog";
-import { GAME_PORT_CONFIGS } from "@/editor/utils/gamePortConfig";
 import type { Game } from "@/data/globals/globals";
 import { GameLaunchCard } from "@/pages/DownloadLevels/GameLaunchCard";
 import { GameSection } from "@/pages/DownloadLevels/GameSection";
+import {
+  INITIAL_DOWNLOAD_DIALOG_STATE,
+  openCustomLevelDialog,
+  openNormalLaunchDialog,
+  setDialogOpenState,
+} from "@/pages/DownloadLevels/dialogState";
 
 export function DownloadLevels() {
   const gamesByCategory = getGamesByCategory();
 
-  const [dialogGame, setDialogGame] = useState<Game | null>(null);
-  const [dialogLevel, setDialogLevel] = useState<number>(0);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogNormalLaunch, setDialogNormalLaunch] = useState(false);
-  const [dialogTerrainDataBytes, setDialogTerrainDataBytes] =
-    useState<Uint8Array | null>(null);
-  const [dialogTerrainRsrcBytes, setDialogTerrainRsrcBytes] =
-    useState<Uint8Array | null>(null);
+  const [dialogState, setDialogState] = useState(INITIAL_DOWNLOAD_DIALOG_STATE);
 
   /** Open the dialog for playing a custom level (with terrain injection). */
   const handlePlayInBrowser = (
@@ -26,28 +24,18 @@ export function DownloadLevels() {
     dataBytes: Uint8Array | null,
     rsrcBytes: Uint8Array | null,
   ) => {
-    setDialogGame(game);
-    setDialogLevel(levelNumber);
-    setDialogNormalLaunch(false);
-    setDialogTerrainDataBytes(dataBytes);
-    setDialogTerrainRsrcBytes(rsrcBytes);
-    setDialogOpen(true);
+    setDialogState(
+      openCustomLevelDialog(game, levelNumber, dataBytes, rsrcBytes),
+    );
   };
 
   /** Open the dialog to play a game from its title screen (no terrain injection). */
   const handlePlayNormally = (game: Game) => {
-    const config = GAME_PORT_CONFIGS[game];
-    setDialogGame(game);
-    setDialogLevel(config.defaultLevel);
-    setDialogNormalLaunch(true);
-    setDialogTerrainDataBytes(null);
-    setDialogTerrainRsrcBytes(null);
-    setDialogOpen(true);
+    setDialogState(openNormalLaunchDialog(game));
   };
 
   const handleDialogOpenChange = (open: boolean) => {
-    setDialogOpen(open);
-    if (!open) setDialogGame(null);
+    setDialogState((currentState) => setDialogOpenState(currentState, open));
   };
 
   return (
@@ -119,17 +107,19 @@ export function DownloadLevels() {
         )}
       </div>
 
-      {dialogGame !== null && (
+      {dialogState.game !== null && (
         <TestGameDialog
-          open={dialogOpen}
+          open={dialogState.open}
           onOpenChange={handleDialogOpenChange}
-          gameType={dialogGame}
-          levelNumber={dialogLevel}
-          onLevelNumberChange={setDialogLevel}
-          terrainDataBytes={dialogTerrainDataBytes}
-          terrainRsrcBytes={dialogTerrainRsrcBytes}
+          gameType={dialogState.game}
+          levelNumber={dialogState.level}
+          onLevelNumberChange={(level) => {
+            setDialogState((currentState) => ({ ...currentState, level }));
+          }}
+          terrainDataBytes={dialogState.terrainDataBytes}
+          terrainRsrcBytes={dialogState.terrainRsrcBytes}
           terrainTextureBytes={null}
-          normalLaunch={dialogNormalLaunch}
+          normalLaunch={dialogState.normalLaunch}
         />
       )}
     </div>
