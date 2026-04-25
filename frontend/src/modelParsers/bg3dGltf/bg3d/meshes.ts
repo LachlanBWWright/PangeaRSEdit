@@ -17,7 +17,25 @@ import {
   Buffer,
   Document,
 } from "@gltf-transform/core";
-import { float32ArraySchema, uint8ArraySchema, uint32ArraySchema, uint16ArraySchema } from "../../../schemas/common";
+import {
+  float32ArraySchema,
+  uint8ArraySchema,
+  uint32ArraySchema,
+  uint16ArraySchema,
+  plainObjectSchema,
+  getNumberField,
+  boundingBoxSchema,
+} from "../../../schemas/common";
+
+// Helper to check if value is a record
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return plainObjectSchema.safeParse(value).success;
+}
+
+// Type guard for bounding box
+function isValidBoundingBox(value: unknown): value is { min: [number, number, number]; max: [number, number, number] } {
+  return boundingBoxSchema.safeParse(value).success;
+}
 
 /**
  * Convert BG3D geometries to glTF meshes
@@ -156,11 +174,9 @@ export function bg3dMeshesToGltf(
     if (weightAccessor) primitive.setAttribute("WEIGHTS_0", weightAccessor);
 
     // Set material
-    if (
-      typeof geom.layerMaterialNum === "number" &&
-      geom.layerMaterialNum < gltfMaterials.length
-    ) {
-      const mat = gltfMaterials[geom.layerMaterialNum];
+    const layerMatNum = getNumberField(geom, "layerMaterialNum");
+    if (layerMatNum > 0 && layerMatNum < gltfMaterials.length) {
+      const mat = gltfMaterials[layerMatNum];
       if (mat) primitive.setMaterial(mat);
     } else if (
       Array.isArray(geom.layerMaterialNum) &&
@@ -285,10 +301,10 @@ export function gltfMeshesToBg3d(
       colors,
       triangles,
       layerMaterialNum: [materialIndex, 0, 0, 0], // BG3D expects array format
-      flags: typeof extras.flags === "number" ? extras.flags : 0,
+      flags: getNumberField(extras, "flags", 0),
       boundingBox: isValidBoundingBox(extras.boundingBox) ? extras.boundingBox : undefined,
       numMaterials: 1,
-      type: typeof extras.type === "number" ? extras.type : 0,
+      type: getNumberField(extras, "type", 0),
       numPoints: vertices ? vertices.length : 0,
       numTriangles: triangles ? triangles.length : 0,
     };
@@ -297,19 +313,6 @@ export function gltfMeshesToBg3d(
   });
 
   return geometries;
-}
-
-// Helper to check if value is a record
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-// Type guard for bounding box
-function isValidBoundingBox(value: unknown): value is { min: [number, number, number]; max: [number, number, number] } {
-  if (!isRecord(value)) return false;
-  if (!Array.isArray(value.min) || !Array.isArray(value.max)) return false;
-  if (value.min.length !== 3 || value.max.length !== 3) return false;
-  return value.min.every(n => typeof n === 'number') && value.max.every(n => typeof n === 'number');
 }
 
 // Type guard for BG3DGroup

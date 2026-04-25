@@ -9,7 +9,18 @@ import {
 } from "../../python/structSpecs/LevelTypes";
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
-import { plainObjectSchema } from "../../schemas/common";
+import { plainObjectSchema, recordSchema } from "../../schemas/common";
+
+// Zod schema for LevelData-like objects
+const levelDataLikeSchema = recordSchema.refine(
+  (value) => {
+    if (!("Hedr" in value) || !("_metadata" in value)) return false;
+    if (!("STgd" in value || "Layr" in value)) return false;
+    if (!("ItCo" in value) || !("YCrd" in value)) return false;
+    return true;
+  },
+  { message: "Must have required LevelData fields: Hedr, _metadata, STgd/Layr, ItCo, YCrd" }
+);
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -18,14 +29,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 // Type guard for LevelData - checks for required keys
 export function isLevelDataLike(value: unknown): value is LevelData {
-  if (!isRecord(value)) return false;
-  // Hedr and _metadata are always required for a valid LevelData
-  if (!("Hedr" in value) || !("_metadata" in value)) return false;
-  // At least one terrain key must exist
-  if (!("STgd" in value || "Layr" in value)) return false;
-  // ItCo and YCrd are also required for terrain
-  if (!("ItCo" in value) || !("YCrd" in value)) return false;
-  return true;
+  return levelDataLikeSchema.safeParse(value).success;
 }
 
 /**

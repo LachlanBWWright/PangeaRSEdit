@@ -39,13 +39,16 @@ import {
   uint8ArraySchema,
   float32ArraySchema,
   uint16ArraySchema,
+  plainObjectSchema,
+  getNumberField,
+  getArrayNumberField,
 } from "@/schemas/common";
 
 /**
  * Type guard helper functions for safe extraction from unknown values
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 interface ParentLinkedNode<T> {
@@ -350,11 +353,9 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     if (weightAccessor) primitive.setAttribute("WEIGHTS_0", weightAccessor);
 
     // Set material
-    if (
-      typeof geom.layerMaterialNum === "number" &&
-      geom.layerMaterialNum < gltfMaterials.length
-    ) {
-      const material = gltfMaterials[geom.layerMaterialNum];
+    const layerMatNum = getNumberField(geom, "layerMaterialNum");
+    if (layerMatNum > 0 && layerMatNum < gltfMaterials.length) {
+      const material = gltfMaterials[layerMatNum];
       if (material) primitive.setMaterial(material);
     } else if (
       Array.isArray(geom.layerMaterialNum) &&
@@ -1131,38 +1132,26 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
       colors,
       triangles,
       layerMaterialNum: [materialIndex, 0, 0, 0], // BG3D expects array format
-      flags: typeof extras.flags === "number" ? extras.flags : 0,
+      flags: getNumberField(extras, "flags", 0),
       boundingBox:
         isRecord(extras.boundingBox) &&
         Array.isArray(extras.boundingBox.min) &&
         Array.isArray(extras.boundingBox.max)
           ? {
               min: [
-                typeof extras.boundingBox.min[0] === "number"
-                  ? extras.boundingBox.min[0]
-                  : 0,
-                typeof extras.boundingBox.min[1] === "number"
-                  ? extras.boundingBox.min[1]
-                  : 0,
-                typeof extras.boundingBox.min[2] === "number"
-                  ? extras.boundingBox.min[2]
-                  : 0,
+                getArrayNumberField(extras.boundingBox.min, 0),
+                getArrayNumberField(extras.boundingBox.min, 1),
+                getArrayNumberField(extras.boundingBox.min, 2),
               ] as [number, number, number],
               max: [
-                typeof extras.boundingBox.max[0] === "number"
-                  ? extras.boundingBox.max[0]
-                  : 0,
-                typeof extras.boundingBox.max[1] === "number"
-                  ? extras.boundingBox.max[1]
-                  : 0,
-                typeof extras.boundingBox.max[2] === "number"
-                  ? extras.boundingBox.max[2]
-                  : 0,
+                getArrayNumberField(extras.boundingBox.max, 0),
+                getArrayNumberField(extras.boundingBox.max, 1),
+                getArrayNumberField(extras.boundingBox.max, 2),
               ] as [number, number, number],
             }
           : undefined,
       numMaterials: 1,
-      type: typeof extras.type === "number" ? extras.type : 0,
+      type: getNumberField(extras, "type", 0),
       numPoints: vertices ? vertices.length : 0,
       numTriangles: triangles ? triangles.length : 0,
     };

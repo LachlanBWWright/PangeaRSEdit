@@ -1,11 +1,15 @@
-import { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
-import { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
-import { RawNanosaurItem, RawNanosaurAttribute } from "./nanosaurInterfaces";
+import { plainObjectSchema } from "@/schemas/common";
+import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
+import type { MightyMikeMap } from "@/schemas/common";
+import type { RawNanosaurItem, RawNanosaurAttribute } from "./nanosaurInterfaces";
+import { z } from "zod";
 
 function isTileValid(tile: unknown): boolean {
-  if (!isRecord(tile)) return false;
-  const t = tile;
-  return typeof t.rawValue === "number" && typeof t.tileIndex === "number";
+  const schema = z.object({
+    rawValue: z.number(),
+    tileIndex: z.number(),
+  });
+  return schema.safeParse(tile).success;
 }
 
 function isMapRowValid(row: unknown): boolean {
@@ -18,15 +22,15 @@ function isMapRowValid(row: unknown): boolean {
 export function isNanosaur1LevelData(
   data: unknown,
 ): data is Nanosaur1LevelData {
-  if (!isRecord(data)) return false;
-  const d = data; // narrowed by isRecord(data)
+  const result = plainObjectSchema.safeParse(data);
+  if (!result.success) return false;
+  const d = result.data;
   if (!("header" in d && "textureLayer" in d)) return false;
-  if (!isRecord(d.header)) return false;
+  if (!plainObjectSchema.safeParse(d.header).success) return false;
   if (!Array.isArray(d.textureLayer)) return false;
-  // textureLayer is a flat number[] (one tile-index per entry)
   if (
     d.textureLayer.length > 0 &&
-    !d.textureLayer.every((v: unknown) => typeof v === "number")
+    !d.textureLayer.every((v: unknown) => z.number().safeParse(v).success)
   )
     return false;
   return true;
@@ -36,11 +40,10 @@ export function isNanosaur1LevelData(
  * Type guard for RawNanosaurItem
  */
 export function isRawNanosaurItem(item: unknown): item is RawNanosaurItem {
-  if (typeof item !== "object" || item === null) return false;
-  const i = item;
-  // We check for the specific field 'parm' which distinguishes it from standard TerrainItem
-  // Nanosaur items must have 'type' and 'x'
-  return "type" in i && "x" in i; // Basic check, we assume if it's in the list it's correct
+  const result = plainObjectSchema.safeParse(item);
+  if (!result.success) return false;
+  const i = result.data;
+  return "type" in i && "x" in i;
 }
 
 /**
@@ -49,21 +52,25 @@ export function isRawNanosaurItem(item: unknown): item is RawNanosaurItem {
 export function isRawNanosaurAttribute(
   attr: unknown,
 ): attr is RawNanosaurAttribute {
-  if (typeof attr !== "object" || attr === null) return false;
-  return "bits" in attr || "parm0" in attr;
+  const result = plainObjectSchema.safeParse(attr);
+  if (!result.success) return false;
+  return "bits" in result.data || "parm0" in result.data;
 }
 
 /**
  * Type guard for MightyMikeMap
  */
 export function isMightyMikeMap(data: unknown): data is MightyMikeMap {
-  if (!isRecord(data)) return false;
-  const d = data;
-  if (typeof d.mapWidth !== "number" || typeof d.mapHeight !== "number")
+  const result = plainObjectSchema.safeParse(data);
+  if (!result.success) return false;
+  const d = result.data;
+  if (
+    !z.number().safeParse(d.mapWidth).success ||
+    !z.number().safeParse(d.mapHeight).success
+  )
     return false;
   if (!Array.isArray(d.mapImage)) return false;
 
-  // mapImage should be a 2D array of tile value objects with numeric fields
   if (!d.mapImage.every(isMapRowValid)) return false;
 
   return true;
@@ -73,5 +80,5 @@ export function isMightyMikeMap(data: unknown): data is MightyMikeMap {
  * Type guard for Record<string, unknown>
  */
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }

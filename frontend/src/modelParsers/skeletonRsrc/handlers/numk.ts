@@ -1,14 +1,15 @@
 import { parseNumKData } from "../parseHelpers";
 import type { NumKRaw } from "../parseSkeletonRsrcTS";
+import { plainObjectSchema, numKRawSchema } from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for NumKRaw
 function isNumKRaw(value: unknown): value is NumKRaw {
-  return isRecord(value) && typeof value.numKeyFrames === "number";
+  return numKRawSchema.safeParse(value).success;
 }
 
 export function handleNumK(

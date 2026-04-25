@@ -6,13 +6,13 @@ import {
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
-import { errorSchema } from "../../schemas/common";
+import { errorSchema, isFunctionField, isFunction, getStringField } from "../../schemas/common";
 
 function ensureDir(
   vfs: NonNullable<PreviewRuntimeModule["FS"]>,
   path: string,
 ): void {
-  if (typeof vfs.analyzePath === "function") {
+  if (isFunctionField(vfs, "analyzePath") && typeof vfs.analyzePath === "function") {
     const analyzePath = vfs.analyzePath;
     const analyzeResult = Result.fromThrowable(
       () => analyzePath(path),
@@ -34,7 +34,7 @@ function ensurePreviewPrefsDirs(
 ): void {
   const fsCreatePath = module.FS_createPath;
 
-  if (typeof fsCreatePath === "function") {
+  if (isFunction(fsCreatePath)) {
     const createResult = Result.fromThrowable(
       () => {
         fsCreatePath("/", "home", true, true);
@@ -76,7 +76,7 @@ function writeFileToVfs(
   data: Uint8Array,
 ): Result<void, Error> {
   const vfs = module.FS;
-  if (vfs && typeof vfs.writeFile === "function") {
+  if (vfs && isFunctionField(vfs, "writeFile")) {
     return Result.fromThrowable(
       () => {
         vfs.writeFile(path, data);
@@ -84,13 +84,13 @@ function writeFileToVfs(
       (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
   }
-  if (typeof module.FS_createDataFile !== "function") {
+  if (!isFunction(module.FS_createDataFile)) {
     return err(new Error("No VFS write mechanism available"));
   }
   const lastSlash = path.lastIndexOf("/");
   const parentDir = path.substring(0, lastSlash);
   const filename = path.substring(lastSlash + 1);
-  if (typeof module.FS_unlink === "function") {
+  if (isFunction(module.FS_unlink)) {
     const unlink = module.FS_unlink;
     Result.fromThrowable(
       () => unlink(path),
@@ -98,13 +98,14 @@ function writeFileToVfs(
     )();
   }
   const createDataFile = module.FS_createDataFile;
-  if (typeof createDataFile !== "function") {
+  if (!isFunction(createDataFile)) {
     return err(new Error("No VFS write mechanism available"));
   }
-  return Result.fromThrowable(
+  const result = Result.fromThrowable(
     () => createDataFile(parentDir, filename, data, true, true, false),
     (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   )();
+  return result.isOk() ? ok(undefined) : err(result.error);
 }
 
 function logPreviewRuntime(message: string, details?: unknown): void {
@@ -140,7 +141,7 @@ function writeTerrainToVfs(
   }
 
   const vfs = module.FS;
-  if (vfs && typeof vfs.mkdir === "function") {
+  if (vfs && isFunctionField(vfs, "mkdir")) {
     ensureDir(vfs, "/Data");
     ensureDir(
       vfs,
@@ -263,11 +264,12 @@ function writeTerrainToVfs(
       return;
     }
     const setPathFn = terrain.setPathFn;
-    if (typeof setPathFn !== "string") {
+    const setPathFnStr = getStringField({ setPathFn }, "setPathFn");
+    if (!setPathFnStr) {
       return;
     }
     const getSetPathArg = terrain.getSetPathArg;
-    if (typeof getSetPathArg !== "function") {
+    if (!isFunction(getSetPathArg)) {
       return;
     }
     const setPathArg =
@@ -275,11 +277,11 @@ function writeTerrainToVfs(
         ? terrainPaths.dataPath
         : getSetPathArg(terrainFile);
     logPreviewRuntime("Setting runtime terrain override path", {
-      fn: setPathFn,
+      fn: setPathFnStr,
       arg: setPathArg,
     });
     Result.fromThrowable(
-      () => module.ccall?.(setPathFn, null, ["string"], [setPathArg]),
+      () => module.ccall?.(setPathFnStr, null, ["string"], [setPathArg]),
       (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
   }

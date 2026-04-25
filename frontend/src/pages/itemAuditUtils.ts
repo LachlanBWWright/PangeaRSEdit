@@ -28,6 +28,7 @@ import {
   billyFrontierItemTypeParams,
   itemTypeNames as billyFrontierItemTypeNames,
 } from "@/data/items/billyFrontierItemType";
+import { z } from "zod";
 import { itemTypeNames as mightyMikeItemTypeNames } from "@/data/items/mightyMikeItemType";
 import { getCitationPermalink, type SourceCitation } from "@/data/items/itemModelTypes";
 import type { Citation, ItemParams, ParamDescription } from "@/data/items/itemParams";
@@ -157,19 +158,13 @@ function toParamCitation(sample: Citation): ParamCitationDetail {
 }
 
 function hasValidCitation(value: unknown): value is Citation {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const url = Reflect.get(value, "url");
-  const fileName = Reflect.get(value, "fileName");
-  const lineNumber = Reflect.get(value, "lineNumber");
-  const code = Reflect.get(value, "code");
-  return (
-    typeof url === "string" &&
-    typeof fileName === "string" &&
-    typeof lineNumber === "number" &&
-    typeof code === "string"
-  );
+  const citationSchema = z.object({
+    url: z.string(),
+    fileName: z.string(),
+    lineNumber: z.number(),
+    code: z.string(),
+  });
+  return citationSchema.safeParse(value).success;
 }
 
 function paramAuditDetail(param: ParamDescription | undefined): ParamAuditDetail {

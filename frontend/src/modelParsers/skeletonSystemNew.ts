@@ -25,11 +25,12 @@ import {
   decomposeMatrix,
   calculateLocalTransform,
 } from "./rotationUtils";
+import { plainObjectSchema, getNumberField } from "@/schemas/common";
 
 const ANIMATION_EXTRA_NAMESPACE = "pangears";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 function parseAnimationEventsFromExtras(anim: Animation): BG3DAnimationEvent[] {
@@ -56,9 +57,9 @@ function parseAnimationEventsFromExtras(anim: Animation): BG3DAnimationEvent[] {
         return null;
       }
       return {
-        time: typeof event.time === "number" ? event.time : 0,
-        type: typeof event.type === "number" ? event.type : 0,
-        value: typeof event.value === "number" ? event.value : 0,
+        time: getNumberField(event, "time", 0),
+        type: getNumberField(event, "type", 0),
+        value: getNumberField(event, "value", 0),
       };
     })
     .filter((event): event is BG3DAnimationEvent => event !== null);

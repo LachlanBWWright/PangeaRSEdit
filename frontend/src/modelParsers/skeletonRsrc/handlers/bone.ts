@@ -1,21 +1,16 @@
 import { parseBoneDataFallback } from "../parseHelpers";
 import { decodePascalHexString } from "../parseHelpers";
 import type { BoneRaw } from "../parseSkeletonRsrcTS";
+import { plainObjectSchema, boneRawSchema, getStringField } from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for BoneRaw
 function isBoneRaw(value: unknown): value is BoneRaw {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.parentBone === "number" &&
-    typeof value.coordX === "number" &&
-    typeof value.coordY === "number" &&
-    typeof value.coordZ === "number"
-  );
+  return boneRawSchema.safeParse(value).success;
 }
 
 export function handleBone(
@@ -67,12 +62,8 @@ export function handleBone(
       `Bone ${resourceName} (${resourceId}) falling back to manual parsing. resourceData:`,
       resourceData,
     );
-    const hex = isRecord(resourceData) && typeof resourceData.data === "string"
-      ? resourceData.data
-      : hexData || "";
-    const name = isRecord(resourceData) && typeof resourceData.name === "string"
-      ? resourceData.name
-      : resourceName;
+    const hex = isRecord(resourceData) ? getStringField(resourceData, "data") : hexData || "";
+    const name = isRecord(resourceData) ? getStringField(resourceData, "name", resourceName) : resourceName;
     const obj = parseBoneDataFallback(hex, name);
     console.log(
       `Bone ${obj.name} coordinates from fallback: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`,

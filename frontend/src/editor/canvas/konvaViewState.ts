@@ -1,11 +1,8 @@
 import type Konva from "konva";
 import type {
-  FenceData,
   HeaderData,
   ItemData,
-  SplineData,
 } from "@/python/structSpecs/LevelTypes";
-import type { Updater } from "use-immer";
 
 export interface StageData {
   scale: number;
@@ -131,8 +128,5 @@ export function getStickyStageOffset(
   return { x: stage.x, y: stage.y };
 }
 
-export interface SafeUpdaters {
-  safeSetItemData: Updater<ItemData>;
-  safeSetFenceData: Updater<FenceData>;
-  safeSetSplineData: Updater<SplineData>;
-}
+
+

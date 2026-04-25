@@ -13,6 +13,7 @@ import {
 import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
 import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 import { mapErr } from "@/utils/mapErr";
+import { resultSchema, plainResultSchema, getStringField } from "@/schemas/common";
 
 export async function parseRsrcLevelFile(
   file: Blob,
@@ -39,11 +40,7 @@ export async function parseRsrcLevelFile(
   // Normalize it locally to a neverthrow Result<string, Error> so callers can use
   // the instance API safely.
   function isNeverthrowResult(value: unknown): value is Result<string, Error> {
-    if (typeof value !== "object" || value === null) return false;
-    return (
-      typeof Reflect.get(value, "isOk") === "function" &&
-      typeof Reflect.get(value, "isErr") === "function"
-    );
+    return resultSchema.safeParse(value).success;
   }
 
   function isPlainSaveToJson(value: unknown): value is {
@@ -51,17 +48,17 @@ export async function parseRsrcLevelFile(
     value?: unknown;
     error?: unknown;
   } {
-    if (typeof value !== "object" || value === null) return false;
-    return typeof Reflect.get(value, "ok") === "boolean";
+    return plainResultSchema.safeParse(value).success;
   }
 
   function normalizeSaveToJsonResult(r: unknown): Result<string, Error> {
     if (isNeverthrowResult(r)) return r;
     if (!isPlainSaveToJson(r))
       return err(new Error("saveToJson returned unexpected shape"));
-    if (!r.ok || typeof r.value !== "string")
+    const val = getStringField(r, "value");
+    if (!r.ok || !val)
       return err(new Error(String(r.error)));
-    return ok(r.value);
+    return ok(val);
   }
 
   const parseResult = normalizeSaveToJsonResult(parseRaw);

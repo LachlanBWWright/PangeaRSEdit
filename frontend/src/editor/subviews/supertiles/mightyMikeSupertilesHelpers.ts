@@ -1,14 +1,18 @@
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 import { ALT_TILE_OPTIONS } from "../mightymike/MightyMikeAltMapEditor";
+import { plainObjectSchema, unknownArraySchema } from "@/schemas/common";
+import { z } from "zod";
 
 export const TILE_SIZE = 32;
 
+const numberSchema = z.number();
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success && !Array.isArray(value);
 }
 
 export function isArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
+  return unknownArraySchema.safeParse(value).success;
 }
 
 export function getAltMapArray(metadata: unknown): unknown[] | null {
@@ -33,9 +37,10 @@ export function getCollisionImages(
     tilesetRaw && isArray(tilesetRaw.collisionImages)
       ? tilesetRaw.collisionImages
       : [];
+  const canvasSchema = z.object({ getContext: z.function() });
   return raw.filter(
     (img): img is HTMLCanvasElement =>
-      isRecord(img) && typeof img.getContext === "function",
+      isRecord(img) && canvasSchema.safeParse(img).success,
   );
 }
 
@@ -56,7 +61,10 @@ export function flattenAltMap(metadata: unknown): number[] {
   const flat: number[] = [];
   for (const row of altMap2d) {
     if (isArray(row)) {
-      for (const cell of row) flat.push(typeof cell === "number" ? cell : 0);
+      for (const cell of row) {
+        const numResult = numberSchema.safeParse(cell);
+        flat.push(numResult.success ? numResult.data : 0);
+      }
     }
   }
   return flat;
@@ -72,8 +80,10 @@ export function resolveImageIndices(
     let imageIndex = logicalTileIndex;
     if (xlatTable && logicalTileIndex < xlatTable.length) {
       const entry = xlatTable[logicalTileIndex];
-      if (isRecord(entry) && typeof entry.idx === "number")
-        imageIndex = entry.idx;
+      if (isRecord(entry)) {
+        const idxResult = numberSchema.safeParse(entry.idx);
+        if (idxResult.success) imageIndex = idxResult.data;
+      }
     }
     if (imageIndex < 0 || imageIndex >= mapImagesLength) return null;
     return imageIndex;
@@ -96,8 +106,9 @@ export function buildBackgroundCanvas(
 
   layr.forEach((_, i) => {
     const imgIdx = resolvedImageIndices[i];
-    if (typeof imgIdx !== "number") return;
-    const img = mapImages[imgIdx];
+    const idxResult = numberSchema.safeParse(imgIdx);
+    if (!idxResult.success) return;
+    const img = mapImages[idxResult.data];
     if (!img) return;
     const tx = (i % mapWidth) * TILE_SIZE;
     const ty = Math.floor(i / mapWidth) * TILE_SIZE;
@@ -132,12 +143,12 @@ export function buildCollisionCanvas(
     const imgIdx = resolvedImageIndices[i];
     const tx = (i % mapWidth) * TILE_SIZE;
     const ty = Math.floor(i / mapWidth) * TILE_SIZE;
-    if (typeof imgIdx === "number" && imgIdx < collisionImages.length) {
-      const collisionImg = collisionImages[imgIdx];
-      if (collisionImg) {
-        ctx.drawImage(collisionImg, tx, ty, TILE_SIZE, TILE_SIZE);
-        return;
-      }
+    const idxResult = numberSchema.safeParse(imgIdx);
+    if (!idxResult.success || idxResult.data >= collisionImages.length) return;
+    const collisionImg = collisionImages[idxResult.data];
+    if (collisionImg) {
+      ctx.drawImage(collisionImg, tx, ty, TILE_SIZE, TILE_SIZE);
+      return;
     }
     ctx.fillStyle = "rgba(200, 120, 0, 0.5)";
     ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
@@ -199,13 +210,17 @@ export function buildParamsCanvas(
       return;
     }
     const imgIdx = resolvedImageIndices[i];
-    if (typeof imgIdx !== "number" || imgIdx >= tileAttributes.length) return;
-    const attr = tileAttributes[imgIdx];
+    const idxResult = numberSchema.safeParse(imgIdx);
+    if (!idxResult.success || idxResult.data >= tileAttributes.length) return;
+    const attr = tileAttributes[idxResult.data];
     if (!attr) return;
 
-    const flags = typeof attr["flags"] === "number" ? attr["flags"] : 0;
-    const p0 = typeof attr["p0"] === "number" ? attr["p0"] : 0;
-    const p1 = typeof attr["p1"] === "number" ? attr["p1"] : 0;
+    const flagsResult = numberSchema.safeParse(attr["flags"]);
+    const flags = flagsResult.success ? flagsResult.data : 0;
+    const p0Result = numberSchema.safeParse(attr["p0"]);
+    const p0 = p0Result.success ? p0Result.data : 0;
+    const p1Result = numberSchema.safeParse(attr["p1"]);
+    const p1 = p1Result.success ? p1Result.data : 0;
     if (flags === 0 && p0 === 0 && p1 === 0) return;
 
     const tx = (i % mapWidth) * TILE_SIZE;

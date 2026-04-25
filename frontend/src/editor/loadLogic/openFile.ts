@@ -11,6 +11,8 @@ import { parseLevelDataFile } from "./parseLevelDataFile";
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
+import { plainObjectSchema, stringSchema } from "@/schemas/common";
+import { z } from "zod";
 
 function hexToUint8Array(hexString: string): Uint8Array {
   const bytes = new Uint8Array(hexString.length / 2);
@@ -20,31 +22,38 @@ function hexToUint8Array(hexString: string): Uint8Array {
   return bytes;
 }
 
-interface MightyMikeLevelData {
-  tileset?: {
-    tileImages?: HTMLCanvasElement[];
-    numTileDefinitions?: number;
-    numTileAttributeEntries?: number;
-  };
-  Hedr?: Record<string, { obj?: { numTiles?: number } }>;
-}
+const mightyMikeLevelDataSchema = z.object({
+  tileset: z.object({
+    tileImages: z.array(z.unknown()).optional(),
+    numTileDefinitions: z.number().optional(),
+    numTileAttributeEntries: z.number().optional(),
+  }).optional(),
+  Hedr: z.record(z.string(), z.object({
+    obj: z.object({
+      numTiles: z.number().optional(),
+    }).optional(),
+  })).optional(),
+});
 
-function isMightyMikeLevelData(data: unknown): data is MightyMikeLevelData {
-  return typeof data === "object" && data !== null;
-}
-
-function isJsonRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isMightyMikeLevelData(data: unknown): data is z.infer<typeof mightyMikeLevelDataSchema> {
+  return mightyMikeLevelDataSchema.safeParse(data).success;
 }
 
 function extractTimgDataString(jsonData: unknown): string | undefined {
-  if (!isJsonRecord(jsonData)) return undefined;
-  const timg = jsonData.Timg;
-  if (!isJsonRecord(timg)) return undefined;
-  const timg1000 = timg["1000"];
-  if (!isJsonRecord(timg1000)) return undefined;
-  const data = timg1000.data;
-  return typeof data === "string" ? data : undefined;
+  const result = plainObjectSchema.safeParse(jsonData);
+  if (!result.success) return undefined;
+  const timg = result.data.Timg;
+  
+  const timgResult = plainObjectSchema.safeParse(timg);
+  if (!timgResult.success) return undefined;
+  const timg1000 = timgResult.data["1000"];
+  
+  const timg1000Result = plainObjectSchema.safeParse(timg1000);
+  if (!timg1000Result.success) return undefined;
+  const data = timg1000Result.data.data;
+  
+  const stringResult = stringSchema.safeParse(data);
+  return stringResult.success ? stringResult.data : undefined;
 }
 
 export interface OpenFileArgs {
@@ -126,11 +135,14 @@ export async function openFile({
       toast.error("Mighty Mike data has an unexpected format");
       return;
     }
-    const tileImages = jsonData.tileset?.tileImages ?? [];
-    if (tileImages.length === 0)
+    const tileImages = jsonData.tileset?.tileImages;
+    if (!Array.isArray(tileImages) || tileImages.length === 0) {
       toast.error("No Mighty Mike tile images loaded");
+      return;
+    }
+    // Type assertion is safe here because tileImages came from deserialized GLB data
     setMapImagesFile(new File([new Uint8Array(0)], "mightyMike_tiles.bin"));
-    setMapImages(tileImages);
+    setMapImages(tileImages as HTMLCanvasElement[]); // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     const imgResResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (imgResResult.isErr() || !imgResResult.value.ok) {

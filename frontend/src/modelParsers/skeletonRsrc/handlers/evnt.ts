@@ -1,14 +1,15 @@
 import { parseEvntData } from "../parseHelpers";
 import type { EvntRaw } from "../parseSkeletonRsrcTS";
+import { plainObjectSchema, evntRawSchema } from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for EvntRaw
 function isEvntRaw(value: unknown): value is EvntRaw {
-  return isRecord(value) && typeof value.time === "number";
+  return evntRawSchema.safeParse(value).success;
 }
 
 function parseEvntObjArray(

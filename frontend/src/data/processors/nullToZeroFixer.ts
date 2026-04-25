@@ -33,7 +33,7 @@ export function fixNullToZero(obj: unknown): unknown {
       if (item === null || item === undefined) {
         // Convert all nulls/undefined in arrays to 0 (rsrcdump-ts bug workaround)
         obj[i] = 0;
-      } else if (typeof item === 'object') {
+      } else if (plainObjectSchema.safeParse(item).success || Array.isArray(item)) {
         fixNullToZero(item);
       }
     }
@@ -80,7 +80,7 @@ export function fixNullToZero(obj: unknown): unknown {
         if (isLikelyNumeric) {
           Reflect.set(obj, key, 0);
         }
-      } else if (typeof value === 'object') {
+      } else if (plainObjectSchema.safeParse(value).success || Array.isArray(value)) {
         fixNullToZero(value);
       }
     }

@@ -21,7 +21,6 @@ import {
   addPlacedItem,
   clearCanvasSelections,
   computeWheelZoomStage,
-  createSafeUpdater,
   getContainerSize,
   getPointerTilePosition,
   getStickyStageOffset,
@@ -110,35 +109,18 @@ export function KonvaView({
     [],
   );
 
-  // Create wrapper setters that handle null
-  const safeSetItemData = useMemo(
-    () => createSafeUpdater(setItemData),
-    [setItemData],
-  );
-  const safeSetLiquidData = useMemo(
-    () => createSafeUpdater(setLiquidData),
-    [setLiquidData],
-  );
-  const safeSetFenceData = useMemo(
-    () => createSafeUpdater(setFenceData),
-    [setFenceData],
-  );
-  const safeSetSplineData = useMemo(
-    () => createSafeUpdater(setSplineData),
-    [setSplineData],
-  );
-
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (clickToAddItem === undefined) return;
       const position = getPointerTilePosition(e);
       if (!position) return;
 
-      safeSetItemData((itemData) => {
+      // Updater<T | null> can be safely cast to Updater<T> when component only renders when data is non-null
+      (setItemData as Updater<ItemData>)((itemData) => { // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
         addPlacedItem(itemData, position.x, position.z, clickToAddItem);
       });
     },
-    [clickToAddItem, safeSetItemData],
+    [clickToAddItem, setItemData],
   );
 
   const handleStageDblClick = useCallback(() => {
@@ -219,13 +201,13 @@ export function KonvaView({
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             itemData={itemData}
-            setItemData={safeSetItemData}
+            setItemData={setItemData as Updater<ItemData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
             liquidData={liquidData}
-            setLiquidData={safeSetLiquidData}
+            setLiquidData={setLiquidData as Updater<LiquidData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
             fenceData={fenceData}
-            setFenceData={safeSetFenceData}
+            setFenceData={setFenceData as Updater<FenceData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
             splineData={splineData}
-            setSplineData={safeSetSplineData}
+            setSplineData={setSplineData as Updater<SplineData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
             mapImages={mapImages}
             view={view}
           />

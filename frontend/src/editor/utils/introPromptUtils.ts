@@ -195,9 +195,13 @@ export function prepareDownloadData(
   }
   let workingData = structuredClone(cloneableData);
   ottoPreprocessor((updater) => {
-    const next = typeof updater === "function" ? updater(workingData) : updater;
-    if (next !== undefined) {
-      workingData = next;
+    if (typeof updater === "function") {
+      const next = updater(workingData);
+      if (next !== undefined) {
+        workingData = next;
+      }
+    } else {
+      workingData = updater;
     }
   }, globals);
   return workingData;

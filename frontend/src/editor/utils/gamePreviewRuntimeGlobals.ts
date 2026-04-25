@@ -6,6 +6,7 @@ import {
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
 import { errorSchema } from "../../schemas/common";
+import { z } from "zod";
 
 export function applyPreviewGlobals(
   win: Window,
@@ -15,6 +16,9 @@ export function applyPreviewGlobals(
   normalLaunch = false,
 ): () => void {
   const previousValues = new Map<string, unknown>();
+  const stringSchema = z.string();
+  const undefinedSchema = z.undefined();
+
   const setGlobal = (key: string, value: unknown) => {
     const previous = Result.fromThrowable(
       () => Reflect.get(win, key),
@@ -40,7 +44,7 @@ export function applyPreviewGlobals(
     if (config.game === Game.BUGDOM) {
       setGlobal("BUGDOM_NO_FENCE_COLLISION", false);
       const bugdomTerrainPath = terrainPaths?.dataPath ?? null;
-      if (bugdomTerrainPath) {
+      if (bugdomTerrainPath && stringSchema.safeParse(bugdomTerrainPath).success) {
         setGlobal("BUGDOM_TERRAIN_FILE", bugdomTerrainPath);
       }
     }
@@ -69,7 +73,7 @@ export function applyPreviewGlobals(
 
   return () => {
     for (const [key, value] of previousValues.entries()) {
-      if (typeof value === "undefined") {
+      if (undefinedSchema.safeParse(value).success) {
         Result.fromThrowable(
           () => {
             Reflect.deleteProperty(win, key);

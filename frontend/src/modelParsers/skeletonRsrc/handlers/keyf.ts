@@ -1,27 +1,15 @@
 import { parseKeyFData } from "../parseHelpers";
 import type { KeyFRaw } from "../parseSkeletonRsrcTS";
+import { plainObjectSchema, keyFRawSchema, getStringField } from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for KeyFRaw
 function isKeyFRaw(value: unknown): value is KeyFRaw {
-  return (
-    isRecord(value) &&
-    typeof value.tick === "number" &&
-    typeof value.accelerationMode === "number" &&
-    typeof value.coordX === "number" &&
-    typeof value.coordY === "number" &&
-    typeof value.coordZ === "number" &&
-    typeof value.rotationX === "number" &&
-    typeof value.rotationY === "number" &&
-    typeof value.rotationZ === "number" &&
-    typeof value.scaleX === "number" &&
-    typeof value.scaleY === "number" &&
-    typeof value.scaleZ === "number"
-  );
+  return keyFRawSchema.safeParse(value).success;
 }
 
 export function handleKeyF(
@@ -58,10 +46,7 @@ export function handleKeyF(
   }
 
   // Fallback to hex parsing
-  const hex =
-    isRecord(resourceData) && typeof resourceData.data === "string"
-      ? resourceData.data
-      : "";
+  const hex = isRecord(resourceData) ? getStringField(resourceData, "data") : "";
   const obj = parseKeyFData(hex);
   return obj;
 }

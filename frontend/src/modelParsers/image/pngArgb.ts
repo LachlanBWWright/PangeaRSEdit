@@ -96,6 +96,21 @@ export function rgba8ToPng(
  * them before handing the data to the decoder.
  */
 /**
+ * Validates if a value has the buffer, byteOffset, and byteLength properties
+ */
+function isBufferLike(
+  data: unknown
+): data is { readonly buffer: ArrayBufferLike; readonly byteOffset: number; readonly byteLength: number } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "buffer" in data &&
+    "byteOffset" in data &&
+    "byteLength" in data
+  );
+}
+
+/**
  * Convert various buffer types to Uint8Array for processing
  */
 function getUint8ArrayFromBuffer(
@@ -111,10 +126,12 @@ function getUint8ArrayFromBuffer(
     return uint8Result.data;
   }
   
-  // Must be a Buffer or ArrayBufferView-like object
-  // Type assertion is safe here since we've narrowed the union through safeParse checks
-  const bufferLike = data as { readonly buffer: ArrayBufferLike; readonly byteOffset: number; readonly byteLength: number };
-  return new Uint8Array(bufferLike.buffer, bufferLike.byteOffset, bufferLike.byteLength);
+  // At this point, must be the third variant: { buffer, byteOffset, byteLength }
+  if (isBufferLike(data)) {
+    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  }
+  
+  return new Uint8Array();
 }
 
 function trimPngBuffer(

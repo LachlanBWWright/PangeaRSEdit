@@ -3,10 +3,11 @@
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { Result, ok, err } from "neverthrow";
+import { plainObjectSchema, getNumberField } from "@/schemas/common";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
@@ -773,25 +774,12 @@ function convertSkeletonResourceToBG3D(
     if (Array.isArray(arr)) {
       relPointsMap[rid] = arr.map((p: unknown) => {
         if (!isRecord(p)) return [0, 0, 0];
-        const obj = p;
         const relOffsetX =
-          typeof obj.relOffsetX === "number"
-            ? obj.relOffsetX
-            : typeof obj.x === "number"
-            ? obj.x
-            : 0;
+          getNumberField(p, "relOffsetX") || getNumberField(p, "x", 0);
         const relOffsetY =
-          typeof obj.relOffsetY === "number"
-            ? obj.relOffsetY
-            : typeof obj.y === "number"
-            ? obj.y
-            : 0;
+          getNumberField(p, "relOffsetY") || getNumberField(p, "y", 0);
         const relOffsetZ =
-          typeof obj.relOffsetZ === "number"
-            ? obj.relOffsetZ
-            : typeof obj.z === "number"
-            ? obj.z
-            : 0;
+          getNumberField(p, "relOffsetZ") || getNumberField(p, "z", 0);
         return [relOffsetX, relOffsetY, relOffsetZ];
       });
     } else {
@@ -1069,7 +1057,7 @@ function writeGroup(
 function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
   return (
     obj !== null &&
-    typeof obj === "object" &&
+    isRecord(obj) &&
     "children" in obj &&
     Array.isArray(obj.children)
   );
@@ -1078,7 +1066,7 @@ function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
 function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
   return (
     obj !== null &&
-    typeof obj === "object" &&
+    isRecord(obj) &&
     "layerMaterialNum" in obj
   );
 }

@@ -4,7 +4,22 @@ import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
-import { plainObjectSchema } from "@/schemas/common";
+import { plainObjectSchema, recordSchema } from "@/schemas/common";
+import { z } from "zod";
+
+// Zod schema for record with obj field containing an array or object
+const objRecordSchema = recordSchema.refine(
+  (value) => {
+    const entries = Object.entries(value);
+    return entries.length > 0 && entries.some(([, val]) => 
+      plainObjectSchema.safeParse(val).success && 
+      typeof val === "object" && 
+      val !== null &&
+      "obj" in val
+    );
+  },
+  { message: "Must contain at least one entry with an 'obj' field" }
+);
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -16,7 +31,7 @@ export function isObjRecord(
   value: unknown,
 ): value is Record<number, { obj: unknown }> {
   if (!isRecord(value)) return false;
-  return true; // We just need it to be a record
+  return objRecordSchema.safeParse(value).success;
 }
 
 /**
@@ -107,16 +122,14 @@ export function preprocessJson(
       if (item["x`y"] && Array.isArray(item["x`y"])) {
         const xyArray = item["x`y"];
         // Convert from [{x, y}, ...] to [[x, y], ...]
+        const coordSchema = z.object({ x: z.number(), y: z.number() });
         const nubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < xyArray.length && xyArray[i]) {
             const coord = xyArray[i];
-            if (
-              isRecord(coord) &&
-              typeof coord.x === "number" &&
-              typeof coord.y === "number"
-            ) {
-              nubs.push([coord.x, coord.y]);
+            const parsed = coordSchema.safeParse(coord);
+            if (parsed.success) {
+              nubs.push([parsed.data.x, parsed.data.y]);
             } else {
               nubs.push([0, 0]);
             }
@@ -136,25 +149,21 @@ export function preprocessJson(
         const existingNubs = item.nubs;
 
         // Validate each nub is a proper [number, number] tuple
+        const nubSchema = z.union([
+          z.tuple([z.number(), z.number()]),
+          z.object({ x: z.number(), y: z.number() })
+        ]);
         const validatedNubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < existingNubs.length && existingNubs[i]) {
             const nub = existingNubs[i];
-            // Handle both array tuple and object format
-            if (
-              Array.isArray(nub) &&
-              nub.length >= 2 &&
-              typeof nub[0] === "number" &&
-              typeof nub[1] === "number"
-            ) {
-              validatedNubs.push([nub[0], nub[1]]);
-            } else if (
-              isRecord(nub) &&
-              typeof nub.x === "number" &&
-              typeof nub.y === "number"
-            ) {
-              // Handle {x, y} object format
-              validatedNubs.push([nub.x, nub.y]);
+            const parsed = nubSchema.safeParse(nub);
+            if (parsed.success) {
+              if (Array.isArray(parsed.data)) {
+                validatedNubs.push(parsed.data);
+              } else {
+                validatedNubs.push([parsed.data.x, parsed.data.y]);
+              }
             } else {
               validatedNubs.push([0, 0]);
             }
@@ -170,17 +179,19 @@ export function preprocessJson(
       const nubs: [number, number][] = [];
       let hasAnyNubFields = false;
 
+      const numberSchema = z.number();
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
         const xKey = `x_${i}`;
         const yKey = `y_${i}`;
         const xVal = item[xKey];
         const yVal = item[yKey];
 
-        if (typeof xVal === "number" && typeof yVal === "number") {
+        const xParse = numberSchema.safeParse(xVal);
+        const yParse = numberSchema.safeParse(yVal);
+        if (xParse.success && yParse.success) {
           hasAnyNubFields = true;
-          nubs.push([xVal, yVal]);
+          nubs.push([xParse.data, yParse.data]);
         } else {
-          // Missing individual fields, use 0,0 as fallback
           nubs.push([0, 0]);
         }
       }

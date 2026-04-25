@@ -5,14 +5,14 @@
  */
 
 import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { z } from "zod";
+
+const numericTypeSchema = z.object({
+  type: z.number(),
+});
 
 function hasNumericType(value: unknown): value is { type: number } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    typeof value.type === "number"
-  );
+  return numericTypeSchema.safeParse(value).success;
 }
 
 function addItemTypeFromEntry(itemTypes: Set<number>, item: unknown): void {

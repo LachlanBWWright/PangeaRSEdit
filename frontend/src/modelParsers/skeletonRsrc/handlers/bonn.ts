@@ -1,14 +1,15 @@
 import { parseBonNData } from "../parseHelpers";
 import type { BonNRaw } from "../parseSkeletonRsrcTS";
+import { plainObjectSchema, bonNRawSchema } from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for BonNRaw
 function isBonNRaw(value: unknown): value is BonNRaw {
-  return isRecord(value) && typeof value.normal === "number";
+  return bonNRawSchema.safeParse(value).success;
 }
 
 export function handleBonN(
