@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from "react";
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
+import { errorSchema } from "@/schemas/common";
 
 const dataUrlCache = new Map<string, string>();
 const inflightLoads = new Map<string, Promise<string | null>>();
@@ -30,9 +31,10 @@ async function loadTgaDataUrlAsync(src: string): Promise<string | null> {
       return dataUrl;
     })
     .catch((error: unknown) => {
+      const parseResult = errorSchema.safeParse(error);
       console.warn(
         `Failed to load TGA thumbnail ${src}:`,
-        error instanceof Error ? error.message : String(error),
+        parseResult.success ? parseResult.data.message : String(error),
       );
       return null;
     });

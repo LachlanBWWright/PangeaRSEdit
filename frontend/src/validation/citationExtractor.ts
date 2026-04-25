@@ -13,6 +13,7 @@ import { nanosaur2ItemTypeParams } from "../data/items/nanosaur2ItemType";
 import { croMagItemTypeParams } from "../data/items/croMagItemType";
 import { mightyMikeItemParams } from "../data/items/mightyMikeItemParams";
 import type { Citation as ParamCitation, ParamDescription } from "../data/items/itemParams";
+import { recordSchema, paramDescriptionSchema } from "../schemas/common";
 
 export type CodeSample = ParamCitation;
 
@@ -28,47 +29,6 @@ export interface Citation {
 interface GameItemParamsEntry {
   params: unknown;
   sourceFile: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isCitation(value: unknown): value is ParamCitation {
-  return (
-    isRecord(value) &&
-    typeof value.label === "string" &&
-    typeof value.url === "string" &&
-    typeof value.fileName === "string" &&
-    typeof value.lineNumber === "number" &&
-    typeof value.code === "string"
-  );
-}
-
-function isParamDescription(value: unknown): value is ParamDescription {
-  if (value === "Unused" || value === "Unknown") {
-    return true;
-  }
-
-  if (!isRecord(value) || typeof value.type !== "string") {
-    return false;
-  }
-
-  if (value.type === "Integer" || value.type === "Rotation" || value.type === "TypeSelector") {
-    return isCitation(value.defaultCitation);
-  }
-
-  return (
-    value.type === "Bit Flags" &&
-    Array.isArray(value.flags) &&
-    value.flags.every(
-      (flag) =>
-        isRecord(flag) &&
-        typeof flag.index === "number" &&
-        typeof flag.description === "string" &&
-        isCitation(flag.defaultCitation),
-    )
-  );
 }
 
 const GAME_ITEM_PARAMS: Record<string, GameItemParamsEntry> = {
@@ -141,25 +101,28 @@ function extractParamCitations(param: ParamDescription): ParamCitation[] {
 
 export function extractCitations(game: string): Citation[] {
   const gameData = GAME_ITEM_PARAMS[game];
-  if (!gameData || !isRecord(gameData.params)) {
+  const paramsCheck = recordSchema.safeParse(gameData?.params);
+  if (!gameData || !paramsCheck.success) {
     return [];
   }
 
   const citations: Citation[] = [];
 
-  for (const [itemTypeKey, itemParams] of Object.entries(gameData.params)) {
+  for (const [itemTypeKey, itemParams] of Object.entries(paramsCheck.data)) {
     const itemTypeNumber = Number.parseInt(itemTypeKey, 10);
-    if (Number.isNaN(itemTypeNumber) || !isRecord(itemParams)) {
+    const itemParamsCheck = recordSchema.safeParse(itemParams);
+    if (Number.isNaN(itemTypeNumber) || !itemParamsCheck.success) {
       continue;
     }
 
     for (const parameterName of ["p0", "p1", "p2", "p3"] as const) {
-      const param = itemParams[parameterName];
-      if (!isParamDescription(param)) {
+      const param = itemParamsCheck.data[parameterName];
+      const paramCheck = paramDescriptionSchema.safeParse(param);
+      if (!paramCheck.success) {
         continue;
       }
 
-      for (const citation of extractParamCitations(param)) {
+      for (const citation of extractParamCitations(paramCheck.data)) {
         citations.push({
           game,
           itemType: itemTypeKey,
@@ -177,32 +140,35 @@ export function extractCitations(game: string): Citation[] {
 
 export function getMissingCitations(game: string): MissingCitationEntry[] {
   const gameData = GAME_ITEM_PARAMS[game];
-  if (!gameData || !isRecord(gameData.params)) {
+  const paramsCheck = recordSchema.safeParse(gameData?.params);
+  if (!gameData || !paramsCheck.success) {
     return [];
   }
 
   const missing: MissingCitationEntry[] = [];
 
-  for (const [itemTypeKey, itemParams] of Object.entries(gameData.params)) {
+  for (const [itemTypeKey, itemParams] of Object.entries(paramsCheck.data)) {
     const itemTypeNumber = Number.parseInt(itemTypeKey, 10);
-    if (Number.isNaN(itemTypeNumber) || !isRecord(itemParams)) {
+    const itemParamsCheck = recordSchema.safeParse(itemParams);
+    if (Number.isNaN(itemTypeNumber) || !itemParamsCheck.success) {
       continue;
     }
 
     for (const parameterName of ["p0", "p1", "p2", "p3"] as const) {
-      const param = itemParams[parameterName];
-      if (!isParamDescription(param) || param === "Unused" || param === "Unknown") {
+      const param = itemParamsCheck.data[parameterName];
+      const paramCheck = paramDescriptionSchema.safeParse(param);
+      if (!paramCheck.success || paramCheck.data === "Unused" || paramCheck.data === "Unknown") {
         continue;
       }
 
-      const citations = extractParamCitations(param);
+      const citations = extractParamCitations(paramCheck.data);
       if (citations.length === 0) {
         missing.push({
           game,
           itemType: itemTypeNumber,
           parameterName,
           reason:
-            param.type === "Bit Flags"
+            paramCheck.data.type === "Bit Flags"
               ? "missing_flag_citation"
               : "missing_default_citation",
         });

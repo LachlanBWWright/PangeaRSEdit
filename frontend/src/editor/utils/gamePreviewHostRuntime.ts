@@ -9,6 +9,7 @@ import {
   PreviewRuntimeLoadError,
   type PreviewRuntimeModule,
 } from "./gamePreviewRuntime";
+import { errorSchema } from "../../schemas/common";
 
 interface StartGamePreviewOptions {
   readonly canvas: HTMLCanvasElement;
@@ -152,7 +153,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
         const stopOrErr = await ResultAsync.fromPromise(
           loadPreviewRuntime(activeModule, scriptUrl),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
         );
         if (cancelled) {
           if (stopOrErr.isOk()) stopOrErr.value();

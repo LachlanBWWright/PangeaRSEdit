@@ -10,6 +10,7 @@ import {
   ensurePreviewPrefsDirs,
   writeTerrainToVfs,
 } from "./gamePreviewRuntimeVfs";
+import { errorSchema } from "../../schemas/common";
 
 export interface PreviewModuleOptions {
   readonly config: GamePortConfig;
@@ -143,7 +144,7 @@ export function createPreviewModule(
                 skipToLevel.argTypes,
                 skipToLevel.args,
               ),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
+            (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
           )();
         }
       }
@@ -156,12 +157,15 @@ export function createPreviewModule(
       },
     ],
     onAbort: (reason: unknown) => {
-      const message =
-        typeof reason === "string"
-          ? reason
-          : reason instanceof Error
-            ? reason.message
-            : "Game runtime aborted.";
+      let message: string;
+      if (typeof reason === "string") {
+        message = reason;
+      } else {
+        const parseResult = errorSchema.safeParse(reason);
+        message = parseResult.success
+          ? parseResult.data.message
+          : "Game runtime aborted.";
+      }
       onError(message);
     },
   };
@@ -232,7 +236,7 @@ export async function loadPreviewRuntime(
       window.setTimeout = patchedWindowSetTimeout;
       window.clearTimeout = patchedWindowClearTimeout;
     },
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   )();
 
   const trackedAudioContexts = new Set<AudioContext>();
@@ -247,12 +251,12 @@ export async function loadPreviewRuntime(
     () => {
       window.AudioContext = TrackedAudioContext;
     },
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   )();
 
   const response = await ResultAsync.fromPromise(
     fetch(scriptUrl, { credentials: "same-origin" }),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   );
 
   function restoreWindowGlobals(): void {
@@ -264,7 +268,7 @@ export async function loadPreviewRuntime(
         window.clearTimeout = prevWindowCt;
         window.AudioContext = savedAudioContext;
       },
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
   }
 
@@ -281,7 +285,7 @@ export async function loadPreviewRuntime(
 
   const sourceResult = await ResultAsync.fromPromise(
     response.value.text(),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   );
   if (sourceResult.isErr()) {
     restoreWindowGlobals();
@@ -326,7 +330,7 @@ export async function loadPreviewRuntime(
           ct,
         ]);
     },
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   )();
 
   if (runner.isErr()) {
@@ -344,7 +348,7 @@ export async function loadPreviewRuntime(
         gameSetTimeout,
         gameClearTimeout,
       ),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   )();
   if (runResult.isErr()) {
     restoreWindowGlobals();
@@ -363,7 +367,7 @@ export async function loadPreviewRuntime(
     for (const ctx of trackedAudioContexts) {
       if (ctx.state !== "closed") {
         void ResultAsync.fromPromise(ctx.close(), (e) =>
-          e instanceof Error ? e : new Error(String(e)),
+          errorSchema.safeParse(e).data ?? new Error(String(e)),
         );
       }
     }

@@ -14,6 +14,8 @@
  * and converts undefined obj arrays in resource entries to empty arrays
  */
 
+import { plainObjectSchema } from "@/schemas/common";
+
 /**
  * Recursively fix null and undefined values in an object, converting them to 0 or []
  * 
@@ -38,16 +40,15 @@ export function fixNullToZero(obj: unknown): unknown {
     return obj;
   }
 
-  function isRecord(x: unknown): x is Record<string, unknown> {
-    return typeof x === 'object' && x !== null && !Array.isArray(x);
-  }
-
-  if (isRecord(obj)) {
+  const parseResult = plainObjectSchema.safeParse(obj);
+  if (parseResult.success) {
+    // Object.entries() ensures we iterate safely over properties
+    // We use index-based access to avoid TypeScript type assertions
     for (const [key, value] of Object.entries(obj)) {
       if (value === null || value === undefined) {
         // Special case: resource entry 'obj' field should be an empty array if undefined
         if (key === 'obj') {
-          obj[key] = [];
+          Reflect.set(obj, key, []);
           continue;
         }
 
@@ -77,7 +78,7 @@ export function fixNullToZero(obj: unknown): unknown {
         );
 
         if (isLikelyNumeric) {
-          obj[key] = 0;
+          Reflect.set(obj, key, 0);
         }
       } else if (typeof value === 'object') {
         fixNullToZero(value);

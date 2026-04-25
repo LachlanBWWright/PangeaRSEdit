@@ -9,10 +9,11 @@ import {
 } from "../../python/structSpecs/LevelTypes";
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
+import { plainObjectSchema } from "../../schemas/common";
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for LevelData - checks for required keys
@@ -331,7 +332,7 @@ export function sanitizeResourceForkJson(
       const hasObj =
         (Array.isArray(obj) && obj.length > 0) ||
         (isRecord(obj) && !Array.isArray(obj));
-      const hasData = typeof dataField === "string" && dataField.length > 0;
+      const hasData = typeof dataField === "string" && dataField.trim().length > 0;
       if (!hasObj && !hasData) {
         continue;
       }

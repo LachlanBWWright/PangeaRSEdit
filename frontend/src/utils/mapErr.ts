@@ -1,2 +1,4 @@
+import { errorSchema } from "../schemas/common";
+
 export const mapErr = (e: unknown): Error =>
-  e instanceof Error ? e : new Error(String(e));
+  errorSchema.safeParse(e).data ?? new Error(String(e));

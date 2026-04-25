@@ -34,6 +34,12 @@ import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 import { Quaternion } from "three";
 import { Matrix4 } from "./matrix4Utils";
 import { processBG3DMaterials } from "./materialConversion";
+import {
+  arrayBufferSchema,
+  uint8ArraySchema,
+  float32ArraySchema,
+  uint16ArraySchema,
+} from "@/schemas/common";
 
 /**
  * Type guard helper functions for safe extraction from unknown values
@@ -60,12 +66,18 @@ export function getJointParentBoneIndex<T extends ParentLinkedNode<T>>(
 }
 
 function toExactArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
-  if (data instanceof ArrayBuffer) {
-    return data.slice(0);
+  const arrayBufferResult = arrayBufferSchema.safeParse(data);
+  if (arrayBufferResult.success) {
+    return arrayBufferResult.data.slice(0);
   }
-  const copy = new ArrayBuffer(data.byteLength);
+  const uint8Result = uint8ArraySchema.safeParse(data);
+  if (!uint8Result.success) {
+    return new ArrayBuffer(0); // Should never reach with valid input
+  }
+  const uint8Data = uint8Result.data;
+  const copy = new ArrayBuffer(uint8Data.byteLength);
   new Uint8Array(copy).set(
-    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+    new Uint8Array(uint8Data.buffer, uint8Data.byteOffset, uint8Data.byteLength),
   );
   return copy;
 }
@@ -551,35 +563,37 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
     if (baseColorTex) {
       const image = baseColorTex.getImage();
 
-      if (image instanceof Uint8Array) {
+      const uint8ArrayResult = uint8ArraySchema.safeParse(image);
+      if (uint8ArrayResult.success && image !== null) {
+        const imageData = uint8ArrayResult.data;
         // Check for JPEG signature (0xFF 0xD8)
         const isJPEG =
-          image.length >= 2 && image[0] === 0xff && image[1] === 0xd8;
+          imageData.length >= 2 && imageData[0] === 0xff && imageData[1] === 0xd8;
 
         // Check for PNG signature
         const isPNG =
-          image.length >= 8 &&
-          image[0] === 0x89 &&
-          image[1] === 0x50 &&
-          image[2] === 0x4e &&
-          image[3] === 0x47 &&
-          image[4] === 0x0d &&
-          image[5] === 0x0a &&
-          image[6] === 0x1a &&
-          image[7] === 0x0a;
+          imageData.length >= 8 &&
+          imageData[0] === 0x89 &&
+          imageData[1] === 0x50 &&
+          imageData[2] === 0x4e &&
+          imageData[3] === 0x47 &&
+          imageData[4] === 0x0d &&
+          imageData[5] === 0x0a &&
+          imageData[6] === 0x1a &&
+          imageData[7] === 0x0a;
 
         if (isJPEG) {
           textures.push({
-            pixels: image,
+            pixels: imageData,
             width: 128,
             height: 128,
             srcPixelFormat: -1,
             dstPixelFormat: -1,
-            bufferSize: image.byteLength,
+            bufferSize: imageData.byteLength,
             isJpeg: true,
           });
         } else if (isPNG) {
-          const imageBuffer = toExactArrayBuffer(image);
+          const imageBuffer = toExactArrayBuffer(imageData);
           const rgbaRes = pngToRgba8(imageBuffer);
 
           // Infer srcPixelFormat from actual pixel data
@@ -655,13 +669,16 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
       // GLTFExporter round-trip, but inverse bind matrices always encode the bind pose.
       const ibmAccessor = skin.getInverseBindMatrices();
       const ibmArray = ibmAccessor?.getArray();
+      const float32ArrayResult = float32ArraySchema.safeParse(ibmArray);
       const hasIBM =
-        ibmArray instanceof Float32Array &&
+        float32ArrayResult.success &&
+        ibmArray !== null &&
+        ibmArray !== undefined &&
         ibmArray.length >= joints.length * 16;
 
       // Pre-compute bind-pose world transforms from inverse bind matrices
       const bindPoseWorldTransforms: Matrix4[] = [];
-      if (hasIBM) {
+      if (hasIBM && ibmArray !== null && ibmArray !== undefined) {
         for (let i = 0; i < joints.length; i++) {
           const offset = i * 16;
           const ibm = new Matrix4();
@@ -826,11 +843,12 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             const posAcc = prim.getAttribute("POSITION");
             if (posAcc) {
               const posArrayRaw = posAcc.getArray();
-              if (!(posArrayRaw instanceof Float32Array)) {
+              const float32ArrayResult = float32ArraySchema.safeParse(posArrayRaw);
+              if (!float32ArrayResult.success) {
                 console.warn("Position array is not Float32Array");
                 return;
               }
-              const posArray = posArrayRaw;
+              const posArray = float32ArrayResult.data;
               const numVertices = posAcc.getCount();
 
               for (let vi = 0; vi < numVertices; vi++) {
@@ -900,15 +918,17 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             if (jointsAcc && weightsAcc && posAcc) {
               const jointsArrayRaw = jointsAcc.getArray();
               const weightsArrayRaw = weightsAcc.getArray();
+              const uint16ArrayResult = uint16ArraySchema.safeParse(jointsArrayRaw);
+              const float32ArrayResult = float32ArraySchema.safeParse(weightsArrayRaw);
               if (
-                !(jointsArrayRaw instanceof Uint16Array) ||
-                !(weightsArrayRaw instanceof Float32Array)
+                !uint16ArrayResult.success ||
+                !float32ArrayResult.success
               ) {
                 console.warn("Joints or weights array type mismatch");
                 return;
               }
-              const jointsArray = jointsArrayRaw;
-              const weightsArray = weightsArrayRaw;
+              const jointsArray = uint16ArrayResult.data;
+              const weightsArray = float32ArrayResult.data;
               const numVertices = posAcc.getCount();
 
               for (let vi = 0; vi < numVertices; vi++) {

@@ -42,6 +42,7 @@ import {
   decompressRLB,
   shapeFrameToCanvas,
 } from "./mightyMikeShapesParserHelpers";
+import { errorSchema } from "../schemas/common";
 
 export interface RGBColor {
   r: number;
@@ -153,10 +154,10 @@ export function parseShapesFile(
   // Parse shapes
   const shapesResult = parseShapeList(shapeView, shapeBytes, offsetToShapeList);
   if (!shapesResult.success) {
-    const errorMsg =
-      shapesResult.error instanceof Error
-        ? shapesResult.error.message
-        : String(shapesResult.error || "Unknown error");
+    const parseResult = errorSchema.safeParse(shapesResult.error);
+    const errorMsg = parseResult.success
+      ? parseResult.data.message
+      : String(shapesResult.error || "Unknown error");
     return err(new Error(errorMsg));
   }
 

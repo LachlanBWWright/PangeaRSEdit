@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Vector3 } from "three";
 import type { Event } from "three";
 import { Export3DScene } from "@/data/canvasView/canvasViewAtoms";
+import { arrayBufferSchema } from "@/schemas/common";
 
 export interface ThreeEventWithPoint extends Event<string, unknown> {
   point: Vector3;
@@ -46,17 +47,20 @@ export function SceneExporter() {
           exportToastId.current = undefined;
         }
 
-        if (result instanceof ArrayBuffer) {
-          const blob = new Blob([result], { type: "model/gltf-binary" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "map.glb";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-          toast.success("3D map exported (map.glb)");
+        if (arrayBufferSchema.safeParse(result).success) {
+          const parseResult = arrayBufferSchema.safeParse(result);
+          if (parseResult.success) {
+            const blob = new Blob([parseResult.data], { type: "model/gltf-binary" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "map.glb";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast.success("3D map exported (map.glb)");
+          }
         } else {
           const output = JSON.stringify(result, null, 2);
           const blob = new Blob([output], { type: "application/json" });

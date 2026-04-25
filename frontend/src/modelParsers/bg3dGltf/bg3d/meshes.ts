@@ -17,6 +17,7 @@ import {
   Buffer,
   Document,
 } from "@gltf-transform/core";
+import { float32ArraySchema, uint8ArraySchema, uint32ArraySchema, uint16ArraySchema } from "../../../schemas/common";
 
 /**
  * Convert BG3D geometries to glTF meshes
@@ -203,7 +204,7 @@ export function gltfMeshesToBg3d(
     let vertices: [number, number, number][] | undefined = undefined;
     if (posAcc) {
       const rawArr = posAcc.getArray();
-      if (rawArr instanceof Float32Array) {
+      if (rawArr && float32ArraySchema.safeParse(rawArr).success) {
         const arr = Array.from(rawArr);
         vertices = [];
         for (let i = 0; i < arr.length; i += 3) {
@@ -216,7 +217,7 @@ export function gltfMeshesToBg3d(
     let normals: [number, number, number][] | undefined = undefined;
     if (normAcc) {
       const rawArr = normAcc.getArray();
-      if (rawArr instanceof Float32Array) {
+      if (rawArr && float32ArraySchema.safeParse(rawArr).success) {
         const arr = Array.from(rawArr);
         normals = [];
         for (let i = 0; i < arr.length; i += 3) {
@@ -229,7 +230,7 @@ export function gltfMeshesToBg3d(
     let uvs: [number, number][] | undefined = undefined;
     if (uvAcc) {
       const rawArr = uvAcc.getArray();
-      if (rawArr instanceof Float32Array) {
+      if (rawArr && float32ArraySchema.safeParse(rawArr).success) {
         const arr = Array.from(rawArr);
         uvs = [];
         for (let i = 0; i < arr.length; i += 2) {
@@ -242,7 +243,7 @@ export function gltfMeshesToBg3d(
     let colors: [number, number, number, number][] | undefined = undefined;
     if (colorAcc) {
       const rawArr = colorAcc.getArray();
-      if (rawArr instanceof Uint8Array) {
+      if (rawArr && uint8ArraySchema.safeParse(rawArr).success) {
         const arr = Array.from(rawArr);
         colors = [];
         for (let i = 0; i < arr.length; i += 4) {
@@ -260,7 +261,7 @@ export function gltfMeshesToBg3d(
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
       const rawArr = idxAcc.getArray();
-      if (rawArr instanceof Uint32Array || rawArr instanceof Uint16Array) {
+      if (rawArr && (uint32ArraySchema.safeParse(rawArr).success || uint16ArraySchema.safeParse(rawArr).success)) {
         const arr = Array.from(rawArr);
         triangles = [];
         for (let i = 0; i < arr.length; i += 3) {

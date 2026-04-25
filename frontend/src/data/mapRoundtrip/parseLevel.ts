@@ -14,10 +14,11 @@ import { fixNullToZero } from "../processors/nullToZeroFixer";
 import { DataType, GlobalsInterface } from "../globals/globals";
 import { err, ok, Result } from "neverthrow";
 import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import { errorSchema, plainObjectSchema } from "../../schemas/common";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 interface DiffEntry {
@@ -101,7 +102,7 @@ export async function parseLevelBuffer(
 
   const parsedResult = Result.fromThrowable(
     (json: string) => JSON.parse(json) as unknown,
-    (error) => (error instanceof Error ? error : new Error(String(error))),
+    (error) => errorSchema.safeParse(error).data ?? new Error(String(error)),
   )(parsedJsonResult.value);
   if (parsedResult.isErr()) {
     return err(parsedResult.error);
@@ -137,7 +138,7 @@ export function parseNanosaur1Buffer(
 ): Result<LevelData, Error> {
   const parseRawLevel = Result.fromThrowable(
     () => parseNanosaur1Level(buffer),
-    (error) => (error instanceof Error ? error : new Error(String(error))),
+    (error) => errorSchema.safeParse(error).data ?? new Error(String(error)),
   );
   const rawLevelResult = parseRawLevel();
 

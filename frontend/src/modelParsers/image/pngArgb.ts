@@ -1,5 +1,6 @@
 import { PNG } from "pngjs/browser";
 import { Buffer } from "buffer";
+import { arrayBufferSchema, uint8ArraySchema } from "../../schemas/common";
 
 // Decode PNG Buffer to RGB8 Uint8Array (strips alpha)
 export function pngToRgb8(pngBuffer: ArrayBuffer): {
@@ -94,11 +95,33 @@ export function rgba8ToPng(
  * buffers that contain trailing bytes after the IEND chunk, so we strip
  * them before handing the data to the decoder.
  */
+/**
+ * Convert various buffer types to Uint8Array for processing
+ */
+function getUint8ArrayFromBuffer(
+  data: ArrayBuffer | Uint8Array | { readonly buffer: ArrayBufferLike; readonly byteOffset: number; readonly byteLength: number }
+): Uint8Array {
+  const arrayBufferResult = arrayBufferSchema.safeParse(data);
+  if (arrayBufferResult.success) {
+    return new Uint8Array(arrayBufferResult.data);
+  }
+  
+  const uint8Result = uint8ArraySchema.safeParse(data);
+  if (uint8Result.success) {
+    return uint8Result.data;
+  }
+  
+  // Must be a Buffer or ArrayBufferView-like object
+  // Type assertion is safe here since we've narrowed the union through safeParse checks
+  const bufferLike = data as { readonly buffer: ArrayBufferLike; readonly byteOffset: number; readonly byteLength: number };
+  return new Uint8Array(bufferLike.buffer, bufferLike.byteOffset, bufferLike.byteLength);
+}
+
 function trimPngBuffer(
   buf: Buffer<ArrayBufferLike> | ArrayBuffer,
 ): ArrayBuffer {
-  const bytes =
-    buf instanceof ArrayBuffer ? new Uint8Array(buf) : new Uint8Array(buf);
+  const bytes = getUint8ArrayFromBuffer(buf);
+  const parseResult = arrayBufferSchema.safeParse(buf);
 
   // PNG chunk layout: [4-byte length][4-byte type][length-byte data][4-byte CRC]
   // Walk chunks starting after the 8-byte PNG signature.
@@ -131,8 +154,8 @@ function trimPngBuffer(
     return trimmed;
   }
   // No trimming needed – return a clean ArrayBuffer copy
-  if (buf instanceof ArrayBuffer) {
-    return buf;
+  if (parseResult.success) {
+    return parseResult.data;
   }
   const copy = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(copy).set(bytes);

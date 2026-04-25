@@ -5,6 +5,7 @@ import {
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
+import { errorSchema } from "../../schemas/common";
 
 export function applyPreviewGlobals(
   win: Window,
@@ -17,14 +18,14 @@ export function applyPreviewGlobals(
   const setGlobal = (key: string, value: unknown) => {
     const previous = Result.fromThrowable(
       () => Reflect.get(win, key),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
     previousValues.set(key, previous.isOk() ? previous.value : undefined);
     Result.fromThrowable(
       () => {
         Reflect.set(win, key, value);
       },
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
   };
 
@@ -73,14 +74,14 @@ export function applyPreviewGlobals(
           () => {
             Reflect.deleteProperty(win, key);
           },
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
         )();
       } else {
         Result.fromThrowable(
           () => {
             Reflect.set(win, key, value);
           },
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
         )();
       }
     }

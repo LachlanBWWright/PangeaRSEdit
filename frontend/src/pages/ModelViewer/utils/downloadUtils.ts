@@ -15,25 +15,28 @@ import { DEFAULT_BG3D_EXPORT_TARGET, type BG3DExportTarget } from "../../../mode
 import { getGlbToBg3dWorkerResponse } from "./bg3dGltfWorkerResponses";
 import type { Texture } from "../types";
 import { ResultAsync, err, ok, type Result } from "neverthrow";
+import { arrayBufferSchema, stringSchema, uint8ArraySchema } from "../../../schemas/common";
 
 
 async function loadGlbBytes(
   gltfSource: string | ArrayBuffer,
 ): Promise<Result<ArrayBuffer, Error>> {
-  if (gltfSource instanceof ArrayBuffer) {
-    return ok(gltfSource);
+  const arrayBufferResult = arrayBufferSchema.safeParse(gltfSource);
+  if (arrayBufferResult.success) {
+    return ok(arrayBufferResult.data);
+  }
+
+  const stringResult = stringSchema.safeParse(gltfSource);
+  if (!stringResult.success) {
+    return err(new Error("Invalid gltfSource type: expected string or ArrayBuffer"));
   }
 
   const responseResult = await ResultAsync.fromPromise(
-    fetch(gltfSource),
+    fetch(stringResult.data),
     mapErr,
   );
   if (responseResult.isErr()) {
-    return err(
-      responseResult.error instanceof Error
-        ? responseResult.error
-        : new Error(String(responseResult.error)),
-    );
+    return err(responseResult.error);
   }
 
   if (!responseResult.value.ok) {
@@ -45,11 +48,7 @@ async function loadGlbBytes(
     mapErr,
   );
   if (bytesResult.isErr()) {
-    return err(
-      bytesResult.error instanceof Error
-        ? bytesResult.error
-        : new Error(String(bytesResult.error)),
-    );
+    return err(bytesResult.error);
   }
 
   return ok(bytesResult.value);
@@ -83,11 +82,7 @@ async function glbUrlToBg3dResponse(
     mapErr,
   );
   if (workerResult.isErr()) {
-    return err(
-      workerResult.error instanceof Error
-        ? workerResult.error
-        : new Error(String(workerResult.error)),
-    );
+    return err(workerResult.error);
   }
 
   return ok(workerResult.value);
@@ -104,11 +99,17 @@ export interface ThreeDMFDownloadArtifacts {
 }
 
 function toBlobPart(data: ArrayBuffer | Uint8Array): ArrayBuffer {
-  if (data instanceof ArrayBuffer) {
-    return data;
+  const parseResult = arrayBufferSchema.safeParse(data);
+  if (parseResult.success) {
+    return parseResult.data;
   }
-  const copy = new ArrayBuffer(data.byteLength);
-  new Uint8Array(copy).set(data);
+  const uint8Result = uint8ArraySchema.safeParse(data);
+  if (!uint8Result.success) {
+    return new ArrayBuffer(0); // Should never reach with valid input
+  }
+  const uint8Data = uint8Result.data;
+  const copy = new ArrayBuffer(uint8Data.byteLength);
+  new Uint8Array(copy).set(uint8Data);
   return copy;
 }
 

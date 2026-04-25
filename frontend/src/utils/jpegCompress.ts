@@ -1,5 +1,6 @@
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
+import { arrayBufferSchema } from "../schemas/common";
 
 /**
  * Compress an HTMLCanvasElement or ImageData to JPEG (browser only)
@@ -35,8 +36,9 @@ export async function jpegCompress(
         const reader = new FileReader();
         reader.onload = () => {
           const res = reader.result;
-          if (res instanceof ArrayBuffer) {
-            resolve(ok(res));
+          const parseResult = arrayBufferSchema.safeParse(res);
+          if (parseResult.success) {
+            resolve(ok(parseResult.data));
           } else {
             resolve(err(new Error("Unexpected JPEG reader result type")));
           }

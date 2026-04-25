@@ -23,6 +23,7 @@ import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import { toast } from "sonner";
+import { errorSchema } from "@/schemas/common";
 import {
   AtomicLevelData,
   splitLevelData,
@@ -708,11 +709,11 @@ export function IntroPrompt() {
       })
       .catch((error: unknown) => {
         console.error("[GamePreview] Preview serialization failed", error);
+        const parseResult = errorSchema.safeParse(error);
         toast.error("Preview failed", {
-          description:
-            error instanceof Error
-              ? error.message
-              : "Could not serialize the selected level for preview.",
+          description: parseResult.success
+            ? parseResult.data.message
+            : "Could not serialize the selected level for preview.",
         });
         setTerrainDataBytes(null);
         setTerrainRsrcBytes(null);

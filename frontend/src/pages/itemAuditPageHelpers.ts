@@ -10,8 +10,8 @@ import { mapErr } from "@/utils/mapErr";
 import {
   buildItemAuditEntries,
   type ItemAuditDecision,
-  type ParamStatus,
 } from "./itemAuditUtils";
+import { importedDecisionSchema } from "@/schemas/common";
 
 export const PARAM_KEYS: ("p0" | "p1" | "p2" | "p3")[] = [
   "p0",
@@ -60,48 +60,11 @@ export function parseImportedDecisions(
 ): Record<number, ItemAuditDecision> {
   const nextDecisions: Record<number, ItemAuditDecision> = {};
   for (const entry of entriesValue) {
-    if (typeof entry !== "object" || entry === null) continue;
-    const itemType = Reflect.get(entry, "itemType");
-    const decision = Reflect.get(entry, "decision");
-    if (
-      typeof itemType !== "number" ||
-      typeof decision !== "object" ||
-      decision === null
-    ) {
+    const result = importedDecisionSchema.safeParse(entry);
+    if (!result.success) {
       continue;
     }
-
-    const modelStatus = Reflect.get(decision, "modelStatus");
-    const paramStatus = Reflect.get(decision, "paramStatus");
-    const notes = Reflect.get(decision, "notes");
-
-    if (
-      (modelStatus === "correct" ||
-        modelStatus === "incorrect" ||
-        modelStatus === "unknown") &&
-      typeof paramStatus === "object" &&
-      paramStatus !== null
-    ) {
-      const p0 = Reflect.get(paramStatus, "p0");
-      const p1 = Reflect.get(paramStatus, "p1");
-      const p2 = Reflect.get(paramStatus, "p2");
-      const p3 = Reflect.get(paramStatus, "p3");
-      if (
-        (p0 === "correct" || p0 === "incorrect" || p0 === "unknown") &&
-        (p1 === "correct" || p1 === "incorrect" || p1 === "unknown") &&
-        (p2 === "correct" || p2 === "incorrect" || p2 === "unknown") &&
-        (p3 === "correct" || p3 === "incorrect" || p3 === "unknown")
-      ) {
-        nextDecisions[itemType] = {
-          modelStatus,
-          paramStatus: { p0, p1, p2, p3 } as Record<
-            "p0" | "p1" | "p2" | "p3",
-            ParamStatus
-          >,
-          notes: typeof notes === "string" ? notes : "",
-        };
-      }
-    }
+    nextDecisions[result.data.itemType] = result.data.decision;
   }
   return nextDecisions;
 }

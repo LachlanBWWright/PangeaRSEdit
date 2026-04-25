@@ -2,6 +2,7 @@ import { mapErr } from "@/utils/mapErr";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { ResultAsync } from "neverthrow";
 import { Group } from "three";
+import { errorSchema } from "@/schemas/common";
 import {
   GLTFLoader,
   type GLTF,
@@ -94,8 +95,10 @@ export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
         undefined,
         (error: unknown) => {
           clearTimeout(timeoutId);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
+          const parseResult = errorSchema.safeParse(error);
+          const errorMessage = parseResult.success
+            ? parseResult.data.message
+            : String(error);
           reject(new Error(`GLTFLoader error: ${errorMessage}`));
         },
       );

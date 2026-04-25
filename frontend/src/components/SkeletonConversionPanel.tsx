@@ -13,6 +13,7 @@ import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonIn
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
+import { errorSchema } from "@/schemas/common";
 import { UploadStepContent } from "./SkeletonConversionPanel/UploadStepContent";
 import {
   getExpectedExtLabel,
@@ -281,7 +282,10 @@ export function SkeletonConversionPanel({
       }
     })()
       .catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
+        const parseResult = errorSchema.safeParse(error);
+        const message = parseResult.success
+          ? parseResult.data.message
+          : String(error);
         pushLog(`Unexpected conversion error: ${message}`);
         toast.dismiss(toastId);
         toast.error(`${title} conversion failed: ${message}`);

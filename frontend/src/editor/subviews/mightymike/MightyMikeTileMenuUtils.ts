@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import type { ChangeEvent } from "react";
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
+import { errorSchema } from "@/schemas/common";
 
 export const TILE_SIZE = 32;
 
@@ -127,8 +128,9 @@ async function loadStrictTileBitmap(
   errorPrefix: string,
 ): Promise<ImageBitmap | null> {
   const sourceBitmap = await createImageBitmap(file).catch((error: unknown) => {
+    const parseResult = errorSchema.safeParse(error);
     toast.error(
-      `${errorPrefix}: ${error instanceof Error ? error.message : String(error)}`,
+      `${errorPrefix}: ${parseResult.success ? parseResult.data.message : String(error)}`,
     );
     return null;
   });
@@ -144,8 +146,9 @@ async function loadStrictTileBitmap(
     resizeHeight: TILE_SIZE,
     resizeQuality: "high",
   }).catch((error: unknown) => {
+    const parseResult = errorSchema.safeParse(error);
     toast.error(
-      `${errorPrefix}: ${error instanceof Error ? error.message : String(error)}`,
+      `${errorPrefix}: ${parseResult.success ? parseResult.data.message : String(error)}`,
     );
     return null;
   });

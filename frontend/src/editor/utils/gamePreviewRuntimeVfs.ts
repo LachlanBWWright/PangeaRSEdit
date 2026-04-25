@@ -6,6 +6,7 @@ import {
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
+import { errorSchema } from "../../schemas/common";
 
 function ensureDir(
   vfs: NonNullable<PreviewRuntimeModule["FS"]>,
@@ -15,7 +16,7 @@ function ensureDir(
     const analyzePath = vfs.analyzePath;
     const analyzeResult = Result.fromThrowable(
       () => analyzePath(path),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
     if (analyzeResult.isOk() && analyzeResult.value.exists) return;
   }
@@ -23,7 +24,7 @@ function ensureDir(
     () => {
       vfs.mkdir?.(path);
     },
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   )();
 }
 
@@ -46,7 +47,7 @@ function ensurePreviewPrefsDirs(
           true,
         );
       },
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
     if (createResult.isOk()) return;
   }
@@ -80,7 +81,7 @@ function writeFileToVfs(
       () => {
         vfs.writeFile(path, data);
       },
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
   }
   if (typeof module.FS_createDataFile !== "function") {
@@ -93,7 +94,7 @@ function writeFileToVfs(
     const unlink = module.FS_unlink;
     Result.fromThrowable(
       () => unlink(path),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
   }
   const createDataFile = module.FS_createDataFile;
@@ -102,7 +103,7 @@ function writeFileToVfs(
   }
   return Result.fromThrowable(
     () => createDataFile(parentDir, filename, data, true, true, false),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
   )();
 }
 
@@ -279,7 +280,7 @@ function writeTerrainToVfs(
     });
     Result.fromThrowable(
       () => module.ccall?.(setPathFn, null, ["string"], [setPathArg]),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      (e) => errorSchema.safeParse(e).data ?? new Error(String(e)),
     )();
   }
 }

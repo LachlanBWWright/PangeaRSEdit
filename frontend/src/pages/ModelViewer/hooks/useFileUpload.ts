@@ -17,6 +17,7 @@ import { extractTexturesFromBG3D } from "../utils/textureUtils";
 import type { SkeletonResource } from "@/python/structSpecs/skeleton/skeletonInterface";
 import type { Texture } from "../types";
 import { err, ok, type Result } from "neverthrow";
+import { errorSchema } from "@/schemas/common";
 import {
   createDisplayFileName,
   loadOptionalSkeleton,
@@ -90,8 +91,8 @@ function failUpload(
 }
 
 function getWorkerErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
+  const parseResult = errorSchema.safeParse(error);
+  return parseResult.success ? parseResult.data.message : String(error);
 }
 
 function createGlbToBg3dMessage(buffer: ArrayBuffer): BG3DGltfWorkerMessage {

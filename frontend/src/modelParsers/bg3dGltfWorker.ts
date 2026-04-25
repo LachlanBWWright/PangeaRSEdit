@@ -5,14 +5,21 @@ import { parse3DMF } from "./parse3dmf";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import type { Result } from "neverthrow";
+import { arrayBufferSchema } from "../schemas/common";
 
 function toExactArrayBuffer(data: ArrayBuffer | Uint8Array): ArrayBuffer {
-  if (data instanceof ArrayBuffer) {
-    return data;
+  const parseResult = arrayBufferSchema.safeParse(data);
+  if (parseResult.success) {
+    return parseResult.data;
   }
-  const copy = new ArrayBuffer(data.byteLength);
+  // At this point, data must be Uint8Array (the other type in the union)
+  // We need to handle it as such without casting
+  const buffer = data instanceof ArrayBuffer ? data : data.buffer;
+  const byteOffset = data instanceof ArrayBuffer ? 0 : data.byteOffset;
+  const byteLength = data instanceof ArrayBuffer ? data.byteLength : data.byteLength;
+  const copy = new ArrayBuffer(byteLength);
   new Uint8Array(copy).set(
-    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+    new Uint8Array(buffer, byteOffset, byteLength),
   );
   return copy;
 }

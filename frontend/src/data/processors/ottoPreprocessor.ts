@@ -4,10 +4,11 @@ import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
+import { plainObjectSchema } from "@/schemas/common";
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for obj records

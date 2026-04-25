@@ -19,17 +19,22 @@ import {
   downloadBlob,
   processMapData,
 } from "./saveMapHelpers";
+import { recordSchema, plainObjectSchema } from "@/schemas/common";
 
 function isRecord(value: unknown): value is Record<string | number, unknown> {
-  return typeof value === "object" && value !== null;
+  return recordSchema.safeParse(value).success;
 }
 
 function isNanosaur1LevelData(value: unknown): value is Nanosaur1LevelData {
+  const parseResult = plainObjectSchema.safeParse(value);
+  if (!parseResult.success) {
+    return false;
+  }
+  const obj = parseResult.data;
   return (
-    isRecord(value) &&
-    "header" in value &&
-    "textureLayer" in value &&
-    "objectList" in value
+    "header" in obj &&
+    "textureLayer" in obj &&
+    "objectList" in obj
   );
 }
 
