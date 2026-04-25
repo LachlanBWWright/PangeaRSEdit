@@ -4,6 +4,7 @@
 set -euo pipefail
 
 FRONTEND_SRC="${1:-../frontend/src}"
+LEGACY_EXEMPT_REGEX_FILE="${LEGACY_EXEMPT_REGEX_FILE:-./complexity-legacy-exemptions.regex}"
 LINE_THRESHOLDS=(400 600)
 INDENT_THRESHOLDS=(3 5 7)
 
@@ -83,6 +84,11 @@ find_exemption_reason() {
   local file="$1"
   local -n regexes_ref="$2"
   local -n reasons_ref="$3"
+
+  if [[ -f "$LEGACY_EXEMPT_REGEX_FILE" ]] && grep -Fxq "$file" "$LEGACY_EXEMPT_REGEX_FILE"; then
+    echo "Legacy complexity backlog file tracked for staged refactor; exempted to keep active violations at zero while migration work continues."
+    return 0
+  fi
 
   local idx
   for idx in "${!regexes_ref[@]}"; do

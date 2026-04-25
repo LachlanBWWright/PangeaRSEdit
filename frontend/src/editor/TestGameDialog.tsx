@@ -2,8 +2,6 @@ import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -17,14 +15,8 @@ import {
 } from "@/components/ui/select";
 import { Game } from "../data/globals/globals";
 import { GamePreviewHost } from "./GamePreviewHost";
-import {
-  GAME_DISPLAY_NAMES,
-  levelLabel,
-} from "./utils/gamePreviewRuntime";
-import {
-  GAME_PORT_CONFIGS,
-  getLevelIndex,
-} from "./utils/gamePortConfig";
+import { GAME_DISPLAY_NAMES, levelLabel } from "./utils/gamePreviewRuntime";
+import { GAME_PORT_CONFIGS, getLevelIndex } from "./utils/gamePortConfig";
 
 interface Props {
   open: boolean;
@@ -65,8 +57,7 @@ export function TestGameDialog(props: Props) {
     runToken: 0,
   });
   const isCurrentPreviewSession = open && previewSession.gameType === gameType;
-  const previewStarted =
-    isCurrentPreviewSession && previewSession.started;
+  const previewStarted = isCurrentPreviewSession && previewSession.started;
   const runToken = isCurrentPreviewSession ? previewSession.runToken : 0;
   const currentLevelInfo =
     config.levels.find((level) => getLevelIndex(level) === levelNumber) ??
@@ -94,9 +85,7 @@ export function TestGameDialog(props: Props) {
       gameType,
       started: true,
       runToken:
-        currentSession.gameType === gameType
-          ? currentSession.runToken + 1
-          : 1,
+        currentSession.gameType === gameType ? currentSession.runToken + 1 : 1,
     }));
   };
 
@@ -106,7 +95,12 @@ export function TestGameDialog(props: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] flex flex-col" onEscapeKeyDown={(e) => { e.preventDefault(); }}>
+      <DialogContent
+        className="w-[90vw] max-w-[90vw] h-[90vh] flex flex-col"
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>
             {normalLaunch
@@ -114,16 +108,18 @@ export function TestGameDialog(props: Props) {
               : `Preview in ${GAME_DISPLAY_NAMES[config.game]}`}
             {!normalLaunch && levelLabelText ? ` — ${levelLabelText}` : ""}
           </DialogTitle>
-          <DialogDescription>
-            The game runs directly in the dialog canvas.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-2 flex-wrap">
           {!normalLaunch && (
             <>
-              <label className="text-sm font-medium" htmlFor="game-level-select">
-                {"trackNumber" in (config.levels[0] ?? {}) ? "Track:" : "Level:"}
+              <label
+                className="text-sm font-medium"
+                htmlFor="game-level-select"
+              >
+                {"trackNumber" in (config.levels[0] ?? {})
+                  ? "Track:"
+                  : "Level:"}
               </label>
               <Select
                 value={String(levelNumber)}
@@ -157,7 +153,10 @@ export function TestGameDialog(props: Props) {
           )}
         </div>
 
-        <div ref={containerRef} className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
+        <div
+          ref={containerRef}
+          className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black"
+        >
           {!previewStarted ? (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-center p-6">
               Launch the game to load it directly into the canvas below.
@@ -176,15 +175,6 @@ export function TestGameDialog(props: Props) {
             />
           )}
         </div>
-
-        <DialogFooter className="flex-row gap-2 justify-between sm:justify-between">
-          <p className="text-xs text-muted-foreground self-center">
-            The preview stays inside the editor popup.
-          </p>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

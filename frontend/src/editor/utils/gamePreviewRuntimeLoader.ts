@@ -91,24 +91,8 @@ export function createPreviewModule(
     ],
     preRun: [
       () => {
-        const module = moduleRef.current;
-        if (!module) {
-          return;
-        }
-
-        if (terrainPaths && !normalLaunch) {
-          writeTerrainToVfs(
-            module,
-            config,
-            currentLevelInfo,
-            terrainPaths,
-            terrainDataBytes,
-            terrainRsrcBytes,
-            terrainTextureBytes ?? null,
-            onError,
-          );
-        }
-
+        // The generated .data package loaders also use preRun to populate the
+        // VFS. Terrain replacement must wait until onRuntimeInitialized below.
         scheduleOverlayFallback();
       },
     ],
@@ -134,6 +118,8 @@ export function createPreviewModule(
       }
 
       if (terrainPaths && !normalLaunch) {
+        // Emscripten invokes onRuntimeInitialized after preRun and before
+        // callMain, so packaged files exist but the game has not loaded a level.
         writeTerrainToVfs(
           module,
           config,
