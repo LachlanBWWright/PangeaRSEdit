@@ -25,9 +25,8 @@ export function createHeaderHeightChangeHandler(
     }
 
     setHeaderData((draft) => {
-      if (draft.Hedr?.[1000]?.obj) {
-        draft.Hedr[1000].obj[key] = newValue;
-      }
+      if (!draft.Hedr?.[1000]?.obj) return;
+      draft.Hedr[1000].obj[key] = newValue;
     });
   };
 }

@@ -142,7 +142,7 @@ export async function loadPreviewScene(
     new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
       worker.onmessage = (event) => resolve(event.data);
       worker.onerror = (event) =>
-        reject(new Error(event.message || "Model conversion worker failed"));
+        reject(new Error(event.message ?? "Model conversion worker failed"));
       worker.postMessage({ type: "bg3d-to-glb", buffer: arrayBuffer }, [
         arrayBuffer,
       ]);

@@ -212,10 +212,11 @@ export function hexToBuffer(hex: string): Result<ArrayBuffer, string> {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
     const byte = parseInt(hex.substr(i, 2), 16);
-    if (isNaN(byte))
+    if (isNaN(byte)) {
       return err(
         `Invalid hex characters at position ${i}: ${hex.substr(i, 2)}`,
       );
+    }
     bytes[i / 2] = byte;
   }
   return ok(bytes.buffer);

@@ -1,6 +1,10 @@
 import { decodePascalHexString } from "../parseHelpers";
 import type { AnHdRaw } from "../parseSkeletonRsrcTS";
-import { plainObjectSchema, anHdRawSchema, getStringField } from "@/schemas/common";
+import {
+  plainObjectSchema,
+  anHdRawSchema,
+  getStringField,
+} from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -22,12 +26,10 @@ export function handleAnHd(
   if (isAnHdRaw(obj)) {
     const rd = obj;
     const isParsedObj = isRecord(resourceData) && isAnHdRaw(resourceData.obj);
-    return {
-      animName: isParsedObj
-        ? decodePascalHexString(String(rd.animName))
-        : String(rd.animName),
-      numAnimEvents: rd.numAnimEvents,
-    };
+    const animName = isParsedObj
+      ? decodePascalHexString(String(rd.animName))
+      : String(rd.animName);
+    return { animName, numAnimEvents: rd.numAnimEvents };
   }
 
   // Fallback: keep minimal structure

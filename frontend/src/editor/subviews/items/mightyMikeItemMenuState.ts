@@ -4,11 +4,10 @@ import { getItemTypes } from "@/data/items/getItemTypes";
 
 export function getMightyMikeItemValues(globals: GlobalsInterface): number[] {
   const result = getItemTypes(globals);
-  return result.isOk()
-    ? result.value
-        .map((key) => Number.parseInt(key, 10))
-        .filter((key) => !Number.isNaN(key))
-    : [];
+  if (!result.isOk()) return [];
+  return result.value
+    .map((key) => Number.parseInt(key, 10))
+    .filter((key) => !Number.isNaN(key));
 }
 
 export function getSelectedMightyMikeItem(

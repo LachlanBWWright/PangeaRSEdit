@@ -133,9 +133,7 @@ export class BigEndianReader {
    */
   readBytes(count: number): Result<Uint8Array, string> {
     if (this.offset + count > this.buffer.byteLength) {
-      return err(
-        `EOF reading ${count} bytes at offset ${this.offset}`,
-      );
+      return err(`EOF reading ${count} bytes at offset ${this.offset}`);
     }
     const bytes = new Uint8Array(this.buffer, this.offset, count);
     this.offset += count;
@@ -151,14 +149,13 @@ export class BigEndianReader {
       return err(result.error);
     }
     const fourCC = result.value;
-    return ok(
-      String.fromCharCode(
-        (fourCC >> 24) & 0xff,
-        (fourCC >> 16) & 0xff,
-        (fourCC >> 8) & 0xff,
-        fourCC & 0xff,
-      ),
+    const chars = String.fromCharCode(
+      (fourCC >> 24) & 0xff,
+      (fourCC >> 16) & 0xff,
+      (fourCC >> 8) & 0xff,
+      fourCC & 0xff,
     );
+    return ok(chars);
   }
 
   /**

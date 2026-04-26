@@ -259,9 +259,7 @@ export async function performRoundtrip(
   const originalResult = await parseLevelForGame(buffer, gameType);
 
   if (originalResult.isErr()) {
-    return err(
-      new Error(`Failed to parse original: ${originalResult.error}`),
-    );
+    return err(new Error(`Failed to parse original: ${originalResult.error}`));
   }
 
   // Serialize back to binary
@@ -270,9 +268,7 @@ export async function performRoundtrip(
   });
 
   if (serializedResult.isErr()) {
-    return err(
-      new Error(`Failed to serialize: ${serializedResult.error}`),
-    );
+    return err(new Error(`Failed to serialize: ${serializedResult.error}`));
   }
 
   // Parse the serialized buffer

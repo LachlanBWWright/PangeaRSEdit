@@ -47,10 +47,9 @@ export function getTotalSectionStats(tunnelData: TunnelData): {
   return tunnelData.sections.reduce(
     (accumulator, section) => {
       const stats = getSectionStats(section);
-      return {
-        vertices: accumulator.vertices + stats.totalVertices,
-        triangles: accumulator.triangles + stats.totalTriangles,
-      };
+      const vertices = accumulator.vertices + stats.totalVertices;
+      const triangles = accumulator.triangles + stats.totalTriangles;
+      return { vertices, triangles };
     },
     { vertices: 0, triangles: 0 },
   );

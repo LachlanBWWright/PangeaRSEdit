@@ -20,15 +20,16 @@ export function getUploadDropzoneText(awaitingSkeleton: boolean): {
   title: string;
   body: string;
 } {
-  return awaitingSkeleton
-    ? {
-        title: "Drop skeleton file here or click to select",
-        body: "Optional: add the matching .skeleton.rsrc file for animations.",
-      }
-    : {
-        title: "Drop a model file here or click to select",
-        body: "Upload .bg3d, .3dmf, or .glb. BG3D and 3DMF files can optionally use a matching .skeleton.rsrc file.",
-      };
+  if (awaitingSkeleton) {
+    return {
+      title: "Drop skeleton file here or click to select",
+      body: "Optional: add the matching .skeleton.rsrc file for animations.",
+    };
+  }
+  return {
+    title: "Drop a model file here or click to select",
+    body: "Upload .bg3d, .3dmf, or .glb. BG3D and 3DMF files can optionally use a matching .skeleton.rsrc file.",
+  };
 }
 
 interface ProcessUploadSelectionArgs {

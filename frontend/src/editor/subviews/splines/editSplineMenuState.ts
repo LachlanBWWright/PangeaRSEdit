@@ -35,12 +35,11 @@ export function removeSplineAtIndex(
     splineData.SpIt = createReindexedRecord(splineData.SpIt, splineIdx);
   }
 
-  if (splineData.Spln?.[1000]?.obj) {
-    splineData.Spln[1000].obj.forEach((spline, index) => {
-      spline.numNubs = splineData.SpNb?.[index]?.obj.length ?? spline.numNubs;
-      spline.numPoints =
-        splineData.SpPt?.[index]?.obj.length ?? spline.numPoints;
-      spline.numItems = splineData.SpIt?.[index]?.obj.length ?? spline.numItems;
-    });
-  }
+  const splineObjs = splineData.Spln?.[1000]?.obj;
+  if (!splineObjs) return;
+  splineObjs.forEach((spline, index) => {
+    spline.numNubs = splineData.SpNb?.[index]?.obj.length ?? spline.numNubs;
+    spline.numPoints = splineData.SpPt?.[index]?.obj.length ?? spline.numPoints;
+    spline.numItems = splineData.SpIt?.[index]?.obj.length ?? spline.numItems;
+  });
 }

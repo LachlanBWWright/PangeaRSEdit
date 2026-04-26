@@ -7,78 +7,67 @@ export const cromagrally: GameInfo = {
     {
       name: "CroMag",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/CroMag.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/CroMag.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/CroMag.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Brog",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Brog.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/Brog.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Brog.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Grag",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Grag.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/Grag.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Grag.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Pterodactyl",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Pterodactyl.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/Pterodactyl.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Pterodactyl.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Viking",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Viking.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/Viking.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Viking.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Dragon",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Dragon.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/Dragon.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Dragon.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "BrontoNeck",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/BrontoNeck.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/BrontoNeck.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/BrontoNeck.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "BirdBomb",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/BirdBomb.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/BirdBomb.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/BirdBomb.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Mummy",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Mummy.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/Mummy.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Mummy.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Yeti",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Yeti.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/Yeti.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Yeti.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "PolarBear",
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/PolarBear.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/cromagrally/skeletons/PolarBear.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/PolarBear.skeleton.rsrc",
       category: "Characters",
     },
 

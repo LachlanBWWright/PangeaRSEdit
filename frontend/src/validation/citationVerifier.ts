@@ -150,15 +150,14 @@ export async function verifyCitation(
   const foundLocation = findCodeInFile(citation.citation.code, fileLines);
 
   if (foundLocation) {
+    const startIdx = foundLocation.lineNumber - 1;
+    const actualCode = fileLines
+      .slice(startIdx, startIdx + codeLineCount + 1)
+      .join("\n");
     return {
       citation,
       status: VerificationStatus.PARTIAL_MATCH,
-      actualCode: fileLines
-        .slice(
-          foundLocation.lineNumber - 1,
-          foundLocation.lineNumber + codeLineCount,
-        )
-        .join("\n"),
+      actualCode,
       actualLineNumber: foundLocation.lineNumber,
       similarity: foundLocation.exactMatch ? 1 : comparison.similarity,
       message: `Code found at line ${foundLocation.lineNumber} instead of ${startLine}`,

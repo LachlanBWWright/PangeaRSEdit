@@ -22,8 +22,9 @@ export function decompressRLB(
       const dataByte = compressedData[srcPos];
       if (dataByte === undefined) break;
       srcPos++;
-      for (let i = 0; i < repeatCount && dstPos < decompSize; i++)
-        output[dstPos++] = dataByte;
+      const fillEnd = Math.min(dstPos + repeatCount, decompSize);
+      output.fill(dataByte, dstPos, fillEnd);
+      dstPos = fillEnd;
       continue;
     }
 

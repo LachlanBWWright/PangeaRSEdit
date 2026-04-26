@@ -114,9 +114,10 @@ export function useAnimationEvents({
 
   const dropAnimationEvents = (animationIndex: number) => {
     setDraftEventsByAnimation((prev) => {
-      return Object.fromEntries(
-        Object.entries(prev).filter(([key]) => key !== String(animationIndex)),
+      const filtered = Object.entries(prev).filter(
+        ([key]) => key !== String(animationIndex),
       );
+      return Object.fromEntries(filtered);
     });
   };
 

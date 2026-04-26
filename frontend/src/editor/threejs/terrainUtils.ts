@@ -41,12 +41,10 @@ export function combineMapImagesFromSTgd(
       const tileId = stgdEntry.superTileId ?? stgdEntry;
       if (tileId === globals.EMPTY_TILE_IDX) continue;
       const tileImg = mapImages[tileId];
-      if (tileImg)
-        ctx.drawImage(
-          tileImg,
-          i * globals.SUPERTILE_TEXMAP_SIZE,
-          j * globals.SUPERTILE_TEXMAP_SIZE,
-        );
+      if (!tileImg) continue;
+      const tdx = i * globals.SUPERTILE_TEXMAP_SIZE;
+      const tdy = j * globals.SUPERTILE_TEXMAP_SIZE;
+      ctx.drawImage(tileImg, tdx, tdy);
     }
   }
 

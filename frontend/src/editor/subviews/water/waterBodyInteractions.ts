@@ -59,9 +59,7 @@ export function applyDraggedBodyOffset(
     for (let index = 0; index < initialDragState.length; index += 1) {
       const nub = body.nubs[index];
       const initialNub = initialDragState[index];
-      if (!nub || !initialNub || index >= body.numNubs) {
-        continue;
-      }
+      if (!nub || !initialNub || index >= body.numNubs) continue;
       nub[0] = initialNub[0] + dragDx;
       nub[1] = initialNub[1] + dragDz;
     }

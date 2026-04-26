@@ -119,15 +119,7 @@ function createBlankHeader(
       numWaterPatches: 0,
       numPaths: 0,
     };
-    return {
-      Hedr: {
-        1000: {
-          name: "Header",
-          obj: croMagHeader,
-          order: 0,
-        },
-      },
-    };
+    return { Hedr: { 1000: { name: "Header", obj: croMagHeader, order: 0 } } };
   }
   const usesSimplifiedHeader =
     game === Game.BUGDOM_2 ||
@@ -141,13 +133,7 @@ function createBlankHeader(
     numTiles: usesSimplifiedHeader ? 0 : standardExtension.numTiles,
   };
   return {
-    Hedr: {
-      1000: {
-        name: "Header",
-        obj: standardHeader,
-        order: 0,
-      },
-    },
+    Hedr: { 1000: { name: "Header", obj: standardHeader, order: 0 } },
   };
 }
 function createBlankTerrain(
@@ -179,13 +165,7 @@ function createBlankTerrain(
       },
     },
     // ItCo - Items color array (required, stored as base64)
-    ItCo: {
-      1000: {
-        name: "Terrain Items Color Array",
-        data: "",
-        order: 2,
-      },
-    },
+    ItCo: { 1000: { name: "Terrain Items Color Array", data: "", order: 2 } },
     // YCrd - Terrain heights (required)
     YCrd: {
       1000: {
@@ -195,13 +175,7 @@ function createBlankTerrain(
       },
     },
     // alis - Texture page aliases (required)
-    alis: {
-      1000: {
-        name: "Texture Page Picture Alias",
-        data: "",
-        order: 10,
-      },
-    },
+    alis: { 1000: { name: "Texture Page Picture Alias", data: "", order: 10 } },
     _metadata: metadata,
   };
   // Add roof layer for Bugdom 1
@@ -226,17 +200,10 @@ function createBlankTerrain(
   if (req.requiresSTgd) {
     const supertileGrid: SupertileGridEntry[] = [];
     for (let i = 0; i < totalSupertiles; i++) {
-      supertileGrid.push({
-        isEmpty: true,
-        superTileId: 0,
-      });
+      supertileGrid.push({ isEmpty: true, superTileId: 0 });
     }
     terrainData.STgd = {
-      1000: {
-        name: "SuperTile Grid",
-        obj: supertileGrid,
-        order: 6,
-      },
+      1000: { name: "SuperTile Grid", obj: supertileGrid, order: 6 },
     };
   }
   // Xlat - Translation table (for tile-based games like Nanosaur, Bugdom 1)
@@ -252,52 +219,24 @@ function createBlankTerrain(
   return terrainData;
 }
 function createBlankItemData(): ItemData {
-  return {
-    Itms: {
-      1000: {
-        name: "Terrain Items List",
-        obj: [],
-        order: 0,
-      },
-    },
-  };
+  return { Itms: { 1000: { name: "Terrain Items List", obj: [], order: 0 } } };
 }
 function createBlankFenceData(): FenceData {
   return {
-    Fenc: {
-      1000: {
-        name: "Fence List",
-        obj: [],
-        order: 0,
-      },
-    },
+    Fenc: { 1000: { name: "Fence List", obj: [], order: 0 } },
     FnNb: {},
   };
 }
 function createBlankSplineData(): SplineData {
   return {
-    Spln: {
-      1000: {
-        name: "Spline List",
-        obj: [],
-        order: 0,
-      },
-    },
+    Spln: { 1000: { name: "Spline List", obj: [], order: 0 } },
     SpNb: {},
     SpPt: {},
     SpIt: {},
   };
 }
 function createBlankLiquidData(): LiquidData {
-  return {
-    Liqd: {
-      1000: {
-        name: "Water List",
-        obj: [],
-        order: 0,
-      },
-    },
-  };
+  return { Liqd: { 1000: { name: "Water List", obj: [], order: 0 } } };
 }
 export function canCreateBlankLevel(): boolean {
   // All games support blank level creation

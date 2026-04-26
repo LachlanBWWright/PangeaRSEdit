@@ -15,15 +15,15 @@ export async function uploadFileToGoogleDrive(
   );
   form.append("file", file);
 
+  const uploadUrl =
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  const fetchOptions: RequestInit = {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: form,
+  };
   const response = await ResultAsync.fromPromise(
-    fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
-      },
-    ),
+    fetch(uploadUrl, fetchOptions),
     mapErr,
   );
   if (response.isErr()) {

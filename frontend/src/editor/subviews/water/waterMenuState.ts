@@ -4,11 +4,10 @@ import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
 
 export function getWaterBodyValues(globals: GlobalsInterface): number[] {
   const result = getWaterBodyTypes(globals);
-  return result.isOk()
-    ? result.value
-        .map((key) => Number.parseInt(key, 10))
-        .filter((key) => !Number.isNaN(key))
-    : [];
+  if (!result.isOk()) return [];
+  return result.value
+    .map((key) => Number.parseInt(key, 10))
+    .filter((key) => !Number.isNaN(key));
 }
 
 export function getSelectedWaterBody(

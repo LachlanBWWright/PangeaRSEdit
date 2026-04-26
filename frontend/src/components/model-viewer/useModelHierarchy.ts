@@ -56,9 +56,12 @@ export function useModelHierarchy(
 ) {
   useEffect(() => {
     if (gltfResult?.scene) {
-      const nodes = gltfResult.scene.children
-        .map((child: Object3D) => extractNode(child))
-        .filter((node): node is ModelNode => node !== null);
+      const extractedNodes = gltfResult.scene.children.map((child: Object3D) =>
+        extractNode(child),
+      );
+      const nodes = extractedNodes.filter(
+        (node): node is ModelNode => node !== null,
+      );
 
       setModelNodes(nodes);
       if (onSceneReady) onSceneReady(gltfResult.scene);

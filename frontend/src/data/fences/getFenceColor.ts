@@ -94,42 +94,26 @@ function getDefaultFallbackColor(index: number): string {
   return FALLBACK_COLORS[index % FALLBACK_COLORS.length] ?? "#339933";
 }
 
+const FENCE_COLORS_BY_GAME: Partial<
+  Record<Game, { colors: string[]; fallback: string }>
+> = {
+  [Game.OTTO_MATIC]: { colors: OTTO_FENCE_COLORS, fallback: "#C0C0C0" },
+  [Game.BUGDOM]: { colors: BUGDOM_FENCE_COLORS, fallback: "#228B22" },
+  [Game.BUGDOM_2]: { colors: BUGDOM2_FENCE_COLORS, fallback: "#90EE90" },
+  [Game.CRO_MAG]: { colors: CRO_MAG_FENCE_COLORS, fallback: "#D2691E" },
+  [Game.BILLY_FRONTIER]: {
+    colors: BILLY_FRONTIER_FENCE_COLORS,
+    fallback: "#D2691E",
+  },
+  [Game.NANOSAUR_2]: { colors: NANOSAUR2_FENCE_COLORS, fallback: "#228B22" },
+};
+
 export function getFenceColor(
   globals: GlobalsInterface,
   fenceType: number,
   fallbackIndex: number,
 ): string {
-  switch (globals.GAME_TYPE) {
-    case Game.OTTO_MATIC:
-      return (
-        OTTO_FENCE_COLORS[fenceType % OTTO_FENCE_COLORS.length] ?? "#C0C0C0"
-      );
-    case Game.BUGDOM:
-      return (
-        BUGDOM_FENCE_COLORS[fenceType % BUGDOM_FENCE_COLORS.length] ?? "#228B22"
-      );
-    case Game.BUGDOM_2:
-      return (
-        BUGDOM2_FENCE_COLORS[fenceType % BUGDOM2_FENCE_COLORS.length] ??
-        "#90EE90"
-      );
-    case Game.CRO_MAG:
-      return (
-        CRO_MAG_FENCE_COLORS[fenceType % CRO_MAG_FENCE_COLORS.length] ??
-        "#D2691E"
-      );
-    case Game.BILLY_FRONTIER:
-      return (
-        BILLY_FRONTIER_FENCE_COLORS[
-          fenceType % BILLY_FRONTIER_FENCE_COLORS.length
-        ] ?? "#D2691E"
-      );
-    case Game.NANOSAUR_2:
-      return (
-        NANOSAUR2_FENCE_COLORS[fenceType % NANOSAUR2_FENCE_COLORS.length] ??
-        "#228B22"
-      );
-    default:
-      return getDefaultFallbackColor(fallbackIndex);
-  }
+  const entry = FENCE_COLORS_BY_GAME[globals.GAME_TYPE];
+  if (!entry) return getDefaultFallbackColor(fallbackIndex);
+  return entry.colors[fenceType % entry.colors.length] ?? entry.fallback;
 }

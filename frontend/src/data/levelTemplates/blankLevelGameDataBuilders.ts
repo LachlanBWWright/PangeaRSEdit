@@ -85,16 +85,7 @@ export function buildBlankMightyMikeData(
     numTileAnims: 0,
     numTileXparentColors: 0,
     xlateTable: [0],
-    tileAttributes: [
-      {
-        flags: 0,
-        p0: 0,
-        p1: 0,
-        p2: 0,
-        p3: 0,
-        p4: 0,
-      },
-    ],
+    tileAttributes: [{ flags: 0, p0: 0, p1: 0, p2: 0, p3: 0, p4: 0 }],
     tileAnimations: [],
     transparencyColors: [],
   };

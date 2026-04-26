@@ -46,9 +46,7 @@ describe("16-bit ARGB1555 <-> PNG roundtrip", () => {
       const orig = argb16[i];
       const round = argb16_2[i];
       // Skip if either is undefined (shouldn't happen but make TypeScript happy)
-      if (orig === undefined || round === undefined) {
-        continue;
-      }
+      if (orig === undefined || round === undefined) continue;
       // Alpha must match
       expect((round >> 15) & 1).toBe((orig >> 15) & 1);
       // Color channels should be close (allow 1 step error due to quantization)

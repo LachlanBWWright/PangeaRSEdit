@@ -2,7 +2,12 @@ import { toast } from "sonner";
 import type { ChangeEvent } from "react";
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
-import { plainObjectSchema, unknownArraySchema, booleanSchema, numberSchema } from "@/schemas/common";
+import {
+  plainObjectSchema,
+  unknownArraySchema,
+  booleanSchema,
+  numberSchema,
+} from "@/schemas/common";
 
 export const TILE_SIZE = 32;
 
@@ -130,9 +135,7 @@ async function loadStrictTileBitmap(
   errorPrefix: string,
 ): Promise<ImageBitmap | null> {
   const sourceBitmap = await createImageBitmap(file).catch((error: unknown) => {
-    toast.error(
-      `${errorPrefix}: ${String(error)}`,
-    );
+    toast.error(`${errorPrefix}: ${String(error)}`);
     return null;
   });
 
@@ -147,9 +150,7 @@ async function loadStrictTileBitmap(
     resizeHeight: TILE_SIZE,
     resizeQuality: "high",
   }).catch((error: unknown) => {
-    toast.error(
-      `${errorPrefix}: ${String(error)}`,
-    );
+    toast.error(`${errorPrefix}: ${String(error)}`);
     return null;
   });
 }
@@ -213,9 +214,8 @@ export function isPaletteTileInUse(
 
   if (xlatTable) {
     xlatTable.forEach((entry, logicalIndex) => {
-      if (getXlatEntryIndex(entry) === selectedPaletteTile) {
-        matchingLogicalIndices.add(logicalIndex);
-      }
+      if (getXlatEntryIndex(entry) !== selectedPaletteTile) return;
+      matchingLogicalIndices.add(logicalIndex);
     });
   } else {
     matchingLogicalIndices.add(selectedPaletteTile);
@@ -251,17 +251,16 @@ export function removePaletteTile(
 
     xlatEntry.obj = keptEntries.map(({ entry }) => {
       const idx = getXlatEntryIndex(entry);
-      return {
-        idx:
-          idx !== null && idx > selectedPaletteTile ? idx - 1 : getNumber(idx),
-      };
+      const newIdx =
+        idx !== null && idx > selectedPaletteTile ? idx - 1 : getNumber(idx);
+      return { idx: newIdx };
     });
 
-    if (data.Layr?.[1000]?.obj) {
-      data.Layr[1000].obj = data.Layr[1000].obj.map(
-        (logicalIndex) => logicalIndexMap.get(logicalIndex) ?? logicalIndex,
-      );
-    }
+    const layrEntry = data.Layr?.[1000];
+    if (!layrEntry) return;
+    layrEntry.obj = layrEntry.obj.map(
+      (logicalIndex) => logicalIndexMap.get(logicalIndex) ?? logicalIndex,
+    );
   });
 }
 

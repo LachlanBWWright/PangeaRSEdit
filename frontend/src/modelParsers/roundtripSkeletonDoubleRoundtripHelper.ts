@@ -197,12 +197,11 @@ export async function runDoubleRoundtripNoExtrasTest(
       const rt2Kfs = rt2Anim.keyframes[parseInt(boneKey)];
       if (!rt1Kfs || !rt2Kfs) continue;
 
-      if (rt1Kfs.length > 0 && rt2Kfs.length > 0) {
-        const kf1 = rt1Kfs[0];
-        const kf2 = rt2Kfs[0];
-        if (!kf1 || !kf2) continue;
-        expect(kf1.tick).toBe(kf2.tick);
-      }
+      if (rt1Kfs.length === 0 || rt2Kfs.length === 0) continue;
+      const kf1 = rt1Kfs[0];
+      const kf2 = rt2Kfs[0];
+      if (!kf1 || !kf2) continue;
+      expect(kf1.tick).toBe(kf2.tick);
     }
   }
 

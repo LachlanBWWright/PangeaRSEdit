@@ -51,9 +51,7 @@ export function createBugdom2TunnelLoader({
 
     const result = parseTunnelFile(bufferResult.value);
     if (result.isErr()) {
-      toast.error("Failed to parse tunnel file", {
-        description: result.error,
-      });
+      toast.error("Failed to parse tunnel file", { description: result.error });
       return;
     }
 

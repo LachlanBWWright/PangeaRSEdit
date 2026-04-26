@@ -53,13 +53,11 @@ describe("Comprehensive Skeleton Value Validation", () => {
     console.log(
       `Vertices with uniform weights (bug): ${stats.verticesWithUniformWeights}`,
     );
-    console.log(
-      `Average weight sum per vertex: ${
-        stats.verticesWithWeights > 0
-          ? (stats.totalWeightSum / stats.verticesWithWeights).toFixed(3)
-          : "0.000"
-      }`,
-    );
+    const avgWeightStr =
+      stats.verticesWithWeights > 0
+        ? (stats.totalWeightSum / stats.verticesWithWeights).toFixed(3)
+        : "0.000";
+    console.log(`Average weight sum per vertex: ${avgWeightStr}`);
 
     expect(stats.verticesWithUniformWeights).toBe(0);
   });

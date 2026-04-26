@@ -60,14 +60,19 @@ export function flattenAltMap(metadata: unknown): number[] {
   if (!altMap2d) return [];
   const flat: number[] = [];
   for (const row of altMap2d) {
-    if (isArray(row)) {
-      for (const cell of row) {
-        const numResult = numberSchema.safeParse(cell);
-        flat.push(numResult.success ? numResult.data : 0);
-      }
+    if (!isArray(row)) continue;
+    for (const cell of row) {
+      const numResult = numberSchema.safeParse(cell);
+      flat.push(numResult.success ? numResult.data : 0);
     }
   }
   return flat;
+}
+
+function resolveXlatIndex(entry: unknown, fallback: number): number {
+  if (!isRecord(entry)) return fallback;
+  const idxResult = numberSchema.safeParse(entry.idx);
+  return idxResult.success ? idxResult.data : fallback;
 }
 
 export function resolveImageIndices(
@@ -79,11 +84,7 @@ export function resolveImageIndices(
     if (logicalTileIndex < 0 || logicalTileIndex >= 2048) return null;
     let imageIndex = logicalTileIndex;
     if (xlatTable && logicalTileIndex < xlatTable.length) {
-      const entry = xlatTable[logicalTileIndex];
-      if (isRecord(entry)) {
-        const idxResult = numberSchema.safeParse(entry.idx);
-        if (idxResult.success) imageIndex = idxResult.data;
-      }
+      imageIndex = resolveXlatIndex(xlatTable[logicalTileIndex], imageIndex);
     }
     if (imageIndex < 0 || imageIndex >= mapImagesLength) return null;
     return imageIndex;

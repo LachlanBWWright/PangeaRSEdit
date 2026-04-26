@@ -139,10 +139,10 @@ function reverseDeleteSplineNub(
   };
 }
 
-function mergeTypeError(expected: EditOperation["type"]): Result<never, string> {
-  return err(
-    `Incompatible merge: expected ${expected} for second operation`,
-  );
+function mergeTypeError(
+  expected: EditOperation["type"],
+): Result<never, string> {
+  return err(`Incompatible merge: expected ${expected} for second operation`);
 }
 
 function mergeMoveItem(

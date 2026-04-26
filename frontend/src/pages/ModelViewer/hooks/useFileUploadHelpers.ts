@@ -105,12 +105,10 @@ export async function runWorkerMessage(
         resolve(event.data);
         worker.terminate();
       };
-
       worker.onerror = (event) => {
         reject(event);
         worker.terminate();
       };
-
       worker.postMessage(message);
     },
   );

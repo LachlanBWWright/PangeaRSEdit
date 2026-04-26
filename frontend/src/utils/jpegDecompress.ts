@@ -25,14 +25,13 @@ export async function decodeJpegBrowser(
       arrayBuffer = tmp.buffer;
     } else {
       const arrayBufferParseResult = arrayBufferSchema.safeParse(jpegData);
-      if (arrayBufferParseResult.success) {
-        const tmp = new Uint8Array(arrayBufferParseResult.data.byteLength);
-        tmp.set(new Uint8Array(arrayBufferParseResult.data));
-        arrayBuffer = tmp.buffer;
-      } else {
+      if (!arrayBufferParseResult.success) {
         reject(new Error("Invalid jpegData type"));
         return;
       }
+      const tmp = new Uint8Array(arrayBufferParseResult.data.byteLength);
+      tmp.set(new Uint8Array(arrayBufferParseResult.data));
+      arrayBuffer = tmp.buffer;
     }
     const blob = new Blob([arrayBuffer], { type: "image/jpeg" });
 

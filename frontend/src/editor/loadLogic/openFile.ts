@@ -23,19 +23,30 @@ function hexToUint8Array(hexString: string): Uint8Array {
 }
 
 const mightyMikeLevelDataSchema = z.object({
-  tileset: z.object({
-    tileImages: z.array(z.unknown()).optional(),
-    numTileDefinitions: z.number().optional(),
-    numTileAttributeEntries: z.number().optional(),
-  }).optional(),
-  Hedr: z.record(z.string(), z.object({
-    obj: z.object({
-      numTiles: z.number().optional(),
-    }).optional(),
-  })).optional(),
+  tileset: z
+    .object({
+      tileImages: z.array(z.unknown()).optional(),
+      numTileDefinitions: z.number().optional(),
+      numTileAttributeEntries: z.number().optional(),
+    })
+    .optional(),
+  Hedr: z
+    .record(
+      z.string(),
+      z.object({
+        obj: z
+          .object({
+            numTiles: z.number().optional(),
+          })
+          .optional(),
+      }),
+    )
+    .optional(),
 });
 
-function isMightyMikeLevelData(data: unknown): data is z.infer<typeof mightyMikeLevelDataSchema> {
+function isMightyMikeLevelData(
+  data: unknown,
+): data is z.infer<typeof mightyMikeLevelDataSchema> {
   return mightyMikeLevelDataSchema.safeParse(data).success;
 }
 
@@ -43,15 +54,15 @@ function extractTimgDataString(jsonData: unknown): string | undefined {
   const result = plainObjectSchema.safeParse(jsonData);
   if (!result.success) return undefined;
   const timg = result.data.Timg;
-  
+
   const timgResult = plainObjectSchema.safeParse(timg);
   if (!timgResult.success) return undefined;
   const timg1000 = timgResult.data["1000"];
-  
+
   const timg1000Result = plainObjectSchema.safeParse(timg1000);
   if (!timg1000Result.success) return undefined;
   const data = timg1000Result.data.data;
-  
+
   const stringResult = stringSchema.safeParse(data);
   return stringResult.success ? stringResult.data : undefined;
 }

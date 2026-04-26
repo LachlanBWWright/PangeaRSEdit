@@ -7,148 +7,127 @@ export const ottomatic: GameInfo = {
     {
       name: "Otto",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Otto.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Otto.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Onion",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Onion.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Onion.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Onion.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "BeeWoman",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/BeeWoman.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/BeeWoman.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/BeeWoman.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Blob",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Blob.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Blob.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Blob.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "BrainAlien",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/BrainAlien.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/BrainAlien.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/BrainAlien.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Farmer",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Farmer.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Farmer.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Farmer.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Mutant",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Mutant.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Mutant.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Mutant.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "PodWorm",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/PodWorm.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/PodWorm.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/PodWorm.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Corn",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Corn.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Corn.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Corn.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Tomato",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Tomato.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Tomato.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Tomato.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "ClownFish",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/ClownFish.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/ClownFish.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/ClownFish.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "EliteBrainAlien",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/EliteBrainAlien.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/EliteBrainAlien.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/EliteBrainAlien.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Scientist",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Scientist.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Scientist.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Scientist.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "GiantLizard",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/GiantLizard.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/GiantLizard.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/GiantLizard.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Mantis",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Mantis.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Mantis.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Mantis.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "MutantRobot",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/MutantRobot.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/MutantRobot.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/MutantRobot.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Squooshy",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Squooshy.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Squooshy.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Squooshy.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Strongman",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Strongman.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/StrongMan.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/StrongMan.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Turtle",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Turtle.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Turtle.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Turtle.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Flamester",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Flamester.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/Flamester.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Flamester.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "VenusFlytrap",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/VenusFlytrap.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/ottomatic/skeletons/VenusFlytrap.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/VenusFlytrap.skeleton.rsrc",
       category: "Characters",
     },
 

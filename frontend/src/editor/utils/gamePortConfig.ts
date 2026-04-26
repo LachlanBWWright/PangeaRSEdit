@@ -313,11 +313,10 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.MIGHTY_MIKE]: {
     game: Game.MIGHTY_MIKE,
     siteLaunchPath: "MightyMike-Android/index.html",
-    buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        level: `${String(Math.floor(n / 3))}:${String(n % 3)}`,
-        embed: "1",
-      }),
+    buildLaunchQuery: (n) => {
+      const level = `${String(Math.floor(n / 3))}:${String(n % 3)}`;
+      return new URLSearchParams({ level, embed: "1" });
+    },
     wasmDir: "mightymike",
     mainJs: "MightyMike.js",
     prefsFolderName: "MightyMike",

@@ -7,43 +7,37 @@ export const nanosaur2: GameInfo = {
     {
       name: "Nano",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/nano.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/nanosaur2/skeletons/nano.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/nano.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Raptor",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/raptor.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/nanosaur2/skeletons/raptor.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/raptor.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Brach",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/brach.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/nanosaur2/skeletons/brach.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/brach.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Ramphor",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/ramphor.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/nanosaur2/skeletons/ramphor.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/ramphor.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Bonus Worm",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/bonusworm.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/nanosaur2/skeletons/bonusworm.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/bonusworm.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Worm",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/worm.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/nanosaur2/skeletons/worm.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/worm.skeleton.rsrc",
       category: "Characters",
     },
 
