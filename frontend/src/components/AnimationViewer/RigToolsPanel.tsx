@@ -8,9 +8,7 @@ import type {
   WeightVisualizationMode,
   SkinWeightsData,
 } from "@/modelEditing/weights/weightTypes";
-import {
-  defaultWeightBrushSettings,
-} from "@/modelEditing/weights/weightTypes";
+import { defaultWeightBrushSettings } from "@/modelEditing/weights/weightTypes";
 import { useState } from "react";
 
 interface RigToolsPanelProps {
@@ -35,15 +33,21 @@ export function RigToolsPanel({
   const [brushSettings, setBrushSettings] = useState<WeightBrushSettings>(
     defaultWeightBrushSettings,
   );
-  const [visualizationMode, setVisualizationMode] = useState<WeightVisualizationMode>("none");
+  const [visualizationMode, setVisualizationMode] =
+    useState<WeightVisualizationMode>("none");
 
-  const boneNames = skinData?.boneNames ?? boneInfluenceRows.map((r) => r.boneName);
+  const boneNames =
+    skinData?.boneNames ?? boneInfluenceRows.map((r) => r.boneName);
 
   return (
     <Tabs defaultValue="bones" className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-2">
-        <TabsTrigger value="bones" className="text-xs">Bones</TabsTrigger>
-        <TabsTrigger value="weights" className="text-xs">Weights</TabsTrigger>
+        <TabsTrigger value="bones" className="text-xs">
+          Bones
+        </TabsTrigger>
+        <TabsTrigger value="weights" className="text-xs">
+          Weights
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="bones" className="space-y-3">
@@ -69,7 +73,9 @@ export function RigToolsPanel({
           <p className="text-xs text-gray-400">Bone-Vertex Influence Summary</p>
           <div className="max-h-44 overflow-y-auto rounded border border-gray-700">
             {boneInfluenceRows.length === 0 ? (
-              <div className="p-2 text-xs text-gray-500">No skinning weights found.</div>
+              <div className="p-2 text-xs text-gray-500">
+                No skinning weights found.
+              </div>
             ) : (
               <div className="divide-y divide-gray-700">
                 {boneInfluenceRows.slice(0, 120).map((row) => (
@@ -83,7 +89,9 @@ export function RigToolsPanel({
                       {row.boneName}
                     </span>
                     <span className="text-gray-300">vtx {row.vertexCount}</span>
-                    <span className="text-gray-400">w {row.weightedSum.toFixed(1)}</span>
+                    <span className="text-gray-400">
+                      w {row.weightedSum.toFixed(1)}
+                    </span>
                   </div>
                 ))}
               </div>

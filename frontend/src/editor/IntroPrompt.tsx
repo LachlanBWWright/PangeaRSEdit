@@ -367,7 +367,10 @@ export function IntroPrompt() {
       const result = compileNanosaur1Level(combinedData, rawLevelData);
       if (result.isErr()) {
         console.error("Nanosaur compilation failed:", result.error);
-        toast.error("Download failed", { id: saveToastId, description: result.error });
+        toast.error("Download failed", {
+          id: saveToastId,
+          description: result.error,
+        });
         return;
       }
 
@@ -377,7 +380,10 @@ export function IntroPrompt() {
       const result = serializeMightyMikeLevel(combinedData);
       if (result.isErr()) {
         console.error("Mighty Mike serialization failed:", result.error);
-        toast.error("Download failed", { id: saveToastId, description: result.error });
+        toast.error("Download failed", {
+          id: saveToastId,
+          description: result.error,
+        });
         return;
       }
       mapBlob = new Blob([result.value], { type: ".map" });
@@ -759,44 +765,49 @@ export function IntroPrompt() {
   const handleSaveToCloud = useCallback(() => {
     const cloudToastId = "save-to-cloud";
     toast.loading("Checking sign-in…", { id: cloudToastId });
-    getMe()
-      .then((meResult) => {
-        if (meResult.isErr()) {
-          toast.error("Sign in to save to cloud", {
-            id: cloudToastId,
-            description: "Click Sign in in the top right.",
-            action: {
-              label: "Sign in",
-              onClick: () => { window.location.href = getGoogleSignInUrl(window.location.href); },
+    getMe().then((meResult) => {
+      if (meResult.isErr()) {
+        toast.error("Sign in to save to cloud", {
+          id: cloudToastId,
+          description: "Click Sign in in the top right.",
+          action: {
+            label: "Sign in",
+            onClick: () => {
+              window.location.href = getGoogleSignInUrl(window.location.href);
             },
-          });
-          return;
-        }
-        const combinedDataResult = combineLevelData(getCurrentAtomicData());
-        if (combinedDataResult.isErr()) {
-          toast.error("Could not save: level data error", { id: cloudToastId, description: combinedDataResult.error });
-          return;
-        }
-        toast.loading("Saving to cloud…", { id: cloudToastId });
-        createSavedLevel({
-          gameName: String(globals.GAME_TYPE),
-          levelId: mapFile?.name ?? "unknown",
-          displayName: mapFile?.name ?? "Untitled Level",
-          payload: combinedDataResult.value,
-          sourceFileMetadata: mapFile
-            ? { fileName: mapFile.name, fileSize: mapFile.size }
-            : undefined,
-        }).then((saveResult) => {
-          if (saveResult.isOk()) {
-            toast.success("Level saved to cloud!", { id: cloudToastId });
-          } else {
-            toast.error("Save failed", { id: cloudToastId, description: saveResult.error.message });
-          }
+          },
         });
+        return;
+      }
+      const combinedDataResult = combineLevelData(getCurrentAtomicData());
+      if (combinedDataResult.isErr()) {
+        toast.error("Could not save: level data error", {
+          id: cloudToastId,
+          description: combinedDataResult.error,
+        });
+        return;
+      }
+      toast.loading("Saving to cloud…", { id: cloudToastId });
+      createSavedLevel({
+        gameName: String(globals.GAME_TYPE),
+        levelId: mapFile?.name ?? "unknown",
+        displayName: mapFile?.name ?? "Untitled Level",
+        payload: combinedDataResult.value,
+        sourceFileMetadata: mapFile
+          ? { fileName: mapFile.name, fileSize: mapFile.size }
+          : undefined,
+      }).then((saveResult) => {
+        if (saveResult.isOk()) {
+          toast.success("Level saved to cloud!", { id: cloudToastId });
+        } else {
+          toast.error("Save failed", {
+            id: cloudToastId,
+            description: saveResult.error.message,
+          });
+        }
       });
+    });
   }, [getCurrentAtomicData, globals, mapFile]);
-
-
 
   const handleConfirmNewMap = useCallback(() => {
     setNewMapConfirmOpen(false);

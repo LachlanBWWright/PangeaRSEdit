@@ -46,7 +46,12 @@ export function TextureDetailDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="w-8 h-8 p-0" title="Open texture details">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-8 h-8 p-0"
+          title="Open texture details"
+        >
           <Eye className="w-4 h-4" />
         </Button>
       </DialogTrigger>
@@ -67,7 +72,9 @@ export function TextureDetailDialog({
           </TabsList>
 
           <TabsContent value="image" className="space-y-3">
-            <DialogDescription className="text-gray-300">Image:</DialogDescription>
+            <DialogDescription className="text-gray-300">
+              Image:
+            </DialogDescription>
             <div className="flex justify-center bg-checkered p-4 rounded">
               <img
                 src={texture.url}
@@ -79,7 +86,8 @@ export function TextureDetailDialog({
 
           <TabsContent value="uv" className="space-y-3">
             <DialogDescription className="text-gray-300">
-              UV Map — move, rotate, scale, flip, or fit UV coordinates to the texture image.
+              UV Map — move, rotate, scale, flip, or fit UV coordinates to the
+              texture image.
             </DialogDescription>
             <UvMapEditor
               textureUrl={texture.url}
@@ -91,7 +99,9 @@ export function TextureDetailDialog({
           </TabsContent>
 
           <TabsContent value="assignments" className="space-y-3">
-            <DialogDescription className="text-gray-300">Material and mesh usage:</DialogDescription>
+            <DialogDescription className="text-gray-300">
+              Material and mesh usage:
+            </DialogDescription>
             <UvAssignmentPanel
               textureName={texture.name}
               textureType={texture.type}

@@ -37,7 +37,10 @@ interface TileBrushPanelProps {
   activeLayer: 1000 | 1001;
 }
 
-function getTileCoordinates(tileIndex: number, mapWidth: number): { x: number; y: number } {
+function getTileCoordinates(
+  tileIndex: number,
+  mapWidth: number,
+): { x: number; y: number } {
   return {
     x: tileIndex % mapWidth,
     y: Math.floor(tileIndex / mapWidth),
@@ -54,11 +57,14 @@ export function TileBrushPanel({
   activeLayer,
 }: TileBrushPanelProps) {
   const [brushes, setBrushes] = useAtom(tileBrushesAtom);
-  const [selectedBrushId, setSelectedBrushId] = useAtom(selectedTileBrushIdAtom);
+  const [selectedBrushId, setSelectedBrushId] = useAtom(
+    selectedTileBrushIdAtom,
+  );
   const [mode, setMode] = useAtom(tileBrushModeAtom);
   const [anchor, setAnchor] = useAtom(tileBrushAnchorAtom);
 
-  const selectedBrush = brushes.find((brush) => brush.id === selectedBrushId) ?? null;
+  const selectedBrush =
+    brushes.find((brush) => brush.id === selectedBrushId) ?? null;
 
   const handleCaptureSingleTile = () => {
     const tileCoords = getTileCoordinates(selectedTileIndex, mapWidth);
@@ -168,10 +174,24 @@ export function TileBrushPanel({
   return (
     <div className="rounded border border-gray-700 p-3 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs uppercase tracking-wide text-gray-400">Tile Pattern Brushes</p>
+        <p className="text-xs uppercase tracking-wide text-gray-400">
+          Tile Pattern Brushes
+        </p>
         <div className="flex gap-2">
-          <Button size="sm" variant={mode === "stamp" ? "default" : "outline"} onClick={() => setMode("stamp")}>Stamp</Button>
-          <Button size="sm" variant={mode === "select" ? "default" : "outline"} onClick={() => setMode("select")}>Select</Button>
+          <Button
+            size="sm"
+            variant={mode === "stamp" ? "default" : "outline"}
+            onClick={() => setMode("stamp")}
+          >
+            Stamp
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === "select" ? "default" : "outline"}
+            onClick={() => setMode("select")}
+          >
+            Select
+          </Button>
         </div>
       </div>
 
@@ -186,7 +206,9 @@ export function TileBrushPanel({
                 key={brush.id}
                 type="button"
                 className={`w-full px-2 py-1 text-left text-xs ${
-                  brush.id === selectedBrushId ? "bg-blue-900/40 text-white" : "text-gray-300"
+                  brush.id === selectedBrushId
+                    ? "bg-blue-900/40 text-white"
+                    : "text-gray-300"
                 }`}
                 onClick={() => setSelectedBrushId(brush.id)}
               >
@@ -214,24 +236,60 @@ export function TileBrushPanel({
       )}
 
       <div className="grid grid-cols-3 gap-2">
-        <Button size="sm" variant="outline" onClick={() => handleTransform("rotate")}>Rotate</Button>
-        <Button size="sm" variant="outline" onClick={() => handleTransform("flipX")}>Flip H</Button>
-        <Button size="sm" variant="outline" onClick={() => handleTransform("flipY")}>Flip V</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleTransform("rotate")}
+        >
+          Rotate
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleTransform("flipX")}
+        >
+          Flip H
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleTransform("flipY")}
+        >
+          Flip V
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <Button size="sm" variant="outline" onClick={handleCaptureSingleTile}>Capture Tile</Button>
-        <Button size="sm" onClick={handleStamp}>Stamp at Selection</Button>
+        <Button size="sm" variant="outline" onClick={handleCaptureSingleTile}>
+          Capture Tile
+        </Button>
+        <Button size="sm" onClick={handleStamp}>
+          Stamp at Selection
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">
         <Label className="text-xs text-gray-400">Anchor</Label>
-        <Button size="sm" variant={anchor === "topLeft" ? "default" : "outline"} onClick={() => setAnchor("topLeft")}>Top-left</Button>
-        <Button size="sm" variant={anchor === "center" ? "default" : "outline"} onClick={() => setAnchor("center")}>Center</Button>
+        <Button
+          size="sm"
+          variant={anchor === "topLeft" ? "default" : "outline"}
+          onClick={() => setAnchor("topLeft")}
+        >
+          Top-left
+        </Button>
+        <Button
+          size="sm"
+          variant={anchor === "center" ? "default" : "outline"}
+          onClick={() => setAnchor("center")}
+        >
+          Center
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={handleExport}>Export JSON</Button>
+        <Button size="sm" variant="outline" onClick={handleExport}>
+          Export JSON
+        </Button>
         <label className="text-xs text-gray-300 border border-gray-700 rounded px-2 py-1 cursor-pointer">
           Import JSON
           <input

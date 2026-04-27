@@ -70,8 +70,12 @@ export function WeightBrushPanel({
     [brushSettings, onBrushSettingsChange],
   );
 
-  const unweightedCount = skinData ? findUnweightedVertices(skinData).length : 0;
-  const normErrorCount = skinData ? findNormalizationErrors(skinData).length : 0;
+  const unweightedCount = skinData
+    ? findUnweightedVertices(skinData).length
+    : 0;
+  const normErrorCount = skinData
+    ? findNormalizationErrors(skinData).length
+    : 0;
 
   const handleRepair = useCallback(() => {
     if (!skinData || !onRepairWeights) return;
@@ -140,7 +144,9 @@ export function WeightBrushPanel({
       <div className="space-y-1">
         <div className="flex justify-between">
           <Label className="text-xs text-gray-400">Radius</Label>
-          <span className="text-xs text-gray-300">{brushSettings.radius.toFixed(2)}</span>
+          <span className="text-xs text-gray-300">
+            {brushSettings.radius.toFixed(2)}
+          </span>
         </div>
         <Slider
           min={0.05}
@@ -155,14 +161,18 @@ export function WeightBrushPanel({
       <div className="space-y-1">
         <div className="flex justify-between">
           <Label className="text-xs text-gray-400">Strength</Label>
-          <span className="text-xs text-gray-300">{(brushSettings.strength * 100).toFixed(0)}%</span>
+          <span className="text-xs text-gray-300">
+            {(brushSettings.strength * 100).toFixed(0)}%
+          </span>
         </div>
         <Slider
           min={0}
           max={1}
           step={0.01}
           value={[brushSettings.strength]}
-          onValueChange={([v]) => update({ strength: v ?? brushSettings.strength })}
+          onValueChange={([v]) =>
+            update({ strength: v ?? brushSettings.strength })
+          }
         />
       </div>
 
@@ -174,7 +184,9 @@ export function WeightBrushPanel({
             <Button
               key={f.value}
               size="sm"
-              variant={brushSettings.falloff === f.value ? "default" : "outline"}
+              variant={
+                brushSettings.falloff === f.value ? "default" : "outline"
+              }
               className="text-xs h-7"
               onClick={() => update({ falloff: f.value })}
             >
@@ -199,16 +211,29 @@ export function WeightBrushPanel({
           <p className="text-xs text-gray-400 font-medium">Diagnostics</p>
           <div className="grid grid-cols-2 gap-x-2 text-xs">
             <span className="text-gray-400">Unweighted vertices</span>
-            <span className={unweightedCount > 0 ? "text-red-400" : "text-green-400"}>
+            <span
+              className={
+                unweightedCount > 0 ? "text-red-400" : "text-green-400"
+              }
+            >
               {unweightedCount}
             </span>
             <span className="text-gray-400">Normalization errors</span>
-            <span className={normErrorCount > 0 ? "text-yellow-400" : "text-green-400"}>
+            <span
+              className={
+                normErrorCount > 0 ? "text-yellow-400" : "text-green-400"
+              }
+            >
               {normErrorCount}
             </span>
           </div>
-          {(normErrorCount > 0) && onRepairWeights && (
-            <Button size="sm" variant="outline" className="w-full text-xs h-7" onClick={handleRepair}>
+          {normErrorCount > 0 && onRepairWeights && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-xs h-7"
+              onClick={handleRepair}
+            >
               Repair Normalization ({normErrorCount})
             </Button>
           )}
@@ -216,7 +241,9 @@ export function WeightBrushPanel({
       )}
 
       {!skinData && (
-        <p className="text-xs text-gray-500">Load an animated model with a skeleton to use weight painting.</p>
+        <p className="text-xs text-gray-500">
+          Load an animated model with a skeleton to use weight painting.
+        </p>
       )}
     </div>
   );

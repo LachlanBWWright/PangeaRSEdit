@@ -2,10 +2,21 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { FlipHorizontal, FlipVertical, Maximize2, Move, RotateCw, Scale } from "lucide-react";
+import {
+  FlipHorizontal,
+  FlipVertical,
+  Maximize2,
+  Move,
+  RotateCw,
+  Scale,
+} from "lucide-react";
 import type { UvLayout, UvTransformMode } from "@/modelEditing/uv/uvTypes";
 import { defaultUvTransformState } from "@/modelEditing/uv/uvTypes";
-import { applyUvTransform, fitUvToImage, snapUvToPixelGrid } from "@/modelEditing/uv/uvTransforms";
+import {
+  applyUvTransform,
+  fitUvToImage,
+  snapUvToPixelGrid,
+} from "@/modelEditing/uv/uvTransforms";
 
 interface UvMapEditorProps {
   textureUrl: string;
@@ -38,7 +49,9 @@ function buildUvPaths(
       const x2 = v2.u * displayWidth;
       const y2 = v2.v * displayHeight;
 
-      paths.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)} Z`);
+      paths.push(
+        `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)} Z`,
+      );
     }
   }
 
@@ -88,7 +101,9 @@ export function UvMapEditor({
 
   const handleSnapToPixelGrid = useCallback(() => {
     if (!uvLayout || !onApplyEdit || !textureSize) return;
-    onApplyEdit(snapUvToPixelGrid(uvLayout, textureSize.width, textureSize.height));
+    onApplyEdit(
+      snapUvToPixelGrid(uvLayout, textureSize.width, textureSize.height),
+    );
     setTransform(defaultUvTransformState());
   }, [uvLayout, onApplyEdit, textureSize]);
 
@@ -143,7 +158,9 @@ export function UvMapEditor({
           size="sm"
           variant={activeMode === "rotate" ? "default" : "outline"}
           className="justify-start gap-1"
-          onClick={() => setActiveMode(activeMode === "rotate" ? "none" : "rotate")}
+          onClick={() =>
+            setActiveMode(activeMode === "rotate" ? "none" : "rotate")
+          }
         >
           <RotateCw className="w-3 h-3" /> Rotate
         </Button>
@@ -151,7 +168,9 @@ export function UvMapEditor({
           size="sm"
           variant={activeMode === "scale" ? "default" : "outline"}
           className="justify-start gap-1"
-          onClick={() => setActiveMode(activeMode === "scale" ? "none" : "scale")}
+          onClick={() =>
+            setActiveMode(activeMode === "scale" ? "none" : "scale")
+          }
         >
           <Scale className="w-3 h-3" /> Scale
         </Button>
@@ -201,23 +220,31 @@ export function UvMapEditor({
       {activeMode === "move" && (
         <div className="rounded border border-gray-700 bg-gray-900/60 p-3 space-y-2">
           <div className="space-y-1">
-            <Label className="text-xs text-gray-400">Offset U: {transform.offsetU.toFixed(3)}</Label>
+            <Label className="text-xs text-gray-400">
+              Offset U: {transform.offsetU.toFixed(3)}
+            </Label>
             <Slider
               min={-1}
               max={1}
               step={0.001}
               value={[transform.offsetU]}
-              onValueChange={([value]) => setTransform((t) => ({ ...t, offsetU: value ?? 0 }))}
+              onValueChange={([value]) =>
+                setTransform((t) => ({ ...t, offsetU: value ?? 0 }))
+              }
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-gray-400">Offset V: {transform.offsetV.toFixed(3)}</Label>
+            <Label className="text-xs text-gray-400">
+              Offset V: {transform.offsetV.toFixed(3)}
+            </Label>
             <Slider
               min={-1}
               max={1}
               step={0.001}
               value={[transform.offsetV]}
-              onValueChange={([value]) => setTransform((t) => ({ ...t, offsetV: value ?? 0 }))}
+              onValueChange={([value]) =>
+                setTransform((t) => ({ ...t, offsetV: value ?? 0 }))
+              }
             />
           </div>
         </div>
@@ -226,13 +253,17 @@ export function UvMapEditor({
       {activeMode === "rotate" && (
         <div className="rounded border border-gray-700 bg-gray-900/60 p-3 space-y-2">
           <div className="space-y-1">
-            <Label className="text-xs text-gray-400">Rotation: {transform.rotation.toFixed(1)}°</Label>
+            <Label className="text-xs text-gray-400">
+              Rotation: {transform.rotation.toFixed(1)}°
+            </Label>
             <Slider
               min={-180}
               max={180}
               step={0.5}
               value={[transform.rotation]}
-              onValueChange={([value]) => setTransform((t) => ({ ...t, rotation: value ?? 0 }))}
+              onValueChange={([value]) =>
+                setTransform((t) => ({ ...t, rotation: value ?? 0 }))
+              }
             />
           </div>
         </div>
@@ -241,23 +272,31 @@ export function UvMapEditor({
       {activeMode === "scale" && (
         <div className="rounded border border-gray-700 bg-gray-900/60 p-3 space-y-2">
           <div className="space-y-1">
-            <Label className="text-xs text-gray-400">Scale U: {transform.scaleU.toFixed(2)}×</Label>
+            <Label className="text-xs text-gray-400">
+              Scale U: {transform.scaleU.toFixed(2)}×
+            </Label>
             <Slider
               min={0.1}
               max={4}
               step={0.01}
               value={[transform.scaleU]}
-              onValueChange={([value]) => setTransform((t) => ({ ...t, scaleU: value ?? 1 }))}
+              onValueChange={([value]) =>
+                setTransform((t) => ({ ...t, scaleU: value ?? 1 }))
+              }
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-gray-400">Scale V: {transform.scaleV.toFixed(2)}×</Label>
+            <Label className="text-xs text-gray-400">
+              Scale V: {transform.scaleV.toFixed(2)}×
+            </Label>
             <Slider
               min={0.1}
               max={4}
               step={0.01}
               value={[transform.scaleV]}
-              onValueChange={([value]) => setTransform((t) => ({ ...t, scaleV: value ?? 1 }))}
+              onValueChange={([value]) =>
+                setTransform((t) => ({ ...t, scaleV: value ?? 1 }))
+              }
             />
           </div>
         </div>
@@ -304,8 +343,9 @@ export function UvMapEditor({
 
       {uvLayout && (
         <p className="text-xs text-gray-500">
-          {uvLayout.meshes.reduce((sum, m) => sum + m.faces.length, 0)} faces across{" "}
-          {uvLayout.meshes.length} mesh{uvLayout.meshes.length !== 1 ? "es" : ""}
+          {uvLayout.meshes.reduce((sum, m) => sum + m.faces.length, 0)} faces
+          across {uvLayout.meshes.length} mesh
+          {uvLayout.meshes.length !== 1 ? "es" : ""}
         </p>
       )}
 

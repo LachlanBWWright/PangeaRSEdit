@@ -38,7 +38,9 @@ function getSupertileResizeMeasurements(
   const terrainOffsetX = options.direction === "left" ? options.tileCount : 0;
   const terrainOffsetZ = options.direction === "top" ? options.tileCount : 0;
   const entityOffsetXUnits =
-    options.direction === "left" ? supertileDelta * globals.TILE_INGAME_SIZE : 0;
+    options.direction === "left"
+      ? supertileDelta * globals.TILE_INGAME_SIZE
+      : 0;
   const entityOffsetZUnits =
     options.direction === "top" ? supertileDelta * globals.TILE_INGAME_SIZE : 0;
 
@@ -67,8 +69,14 @@ function resizeItemsWithWorldOffsets(
   const maxX = mapWidth * tileSize;
   const maxZ = mapHeight * tileSize;
   const adjusted = items
-    .map((item) => ({ ...item, x: item.x + offsetXUnits, z: item.z + offsetZUnits }))
-    .filter((item) => item.x >= 0 && item.z >= 0 && item.x <= maxX && item.z <= maxZ);
+    .map((item) => ({
+      ...item,
+      x: item.x + offsetXUnits,
+      z: item.z + offsetZUnits,
+    }))
+    .filter(
+      (item) => item.x >= 0 && item.z >= 0 && item.x <= maxX && item.z <= maxZ,
+    );
 
   return {
     ...atomicData.itemData,

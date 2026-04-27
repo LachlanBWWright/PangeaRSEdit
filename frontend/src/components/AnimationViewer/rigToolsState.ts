@@ -13,7 +13,10 @@ export function collectBoneInfluenceRows(
     return [];
   }
 
-  const totals = new Map<string, { vertexCount: number; weightedSum: number }>();
+  const totals = new Map<
+    string,
+    { vertexCount: number; weightedSum: number }
+  >();
 
   scene.traverse((object) => {
     if (!(object instanceof SkinnedMesh) || !object.skeleton) {
@@ -55,7 +58,10 @@ export function collectBoneInfluenceRows(
           continue;
         }
 
-        const current = totals.get(boneName) ?? { vertexCount: 0, weightedSum: 0 };
+        const current = totals.get(boneName) ?? {
+          vertexCount: 0,
+          weightedSum: 0,
+        };
         totals.set(boneName, {
           vertexCount: current.vertexCount + 1,
           weightedSum: current.weightedSum + weight,
@@ -86,5 +92,8 @@ export function pinSelectedBoneRow(
     return rows;
   }
 
-  return [selectedRow, ...rows.filter((row) => row.boneName !== selectedBoneName)];
+  return [
+    selectedRow,
+    ...rows.filter((row) => row.boneName !== selectedBoneName),
+  ];
 }

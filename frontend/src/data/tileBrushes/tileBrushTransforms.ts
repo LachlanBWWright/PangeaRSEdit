@@ -6,7 +6,10 @@ import {
 } from "@/editor/subviews/bugdom/BugdomTileRenderer.utils";
 import type { TileBrush, TileBrushCell, TileBrushGame } from "./tileBrushTypes";
 
-function rotateTileValueClockwise(game: TileBrushGame, tileValue: number): number {
+function rotateTileValueClockwise(
+  game: TileBrushGame,
+  tileValue: number,
+): number {
   if (game === "mightymike") {
     return tileValue;
   }
@@ -18,7 +21,10 @@ function rotateTileValueClockwise(game: TileBrushGame, tileValue: number): numbe
   return index | (nextRotation << 12) | flipBits;
 }
 
-function flipTileValueHorizontal(game: TileBrushGame, tileValue: number): number {
+function flipTileValueHorizontal(
+  game: TileBrushGame,
+  tileValue: number,
+): number {
   if (game === "mightymike") {
     return tileValue;
   }
@@ -34,7 +40,11 @@ function flipTileValueVertical(game: TileBrushGame, tileValue: number): number {
 
 function mapCells(
   brush: TileBrush,
-  transform: (cell: TileBrushCell, x: number, y: number) => { x: number; y: number; cell: TileBrushCell },
+  transform: (
+    cell: TileBrushCell,
+    x: number,
+    y: number,
+  ) => { x: number; y: number; cell: TileBrushCell },
   width: number,
   height: number,
 ): TileBrush {

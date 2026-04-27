@@ -1,5 +1,9 @@
 import { atom } from "jotai";
-import type { TileBrush, TileBrushAnchor, TileBrushMode } from "./tileBrushTypes";
+import type {
+  TileBrush,
+  TileBrushAnchor,
+  TileBrushMode,
+} from "./tileBrushTypes";
 
 export const tileBrushesAtom = atom<TileBrush[]>([]);
 export const selectedTileBrushIdAtom = atom<string | null>(null);

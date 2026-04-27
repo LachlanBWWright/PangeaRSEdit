@@ -42,13 +42,19 @@ export interface AnimationViewerProps {
   boneTransform?: [number, number, number] | null;
   boneRotation?: [number, number, number, number] | null;
   boneScale?: [number, number, number] | null;
-  onGizmoModeChange?: (mode: import("@/components/model-viewer/types").GizmoMode) => void;
+  onGizmoModeChange?: (
+    mode: import("@/components/model-viewer/types").GizmoMode,
+  ) => void;
   boneRenameInput?: string;
   boneInfluenceRows?: BoneInfluenceRow[];
-  skinData?: import("@/modelEditing/weights/weightTypes").SkinWeightsData | null;
+  skinData?:
+    | import("@/modelEditing/weights/weightTypes").SkinWeightsData
+    | null;
   onBoneRenameInputChange?: (value: string) => void;
   onRenameSelectedBone?: () => void;
-  onRepairWeights?: (repaired: import("@/modelEditing/weights/weightTypes").SkinWeightsData) => void;
+  onRepairWeights?: (
+    repaired: import("@/modelEditing/weights/weightTypes").SkinWeightsData,
+  ) => void;
 }
 
 export interface TimelineRow {

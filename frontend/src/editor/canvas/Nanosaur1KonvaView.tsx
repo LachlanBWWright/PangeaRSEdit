@@ -37,7 +37,10 @@ import {
   tileBrushesAtom,
   tileBrushActiveLayerAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
-import { applyTileBrush, createTileBrushFromRegion } from "@/data/tileBrushes/tileBrushApply";
+import {
+  applyTileBrush,
+  createTileBrushFromRegion,
+} from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
 
 export interface StageData {
@@ -86,8 +89,13 @@ export function Nanosaur1KonvaView({
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
 
-  const [captureStart, setCaptureStart] = useState<{ x: number; y: number } | null>(null);
-  const [captureEnd, setCaptureEnd] = useState<{ x: number; y: number } | null>(null);
+  const [captureStart, setCaptureStart] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [captureEnd, setCaptureEnd] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const getTileFromEvent = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -95,7 +103,8 @@ export function Nanosaur1KonvaView({
       if (!pos) return null;
       const tileX = Math.floor(pos.x / tileSize);
       const tileY = Math.floor(pos.y / tileSize);
-      if (tileX < 0 || tileY < 0 || tileX >= mapWidth || tileY >= mapHeight) return null;
+      if (tileX < 0 || tileY < 0 || tileX >= mapWidth || tileY >= mapHeight)
+        return null;
       return { x: tileX, y: tileY };
     },
     [tileSize, mapWidth, mapHeight],
@@ -121,7 +130,16 @@ export function Nanosaur1KonvaView({
         });
       });
     },
-    [selectedBrushId, tileBrushes, tileBrushAnchor, mapWidth, mapHeight, activeLayer, setTerrainData, getTileFromEvent],
+    [
+      selectedBrushId,
+      tileBrushes,
+      tileBrushAnchor,
+      mapWidth,
+      mapHeight,
+      activeLayer,
+      setTerrainData,
+      getTileFromEvent,
+    ],
   );
 
   const handleCaptureEnd = useCallback(

@@ -1,11 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Download,
-  Upload,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Download, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { TextureDetailDialog } from "@/components/TextureManager/TextureDetailDialog";
 import {
   getTextureSizeLabel,

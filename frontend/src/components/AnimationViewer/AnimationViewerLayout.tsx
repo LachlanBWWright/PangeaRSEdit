@@ -83,10 +83,14 @@ interface AnimationViewerLayoutProps {
   onDeleteEvent: (index: number) => void;
   boneRenameInput: string;
   boneInfluenceRows: BoneInfluenceRow[];
-  skinData?: import("@/modelEditing/weights/weightTypes").SkinWeightsData | null;
+  skinData?:
+    | import("@/modelEditing/weights/weightTypes").SkinWeightsData
+    | null;
   onBoneRenameInputChange: (value: string) => void;
   onRenameSelectedBone: () => void;
-  onRepairWeights?: (repaired: import("@/modelEditing/weights/weightTypes").SkinWeightsData) => void;
+  onRepairWeights?: (
+    repaired: import("@/modelEditing/weights/weightTypes").SkinWeightsData,
+  ) => void;
 }
 
 export function AnimationViewerLayout({

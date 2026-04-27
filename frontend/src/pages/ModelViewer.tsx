@@ -652,7 +652,10 @@ export function ModelViewer() {
     toast.success(`Renamed bone '${selectedBoneName}' to '${nextName}'`);
   }, [boneRenameInput, scene, selectedBoneName]);
 
-  const boneInfluenceRows = useMemo(() => collectBoneInfluenceRows(scene), [scene]);
+  const boneInfluenceRows = useMemo(
+    () => collectBoneInfluenceRows(scene),
+    [scene],
+  );
 
   const displayedBoneInfluenceRows = useMemo(() => {
     if (!selectedBoneName) {

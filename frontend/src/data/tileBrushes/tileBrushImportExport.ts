@@ -3,7 +3,9 @@ import { Result as NeverthrowResult } from "neverthrow";
 import { tileBrushDocumentSchema } from "./tileBrushSchemas";
 import type { TileBrush } from "./tileBrushTypes";
 
-export function parseTileBrushesFromJson(content: string): Result<TileBrush[], string> {
+export function parseTileBrushesFromJson(
+  content: string,
+): Result<TileBrush[], string> {
   const parseJsonResult = NeverthrowResult.fromThrowable(
     () => JSON.parse(content) as unknown,
     () => "Invalid JSON",

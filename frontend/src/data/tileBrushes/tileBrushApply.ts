@@ -1,7 +1,11 @@
 import { err, ok, type Result } from "neverthrow";
 import type { Draft } from "immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
-import type { TileBrush, TileBrushAnchor, TileBrushGame } from "./tileBrushTypes";
+import type {
+  TileBrush,
+  TileBrushAnchor,
+  TileBrushGame,
+} from "./tileBrushTypes";
 
 export interface CreateTileBrushFromRegionArgs {
   readonly id: string;
@@ -36,7 +40,12 @@ export interface TileBrushApplyResult {
 export function createTileBrushFromRegion(
   args: CreateTileBrushFromRegionArgs,
 ): Result<TileBrush, string> {
-  if (args.startX < 0 || args.startY < 0 || args.width <= 0 || args.height <= 0) {
+  if (
+    args.startX < 0 ||
+    args.startY < 0 ||
+    args.width <= 0 ||
+    args.height <= 0
+  ) {
     return err("Invalid region dimensions.");
   }
   if (args.startX >= args.mapWidth || args.startY >= args.mapHeight) {
@@ -53,7 +62,12 @@ export function createTileBrushFromRegion(
     for (let x = 0; x < args.width; x += 1) {
       const mapX = args.startX + x;
       const mapY = args.startY + y;
-      if (mapX < 0 || mapY < 0 || mapX >= args.mapWidth || mapY >= args.mapHeight) {
+      if (
+        mapX < 0 ||
+        mapY < 0 ||
+        mapX >= args.mapWidth ||
+        mapY >= args.mapHeight
+      ) {
         cells.push({ tileValue: 0, enabled: false });
         continue;
       }
@@ -88,7 +102,12 @@ export function getBrushTargetCells(args: {
       ? args.targetY - Math.floor(args.brush.height / 2)
       : args.targetY;
 
-  const targets: { x: number; y: number; brushIndex: number; enabled: boolean }[] = [];
+  const targets: {
+    x: number;
+    y: number;
+    brushIndex: number;
+    enabled: boolean;
+  }[] = [];
   for (let y = 0; y < args.brush.height; y += 1) {
     for (let x = 0; x < args.brush.width; x += 1) {
       const brushIndex = y * args.brush.width + x;

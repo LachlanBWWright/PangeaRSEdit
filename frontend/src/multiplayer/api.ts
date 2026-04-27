@@ -39,7 +39,12 @@ function parseError(status: number, payload: unknown): MultiplayerApiError {
 async function fetchJson(
   input: RequestInfo | URL,
   init: RequestInit,
-): Promise<Result<{ readonly status: number; readonly data: unknown }, MultiplayerApiError>> {
+): Promise<
+  Result<
+    { readonly status: number; readonly data: unknown },
+    MultiplayerApiError
+  >
+> {
   return fetch(input, init)
     .then(async (response) => {
       const data = (await response.json().catch(() => null)) as unknown;
@@ -87,12 +92,15 @@ export async function createLobby(
 export async function listLobbies(
   input: ListLobbiesInput,
 ): Promise<Result<readonly MultiplayerLobbySummary[], MultiplayerApiError>> {
-  const response = await fetchJson(`${BASE_PATH}?gameId=${encodeURIComponent(input.gameId)}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetchJson(
+    `${BASE_PATH}?gameId=${encodeURIComponent(input.gameId)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   if (response.isErr()) {
     return err(response.error);
   }
@@ -112,12 +120,15 @@ export async function listLobbies(
 export async function getLobby(
   lobbyId: string,
 ): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
-  const response = await fetchJson(`${BASE_PATH}/${encodeURIComponent(lobbyId)}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(lobbyId)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   if (response.isErr()) {
     return err(response.error);
   }
@@ -137,13 +148,16 @@ export async function getLobby(
 export async function joinLobby(
   input: JoinLobbyInput,
 ): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
-  const response = await fetchJson(`${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/join`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/join`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ displayName: input.displayName }),
     },
-    body: JSON.stringify({ displayName: input.displayName }),
-  });
+  );
   if (response.isErr()) {
     return err(response.error);
   }
@@ -163,13 +177,16 @@ export async function joinLobby(
 export async function setLobbyReady(
   input: SetReadyInput,
 ): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
-  const response = await fetchJson(`${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/ready`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/ready`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ isReady: input.isReady }),
     },
-    body: JSON.stringify({ isReady: input.isReady }),
-  });
+  );
   if (response.isErr()) {
     return err(response.error);
   }
@@ -189,12 +206,15 @@ export async function setLobbyReady(
 export async function startLobby(
   input: StartLobbyInput,
 ): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
-  const response = await fetchJson(`${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/start`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/start`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   if (response.isErr()) {
     return err(response.error);
   }
@@ -211,13 +231,18 @@ export async function startLobby(
   return ok(parsed.data);
 }
 
-export async function leaveLobby(lobbyId: string): Promise<Result<boolean, MultiplayerApiError>> {
-  const response = await fetchJson(`${BASE_PATH}/${encodeURIComponent(lobbyId)}/leave`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+export async function leaveLobby(
+  lobbyId: string,
+): Promise<Result<boolean, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(lobbyId)}/leave`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   if (response.isErr()) {
     return err(response.error);
   }

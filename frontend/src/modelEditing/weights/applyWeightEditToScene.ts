@@ -6,7 +6,10 @@ import type { SkinWeightsData } from "./weightTypes";
  * Write edited skin weights back into the Three.js SkinnedMesh BufferAttributes.
  * Operates in-place (mutating the geometry attributes for GPU upload).
  */
-export function applyWeightEditToScene(scene: Group, data: SkinWeightsData): void {
+export function applyWeightEditToScene(
+  scene: Group,
+  data: SkinWeightsData,
+): void {
   const skinnedMeshes: SkinnedMesh[] = [];
   scene.traverse((obj) => {
     if (obj instanceof SkinnedMesh) {
@@ -24,7 +27,9 @@ export function applyWeightEditToScene(scene: Group, data: SkinWeightsData): voi
 
     const vertexCount = skinIndex.count;
     const localBoneNames = mesh.skeleton.bones.map((b) => b.name);
-    const localBoneNameToIndex = new Map(localBoneNames.map((name, i) => [name, i]));
+    const localBoneNameToIndex = new Map(
+      localBoneNames.map((name, i) => [name, i]),
+    );
 
     for (let i = 0; i < vertexCount; i++) {
       const globalIdx = globalVertexOffset + i;

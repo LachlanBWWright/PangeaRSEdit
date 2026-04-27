@@ -176,7 +176,11 @@ export function TextureManager({
           onDownloadTexture={onDownloadTexture}
           onEditTexture={handleEditTexture}
           uvLayout={uvLayouts?.get(texture.name)}
-          onApplyUvEdit={onApplyUvEdit ? (layout) => onApplyUvEdit(texture.name, layout) : undefined}
+          onApplyUvEdit={
+            onApplyUvEdit
+              ? (layout) => onApplyUvEdit(texture.name, layout)
+              : undefined
+          }
         />
       ))}
 

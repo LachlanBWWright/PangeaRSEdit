@@ -68,7 +68,9 @@ export function readTerrainTextureChunks(
           ),
         );
       }
-      const bytes = new Uint8Array(dataView.buffer.slice(offset, offset + jpegSize));
+      const bytes = new Uint8Array(
+        dataView.buffer.slice(offset, offset + jpegSize),
+      );
       chunks.push({ id, bytes: copyBytesToArrayBuffer(bytes) });
       offset += jpegSize;
       id += 1;
@@ -84,7 +86,9 @@ export function readTerrainTextureChunks(
       );
     }
 
-    const bytes = new Uint8Array(dataView.buffer.slice(offset, offset + declaredSize));
+    const bytes = new Uint8Array(
+      dataView.buffer.slice(offset, offset + declaredSize),
+    );
     chunks.push({ id, bytes: copyBytesToArrayBuffer(bytes) });
     offset += declaredSize;
     id += 1;

@@ -39,7 +39,8 @@ export function TileBrushPreviewLayer({
   });
 
   const cells = targets.filter(
-    (t) => t.enabled && t.x >= 0 && t.y >= 0 && t.x < mapWidth && t.y < mapHeight,
+    (t) =>
+      t.enabled && t.x >= 0 && t.y >= 0 && t.x < mapWidth && t.y < mapHeight,
   );
 
   return (

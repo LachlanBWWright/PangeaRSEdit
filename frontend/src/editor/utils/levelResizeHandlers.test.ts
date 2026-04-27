@@ -33,7 +33,9 @@ function createAtomicFixture(): AtomicLevelData {
       Itms: {
         1000: {
           name: "Terrain Items List",
-          obj: [{ x: 160, z: 224, type: 1, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 }],
+          obj: [
+            { x: 160, z: 224, type: 1, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
+          ],
           order: 0,
         },
       },
@@ -102,12 +104,27 @@ function createAtomicFixture(): AtomicLevelData {
         1000: { obj: [{ x: 200, z: 300 }], order: 0 },
       },
       SpIt: {
-        1000: { obj: [{ flags: 0, p0: 0, p1: 0, p2: 0, p3: 0, placement: 0, type: 1 }], order: 0 },
+        1000: {
+          obj: [
+            { flags: 0, p0: 0, p1: 0, p2: 0, p3: 0, placement: 0, type: 1 },
+          ],
+          order: 0,
+        },
       },
       Spln: {
         1000: {
           name: "Spline List",
-          obj: [{ bbBottom: 0, bbLeft: 0, bbRight: 0, bbTop: 0, numItems: 1, numNubs: 1, numPoints: 1 }],
+          obj: [
+            {
+              bbBottom: 0,
+              bbLeft: 0,
+              bbRight: 0,
+              bbTop: 0,
+              numItems: 1,
+              numNubs: 1,
+              numPoints: 1,
+            },
+          ],
           order: 0,
         },
       },
@@ -116,7 +133,9 @@ function createAtomicFixture(): AtomicLevelData {
       Atrb: {
         1000: {
           name: "Tile Attribute Data",
-          obj: new Array(100).fill(null).map(() => ({ flags: 0, p0: 0, p1: 0 })),
+          obj: new Array(100)
+            .fill(null)
+            .map(() => ({ flags: 0, p0: 0, p1: 0 })),
           order: 0,
         },
       },
@@ -137,7 +156,9 @@ function createAtomicFixture(): AtomicLevelData {
       STgd: {
         1000: {
           name: "SuperTile Grid",
-          obj: new Array(4).fill(null).map(() => ({ isEmpty: false, superTileId: 1 })),
+          obj: new Array(4)
+            .fill(null)
+            .map(() => ({ isEmpty: false, superTileId: 1 })),
           order: 0,
         },
       },
@@ -271,25 +292,51 @@ describe("applySupertileResizeToAtomicData", () => {
 
       const resized = result.value.data;
       expect(resized.headerData?.Hedr[1000].obj.mapWidth).toBe(testCase.width);
-      expect(resized.headerData?.Hedr[1000].obj.mapHeight).toBe(testCase.height);
+      expect(resized.headerData?.Hedr[1000].obj.mapHeight).toBe(
+        testCase.height,
+      );
       expect(resized.terrainData?.Layr?.[1000].obj.length).toBe(
         testCase.width * testCase.height,
       );
       expect(resized.terrainData?.YCrd[1000].obj.length).toBe(
         (testCase.width + 1) * (testCase.height + 1),
       );
-      expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(testCase.expectedItemX);
-      expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(testCase.expectedItemZ);
-      expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual(testCase.expectedFenceNub);
-      expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual(testCase.expectedSplineNub);
-      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(testCase.expectedLiquidHotSpotX);
-      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(testCase.expectedLiquidHotSpotZ);
-      expect(resized.fenceData?.Fenc[1000]?.obj[0]?.bbLeft).toBe(testCase.expectedFenceBBoxLeft);
-      expect(resized.fenceData?.Fenc[1000]?.obj[0]?.bbTop).toBe(testCase.expectedFenceBBoxTop);
-      expect(resized.splineData?.Spln[1000]?.obj[0]?.bbLeft).toBe(testCase.expectedSplineBBoxLeft);
-      expect(resized.splineData?.Spln[1000]?.obj[0]?.bbTop).toBe(testCase.expectedSplineBBoxTop);
-      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.bBoxLeft).toBe(testCase.expectedLiquidBBoxLeft);
-      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.bBoxTop).toBe(testCase.expectedLiquidBBoxTop);
+      expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(
+        testCase.expectedItemX,
+      );
+      expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(
+        testCase.expectedItemZ,
+      );
+      expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual(
+        testCase.expectedFenceNub,
+      );
+      expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual(
+        testCase.expectedSplineNub,
+      );
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(
+        testCase.expectedLiquidHotSpotX,
+      );
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(
+        testCase.expectedLiquidHotSpotZ,
+      );
+      expect(resized.fenceData?.Fenc[1000]?.obj[0]?.bbLeft).toBe(
+        testCase.expectedFenceBBoxLeft,
+      );
+      expect(resized.fenceData?.Fenc[1000]?.obj[0]?.bbTop).toBe(
+        testCase.expectedFenceBBoxTop,
+      );
+      expect(resized.splineData?.Spln[1000]?.obj[0]?.bbLeft).toBe(
+        testCase.expectedSplineBBoxLeft,
+      );
+      expect(resized.splineData?.Spln[1000]?.obj[0]?.bbTop).toBe(
+        testCase.expectedSplineBBoxTop,
+      );
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.bBoxLeft).toBe(
+        testCase.expectedLiquidBBoxLeft,
+      );
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.bBoxTop).toBe(
+        testCase.expectedLiquidBBoxTop,
+      );
     }
   });
 
@@ -340,12 +387,24 @@ describe("applySupertileResizeToAtomicData", () => {
       }
 
       const resized = result.value.data;
-      expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(testCase.expectedItemX);
-      expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(testCase.expectedItemZ);
-      expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual(testCase.expectedFenceNub);
-      expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual(testCase.expectedSplineNub);
-      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(testCase.expectedLiquidHotSpotX);
-      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(testCase.expectedLiquidHotSpotZ);
+      expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(
+        testCase.expectedItemX,
+      );
+      expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(
+        testCase.expectedItemZ,
+      );
+      expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual(
+        testCase.expectedFenceNub,
+      );
+      expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual(
+        testCase.expectedSplineNub,
+      );
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(
+        testCase.expectedLiquidHotSpotX,
+      );
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(
+        testCase.expectedLiquidHotSpotZ,
+      );
     }
   });
 

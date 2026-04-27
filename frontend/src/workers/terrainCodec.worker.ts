@@ -40,8 +40,12 @@ self.onmessage = (event: MessageEvent<unknown>) => {
     return;
   }
 
-  const outputSize = request.supertileTexmapSize * request.supertileTexmapSize * 2;
-  const decompressedDataView = lzssDecompress(new DataView(request.bytes), outputSize);
+  const outputSize =
+    request.supertileTexmapSize * request.supertileTexmapSize * 2;
+  const decompressedDataView = lzssDecompress(
+    new DataView(request.bytes),
+    outputSize,
+  );
   const canvas = new OffscreenCanvas(
     request.supertileTexmapSize,
     request.supertileTexmapSize,

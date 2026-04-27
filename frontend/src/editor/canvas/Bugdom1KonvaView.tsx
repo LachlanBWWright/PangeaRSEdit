@@ -43,7 +43,10 @@ import {
   tileBrushesAtom,
   tileBrushActiveLayerAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
-import { applyTileBrush, createTileBrushFromRegion } from "@/data/tileBrushes/tileBrushApply";
+import {
+  applyTileBrush,
+  createTileBrushFromRegion,
+} from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
 
 export interface StageData {
@@ -102,8 +105,13 @@ export function Bugdom1KonvaView({
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
 
-  const [captureStart, setCaptureStart] = useState<{ x: number; y: number } | null>(null);
-  const [captureEnd, setCaptureEnd] = useState<{ x: number; y: number } | null>(null);
+  const [captureStart, setCaptureStart] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [captureEnd, setCaptureEnd] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const getTileFromEvent = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -111,7 +119,8 @@ export function Bugdom1KonvaView({
       if (!pos) return null;
       const tileX = Math.floor(pos.x / tileSize);
       const tileY = Math.floor(pos.y / tileSize);
-      if (tileX < 0 || tileY < 0 || tileX >= mapWidth || tileY >= mapHeight) return null;
+      if (tileX < 0 || tileY < 0 || tileX >= mapWidth || tileY >= mapHeight)
+        return null;
       return { x: tileX, y: tileY };
     },
     [tileSize, mapWidth, mapHeight],
@@ -137,7 +146,16 @@ export function Bugdom1KonvaView({
         });
       });
     },
-    [selectedBrushId, tileBrushes, tileBrushAnchor, mapWidth, mapHeight, activeLayer, setTerrainData, getTileFromEvent],
+    [
+      selectedBrushId,
+      tileBrushes,
+      tileBrushAnchor,
+      mapWidth,
+      mapHeight,
+      activeLayer,
+      setTerrainData,
+      getTileFromEvent,
+    ],
   );
 
   const handleCaptureEnd = useCallback(
@@ -168,7 +186,14 @@ export function Bugdom1KonvaView({
         (err) => toast.error(`Capture failed: ${err}`),
       );
     },
-    [globals.GAME_TYPE, terrainData, activeLayer, mapWidth, mapHeight, setTileBrushes],
+    [
+      globals.GAME_TYPE,
+      terrainData,
+      activeLayer,
+      mapWidth,
+      mapHeight,
+      setTileBrushes,
+    ],
   );
 
   const [containerRef, containerSize] = useContainerSize();
@@ -204,32 +229,35 @@ export function Bugdom1KonvaView({
     [setSplineData],
   );
 
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (tileBrushMode === "stamp") {
-      handleStampClick(e);
-      return;
-    }
-    if (clickToAddItem === undefined) return;
-    const stageRef = e.target.getStage();
+  const handleStageClick = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (tileBrushMode === "stamp") {
+        handleStampClick(e);
+        return;
+      }
+      if (clickToAddItem === undefined) return;
+      const stageRef = e.target.getStage();
 
-    const pos = stageRef?.getRelativePointerPosition();
-    if (!pos) return;
-    const x = Math.round(pos.x);
-    const z = Math.round(pos.y);
+      const pos = stageRef?.getRelativePointerPosition();
+      if (!pos) return;
+      const x = Math.round(pos.x);
+      const z = Math.round(pos.y);
 
-    setItemDataNotNull((itemData) => {
-      itemData.Itms[1000].obj.push({
-        x: x,
-        z: z,
-        type: clickToAddItem,
-        flags: 0,
-        p0: 0,
-        p1: 0,
-        p2: 0,
-        p3: 0,
+      setItemDataNotNull((itemData) => {
+        itemData.Itms[1000].obj.push({
+          x: x,
+          z: z,
+          type: clickToAddItem,
+          flags: 0,
+          p0: 0,
+          p1: 0,
+          p2: 0,
+          p3: 0,
+        });
       });
-    });
-  }, [tileBrushMode, handleStampClick, clickToAddItem, setItemDataNotNull]);
+    },
+    [tileBrushMode, handleStampClick, clickToAddItem, setItemDataNotNull],
+  );
 
   const handleStageDblClick = useCallback(() => {
     setSelectedFence(undefined);
@@ -237,30 +265,33 @@ export function Bugdom1KonvaView({
     setSelectedSpline(undefined);
   }, [setSelectedFence, setSelectedItem, setSelectedSpline]);
 
-  const handleStageWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault();
+  const handleStageWheel = useCallback(
+    (e: Konva.KonvaEventObject<WheelEvent>) => {
+      e.evt.preventDefault();
 
-    const scaleBy = 1.05;
-    const stage = e.target.getStage();
-    if (!stage) return;
-    const oldScale = stage.scaleX();
-    const pointerPosition = stage.getPointerPosition();
-    if (!pointerPosition) return;
+      const scaleBy = 1.05;
+      const stage = e.target.getStage();
+      if (!stage) return;
+      const oldScale = stage.scaleX();
+      const pointerPosition = stage.getPointerPosition();
+      if (!pointerPosition) return;
 
-    const mousePointTo = {
-      x: pointerPosition.x / oldScale - stage.x() / oldScale,
-      y: pointerPosition.y / oldScale - stage.y() / oldScale,
-    };
+      const mousePointTo = {
+        x: pointerPosition.x / oldScale - stage.x() / oldScale,
+        y: pointerPosition.y / oldScale - stage.y() / oldScale,
+      };
 
-    const newScale =
-      e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+      const newScale =
+        e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
-    setStage({
-      scale: newScale,
-      x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-      y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-    });
-  }, [setStage]);
+      setStage({
+        scale: newScale,
+        x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
+        y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
+      });
+    },
+    [setStage],
+  );
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>

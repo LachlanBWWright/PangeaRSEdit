@@ -13,8 +13,16 @@ export interface MultiplayerHubEvents {
   onPeerDisconnected: (participantId: string) => void;
   onReceiveOffer: (fromId: string, targetId: string, sdp: string) => void;
   onReceiveAnswer: (fromId: string, targetId: string, sdp: string) => void;
-  onReceiveIceCandidate: (fromId: string, targetId: string, candidate: string) => void;
-  onPlayerReadyChanged: (participantId: string, isReady: boolean, lobby: MultiplayerLobbyDetails) => void;
+  onReceiveIceCandidate: (
+    fromId: string,
+    targetId: string,
+    candidate: string,
+  ) => void;
+  onPlayerReadyChanged: (
+    participantId: string,
+    isReady: boolean,
+    lobby: MultiplayerLobbyDetails,
+  ) => void;
   onMatchStarting: (lobbyId: string, matchConfig: unknown) => void;
 }
 
@@ -77,14 +85,21 @@ export class MultiplayerHubClient {
 
     this.connection.on(
       "PlayerReadyChanged",
-      (participantId: string, isReady: boolean, lobby: MultiplayerLobbyDetails) => {
+      (
+        participantId: string,
+        isReady: boolean,
+        lobby: MultiplayerLobbyDetails,
+      ) => {
         this.events.onPlayerReadyChanged?.(participantId, isReady, lobby);
       },
     );
 
-    this.connection.on("MatchStarting", (lobbyId: string, matchConfig: unknown) => {
-      this.events.onMatchStarting?.(lobbyId, matchConfig);
-    });
+    this.connection.on(
+      "MatchStarting",
+      (lobbyId: string, matchConfig: unknown) => {
+        this.events.onMatchStarting?.(lobbyId, matchConfig);
+      },
+    );
   }
 
   connect(): ResultAsync<void, MultiplayerHubError> {
@@ -92,31 +107,37 @@ export class MultiplayerHubClient {
       return ResultAsync.fromSafePromise(Promise.resolve());
     }
 
-    return ResultAsync.fromPromise(
-      this.connection.start(),
-      (e) => ({
-        type: "connection" as const,
-        message: e instanceof Error ? e.message : "Failed to connect to signaling server.",
-      }),
-    );
+    return ResultAsync.fromPromise(this.connection.start(), (e) => ({
+      type: "connection" as const,
+      message:
+        e instanceof Error
+          ? e.message
+          : "Failed to connect to signaling server.",
+    }));
   }
 
   disconnect(): ResultAsync<void, MultiplayerHubError> {
-    return ResultAsync.fromPromise(
-      this.connection.stop(),
-      (e) => ({
-        type: "connection" as const,
-        message: e instanceof Error ? e.message : "Error disconnecting from signaling server.",
-      }),
-    );
+    return ResultAsync.fromPromise(this.connection.stop(), (e) => ({
+      type: "connection" as const,
+      message:
+        e instanceof Error
+          ? e.message
+          : "Error disconnecting from signaling server.",
+    }));
   }
 
-  joinLobby(lobbyId: string, participantId: string): ResultAsync<void, MultiplayerHubError> {
+  joinLobby(
+    lobbyId: string,
+    participantId: string,
+  ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
       this.connection.invoke("JoinLobby", lobbyId, participantId),
       (e) => ({
         type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to join lobby signaling group.",
+        message:
+          e instanceof Error
+            ? e.message
+            : "Failed to join lobby signaling group.",
       }),
     );
   }
@@ -126,7 +147,10 @@ export class MultiplayerHubClient {
       this.connection.invoke("LeaveLobby", lobbyId),
       (e) => ({
         type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to leave lobby signaling group.",
+        message:
+          e instanceof Error
+            ? e.message
+            : "Failed to leave lobby signaling group.",
       }),
     );
   }
@@ -165,10 +189,16 @@ export class MultiplayerHubClient {
     candidate: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("SendIceCandidate", lobbyId, targetParticipantId, candidate),
+      this.connection.invoke(
+        "SendIceCandidate",
+        lobbyId,
+        targetParticipantId,
+        candidate,
+      ),
       (e) => ({
         type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to send ICE candidate.",
+        message:
+          e instanceof Error ? e.message : "Failed to send ICE candidate.",
       }),
     );
   }
@@ -181,7 +211,8 @@ export class MultiplayerHubClient {
       this.connection.invoke("SetReady", lobbyId, isReady),
       (e) => ({
         type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to update ready state.",
+        message:
+          e instanceof Error ? e.message : "Failed to update ready state.",
       }),
     );
   }
@@ -194,7 +225,8 @@ export class MultiplayerHubClient {
       this.connection.invoke("NotifyMatchStarting", lobbyId, matchConfig),
       (e) => ({
         type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to notify match starting.",
+        message:
+          e instanceof Error ? e.message : "Failed to notify match starting.",
       }),
     );
   }

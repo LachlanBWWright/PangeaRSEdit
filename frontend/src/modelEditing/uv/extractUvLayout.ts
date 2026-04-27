@@ -11,7 +11,8 @@ function extractUvMeshLayout(
     return null;
   }
 
-  const uvAttr = geometry.getAttribute("uv") ?? geometry.getAttribute("TEXCOORD_0");
+  const uvAttr =
+    geometry.getAttribute("uv") ?? geometry.getAttribute("TEXCOORD_0");
   const indexAttr = geometry.getIndex();
 
   if (!uvAttr) {
@@ -67,7 +68,8 @@ export function extractUvLayout(
       : [object.material];
 
     const usesTexture = materials.some(
-      (mat) => mat && (mat.name === textureName || mat.name.includes(textureName)),
+      (mat) =>
+        mat && (mat.name === textureName || mat.name.includes(textureName)),
     );
 
     if (!usesTexture && meshes.length === 0) {

@@ -1,5 +1,9 @@
 import { ok, type Result } from "neverthrow";
-import type { BG3DParseResult, BG3DGeometry, BG3DGroup } from "@/modelParsers/parseBG3D";
+import type {
+  BG3DParseResult,
+  BG3DGeometry,
+  BG3DGroup,
+} from "@/modelParsers/parseBG3D";
 import type { UvLayout, UvMeshLayout } from "./uvTypes";
 
 /**

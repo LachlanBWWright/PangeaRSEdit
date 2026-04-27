@@ -34,7 +34,12 @@ const BASE = "/api/saved-levels";
 async function fetchJson(
   input: RequestInfo | URL,
   init: RequestInit,
-): Promise<Result<{ readonly status: number; readonly data: unknown }, SavedLevelsApiError>> {
+): Promise<
+  Result<
+    { readonly status: number; readonly data: unknown },
+    SavedLevelsApiError
+  >
+> {
   return fetch(input, init)
     .then(async (response) => {
       const data = (await response.json().catch(() => null)) as unknown;
@@ -43,7 +48,10 @@ async function fetchJson(
           typeof data === "object" && data !== null && "message" in data
             ? String((data as Record<string, unknown>)["message"])
             : "Saved levels request failed.";
-        return err<{ readonly status: number; readonly data: unknown }, SavedLevelsApiError>({
+        return err<
+          { readonly status: number; readonly data: unknown },
+          SavedLevelsApiError
+        >({
           code: "api.error",
           message,
           status: response.status,
@@ -52,7 +60,10 @@ async function fetchJson(
       return ok({ status: response.status, data });
     })
     .catch(() =>
-      err<{ readonly status: number; readonly data: unknown }, SavedLevelsApiError>({
+      err<
+        { readonly status: number; readonly data: unknown },
+        SavedLevelsApiError
+      >({
         code: "network.unreachable",
         message: "Could not reach backend.",
         status: 0,
@@ -63,12 +74,19 @@ async function fetchJson(
 export async function listSavedLevels(): Promise<
   Result<SavedLevelSummary[], SavedLevelsApiError>
 > {
-  const response = await fetchJson(BASE, { method: "GET", credentials: "include" });
+  const response = await fetchJson(BASE, {
+    method: "GET",
+    credentials: "include",
+  });
   if (response.isErr()) return err(response.error);
 
   const parsed = SavedLevelListSchema.safeParse(response.value.data);
   if (!parsed.success) {
-    return err({ code: "schema.invalid", message: "Invalid saved levels list format.", status: response.value.status });
+    return err({
+      code: "schema.invalid",
+      message: "Invalid saved levels list format.",
+      status: response.value.status,
+    });
   }
   return ok(parsed.data);
 }
@@ -86,7 +104,11 @@ export async function createSavedLevel(
 
   const parsed = SavedLevelDetailSchema.safeParse(response.value.data);
   if (!parsed.success) {
-    return err({ code: "schema.invalid", message: "Invalid saved level format.", status: response.value.status });
+    return err({
+      code: "schema.invalid",
+      message: "Invalid saved level format.",
+      status: response.value.status,
+    });
   }
   return ok(parsed.data);
 }
@@ -102,7 +124,11 @@ export async function loadSavedLevel(
 
   const parsed = SavedLevelDetailSchema.safeParse(response.value.data);
   if (!parsed.success) {
-    return err({ code: "schema.invalid", message: "Invalid saved level format.", status: response.value.status });
+    return err({
+      code: "schema.invalid",
+      message: "Invalid saved level format.",
+      status: response.value.status,
+    });
   }
   return ok(parsed.data);
 }
@@ -121,7 +147,11 @@ export async function updateSavedLevel(
 
   const parsed = SavedLevelDetailSchema.safeParse(response.value.data);
   if (!parsed.success) {
-    return err({ code: "schema.invalid", message: "Invalid saved level format.", status: response.value.status });
+    return err({
+      code: "schema.invalid",
+      message: "Invalid saved level format.",
+      status: response.value.status,
+    });
   }
   return ok(parsed.data);
 }

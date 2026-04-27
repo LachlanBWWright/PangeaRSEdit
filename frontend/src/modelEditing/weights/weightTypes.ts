@@ -1,5 +1,14 @@
-export type WeightBrushMode = "paint" | "add" | "subtract" | "smooth" | "normalize";
-export type WeightVisualizationMode = "heatmap" | "dominant" | "unweighted" | "none";
+export type WeightBrushMode =
+  | "paint"
+  | "add"
+  | "subtract"
+  | "smooth"
+  | "normalize";
+export type WeightVisualizationMode =
+  | "heatmap"
+  | "dominant"
+  | "unweighted"
+  | "none";
 export type WeightFalloff = "linear" | "smooth" | "sharp";
 
 export interface WeightBrushSettings {

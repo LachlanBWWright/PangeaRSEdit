@@ -1,5 +1,8 @@
 import type { GlobalsInterface } from "@/data/globals/globals";
-import { selectTerrainCodec, readTerrainTextureChunks } from "@/data/terrain-io/terrainCodec";
+import {
+  selectTerrainCodec,
+  readTerrainTextureChunks,
+} from "@/data/terrain-io/terrainCodec";
 import { decodeTerrainChunks } from "@/data/terrain-io/terrainCodecWorkerClient";
 import { assembleTerrainCanvases } from "@/data/terrain-io/terrainImageAssembly";
 import { ok, err, type Result } from "neverthrow";

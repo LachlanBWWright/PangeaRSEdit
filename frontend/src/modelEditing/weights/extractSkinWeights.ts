@@ -7,7 +7,9 @@ import type { SkinWeightsData, VertexWeightInfo } from "./weightTypes";
  * Extract per-vertex skinning weights from all SkinnedMesh nodes in a Three.js scene.
  * Returns a unified SkinWeightsData with all bone names merged and weights remapped.
  */
-export function extractSkinWeights(scene: Group): Result<SkinWeightsData, string> {
+export function extractSkinWeights(
+  scene: Group,
+): Result<SkinWeightsData, string> {
   const skinnedMeshes: SkinnedMesh[] = [];
   scene.traverse((obj) => {
     if (obj instanceof SkinnedMesh) {

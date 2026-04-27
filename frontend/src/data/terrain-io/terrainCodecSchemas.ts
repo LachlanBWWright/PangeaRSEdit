@@ -41,5 +41,9 @@ export const terrainCodecWorkerResponseSchema = z.union([
   terrainCodecErrorResponseSchema,
 ]);
 
-export type TerrainCodecWorkerRequest = z.infer<typeof terrainCodecWorkerRequestSchema>;
-export type TerrainCodecWorkerResponse = z.infer<typeof terrainCodecWorkerResponseSchema>;
+export type TerrainCodecWorkerRequest = z.infer<
+  typeof terrainCodecWorkerRequestSchema
+>;
+export type TerrainCodecWorkerResponse = z.infer<
+  typeof terrainCodecWorkerResponseSchema
+>;

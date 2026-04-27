@@ -10,7 +10,10 @@ import {
   terrainCodecWorkerResponseSchema,
   type TerrainCodecWorkerRequest,
 } from "@/data/terrain-io/terrainCodecSchemas";
-import { terrainIoError, type TerrainIoError } from "@/data/terrain-io/terrainIoErrors";
+import {
+  terrainIoError,
+  type TerrainIoError,
+} from "@/data/terrain-io/terrainIoErrors";
 import { z } from "zod";
 
 const terrainIoErrorLikeSchema = z.object({
@@ -73,7 +76,10 @@ async function decodeChunk(
       worker.removeEventListener("message", onMessage);
       worker.removeEventListener("error", onError);
       reject(
-        terrainIoError("terrain.decode.failed", "Terrain worker encountered an error"),
+        terrainIoError(
+          "terrain.decode.failed",
+          "Terrain worker encountered an error",
+        ),
       );
     };
 
@@ -124,7 +130,10 @@ export function decodeTerrainChunks(
       if (parsed.success) {
         return terrainIoError("terrain.decode.failed", parsed.data.message);
       }
-      return terrainIoError("terrain.decode.failed", "Failed to decode terrain textures");
+      return terrainIoError(
+        "terrain.decode.failed",
+        "Failed to decode terrain textures",
+      );
     },
   );
 }

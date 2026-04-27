@@ -17,8 +17,10 @@ export function UvAssignmentPanel({
   size,
   uvLayout,
 }: UvAssignmentPanelProps) {
-  const totalVertices = uvLayout?.meshes.reduce((sum, m) => sum + m.vertices.length, 0) ?? 0;
-  const totalFaces = uvLayout?.meshes.reduce((sum, m) => sum + m.faces.length, 0) ?? 0;
+  const totalVertices =
+    uvLayout?.meshes.reduce((sum, m) => sum + m.vertices.length, 0) ?? 0;
+  const totalFaces =
+    uvLayout?.meshes.reduce((sum, m) => sum + m.faces.length, 0) ?? 0;
 
   return (
     <div className="rounded border border-gray-700 bg-gray-900/60 p-3 text-sm space-y-2">
@@ -49,7 +51,9 @@ export function UvAssignmentPanel({
             <span className="text-gray-200">{totalFaces}</span>
           </div>
           <div className="mt-2 space-y-1">
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Mesh Assignments</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">
+              Mesh Assignments
+            </p>
             {uvLayout.meshes.map((mesh, index) => (
               <div
                 key={index}

@@ -26,7 +26,13 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { View } from "../viewEnum";
 import { TileBrushPreviewLayer } from "../subviews/tileBrushes/TileBrushPreviewLayer";
-import { tileBrushModeAtom, tileBrushPreviewAtom, selectedTileBrushIdAtom, tileBrushAnchorAtom, tileBrushesAtom } from "@/data/tileBrushes/tileBrushAtoms";
+import {
+  tileBrushModeAtom,
+  tileBrushPreviewAtom,
+  selectedTileBrushIdAtom,
+  tileBrushAnchorAtom,
+  tileBrushesAtom,
+} from "@/data/tileBrushes/tileBrushAtoms";
 import { TILE_SIZE } from "../subviews/supertiles/mightyMikeSupertilesHelpers";
 import { applyTileBrush } from "@/data/tileBrushes/tileBrushApply";
 import type Konva from "konva";
@@ -80,7 +86,8 @@ export function MightyMikeKonvaView({
       if (!pos) return null;
       const tileX = Math.floor(pos.x / TILE_SIZE);
       const tileY = Math.floor(pos.y / TILE_SIZE);
-      if (tileX < 0 || tileY < 0 || tileX >= mapWidth || tileY >= mapHeight) return null;
+      if (tileX < 0 || tileY < 0 || tileX >= mapWidth || tileY >= mapHeight)
+        return null;
       return { x: tileX, y: tileY };
     },
     [mapWidth, mapHeight],
@@ -106,7 +113,16 @@ export function MightyMikeKonvaView({
         });
       });
     },
-    [tileBrushMode, selectedBrushId, tileBrushes, tileBrushAnchor, mapWidth, mapHeight, setTerrainData, getMapTileFromStageEvent],
+    [
+      tileBrushMode,
+      selectedBrushId,
+      tileBrushes,
+      tileBrushAnchor,
+      mapWidth,
+      mapHeight,
+      setTerrainData,
+      getMapTileFromStageEvent,
+    ],
   );
 
   const [containerRef, containerSize] = useContainerSize();

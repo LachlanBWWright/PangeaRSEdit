@@ -1,7 +1,7 @@
 /**
  * Validation tests for ALL games
  * Ensures that parsed level data passes Zod schema validation without errors
- * 
+ *
  * This test specifically verifies that the nullToZero fix correctly handles
  * rsrcdump-ts v1.0.4's bug where it returns null for numeric zero values
  */
@@ -83,13 +83,17 @@ describe("All Games Validation Tests", () => {
       for (let i = 0; i < 3; i++) {
         it(`should parse and validate level ${i + 1} without errors`, async () => {
           if (i >= terrainFiles.length) {
-            console.warn(`Skipping ${game.name} level ${i + 1} - file not found`);
+            console.warn(
+              `Skipping ${game.name} level ${i + 1} - file not found`,
+            );
             return;
           }
 
           const fileName = terrainFiles[i];
           if (!fileName) {
-            console.warn(`Skipping ${game.name} level ${i + 1} - file not found`);
+            console.warn(
+              `Skipping ${game.name} level ${i + 1} - file not found`,
+            );
             return;
           }
           const filePath = join(terrainDir, fileName);
@@ -100,16 +104,21 @@ describe("All Games Validation Tests", () => {
             new Uint8Array(fileData),
             game.globals.STRUCT_SPECS,
             [],
-            []
+            [],
           );
 
           expect(parseResult.ok).toBe(true);
           if (!parseResult.ok) {
-            console.error(`${game.name} ${fileName} parse error:`, parseResult.error);
+            console.error(
+              `${game.name} ${fileName} parse error:`,
+              parseResult.error,
+            );
             return;
           }
 
-          function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+          function assertIsRecord(
+            x: unknown,
+          ): asserts x is Record<string, unknown> {
             if (typeof x !== "object" || x === null) {
               expect.fail(`${fileName} parseResult did not return an object`);
             }
@@ -139,16 +148,16 @@ describe("All Games Validation Tests", () => {
           // Validate against Zod schema
           const validationResult = validateLevelDataForGame(
             parsed,
-            game.globals.GAME_TYPE
+            game.globals.GAME_TYPE,
           );
 
           if (validationResult.isErr()) {
             console.error(`${game.name} ${fileName} validation errors:`);
             console.error(validationResult.error);
-            
+
             // Log first few errors for debugging
-            const errorLines = validationResult.error.split('\n').slice(0, 20);
-            console.error('First 20 validation errors:', errorLines.join('\n'));
+            const errorLines = validationResult.error.split("\n").slice(0, 20);
+            console.error("First 20 validation errors:", errorLines.join("\n"));
           }
 
           expect(validationResult.isOk()).toBe(true);

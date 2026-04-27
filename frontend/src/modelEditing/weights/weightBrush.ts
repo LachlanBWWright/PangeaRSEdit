@@ -1,4 +1,8 @@
-import type { SkinWeightsData, VertexWeightInfo, WeightBrushSettings } from "./weightTypes";
+import type {
+  SkinWeightsData,
+  VertexWeightInfo,
+  WeightBrushSettings,
+} from "./weightTypes";
 import { normalizeVertexWeights } from "./weightNormalization";
 
 /**
@@ -10,7 +14,8 @@ export function applyWeightBrush(
   affectedVertices: { vertexIndex: number; distance: number }[],
   settings: WeightBrushSettings,
 ): SkinWeightsData {
-  const { mode, radius, strength, falloff, targetBone, autoNormalize } = settings;
+  const { mode, radius, strength, falloff, targetBone, autoNormalize } =
+    settings;
   if (!targetBone) return data;
 
   const targetBoneIndex = data.boneNames.indexOf(targetBone);
@@ -28,19 +33,36 @@ export function applyWeightBrush(
     const alpha = applyFalloff(t, falloff) * strength;
     if (alpha <= 0) continue;
 
-    const updated = editVertex(vertex, targetBoneIndex, targetBone, mode, alpha);
-    const normalized = autoNormalize ? normalizeVertexWeights(updated) : updated;
+    const updated = editVertex(
+      vertex,
+      targetBoneIndex,
+      targetBone,
+      mode,
+      alpha,
+    );
+    const normalized = autoNormalize
+      ? normalizeVertexWeights(updated)
+      : updated;
     editedVertices.set(vertexIndex, normalized);
   }
 
-  return { ...data, vertices: data.vertices.map((v) => editedVertices.get(v.vertexIndex) ?? v) };
+  return {
+    ...data,
+    vertices: data.vertices.map((v) => editedVertices.get(v.vertexIndex) ?? v),
+  };
 }
 
-function applyFalloff(t: number, falloff: WeightBrushSettings["falloff"]): number {
+function applyFalloff(
+  t: number,
+  falloff: WeightBrushSettings["falloff"],
+): number {
   switch (falloff) {
-    case "linear": return t;
-    case "smooth": return t * t * (3 - 2 * t); // smoothstep
-    case "sharp": return t < 0.5 ? 0 : (t - 0.5) * 2;
+    case "linear":
+      return t;
+    case "smooth":
+      return t * t * (3 - 2 * t); // smoothstep
+    case "sharp":
+      return t < 0.5 ? 0 : (t - 0.5) * 2;
   }
 }
 
@@ -57,9 +79,15 @@ function editVertex(
 
   let newWeight: number;
   switch (mode) {
-    case "paint": newWeight = alpha; break;
-    case "add": newWeight = Math.min(1, currentWeight + alpha); break;
-    case "subtract": newWeight = Math.max(0, currentWeight - alpha); break;
+    case "paint":
+      newWeight = alpha;
+      break;
+    case "add":
+      newWeight = Math.min(1, currentWeight + alpha);
+      break;
+    case "subtract":
+      newWeight = Math.max(0, currentWeight - alpha);
+      break;
     case "smooth": {
       // Average weight of this bone across all neighbours (simplified: blend toward 0.5)
       newWeight = currentWeight + (0.5 - currentWeight) * alpha;

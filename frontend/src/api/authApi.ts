@@ -10,12 +10,17 @@ export interface AuthApiError {
 async function fetchJson(
   input: RequestInfo | URL,
   init: RequestInit,
-): Promise<Result<{ readonly status: number; readonly data: unknown }, AuthApiError>> {
+): Promise<
+  Result<{ readonly status: number; readonly data: unknown }, AuthApiError>
+> {
   return fetch(input, init)
     .then(async (response) => {
       const data = (await response.json().catch(() => null)) as unknown;
       if (!response.ok) {
-        return err<{ readonly status: number; readonly data: unknown }, AuthApiError>({
+        return err<
+          { readonly status: number; readonly data: unknown },
+          AuthApiError
+        >({
           code: "auth.error",
           message:
             typeof data === "object" && data !== null && "message" in data
@@ -40,12 +45,19 @@ async function fetchJson(
  * Returns err if not signed in (401) or on network failure.
  */
 export async function getMe(): Promise<Result<UserProfile, AuthApiError>> {
-  const response = await fetchJson("/api/me", { method: "GET", credentials: "include" });
+  const response = await fetchJson("/api/me", {
+    method: "GET",
+    credentials: "include",
+  });
   if (response.isErr()) return err(response.error);
 
   const parsed = UserProfileSchema.safeParse(response.value.data);
   if (!parsed.success) {
-    return err({ code: "schema.invalid", message: "Invalid user profile format.", status: response.value.status });
+    return err({
+      code: "schema.invalid",
+      message: "Invalid user profile format.",
+      status: response.value.status,
+    });
   }
   return ok(parsed.data);
 }
