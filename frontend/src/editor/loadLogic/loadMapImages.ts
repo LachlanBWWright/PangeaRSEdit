@@ -14,12 +14,37 @@ export async function loadMapImages(
 ): Promise<Result<HTMLCanvasElement[], string>> {
   const codecResult = selectTerrainCodec(globals);
   if (codecResult.isErr()) {
+    console.error("[terrain] unsupported texture format", {
+      gameName: globals.GAME_NAME,
+      gameType: globals.GAME_TYPE,
+      error: codecResult.error,
+    });
     return err(codecResult.error.message);
   }
 
+  console.info("[terrain] loadMapImages start", {
+    gameName: globals.GAME_NAME,
+    codec: codecResult.value.kind,
+    supertileTexmapSize: codecResult.value.supertileTexmapSize,
+    textureBytes: dataView.byteLength,
+  });
+
   const chunksResult = readTerrainTextureChunks(dataView, codecResult.value);
   if (chunksResult.isErr()) {
+    console.error("[terrain] failed to read texture chunks", {
+      gameName: globals.GAME_NAME,
+      error: chunksResult.error,
+    });
     return err(chunksResult.error.message);
+  }
+
+  if (chunksResult.value.length === 0) {
+    console.warn("[terrain] texture file contained no chunks", {
+      gameName: globals.GAME_NAME,
+      codec: codecResult.value.kind,
+      textureBytes: dataView.byteLength,
+    });
+    return err("No terrain texture chunks were found in the texture file");
   }
 
   const decodedResult = await decodeTerrainChunks(
@@ -28,13 +53,28 @@ export async function loadMapImages(
     onProgress,
   );
   if (decodedResult.isErr()) {
+    console.error("[terrain] terrain decode failed", {
+      gameName: globals.GAME_NAME,
+      error: decodedResult.error,
+    });
     return err(decodedResult.error.message);
   }
 
   const assembledResult = assembleTerrainCanvases(decodedResult.value);
   if (assembledResult.isErr()) {
+    console.error("[terrain] terrain assembly failed", {
+      gameName: globals.GAME_NAME,
+      error: assembledResult.error,
+    });
     return err(assembledResult.error.message);
   }
+
+  console.info("[terrain] loadMapImages complete", {
+    gameName: globals.GAME_NAME,
+    codec: codecResult.value.kind,
+    chunks: chunksResult.value.length,
+    canvases: assembledResult.value.length,
+  });
 
   return ok(assembledResult.value);
 }

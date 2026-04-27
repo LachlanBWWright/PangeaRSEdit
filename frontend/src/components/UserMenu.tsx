@@ -4,20 +4,34 @@ import { LogIn, LogOut, User } from "lucide-react";
 import { getMe, signOut, getGoogleSignInUrl } from "@/api/authApi";
 import { toast } from "sonner";
 import type { UserProfile } from "@/api/apiSchemas";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useSetAtom } from "jotai";
+import { currentAuthUserAtom } from "@/data/globals/authState";
 
-export function UserMenu() {
+interface UserMenuProps {
+  compact?: boolean;
+}
+
+export function UserMenu({ compact = false }: UserMenuProps) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const setCurrentAuthUser = useSetAtom(currentAuthUserAtom);
 
   useEffect(() => {
     getMe()
       .then((result) => {
-        setUser(result.isOk() ? result.value : null);
+        const nextUser = result.isOk() ? result.value : null;
+        setUser(nextUser);
+        setCurrentAuthUser(nextUser);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [setCurrentAuthUser]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -40,6 +54,7 @@ export function UserMenu() {
     signOut().then((result) => {
       if (result.isOk()) {
         setUser(null);
+        setCurrentAuthUser(null);
         toast.success("Signed out", { id: toastId });
       } else {
         toast.error("Sign out failed", {
@@ -53,42 +68,74 @@ export function UserMenu() {
   if (loading) return null;
 
   if (!user) {
-    return (
+    const signInButton = (
       <Button
         size="sm"
         variant="outline"
-        className="flex items-center gap-2 text-white border-slate-600 hover:border-slate-400"
+        className={
+          compact
+            ? "h-9 w-9 px-0"
+            : "flex items-center gap-2 text-white border-slate-600 hover:border-slate-400"
+        }
         onClick={() => {
           window.location.href = getGoogleSignInUrl(window.location.href);
         }}
+        aria-label="Sign in with Google"
       >
-        <LogIn className="w-4 h-4" />
-        <span className="hidden sm:inline">Sign in with Google</span>
+        <LogIn className="h-4 w-4" />
+        {!compact && (
+          <span className="hidden sm:inline">Sign in with Google</span>
+        )}
       </Button>
+    );
+
+    return compact ? (
+      <Tooltip>
+        <TooltipTrigger asChild>{signInButton}</TooltipTrigger>
+        <TooltipContent>Sign in with Google</TooltipContent>
+      </Tooltip>
+    ) : (
+      signInButton
     );
   }
 
-  return (
-    <div className="relative" ref={menuRef}>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="flex items-center gap-2 text-white"
-        onClick={() => setMenuOpen((o) => !o)}
-      >
-        {user.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt={user.displayName}
-            className="w-6 h-6 rounded-full object-cover"
-          />
-        ) : (
-          <User className="w-4 h-4" />
-        )}
+  const userButton = (
+    <Button
+      size="sm"
+      variant="ghost"
+      className={
+        compact ? "h-9 w-9 px-0" : "flex items-center gap-2 text-white"
+      }
+      onClick={() => setMenuOpen((o) => !o)}
+      aria-label={compact ? `Signed in as ${user.displayName}` : undefined}
+    >
+      {user.avatarUrl ? (
+        <img
+          src={user.avatarUrl}
+          alt={user.displayName}
+          className="h-6 w-6 rounded-full object-cover"
+        />
+      ) : (
+        <User className="h-4 w-4" />
+      )}
+      {!compact && (
         <span className="hidden sm:inline max-w-30 truncate">
           {user.displayName}
         </span>
-      </Button>
+      )}
+    </Button>
+  );
+
+  return (
+    <div className="relative" ref={menuRef}>
+      {compact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{userButton}</TooltipTrigger>
+          <TooltipContent>Signed in as {user.displayName}</TooltipContent>
+        </Tooltip>
+      ) : (
+        userButton
+      )}
 
       {menuOpen && (
         <div className="absolute right-0 top-full mt-1 z-50 min-w-40 rounded-md border border-slate-700 bg-slate-800 shadow-lg py-1">

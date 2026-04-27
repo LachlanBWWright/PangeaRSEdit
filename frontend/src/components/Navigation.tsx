@@ -28,15 +28,15 @@ export function Navigation() {
   const showEditorNavbar = location.pathname === "/" && editorNavbarOpen;
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-1 min-h-14 flex items-center gap-2 md:gap-4 overflow-hidden">
+    <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-1 min-h-14 flex items-center gap-2 md:gap-4 overflow-visible">
       {showEditorNavbar ? (
-        <div className="flex-1 min-w-0 overflow-x-auto">
-          <div className="flex items-center gap-2 md:gap-4 whitespace-nowrap w-full pr-1 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-visible">
+          <div className="flex items-center gap-2 md:gap-4 whitespace-nowrap w-full pr-1 overflow-visible">
             {editorNavbarLeft}
             <div className="flex flex-1 min-w-0 overflow-x-auto items-stretch rounded-md bg-muted p-1 text-muted-foreground border border-border">
               {editorNavbarTabs}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="relative flex items-center gap-2 shrink-0 overflow-visible">
               {editorNavbarActions}
             </div>
           </div>
@@ -133,7 +133,7 @@ export function Navigation() {
           </div>
         </div>
       )}
-      <div className="ml-auto shrink-0">
+      <div className={showEditorNavbar ? "hidden" : "ml-auto shrink-0"}>
         <UserMenu />
       </div>
     </nav>

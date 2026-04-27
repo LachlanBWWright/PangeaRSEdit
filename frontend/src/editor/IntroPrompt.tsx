@@ -44,6 +44,7 @@ import { prepareDownloadData } from "./utils/introPromptUtils";
 import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
 import { NewMapConfirmDialog } from "./IntroPrompt/NewMapConfirmDialog";
 import { TestGameDialog } from "./TestGameDialog";
+import { LevelActionMenu } from "./LevelActionMenu";
 import {
   GAME_PORT_CONFIGS,
   inferPreviewLevelFromFilename,
@@ -60,6 +61,7 @@ import { createSavedLevel } from "@/api/savedLevelsApi";
 import { getMe } from "@/api/authApi";
 import { getGoogleSignInUrl } from "@/api/authApi";
 import { mapErr } from "@/utils/mapErr";
+import { currentAuthUserAtom } from "@/data/globals/authState";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -79,6 +81,7 @@ export interface DataHistory {
 
 export function IntroPrompt() {
   const globals = useAtomValue(Globals);
+  const authUser = useAtomValue(currentAuthUserAtom);
   const setGlobals = useSetAtom(Globals);
   const setEditorNavbarOpen = useSetAtom(editorNavbarOpenAtom);
   const setEditorNavbarLeft = useSetAtom(editorNavbarLeftAtom);
@@ -95,6 +98,7 @@ export function IntroPrompt() {
   // Tunnel data for Bugdom 2 tunnel levels
   const [tunnelData, setTunnelData] = useState<TunnelData | null>(null);
   const [tunnelFileName, setTunnelFileName] = useState<string>("");
+  const canSaveToCloud = authUser !== null;
 
   // Safe item types tracking
   const setSafeItemTypes = useSetAtom(SafeItemTypes);
@@ -772,7 +776,7 @@ export function IntroPrompt() {
         if (meResult.isErr()) {
           toast.error("Sign in to save to cloud", {
             id: cloudToastId,
-            description: "Click Sign in in the top right.",
+            description: "Use the account button in the top right.",
             action: {
               label: "Sign in",
               onClick: () => {
@@ -843,25 +847,13 @@ export function IntroPrompt() {
     const editorActions =
       mapFile && mapImages ? (
         <>
-          {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-            <Button
-              data-testid="test-level-button"
-              variant="outline"
-              onClick={handleTestLevel}
-            >
-              Preview in Game
-            </Button>
-          )}
-          <Button data-testid="download-button" onClick={handleDownload}>
-            Download
-          </Button>
-          <Button
-            data-testid="save-to-cloud-button"
-            variant="outline"
-            onClick={handleSaveToCloud}
-          >
-            Save to Cloud
-          </Button>
+          <LevelActionMenu
+            canPreviewInGame={Boolean(GAME_PORT_CONFIGS[globals.GAME_TYPE])}
+            canSaveToCloud={canSaveToCloud === true}
+            onPreviewInGame={handleTestLevel}
+            onDownload={handleDownload}
+            onSaveToCloud={handleSaveToCloud}
+          />
           {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
             <TestGameDialog
               open={testDialogOpen}
@@ -880,11 +872,6 @@ export function IntroPrompt() {
     setEditorNavbarOpen(Boolean(left || editorActions));
     setEditorNavbarLeft(left);
     setEditorNavbarActions(editorActions);
-    return () => {
-      setEditorNavbarOpen(false);
-      setEditorNavbarLeft(null);
-      setEditorNavbarActions(null);
-    };
   }, [
     globals.GAME_TYPE,
     handleDownload,
@@ -892,6 +879,7 @@ export function IntroPrompt() {
     handleTestLevel,
     mapFile,
     mapImages,
+    canSaveToCloud,
     previewLevelNumber,
     setEditorNavbarActions,
     setEditorNavbarLeft,
@@ -902,7 +890,6 @@ export function IntroPrompt() {
     testDialogOpen,
   ]);
 
-  // If we have tunnel data, show the tunnel editor
   if (tunnelData) {
     return (
       <TunnelEditor
@@ -928,6 +915,7 @@ export function IntroPrompt() {
         onCreateBlankLevel={handleCreateBlankLevel}
       />
     );
+
   return (
     <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full p-2 md:p-6 flex-1 min-h-0">
       <NewMapConfirmDialog

@@ -96,6 +96,7 @@ export async function openFile({
 }: OpenFileArgs) {
   let url = rUrl;
   let rsrcName: string;
+  const loadToastId = "open-level-progress";
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
     rsrcName = url;
   } else {
@@ -105,19 +106,28 @@ export async function openFile({
   if (!name) return;
 
   setGlobals(gameType);
-  setMapImages([]);
+  toast.loading("Loading level files...", {
+    id: loadToastId,
+    description: name,
+  });
 
   const levelResponseResult = await ResultAsync.fromPromise(
     fetch(rsrcName),
     mapErr,
   );
   if (levelResponseResult.isErr()) {
-    toast.error("Failed to download level file", { description: rsrcName });
+    toast.error("Failed to download level file", {
+      id: loadToastId,
+      description: rsrcName,
+    });
     return;
   }
   const levelResponse = levelResponseResult.value;
   if (!levelResponse.ok) {
-    toast.error("Failed to download level file", { description: rsrcName });
+    toast.error("Failed to download level file", {
+      id: loadToastId,
+      description: rsrcName,
+    });
     return;
   }
   const file = await levelResponse.blob();
@@ -127,6 +137,11 @@ export async function openFile({
     url = getTrtTextureUrl(url);
   }
 
+  toast.loading("Parsing level data...", {
+    id: loadToastId,
+    description: name,
+  });
+
   const parseResult = await parseLevelDataFile(
     file,
     gameType,
@@ -135,6 +150,7 @@ export async function openFile({
   );
   if (parseResult.isErr()) {
     toast.error("Failed to parse level data", {
+      id: loadToastId,
       description: parseResult.error,
     });
     return;
@@ -143,41 +159,87 @@ export async function openFile({
 
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
     if (!isMightyMikeLevelData(jsonData)) {
-      toast.error("Mighty Mike data has an unexpected format");
+      toast.error("Mighty Mike data has an unexpected format", {
+        id: loadToastId,
+      });
       return;
     }
     const tileImages = jsonData.tileset?.tileImages;
     if (!Array.isArray(tileImages) || tileImages.length === 0) {
-      toast.error("No Mighty Mike tile images loaded");
+      toast.error("No Mighty Mike tile images loaded", { id: loadToastId });
       return;
     }
     // Type assertion is safe here because tileImages came from deserialized GLB data
     setMapImagesFile(new File([new Uint8Array(0)], "mightyMike_tiles.bin"));
     setMapImages(tileImages as HTMLCanvasElement[]); // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+    toast.loading("Loading terrain textures...", {
+      id: loadToastId,
+      description: url,
+    });
     const imgResResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (imgResResult.isErr() || !imgResResult.value.ok) {
-      toast.error("Failed to download texture file", { description: url });
+      toast.error("Failed to download texture file", {
+        id: loadToastId,
+        description: url,
+      });
+      console.error("[terrain] failed to download TRT texture file", {
+        gameName: gameType.GAME_NAME,
+        url,
+        error: imgResResult.isErr()
+          ? imgResResult.error
+          : imgResResult.value.status,
+      });
       return;
     }
     const img = await imgResResult.value.blob();
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
+    toast.loading("Decoding terrain textures...", {
+      id: loadToastId,
+      description: imgFile.name,
+    });
     const tiles = parseNanosaurTerrainTextures(imgBuffer);
+    if (tiles.length === 0) {
+      toast.error("No terrain textures decoded", {
+        id: loadToastId,
+        description: imgFile.name,
+      });
+      console.error("[terrain] decoded zero Nanosaur texture tiles", {
+        gameName: gameType.GAME_NAME,
+        fileName: imgFile.name,
+        textureBytes: imgBuffer.byteLength,
+      });
+      return;
+    }
+    console.info("[terrain] decoded Nanosaur texture tiles", {
+      gameName: gameType.GAME_NAME,
+      fileName: imgFile.name,
+      tileCount: tiles.length,
+    });
     setMapImagesFile(imgFile);
     setMapImages(tiles.map(createCanvasFromTile));
   } else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
     const imgResResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (imgResResult.isErr() || !imgResResult.value.ok) {
-      toast.error("Failed to download texture file", { description: url });
+      toast.error("Failed to download texture file", {
+        id: loadToastId,
+        description: url,
+      });
+      console.error("[terrain] failed to download texture file", {
+        gameName: gameType.GAME_NAME,
+        url,
+        error: imgResResult.isErr()
+          ? imgResResult.error
+          : imgResResult.value.status,
+      });
       return;
     }
     const img = await imgResResult.value.blob();
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
-    const terrainToastId = "terrain-decode";
-    toast.loading("Decoding terrain textures", {
-      id: terrainToastId,
+    toast.loading("Decoding terrain textures...", {
+      id: loadToastId,
       description: imgFile.name,
     });
 
@@ -194,21 +256,26 @@ export async function openFile({
           return;
         }
         lastReportedPercent = percent;
-        toast.loading("Decoding terrain textures", {
-          id: terrainToastId,
+        toast.loading("Decoding terrain textures...", {
+          id: loadToastId,
           description: `${completed}/${total} supertiles (${percent}%)`,
         });
       },
     );
     if (mapImagesResult.isErr()) {
-      toast.dismiss(terrainToastId);
       toast.error("Failed to load map images", {
+        id: loadToastId,
         description: mapImagesResult.error,
+      });
+      console.error("[terrain] terrain texture decode failed", {
+        gameName: gameType.GAME_NAME,
+        url,
+        error: mapImagesResult.error,
       });
       return;
     }
     toast.success("Terrain textures decoded", {
-      id: terrainToastId,
+      id: loadToastId,
       description: `${mapImagesResult.value.length} supertiles`,
     });
     setMapImagesFile(imgFile);
@@ -217,7 +284,11 @@ export async function openFile({
     // Bugdom 1-specific - image data is embedded in the Resource Fork Timg field
     const imgString = extractTimgDataString(jsonData);
     if (!imgString) {
-      toast.error("No embedded image data found");
+      toast.error("No embedded image data found", { id: loadToastId });
+      console.error("[terrain] missing embedded Bugdom 1 image data", {
+        gameName: gameType.GAME_NAME,
+        url: rUrl,
+      });
       return;
     }
     const imgBuffer = hexToUint8Array(imgString);
@@ -230,5 +301,5 @@ export async function openFile({
     setMapImagesFile(new File([alignedBuffer], `${baseName}_tiles.bin`));
     setMapImages(tiles.map(createCanvasFromTile));
   }
-  toast.success("Level loaded");
+  toast.success("Level loaded", { id: loadToastId });
 }

@@ -126,27 +126,55 @@ export function GameCard({
   };
 
   const loadStagedLevel = async (levelFile: File, textureFile: File | null) => {
-    const toastId = toast.loading("Loading level files...");
-    setMapImages([]);
+    const toastId = "level-load-progress";
+    toast.loading("Loading level files...", {
+      id: toastId,
+      description: levelFile.name,
+    });
     setMapFile(levelFile);
+    toast.loading("Parsing level data...", {
+      id: toastId,
+      description: levelFile.name,
+    });
     const parseResult = await handleParseLevelDataFile(levelFile, globals);
     if (parseResult.isErr()) {
-      toast.dismiss(toastId);
       toast.error("Failed to parse level data", {
+        id: toastId,
         description: parseResult.error,
       });
       return;
     }
     if (textureFile) {
+      toast.loading("Decoding terrain textures...", {
+        id: toastId,
+        description: textureFile.name,
+      });
       const buffer = await textureFile.arrayBuffer();
       const mapImagesResult = await loadMapImages(
         new DataView(buffer),
         globals,
+        ({ completed, total }) => {
+          if (total <= 0) {
+            return;
+          }
+
+          const percent = Math.floor((completed / total) * 100);
+          toast.loading("Decoding terrain textures...", {
+            id: toastId,
+            description: `${completed}/${total} supertiles (${percent}%)`,
+          });
+        },
       );
       if (mapImagesResult.isErr()) {
-        toast.dismiss(toastId);
         toast.error("Failed to load textures", {
+          id: toastId,
           description: mapImagesResult.error,
+        });
+        console.error("[terrain] staged texture decode failed", {
+          gameName: globals.GAME_NAME,
+          levelFile: levelFile.name,
+          textureFile: textureFile.name,
+          error: mapImagesResult.error,
         });
         return;
       }
@@ -154,8 +182,7 @@ export function GameCard({
       setMapImages(mapImagesResult.value);
     }
     clearStaged();
-    toast.dismiss(toastId);
-    toast.success("Level loaded");
+    toast.success("Level loaded", { id: toastId });
   };
 
   const handleFile = async (file: File) => {

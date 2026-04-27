@@ -86,9 +86,63 @@ async function decodeChunk(
     worker.addEventListener("message", onMessage);
     worker.addEventListener("error", onError);
 
-    const transferables = [request.bytes] as Transferable[];
+    const transferables: Transferable[] = [request.bytes];
     worker.postMessage(request, transferables);
   });
+}
+
+async function decodeChunkWithNewWorker(
+  codec: TerrainTextureCodec,
+  chunk: TerrainTextureChunk,
+  jobId: number,
+): Promise<DecodedTerrainTile> {
+  const worker = new TerrainCodecWorker();
+  const request = createDecodeRequest(codec, jobId, chunk);
+  return decodeChunk(worker, request).finally(() => {
+    worker.terminate();
+  });
+}
+
+async function decodeChunksWithLimit(
+  codec: TerrainTextureCodec,
+  chunks: TerrainTextureChunk[],
+  workerLimit: number,
+  onProgress?: (progress: TerrainDecodeProgress) => void,
+): Promise<DecodedTerrainTile[]> {
+  const decodedTiles: DecodedTerrainTile[] = [];
+  let nextChunkIndex = 0;
+  let completedChunks = 0;
+
+  async function decodeNextChunk(): Promise<void> {
+    const chunkIndex = nextChunkIndex;
+    nextChunkIndex += 1;
+
+    const chunk = chunks[chunkIndex];
+    if (!chunk) {
+      return;
+    }
+
+    const tile = await decodeChunkWithNewWorker(codec, chunk, chunkIndex + 1);
+    decodedTiles.push(tile);
+    completedChunks += 1;
+    onProgress?.({ completed: completedChunks, total: chunks.length });
+    await decodeNextChunk();
+  }
+
+  const activeWorkerCount = Math.min(workerLimit, chunks.length);
+  const workers = Array.from({ length: activeWorkerCount }, () =>
+    decodeNextChunk(),
+  );
+  await Promise.all(workers);
+  return [...decodedTiles].sort((left, right) => left.id - right.id);
+}
+
+function getTerrainDecodeWorkerLimit(): number {
+  const browserWorkerLimit = navigator.hardwareConcurrency;
+  if (browserWorkerLimit > 0) {
+    return Math.max(1, Math.min(4, browserWorkerLimit));
+  }
+  return 4;
 }
 
 export function decodeTerrainChunks(
@@ -100,31 +154,19 @@ export function decodeTerrainChunks(
     return okAsync([]);
   }
 
+  console.info("[terrain] decoding terrain chunks", {
+    codec: codec.kind,
+    chunks: chunks.length,
+    supertileTexmapSize: codec.supertileTexmapSize,
+  });
+
   return ResultAsync.fromPromise(
-    Promise.all(
-      chunks.map((chunk, chunkIndex) => {
-        const worker = new TerrainCodecWorker();
-        const request = createDecodeRequest(codec, chunkIndex + 1, chunk);
-        return decodeChunk(worker, request).then(
-          (tile) => {
-            worker.terminate();
-            return tile;
-          },
-          (error) => {
-            worker.terminate();
-            return Promise.reject(error);
-          },
-        );
-      }),
-    ).then((tiles) => {
-      let completed = 0;
-      const sortedTiles = [...tiles].sort((left, right) => left.id - right.id);
-      sortedTiles.forEach(() => {
-        completed += 1;
-        onProgress?.({ completed, total: chunks.length });
-      });
-      return sortedTiles;
-    }),
+    decodeChunksWithLimit(
+      codec,
+      chunks,
+      getTerrainDecodeWorkerLimit(),
+      onProgress,
+    ),
     (error) => {
       const parsed = terrainIoErrorLikeSchema.safeParse(error);
       if (parsed.success) {
