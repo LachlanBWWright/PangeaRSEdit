@@ -2,9 +2,10 @@
  * Keyframe Editor component for editing animation keyframes
  */
 
-import { useMemo, type MouseEvent, type RefObject } from "react";
+import { useMemo, useState, type MouseEvent, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Check, Pencil, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,7 +20,6 @@ import type {
   Keyframe,
   TimelineRow,
 } from "./types";
-import { RigToolsPanel } from "./RigToolsPanel";
 import type { BoneInfluenceRow } from "./rigToolsState";
 import {
   formatBoneLabel,
@@ -143,12 +143,12 @@ export function KeyframeEditor({
   onReset,
   onSeek,
   boneRenameInput,
-  boneInfluenceRows,
-  skinData,
   onBoneRenameInputChange,
   onRenameSelectedBone,
-  onRepairWeights,
 }: KeyframeEditorProps) {
+  const [editingTimelineBoneName, setEditingTimelineBoneName] = useState<
+    string | null
+  >(null);
   const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
   const ticksPerSecond = TICKS_PER_SECOND;
   const timelineDuration = duration;
@@ -236,10 +236,63 @@ export function KeyframeEditor({
     () =>
       timelineRows.map((row) => {
         const isSelected = row.boneName === selectedBoneName;
+        const isEditing = row.boneName === editingTimelineBoneName;
         return (
           <div key={row.boneName} className="space-y-1">
-            <div className="text-[10px] uppercase tracking-wide text-gray-400">
-              {formatBoneLabel(row.boneName)}
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400">
+              {isEditing ? (
+                <>
+                  <Input
+                    value={boneRenameInput}
+                    onChange={(event) =>
+                      onBoneRenameInputChange(event.target.value)
+                    }
+                    className="h-7 border-gray-600 bg-gray-900 text-xs text-white"
+                    placeholder="Bone name"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => {
+                      onRenameSelectedBone();
+                      setEditingTimelineBoneName(null);
+                    }}
+                    disabled={!boneRenameInput.trim()}
+                    aria-label={`Rename ${row.boneName}`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => setEditingTimelineBoneName(null)}
+                    aria-label={`Cancel renaming ${row.boneName}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="truncate">
+                    {formatBoneLabel(row.boneName)}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => {
+                      onBoneNameChange(row.boneName);
+                      onBoneRenameInputChange(row.boneName);
+                      setEditingTimelineBoneName(row.boneName);
+                    }}
+                    aria-label={`Edit ${row.boneName}`}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
             </div>
             <div
               className={`relative h-8 overflow-hidden rounded-md ${
@@ -297,6 +350,11 @@ export function KeyframeEditor({
         );
       }),
     [
+      boneRenameInput,
+      editingTimelineBoneName,
+      onBoneNameChange,
+      onBoneRenameInputChange,
+      onRenameSelectedBone,
       onTimelineRowClick,
       rulerTicks,
       selectedBoneName,
@@ -330,15 +388,10 @@ export function KeyframeEditor({
 
   if (!selectedAnimationInfo) {
     return (
-      <RigToolsPanel
-        selectedBoneName={selectedBoneName}
-        boneRenameInput={boneRenameInput}
-        boneInfluenceRows={boneInfluenceRows}
-        skinData={skinData}
-        onBoneRenameInputChange={onBoneRenameInputChange}
-        onRenameSelectedBone={onRenameSelectedBone}
-        onRepairWeights={onRepairWeights}
-      />
+      <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 text-sm text-gray-400">
+        Select an animation to edit the timeline. Rig and weight tools are
+        available in the dedicated panel above the animation editor.
+      </div>
     );
   }
 

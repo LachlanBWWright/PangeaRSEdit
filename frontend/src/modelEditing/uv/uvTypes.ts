@@ -10,7 +10,9 @@ export interface UvFace {
 
 /** All UV coordinates and face topology for a single mesh */
 export interface UvMeshLayout {
+  readonly meshId: string;
   readonly meshName: string;
+  readonly geometryIndex: number;
   readonly vertices: readonly UvVertex[];
   readonly faces: readonly UvFace[];
 }
@@ -18,6 +20,7 @@ export interface UvMeshLayout {
 /** UV layout extracted for a given texture, possibly spanning multiple meshes */
 export interface UvLayout {
   readonly textureName: string;
+  readonly materialName?: string;
   readonly meshes: readonly UvMeshLayout[];
 }
 

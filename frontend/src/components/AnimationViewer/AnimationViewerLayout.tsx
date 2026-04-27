@@ -81,6 +81,7 @@ interface AnimationViewerLayoutProps {
   onAddEvent: () => void;
   onUpdateEvent: (index: number, event: AnimationEvent) => void;
   onDeleteEvent: (index: number) => void;
+  onPreviewEvent: (event: AnimationEvent) => void;
   boneRenameInput: string;
   boneInfluenceRows: BoneInfluenceRow[];
   skinData?:
@@ -163,6 +164,7 @@ export function AnimationViewerLayout({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
+  onPreviewEvent,
   boneRenameInput,
   boneInfluenceRows,
   skinData,
@@ -275,6 +277,7 @@ export function AnimationViewerLayout({
             onAddEvent={onAddEvent}
             onUpdateEvent={onUpdateEvent}
             onDeleteEvent={onDeleteEvent}
+            onPreviewEvent={onPreviewEvent}
           />
         </ViewerSection>
 

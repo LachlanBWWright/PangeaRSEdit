@@ -14,6 +14,7 @@ import { useKeyframeAutoApply } from "./useKeyframeAutoApply";
 import { useAnimationKeyframeControls } from "./useAnimationKeyframeControls";
 import { useAnimationDerivedData } from "./useAnimationDerivedData";
 import { useAnimationSynchronization } from "./useAnimationSynchronization";
+import { useAnimationSoundPlayback } from "./useAnimationSoundPlayback";
 
 export function AnimationViewer({
   animations,
@@ -173,6 +174,15 @@ export function AnimationViewer({
     selectedMetadata,
     currentTime,
     onAnimationEventsChange,
+  });
+
+  const { previewSoundEvent } = useAnimationSoundPlayback({
+    selectedAnimationInfo,
+    selectedEvents,
+    currentTime,
+    isPlaying,
+    gameLabel,
+    modelSourceKind,
   });
 
   useKeyframeAutoApply({
@@ -397,6 +407,7 @@ export function AnimationViewer({
       onAddEvent={handleNewEvent}
       onUpdateEvent={handleUpdateEvent}
       onDeleteEvent={handleDeleteEvent}
+      onPreviewEvent={previewSoundEvent}
       boneRenameInput={boneRenameInput ?? ""}
       boneInfluenceRows={boneInfluenceRows ?? []}
       skinData={skinData}

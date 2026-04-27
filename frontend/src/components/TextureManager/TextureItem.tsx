@@ -29,6 +29,8 @@ interface Props {
   onDownloadTexture: (t: Texture) => void;
   onEditTexture: (t: Texture) => void;
   uvLayout?: UvLayout | null;
+  onPreviewUvEdit?: (updatedLayout: UvLayout) => void;
+  onResetUvPreview?: () => void;
   onApplyUvEdit?: (updatedLayout: UvLayout) => void;
 }
 
@@ -44,6 +46,8 @@ export function TextureItem({
   onDownloadTexture,
   onEditTexture,
   uvLayout,
+  onPreviewUvEdit,
+  onResetUvPreview,
   onApplyUvEdit,
 }: Props) {
   const handleReplaceTexture = () => {
@@ -97,6 +101,8 @@ export function TextureItem({
             onReplace={handleReplaceTexture}
             onEdit={() => onEditTexture(texture)}
             onDownload={() => onDownloadTexture(texture)}
+            onPreviewUvEdit={onPreviewUvEdit}
+            onResetUvPreview={onResetUvPreview}
             onApplyUvEdit={onApplyUvEdit}
           />
         </div>

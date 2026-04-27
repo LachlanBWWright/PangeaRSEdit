@@ -8,11 +8,14 @@ import {
   type ModelSourceKind,
 } from "@/components/AnimationViewer";
 import {
+  collectBoneInfluenceRowsFromSkinData,
   collectBoneInfluenceRows,
   pinSelectedBoneRow,
 } from "@/components/AnimationViewer/rigToolsState";
+import { ModelRigPanel } from "@/components/ModelRigPanel";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload } from "lucide-react";
+import { Redo2, Undo2, Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
@@ -62,7 +65,64 @@ import { applyUvEditToScene } from "@/modelEditing/uv/applyUvEditToScene";
 import { applyUvEditToBg3d } from "@/modelEditing/uv/applyUvEditToBg3d";
 import type { UvLayout } from "@/modelEditing/uv/uvTypes";
 import { extractSkinWeights } from "@/modelEditing/weights/extractSkinWeights";
-import type { SkinWeightsData } from "@/modelEditing/weights/weightTypes";
+import { applyWeightEditToScene } from "@/modelEditing/weights/applyWeightEditToScene";
+import { applyWeightBrushStroke } from "@/modelEditing/weights/weightBrushStroke";
+import {
+  defaultWeightBrushSettings,
+  type SkinWeightsData,
+  type WeightBrushSettings,
+  type WeightVisualizationMode,
+} from "@/modelEditing/weights/weightTypes";
+import type { ViewerInteractionMode } from "@/components/model-viewer/types";
+
+type ViewerHistoryAction =
+  | {
+      type: "uv";
+      textureName: string;
+      before: UvLayout;
+      after: UvLayout;
+    }
+  | {
+      type: "weights";
+      before: SkinWeightsData;
+      after: SkinWeightsData;
+    }
+  | {
+      type: "bone-rename";
+      beforeName: string;
+      afterName: string;
+    };
+
+function renameAnimationBone(
+  animation: AnimationInfo,
+  currentName: string,
+  nextName: string,
+): AnimationInfo {
+  const cloned = animation.clip.clone();
+  cloned.tracks.forEach((track) => {
+    if (track.name.startsWith(`${currentName}.`)) {
+      track.name = `${nextName}.${track.name.slice(currentName.length + 1)}`;
+    }
+  });
+  return {
+    ...animation,
+    clip: cloned,
+  };
+}
+
+function renameModelNodeBone(
+  node: ModelNode,
+  currentName: string,
+  nextName: string,
+): ModelNode {
+  return {
+    ...node,
+    name: node.name === currentName ? nextName : node.name,
+    children: node.children?.map((child) =>
+      renameModelNodeBone(child, currentName, nextName),
+    ),
+  };
+}
 
 export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
@@ -115,7 +175,21 @@ export function ModelViewer() {
     scene: Group;
     data: SkinWeightsData;
   } | null>(null);
+  const [weightBrushSettings, setWeightBrushSettings] =
+    useState<WeightBrushSettings>(defaultWeightBrushSettings);
+  const [interactionMode, setInteractionMode] =
+    useState<ViewerInteractionMode>("navigate");
+  const [weightVisualizationMode, setWeightVisualizationMode] =
+    useState<WeightVisualizationMode>("none");
+  const [viewerHistory, setViewerHistory] = useState<{
+    past: ViewerHistoryAction[];
+    future: ViewerHistoryAction[];
+  }>({
+    past: [],
+    future: [],
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const viewerHistoryRef = useRef(viewerHistory);
   const effectiveModelBaseName = modelBaseName.trim() || "model";
   // Initialize file upload hook
   const { uploadFile } = useFileUpload({
@@ -160,6 +234,7 @@ export function ModelViewer() {
     }
     return uploadFile(bg3dFile, skeletonFile).then((result) => {
       if (result.isOk()) {
+        setViewerHistory({ past: [], future: [] });
         setModelSessionId((current) => current + 1);
       }
       return result;
@@ -476,7 +551,7 @@ export function ModelViewer() {
     if (!scene || textures.length === 0) return new Map();
     const base = new Map<string, UvLayout>();
     for (const texture of textures) {
-      const result = extractUvLayout(scene, texture.name);
+      const result = extractUvLayout(scene, texture);
       if (result.isOk()) {
         base.set(texture.name, result.value);
       }
@@ -502,16 +577,32 @@ export function ModelViewer() {
     return result.isOk() ? result.value : null;
   }, [scene, skinDataWithScene]);
 
-  const handleApplyUvEdit = useCallback(
+  useEffect(() => {
+    viewerHistoryRef.current = viewerHistory;
+  }, [viewerHistory]);
+
+  const pushViewerHistory = useCallback((action: ViewerHistoryAction) => {
+    setViewerHistory((current) => ({
+      past: [...current.past, action],
+      future: [],
+    }));
+  }, []);
+
+  const applyCommittedUvLayout = useCallback(
     (textureName: string, updatedLayout: UvLayout) => {
-      if (!scene) return;
-      applyUvEditToScene(scene, updatedLayout);
-      if (bg3dParsed) {
-        const result = applyUvEditToBg3d(bg3dParsed, updatedLayout);
-        if (result.isOk()) {
-          setBg3dParsed(result.value);
-        }
+      if (!scene) {
+        return false;
       }
+
+      applyUvEditToScene(scene, updatedLayout);
+      setBg3dParsed((currentParsed) => {
+        if (!currentParsed) {
+          return currentParsed;
+        }
+
+        const result = applyUvEditToBg3d(currentParsed, updatedLayout);
+        return result.isOk() ? result.value : currentParsed;
+      });
       setUvLayoutOverridesWithScene((prev) => {
         const existing =
           prev?.scene === scene
@@ -520,16 +611,222 @@ export function ModelViewer() {
         existing.set(textureName, updatedLayout);
         return { scene, overrides: existing };
       });
+
+      return true;
     },
-    [scene, bg3dParsed],
+    [scene],
+  );
+
+  const applyBoneRenameChange = useCallback(
+    (currentName: string, nextName: string) => {
+      if (!scene || currentName === nextName) {
+        return false;
+      }
+
+      let renamed = false;
+      scene.traverse((object) => {
+        if (object.name === currentName) {
+          object.name = nextName;
+          renamed = true;
+        }
+      });
+
+      if (!renamed) {
+        return false;
+      }
+
+      setAnimations((currentAnimations) =>
+        currentAnimations.map((animation) =>
+          renameAnimationBone(animation, currentName, nextName),
+        ),
+      );
+      latestAnimationsRef.current = latestAnimationsRef.current.map(
+        (animation) => renameAnimationBone(animation, currentName, nextName),
+      );
+      setBg3dParsed((currentParsed) => {
+        if (!currentParsed?.skeleton?.bones) {
+          return currentParsed;
+        }
+
+        return {
+          ...currentParsed,
+          skeleton: {
+            ...currentParsed.skeleton,
+            bones: currentParsed.skeleton.bones.map((bone) =>
+              bone.name === currentName ? { ...bone, name: nextName } : bone,
+            ),
+          },
+        };
+      });
+      setModelNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          renameModelNodeBone(node, currentName, nextName),
+        ),
+      );
+      setSelectedBoneName(nextName);
+      setBoneRenameInput(nextName);
+      setWeightBrushSettings((current) =>
+        current.targetBone === currentName
+          ? { ...current, targetBone: nextName }
+          : current,
+      );
+
+      return true;
+    },
+    [scene],
+  );
+
+  const applyViewerHistoryAction = useCallback(
+    (action: ViewerHistoryAction, direction: "undo" | "redo") => {
+      if (action.type === "uv") {
+        return applyCommittedUvLayout(
+          action.textureName,
+          direction === "undo" ? action.before : action.after,
+        );
+      }
+
+      if (action.type === "weights") {
+        if (!scene) {
+          return false;
+        }
+
+        const nextData = direction === "undo" ? action.before : action.after;
+        applyWeightEditToScene(scene, nextData);
+        setSkinDataWithScene({ scene, data: nextData });
+        return true;
+      }
+
+      return applyBoneRenameChange(
+        direction === "undo" ? action.afterName : action.beforeName,
+        direction === "undo" ? action.beforeName : action.afterName,
+      );
+    },
+    [applyBoneRenameChange, applyCommittedUvLayout, scene],
+  );
+
+  const handleUndoViewerChange = useCallback(() => {
+    const action = viewerHistoryRef.current.past.at(-1);
+    if (!action) {
+      return;
+    }
+
+    if (!applyViewerHistoryAction(action, "undo")) {
+      toast.error("Could not undo the last model viewer change");
+      return;
+    }
+
+    setViewerHistory((current) => ({
+      past: current.past.slice(0, -1),
+      future: [action, ...current.future],
+    }));
+  }, [applyViewerHistoryAction]);
+
+  const handleRedoViewerChange = useCallback(() => {
+    const action = viewerHistoryRef.current.future[0];
+    if (!action) {
+      return;
+    }
+
+    if (!applyViewerHistoryAction(action, "redo")) {
+      toast.error("Could not redo the last model viewer change");
+      return;
+    }
+
+    setViewerHistory((current) => ({
+      past: [...current.past, action],
+      future: current.future.slice(1),
+    }));
+  }, [applyViewerHistoryAction]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      const isModifierPressed = event.ctrlKey || event.metaKey;
+      if (!isModifierPressed || event.key.toLowerCase() !== "z") {
+        return;
+      }
+
+      event.preventDefault();
+      if (event.shiftKey) {
+        handleRedoViewerChange();
+        return;
+      }
+
+      handleUndoViewerChange();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleRedoViewerChange, handleUndoViewerChange]);
+
+  const handleApplyUvEdit = useCallback(
+    (textureName: string, updatedLayout: UvLayout) => {
+      const previousLayout = uvLayouts.get(textureName);
+      if (!previousLayout) {
+        return;
+      }
+
+      if (applyCommittedUvLayout(textureName, updatedLayout)) {
+        pushViewerHistory({
+          type: "uv",
+          textureName,
+          before: previousLayout,
+          after: updatedLayout,
+        });
+      }
+    },
+    [applyCommittedUvLayout, pushViewerHistory, uvLayouts],
+  );
+
+  const handlePreviewUvEdit = useCallback(
+    (_textureName: string, updatedLayout: UvLayout) => {
+      if (!scene) {
+        return;
+      }
+
+      applyUvEditToScene(scene, updatedLayout);
+    },
+    [scene],
+  );
+
+  const handleResetUvPreview = useCallback(
+    (textureName: string) => {
+      if (!scene) {
+        return;
+      }
+
+      const committedLayout = uvLayouts.get(textureName);
+      if (!committedLayout) {
+        return;
+      }
+
+      applyUvEditToScene(scene, committedLayout);
+    },
+    [scene, uvLayouts],
   );
 
   const handleRepairWeights = useCallback(
     (repaired: SkinWeightsData) => {
-      if (!scene) return;
+      if (!scene || !skinData) return;
+      applyWeightEditToScene(scene, repaired);
       setSkinDataWithScene({ scene, data: repaired });
+      pushViewerHistory({
+        type: "weights",
+        before: skinData,
+        after: repaired,
+      });
     },
-    [scene],
+    [pushViewerHistory, scene, skinData],
   );
 
   const handleBoneTransformChange = useCallback(
@@ -556,6 +853,7 @@ export function ModelViewer() {
   const handleGizmoModeChange = useCallback(
     (mode: import("@/components/model-viewer/types").GizmoMode) => {
       setGizmoMode(mode);
+      setInteractionMode("bone-edit");
     },
     [],
   );
@@ -563,6 +861,12 @@ export function ModelViewer() {
   const handleBoneSelectionChange = useCallback((boneName: string | null) => {
     setSelectedBoneName(boneName);
     setBoneRenameInput(boneName ?? "");
+    if (boneName) {
+      setWeightBrushSettings((current) => ({
+        ...current,
+        targetBone: boneName,
+      }));
+    }
     setBoneTransform(null);
     setBoneRotation(null);
     setBoneScale(null);
@@ -582,79 +886,30 @@ export function ModelViewer() {
       return;
     }
 
-    let renamed = false;
-    scene.traverse((object) => {
-      if (object.name === selectedBoneName) {
-        object.name = nextName;
-        renamed = true;
-      }
-    });
-
-    if (!renamed) {
+    if (!applyBoneRenameChange(selectedBoneName, nextName)) {
       toast.error("Selected bone was not found in the loaded model");
       return;
     }
-
-    setAnimations((currentAnimations) =>
-      currentAnimations.map((animation) => {
-        const cloned = animation.clip.clone();
-        cloned.tracks.forEach((track) => {
-          if (track.name.startsWith(`${selectedBoneName}.`)) {
-            track.name = `${nextName}.${track.name.slice(selectedBoneName.length + 1)}`;
-          }
-        });
-        return {
-          ...animation,
-          clip: cloned,
-        };
-      }),
-    );
-    latestAnimationsRef.current = latestAnimationsRef.current.map(
-      (animation) => {
-        const cloned = animation.clip.clone();
-        cloned.tracks.forEach((track) => {
-          if (track.name.startsWith(`${selectedBoneName}.`)) {
-            track.name = `${nextName}.${track.name.slice(selectedBoneName.length + 1)}`;
-          }
-        });
-        return {
-          ...animation,
-          clip: cloned,
-        };
-      },
-    );
-
-    setBg3dParsed((currentParsed) => {
-      if (!currentParsed?.skeleton?.bones) {
-        return currentParsed;
-      }
-      return {
-        ...currentParsed,
-        skeleton: {
-          ...currentParsed.skeleton,
-          bones: currentParsed.skeleton.bones.map((bone) =>
-            bone.name === selectedBoneName ? { ...bone, name: nextName } : bone,
-          ),
-        },
-      };
+    pushViewerHistory({
+      type: "bone-rename",
+      beforeName: selectedBoneName,
+      afterName: nextName,
     });
-
-    setModelNodes((currentNodes) => {
-      const renameNode = (node: ModelNode): ModelNode => ({
-        ...node,
-        name: node.name === selectedBoneName ? nextName : node.name,
-        children: node.children?.map(renameNode),
-      });
-      return currentNodes.map(renameNode);
-    });
-
-    setSelectedBoneName(nextName);
     toast.success(`Renamed bone '${selectedBoneName}' to '${nextName}'`);
-  }, [boneRenameInput, scene, selectedBoneName]);
+  }, [
+    applyBoneRenameChange,
+    boneRenameInput,
+    pushViewerHistory,
+    scene,
+    selectedBoneName,
+  ]);
 
   const boneInfluenceRows = useMemo(
-    () => collectBoneInfluenceRows(scene),
-    [scene],
+    () =>
+      skinData
+        ? collectBoneInfluenceRowsFromSkinData(skinData)
+        : collectBoneInfluenceRows(scene),
+    [scene, skinData],
   );
 
   const displayedBoneInfluenceRows = useMemo(() => {
@@ -663,6 +918,50 @@ export function ModelViewer() {
     }
     return pinSelectedBoneRow(boneInfluenceRows, selectedBoneName);
   }, [boneInfluenceRows, selectedBoneName]);
+
+  const handleWeightBrushSettingsChange = useCallback(
+    (settings: WeightBrushSettings) => {
+      setWeightBrushSettings(settings);
+      if (settings.targetBone) {
+        handleBoneSelectionChange(settings.targetBone);
+      }
+    },
+    [handleBoneSelectionChange],
+  );
+
+  const handleWeightBrushStroke = useCallback(
+    (
+      hit: import("@/modelEditing/weights/weightBrushStroke").WeightBrushHit,
+    ) => {
+      if (
+        !scene ||
+        !skinData ||
+        !weightBrushSettings.targetBone ||
+        interactionMode !== "paint-weights"
+      ) {
+        return;
+      }
+
+      const nextData = applyWeightBrushStroke(
+        scene,
+        skinData,
+        weightBrushSettings,
+        hit,
+      );
+      if (nextData === skinData) {
+        return;
+      }
+
+      applyWeightEditToScene(scene, nextData);
+      setSkinDataWithScene({ scene, data: nextData });
+      pushViewerHistory({
+        type: "weights",
+        before: skinData,
+        after: nextData,
+      });
+    },
+    [interactionMode, pushViewerHistory, scene, skinData, weightBrushSettings],
+  );
 
   const handleAnimationEventsChange = useCallback(
     async (animationIndex: number, events: AnimationEvent[]) => {
@@ -999,6 +1298,10 @@ export function ModelViewer() {
     setLogBonePositions(false);
     setSelectedBoneName(null);
     setBoneRenameInput("");
+    setInteractionMode("navigate");
+    setWeightBrushSettings(defaultWeightBrushSettings);
+    setWeightVisualizationMode("none");
+    setViewerHistory({ past: [], future: [] });
     setUploadStep("select-bg3d");
     setPendingBg3dFile(null);
     setModelSessionId((current) => current + 1);
@@ -1016,6 +1319,45 @@ export function ModelViewer() {
           >
             <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden px-2">
               <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden">
+                {gltfUrl && (
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white text-sm">
+                        Undo / Redo
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={handleUndoViewerChange}
+                          disabled={viewerHistory.past.length === 0}
+                        >
+                          <Undo2 className="mr-2 h-4 w-4" />
+                          Undo
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={handleRedoViewerChange}
+                          disabled={viewerHistory.future.length === 0}
+                        >
+                          <Redo2 className="mr-2 h-4 w-4" />
+                          Redo
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Tracks committed UV edits, weight changes, and bone
+                        renames for the current model session. Shortcuts:
+                        Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <ModelUploadPanel
                   gltfUrl={gltfUrl}
                   loading={loading}
@@ -1051,7 +1393,8 @@ export function ModelViewer() {
                     setShowSkeleton={setShowSkeletonOverlay}
                     logBonePositions={logBonePositions}
                     setLogBonePositions={setLogBonePositions}
-                    hasAnimations={hasAnimations}
+                    hasSkeleton={hasAnimations || skinData !== null}
+                    canLogBonePositions={hasAnimations}
                   />
                 )}
 
@@ -1107,6 +1450,8 @@ export function ModelViewer() {
                           onReplaceTexture={handleReplaceTexture}
                           onTextureEdit={handleTextureEdit}
                           uvLayouts={uvLayouts}
+                          onPreviewUvEdit={handlePreviewUvEdit}
+                          onResetUvPreview={handleResetUvPreview}
                           onApplyUvEdit={handleApplyUvEdit}
                         />
                       ) : (
@@ -1133,6 +1478,36 @@ export function ModelViewer() {
                     </CardContent>
                   </Card>
                 )}
+
+                {gltfUrl && skinData && (
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white text-sm">
+                        Rig & Weight Tools
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ModelRigPanel
+                        selectedBoneName={selectedBoneName}
+                        boneRenameInput={boneRenameInput}
+                        boneInfluenceRows={displayedBoneInfluenceRows}
+                        skinData={skinData}
+                        interactionMode={interactionMode}
+                        brushSettings={weightBrushSettings}
+                        visualizationMode={weightVisualizationMode}
+                        onSelectBone={(boneName) =>
+                          handleBoneSelectionChange(boneName)
+                        }
+                        onInteractionModeChange={setInteractionMode}
+                        onBoneRenameInputChange={setBoneRenameInput}
+                        onRenameSelectedBone={handleRenameSelectedBone}
+                        onBrushSettingsChange={handleWeightBrushSettingsChange}
+                        onVisualizationModeChange={setWeightVisualizationMode}
+                        onRepairWeights={handleRepairWeights}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </ResizablePanel>
@@ -1148,13 +1523,21 @@ export function ModelViewer() {
                     onSceneReady={setScene}
                     onAnimationsReady={handleAnimationsReady}
                     wireframeMode={wireframeMode}
-                    showSkeleton={showSkeletonOverlay && hasAnimations}
+                    showSkeleton={
+                      showSkeletonOverlay &&
+                      (hasAnimations || skinData !== null)
+                    }
                     logBonePositions={logBonePositions}
-                    selectedBoneName={hasAnimations ? selectedBoneName : null}
+                    selectedBoneName={selectedBoneName}
                     onBoneTransformChange={handleBoneTransformChange}
                     onBoneRotationChange={handleBoneRotationChange}
                     onBoneScaleChange={handleBoneScaleChange}
                     gizmoMode={gizmoMode}
+                    interactionMode={interactionMode}
+                    skinData={skinData}
+                    weightBrushSettings={weightBrushSettings}
+                    weightVisualizationMode={weightVisualizationMode}
+                    onWeightBrushStroke={handleWeightBrushStroke}
                   />
                 </ErrorBoundary>
               ) : (

@@ -28,6 +28,8 @@ interface TextureManagerProps {
     editedImageData: ImageData,
   ) => Promise<void>;
   uvLayouts?: ReadonlyMap<string, UvLayout>;
+  onPreviewUvEdit?: (textureName: string, updatedLayout: UvLayout) => void;
+  onResetUvPreview?: (textureName: string) => void;
   onApplyUvEdit?: (textureName: string, updatedLayout: UvLayout) => void;
 }
 
@@ -37,6 +39,8 @@ export function TextureManager({
   onReplaceTexture,
   onTextureEdit,
   uvLayouts,
+  onPreviewUvEdit,
+  onResetUvPreview,
   onApplyUvEdit,
 }: TextureManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +180,14 @@ export function TextureManager({
           onDownloadTexture={onDownloadTexture}
           onEditTexture={handleEditTexture}
           uvLayout={uvLayouts?.get(texture.name)}
+          onPreviewUvEdit={
+            onPreviewUvEdit
+              ? (layout) => onPreviewUvEdit(texture.name, layout)
+              : undefined
+          }
+          onResetUvPreview={
+            onResetUvPreview ? () => onResetUvPreview(texture.name) : undefined
+          }
           onApplyUvEdit={
             onApplyUvEdit
               ? (layout) => onApplyUvEdit(texture.name, layout)

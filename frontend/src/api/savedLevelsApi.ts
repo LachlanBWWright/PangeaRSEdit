@@ -1,4 +1,6 @@
-import { err, ok, type Result } from "neverthrow";
+import { Result, err, ok, type Result as ResultType } from "neverthrow";
+import { buildApiPath } from "./apiBase";
+import { mapErr } from "@/utils/mapErr";
 import {
   SavedLevelDetailSchema,
   SavedLevelListSchema,
@@ -29,7 +31,7 @@ export interface UpdateSavedLevelInput {
   payload?: unknown;
 }
 
-const BASE = "/api/saved-levels";
+const BASE = buildApiPath("/api/saved-levels");
 
 async function fetchJson(
   input: RequestInfo | URL,
@@ -72,7 +74,7 @@ async function fetchJson(
 }
 
 export async function listSavedLevels(): Promise<
-  Result<SavedLevelSummary[], SavedLevelsApiError>
+  ResultType<SavedLevelSummary[], SavedLevelsApiError>
 > {
   const response = await fetchJson(BASE, {
     method: "GET",
@@ -93,12 +95,24 @@ export async function listSavedLevels(): Promise<
 
 export async function createSavedLevel(
   input: CreateSavedLevelInput,
-): Promise<Result<SavedLevelDetail, SavedLevelsApiError>> {
+): Promise<ResultType<SavedLevelDetail, SavedLevelsApiError>> {
+  const bodyResult = Result.fromThrowable(
+    () => JSON.stringify(input),
+    mapErr,
+  )();
+  if (bodyResult.isErr()) {
+    return err({
+      code: "request.invalid",
+      message: `Could not serialize saved level payload: ${bodyResult.error}`,
+      status: 0,
+    });
+  }
+
   const response = await fetchJson(BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify(input),
+    body: bodyResult.value,
   });
   if (response.isErr()) return err(response.error);
 
@@ -115,7 +129,7 @@ export async function createSavedLevel(
 
 export async function loadSavedLevel(
   id: string,
-): Promise<Result<SavedLevelDetail, SavedLevelsApiError>> {
+): Promise<ResultType<SavedLevelDetail, SavedLevelsApiError>> {
   const response = await fetchJson(`${BASE}/${encodeURIComponent(id)}`, {
     method: "GET",
     credentials: "include",
@@ -136,12 +150,24 @@ export async function loadSavedLevel(
 export async function updateSavedLevel(
   id: string,
   input: UpdateSavedLevelInput,
-): Promise<Result<SavedLevelDetail, SavedLevelsApiError>> {
+): Promise<ResultType<SavedLevelDetail, SavedLevelsApiError>> {
+  const bodyResult = Result.fromThrowable(
+    () => JSON.stringify(input),
+    mapErr,
+  )();
+  if (bodyResult.isErr()) {
+    return err({
+      code: "request.invalid",
+      message: `Could not serialize saved level payload: ${bodyResult.error}`,
+      status: 0,
+    });
+  }
+
   const response = await fetchJson(`${BASE}/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify(input),
+    body: bodyResult.value,
   });
   if (response.isErr()) return err(response.error);
 
@@ -158,7 +184,7 @@ export async function updateSavedLevel(
 
 export async function deleteSavedLevel(
   id: string,
-): Promise<Result<void, SavedLevelsApiError>> {
+): Promise<ResultType<void, SavedLevelsApiError>> {
   const response = await fetchJson(`${BASE}/${encodeURIComponent(id)}`, {
     method: "DELETE",
     credentials: "include",

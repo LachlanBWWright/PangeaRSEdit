@@ -5,6 +5,7 @@ import {
   LogLevel,
 } from "@microsoft/signalr";
 import { ResultAsync, ok, err } from "neverthrow";
+import { buildApiUrl } from "@/api/apiBase";
 import type { MultiplayerLobbyDetails } from "./types";
 
 export interface MultiplayerHubEvents {
@@ -31,7 +32,7 @@ export interface MultiplayerHubError {
   readonly message: string;
 }
 
-const HUB_URL = "/api/multiplayer/signaling";
+const HUB_URL = buildApiUrl("/api/multiplayer/signaling");
 const RECONNECT_DELAYS_MS = [0, 2000, 5000, 10000];
 
 export class MultiplayerHubClient {

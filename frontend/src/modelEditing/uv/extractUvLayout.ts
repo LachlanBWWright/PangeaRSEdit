@@ -2,9 +2,31 @@ import { Group, Mesh, BufferGeometry } from "three";
 import { ok, err, type Result } from "neverthrow";
 import type { UvFace, UvLayout, UvMeshLayout, UvVertex } from "./uvTypes";
 
+interface UvTextureTarget {
+  readonly name: string;
+  readonly material?: string;
+}
+
+function normalizeMaterialToken(token: string): string {
+  const materialMatch = /material[_\s-]*(\d+)/i.exec(token);
+  if (materialMatch?.[1]) {
+    return `material-${Number(materialMatch[1])}`;
+  }
+
+  return token.trim().toLowerCase();
+}
+
+function getSearchMaterialKey(target: UvTextureTarget): string {
+  if (target.material) {
+    return normalizeMaterialToken(target.material);
+  }
+
+  return normalizeMaterialToken(target.name);
+}
+
 function extractUvMeshLayout(
   mesh: Mesh,
-  textureNameHint: string,
+  geometryIndex: number,
 ): UvMeshLayout | null {
   const geometry = mesh.geometry;
   if (!(geometry instanceof BufferGeometry)) {
@@ -42,7 +64,9 @@ function extractUvMeshLayout(
   }
 
   return {
-    meshName: mesh.name || textureNameHint,
+    meshId: `mesh-${geometryIndex}`,
+    meshName: mesh.name || `Mesh ${geometryIndex + 1}`,
+    geometryIndex,
     vertices,
     faces,
   };
@@ -54,55 +78,48 @@ function extractUvMeshLayout(
  */
 export function extractUvLayout(
   scene: Group,
-  textureName: string,
+  target: UvTextureTarget,
 ): Result<UvLayout, string> {
   const meshes: UvMeshLayout[] = [];
+  const searchMaterialKey = getSearchMaterialKey(target);
+  let geometryIndex = 0;
 
   scene.traverse((object) => {
     if (!(object instanceof Mesh)) {
       return;
     }
 
+    const currentGeometryIndex = geometryIndex;
+    geometryIndex += 1;
+
     const materials = Array.isArray(object.material)
       ? object.material
       : [object.material];
 
     const usesTexture = materials.some(
-      (mat) =>
-        mat && (mat.name === textureName || mat.name.includes(textureName)),
+      (material) =>
+        material !== null &&
+        material !== undefined &&
+        normalizeMaterialToken(material.name) === searchMaterialKey,
     );
 
-    if (!usesTexture && meshes.length === 0) {
-      // Fallback: include all meshes with UV data if no material name match
-      const layout = extractUvMeshLayout(object, textureName);
-      if (layout && layout.vertices.length > 0) {
-        // Don't add yet — we prefer material-matched meshes
-      }
-      return;
-    }
-
     if (usesTexture) {
-      const layout = extractUvMeshLayout(object, textureName);
+      const layout = extractUvMeshLayout(object, currentGeometryIndex);
       if (layout && layout.vertices.length > 0) {
         meshes.push(layout);
       }
     }
   });
 
-  // If no material-matched meshes, gather all meshes with UVs as fallback
   if (meshes.length === 0) {
-    scene.traverse((object) => {
-      if (!(object instanceof Mesh)) return;
-      const layout = extractUvMeshLayout(object, textureName);
-      if (layout && layout.vertices.length > 0) {
-        meshes.push(layout);
-      }
-    });
+    return err(
+      `No UV data found for ${target.name} using material ${target.material ?? "unknown"}`,
+    );
   }
 
-  if (meshes.length === 0) {
-    return err(`No UV data found for texture: ${textureName}`);
-  }
-
-  return ok({ textureName, meshes });
+  return ok({
+    textureName: target.name,
+    materialName: target.material,
+    meshes,
+  });
 }

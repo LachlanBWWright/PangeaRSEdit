@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Play, Trash2 } from "lucide-react";
 import type { AnimationEvent, AnimationInfo } from "./types";
 import {
   ANIMEVENT_TYPE_CONFIG,
@@ -32,6 +32,7 @@ import {
   parseEventTimeInput,
   updateAnimationEvent,
 } from "@/components/AnimationViewer/animationEventEditorState";
+import { hasAnimationEventSoundPreview } from "./animationSoundPlayer";
 
 interface AnimationEventEditorProps {
   selectedAnimationInfo: AnimationInfo | null;
@@ -43,6 +44,7 @@ interface AnimationEventEditorProps {
   onAddEvent: () => void;
   onUpdateEvent: (index: number, event: AnimationEvent) => void;
   onDeleteEvent: (index: number) => void;
+  onPreviewEvent: (event: AnimationEvent) => void;
 }
 
 export function AnimationEventEditor({
@@ -55,6 +57,7 @@ export function AnimationEventEditor({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
+  onPreviewEvent,
 }: AnimationEventEditorProps) {
   if (!selectedAnimationInfo) {
     return (
@@ -112,6 +115,13 @@ export function AnimationEventEditor({
                 modelSourceKind,
                 gameLabel,
               );
+              const canPreviewSound =
+                isSoundValue &&
+                hasAnimationEventSoundPreview(
+                  event.value,
+                  modelSourceKind,
+                  gameLabel,
+                );
               const selected = selectedEventIndex === index;
               const updateEvent = (patch: Partial<AnimationEvent>) => {
                 onUpdateEvent(index, updateAnimationEvent(event, patch));
@@ -167,18 +177,35 @@ export function AnimationEventEditor({
                         {details ? ` • ${details}` : ""}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="h-8 px-3"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteEvent(index);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="ml-2">Delete</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {isSoundValue && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3"
+                          disabled={!canPreviewSound}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPreviewEvent(event);
+                          }}
+                        >
+                          <Play className="h-4 w-4" />
+                          <span className="ml-2">Preview</span>
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 px-3"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteEvent(index);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="ml-2">Delete</span>
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

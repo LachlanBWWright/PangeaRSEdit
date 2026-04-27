@@ -35,23 +35,25 @@ export function applyUvEditToBg3d(
     allGeometries.push(...collectGeometries(group));
   }
 
-  // Build lookup by mesh name (mesh names come from Three.js scene and should correspond to
-  // the order geometries were added when building the GLB)
-  const meshByName = new Map<string, UvMeshLayout>(
-    layout.meshes.map((m) => [m.meshName, m]),
+  const meshByGeometryIndex = new Map<number, UvMeshLayout>(
+    layout.meshes.map((mesh) => [mesh.geometryIndex, mesh]),
   );
 
-  for (const geom of allGeometries) {
+  for (const [geometryIndex, geom] of allGeometries.entries()) {
     if (!geom.uvs) continue;
-    // Try to find a matching mesh layout by index (fallback: apply all layouts sequentially)
-    // We apply whichever mesh has the matching vertex count
-    for (const meshLayout of meshByName.values()) {
-      if (meshLayout.vertices.length === geom.uvs.length) {
-        geom.uvs = meshLayout.vertices.map((v): [number, number] => [v.u, v.v]);
-        break;
-      }
+    const meshLayout = meshByGeometryIndex.get(geometryIndex);
+    if (!meshLayout || meshLayout.vertices.length !== geom.uvs.length) {
+      continue;
     }
+
+    geom.uvs = meshLayout.vertices.map((vertex): [number, number] => [
+      vertex.u,
+      vertex.v,
+    ]);
   }
 
-  return ok(bg3dParsed);
+  return ok({
+    ...bg3dParsed,
+    groups: [...bg3dParsed.groups],
+  });
 }

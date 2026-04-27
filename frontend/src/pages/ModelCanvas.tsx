@@ -32,7 +32,12 @@ export function ModelCanvas(props: ModelCanvasProps) {
     logBonePositions,
     selectedBoneName,
     gizmoMode = "translate",
+    interactionMode = "navigate",
     previewLighting = false,
+    skinData,
+    weightBrushSettings,
+    weightVisualizationMode,
+    onWeightBrushStroke,
   } = props;
 
   // Always call hooks unconditionally (must be called in every render in same order)
@@ -154,10 +159,15 @@ export function ModelCanvas(props: ModelCanvasProps) {
             showSkeleton={showSkeleton}
             selectedBoneName={selectedBoneName}
             previewLighting={previewLighting}
+            skinData={skinData}
+            weightBrushSettings={weightBrushSettings}
+            weightVisualizationMode={weightVisualizationMode}
+            interactionMode={interactionMode}
+            onWeightBrushStroke={onWeightBrushStroke}
             position={modelPosition}
           />
         )}
-        {selectedBoneObject && (
+        {selectedBoneObject && interactionMode === "bone-edit" && (
           <TransformControls
             object={selectedBoneObject}
             mode={gizmoMode}
@@ -174,8 +184,8 @@ export function ModelCanvas(props: ModelCanvasProps) {
         <OrbitControls
           enablePan={false}
           enableZoom={!isTransforming}
-          enableRotate={!isTransforming}
-          autoRotate={!isTransforming}
+          enableRotate={interactionMode === "navigate" && !isTransforming}
+          autoRotate={false}
           autoRotateSpeed={2}
         />
       </Canvas>

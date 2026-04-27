@@ -8,7 +8,8 @@ interface Props {
   setShowSkeleton: (v: boolean) => void;
   logBonePositions: boolean;
   setLogBonePositions: (v: boolean) => void;
-  hasAnimations: boolean;
+  hasSkeleton: boolean;
+  canLogBonePositions: boolean;
 }
 
 export function VisualizationOptions({
@@ -18,7 +19,8 @@ export function VisualizationOptions({
   setShowSkeleton,
   logBonePositions,
   setLogBonePositions,
-  hasAnimations,
+  hasSkeleton,
+  canLogBonePositions,
 }: Props) {
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -41,7 +43,7 @@ export function VisualizationOptions({
             onCheckedChange={setWireframeMode}
           />
         </div>
-        {hasAnimations && (
+        {hasSkeleton && (
           <div className="flex items-center justify-between">
             <label
               htmlFor="show-skeleton"
@@ -56,7 +58,7 @@ export function VisualizationOptions({
             />
           </div>
         )}
-        {hasAnimations && (
+        {canLogBonePositions && (
           <div className="flex items-center justify-between">
             <label
               htmlFor="log-bone-positions"
@@ -71,7 +73,7 @@ export function VisualizationOptions({
             />
           </div>
         )}
-        {hasAnimations && logBonePositions && (
+        {canLogBonePositions && logBonePositions && (
           <p className="text-xs text-gray-400 italic">
             Check console for bone position logs during animation playback
           </p>

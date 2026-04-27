@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "neverthrow";
+import { buildApiPath } from "@/api/apiBase";
 import {
   MultiplayerLobbyDetailsSchema,
   MultiplayerLobbyListSchema,
@@ -14,7 +15,7 @@ import type {
   StartLobbyInput,
 } from "./types";
 
-const BASE_PATH = "/api/multiplayer/lobbies";
+const BASE_PATH = buildApiPath("/api/multiplayer/lobbies");
 
 function parseError(status: number, payload: unknown): MultiplayerApiError {
   if (typeof payload === "object" && payload !== null) {

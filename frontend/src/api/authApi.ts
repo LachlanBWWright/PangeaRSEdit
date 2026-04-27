@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "neverthrow";
+import { buildApiPath } from "./apiBase";
 import { UserProfileSchema, type UserProfile } from "./apiSchemas";
 
 export interface AuthApiError {
@@ -45,7 +46,7 @@ async function fetchJson(
  * Returns err if not signed in (401) or on network failure.
  */
 export async function getMe(): Promise<Result<UserProfile, AuthApiError>> {
-  const response = await fetchJson("/api/me", {
+  const response = await fetchJson(buildApiPath("/api/me"), {
     method: "GET",
     credentials: "include",
   });
@@ -66,7 +67,7 @@ export async function getMe(): Promise<Result<UserProfile, AuthApiError>> {
  * Sign out the current user. Clears the session cookie server-side.
  */
 export async function signOut(): Promise<Result<void, AuthApiError>> {
-  const response = await fetchJson("/api/auth/sign-out", {
+  const response = await fetchJson(buildApiPath("/api/auth/sign-out"), {
     method: "POST",
     credentials: "include",
   });
@@ -78,7 +79,7 @@ export async function signOut(): Promise<Result<void, AuthApiError>> {
  * Returns the URL to navigate to for Google OAuth sign-in.
  */
 export function getGoogleSignInUrl(returnUrl?: string): string {
-  const base = "/api/auth/google/sign-in";
+  const base = buildApiPath("/api/auth/google/sign-in");
   if (returnUrl) {
     return `${base}?returnUrl=${encodeURIComponent(returnUrl)}`;
   }

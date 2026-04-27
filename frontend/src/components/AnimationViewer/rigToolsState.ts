@@ -1,4 +1,5 @@
 import { Group, SkinnedMesh } from "three";
+import type { SkinWeightsData } from "@/modelEditing/weights/weightTypes";
 
 export interface BoneInfluenceRow {
   boneName: string;
@@ -96,4 +97,34 @@ export function pinSelectedBoneRow(
     selectedRow,
     ...rows.filter((row) => row.boneName !== selectedBoneName),
   ];
+}
+
+export function collectBoneInfluenceRowsFromSkinData(
+  data: SkinWeightsData,
+): BoneInfluenceRow[] {
+  const totals = new Map<
+    string,
+    { vertexCount: number; weightedSum: number }
+  >();
+
+  for (const vertex of data.vertices) {
+    for (const influence of vertex.influences) {
+      const current = totals.get(influence.boneName) ?? {
+        vertexCount: 0,
+        weightedSum: 0,
+      };
+      totals.set(influence.boneName, {
+        vertexCount: current.vertexCount + 1,
+        weightedSum: current.weightedSum + influence.weight,
+      });
+    }
+  }
+
+  return Array.from(totals.entries())
+    .map(([boneName, total]) => ({
+      boneName,
+      vertexCount: total.vertexCount,
+      weightedSum: total.weightedSum,
+    }))
+    .sort((left, right) => right.weightedSum - left.weightedSum);
 }

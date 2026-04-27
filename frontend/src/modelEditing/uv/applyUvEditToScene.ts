@@ -7,11 +7,20 @@ import type { UvLayout } from "./uvTypes";
  * because Three.js attributes must be mutated to trigger GPU upload.
  */
 export function applyUvEditToScene(scene: Group, layout: UvLayout): void {
-  const meshLayoutByName = new Map(layout.meshes.map((m) => [m.meshName, m]));
+  const meshLayoutByGeometryIndex = new Map(
+    layout.meshes.map((mesh) => [mesh.geometryIndex, mesh]),
+  );
+  let geometryIndex = 0;
 
   scene.traverse((object) => {
-    if (!(object instanceof Mesh)) return;
-    const meshLayout = meshLayoutByName.get(object.name);
+    if (!(object instanceof Mesh)) {
+      return;
+    }
+
+    const currentGeometryIndex = geometryIndex;
+    geometryIndex += 1;
+
+    const meshLayout = meshLayoutByGeometryIndex.get(currentGeometryIndex);
     if (!meshLayout) return;
 
     const geometry = object.geometry;

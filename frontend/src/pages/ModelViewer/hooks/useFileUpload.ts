@@ -171,6 +171,15 @@ async function handleGlbUpload(
   const textures = await extractTexturesFromBG3D(parsed);
   runtime.onTexturesChange(textures);
 
+  if (
+    responseResult.value.warnings &&
+    responseResult.value.warnings.length > 0
+  ) {
+    toast.warning("GLB compatibility adjustments applied", {
+      description: responseResult.value.warnings.join(" "),
+    });
+  }
+
   const glbBlob = new Blob([glbBufferResult.value], {
     type: "model/gltf-binary",
   });

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { ResultAsync, okAsync } from "neverthrow";
 import {
   HeaderData,
   ItemData,
@@ -58,6 +59,7 @@ import { serializeNanosaurTerrainTextures } from "@/data/processors/classicPropr
 import { createSavedLevel } from "@/api/savedLevelsApi";
 import { getMe } from "@/api/authApi";
 import { getGoogleSignInUrl } from "@/api/authApi";
+import { mapErr } from "@/utils/mapErr";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -765,48 +767,67 @@ export function IntroPrompt() {
   const handleSaveToCloud = useCallback(() => {
     const cloudToastId = "save-to-cloud";
     toast.loading("Checking sign-in…", { id: cloudToastId });
-    getMe().then((meResult) => {
-      if (meResult.isErr()) {
-        toast.error("Sign in to save to cloud", {
-          id: cloudToastId,
-          description: "Click Sign in in the top right.",
-          action: {
-            label: "Sign in",
-            onClick: () => {
-              window.location.href = getGoogleSignInUrl(window.location.href);
+    void ResultAsync.fromPromise(getMe(), mapErr)
+      .andThen((meResult) => {
+        if (meResult.isErr()) {
+          toast.error("Sign in to save to cloud", {
+            id: cloudToastId,
+            description: "Click Sign in in the top right.",
+            action: {
+              label: "Sign in",
+              onClick: () => {
+                window.location.href = getGoogleSignInUrl(window.location.href);
+              },
             },
-          },
-        });
-        return;
-      }
-      const combinedDataResult = combineLevelData(getCurrentAtomicData());
-      if (combinedDataResult.isErr()) {
-        toast.error("Could not save: level data error", {
-          id: cloudToastId,
-          description: combinedDataResult.error,
-        });
-        return;
-      }
-      toast.loading("Saving to cloud…", { id: cloudToastId });
-      createSavedLevel({
-        gameName: String(globals.GAME_TYPE),
-        levelId: mapFile?.name ?? "unknown",
-        displayName: mapFile?.name ?? "Untitled Level",
-        payload: combinedDataResult.value,
-        sourceFileMetadata: mapFile
-          ? { fileName: mapFile.name, fileSize: mapFile.size }
-          : undefined,
-      }).then((saveResult) => {
-        if (saveResult.isOk()) {
-          toast.success("Level saved to cloud!", { id: cloudToastId });
-        } else {
+          });
+          return okAsync(undefined);
+        }
+
+        const combinedDataResult = combineLevelData(getCurrentAtomicData());
+        if (combinedDataResult.isErr()) {
+          toast.error("Could not save: level data error", {
+            id: cloudToastId,
+            description: combinedDataResult.error,
+          });
+          return okAsync(undefined);
+        }
+
+        toast.loading("Saving to cloud…", { id: cloudToastId });
+        return ResultAsync.fromPromise(
+          createSavedLevel({
+            gameName: String(globals.GAME_TYPE),
+            levelId: mapFile?.name ?? "unknown",
+            displayName: mapFile?.name ?? "Untitled Level",
+            payload: combinedDataResult.value,
+            sourceFileMetadata: mapFile
+              ? { fileName: mapFile.name, fileSize: mapFile.size }
+              : undefined,
+          }),
+          mapErr,
+        ).andThen((saveResult) => {
+          if (saveResult.isOk()) {
+            toast.success("Level saved to cloud!", { id: cloudToastId });
+            return okAsync(undefined);
+          }
+
           toast.error("Save failed", {
             id: cloudToastId,
             description: saveResult.error.message,
           });
-        }
-      });
-    });
+          return okAsync(undefined);
+        });
+      })
+      .mapErr((error) => {
+        toast.error("Save failed", {
+          id: cloudToastId,
+          description: error,
+        });
+        return error;
+      })
+      .match(
+        () => undefined,
+        () => undefined,
+      );
   }, [getCurrentAtomicData, globals, mapFile]);
 
   const handleConfirmNewMap = useCallback(() => {

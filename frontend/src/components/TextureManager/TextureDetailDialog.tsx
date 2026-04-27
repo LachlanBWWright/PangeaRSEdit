@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Edit, Eye, Upload } from "lucide-react";
+import { useState } from "react";
 import { getTextureSizeLabel } from "@/components/TextureManager/textureItemState";
 import { UvMapEditor } from "@/components/TextureManager/UvMapEditor";
 import { UvAssignmentPanel } from "@/components/TextureManager/UvAssignmentPanel";
@@ -30,6 +31,8 @@ interface TextureDetailDialogProps {
   onReplace: () => void;
   onEdit: () => void;
   onDownload: () => void;
+  onPreviewUvEdit?: (updatedLayout: UvLayout) => void;
+  onResetUvPreview?: () => void;
   onApplyUvEdit?: (updatedLayout: UvLayout) => void;
 }
 
@@ -41,10 +44,22 @@ export function TextureDetailDialog({
   onReplace,
   onEdit,
   onDownload,
+  onPreviewUvEdit,
+  onResetUvPreview,
   onApplyUvEdit,
 }: TextureDetailDialogProps) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          onResetUvPreview?.();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           size="sm"
@@ -55,7 +70,7 @@ export function TextureDetailDialog({
           <Eye className="w-4 h-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl text-white">
+      <DialogContent className="flex h-[90vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between text-white">
             <span>{texture.name}</span>
@@ -64,14 +79,17 @@ export function TextureDetailDialog({
             </span>
           </DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="image" className="w-full">
+        <Tabs defaultValue="image" className="flex min-h-0 flex-1 flex-col">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="image">Image</TabsTrigger>
             <TabsTrigger value="uv">UV Map</TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="image" className="space-y-3">
+          <TabsContent
+            value="image"
+            className="min-h-0 flex-1 space-y-3 overflow-auto"
+          >
             <DialogDescription className="text-gray-300">
               Image:
             </DialogDescription>
@@ -79,26 +97,36 @@ export function TextureDetailDialog({
               <img
                 src={texture.url}
                 alt={texture.name}
-                className="max-w-full max-h-96 object-contain border border-gray-600"
+                className="max-w-full max-h-[70vh] object-contain border border-gray-600"
               />
             </div>
           </TabsContent>
 
-          <TabsContent value="uv" className="space-y-3">
+          <TabsContent
+            value="uv"
+            className="min-h-0 flex-1 space-y-3 overflow-auto"
+          >
             <DialogDescription className="text-gray-300">
               UV Map — move, rotate, scale, flip, or fit UV coordinates to the
               texture image.
             </DialogDescription>
-            <UvMapEditor
-              textureUrl={texture.url}
-              textureName={texture.name}
-              uvLayout={uvLayout ?? null}
-              textureSize={texture.size}
-              onApplyEdit={onApplyUvEdit}
-            />
+            {open && (
+              <UvMapEditor
+                key={`${texture.name}-${open ? "open" : "closed"}`}
+                textureUrl={texture.url}
+                textureName={texture.name}
+                uvLayout={uvLayout ?? null}
+                textureSize={texture.size}
+                onPreviewEdit={onPreviewUvEdit}
+                onApplyEdit={onApplyUvEdit}
+              />
+            )}
           </TabsContent>
 
-          <TabsContent value="assignments" className="space-y-3">
+          <TabsContent
+            value="assignments"
+            className="min-h-0 flex-1 space-y-3 overflow-auto"
+          >
             <DialogDescription className="text-gray-300">
               Material and mesh usage:
             </DialogDescription>

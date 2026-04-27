@@ -63,7 +63,7 @@ export function UserMenu() {
         }}
       >
         <LogIn className="w-4 h-4" />
-        <span className="hidden sm:inline">Sign in</span>
+        <span className="hidden sm:inline">Sign in with Google</span>
       </Button>
     );
   }
@@ -85,13 +85,13 @@ export function UserMenu() {
         ) : (
           <User className="w-4 h-4" />
         )}
-        <span className="hidden sm:inline max-w-[120px] truncate">
+        <span className="hidden sm:inline max-w-30 truncate">
           {user.displayName}
         </span>
       </Button>
 
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-md border border-slate-700 bg-slate-800 shadow-lg py-1">
+        <div className="absolute right-0 top-full mt-1 z-50 min-w-40 rounded-md border border-slate-700 bg-slate-800 shadow-lg py-1">
           <div className="px-3 py-2 text-sm text-slate-300 border-b border-slate-700">
             <p className="font-medium">{user.displayName}</p>
             {user.email && (
