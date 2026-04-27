@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { progressToast } from "@/toasts/progressToast";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
@@ -127,27 +128,37 @@ export function GameCard({
 
   const loadStagedLevel = async (levelFile: File, textureFile: File | null) => {
     const toastId = "level-load-progress";
-    toast.loading("Loading level files...", {
+    progressToast.start({
       id: toastId,
+      title: "Loading level files...",
       description: levelFile.name,
+      current: 0,
+      completed: textureFile ? 4 : 2,
     });
     setMapFile(levelFile);
-    toast.loading("Parsing level data...", {
+    progressToast.update({
       id: toastId,
+      title: "Parsing level data...",
       description: levelFile.name,
+      current: 1,
+      completed: textureFile ? 4 : 2,
     });
     const parseResult = await handleParseLevelDataFile(levelFile, globals);
     if (parseResult.isErr()) {
-      toast.error("Failed to parse level data", {
+      progressToast.fail({
         id: toastId,
+        title: "Failed to parse level data",
         description: parseResult.error,
       });
       return;
     }
     if (textureFile) {
-      toast.loading("Decoding terrain textures...", {
+      progressToast.update({
         id: toastId,
+        title: "Decoding terrain textures...",
         description: textureFile.name,
+        current: 2,
+        completed: 4,
       });
       const buffer = await textureFile.arrayBuffer();
       const mapImagesResult = await loadMapImages(
@@ -159,15 +170,19 @@ export function GameCard({
           }
 
           const percent = Math.floor((completed / total) * 100);
-          toast.loading("Decoding terrain textures...", {
+          progressToast.update({
             id: toastId,
+            title: "Decoding terrain textures...",
             description: `${completed}/${total} supertiles (${percent}%)`,
+            current: 2 + completed / total,
+            completed: 4,
           });
         },
       );
       if (mapImagesResult.isErr()) {
-        toast.error("Failed to load textures", {
+        progressToast.fail({
           id: toastId,
+          title: "Failed to load textures",
           description: mapImagesResult.error,
         });
         console.error("[terrain] staged texture decode failed", {
@@ -182,7 +197,10 @@ export function GameCard({
       setMapImages(mapImagesResult.value);
     }
     clearStaged();
-    toast.success("Level loaded", { id: toastId });
+    progressToast.complete({
+      id: toastId,
+      title: "Level loaded",
+    });
   };
 
   const handleFile = async (file: File) => {

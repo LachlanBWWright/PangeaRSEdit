@@ -33,7 +33,7 @@ import {
 } from "@/modelParsers/bg3dExportTargets";
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { AnimationMixer, Group } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
@@ -1557,7 +1557,6 @@ export function ModelViewer() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-      <Toaster />
     </>
   );
 }
