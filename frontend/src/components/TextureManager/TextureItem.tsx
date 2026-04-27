@@ -1,26 +1,18 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
   Download,
-  Eye,
   Upload,
-  Edit,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { TextureDetailDialog } from "@/components/TextureManager/TextureDetailDialog";
 import {
   getTextureSizeLabel,
   getTextureTypeBadgeClass,
   triggerTextureReplace,
 } from "@/components/TextureManager/textureItemState";
+import type { UvLayout } from "@/modelEditing/uv/uvTypes";
 
 interface Texture {
   name: string;
@@ -41,6 +33,8 @@ interface Props {
   onTextureEditAvailable: boolean;
   onDownloadTexture: (t: Texture) => void;
   onEditTexture: (t: Texture) => void;
+  uvLayout?: UvLayout | null;
+  onApplyUvEdit?: (updatedLayout: UvLayout) => void;
 }
 
 export function TextureItem({
@@ -54,6 +48,8 @@ export function TextureItem({
   onTextureEditAvailable,
   onDownloadTexture,
   onEditTexture,
+  uvLayout,
+  onApplyUvEdit,
 }: Props) {
   const handleReplaceTexture = () => {
     triggerTextureReplace(texture, setSelectedTexture, fileInputRef);
@@ -98,67 +94,16 @@ export function TextureItem({
             )}
           </Button>
 
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="w-8 h-8 p-0">
-                <Eye className="w-4 h-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl text-white">
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-between text-white">
-                  <span>{texture.name}</span>
-                  <span className="text-sm text-gray-400">
-                    {texture.type} • {getTextureSizeLabel(texture.size)}
-                  </span>
-                </DialogTitle>
-              </DialogHeader>
-              <DialogDescription className="text-gray-300">
-                Image:
-              </DialogDescription>
-              <div className="flex justify-center bg-checkered p-4 rounded">
-                <img
-                  src={texture.url}
-                  alt={texture.name}
-                  className="max-w-full max-h-96 object-contain border border-gray-600"
-                />
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <div className="flex space-x-2">
-                  {onReplaceTextureAvailable && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleReplaceTexture}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Replace
-                      </Button>
-                    </>
-                  )}
-                  {onTextureEditAvailable && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onEditTexture(texture)}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onDownloadTexture(texture)}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <TextureDetailDialog
+            texture={texture}
+            canReplace={onReplaceTextureAvailable}
+            canEdit={onTextureEditAvailable}
+            uvLayout={uvLayout}
+            onReplace={handleReplaceTexture}
+            onEdit={() => onEditTexture(texture)}
+            onDownload={() => onDownloadTexture(texture)}
+            onApplyUvEdit={onApplyUvEdit}
+          />
         </div>
 
         <div className="flex space-x-1">

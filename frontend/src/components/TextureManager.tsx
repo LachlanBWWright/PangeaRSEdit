@@ -11,6 +11,7 @@ import {
   handleTextureFileInputChange,
   toggleExpandedTextureIndex,
 } from "@/components/TextureManager/textureManagerState";
+import type { UvLayout } from "@/modelEditing/uv/uvTypes";
 
 interface Texture {
   name: string;
@@ -26,6 +27,8 @@ interface TextureManagerProps {
     texture: Texture,
     editedImageData: ImageData,
   ) => Promise<void>;
+  uvLayouts?: ReadonlyMap<string, UvLayout>;
+  onApplyUvEdit?: (textureName: string, updatedLayout: UvLayout) => void;
 }
 
 export function TextureManager({
@@ -33,6 +36,8 @@ export function TextureManager({
   onDownloadTexture,
   onReplaceTexture,
   onTextureEdit,
+  uvLayouts,
+  onApplyUvEdit,
 }: TextureManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
@@ -170,6 +175,8 @@ export function TextureManager({
           onTextureEditAvailable={!!onTextureEdit}
           onDownloadTexture={onDownloadTexture}
           onEditTexture={handleEditTexture}
+          uvLayout={uvLayouts?.get(texture.name)}
+          onApplyUvEdit={onApplyUvEdit ? (layout) => onApplyUvEdit(texture.name, layout) : undefined}
         />
       ))}
 

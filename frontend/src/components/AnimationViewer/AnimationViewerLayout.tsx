@@ -8,6 +8,7 @@ import { AnimationEventEditor } from "./AnimationEventEditor";
 import { AnimationCreator } from "./AnimationCreator";
 import { ViewerSection } from "@/components/AnimationViewer/animationViewerSections";
 import type { AnimationEvent, AnimationInfo, TimelineRow } from "./types";
+import type { BoneInfluenceRow } from "./rigToolsState";
 import type { ModelSourceKind, TrackProperty } from "./utils";
 
 interface AnimationViewerLayoutProps {
@@ -80,6 +81,12 @@ interface AnimationViewerLayoutProps {
   onAddEvent: () => void;
   onUpdateEvent: (index: number, event: AnimationEvent) => void;
   onDeleteEvent: (index: number) => void;
+  boneRenameInput: string;
+  boneInfluenceRows: BoneInfluenceRow[];
+  skinData?: import("@/modelEditing/weights/weightTypes").SkinWeightsData | null;
+  onBoneRenameInputChange: (value: string) => void;
+  onRenameSelectedBone: () => void;
+  onRepairWeights?: (repaired: import("@/modelEditing/weights/weightTypes").SkinWeightsData) => void;
 }
 
 export function AnimationViewerLayout({
@@ -152,6 +159,12 @@ export function AnimationViewerLayout({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
+  boneRenameInput,
+  boneInfluenceRows,
+  skinData,
+  onBoneRenameInputChange,
+  onRenameSelectedBone,
+  onRepairWeights,
 }: AnimationViewerLayoutProps) {
   return (
     <Card className="flex min-h-0 flex-col overflow-hidden bg-gray-800 border-gray-700">
@@ -238,6 +251,12 @@ export function AnimationViewerLayout({
             onStop={onStop}
             onReset={onReset}
             onSeek={onSeek}
+            boneRenameInput={boneRenameInput}
+            boneInfluenceRows={boneInfluenceRows}
+            skinData={skinData}
+            onBoneRenameInputChange={onBoneRenameInputChange}
+            onRenameSelectedBone={onRenameSelectedBone}
+            onRepairWeights={onRepairWeights}
           />
         </ViewerSection>
 

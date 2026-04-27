@@ -166,8 +166,8 @@ function createAtomicFixture(): AtomicLevelData {
 
 describe("applySupertileResizeToAtomicData", () => {
   it("adjusts item, fence, spline, and liquid coordinates when top/left rows are added", () => {
-    // offsetUnits = TILES_PER_SUPERTILE * TILE_INGAME_SIZE = 5 * 160 = 800
-    const offset = BugdomGlobals.TILES_PER_SUPERTILE * BugdomGlobals.TILE_INGAME_SIZE;
+    // One supertile operation should shift entities by one world-cell step.
+    const offset = BugdomGlobals.TILE_INGAME_SIZE;
 
     const cases: {
       direction: "top" | "bottom" | "left" | "right";
@@ -179,6 +179,12 @@ describe("applySupertileResizeToAtomicData", () => {
       expectedSplineNub: { x: number; z: number };
       expectedLiquidHotSpotX: number;
       expectedLiquidHotSpotZ: number;
+      expectedFenceBBoxLeft: number;
+      expectedFenceBBoxTop: number;
+      expectedSplineBBoxLeft: number;
+      expectedSplineBBoxTop: number;
+      expectedLiquidBBoxLeft: number;
+      expectedLiquidBBoxTop: number;
     }[] = [
       {
         direction: "left",
@@ -190,6 +196,12 @@ describe("applySupertileResizeToAtomicData", () => {
         expectedSplineNub: { x: 200 + offset, z: 300 },
         expectedLiquidHotSpotX: 320 + offset,
         expectedLiquidHotSpotZ: 480,
+        expectedFenceBBoxLeft: offset,
+        expectedFenceBBoxTop: 0,
+        expectedSplineBBoxLeft: offset,
+        expectedSplineBBoxTop: 0,
+        expectedLiquidBBoxLeft: offset,
+        expectedLiquidBBoxTop: 10,
       },
       {
         direction: "right",
@@ -201,6 +213,12 @@ describe("applySupertileResizeToAtomicData", () => {
         expectedSplineNub: { x: 200, z: 300 },
         expectedLiquidHotSpotX: 320,
         expectedLiquidHotSpotZ: 480,
+        expectedFenceBBoxLeft: 0,
+        expectedFenceBBoxTop: 0,
+        expectedSplineBBoxLeft: 0,
+        expectedSplineBBoxTop: 0,
+        expectedLiquidBBoxLeft: 0,
+        expectedLiquidBBoxTop: 10,
       },
       {
         direction: "top",
@@ -212,6 +230,12 @@ describe("applySupertileResizeToAtomicData", () => {
         expectedSplineNub: { x: 200, z: 300 + offset },
         expectedLiquidHotSpotX: 320,
         expectedLiquidHotSpotZ: 480 + offset,
+        expectedFenceBBoxLeft: 0,
+        expectedFenceBBoxTop: offset,
+        expectedSplineBBoxLeft: 0,
+        expectedSplineBBoxTop: offset,
+        expectedLiquidBBoxLeft: 0,
+        expectedLiquidBBoxTop: 10 + offset,
       },
       {
         direction: "bottom",
@@ -223,6 +247,12 @@ describe("applySupertileResizeToAtomicData", () => {
         expectedSplineNub: { x: 200, z: 300 },
         expectedLiquidHotSpotX: 320,
         expectedLiquidHotSpotZ: 480,
+        expectedFenceBBoxLeft: 0,
+        expectedFenceBBoxTop: 0,
+        expectedSplineBBoxLeft: 0,
+        expectedSplineBBoxTop: 0,
+        expectedLiquidBBoxLeft: 0,
+        expectedLiquidBBoxTop: 10,
       },
     ];
 
@@ -254,19 +284,80 @@ describe("applySupertileResizeToAtomicData", () => {
       expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual(testCase.expectedSplineNub);
       expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(testCase.expectedLiquidHotSpotX);
       expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(testCase.expectedLiquidHotSpotZ);
+      expect(resized.fenceData?.Fenc[1000]?.obj[0]?.bbLeft).toBe(testCase.expectedFenceBBoxLeft);
+      expect(resized.fenceData?.Fenc[1000]?.obj[0]?.bbTop).toBe(testCase.expectedFenceBBoxTop);
+      expect(resized.splineData?.Spln[1000]?.obj[0]?.bbLeft).toBe(testCase.expectedSplineBBoxLeft);
+      expect(resized.splineData?.Spln[1000]?.obj[0]?.bbTop).toBe(testCase.expectedSplineBBoxTop);
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.bBoxLeft).toBe(testCase.expectedLiquidBBoxLeft);
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.bBoxTop).toBe(testCase.expectedLiquidBBoxTop);
+    }
+  });
+
+  it("adjusts item, fence, spline, and liquid coordinates when top/left rows are removed", () => {
+    const offset = -BugdomGlobals.TILE_INGAME_SIZE;
+    const tileDelta = -BugdomGlobals.TILES_PER_SUPERTILE;
+
+    const cases: {
+      direction: "top" | "left";
+      expectedItemX: number;
+      expectedItemZ: number;
+      expectedFenceNub: [number, number];
+      expectedSplineNub: { x: number; z: number };
+      expectedLiquidHotSpotX: number;
+      expectedLiquidHotSpotZ: number;
+    }[] = [
+      {
+        direction: "left",
+        expectedItemX: 160 + offset,
+        expectedItemZ: 224,
+        expectedFenceNub: [50 + offset, 50],
+        expectedSplineNub: { x: 200 + offset, z: 300 },
+        expectedLiquidHotSpotX: 320 + offset,
+        expectedLiquidHotSpotZ: 480,
+      },
+      {
+        direction: "top",
+        expectedItemX: 160,
+        expectedItemZ: 224 + offset,
+        expectedFenceNub: [50, 50 + offset],
+        expectedSplineNub: { x: 200, z: 300 + offset },
+        expectedLiquidHotSpotX: 320,
+        expectedLiquidHotSpotZ: 480 + offset,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const fixture = createAtomicFixture();
+      const result = applySupertileResizeToAtomicData(fixture, BugdomGlobals, {
+        direction: testCase.direction,
+        tileCount: tileDelta,
+        defaultHeight: 0,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        continue;
+      }
+
+      const resized = result.value.data;
+      expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(testCase.expectedItemX);
+      expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(testCase.expectedItemZ);
+      expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual(testCase.expectedFenceNub);
+      expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual(testCase.expectedSplineNub);
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(testCase.expectedLiquidHotSpotX);
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(testCase.expectedLiquidHotSpotZ);
     }
   });
 
   it("filters item out-of-bounds warnings and removes items that fall outside the new bounds", () => {
     const fixture = createAtomicFixture();
     const firstItem = fixture.itemData?.Itms[1000].obj[0];
-    // Set item x to a value that will go negative after shrinking left columns
+    // Remove one supertile (5 tiles) from the left. offsetXUnits = -160.
+    // new item x = 100 - 160 = -60 → out of bounds → removed.
     if (firstItem) {
-      firstItem.x = 224;
+      firstItem.x = 100;
     }
 
-    // Remove one supertile (5 tiles) from the left. offsetXUnits = -5 * 160 = -800.
-    // new item x = 224 - 800 = -576 → out of bounds → removed.
     const result = applySupertileResizeToAtomicData(fixture, BugdomGlobals, {
       direction: "left",
       tileCount: -BugdomGlobals.TILES_PER_SUPERTILE,

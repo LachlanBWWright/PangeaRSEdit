@@ -55,6 +55,9 @@ import {
   editorNavbarOpenAtom,
 } from "@/data/globals/editorNavbarAtoms";
 import { serializeNanosaurTerrainTextures } from "@/data/processors/classicProprocessor";
+import { createSavedLevel } from "@/api/savedLevelsApi";
+import { getMe } from "@/api/authApi";
+import { getGoogleSignInUrl } from "@/api/authApi";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -303,7 +306,8 @@ export function IntroPrompt() {
       return;
     }
 
-    toast.loading("Processing map data...");
+    const saveToastId = "save-map";
+    toast.loading("Processing map data...", { id: saveToastId });
 
     // Combine atomic data for file I/O
     // Combine atomic data for serialization; optional sections may be missing
@@ -315,6 +319,7 @@ export function IntroPrompt() {
         combinedDataResult.error,
       );
       toast.error("Download failed", {
+        id: saveToastId,
         description: combinedDataResult.error,
       });
       return;
@@ -353,6 +358,7 @@ export function IntroPrompt() {
       if (!isNanosaur1LevelData(rawLevelData)) {
         console.error("Missing raw Nanosaur 1 level data");
         toast.error("Download failed", {
+          id: saveToastId,
           description: "Missing original raw data. Please reload the level.",
         });
         return;
@@ -361,7 +367,7 @@ export function IntroPrompt() {
       const result = compileNanosaur1Level(combinedData, rawLevelData);
       if (result.isErr()) {
         console.error("Nanosaur compilation failed:", result.error);
-        toast.error("Download failed", { description: result.error });
+        toast.error("Download failed", { id: saveToastId, description: result.error });
         return;
       }
 
@@ -371,7 +377,7 @@ export function IntroPrompt() {
       const result = serializeMightyMikeLevel(combinedData);
       if (result.isErr()) {
         console.error("Mighty Mike serialization failed:", result.error);
-        toast.error("Download failed", { description: result.error });
+        toast.error("Download failed", { id: saveToastId, description: result.error });
         return;
       }
       mapBlob = new Blob([result.value], { type: ".map" });
@@ -386,6 +392,7 @@ export function IntroPrompt() {
       if (validation.isErr()) {
         console.error("Invalid JSON for resource fork:", validation.error);
         toast.error("Download failed", {
+          id: saveToastId,
           description: `Invalid map data structure for resource fork: ${validation.error}`,
         });
         return;
@@ -403,6 +410,7 @@ export function IntroPrompt() {
       if (!saveResult.ok) {
         console.error("Download failed:", saveResult.error);
         toast.error("Download failed", {
+          id: saveToastId,
           description: String(saveResult.error),
         });
         return;
@@ -413,6 +421,7 @@ export function IntroPrompt() {
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
         toast.error("Download failed", {
+          id: saveToastId,
           description: "Generated map data is empty",
         });
         return;
@@ -440,7 +449,7 @@ export function IntroPrompt() {
       globals.DATA_TYPE === DataType.RSRC_FORK ||
       globals.DATA_TYPE === DataType.MIGHTY_MIKE
     ) {
-      toast.success("Map Downloaded!");
+      toast.success("Map Downloaded!", { id: saveToastId });
       return;
     }
 
@@ -449,6 +458,7 @@ export function IntroPrompt() {
     if (globals.DATA_TYPE === DataType.TRT_FILE) {
       if (!mapImages || mapImages.length === 0) {
         toast.error("Download failed", {
+          id: saveToastId,
           description: "No tile images are loaded for this level.",
         });
         return;
@@ -457,6 +467,7 @@ export function IntroPrompt() {
       const textureResult = serializeNanosaurTerrainTextures(mapImages);
       if (textureResult.isErr()) {
         toast.error("Download failed", {
+          id: saveToastId,
           description: textureResult.error,
         });
         return;
@@ -471,19 +482,20 @@ export function IntroPrompt() {
       trtLink.setAttribute("download", mapImagesFile?.name || "images.trt");
       trtLink.click();
       URL.revokeObjectURL(trtUrl);
-      toast.success("Map Downloaded!");
+      toast.success("Map Downloaded!", { id: saveToastId });
       return;
     }
 
     //Download Images
     if (!mapImages) {
       toast.error("Download failed", {
+        id: saveToastId,
         description: "No map images are loaded for this level.",
       });
       return;
     }
 
-    toast.loading("Saving Map - Compressing textures");
+    toast.loading("Saving Map - Compressing textures", { id: saveToastId });
 
     //Webworker promise
     const compressTextures = new Promise<DataView[]>((res, err) => {
@@ -572,7 +584,7 @@ export function IntroPrompt() {
     );
     imageDownloadLink.click();
 
-    toast.success("Map Downloaded!");
+    toast.success("Map Downloaded!", { id: saveToastId });
   }, [mapFile, mapImagesFile, mapImages, globals, getCurrentAtomicData]);
 
   useEffect(() => {
@@ -744,6 +756,48 @@ export function IntroPrompt() {
     setProcessed(true);
   }, [getCurrentAtomicData, globals, setAllAtomicData, setBlockHistoryUpdate]);
 
+  const handleSaveToCloud = useCallback(() => {
+    const cloudToastId = "save-to-cloud";
+    toast.loading("Checking sign-in…", { id: cloudToastId });
+    getMe()
+      .then((meResult) => {
+        if (meResult.isErr()) {
+          toast.error("Sign in to save to cloud", {
+            id: cloudToastId,
+            description: "Click Sign in in the top right.",
+            action: {
+              label: "Sign in",
+              onClick: () => { window.location.href = getGoogleSignInUrl(window.location.href); },
+            },
+          });
+          return;
+        }
+        const combinedDataResult = combineLevelData(getCurrentAtomicData());
+        if (combinedDataResult.isErr()) {
+          toast.error("Could not save: level data error", { id: cloudToastId, description: combinedDataResult.error });
+          return;
+        }
+        toast.loading("Saving to cloud…", { id: cloudToastId });
+        createSavedLevel({
+          gameName: String(globals.GAME_TYPE),
+          levelId: mapFile?.name ?? "unknown",
+          displayName: mapFile?.name ?? "Untitled Level",
+          payload: combinedDataResult.value,
+          sourceFileMetadata: mapFile
+            ? { fileName: mapFile.name, fileSize: mapFile.size }
+            : undefined,
+        }).then((saveResult) => {
+          if (saveResult.isOk()) {
+            toast.success("Level saved to cloud!", { id: cloudToastId });
+          } else {
+            toast.error("Save failed", { id: cloudToastId, description: saveResult.error.message });
+          }
+        });
+      });
+  }, [getCurrentAtomicData, globals, mapFile]);
+
+
+
   const handleConfirmNewMap = useCallback(() => {
     setNewMapConfirmOpen(false);
     clearAllState();
@@ -768,6 +822,13 @@ export function IntroPrompt() {
           )}
           <Button data-testid="download-button" onClick={handleDownload}>
             Download
+          </Button>
+          <Button
+            data-testid="save-to-cloud-button"
+            variant="outline"
+            onClick={handleSaveToCloud}
+          >
+            Save to Cloud
           </Button>
           {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
             <TestGameDialog
@@ -795,6 +856,7 @@ export function IntroPrompt() {
   }, [
     globals.GAME_TYPE,
     handleDownload,
+    handleSaveToCloud,
     handleTestLevel,
     mapFile,
     mapImages,

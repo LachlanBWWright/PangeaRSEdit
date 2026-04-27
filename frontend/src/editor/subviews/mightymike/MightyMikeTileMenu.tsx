@@ -46,6 +46,7 @@ import {
 } from "./mightyMikeTileMenuState";
 import { MightyMikeTileMenuEditors } from "./MightyMikeTileMenuEditors";
 import { MightyMikeTileMenuContent } from "./MightyMikeTileMenuContent";
+import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
 
 interface MightyMikeTileMenuProps {
   headerData: HeaderData;
@@ -411,6 +412,16 @@ export function MightyMikeTileMenu({
         handleRemovePaletteTile={handleRemovePaletteTile}
         handleReplaceTile={handleReplaceTile}
         onSelectPaletteTile={handleManualTilePaletteSelection}
+      />
+
+      <TileBrushPanel
+        game="mightymike"
+        terrainData={terrainData}
+        setTerrainData={setTerrainData}
+        mapWidth={mapWidth}
+        mapHeight={mapHeight}
+        selectedTileIndex={effectiveSelectedTile}
+        activeLayer={1000}
       />
 
       <MightyMikeTileMenuEditors

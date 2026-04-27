@@ -7,9 +7,11 @@ import {
   type AnimationEvent,
   type ModelSourceKind,
 } from "@/components/AnimationViewer";
+import {
+  collectBoneInfluenceRows,
+  pinSelectedBoneRow,
+} from "@/components/AnimationViewer/rigToolsState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -29,7 +31,7 @@ import {
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast, Toaster } from "sonner";
-import { AnimationMixer, Group, SkinnedMesh } from "three";
+import { AnimationMixer, Group } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
@@ -55,6 +57,12 @@ import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
 import type { UploadStep } from "./ModelViewer/types";
 import type { Texture, ModelNode } from "./ModelViewer/types";
 import { mapErr } from "@/utils/mapErr";
+import { extractUvLayout } from "@/modelEditing/uv/extractUvLayout";
+import { applyUvEditToScene } from "@/modelEditing/uv/applyUvEditToScene";
+import { applyUvEditToBg3d } from "@/modelEditing/uv/applyUvEditToBg3d";
+import type { UvLayout } from "@/modelEditing/uv/uvTypes";
+import { extractSkinWeights } from "@/modelEditing/weights/extractSkinWeights";
+import type { SkinWeightsData } from "@/modelEditing/weights/weightTypes";
 
 export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
@@ -99,6 +107,14 @@ export function ModelViewer() {
   const [gameLabel, setGameLabel] = useState<string | null>(null);
   const [modelSourceKind, setModelSourceKind] =
     useState<ModelSourceKind | null>(null);
+  const [uvLayoutOverridesWithScene, setUvLayoutOverridesWithScene] = useState<{
+    scene: Group;
+    overrides: Map<string, UvLayout>;
+  } | null>(null);
+  const [skinDataWithScene, setSkinDataWithScene] = useState<{
+    scene: Group;
+    data: SkinWeightsData;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const effectiveModelBaseName = modelBaseName.trim() || "model";
   // Initialize file upload hook
@@ -454,6 +470,68 @@ export function ModelViewer() {
     [persistAnimations],
   );
 
+  // Derive UV layouts from scene, merging any user-applied overrides.
+  // Overrides are scoped to the current scene so they reset on model reload.
+  const uvLayouts = useMemo<Map<string, UvLayout>>(() => {
+    if (!scene || textures.length === 0) return new Map();
+    const base = new Map<string, UvLayout>();
+    for (const texture of textures) {
+      const result = extractUvLayout(scene, texture.name);
+      if (result.isOk()) {
+        base.set(texture.name, result.value);
+      }
+    }
+    const overrides =
+      uvLayoutOverridesWithScene?.scene === scene
+        ? uvLayoutOverridesWithScene.overrides
+        : null;
+    if (overrides) {
+      for (const [k, v] of overrides) {
+        base.set(k, v);
+      }
+    }
+    return base;
+  }, [scene, textures, uvLayoutOverridesWithScene]);
+
+  // Derive skin data from scene, applying any user repair overrides.
+  // Override is scoped to the current scene so it resets on model reload.
+  const skinData = useMemo<SkinWeightsData | null>(() => {
+    if (!scene) return null;
+    if (skinDataWithScene?.scene === scene) return skinDataWithScene.data;
+    const result = extractSkinWeights(scene);
+    return result.isOk() ? result.value : null;
+  }, [scene, skinDataWithScene]);
+
+  const handleApplyUvEdit = useCallback(
+    (textureName: string, updatedLayout: UvLayout) => {
+      if (!scene) return;
+      applyUvEditToScene(scene, updatedLayout);
+      if (bg3dParsed) {
+        const result = applyUvEditToBg3d(bg3dParsed, updatedLayout);
+        if (result.isOk()) {
+          setBg3dParsed(result.value);
+        }
+      }
+      setUvLayoutOverridesWithScene((prev) => {
+        const existing =
+          prev?.scene === scene
+            ? new Map(prev.overrides)
+            : new Map<string, UvLayout>();
+        existing.set(textureName, updatedLayout);
+        return { scene, overrides: existing };
+      });
+    },
+    [scene, bg3dParsed],
+  );
+
+  const handleRepairWeights = useCallback(
+    (repaired: SkinWeightsData) => {
+      if (!scene) return;
+      setSkinDataWithScene({ scene, data: repaired });
+    },
+    [scene],
+  );
+
   const handleBoneTransformChange = useCallback(
     (position: [number, number, number]) => {
       setBoneTransform(position);
@@ -574,96 +652,13 @@ export function ModelViewer() {
     toast.success(`Renamed bone '${selectedBoneName}' to '${nextName}'`);
   }, [boneRenameInput, scene, selectedBoneName]);
 
-  const boneInfluenceRows = useMemo(() => {
-    if (!scene) {
-      return [] as {
-        boneName: string;
-        vertexCount: number;
-        weightedSum: number;
-      }[];
-    }
-
-    const totals = new Map<
-      string,
-      { vertexCount: number; weightedSum: number }
-    >();
-
-    scene.traverse((object) => {
-      if (!(object instanceof SkinnedMesh) || !object.skeleton) {
-        return;
-      }
-      const geometry = object.geometry;
-      if (!geometry) {
-        return;
-      }
-
-      const skinIndex = geometry.getAttribute("skinIndex");
-      const skinWeight = geometry.getAttribute("skinWeight");
-      if (!skinIndex || !skinWeight) {
-        return;
-      }
-
-      const vertexCount = Math.min(skinIndex.count, skinWeight.count);
-      for (let vertexIndex = 0; vertexIndex < vertexCount; vertexIndex += 1) {
-        for (let influenceIndex = 0; influenceIndex < 4; influenceIndex += 1) {
-          const weight =
-            influenceIndex === 0
-              ? skinWeight.getX(vertexIndex)
-              : influenceIndex === 1
-                ? skinWeight.getY(vertexIndex)
-                : influenceIndex === 2
-                  ? skinWeight.getZ(vertexIndex)
-                  : skinWeight.getW(vertexIndex);
-          const boneIndex =
-            influenceIndex === 0
-              ? skinIndex.getX(vertexIndex)
-              : influenceIndex === 1
-                ? skinIndex.getY(vertexIndex)
-                : influenceIndex === 2
-                  ? skinIndex.getZ(vertexIndex)
-                  : skinIndex.getW(vertexIndex);
-          if (!Number.isFinite(weight) || weight <= 0) {
-            continue;
-          }
-          const bone = object.skeleton?.bones?.[boneIndex];
-          const boneName = bone?.name;
-          if (!boneName) {
-            continue;
-          }
-          const current = totals.get(boneName) ?? {
-            vertexCount: 0,
-            weightedSum: 0,
-          };
-          current.vertexCount += 1;
-          current.weightedSum += weight;
-          totals.set(boneName, current);
-        }
-      }
-    });
-
-    return Array.from(totals.entries())
-      .map(([boneName, total]) => ({
-        boneName,
-        vertexCount: total.vertexCount,
-        weightedSum: total.weightedSum,
-      }))
-      .sort((a, b) => b.weightedSum - a.weightedSum);
-  }, [scene]);
+  const boneInfluenceRows = useMemo(() => collectBoneInfluenceRows(scene), [scene]);
 
   const displayedBoneInfluenceRows = useMemo(() => {
     if (!selectedBoneName) {
       return boneInfluenceRows;
     }
-    const selectedRow = boneInfluenceRows.find(
-      (row) => row.boneName === selectedBoneName,
-    );
-    if (!selectedRow) {
-      return boneInfluenceRows;
-    }
-    return [
-      selectedRow,
-      ...boneInfluenceRows.filter((row) => row.boneName !== selectedBoneName),
-    ];
+    return pinSelectedBoneRow(boneInfluenceRows, selectedBoneName);
   }, [boneInfluenceRows, selectedBoneName]);
 
   const handleAnimationEventsChange = useCallback(
@@ -1057,80 +1052,6 @@ export function ModelViewer() {
                   />
                 )}
 
-                {gltfUrl && hasAnimations && (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader>
-                      <CardTitle className="text-white text-sm">
-                        Bone Tools
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="space-y-2">
-                        <label className="text-xs text-gray-400">
-                          Selected Bone
-                        </label>
-                        <Input
-                          value={boneRenameInput}
-                          onChange={(e) => setBoneRenameInput(e.target.value)}
-                          placeholder="Select a bone in Animation Viewer"
-                          disabled={!selectedBoneName}
-                        />
-                        <Button
-                          onClick={handleRenameSelectedBone}
-                          disabled={
-                            !selectedBoneName || !boneRenameInput.trim()
-                          }
-                          className="w-full"
-                          size="sm"
-                        >
-                          Rename Bone
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-400">
-                          Bone-Vertex Influence Summary
-                        </p>
-                        <div className="max-h-44 overflow-y-auto rounded border border-gray-700">
-                          {displayedBoneInfluenceRows.length === 0 ? (
-                            <div className="p-2 text-xs text-gray-500">
-                              No skinning weights found.
-                            </div>
-                          ) : (
-                            <div className="divide-y divide-gray-700">
-                              {displayedBoneInfluenceRows
-                                .slice(0, 120)
-                                .map((row) => (
-                                  <div
-                                    key={row.boneName}
-                                    className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1 text-xs ${
-                                      row.boneName === selectedBoneName
-                                        ? "bg-blue-900/30"
-                                        : ""
-                                    }`}
-                                  >
-                                    <span
-                                      className="truncate"
-                                      title={row.boneName}
-                                    >
-                                      {row.boneName}
-                                    </span>
-                                    <span className="text-gray-300">
-                                      vtx {row.vertexCount}
-                                    </span>
-                                    <span className="text-gray-400">
-                                      w {row.weightedSum.toFixed(1)}
-                                    </span>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
                 {/* Model Hierarchy — visibility toggles + poly counts */}
                 {gltfUrl && modelNodes.length > 0 && (
                   <ModelHierarchy
@@ -1158,6 +1079,12 @@ export function ModelViewer() {
                     boneRotation={boneRotation}
                     boneScale={boneScale}
                     onGizmoModeChange={handleGizmoModeChange}
+                    boneRenameInput={boneRenameInput}
+                    boneInfluenceRows={displayedBoneInfluenceRows}
+                    skinData={skinData}
+                    onBoneRenameInputChange={setBoneRenameInput}
+                    onRenameSelectedBone={handleRenameSelectedBone}
+                    onRepairWeights={handleRepairWeights}
                   />
                 )}
 
@@ -1176,6 +1103,8 @@ export function ModelViewer() {
                           onDownloadTexture={handleDownloadTexture}
                           onReplaceTexture={handleReplaceTexture}
                           onTextureEdit={handleTextureEdit}
+                          uvLayouts={uvLayouts}
+                          onApplyUvEdit={handleApplyUvEdit}
                         />
                       ) : (
                         <div className="space-y-3">

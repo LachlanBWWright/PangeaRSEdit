@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { AnimationControls } from "./AnimationControls";
 import type { AnimationEvent, AnimationInfo, Keyframe, TimelineRow } from "./types";
+import { RigToolsPanel } from "./RigToolsPanel";
+import type { BoneInfluenceRow } from "./rigToolsState";
 import {
   formatBoneLabel,
   formatTime,
@@ -78,6 +80,12 @@ interface KeyframeEditorProps {
   onStop: () => void;
   onReset: () => void;
   onSeek: (time: number) => void;
+  boneRenameInput: string;
+  boneInfluenceRows: BoneInfluenceRow[];
+  skinData?: import("@/modelEditing/weights/weightTypes").SkinWeightsData | null;
+  onBoneRenameInputChange: (value: string) => void;
+  onRenameSelectedBone: () => void;
+  onRepairWeights?: (repaired: import("@/modelEditing/weights/weightTypes").SkinWeightsData) => void;
 }
 
 export function KeyframeEditor({
@@ -125,6 +133,12 @@ export function KeyframeEditor({
   onStop,
   onReset,
   onSeek,
+  boneRenameInput,
+  boneInfluenceRows,
+  skinData,
+  onBoneRenameInputChange,
+  onRenameSelectedBone,
+  onRepairWeights,
 }: KeyframeEditorProps) {
   const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
   const ticksPerSecond = TICKS_PER_SECOND;
@@ -306,9 +320,15 @@ export function KeyframeEditor({
 
   if (!selectedAnimationInfo) {
     return (
-      <p className="text-xs text-gray-400">
-        Select an animation to edit keyframes.
-      </p>
+      <RigToolsPanel
+        selectedBoneName={selectedBoneName}
+        boneRenameInput={boneRenameInput}
+        boneInfluenceRows={boneInfluenceRows}
+          skinData={skinData}
+          onBoneRenameInputChange={onBoneRenameInputChange}
+          onRenameSelectedBone={onRenameSelectedBone}
+          onRepairWeights={onRepairWeights}
+      />
     );
   }
 

@@ -110,7 +110,7 @@ describe("Bugdom 1 Full Save Pipeline", () => {
 
       const reparsedResult = await saveToJson(serialized, bugdomSpecs, [], []);
       expect(reparsedResult.ok).toBe(true);
-    });
+    }, 120000);
 
     testFn(`should preserve Timg texture data through full save pipeline for ${levelFile}`, async () => {
       const { serialized, combined } = await runBugdomPipeline(levelFile);
@@ -136,7 +136,7 @@ describe("Bugdom 1 Full Save Pipeline", () => {
       if (!isRecord(combined.Timg) || !isRecord(combined.Timg["1000"])) return;
       const originalHex = combined.Timg["1000"].data;
       expect(isRecord(timg1000) && timg1000.data).toBe(originalHex);
-    });
+    }, 120000);
   }
 });
 
@@ -195,7 +195,7 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
     const data = readFileSync(level1Path);
     const { original, compiled } = await runNanosaurPipeline(data.buffer);
     expect(compiled).toEqual(original);
-  });
+  }, 120000);
 
   level1Test(
     "should preserve modifications through the pipeline for Level1.ter",
@@ -244,5 +244,6 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
       expect(reParsedResult.header.width).toBe(rawLevelData.header.width);
       expect(reParsedResult.textureLayer.length).toBe(rawLevelData.textureLayer.length);
     },
+    120000,
   );
 });

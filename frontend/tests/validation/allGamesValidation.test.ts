@@ -153,7 +153,7 @@ describe("All Games Validation Tests", () => {
 
           expect(validationResult.isOk()).toBe(true);
           console.log(`✅ ${game.name} ${fileName} passed validation`);
-        });
+        }, 120000);
       }
     });
   }

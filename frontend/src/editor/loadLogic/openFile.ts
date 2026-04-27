@@ -175,16 +175,42 @@ export async function openFile({
     const img = await imgResResult.value.blob();
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
+    const terrainToastId = "terrain-decode";
+    toast.loading("Decoding terrain textures", {
+      id: terrainToastId,
+      description: imgFile.name,
+    });
+
+    let lastReportedPercent = 0;
     const mapImagesResult = await loadMapImages(
       new DataView(imgBuffer),
       gameType,
+      ({ completed, total }) => {
+        if (total <= 0) {
+          return;
+        }
+        const percent = Math.floor((completed / total) * 100);
+        if (percent === lastReportedPercent || percent % 10 !== 0) {
+          return;
+        }
+        lastReportedPercent = percent;
+        toast.loading("Decoding terrain textures", {
+          id: terrainToastId,
+          description: `${completed}/${total} supertiles (${percent}%)`,
+        });
+      },
     );
     if (mapImagesResult.isErr()) {
+      toast.dismiss(terrainToastId);
       toast.error("Failed to load map images", {
         description: mapImagesResult.error,
       });
       return;
     }
+    toast.success("Terrain textures decoded", {
+      id: terrainToastId,
+      description: `${mapImagesResult.value.length} supertiles`,
+    });
     setMapImagesFile(imgFile);
     setMapImages(mapImagesResult.value);
   } else {

@@ -22,6 +22,66 @@ export interface ResizeAtomicDataResult {
   warnings: string[];
 }
 
+interface SupertileResizeMeasurements {
+  terrainTileDelta: number;
+  terrainOffsetX: number;
+  terrainOffsetZ: number;
+  entityOffsetXUnits: number;
+  entityOffsetZUnits: number;
+}
+
+function getSupertileResizeMeasurements(
+  globals: GlobalsInterface,
+  options: ResizeUIOptions,
+): SupertileResizeMeasurements {
+  const supertileDelta = options.tileCount / globals.TILES_PER_SUPERTILE;
+  const terrainOffsetX = options.direction === "left" ? options.tileCount : 0;
+  const terrainOffsetZ = options.direction === "top" ? options.tileCount : 0;
+  const entityOffsetXUnits =
+    options.direction === "left" ? supertileDelta * globals.TILE_INGAME_SIZE : 0;
+  const entityOffsetZUnits =
+    options.direction === "top" ? supertileDelta * globals.TILE_INGAME_SIZE : 0;
+
+  return {
+    terrainTileDelta: options.tileCount,
+    terrainOffsetX,
+    terrainOffsetZ,
+    entityOffsetXUnits,
+    entityOffsetZUnits,
+  };
+}
+
+function resizeItemsWithWorldOffsets(
+  atomicData: AtomicLevelData,
+  mapWidth: number,
+  mapHeight: number,
+  tileSize: number,
+  offsetXUnits: number,
+  offsetZUnits: number,
+) {
+  const items = atomicData.itemData?.Itms?.[1000]?.obj;
+  if (!items || !atomicData.itemData?.Itms[1000]) {
+    return atomicData.itemData;
+  }
+
+  const maxX = mapWidth * tileSize;
+  const maxZ = mapHeight * tileSize;
+  const adjusted = items
+    .map((item) => ({ ...item, x: item.x + offsetXUnits, z: item.z + offsetZUnits }))
+    .filter((item) => item.x >= 0 && item.z >= 0 && item.x <= maxX && item.z <= maxZ);
+
+  return {
+    ...atomicData.itemData,
+    Itms: {
+      ...atomicData.itemData.Itms,
+      1000: {
+        ...atomicData.itemData.Itms[1000],
+        obj: adjusted,
+      },
+    },
+  };
+}
+
 export function applyResizeToAtomicData(
   atomicData: AtomicLevelData,
   globals: GlobalsInterface,
@@ -50,15 +110,15 @@ export function applySupertileResizeToAtomicData(
   }
 
   const originalLevel = combinedResult.value;
-  const resized = resizeLevel(originalLevel, globals, options);
+  const measurements = getSupertileResizeMeasurements(globals, options);
+  const resized = resizeLevel(originalLevel, globals, {
+    direction: options.direction,
+    tileCount: measurements.terrainTileDelta,
+    defaultHeight: options.defaultHeight,
+  });
 
-  // Compute world-unit offset for objects that live in world coordinates.
-  // options.tileCount is already in tiles (callers multiply supertileCount * TILES_PER_SUPERTILE).
-  const tileSize = globals.TILE_INGAME_SIZE;
-  const offsetXUnits =
-    (options.direction === "left" ? options.tileCount : 0) * tileSize;
-  const offsetZUnits =
-    (options.direction === "top" ? options.tileCount : 0) * tileSize;
+  const offsetXUnits = measurements.entityOffsetXUnits;
+  const offsetZUnits = measurements.entityOffsetZUnits;
 
   const fencData =
     originalLevel.Fenc && originalLevel.FnNb
@@ -92,6 +152,18 @@ export function applySupertileResizeToAtomicData(
 
   const resizedLevel = {
     ...resized.levelData,
+    ...(resized.levelData.Hedr?.[1000]
+      ? {
+          Itms: resizeItemsWithWorldOffsets(
+            atomicData,
+            resized.levelData.Hedr[1000].obj.mapWidth,
+            resized.levelData.Hedr[1000].obj.mapHeight,
+            globals.TILE_INGAME_SIZE,
+            offsetXUnits,
+            offsetZUnits,
+          )?.Itms,
+        }
+      : {}),
     ...(fencData ? { Fenc: fencData.Fenc, FnNb: fencData.FnNb } : {}),
     ...(splineResult
       ? {

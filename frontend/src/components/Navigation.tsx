@@ -16,6 +16,7 @@ import {
   editorNavbarOpenAtom,
   editorNavbarTabsAtom,
 } from "@/data/globals/editorNavbarAtoms";
+import { UserMenu } from "@/components/UserMenu";
 
 export function Navigation() {
   const location = useLocation();
@@ -132,6 +133,10 @@ export function Navigation() {
           </div>
         </div>
       )}
+      <div className="ml-auto shrink-0">
+        <UserMenu />
+      </div>
     </nav>
   );
 }
+

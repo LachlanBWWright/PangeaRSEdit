@@ -2,7 +2,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
-import { Globals } from "../../../data/globals/globals";
+import { Game, Globals } from "../../../data/globals/globals";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import {
   saveEditedTileImageToIndex,
   uploadTileImageToIndex,
 } from "./BugdomTileMenuUtils";
+import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
 
 interface BugdomTileMenuProps {
   headerData: HeaderData;
@@ -287,6 +288,20 @@ export function BugdomTileMenu({
         onRemoveTileImage={handleRemoveTileImage}
         onResizeSupertiles={onResizeSupertiles}
         onRemoveSupertile={handleRemoveSupertile}
+      />
+      <TileBrushPanel
+        game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
+        terrainData={terrainData}
+        setTerrainData={setTerrainData}
+        mapWidth={hedr.mapWidth}
+        mapHeight={hedr.mapHeight}
+        selectedTileIndex={
+          Math.floor(selectedTile / supertileCounts.width) *
+            globals.TILES_PER_SUPERTILE *
+            hedr.mapWidth +
+          (selectedTile % supertileCounts.width) * globals.TILES_PER_SUPERTILE
+        }
+        activeLayer={1000}
       />
       <ImageEditor
         isOpen={isEditingTileImage}

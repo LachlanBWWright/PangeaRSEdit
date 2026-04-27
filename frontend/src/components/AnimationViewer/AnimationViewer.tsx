@@ -29,6 +29,12 @@ export function AnimationViewer({
   boneRotation,
   boneScale,
   onGizmoModeChange,
+  boneRenameInput,
+  boneInfluenceRows,
+  skinData,
+  onBoneRenameInputChange,
+  onRenameSelectedBone,
+  onRepairWeights,
 }: AnimationViewerProps) {
   const [draftAnimations, setDraftAnimations] = useState<
     AnimationInfo[] | null
@@ -391,6 +397,12 @@ export function AnimationViewer({
       onAddEvent={handleNewEvent}
       onUpdateEvent={handleUpdateEvent}
       onDeleteEvent={handleDeleteEvent}
+      boneRenameInput={boneRenameInput ?? ""}
+      boneInfluenceRows={boneInfluenceRows ?? []}
+      skinData={skinData}
+      onBoneRenameInputChange={onBoneRenameInputChange ?? (() => undefined)}
+      onRenameSelectedBone={onRenameSelectedBone ?? (() => undefined)}
+      onRepairWeights={onRepairWeights}
     />
   );
 }
