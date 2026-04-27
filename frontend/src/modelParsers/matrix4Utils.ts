@@ -1,35 +1,28 @@
-/**
- * Matrix4 utility class and helpers for 3D transformations
- * Shared by parsedBg3dGitfConverter.ts and skeletonSystemNew.ts
- */
+/** Matrix4 utility class and helpers for 3D transformations. */
 
-/**
- * Column-major 4x4 matrix for 3D transformations.
- * Storage: column-major, so m[col*4 + row] is the element at row/col.
- */
+/** Column-major 4x4 matrix for 3D transformations. */
 export class Matrix4 {
   data: Float32Array;
 
+  /** Creates an identity matrix. */
   constructor() {
     this.data = new Float32Array(16);
     this.identity();
   }
 
-  /**
-   * Safe accessor for typed array elements.
-   * Float32Array always returns a number, but TypeScript's noUncheckedIndexedAccess
-   * makes it return `number | undefined`. This helper ensures type safety.
-   */
+  /** Safely reads a matrix element by index. */
   private at(index: number): number {
     return this.data[index] ?? 0;
   }
 
+  /** Resets the matrix to identity. */
   identity(): Matrix4 {
     this.data.fill(0);
     this.data[0] = this.data[5] = this.data[10] = this.data[15] = 1;
     return this;
   }
 
+  /** Sets the translation component of the matrix. */
   setTranslation(x: number, y: number, z: number): Matrix4 {
     this.data[12] = x;
     this.data[13] = y;
@@ -37,6 +30,7 @@ export class Matrix4 {
     return this;
   }
 
+  /** Returns the translation component as a vector-like object. */
   getTranslation(): { x: number; y: number; z: number } {
     return {
       x: this.at(12),
@@ -45,6 +39,7 @@ export class Matrix4 {
     };
   }
 
+  /** Returns the inverse of this matrix, or identity if it is not invertible. */
   invert(): Matrix4 {
     const result = new Matrix4();
     const inv = result.data;
@@ -184,6 +179,7 @@ export class Matrix4 {
     return result;
   }
 
+  /** Multiplies this matrix by another matrix and returns the result. */
   multiply(other: Matrix4): Matrix4 {
     const result = new Matrix4();
     const a = this.data;
@@ -205,6 +201,7 @@ export class Matrix4 {
     return result;
   }
 
+  /** Replaces the matrix contents with a rotation derived from a quaternion. */
   makeRotationFromQuaternion(q: {
     x: number;
     y: number;
@@ -251,6 +248,7 @@ export class Matrix4 {
     return this;
   }
 
+  /** Replaces the matrix contents with a scale transform. */
   makeScale(x: number, y: number, z: number): Matrix4 {
     this.identity();
     this.data[0] = x;

@@ -1,6 +1,7 @@
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
 
+/** Converts packed 16-bit image data into RGBA pixels. */
 export function sixteenBitToImageData(
   data: DataView,
   imageData: ImageData,
@@ -23,6 +24,7 @@ export function sixteenBitToImageData(
   return ok(undefined);
 }
 
+/** Reads canvas pixels and converts them into the 16-bit image format used by Pangea assets. */
 export function canvasDataToSixteenBit(
   canvas: HTMLCanvasElement,
 ): Result<DataView, string> {
@@ -34,6 +36,7 @@ export function canvasDataToSixteenBit(
   return ok(imageDataToSixteenBit(imageData.data));
 }
 
+/** Converts 8-bit RGBA pixel data into the packed 16-bit format. */
 export function imageDataToSixteenBit(data: Uint8ClampedArray): DataView {
   const output = new DataView(new ArrayBuffer(data.length / 2));
   for (let i = 0; i < data.length; i += 4) {

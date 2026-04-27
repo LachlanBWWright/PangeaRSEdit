@@ -72,6 +72,7 @@ function mapCells(
   };
 }
 
+/** Rotates the brush clockwise while preserving the owning game's tile encoding. */
 export function rotateTileBrushClockwise(brush: TileBrush): TileBrush {
   return mapCells(
     brush,
@@ -88,6 +89,7 @@ export function rotateTileBrushClockwise(brush: TileBrush): TileBrush {
   );
 }
 
+/** Mirrors the brush horizontally without changing the source tile values. */
 export function flipTileBrushHorizontal(brush: TileBrush): TileBrush {
   return mapCells(
     brush,
@@ -104,6 +106,7 @@ export function flipTileBrushHorizontal(brush: TileBrush): TileBrush {
   );
 }
 
+/** Mirrors the brush vertically without changing the source tile values. */
 export function flipTileBrushVertical(brush: TileBrush): TileBrush {
   return mapCells(
     brush,
@@ -120,6 +123,7 @@ export function flipTileBrushVertical(brush: TileBrush): TileBrush {
   );
 }
 
+/** Returns a copy of the brush with a new display name. */
 export function renameTileBrush(brush: TileBrush, name: string): TileBrush {
   return {
     ...brush,
@@ -127,6 +131,7 @@ export function renameTileBrush(brush: TileBrush, name: string): TileBrush {
   };
 }
 
+/** Updates one cell in the brush while keeping the rest of the grid immutable. */
 export function setTileBrushCell(
   brush: TileBrush,
   cellIndex: number,

@@ -6,6 +6,7 @@ import {
 } from "@/editor/subviews/supertiles/mightyMikeSupertilesHelpers";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 
+/** Converts a pointer position into a tile index within the active supertile grid. */
 export function getTileIndexFromPointerPosition(
   x: number,
   y: number,
@@ -26,6 +27,7 @@ export function getTileIndexFromPointerPosition(
   return tileIdx;
 }
 
+/** Extracts the active pointer position from a Konva event and maps it to a tile index. */
 export function getTileIndexFromKonvaEvent(
   event: Konva.KonvaEventObject<MouseEvent>,
   tileSize: number,
@@ -48,6 +50,7 @@ export function getTileIndexFromKonvaEvent(
   );
 }
 
+/** Toggles the collision-mask flag for the clicked Mighty Mike tile. */
 export function applyCollisionMaskToggle(
   data: TerrainData,
   tileIdx: number,
@@ -72,6 +75,7 @@ export function applyCollisionMaskToggle(
   tileValue.hasCollisionMask = !tileValue.hasCollisionMask;
 }
 
+/** Applies the active param brush value to both tileset and level attribute data. */
 export function applyParamBrush(
   data: TerrainData,
   tileIdx: number,
@@ -107,6 +111,7 @@ export function applyParamBrush(
   }
 }
 
+/** Writes the current alt-map brush value into the nested alt-map grid. */
 export function applyAltMapBrush(
   data: TerrainData,
   tileIdx: number,

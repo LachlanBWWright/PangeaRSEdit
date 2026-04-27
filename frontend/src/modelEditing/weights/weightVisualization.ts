@@ -4,6 +4,7 @@ import type { SkinWeightsData, WeightVisualizationMode } from "./weightTypes";
  * Build a per-vertex color map for weight visualization.
  * Returns an array of [r, g, b] values in 0–255 range (one per vertex).
  */
+/** Builds the per-vertex color map used by weight visualization overlays. */
 export function buildWeightColorMap(
   data: SkinWeightsData,
   mode: WeightVisualizationMode,

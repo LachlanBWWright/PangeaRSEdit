@@ -33,6 +33,7 @@ export interface UpdateSavedLevelInput {
 
 const BASE = buildApiPath("/api/saved-levels");
 
+/** Performs a JSON fetch against the saved-levels API and normalizes network failures. */
 async function fetchJson(
   input: RequestInfo | URL,
   init: RequestInit,
@@ -73,6 +74,7 @@ async function fetchJson(
     );
 }
 
+/** Lists all saved levels available to the current user. */
 export async function listSavedLevels(): Promise<
   ResultType<SavedLevelSummary[], SavedLevelsApiError>
 > {
@@ -93,6 +95,7 @@ export async function listSavedLevels(): Promise<
   return ok(parsed.data);
 }
 
+/** Creates a new saved level record. */
 export async function createSavedLevel(
   input: CreateSavedLevelInput,
 ): Promise<ResultType<SavedLevelDetail, SavedLevelsApiError>> {
@@ -127,6 +130,7 @@ export async function createSavedLevel(
   return ok(parsed.data);
 }
 
+/** Loads one saved level by id. */
 export async function loadSavedLevel(
   id: string,
 ): Promise<ResultType<SavedLevelDetail, SavedLevelsApiError>> {
@@ -147,6 +151,7 @@ export async function loadSavedLevel(
   return ok(parsed.data);
 }
 
+/** Updates an existing saved level record. */
 export async function updateSavedLevel(
   id: string,
   input: UpdateSavedLevelInput,
@@ -182,6 +187,7 @@ export async function updateSavedLevel(
   return ok(parsed.data);
 }
 
+/** Deletes a saved level record by id. */
 export async function deleteSavedLevel(
   id: string,
 ): Promise<ResultType<void, SavedLevelsApiError>> {

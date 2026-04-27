@@ -20,6 +20,7 @@ export const PARAM_KEYS: ("p0" | "p1" | "p2" | "p3")[] = [
   "p3",
 ];
 
+/** Extracts a contiguous subgroup of GLTF children starting at a model index. */
 export function extractSubgroupByIndex(
   gltf: GLTF,
   modelIndex: number,
@@ -45,6 +46,7 @@ export function extractSubgroupByIndex(
   return extracted.children.length > 0 ? extracted : null;
 }
 
+/** Returns true when every audit field has been rated with a concrete status. */
 export function isEntryFullyRated(entry: ItemAuditDecision): boolean {
   return (
     entry.modelStatus !== "unknown" &&
@@ -55,6 +57,7 @@ export function isEntryFullyRated(entry: ItemAuditDecision): boolean {
   );
 }
 
+/** Parses imported decision records into the audit decision map used by the page. */
 export function parseImportedDecisions(
   entriesValue: unknown[],
 ): Record<number, ItemAuditDecision> {
@@ -69,6 +72,7 @@ export function parseImportedDecisions(
   return nextDecisions;
 }
 
+/** Finds the first audit row that still contains an unknown rating. */
 export function firstIncompleteIndex(
   entries: ReturnType<typeof buildItemAuditEntries>,
 ): number {
@@ -99,6 +103,7 @@ interface PreviewEntry {
   modelGroupSize: number;
 }
 
+/** Loads and converts a preview model into a Three.js scene for the audit panel. */
 export async function loadPreviewScene(
   currentEntry: PreviewEntry | null,
   currentConfig: PreviewConfig | undefined,

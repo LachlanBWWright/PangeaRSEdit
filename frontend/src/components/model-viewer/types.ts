@@ -1,4 +1,4 @@
-// Types for model hierarchy and node management
+/** Types for model hierarchy and node management. */
 import { Object3D, Group, AnimationMixer } from "three";
 import { AnimationInfo } from "@/components/AnimationViewer";
 import { Game } from "@/data/globals/globals";
@@ -9,9 +9,12 @@ import type {
 } from "@/modelEditing/weights/weightTypes";
 import type { WeightBrushHit } from "@/modelEditing/weights/weightBrushStroke";
 
+/** Gizmo modes supported by the model viewer. */
 export type GizmoMode = "translate" | "rotate" | "scale";
+/** High-level interaction modes supported by the model viewer. */
 export type ViewerInteractionMode = "navigate" | "paint-weights" | "bone-edit";
 
+/** Flattened representation of a node in the model hierarchy tree. */
 export interface ModelNode {
   name: string;
   type: "mesh" | "node" | "group";
@@ -24,6 +27,7 @@ export interface ModelNode {
   threeObject?: Object3D;
 }
 
+/** Props consumed by the 3D model canvas component. */
 export interface ModelCanvasProps {
   gltfUrl: string;
   setModelNodes: (nodes: ModelNode[]) => void;

@@ -7,6 +7,7 @@ import {
 } from "@/pages/SpriteViewer/utils/paletteUtils";
 import { toast } from "sonner";
 
+/** Tries to replace a palette color from a hex string and leaves the palette unchanged on parse failure. */
 export function tryApplyPaletteHexColor(
   palette: Palette,
   index: number,
@@ -19,6 +20,7 @@ export function tryApplyPaletteHexColor(
   return updatePaletteColor(palette, index, rgb);
 }
 
+/** Applies a single RGB channel update to a palette entry and clamps the value into range. */
 export function applyPaletteChannelChange(
   palette: Palette,
   index: number,
@@ -37,6 +39,7 @@ export function applyPaletteChannelChange(
   return updatePaletteColor(palette, index, updatedColor);
 }
 
+/** Trims and applies a palette rename, reporting whether the rename actually happened. */
 export function tryRenamePalette(
   palette: Palette,
   newName: string,
@@ -53,11 +56,13 @@ export function tryRenamePalette(
   };
 }
 
+/** Exports the palette file and shows a success toast. */
 export function exportPaletteWithToast(palette: Palette): void {
   exportPaletteFile(palette);
   toast.success("Palette exported");
 }
 
+/** Saves the palette as a new palette and shows a success toast. */
 export function savePaletteAsNewWithToast(
   palette: Palette,
   onSaveAsNew: (palette: Palette) => void,

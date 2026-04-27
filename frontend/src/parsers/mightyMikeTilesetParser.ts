@@ -21,6 +21,7 @@ export interface RGBColor {
   b: number;
 }
 
+/** Parsed Mighty Mike tileset data plus rendered tile canvases. */
 export interface MightyMikeTileset {
   numTileDefinitions: number;
   tileImages: HTMLCanvasElement[];
@@ -30,12 +31,10 @@ export interface MightyMikeTileset {
   decompressedData: Uint8Array;
 }
 
-/**
- * Parse a tileset file and render it with the given palette
- */
+/** Parses a Mighty Mike tileset file and renders tiles with the given palette. */
 export function parseTilesetFile(
   buffer: ArrayBuffer,
-  palette: RGBColor[]
+  palette: RGBColor[],
 ): Result<MightyMikeTileset, string> {
   // Decompress the tileset data
   const decompressResult = rlbDecompress(buffer);
@@ -121,12 +120,10 @@ export function parseTilesetFile(
   });
 }
 
-/**
- * Re-render tileset tiles with a new palette
- */
+/** Re-renders the tileset with a replacement palette. */
 export function rerenderTilesetWithPalette(
   tileset: MightyMikeTileset,
-  newPalette: RGBColor[]
+  newPalette: RGBColor[],
 ): HTMLCanvasElement[] {
   const tileImages: HTMLCanvasElement[] = [];
   const bytes = tileset.decompressedData;
@@ -173,17 +170,17 @@ export function rerenderTilesetWithPalette(
   return tileImages;
 }
 
-/**
- * Create a grid preview of all tiles in the tileset
- */
+/** Creates a grid preview canvas showing every tile in the tileset. */
 export function createTilesetGridPreview(
-  tileset: MightyMikeTileset
+  tileset: MightyMikeTileset,
 ): HTMLCanvasElement {
   const tilesPerRow = 16;
   const tileSize = 32;
   const padding = 1;
   const width = tilesPerRow * (tileSize + padding) + padding;
-  const height = Math.ceil(tileset.numTileDefinitions / tilesPerRow) * (tileSize + padding) + padding;
+  const height =
+    Math.ceil(tileset.numTileDefinitions / tilesPerRow) * (tileSize + padding) +
+    padding;
 
   const canvas = document.createElement("canvas");
   canvas.width = width;

@@ -1,40 +1,15 @@
-/**
- * Rotation Utilities for Euler/Quaternion Conversion
- *
- * Handles conversion between Euler angles (XYZ extrinsic/ZYX intrinsic order)
- * and quaternions, using the coordinate space conventions from Otto Matic.
- */
+/** Rotation utilities for Euler/quaternion conversion in Otto Matic's coordinate space. */
 
 import { Vector3 } from "three";
 import { Matrix4 } from "./matrix4Utils";
 import { BG3DBone } from "./parseBG3D";
 
-/**
- * Safe accessor for typed array elements.
- * Float32Array always returns a number, but TypeScript's noUncheckedIndexedAccess
- * makes it return `number | undefined`. This helper ensures type safety.
- */
+/** Safely reads a Float32Array element while preserving a plain number return type. */
 function atF32(arr: Float32Array, index: number): number {
   return arr[index] ?? 0;
 }
 
-/**
- * Convert Euler angles (in radians) to quaternion
- *
- * Otto uses EXTRINSIC XYZ rotation order: R = Rz * Ry * Rx
- * This is equivalent to INTRINSIC ZYX order.
- * The quaternion for this is q = qz * qy * qx (same order as matrix multiplication).
- *
- * Derivation: For R = Rz * Ry * Rx, the quaternion is computed as:
- *   q = qz * qy * qx
- * where qx = [sin(x/2), 0, 0, cos(x/2)], etc.
- *
- * This gives:
- *   qx = c2*c3*s1 - s2*s3*c1
- *   qy = c1*c3*s2 + s1*c2*s3
- *   qz = c1*c2*s3 - s1*s2*c3
- *   qw = c1*c2*c3 + s1*s2*s3
- */
+/** Converts Euler angles in radians to a quaternion using Otto's XYZ rotation order. */
 export function eulerToQuaternion(
   x: number,
   y: number,
@@ -56,14 +31,7 @@ export function eulerToQuaternion(
   return [qx, qy, qz, qw];
 }
 
-/**
- * Convert quaternion to Euler angles (in radians)
- *
- * Converts quaternion to rotation matrix, then extracts Euler angles
- * for EXTRINSIC XYZ order (equivalent to INTRINSIC ZYX).
- *
- * Handles gimbal lock cases when sin(y) ≈ ±1.
- */
+/** Converts a quaternion back into Euler angles in radians. */
 export function quaternionToEuler(
   x: number,
   y: number,
@@ -126,12 +94,7 @@ export function quaternionToEuler(
   return [rx, ry, rz];
 }
 
-/**
- * Decompose a 4x4 matrix into translation, rotation (quaternion), and scale
- *
- * Extracts TRS components from a transformation matrix for use in
- * skeletal animations and bone transforms.
- */
+/** Decomposes a 4x4 transform matrix into translation, rotation, and scale. */
 export function decomposeMatrix(matrix: Matrix4): {
   translation: Vector3;
   rotation: [number, number, number, number];
@@ -222,13 +185,7 @@ export function decomposeMatrix(matrix: Matrix4): {
   return { translation, rotation, scale };
 }
 
-/**
- * Calculate local transform matrix for a bone relative to its parent
- *
- * Both Otto and glTF use right-handed coordinate systems, so no coordinate
- * flip is needed. The mesh vertices are kept in Otto's coordinate space,
- * so the skeleton must match.
- */
+/** Calculates a bone's local transform relative to its parent bone. */
 export function calculateLocalTransform(
   bone: BG3DBone,
   bones: BG3DBone[],

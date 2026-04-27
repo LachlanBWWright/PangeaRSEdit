@@ -64,12 +64,14 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Caches GitHub file fetches and enforces a simple per-minute request budget. */
 export class GitHubFileCache {
   private cache: Map<string, CacheEntry>;
   private rateLimitConfig: RateLimitConfig;
   private requestCount: number;
   private requestWindowStart: number;
 
+  /** Creates a file cache with the provided rate-limit configuration. */
   constructor(rateLimitConfig: RateLimitConfig = DEFAULT_RATE_LIMIT) {
     this.cache = new Map();
     this.rateLimitConfig = rateLimitConfig;
@@ -110,6 +112,7 @@ export class GitHubFileCache {
     this.requestWindowStart = Date.now();
   }
 
+  /** Fetches an arbitrary GitHub file, returning cached content when available. */
   async getFile(
     owner: string,
     repo: string,
@@ -137,6 +140,7 @@ export class GitHubFileCache {
     return result;
   }
 
+  /** Fetches a game file by trying repository-specific source-path candidates. */
   async getGameFile(
     game: string,
     filePath: string,
@@ -159,6 +163,7 @@ export class GitHubFileCache {
     return err("File not found: ${filePath}");
   }
 
+  /** Returns a requested line range from a cached or freshly fetched GitHub file. */
   async getFileLines(
     owner: string,
     repo: string,
@@ -174,6 +179,7 @@ export class GitHubFileCache {
     return extractLines(lines, totalLines, startLine, endLine);
   }
 
+  /** Returns a requested line range for a file in a known game repository. */
   async getGameFileLines(
     game: string,
     filePath: string,
@@ -194,10 +200,12 @@ export class GitHubFileCache {
     );
   }
 
+  /** Clears every cached GitHub file entry. */
   clearCache(): void {
     this.cache.clear();
   }
 
+  /** Reports the cache size and the set of repository names represented in it. */
   getCacheStats(): { size: number; games: Set<string> } {
     const games = new Set<string>();
 
@@ -211,6 +219,7 @@ export class GitHubFileCache {
     return { size: this.cache.size, games };
   }
 
+  /** Returns true when the requested file is already cached. */
   isInCache(
     owner: string,
     repo: string,

@@ -1,5 +1,6 @@
 import { hexToRgb } from "@/utils/colorUtils";
 
+/** Builds a highlight overlay that marks pixels matching the current brush color. */
 export function buildSelectedColorHighlightCanvas(
   image: HTMLImageElement | null,
   paletteColors: string[] | undefined,

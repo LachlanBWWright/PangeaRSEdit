@@ -7,14 +7,17 @@ export const TILE_SIZE = 32;
 
 const numberSchema = z.number();
 
+/** Returns true when a value is a plain object record. */
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return plainObjectSchema.safeParse(value).success && !Array.isArray(value);
 }
 
+/** Returns true when a value is an array. */
 export function isArray(value: unknown): value is unknown[] {
   return unknownArraySchema.safeParse(value).success;
 }
 
+/** Extracts the nested Mighty Mike alt-map array from level metadata. */
 export function getAltMapArray(metadata: unknown): unknown[] | null {
   if (!isRecord(metadata)) return null;
   const entry = isRecord(metadata[1000]) ? metadata[1000] : null;
@@ -29,6 +32,7 @@ export function getAltMapArray(metadata: unknown): unknown[] | null {
   return isArray(altMap) ? altMap : null;
 }
 
+/** Filters tile-set collision images down to usable canvas elements. */
 export function getCollisionImages(
   tileset: TerrainData["tileset"],
 ): HTMLCanvasElement[] {
@@ -44,6 +48,7 @@ export function getCollisionImages(
   );
 }
 
+/** Returns the tile-attribute records used to render Mighty Mike param overlays. */
 export function getTileAttributes(
   tileset: TerrainData["tileset"],
 ): Record<string, unknown>[] {
@@ -55,6 +60,7 @@ export function getTileAttributes(
   return attrs.filter(isRecord);
 }
 
+/** Flattens the nested alt-map grid into a one-dimensional list. */
 export function flattenAltMap(metadata: unknown): number[] {
   const altMap2d = getAltMapArray(metadata);
   if (!altMap2d) return [];
@@ -75,6 +81,7 @@ function resolveXlatIndex(entry: unknown, fallback: number): number {
   return idxResult.success ? idxResult.data : fallback;
 }
 
+/** Resolves tile indices through the Xlat table and rejects out-of-range images. */
 export function resolveImageIndices(
   layr: number[],
   xlatTable: unknown[] | undefined,
@@ -91,6 +98,7 @@ export function resolveImageIndices(
   });
 }
 
+/** Renders the visible tile map into an off-screen canvas. */
 export function buildBackgroundCanvas(
   mapImages: HTMLCanvasElement[],
   layr: number[],
@@ -118,6 +126,7 @@ export function buildBackgroundCanvas(
   return canvas;
 }
 
+/** Renders the collision overlay into an off-screen canvas. */
 export function buildCollisionCanvas(
   showCollisionOverlay: boolean,
   mapWidth: number,
@@ -157,6 +166,7 @@ export function buildCollisionCanvas(
   return canvas;
 }
 
+/** Renders the alt-map direction overlay into an off-screen canvas. */
 export function buildAltMapCanvas(
   showAltMap: boolean,
   mapWidth: number,
@@ -187,6 +197,7 @@ export function buildAltMapCanvas(
   return canvas;
 }
 
+/** Renders param-flag overlays for the currently visible tiles. */
 export function buildParamsCanvas(
   showParamsOverlay: boolean,
   tileAttributes: Record<string, unknown>[],

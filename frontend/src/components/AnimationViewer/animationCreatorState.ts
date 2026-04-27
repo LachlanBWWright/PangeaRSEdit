@@ -6,6 +6,7 @@ export interface AnimationSourceOption {
   readonly name: string;
 }
 
+/** Maps editable animations to the select options used by the creation dialog. */
 export function toAnimationSourceOptions(
   editableAnimations: readonly AnimationInfo[],
 ): AnimationSourceOption[] {
@@ -15,6 +16,7 @@ export function toAnimationSourceOptions(
   }));
 }
 
+/** Creates a handler that resets the source animation whenever the dialog opens. */
 export function createAnimationDialogOpenHandler(
   setOpen: Dispatch<SetStateAction<boolean>>,
   setSourceAnimation: Dispatch<SetStateAction<string>>,
@@ -27,6 +29,7 @@ export function createAnimationDialogOpenHandler(
   };
 }
 
+/** Creates the submit handler used to create a new animation from the selected source. */
 export function createAnimationSubmitHandler(
   sourceAnimation: string,
   onCreate: (sourceAnimationIndex: number | null) => void,

@@ -29,6 +29,7 @@ function getNanosaur2FenceHeight(fenceType: number): number {
   return 300;
 }
 
+/** Returns the fence height for the active game and fence type. */
 export function getFenceHeight(
   globals: GlobalsInterface,
   fenceType: number,

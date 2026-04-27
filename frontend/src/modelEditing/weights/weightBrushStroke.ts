@@ -4,10 +4,13 @@ import { applyWeightBrush } from "./weightBrush";
 import type { SkinWeightsData, WeightBrushSettings } from "./weightTypes";
 
 export interface WeightBrushHit {
+  /** UUID of the mesh that received the brush interaction. */
   readonly meshUuid: string;
+  /** Local-space hit point used to measure per-vertex distance. */
   readonly localPoint: readonly [number, number, number];
 }
 
+/** Applies one weight-brush stroke to the targeted mesh within the scene. */
 export function applyWeightBrushStroke(
   scene: Group,
   data: SkinWeightsData,

@@ -7,12 +7,14 @@ interface TextureLike {
   readonly type: "diffuse" | "normal" | "other";
 }
 
+/** Expands every texture index so the preview list starts fully opened. */
 export function createInitiallyExpandedTextureSet(
   textureCount: number,
 ): Set<number> {
   return new Set(Array.from({ length: textureCount }, (_, index) => index));
 }
 
+/** Toggles a single texture index in the expanded preview set. */
 export function toggleExpandedTextureIndex(
   previous: Set<number>,
   index: number,
@@ -26,6 +28,7 @@ export function toggleExpandedTextureIndex(
   return next;
 }
 
+/** Derives the next preview state when the global preview toggle changes. */
 export function getNextPreviewState(
   showPreviews: boolean,
   textureCount: number,
@@ -49,6 +52,7 @@ interface HandleFileInputArgs<Texture extends TextureLike> {
   readonly clearSelectedTexture: () => void;
 }
 
+/** Replaces the selected texture from a file input change event when possible. */
 export async function handleTextureFileInputChange<
   Texture extends TextureLike,
 >({

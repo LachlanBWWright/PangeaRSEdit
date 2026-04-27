@@ -1,7 +1,10 @@
-
 import { err, ok, type Result } from "neverthrow";
 import { parseTGAHeader } from "./tgaCommon";
-export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement, string> {
+
+/** Parses a TGA file buffer into a canvas element, supporting the project's image types. */
+export function parseTGAToCanvas(
+  buffer: ArrayBuffer,
+): Result<HTMLCanvasElement, string> {
   const data = new DataView(buffer);
   const header = parseTGAHeader(data);
   console.log("[TGA] Parsing TGA header:", {
@@ -354,7 +357,7 @@ function applyColorFromMap(
   const g = colorMap[colorOffset + 1] ?? 0;
   const r = colorMap[colorOffset + 2] ?? 0;
   const a =
-    colorMapBytesPerEntry === 4 ? colorMap[colorOffset + 3] ?? 255 : 255;
+    colorMapBytesPerEntry === 4 ? (colorMap[colorOffset + 3] ?? 255) : 255;
   pixels[pixelIndex * 4 + 0] = r;
   pixels[pixelIndex * 4 + 1] = g;
   pixels[pixelIndex * 4 + 2] = b;

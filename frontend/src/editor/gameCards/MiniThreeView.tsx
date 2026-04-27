@@ -1,11 +1,4 @@
-import {
-  Suspense,
-  useMemo,
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { Suspense, useRef, useState, useEffect, useCallback } from "react";
 import { ModelCanvas } from "@/pages/ModelCanvas";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Game } from "@/data/globals/globals";
@@ -27,19 +20,12 @@ export function MiniThreeView({
   gameType: Game;
   className?: string;
 }) {
-  // Prevent unnecessary reinitialization
-  useMemo(() => ({ position: [0, 0, 50] as const }), []);
-
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
   const actionRef = useRef<AnimationAction | null>(null);
 
-  const resolvedGltfUrl = useMemo(() => resolveGltfUrl(gltfUrl), [gltfUrl]);
-
-  const defaultAnimationName = useMemo(
-    () => getDefaultAnimationName(gameType),
-    [gameType],
-  );
+  const resolvedGltfUrl = resolveGltfUrl(gltfUrl);
+  const defaultAnimationName = getDefaultAnimationName(gameType);
 
   const handleAnimationsReady = useCallback(
     (animationInfos: AnimationInfo[], mixer: AnimationMixer | null) => {

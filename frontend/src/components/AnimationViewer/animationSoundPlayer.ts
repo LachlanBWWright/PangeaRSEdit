@@ -149,6 +149,7 @@ function decodeSoundBuffer(
   });
 }
 
+/** Returns true when the current animation event can produce a previewable sound. */
 export function hasAnimationEventSoundPreview(
   value: number,
   modelSourceKind?: ModelSourceKind | null,
@@ -157,6 +158,7 @@ export function hasAnimationEventSoundPreview(
   return resolveSoundAssetPath(value, modelSourceKind, gameLabel) !== null;
 }
 
+/** Fetches and plays the sound preview associated with an animation event, if any. */
 export function playAnimationEventSound(
   value: number,
   modelSourceKind?: ModelSourceKind | null,

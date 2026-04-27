@@ -66,7 +66,7 @@ interface ApplyArgs {
   readonly flipV: boolean;
 }
 
-/** Returns a new UvLayout with all transforms applied. Does not mutate input. */
+/** Applies translate, rotate, scale, and flip operations to every mesh in a layout. */
 export function applyUvTransform({
   layout,
   offsetU,
@@ -101,7 +101,7 @@ export function applyUvTransform({
   return { ...layout, meshes: transformedMeshes };
 }
 
-/** Fit all UVs so they fill the 0..1 range on both axes. */
+/** Normalizes all UVs so they span the 0..1 range on both axes. */
 export function fitUvToImage(layout: UvLayout): UvLayout {
   const allVertices = layout.meshes.flatMap((m) => m.vertices);
   if (allVertices.length === 0) return layout;
@@ -132,7 +132,7 @@ export function fitUvToImage(layout: UvLayout): UvLayout {
   return { ...layout, meshes: transformedMeshes };
 }
 
-/** Snap all UVs to the nearest pixel on a given texture size. */
+/** Snaps all UVs to the nearest texel on the given texture dimensions. */
 export function snapUvToPixelGrid(
   layout: UvLayout,
   textureWidth: number,

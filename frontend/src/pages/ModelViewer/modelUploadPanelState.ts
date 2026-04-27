@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 
+/** Returns true when a file name matches a supported model format. */
 export function isSupportedModelFile(fileName: string): boolean {
   const loweredName = fileName.toLowerCase();
   return (
@@ -9,6 +10,7 @@ export function isSupportedModelFile(fileName: string): boolean {
   );
 }
 
+/** Returns true when a file name matches a skeleton resource format. */
 export function isSkeletonResourceFile(fileName: string): boolean {
   const loweredName = fileName.toLowerCase();
   return (
@@ -16,6 +18,7 @@ export function isSkeletonResourceFile(fileName: string): boolean {
   );
 }
 
+/** Returns the dropzone copy used while waiting for a model or skeleton file. */
 export function getUploadDropzoneText(awaitingSkeleton: boolean): {
   title: string;
   body: string;
@@ -39,6 +42,7 @@ interface ProcessUploadSelectionArgs {
   readonly handleBg3dFileSelect: (file: File) => void;
 }
 
+/** Routes a selected upload file to the correct handler based on the current upload step. */
 export function processUploadSelection({
   file,
   awaitingSkeleton,

@@ -77,6 +77,7 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
   },
 };
 
+/** Resolves a game name to its repository key when that repository is known. */
 export function getGameKeyFromName(gameName: string): string | null {
   const normalizedName = gameName.replace(/[^a-z0-9]/gi, "").toLowerCase();
   const match = Object.entries(GAME_REPOSITORIES).find(
@@ -86,9 +87,7 @@ export function getGameKeyFromName(gameName: string): string | null {
   return match?.[0] ?? null;
 }
 
-/**
- * Get the GitHub raw content URL for a file in a game's repository
- */
+/** Builds the GitHub raw-content URL for a file in a game's repository. */
 export function getGitHubRawUrl(game: string, filePath: string): string | null {
   const repo = GAME_REPOSITORIES[game];
   if (!repo) return null;
@@ -99,9 +98,7 @@ export function getGitHubRawUrl(game: string, filePath: string): string | null {
   return `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.branch}/${repo.sourcePath}/${normalizedPath}`;
 }
 
-/**
- * Get the GitHub permalink URL for a file at a specific line number
- */
+/** Builds the GitHub permalink URL for a file at a specific line number. */
 export function getGitHubPermalink(
   game: string,
   filePath: string,
@@ -115,16 +112,12 @@ export function getGitHubPermalink(
   return `https://github.com/${repo.owner}/${repo.repo}/blob/${repo.branch}/${repo.sourcePath}/${normalizedPath}#L${lineNumber}`;
 }
 
-/**
- * Check if a game has a known repository
- */
+/** Returns true when the game name maps to a known repository definition. */
 export function hasKnownRepository(game: string): boolean {
   return game in GAME_REPOSITORIES;
 }
 
-/**
- * Get all known game names
- */
+/** Returns all game keys that have repository metadata available. */
 export function getKnownGames(): string[] {
   return Object.keys(GAME_REPOSITORIES);
 }

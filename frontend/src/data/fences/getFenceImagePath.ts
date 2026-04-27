@@ -80,6 +80,7 @@ function getCroMagFenceImagePath(fenceType: number): string {
   return withBaseUrl(`assets/croMag/fences/${file}`);
 }
 
+/** Returns the fence image path for the active game and fence type. */
 export function getFenceImagePath(
   globals: GlobalsInterface,
   fenceType: number,

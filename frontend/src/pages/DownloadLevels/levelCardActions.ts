@@ -18,6 +18,7 @@ export interface PlayInBrowserHandlerArgs {
   readonly setIsFetchingPlay: (value: boolean) => void;
 }
 
+/** Maps a level difficulty label to the badge colors used in the level list. */
 export function difficultyClass(difficulty: Level["difficulty"]): string {
   if (difficulty === "Easy") {
     return "bg-green-900 text-green-300";
@@ -30,6 +31,7 @@ export function difficultyClass(difficulty: Level["difficulty"]): string {
   return "bg-red-900 text-red-300";
 }
 
+/** Returns true when the level has a known game key and a preview level number. */
 export function isPlayableLevel(level: Level): boolean {
   return (
     GAME_KEY_TO_ENUM[level.game] !== undefined &&
@@ -37,6 +39,7 @@ export function isPlayableLevel(level: Level): boolean {
   );
 }
 
+/** Creates a click handler that downloads a level archive and surfaces the result. */
 export function createDownloadHandler(level: Level): () => void {
   return () => {
     void downloadLevelArchive(level).match(
@@ -49,6 +52,7 @@ export function createDownloadHandler(level: Level): () => void {
   };
 }
 
+/** Creates a click handler that loads preview bytes and starts browser playback. */
 export function createPlayInBrowserHandler({
   level,
   onPlayInBrowser,

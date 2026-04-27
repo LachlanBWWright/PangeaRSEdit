@@ -1,3 +1,4 @@
+/** Clamps a numeric or string input into the unsigned 16-bit range. */
 export function parseU16(value: number | string) {
   if (typeof value === "string") value = parseInt(value);
 
@@ -9,6 +10,7 @@ export function parseU16(value: number | string) {
   return value;
 }
 
+/** Clamps a numeric or string input into the unsigned 8-bit range. */
 export function parseU8(value: number | string) {
   if (typeof value === "string") value = parseInt(value) || 0;
 

@@ -5,6 +5,7 @@ export interface CanvasLayoutSize {
   readonly height: number;
 }
 
+/** Calculates the canvas layout size used by the image editor. */
 export function getCanvasLayoutSize(
   imageWidth: number,
   imageHeight: number,
@@ -16,10 +17,12 @@ export function getCanvasLayoutSize(
   };
 }
 
+/** Maps a brush shape to the Konva line cap used for stroke rendering. */
 export function getLineCap(shape: BrushStroke["shape"]): "round" | "square" {
   return shape === "circle" ? "round" : "square";
 }
 
+/** Maps a brush shape to the Konva line join used for stroke rendering. */
 export function getLineJoin(shape: BrushStroke["shape"]): "round" | "miter" {
   return shape === "circle" ? "round" : "miter";
 }

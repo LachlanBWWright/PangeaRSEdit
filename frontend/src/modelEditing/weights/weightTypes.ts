@@ -1,16 +1,20 @@
+/** Brush operations available in the weight editor. */
 export type WeightBrushMode =
   | "paint"
   | "add"
   | "subtract"
   | "smooth"
   | "normalize";
+/** Visualization modes available for skin-weight overlays. */
 export type WeightVisualizationMode =
   | "heatmap"
   | "dominant"
   | "unweighted"
   | "none";
+/** Falloff curves used by the weight brush. */
 export type WeightFalloff = "linear" | "smooth" | "sharp";
 
+/** Current settings for the active weight brush. */
 export interface WeightBrushSettings {
   mode: WeightBrushMode;
   radius: number; // world-space units
@@ -20,17 +24,20 @@ export interface WeightBrushSettings {
   autoNormalize: boolean;
 }
 
+/** One bone influence for a single vertex. */
 export interface VertexWeight {
   boneIndex: number;
   boneName: string;
   weight: number;
 }
 
+/** All weighted bone influences for a single vertex index. */
 export interface VertexWeightInfo {
   vertexIndex: number;
   influences: VertexWeight[];
 }
 
+/** Skin-weight data stored alongside a model. */
 export interface SkinWeightsData {
   /** Ordered list of bone names matching indices */
   boneNames: string[];
@@ -38,6 +45,7 @@ export interface SkinWeightsData {
   vertices: VertexWeightInfo[];
 }
 
+/** Aggregate editor state for the model weight painting workflow. */
 export interface WeightEditingState {
   visualizationMode: WeightVisualizationMode;
   brushSettings: WeightBrushSettings;
@@ -45,6 +53,7 @@ export interface WeightEditingState {
   skinData: SkinWeightsData | null;
 }
 
+/** Returns the default brush configuration for weight painting. */
 export function defaultWeightBrushSettings(): WeightBrushSettings {
   return {
     mode: "paint",
@@ -56,6 +65,7 @@ export function defaultWeightBrushSettings(): WeightBrushSettings {
   };
 }
 
+/** Returns the default weight editor state. */
 export function defaultWeightEditingState(): WeightEditingState {
   return {
     visualizationMode: "none",

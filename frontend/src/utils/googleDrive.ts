@@ -1,6 +1,7 @@
 import { ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
 
+/** Uploads a file to Google Drive and returns the new file id or an error message. */
 export async function uploadFileToGoogleDrive(
   file: File,
   accessToken: string,
@@ -46,6 +47,7 @@ export async function uploadFileToGoogleDrive(
   return { fileId };
 }
 
+/** Downloads a Google Drive file and resolves the filename when metadata is available. */
 export async function downloadFileFromGoogleDrive(
   fileId: string,
   accessToken: string,

@@ -9,6 +9,7 @@ export interface TerrainIoError {
   readonly message: string;
 }
 
+/** Creates a typed terrain I/O error object. */
 export function terrainIoError(
   code: TerrainIoErrorCode,
   message: string,

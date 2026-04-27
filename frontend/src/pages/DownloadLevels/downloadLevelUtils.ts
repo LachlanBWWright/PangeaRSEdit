@@ -8,11 +8,13 @@ interface DownloadTarget {
   url: string;
 }
 
+/** Rejects a fetch response when the HTTP status is not successful. */
 function ensureOkResponse(url: string, resp: Response): Promise<Response> {
   if (resp.ok) return Promise.resolve(resp);
   return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
 }
 
+/** Fetches a remote file as bytes and normalizes fetch failures into ResultAsync. */
 function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, string> {
   return ResultAsync.fromPromise(
     fetch(url)
@@ -22,6 +24,7 @@ function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, string> {
   );
 }
 
+/** Resolves or rejects the zip callback output in the shape expected by fflate. */
 function onZipDone(
   error: Error | null,
   data: Uint8Array<ArrayBufferLike>,
@@ -35,6 +38,7 @@ function onZipDone(
   resolve(new Uint8Array(data));
 }
 
+/** Zips a file map using fflate and returns the resulting archive bytes. */
 function zipAsync(
   files: Record<string, Uint8Array<ArrayBuffer>>,
 ): Promise<Uint8Array<ArrayBuffer>> {
@@ -43,12 +47,14 @@ function zipAsync(
   });
 }
 
+/** Wraps zipAsync in ResultAsync for consistent error handling. */
 function zipFiles(
   files: Record<string, Uint8Array<ArrayBuffer>>,
 ): ResultAsync<Uint8Array<ArrayBuffer>, string> {
   return ResultAsync.fromPromise(zipAsync(files), mapErr);
 }
 
+/** Returns a compact timestamp string suitable for download filenames. */
 function fileTimestamp(): string {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -56,6 +62,7 @@ function fileTimestamp(): string {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
+/** Builds the archive filename used for a level download. */
 function createZipName(level: Level): string {
   const levelNumber = level.category?.replace(/\D/g, "") ?? level.id;
   return `${level.gameDisplayName} Level ${levelNumber} (${fileTimestamp()}).zip`.replace(
@@ -64,6 +71,7 @@ function createZipName(level: Level): string {
   );
 }
 
+/** Collects every remote file that should be bundled into a level archive. */
 function collectDownloadTargets(level: Level): DownloadTarget[] {
   const targets: DownloadTarget[] = [];
 
@@ -84,6 +92,7 @@ function collectDownloadTargets(level: Level): DownloadTarget[] {
   return targets;
 }
 
+/** Fetches one file and preserves its output name for later zipping. */
 function fetchNamedBytes(
   name: string,
   url: string,
@@ -91,6 +100,7 @@ function fetchNamedBytes(
   return fetchBytes(url).map((data) => ({ name, data }));
 }
 
+/** Converts fetched name/data pairs into the object shape expected by the zip library. */
 function buildZipMap(
   pairs: { name: string; data: Uint8Array<ArrayBuffer> }[],
 ): Record<string, Uint8Array<ArrayBuffer>> {
@@ -101,6 +111,7 @@ function buildZipMap(
   return files;
 }
 
+/** Downloads the remote level payloads and packages them into a zip archive. */
 export function downloadLevelArchive(
   level: Level,
 ): ResultAsync<{ data: Uint8Array<ArrayBuffer>; zipName: string }, string> {
@@ -119,12 +130,14 @@ export function downloadLevelArchive(
     .map((data) => ({ data, zipName }));
 }
 
+/** Returns a null byte result for optional download inputs. */
 function nullBytes(): ResultAsync<Uint8Array<ArrayBuffer> | null, string> {
   return ResultAsync.fromSafePromise<Uint8Array<ArrayBuffer> | null>(
     Promise.resolve(null),
   );
 }
 
+/** Fetches terrain and resource bytes for browser playback, allowing either side to be missing. */
 export function fetchPlayBytes(
   terFile: string | undefined,
   rsrcFile: string | undefined,
@@ -137,6 +150,7 @@ export function fetchPlayBytes(
   return ResultAsync.combine([terrainFetch, rsrcFetch]);
 }
 
+/** Triggers a browser download for the given archive bytes and filename. */
 export function triggerBrowserDownload(
   data: Uint8Array<ArrayBuffer>,
   zipName: string,

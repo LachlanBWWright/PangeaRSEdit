@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+/** Runtime schema for a multiplayer lobby player record. */
 export const MultiplayerLobbyPlayerSchema = z.object({
   participantId: z.string().min(1),
   displayName: z.string().min(1),
@@ -10,6 +11,7 @@ export const MultiplayerLobbyPlayerSchema = z.object({
   lastSeenAt: z.string().min(1),
 });
 
+/** Runtime schema for a compact multiplayer lobby summary. */
 export const MultiplayerLobbySummarySchema = z.object({
   id: z.string().uuid(),
   gameId: z.string().min(1),
@@ -23,6 +25,7 @@ export const MultiplayerLobbySummarySchema = z.object({
   expiresAt: z.string().min(1),
 });
 
+/** Runtime schema for a full multiplayer lobby detail payload. */
 export const MultiplayerLobbyDetailsSchema = z.object({
   id: z.string().uuid(),
   gameId: z.string().min(1),
@@ -38,6 +41,7 @@ export const MultiplayerLobbyDetailsSchema = z.object({
   participantId: z.string().min(1),
 });
 
+/** Runtime schema for the lobby list response wrapper. */
 export const MultiplayerLobbyListSchema = z.object({
   items: z.array(MultiplayerLobbySummarySchema),
 });

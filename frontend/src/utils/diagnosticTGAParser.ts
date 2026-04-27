@@ -1,8 +1,6 @@
-/**
- * Diagnostic TGA parser to extract and display palette information
- * Used to debug color issues in Mighty Mike tileset rendering
- */
+/** Diagnostic TGA parser to extract and display palette information. */
 
+/** Reads the TGA header fields used by the palette diagnostics. */
 export function parseTGAHeaderDiagnostic(buffer: ArrayBuffer): {
   idLength: number;
   colorMapType: number;
@@ -32,7 +30,11 @@ export function parseTGAHeaderDiagnostic(buffer: ArrayBuffer): {
   };
 }
 
-export function extractPaletteFromTGA(buffer: ArrayBuffer, colorCount = 256): Uint8Array {
+/** Extracts the raw palette bytes from a TGA buffer for a requested color count. */
+export function extractPaletteFromTGA(
+  buffer: ArrayBuffer,
+  colorCount = 256,
+): Uint8Array {
   const header = parseTGAHeaderDiagnostic(buffer);
   const paletteBytesPerEntry = header.colorMapDepth / 8;
 
@@ -42,6 +44,7 @@ export function extractPaletteFromTGA(buffer: ArrayBuffer, colorCount = 256): Ui
   return new Uint8Array(buffer, paletteOffset, paletteSize);
 }
 
+/** Logs palette diagnostics for a TGA buffer and scene name. */
 export function analyzePalette(buffer: ArrayBuffer, sceneName: string): void {
   const header = parseTGAHeaderDiagnostic(buffer);
   const paletteBytesPerEntry = header.colorMapDepth / 8;
@@ -76,7 +79,9 @@ export function analyzePalette(buffer: ArrayBuffer, sceneName: string): void {
         const r = paletteData[offset + 2];
         const a = paletteData[offset + 3];
         const rgba = `RGBA(${r},${g},${b},${a})`;
-        console.log(`  Color ${colorIdx}: BGRA(${b},${g},${r},${a}) -> ${rgba}`);
+        console.log(
+          `  Color ${colorIdx}: BGRA(${b},${g},${r},${a}) -> ${rgba}`,
+        );
       }
     }
   }

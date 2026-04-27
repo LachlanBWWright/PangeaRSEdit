@@ -1,13 +1,10 @@
-// Hook for extracting model hierarchy from glTF scenes
 import { useEffect } from "react";
 import { Object3D, Mesh, Group } from "three";
 import { GLTF as GLTFResult } from "three-stdlib";
 import { ModelNode } from "./types";
 import { isJoint } from "./utils";
 
-/**
- * Extract node hierarchy from the scene, filtering out joints
- */
+/** Extracts a node hierarchy from the scene while filtering out joints. */
 function extractNode(obj: Object3D, level = 0): ModelNode | null {
   // Skip joints/bones
   if (isJoint(obj)) {
@@ -46,9 +43,7 @@ function extractNode(obj: Object3D, level = 0): ModelNode | null {
   return node;
 }
 
-/**
- * Hook for processing model hierarchy from glTF result
- */
+/** Populates model nodes from a glTF scene and notifies when the scene is ready. */
 export function useModelHierarchy(
   gltfResult: GLTFResult | undefined,
   setModelNodes: (nodes: ModelNode[]) => void,

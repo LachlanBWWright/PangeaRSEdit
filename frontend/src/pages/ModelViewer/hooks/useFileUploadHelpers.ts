@@ -8,20 +8,24 @@ import { mapErr } from "@/utils/mapErr";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { err, ok, ResultAsync, type Result } from "neverthrow";
 
+/** Supported model upload formats. */
 export type ModelUploadKind = "bg3d" | "3dmf" | "glb";
 
+/** Validated selection details for a model upload flow. */
 export interface UploadSelection {
   kind: ModelUploadKind;
   bg3dFile: File;
   skeletonFile?: File;
 }
 
+/** Outcome of optionally loading a matching skeleton file. */
 export interface SkeletonLoadResult {
   skeletonData?: SkeletonResource;
   skeletonFailed: boolean;
   warningMessage?: string;
 }
 
+/** Validates the chosen model and skeleton files for the upload flow. */
 export function validateUploadSelection(
   bg3dFile: File,
   skeletonFile?: File,
@@ -44,6 +48,7 @@ export function validateUploadSelection(
   return ok({ kind: "bg3d", bg3dFile, skeletonFile });
 }
 
+/** Reads a file into an ArrayBuffer and wraps the result in Result. */
 export async function readFileBuffer(
   file: File,
   label: string,
@@ -59,6 +64,7 @@ export async function readFileBuffer(
   return ok(bufferResult.value);
 }
 
+/** Reads and parses an optional skeleton resource file. */
 export async function loadOptionalSkeleton(
   skeletonFile?: File,
 ): Promise<SkeletonLoadResult> {
@@ -95,6 +101,7 @@ export async function loadOptionalSkeleton(
   return { skeletonData: skeletonParseResult.value, skeletonFailed: false };
 }
 
+/** Sends a message to the GLTF worker and returns the structured response. */
 export async function runWorkerMessage(
   message: BG3DGltfWorkerMessage,
 ): Promise<Result<BG3DGltfWorkerResponse, string>> {
@@ -118,6 +125,7 @@ export async function runWorkerMessage(
   return ok(workerResult.value);
 }
 
+/** Builds the user-facing model filename shown in the upload UI. */
 export function createDisplayFileName(
   modelFileName: string,
   skeletonFile: File | undefined,

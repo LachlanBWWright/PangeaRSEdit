@@ -4,6 +4,7 @@ import {
   type ModelSourceKind,
 } from "@/components/AnimationViewer/utils";
 
+/** Returns a new animation event with the provided partial patch applied. */
 export function updateAnimationEvent(
   event: AnimationEvent,
   patch: Partial<AnimationEvent>,
@@ -16,6 +17,7 @@ export function updateAnimationEvent(
   };
 }
 
+/** Parses an animation event time input, returning null when blank or invalid. */
 export function parseEventTimeInput(value: string): number | null {
   if (value.trim().length === 0) {
     return null;
@@ -28,6 +30,7 @@ export function parseEventTimeInput(value: string): number | null {
   return nextTime;
 }
 
+/** Parses an integer event field, returning null when blank or invalid. */
 export function parseEventIntegerInput(value: string): number | null {
   if (value.trim().length === 0) {
     return null;
@@ -40,6 +43,7 @@ export function parseEventIntegerInput(value: string): number | null {
   return parsed;
 }
 
+/** Picks a safe default value for the next event type when the current value no longer applies. */
 export function getFallbackEventValueForType(
   currentValue: number,
   nextType: number,

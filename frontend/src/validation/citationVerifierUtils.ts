@@ -1,3 +1,4 @@
+/** Normalizes source text so code snippets can be compared structurally. */
 export function normalizeCode(code: string): string {
   return code
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -10,6 +11,7 @@ export function normalizeCode(code: string): string {
     .trim();
 }
 
+/** Scores two strings by comparing their normalized character overlap. */
 export function calculateSimilarity(str1: string, str2: string): number {
   if (str1 === str2) return 1;
   if (str1.length === 0 || str2.length === 0) return 0;
@@ -36,6 +38,7 @@ export function calculateSimilarity(str1: string, str2: string): number {
   return matches / longer.length;
 }
 
+/** Compares two code snippets and returns a coarse match decision plus similarity. */
 export function compareCode(
   expected: string,
   actual: string,
@@ -52,6 +55,7 @@ export function compareCode(
   return { match: similarity >= 0.9, similarity };
 }
 
+/** Searches a file's lines for a normalized code snippet and reports the first match. */
 export function findCodeInFile(
   code: string,
   fileLines: string[],

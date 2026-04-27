@@ -5,6 +5,7 @@ export interface PaletteEditorState {
   readonly color: string;
 }
 
+/** Tracks a pending palette commit before the color is actually applied. */
 export interface PaletteCommitState {
   readonly index: number;
   readonly nextColor: string;
@@ -15,6 +16,7 @@ function clampRgbValue(value: number): number {
   return Math.min(255, Math.max(0, value));
 }
 
+/** Derives a hex color string after changing one RGB channel. */
 export function deriveBrushColorFromRgbChannel(
   rgb: { r: number; g: number; b: number },
   channel: "r" | "g" | "b",
@@ -28,6 +30,7 @@ export function deriveBrushColorFromRgbChannel(
   return rgbToHex(nextRgb.r, nextRgb.g, nextRgb.b);
 }
 
+/** Builds the current palette editor state when editing is allowed. */
 export function getPaletteEditorState(
   paletteColors: string[] | undefined,
   canEditPalette: boolean,
@@ -48,6 +51,7 @@ export function getPaletteEditorState(
   };
 }
 
+/** Returns the pending palette commit state when the edit actually changes a color. */
 export function getPaletteCommitState(
   editingPaletteIndex: number | null,
   editingPaletteColor: string,
@@ -70,6 +74,7 @@ export function getPaletteCommitState(
   };
 }
 
+/** Returns the color displayed for a palette swatch, or null when unavailable. */
 export function getPaletteSwatchColor(
   paletteColors: string[] | undefined,
   index: number,

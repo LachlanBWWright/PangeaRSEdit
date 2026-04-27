@@ -21,6 +21,7 @@ export type GlbToBg3dWorkerResponse = Extract<
   { type: "glb-to-bg3d" }
 >;
 
+/** Returns true when a worker response is one of the model-to-GLB variants. */
 export function isModelToGlbWorkerResponse(
   response: BG3DGltfWorkerResponse,
 ): response is ModelToGlbWorkerResponse {
@@ -38,6 +39,7 @@ function unexpectedWorkerResponseError(
   return `Failed to ${action}: unexpected worker response type ${responseType}`;
 }
 
+/** Narrows a worker response to a model-to-GLB result or returns a formatted error. */
 export function getModelToGlbWorkerResponse(
   response: BG3DGltfWorkerResponse,
   action: string,
@@ -51,6 +53,7 @@ export function getModelToGlbWorkerResponse(
   return ok(response);
 }
 
+/** Narrows a worker response to a parsed-to-GLB result or returns a formatted error. */
 export function getParsedToGlbWorkerResponse(
   response: BG3DGltfWorkerResponse,
   action: string,
@@ -64,6 +67,7 @@ export function getParsedToGlbWorkerResponse(
   return ok(response);
 }
 
+/** Narrows a worker response to a GLB-to-BG3D result or returns a formatted error. */
 export function getGlbToBg3dWorkerResponse(
   response: BG3DGltfWorkerResponse,
   action: string,

@@ -8,6 +8,7 @@ export interface CameraConfig {
   readonly far: number;
 }
 
+/** Builds the default camera framing used by the model canvas for a given game. */
 export function buildModelCanvasCameraConfig(gameType?: Game): CameraConfig {
   let position: [number, number, number] = [0, 0, 100];
 
@@ -31,6 +32,7 @@ export function buildModelCanvasCameraConfig(gameType?: Game): CameraConfig {
   };
 }
 
+/** Traverses a scene and returns the first object whose name matches the selection. */
 export function findSceneObjectByName(
   scene: Object3D | null,
   selectedName: string | undefined,
@@ -48,6 +50,7 @@ export function findSceneObjectByName(
   return found;
 }
 
+/** Computes a per-game model offset so the rendered asset sits at a sensible origin. */
 export function getModelPosition(
   gameType: Game | undefined,
   scene: Object3D | null,
@@ -67,6 +70,7 @@ export function getModelPosition(
   return [0, 0, 0];
 }
 
+/** Compares two numeric vectors using a per-component absolute threshold. */
 export function isWithinThreshold(
   previous: readonly number[] | null,
   current: readonly number[],

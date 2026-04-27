@@ -19,6 +19,7 @@ export const INITIAL_DOWNLOAD_DIALOG_STATE: DownloadDialogState = {
   terrainRsrcBytes: null,
 };
 
+/** Opens the download dialog for a specific custom level payload. */
 export function openCustomLevelDialog(
   game: Game,
   level: number,
@@ -35,6 +36,7 @@ export function openCustomLevelDialog(
   };
 }
 
+/** Opens the download dialog in normal-launch mode using the game's default level. */
 export function openNormalLaunchDialog(game: Game): DownloadDialogState {
   return {
     game,
@@ -46,6 +48,7 @@ export function openNormalLaunchDialog(game: Game): DownloadDialogState {
   };
 }
 
+/** Sets the dialog open flag while clearing the game when the dialog closes. */
 export function setDialogOpenState(
   state: DownloadDialogState,
   open: boolean,

@@ -38,6 +38,7 @@ function appendClosingSegment(
   return points.concat(closingPoints.slice(duplicatedSpanPoints));
 }
 
+/** Generates sampled spline points for the given nub positions. */
 export function getPoints(nubs: SplinePoint[], circular = true) {
   const numNubs = circular ? nubs.length : nubs.length - 1;
   const pointsPerSpan = new Array<number>(numNubs);
@@ -60,10 +61,12 @@ export function getPoints(nubs: SplinePoint[], circular = true) {
   return bakeSpline(nubs, pointsPerSpan, circular);
 }
 
+/** Converts a segment distance into the number of interpolated points to bake. */
 export function spanPoints(distance: number) {
   return Math.max(1, Math.round(3 * distance));
 }
 
+/** Bakes the full spline curve into sampled points, optionally closing the loop. */
 export function bakeSpline(
   nubs: SplinePoint[],
   pointsPerSpan: number[],

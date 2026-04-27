@@ -1,3 +1,4 @@
+/** One terrain item entry in a classic level file. */
 export interface TerrainItemEntryType {
   x: number;
   y: number;
@@ -8,6 +9,7 @@ export interface TerrainItemEntryType {
   nextItemIdx: number;
 }
 
+/** Header structure for a classic Nanosaur 1 level. */
 export interface Nanosaur1LevelHeader {
   textureLayerOffset: number;
   heightmapLayerOffset: number;
@@ -22,6 +24,7 @@ export interface Nanosaur1LevelHeader {
   tileAnimDataOffset: number;
 }
 
+/** Tile attribute structure used by classic terrain data. */
 export interface TileAttribType {
   bits: number;
   parm0: number;
@@ -30,6 +33,7 @@ export interface TileAttribType {
   undefined: number;
 }
 
+/** Fully parsed Nanosaur 1 level payload. */
 export interface Nanosaur1LevelData {
   header: Nanosaur1LevelHeader;
   textureLayer: number[];

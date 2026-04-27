@@ -30,6 +30,7 @@ function extractUvMeshLayout(
 ): UvMeshLayout | null {
   const geometry = mesh.geometry;
   if (!(geometry instanceof BufferGeometry)) {
+    /** Extracts UV layout for the target texture from the Three.js scene. */
     return null;
   }
 

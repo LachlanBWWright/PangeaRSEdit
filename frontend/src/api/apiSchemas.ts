@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-// ---- Auth ----
-
+/** Runtime schema for the authenticated user profile payload. */
 export const UserProfileSchema = z.object({
   id: z.string(),
   displayName: z.string(),
@@ -9,8 +8,7 @@ export const UserProfileSchema = z.object({
   avatarUrl: z.string().url().optional(),
 });
 
-// ---- Saved Levels ----
-
+/** Runtime schema for a saved-level summary record. */
 export const SavedLevelSummarySchema = z.object({
   id: z.string(),
   gameName: z.string(),
@@ -21,6 +19,7 @@ export const SavedLevelSummarySchema = z.object({
   payloadVersion: z.number().int(),
 });
 
+/** Runtime schema for a full saved-level detail record. */
 export const SavedLevelDetailSchema = SavedLevelSummarySchema.extend({
   payload: z.unknown(),
   sourceFileMetadata: z
@@ -32,8 +31,12 @@ export const SavedLevelDetailSchema = SavedLevelSummarySchema.extend({
     .optional(),
 });
 
+/** Runtime schema for the list of saved-level summaries. */
 export const SavedLevelListSchema = z.array(SavedLevelSummarySchema);
 
+/** Parsed authenticated user profile type. */
 export type UserProfile = z.infer<typeof UserProfileSchema>;
+/** Parsed saved-level summary type. */
 export type SavedLevelSummary = z.infer<typeof SavedLevelSummarySchema>;
+/** Parsed saved-level detail type. */
 export type SavedLevelDetail = z.infer<typeof SavedLevelDetailSchema>;

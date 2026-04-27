@@ -1,8 +1,10 @@
+/** One UV coordinate pair. */
 export interface UvVertex {
   readonly u: number;
   readonly v: number;
 }
 
+/** Triangle face referencing three UV vertices. */
 export interface UvFace {
   /** Indices into the UvVertex array */
   readonly vertexIndices: readonly [number, number, number];
@@ -24,8 +26,10 @@ export interface UvLayout {
   readonly meshes: readonly UvMeshLayout[];
 }
 
+/** Available UV transform interaction modes. */
 export type UvTransformMode = "move" | "rotate" | "scale" | "none";
 
+/** Current UV transform tool state. */
 export interface UvTransformState {
   readonly mode: UvTransformMode;
   /** Offset applied to selected UVs in UV space (0..1 range) */
@@ -40,6 +44,7 @@ export interface UvTransformState {
   readonly flipV: boolean;
 }
 
+/** Returns the default UV transform state. */
 export function defaultUvTransformState(): UvTransformState {
   return {
     mode: "none",

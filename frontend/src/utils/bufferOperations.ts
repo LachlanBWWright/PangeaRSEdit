@@ -1,15 +1,8 @@
-/**
- * Pure functions for buffer operations
- *
- * These functions provide immutable, side-effect-free buffer manipulations
- * suitable for functional programming and easy testing
- */
+/** Pure functions for buffer operations. */
 
 import { ok, err, type Result } from "neverthrow";
 
-/**
- * Read a big-endian 32-bit unsigned integer from a buffer at the specified offset
- */
+/** Reads a big-endian 32-bit unsigned integer from a buffer at the given offset. */
 export function readUint32BE(
   buffer: ArrayBuffer,
   offset: number,
@@ -21,9 +14,7 @@ export function readUint32BE(
   return ok(view.getUint32(offset, false)); // false = big-endian
 }
 
-/**
- * Read a little-endian 32-bit unsigned integer from a buffer at the specified offset
- */
+/** Reads a little-endian 32-bit unsigned integer from a buffer at the given offset. */
 export function readUint32LE(
   buffer: ArrayBuffer,
   offset: number,
@@ -35,9 +26,7 @@ export function readUint32LE(
   return ok(view.getUint32(offset, true)); // true = little-endian
 }
 
-/**
- * Read a big-endian 16-bit unsigned integer from a buffer at the specified offset
- */
+/** Reads a big-endian 16-bit unsigned integer from a buffer at the given offset. */
 export function readUint16BE(
   buffer: ArrayBuffer,
   offset: number,
@@ -49,9 +38,7 @@ export function readUint16BE(
   return ok(view.getUint16(offset, false)); // false = big-endian
 }
 
-/**
- * Read a little-endian 16-bit unsigned integer from a buffer at the specified offset
- */
+/** Reads a little-endian 16-bit unsigned integer from a buffer at the given offset. */
 export function readUint16LE(
   buffer: ArrayBuffer,
   offset: number,
@@ -63,9 +50,7 @@ export function readUint16LE(
   return ok(view.getUint16(offset, true)); // true = little-endian
 }
 
-/**
- * Read an 8-bit unsigned integer from a buffer at the specified offset
- */
+/** Reads an 8-bit unsigned integer from a buffer at the given offset. */
 export function readUint8(
   buffer: ArrayBuffer,
   offset: number,
@@ -77,9 +62,7 @@ export function readUint8(
   return ok(view.getUint8(offset));
 }
 
-/**
- * Write a big-endian 32-bit unsigned integer to a new buffer
- */
+/** Writes a big-endian 32-bit unsigned integer into a new buffer. */
 export function writeUint32BE(value: number): ArrayBuffer {
   const buffer = new ArrayBuffer(4);
   const view = new DataView(buffer);
@@ -87,9 +70,7 @@ export function writeUint32BE(value: number): ArrayBuffer {
   return buffer;
 }
 
-/**
- * Write a little-endian 32-bit unsigned integer to a new buffer
- */
+/** Writes a little-endian 32-bit unsigned integer into a new buffer. */
 export function writeUint32LE(value: number): ArrayBuffer {
   const buffer = new ArrayBuffer(4);
   const view = new DataView(buffer);
@@ -97,9 +78,7 @@ export function writeUint32LE(value: number): ArrayBuffer {
   return buffer;
 }
 
-/**
- * Slice a buffer without copying (returns a view)
- */
+/** Returns a sliced buffer view after validating the requested range. */
 export function sliceBuffer(
   buffer: ArrayBuffer,
   start: number,
@@ -117,9 +96,7 @@ export function sliceBuffer(
   return ok(buffer.slice(start, end));
 }
 
-/**
- * Create a new buffer by copying data from offset for length bytes
- */
+/** Copies a range of bytes into a new standalone buffer. */
 export function copyBuffer(
   buffer: ArrayBuffer,
   offset: number,
@@ -136,9 +113,7 @@ export function copyBuffer(
   return ok(destination.buffer);
 }
 
-/**
- * Concatenate multiple buffers into a single buffer
- */
+/** Concatenates multiple buffers into a single buffer. */
 export function concatBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
   const totalLength = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
   const result = new Uint8Array(totalLength);
@@ -153,9 +128,7 @@ export function concatBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
   return result.buffer;
 }
 
-/**
- * Compare two buffers and return first difference
- */
+/** Compares two buffers and reports the first differing byte. */
 export function findFirstDifference(
   buffer1: ArrayBuffer,
   buffer2: ArrayBuffer,
@@ -179,9 +152,7 @@ export function findFirstDifference(
   return { equal: true, offset: null };
 }
 
-/**
- * Create a buffer filled with repeated byte value
- */
+/** Creates a buffer filled with a repeated byte value. */
 export function createFilledBuffer(
   length: number,
   fillValue: number,
@@ -191,9 +162,7 @@ export function createFilledBuffer(
   return buffer.buffer;
 }
 
-/**
- * Hex encode a buffer to string
- */
+/** Encodes a buffer as a lowercase hexadecimal string. */
 export function bufferToHex(buffer: ArrayBuffer): string {
   const view = new Uint8Array(buffer);
   return Array.from(view)
@@ -201,9 +170,7 @@ export function bufferToHex(buffer: ArrayBuffer): string {
     .join("");
 }
 
-/**
- * Hex decode a string to buffer
- */
+/** Decodes a hexadecimal string into a buffer when the input is valid. */
 export function hexToBuffer(hex: string): Result<ArrayBuffer, string> {
   if (hex.length % 2 !== 0) {
     return err("Hex string must have even length");
@@ -222,9 +189,7 @@ export function hexToBuffer(hex: string): Result<ArrayBuffer, string> {
   return ok(bytes.buffer);
 }
 
-/**
- * Get buffer statistics
- */
+/** Returns a small summary of buffer size and leading bytes for debugging. */
 export function bufferStats(buffer: ArrayBuffer): {
   size: number;
   hex: string;

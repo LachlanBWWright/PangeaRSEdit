@@ -15,10 +15,7 @@ import {
 } from "@/pages/modelCanvasState";
 
 export function ModelCanvas(props: ModelCanvasProps) {
-  const cameraConfig = useMemo(
-    () => buildModelCanvasCameraConfig(props.gameType),
-    [props.gameType],
-  );
+  const cameraConfig = buildModelCanvasCameraConfig(props.gameType);
   const {
     gltfUrl,
     setModelNodes,

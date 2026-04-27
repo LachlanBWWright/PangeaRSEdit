@@ -8,6 +8,7 @@ import type {
   MightyMikeTileValue,
 } from "@/python/structSpecs/mightyMikeInterface";
 
+/** Builds an empty classic Nanosaur level with the requested dimensions. */
 export function buildBlankNanosaurRawLevel(
   width: number,
   height: number,
@@ -49,6 +50,7 @@ export function buildBlankNanosaurRawLevel(
   };
 }
 
+/** Builds empty Mighty Mike map and tileset data structures for a new level. */
 export function buildBlankMightyMikeData(
   width: number,
   height: number,

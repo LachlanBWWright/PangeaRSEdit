@@ -1,5 +1,6 @@
 import { jpegCompress } from "./jpegCompress";
 
+/** Message sent to the JPEG compression worker. */
 export interface JpegCompressMessage {
   id: number;
   type: "compress";
@@ -7,6 +8,7 @@ export interface JpegCompressMessage {
   quality?: number;
 }
 
+/** Response posted back from the JPEG compression worker. */
 export interface JpegCompressResponse {
   id: number;
   type: "compressRes";

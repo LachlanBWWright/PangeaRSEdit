@@ -1,11 +1,14 @@
 import { GlobalsInterface } from "../globals/globals";
 
-export function getItemName(globals: GlobalsInterface, itemNumber: number): string {
-  // Look up the item name in the ITEM_TYPES mapping from globals
+/** Returns the display name for an item type in the current game's globals. */
+export function getItemName(
+  globals: GlobalsInterface,
+  itemNumber: number,
+): string {
   const name = globals.ITEM_TYPES[itemNumber];
   if (name !== undefined) {
     return name;
   }
-  
+
   return `Unknown Item (${itemNumber})`;
 }
