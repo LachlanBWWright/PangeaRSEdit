@@ -8,9 +8,10 @@
 
 import { mapErr } from "@/utils/mapErr";
 import React, { useState, useCallback, useRef, useMemo } from "react";
-import { Canvas } from "@react-three/fiber";
+import { useSearchParams } from "react-router-dom";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
-import { Group, Mesh, BufferGeometry } from "three";
+import { Group, Mesh, BufferGeometry, Box3, Vector3, MathUtils } from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,7 @@ import {
   Nanosaur2Globals,
   CroMagGlobals,
   BillyFrontierGlobals,
+  MightyMikeGlobals,
   type GlobalsInterface,
 } from "@/data/globals/globals";
 import { getGameMapper } from "@/data/items/mappers";
@@ -43,6 +45,7 @@ import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
 import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
 import { getCitationPermalink } from "@/data/items/itemModelTypes";
 import { ResultAsync, err, ok, type Result } from "neverthrow";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 /**
  * Camera configuration for optimal model viewing
@@ -65,6 +68,15 @@ const GRID_FADE_DISTANCE = 2000;
  * Worker timeout configuration
  */
 const WORKER_TIMEOUT_MS = 60000; // 60 seconds for large model files
+const AUTO_FRAME_PADDING = 1.2;
+const AUTO_FRAME_MIN_RADIUS = 1;
+const AUTO_FRAME_MIN_DISTANCE_FACTOR = 1.05;
+const AUTO_FRAME_VIEW_DIRECTION = new Vector3(1, 0.7, 1).normalize();
+
+interface SceneBounds {
+  min: [number, number, number];
+  max: [number, number, number];
+}
 
 /**
  * Game configuration with globals reference
@@ -119,7 +131,128 @@ const GAME_OPTIONS: GameOption[] = [
     globals: BillyFrontierGlobals,
     basePath: "/PangeaRSEdit/games/billyfrontier",
   },
+  {
+    id: Game.MIGHTY_MIKE,
+    name: "Mighty Mike",
+    globals: MightyMikeGlobals,
+    basePath: "/PangeaRSEdit/games/mightymike",
+  },
 ];
+
+function calculateSceneBounds(scene: Group): SceneBounds | null {
+  const box = new Box3().setFromObject(scene);
+  if (box.isEmpty()) {
+    return null;
+  }
+  return {
+    min: [box.min.x, box.min.y, box.min.z],
+    max: [box.max.x, box.max.y, box.max.z],
+  };
+}
+
+function applyPerspectiveCameraRange(
+  cameraLike: object,
+  near: number,
+  far: number,
+): void {
+  Reflect.set(cameraLike, "near", near);
+  Reflect.set(cameraLike, "far", far);
+  const projectionUpdate = Reflect.get(cameraLike, "updateProjectionMatrix");
+  if (typeof projectionUpdate === "function") {
+    Reflect.apply(projectionUpdate, cameraLike, []);
+  }
+}
+
+function computeCameraDistanceForBounds(
+  radius: number,
+  verticalFovRadians: number,
+  aspect: number,
+): number {
+  const horizontalFovRadians =
+    2 * Math.atan(Math.tan(verticalFovRadians / 2) * aspect);
+  const distanceForVertical = radius / Math.tan(verticalFovRadians / 2);
+  const distanceForHorizontal = radius / Math.tan(horizontalFovRadians / 2);
+  const baseDistance = Math.max(distanceForVertical, distanceForHorizontal);
+  return Math.max(
+    baseDistance * AUTO_FRAME_PADDING,
+    radius * AUTO_FRAME_MIN_DISTANCE_FACTOR,
+  );
+}
+
+function AutoFitCamera({
+  sceneBounds,
+  fitVersion,
+  controlsRef,
+  onApplied,
+}: {
+  sceneBounds: SceneBounds | null;
+  fitVersion: number;
+  controlsRef: React.RefObject<OrbitControlsImpl | null>;
+  onApplied: (version: number) => void;
+}) {
+  const { camera, size } = useThree();
+
+  React.useEffect(() => {
+    if (!sceneBounds) {
+      return;
+    }
+
+    const min = new Vector3(
+      sceneBounds.min[0],
+      sceneBounds.min[1],
+      sceneBounds.min[2],
+    );
+    const max = new Vector3(
+      sceneBounds.max[0],
+      sceneBounds.max[1],
+      sceneBounds.max[2],
+    );
+    const center = min.clone().add(max).multiplyScalar(0.5);
+    const radius = Math.max(
+      max.clone().sub(min).length() * 0.5,
+      AUTO_FRAME_MIN_RADIUS,
+    );
+
+    const aspect = size.width / Math.max(size.height, 1);
+    const verticalFovRadians = MathUtils.degToRad(CAMERA_FOV);
+    const distance = computeCameraDistanceForBounds(
+      radius,
+      verticalFovRadians,
+      aspect,
+    );
+
+    const position = center
+      .clone()
+      .add(AUTO_FRAME_VIEW_DIRECTION.clone().multiplyScalar(distance));
+
+    camera.position.copy(position);
+    camera.lookAt(center);
+
+    const near = Math.max(0.05, distance - radius * 2);
+    const far = distance + radius * 4;
+    applyPerspectiveCameraRange(camera, near, far);
+
+    const controls = controlsRef.current;
+    if (controls) {
+      controls.target.copy(center);
+      controls.minDistance = radius * AUTO_FRAME_MIN_DISTANCE_FACTOR;
+      controls.maxDistance = Math.max(distance * 4, controls.minDistance + 10);
+      controls.update();
+    }
+
+    onApplied(fitVersion);
+  }, [
+    camera,
+    controlsRef,
+    fitVersion,
+    onApplied,
+    sceneBounds,
+    size.height,
+    size.width,
+  ]);
+
+  return null;
+}
 
 /**
  * Item info for display
@@ -241,6 +374,8 @@ function extractSubgroupByIndex(
 }
 
 export function ItemModelViewer() {
+  const [searchParams] = useSearchParams();
+  const isCaptureMode = searchParams.get("capture") === "1";
   const [selectedGameId, setSelectedGameId] = useState<Game | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -253,6 +388,9 @@ export function ItemModelViewer() {
     vertices: number;
     faces: number;
   } | null>(null);
+  const [sceneBounds, setSceneBounds] = useState<SceneBounds | null>(null);
+  const [cameraFitVersion, setCameraFitVersion] = useState(0);
+  const [cameraFitAppliedVersion, setCameraFitAppliedVersion] = useState(0);
   const [loadedModelInfo, setLoadedModelInfo] = useState<{
     file: string;
     index: number;
@@ -289,6 +427,7 @@ export function ItemModelViewer() {
   };
 
   const workerRef = useRef<Worker | null>(null);
+  const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
 
   // Get the current game option
   const selectedGame = GAME_OPTIONS.find((g) => g.id === selectedGameId);
@@ -387,11 +526,16 @@ export function ItemModelViewer() {
 
   // Reset state when game changes
   const handleGameChange = useCallback((gameIdStr: string) => {
-    const gameId = parseInt(gameIdStr) as Game;
+    const gameId = Number.parseInt(gameIdStr, 10);
+    if (Number.isNaN(gameId)) {
+      return;
+    }
     setSelectedGameId(gameId);
     setSelectedItemType(null);
     setGltfScene(null);
     setModelStats(null);
+    setSceneBounds(null);
+    setCameraFitAppliedVersion(0);
     setLoadedModelInfo(null);
     setError(null);
     setItemParams({ p0: 0, p1: 0, p2: 0, p3: 0 });
@@ -405,6 +549,8 @@ export function ItemModelViewer() {
       setSelectedItemType(itemType);
       setGltfScene(null);
       setModelStats(null);
+      setSceneBounds(null);
+      setCameraFitAppliedVersion(0);
       setLoadedModelInfo(null);
       setError(null);
       setItemParams({ p0: 0, p1: 0, p2: 0, p3: 0 }); // Reset params
@@ -425,6 +571,8 @@ export function ItemModelViewer() {
   const handleParamChange = useCallback((paramName: string, value: number) => {
     setItemParams((prev) => ({ ...prev, [paramName]: value }));
     setGltfScene(null); // Clear loaded model when param changes
+    setSceneBounds(null);
+    setCameraFitAppliedVersion(0);
     setLoadedModelInfo(null);
   }, []);
 
@@ -439,6 +587,7 @@ export function ItemModelViewer() {
     const mapping = currentMapping;
     setLoading(true);
     setError(null);
+    setCameraFitAppliedVersion(0);
     setStatus(`Loading model for ${selectedItem?.name ?? "item"}...`);
 
     // Construct the model path using the mapping's directory (either "models" or "skeletons")
@@ -624,6 +773,8 @@ export function ItemModelViewer() {
 
     setGltfScene(extracted);
     setModelStats(calculateModelStats(extracted));
+    setSceneBounds(calculateSceneBounds(extracted));
+    setCameraFitVersion((version) => version + 1);
     setLoadedModelInfo({
       file: mapping.modelFile,
       index: mapping.modelIndex,
@@ -652,7 +803,10 @@ export function ItemModelViewer() {
               value={selectedGameId !== null ? String(selectedGameId) : ""}
               onValueChange={handleGameChange}
             >
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger
+                data-testid="item-model-game-select-trigger"
+                className="bg-gray-700 border-gray-600 text-white"
+              >
                 <SelectValue placeholder="Select a game" />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600">
@@ -683,7 +837,10 @@ export function ItemModelViewer() {
                 }
                 onValueChange={handleItemChange}
               >
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectTrigger
+                  data-testid="item-model-item-select-trigger"
+                  className="bg-gray-700 border-gray-600 text-white"
+                >
                   <SelectValue placeholder="Select an item" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-700 border-gray-600 max-h-80">
@@ -722,7 +879,10 @@ export function ItemModelViewer() {
                   )
                 }
               >
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectTrigger
+                  data-testid="item-model-param-select-trigger"
+                  className="bg-gray-700 border-gray-600 text-white"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-700 border-gray-600">
@@ -781,13 +941,17 @@ export function ItemModelViewer() {
           <Button
             onClick={loadItemModel}
             disabled={loading || !currentMapping}
+            data-testid="item-model-load-button"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? "Loading..." : "Load Model"}
           </Button>
 
           {/* Status */}
-          <div className="p-3 bg-gray-700 rounded text-sm text-gray-300">
+          <div
+            data-testid="item-model-status"
+            className="p-3 bg-gray-700 rounded text-sm text-gray-300"
+          >
             {status}
           </div>
 
@@ -870,34 +1034,64 @@ export function ItemModelViewer() {
       </Card>
 
       {/* 3D Canvas */}
-      <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
+      <div
+        data-testid="item-model-canvas-container"
+        data-fit-ready={
+          gltfScene && cameraFitAppliedVersion === cameraFitVersion ? "1" : "0"
+        }
+        className={
+          isCaptureMode
+            ? "flex-1 overflow-hidden"
+            : "flex-1 bg-gray-800 rounded-lg overflow-hidden"
+        }
+      >
         <Canvas
+          data-testid="item-model-canvas"
           camera={{
             position: CAMERA_POSITION,
             fov: CAMERA_FOV,
             near: CAMERA_NEAR,
             far: CAMERA_FAR,
           }}
-          style={{ background: "#1a1a2e" }}
+          gl={{
+            alpha: isCaptureMode,
+            preserveDrawingBuffer: isCaptureMode,
+          }}
+          onCreated={({ gl }) => {
+            if (isCaptureMode) {
+              gl.setClearColor(0x000000, 0);
+            }
+          }}
+          style={isCaptureMode ? {} : { background: "#1a1a2e" }}
         >
           <ambientLight intensity={0.5} />
           <directionalLight position={[1, 2, 1]} intensity={1} />
 
           <ModelDisplay gltfScene={gltfScene} />
 
-          <OrbitControls />
-          <Grid
-            args={[GRID_SIZE, GRID_SIZE]}
-            cellSize={GRID_CELL_SIZE}
-            cellThickness={0.5}
-            cellColor="#3a3a5a"
-            sectionSize={GRID_SECTION_SIZE}
-            sectionThickness={1}
-            sectionColor="#5a5a8a"
-            fadeDistance={GRID_FADE_DISTANCE}
-            fadeStrength={1}
+          <AutoFitCamera
+            sceneBounds={sceneBounds}
+            fitVersion={cameraFitVersion}
+            controlsRef={orbitControlsRef}
+            onApplied={setCameraFitAppliedVersion}
           />
-          <axesHelper args={[100]} />
+          <OrbitControls ref={orbitControlsRef} />
+          {!isCaptureMode && (
+            <>
+              <Grid
+                args={[GRID_SIZE, GRID_SIZE]}
+                cellSize={GRID_CELL_SIZE}
+                cellThickness={0.5}
+                cellColor="#3a3a5a"
+                sectionSize={GRID_SECTION_SIZE}
+                sectionThickness={1}
+                sectionColor="#5a5a8a"
+                fadeDistance={GRID_FADE_DISTANCE}
+                fadeStrength={1}
+              />
+              <axesHelper args={[100]} />
+            </>
+          )}
         </Canvas>
       </div>
     </div>
