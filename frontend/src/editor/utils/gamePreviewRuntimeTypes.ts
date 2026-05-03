@@ -184,7 +184,7 @@ export function buildPreviewAssetBaseUrls(config: GamePortConfig): string[] {
   const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin)
     .href;
   const generatedBase = new URL(
-    `.generated/pangea-ports/wasm/${config.wasmDir}/`,
+    `generated/pangea-ports/wasm/${config.wasmDir}/`,
     appBaseUrl,
   ).href;
   return [generatedBase];

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # build-pangea-ports.sh — Compile Pangea Ports WASM builds and stage them into
-# frontend/public/.generated/pangea-ports/wasm/
+# frontend/public/generated/pangea-ports/wasm/
 #
 # Prerequisites:
 #   • Emscripten (emcc) installed and activated, OR this script will bootstrap
@@ -14,7 +14,7 @@
 #   scripts/build-pangea-ports.sh --game ottomatic  # build one game
 #
 # Output is staged under:
-#   frontend/public/.generated/pangea-ports/wasm/<game>/
+#   frontend/public/generated/pangea-ports/wasm/<game>/
 # so the frontend can serve the binaries while keeping them out of git.
 
 set -euo pipefail
@@ -22,7 +22,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_ROOT="$REPO_ROOT/frontend"
 PANGEA_PORTS="$REPO_ROOT/games/pangea-ports"
-WASM_OUT="$FRONTEND_ROOT/public/.generated/pangea-ports/wasm"
+WASM_OUT="$FRONTEND_ROOT/public/generated/pangea-ports/wasm"
 
 GAME_FILTER=""
 while [[ $# -gt 0 ]]; do
