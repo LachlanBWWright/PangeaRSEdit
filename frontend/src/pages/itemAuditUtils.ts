@@ -28,9 +28,17 @@ import {
   billyFrontierItemTypeParams,
   itemTypeNames as billyFrontierItemTypeNames,
 } from "@/data/items/billyFrontierItemType";
+import { z } from "zod";
 import { itemTypeNames as mightyMikeItemTypeNames } from "@/data/items/mightyMikeItemType";
-import { getCitationPermalink, type SourceCitation } from "@/data/items/itemModelTypes";
-import type { Citation, ItemParams, ParamDescription } from "@/data/items/itemParams";
+import {
+  getCitationPermalink,
+  type SourceCitation,
+} from "@/data/items/itemModelTypes";
+import type {
+  Citation,
+  ItemParams,
+  ParamDescription,
+} from "@/data/items/itemParams";
 
 export type ParamStatus = "unknown" | "correct" | "incorrect";
 
@@ -157,35 +165,36 @@ function toParamCitation(sample: Citation): ParamCitationDetail {
 }
 
 function hasValidCitation(value: unknown): value is Citation {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const url = Reflect.get(value, "url");
-  const fileName = Reflect.get(value, "fileName");
-  const lineNumber = Reflect.get(value, "lineNumber");
-  const code = Reflect.get(value, "code");
-  return (
-    typeof url === "string" &&
-    typeof fileName === "string" &&
-    typeof lineNumber === "number" &&
-    typeof code === "string"
-  );
+  const citationSchema = z.object({
+    url: z.string(),
+    fileName: z.string(),
+    lineNumber: z.number(),
+    code: z.string(),
+  });
+  return citationSchema.safeParse(value).success;
 }
 
-function paramAuditDetail(param: ParamDescription | undefined): ParamAuditDetail {
+function paramAuditDetail(
+  param: ParamDescription | undefined,
+): ParamAuditDetail {
   if (param === undefined) {
     return { summary: "Unknown", citations: [] };
   }
   if (param === "Unused" || param === "Unknown") {
     return { summary: param, citations: [] };
   }
-  if (param.type === "Integer" || param.type === "Rotation" || param.type === "TypeSelector") {
+  if (
+    param.type === "Integer" ||
+    param.type === "Rotation" ||
+    param.type === "TypeSelector"
+  ) {
     return {
-      summary: param.type === "Rotation"
-        ? `Rotation × ${param.multiplier} (${param.divisions}-way)`
-        : param.type === "TypeSelector"
-          ? `Type (${Object.values(param.options).join(", ")})`
-          : param.description,
+      summary:
+        param.type === "Rotation"
+          ? `Rotation × ${param.multiplier} (${param.divisions}-way)`
+          : param.type === "TypeSelector"
+            ? `Type (${Object.values(param.options).join(", ")})`
+            : param.description,
       citations: [
         toParamCitation(param.defaultCitation),
         ...(param.additionalCitations ?? []).map((citation) =>
@@ -201,7 +210,10 @@ function paramAuditDetail(param: ParamDescription | undefined): ParamAuditDetail
   return { summary: `Bit Flags (${param.flags.length})`, citations };
 }
 
-function buildModelCitations(game: Game, citations: SourceCitation[] | undefined): ModelCitationDetail[] {
+function buildModelCitations(
+  game: Game,
+  citations: SourceCitation[] | undefined,
+): ModelCitationDetail[] {
   if (!citations) {
     return [];
   }
@@ -214,6 +226,7 @@ function buildModelCitations(game: Game, citations: SourceCitation[] | undefined
   }));
 }
 
+/** Creates a blank audit decision with every status set to unknown. */
 export function createDefaultDecision(): ItemAuditDecision {
   return {
     modelStatus: "unknown",
@@ -222,28 +235,39 @@ export function createDefaultDecision(): ItemAuditDecision {
   };
 }
 
-export function createDecisionForEntry(entry: ItemAuditEntry): ItemAuditDecision {
+/** Derives a starter decision for an audit entry from its current parameter summaries. */
+export function createDecisionForEntry(
+  entry: ItemAuditEntry,
+): ItemAuditDecision {
   const base = createDefaultDecision();
   const next = {
     ...base,
     modelStatus: "unknown" as ParamStatus,
   };
-  const unknownLike = (summary: string) => summary === "Unknown" || summary === "Unused";
-  if (unknownLike(entry.paramDetails.p0.summary)) next.paramStatus.p0 = "correct";
-  if (unknownLike(entry.paramDetails.p1.summary)) next.paramStatus.p1 = "correct";
-  if (unknownLike(entry.paramDetails.p2.summary)) next.paramStatus.p2 = "correct";
-  if (unknownLike(entry.paramDetails.p3.summary)) next.paramStatus.p3 = "correct";
+  const unknownLike = (summary: string) =>
+    summary === "Unknown" || summary === "Unused";
+  if (unknownLike(entry.paramDetails.p0.summary))
+    next.paramStatus.p0 = "correct";
+  if (unknownLike(entry.paramDetails.p1.summary))
+    next.paramStatus.p1 = "correct";
+  if (unknownLike(entry.paramDetails.p2.summary))
+    next.paramStatus.p2 = "correct";
+  if (unknownLike(entry.paramDetails.p3.summary))
+    next.paramStatus.p3 = "correct";
   return next;
 }
 
+/** Returns the audit configurations for every supported game. */
 export function getItemAuditConfigs(): readonly GameAuditConfig[] {
   return GAME_AUDIT_CONFIGS;
 }
 
+/** Returns the audit configuration for one game when it is supported. */
 export function getItemAuditConfig(game: Game): GameAuditConfig | undefined {
   return GAME_AUDIT_CONFIGS.find((entry) => entry.game === game);
 }
 
+/** Builds the full audit table for a game, including model citations and parameter summaries. */
 export function buildItemAuditEntries(
   game: Game,
   decisions: Record<number, ItemAuditDecision>,
@@ -281,6 +305,7 @@ export function buildItemAuditEntries(
   });
 }
 
+/** Creates the downloadable audit report payload for the selected game. */
 export function createItemAuditReport(
   game: Game,
   decisions: Record<number, ItemAuditDecision>,

@@ -7,64 +7,55 @@ export const billyfrontier: GameInfo = {
     {
       name: "Billy",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Billy.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/Billy.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Billy.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Bandito",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Bandito.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/Bandito.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Bandito.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "FrogMan",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/FrogMan.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/FrogMan.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/FrogMan.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "KangaRex",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/KangaRex.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/KangaRex.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/KangaRex.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Walker",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Walker.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/Walker.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Walker.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "TremorAlien",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/TremorAlien.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/TremorAlien.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/TremorAlien.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "TremorGhost",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/TremorGhost.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/TremorGhost.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/TremorGhost.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Shorty",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Shorty.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/Shorty.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Shorty.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Rygar",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Rygar.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/billyfrontier/skeletons/Rygar.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Rygar.skeleton.rsrc",
       category: "Characters",
     },
 

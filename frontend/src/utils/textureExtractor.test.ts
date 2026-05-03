@@ -41,6 +41,108 @@ interface MockGroup {
   children: MockMesh[];
   traverse: (cb: (child: MockMesh) => void) => void;
 }
+
+interface ExtractedTexture {
+  name: string;
+  url: string;
+  type: "diffuse" | "normal" | "other";
+  material: string;
+  size?: { width: number; height: number };
+}
+
+type MaterialTextureKey =
+  | "map"
+  | "normalMap"
+  | "roughnessMap"
+  | "metalnessMap"
+  | "aoMap"
+  | "emissiveMap"
+  | "specularMap"
+  | "alphaMap"
+  | "bumpMap"
+  | "displacementMap";
+
+interface TextureSpec {
+  key: MaterialTextureKey;
+  type: ExtractedTexture["type"];
+  suffix: string;
+}
+
+const DEFAULT_TEXTURE_SPECS: TextureSpec[] = [
+  { key: "map", type: "diffuse", suffix: "Diffuse" },
+  { key: "normalMap", type: "normal", suffix: "Normal" },
+  { key: "roughnessMap", type: "other", suffix: "Roughness" },
+  { key: "metalnessMap", type: "other", suffix: "Metalness" },
+  { key: "aoMap", type: "other", suffix: "AO" },
+  { key: "emissiveMap", type: "other", suffix: "Emissive" },
+  { key: "specularMap", type: "other", suffix: "Specular" },
+  { key: "alphaMap", type: "other", suffix: "Alpha" },
+  { key: "bumpMap", type: "other", suffix: "Bump" },
+  { key: "displacementMap", type: "other", suffix: "Displacement" },
+];
+
+function toArrayBuffer(data: Uint8Array): ArrayBuffer {
+  const dataBuffer = data.buffer;
+  if (dataBuffer instanceof ArrayBuffer) return dataBuffer;
+  return new Uint8Array(dataBuffer).slice().buffer;
+}
+
+function getTextureUrl(texture: MockTexture, allowRawDataUrl: boolean): string {
+  if (texture.image.src) return texture.image.src;
+  if (allowRawDataUrl && texture.image.data instanceof Uint8Array) {
+    const blob = new Blob([toArrayBuffer(texture.image.data)], {
+      type: "image/png",
+    });
+    return URL.createObjectURL(blob);
+  }
+  return texture.source?.uri ?? "";
+}
+
+function getTextureSize(
+  texture: MockTexture,
+): { width: number; height: number } | undefined {
+  if (
+    typeof texture.image.width === "number" &&
+    typeof texture.image.height === "number"
+  ) {
+    return { width: texture.image.width, height: texture.image.height };
+  }
+  return undefined;
+}
+
+function extractTexturesFromMeshes(
+  meshes: MockMesh[],
+  specs: TextureSpec[],
+  allowRawDataUrl: boolean,
+): ExtractedTexture[] {
+  const textures: ExtractedTexture[] = [];
+  const textureUrls = new Set<string>();
+
+  for (const mesh of meshes) {
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    for (const mat of materials) {
+      for (const spec of specs) {
+        const texture = mat[spec.key];
+        if (!texture || !texture.image) continue;
+        const url = getTextureUrl(texture, allowRawDataUrl);
+        if (!url || textureUrls.has(url)) continue;
+        textureUrls.add(url);
+        textures.push({
+          name: `${mat.name}_${spec.suffix}`,
+          url,
+          type: spec.type,
+          material: mat.name,
+          size: getTextureSize(texture),
+        });
+      }
+    }
+  }
+
+  return textures;
+}
+
 const createMockTexture = (url: string, width?: number, height?: number) => ({
   image: {
     src: url,
@@ -78,10 +180,10 @@ const createMockMesh = (
   visible: true,
   material:
     materials.length === 1
-      ? materials[0] ?? createMockMaterial()
+      ? (materials[0] ?? createMockMaterial())
       : materials.length > 0
-      ? materials
-      : createMockMaterial(),
+        ? materials
+        : createMockMaterial(),
   children,
   traverse: vi.fn((callback: (child: MockMesh) => void) => {
     children.forEach(callback);
@@ -104,13 +206,6 @@ const createMockGroup = (
 
 describe("Enhanced Texture Extraction", () => {
   let mockScene: MockGroup | null = null;
-  interface ExtractedTexture {
-    name: string;
-    url: string;
-    type: "diffuse" | "normal" | "other";
-    material: string;
-    size?: { width: number; height: number };
-  }
   let extractedTextures: ExtractedTexture[];
 
   beforeEach(() => {
@@ -128,76 +223,11 @@ describe("Enhanced Texture Extraction", () => {
 
     mockScene = createMockGroup([mesh]);
 
-    // Simulate the texture extraction logic from EnhancedModelMesh
-    const extractTextures = () => {
-      const textures: ExtractedTexture[] = [];
-      const textureUrls = new Set<string>();
-
-      const processTexture = (
-        texture: MockTexture | null | undefined,
-        type: "diffuse" | "normal" | "other",
-        suffix: string,
-        materialName: string,
-      ) => {
-        if (texture && texture.image) {
-          let url = "";
-
-          if (texture.image.src) {
-            url = texture.image.src;
-          } else if (texture.image.data instanceof Uint8Array) {
-            const dataBuffer = texture.image.data.buffer;
-            const arrayBuffer =
-              dataBuffer instanceof ArrayBuffer
-                ? dataBuffer
-                : new Uint8Array(dataBuffer).slice().buffer;
-            const blob = new Blob([arrayBuffer], {
-              type: "image/png",
-            });
-            url = URL.createObjectURL(blob);
-          } else if (texture.source && texture.source.uri) {
-            url = texture.source.uri;
-          }
-
-          if (url && !textureUrls.has(url)) {
-            textureUrls.add(url);
-
-            const size =
-              texture.image.width && texture.image.height
-                ? { width: texture.image.width, height: texture.image.height }
-                : undefined;
-
-            textures.push({
-              name: `${materialName}_${suffix}`,
-              url,
-              type,
-              material: materialName,
-              size,
-            });
-          }
-        }
-      };
-
-      // Simulate traversing the mesh
-      const materials = Array.isArray(mesh.material)
-        ? mesh.material
-        : [mesh.material];
-      materials.forEach((mat: MockMaterial) => {
-        processTexture(mat.map, "diffuse", "Diffuse", mat.name);
-        processTexture(mat.normalMap, "normal", "Normal", mat.name);
-        processTexture(mat.roughnessMap, "other", "Roughness", mat.name);
-        processTexture(mat.metalnessMap, "other", "Metalness", mat.name);
-        processTexture(mat.aoMap, "other", "AO", mat.name);
-        processTexture(mat.emissiveMap, "other", "Emissive", mat.name);
-        processTexture(mat.specularMap, "other", "Specular", mat.name);
-        processTexture(mat.alphaMap, "other", "Alpha", mat.name);
-        processTexture(mat.bumpMap, "other", "Bump", mat.name);
-        processTexture(mat.displacementMap, "other", "Displacement", mat.name);
-      });
-
-      return textures;
-    };
-
-    extractedTextures = extractTextures();
+    extractedTextures = extractTexturesFromMeshes(
+      [mesh],
+      DEFAULT_TEXTURE_SPECS,
+      true,
+    );
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
@@ -224,48 +254,15 @@ describe("Enhanced Texture Extraction", () => {
     const mesh = createMockMesh([material]);
     mockScene = createMockGroup([mesh]);
 
-    const extractTextures = () => {
-      const textures: ExtractedTexture[] = [];
-      const textureUrls = new Set<string>();
-
-      const processTexture = (
-        texture: MockTexture | null | undefined,
-        type: "diffuse" | "normal" | "other",
-        suffix: string,
-        materialName: string,
-      ) => {
-        if (texture && texture.image) {
-          const url = texture.image.src || texture.source?.uri;
-          if (url && !textureUrls.has(url)) {
-            textureUrls.add(url);
-            textures.push({
-              name: `${materialName}_${suffix}`,
-              url,
-              type,
-              material: materialName,
-              size:
-                typeof texture.image.width === "number" &&
-                typeof texture.image.height === "number"
-                  ? { width: texture.image.width, height: texture.image.height }
-                  : undefined,
-            });
-          }
-        }
-      };
-
-      const materials = Array.isArray(mesh.material)
-        ? mesh.material
-        : [mesh.material];
-      materials.forEach((mat: MockMaterial) => {
-        processTexture(mat.map, "diffuse", "Diffuse", mat.name);
-        processTexture(mat.normalMap, "normal", "Normal", mat.name);
-        processTexture(mat.roughnessMap, "other", "Roughness", mat.name);
-      });
-
-      return textures;
-    };
-
-    extractedTextures = extractTextures();
+    extractedTextures = extractTexturesFromMeshes(
+      [mesh],
+      [
+        { key: "map", type: "diffuse", suffix: "Diffuse" },
+        { key: "normalMap", type: "normal", suffix: "Normal" },
+        { key: "roughnessMap", type: "other", suffix: "Roughness" },
+      ],
+      false,
+    );
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(3);
@@ -289,41 +286,11 @@ describe("Enhanced Texture Extraction", () => {
     const mesh = createMockMesh([material]);
     mockScene = createMockGroup([mesh]);
 
-    const extractTextures = () => {
-      const textures: ExtractedTexture[] = [];
-      const textureUrls = new Set<string>();
-
-      const processTexture = (
-        texture: MockTexture | null | undefined,
-        type: "diffuse" | "normal" | "other",
-        suffix: string,
-        materialName: string,
-      ) => {
-        if (texture && texture.image) {
-          const url = texture.image.src || texture.source?.uri;
-          if (url && !textureUrls.has(url)) {
-            textureUrls.add(url);
-            textures.push({
-              name: `${materialName}_${suffix}`,
-              url,
-              type,
-              material: materialName,
-            });
-          }
-        }
-      };
-
-      const materials = Array.isArray(mesh.material)
-        ? mesh.material
-        : [mesh.material];
-      materials.forEach((mat: MockMaterial) => {
-        processTexture(mat.map, "diffuse", "Diffuse", mat.name);
-      });
-
-      return textures;
-    };
-
-    extractedTextures = extractTextures();
+    extractedTextures = extractTexturesFromMeshes(
+      [mesh],
+      [{ key: "map", type: "diffuse", suffix: "Diffuse" }],
+      false,
+    );
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
@@ -354,63 +321,11 @@ describe("Enhanced Texture Extraction", () => {
     const mockObjectURL = "blob:http://localhost/test-texture";
     global.URL.createObjectURL = vi.fn(() => mockObjectURL);
 
-    const extractTextures = () => {
-      const textures: ExtractedTexture[] = [];
-      const textureUrls = new Set<string>();
-
-      const processTexture = (
-        texture: MockTexture | null | undefined,
-        type: "diffuse" | "normal" | "other",
-        suffix: string,
-        materialName: string,
-      ) => {
-        if (texture && texture.image) {
-          let url = "";
-
-          if (texture.image.src) {
-            url = texture.image.src;
-          } else if (texture.image.data instanceof Uint8Array) {
-            const dataBuffer = texture.image.data.buffer;
-            const arrayBuffer =
-              dataBuffer instanceof ArrayBuffer
-                ? dataBuffer
-                : new Uint8Array(dataBuffer).slice().buffer;
-            const blob = new Blob([arrayBuffer], {
-              type: "image/png",
-            });
-            url = URL.createObjectURL(blob);
-          } else if (texture.source?.uri) {
-            url = texture.source.uri ?? "";
-          }
-
-          if (url && !textureUrls.has(url)) {
-            textureUrls.add(url);
-            textures.push({
-              name: `${materialName}_${suffix}`,
-              url,
-              type,
-              material: materialName,
-              size:
-                typeof texture.image.width === "number" &&
-                typeof texture.image.height === "number"
-                  ? { width: texture.image.width, height: texture.image.height }
-                  : undefined,
-            });
-          }
-        }
-      };
-
-      const materials = Array.isArray(mesh.material)
-        ? mesh.material
-        : [mesh.material];
-      materials.forEach((mat: MockMaterial) => {
-        processTexture(mat.map, "diffuse", "Diffuse", mat.name);
-      });
-
-      return textures;
-    };
-
-    extractedTextures = extractTextures();
+    extractedTextures = extractTexturesFromMeshes(
+      [mesh],
+      [{ key: "map", type: "diffuse", suffix: "Diffuse" }],
+      true,
+    );
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
@@ -431,44 +346,11 @@ describe("Enhanced Texture Extraction", () => {
     const mesh2 = createMockMesh([material2]);
     mockScene = createMockGroup([mesh1, mesh2]);
 
-    const extractTextures = () => {
-      const textures: ExtractedTexture[] = [];
-      const textureUrls = new Set<string>();
-
-      const processTexture = (
-        texture: MockTexture | null | undefined,
-        type: "diffuse" | "normal" | "other",
-        suffix: string,
-        materialName: string,
-      ) => {
-        if (texture && texture.image) {
-          const url = texture.image.src || texture.source?.uri;
-          if (url && !textureUrls.has(url)) {
-            textureUrls.add(url);
-            textures.push({
-              name: `${materialName}_${suffix}`,
-              url,
-              type,
-              material: materialName,
-            });
-          }
-        }
-      };
-
-      // Process both meshes
-      [mesh1, mesh2].forEach((mesh) => {
-        const materials = Array.isArray(mesh.material)
-          ? mesh.material
-          : [mesh.material];
-        materials.forEach((mat: MockMaterial) => {
-          processTexture(mat.map, "diffuse", "Diffuse", mat.name);
-        });
-      });
-
-      return textures;
-    };
-
-    extractedTextures = extractTextures();
+    extractedTextures = extractTexturesFromMeshes(
+      [mesh1, mesh2],
+      [{ key: "map", type: "diffuse", suffix: "Diffuse" }],
+      false,
+    );
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1); // Should only have one texture despite being used in two materials

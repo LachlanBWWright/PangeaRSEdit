@@ -1,9 +1,13 @@
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
 
-export function sixteenBitToImageData(data: DataView, imageData: ImageData): Result<void, Error> {
+/** Converts packed 16-bit image data into RGBA pixels. */
+export function sixteenBitToImageData(
+  data: DataView,
+  imageData: ImageData,
+): Result<void, string> {
   if (imageData.data.length !== data.byteLength * 2) {
-    return err(new Error("Data length does not match image data length"));
+    return err("Data length does not match image data length");
   }
 
   for (let i = 0; i < data.byteLength; i += 2) {
@@ -20,15 +24,19 @@ export function sixteenBitToImageData(data: DataView, imageData: ImageData): Res
   return ok(undefined);
 }
 
-export function canvasDataToSixteenBit(canvas: HTMLCanvasElement): Result<DataView, Error> {
+/** Reads canvas pixels and converts them into the 16-bit image format used by Pangea assets. */
+export function canvasDataToSixteenBit(
+  canvas: HTMLCanvasElement,
+): Result<DataView, string> {
   const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
   if (!canvasCtx) {
-    return err(new Error("Could not get canvas context"));
+    return err("Could not get canvas context");
   }
   const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
   return ok(imageDataToSixteenBit(imageData.data));
 }
 
+/** Converts 8-bit RGBA pixel data into the packed 16-bit format. */
 export function imageDataToSixteenBit(data: Uint8ClampedArray): DataView {
   const output = new DataView(new ArrayBuffer(data.length / 2));
   for (let i = 0; i < data.length; i += 4) {

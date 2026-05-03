@@ -278,12 +278,10 @@ function parseSection(reader: BinaryReader): TunnelSection {
  */
 export function parseTunnelFile(
   buffer: ArrayBuffer,
-): Result<TunnelData, Error> {
+): Result<TunnelData, string> {
   if (buffer.byteLength < 92) {
     return err(
-      new Error(
-        `File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`,
-      ),
+      `File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`,
     );
   }
 
@@ -342,9 +340,7 @@ export function parseTunnelFile(
   )();
 
   if (parseResult.isErr()) {
-    return err(
-      new Error(`Failed to parse tunnel file: ${parseResult.error.message}`),
-    );
+    return err(`Failed to parse tunnel file: ${parseResult.error}`);
   }
 
   const tunnelData = parseResult.value;
@@ -357,9 +353,7 @@ export function parseTunnelFile(
     tunnelData.header.numItems < 0
   ) {
     return err(
-      new Error(
-        `Invalid header: negative counts (nubs=${tunnelData.header.numNubs}, splinePoints=${tunnelData.header.numSplinePoints}, sections=${tunnelData.header.numSections}, items=${tunnelData.header.numItems})`,
-      ),
+      `Invalid header: negative counts (nubs=${tunnelData.header.numNubs}, splinePoints=${tunnelData.header.numSplinePoints}, sections=${tunnelData.header.numSections}, items=${tunnelData.header.numItems})`,
     );
   }
 

@@ -7,15 +7,13 @@ export const bugdom2: GameInfo = {
     {
       name: "Grasshopper",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Grasshopper.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/Skip_Explore.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Skip_Explore.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "BuddyBug",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/BuddyBug.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/BuddyBug.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/BuddyBug.skeleton.rsrc",
       category: "Characters",
     },
     {
@@ -27,15 +25,13 @@ export const bugdom2: GameInfo = {
     {
       name: "BumbleBee",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/BumbleBee.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/BumbleBee.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/BumbleBee.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "DragonFly",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/DragonFly.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/DragonFly.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/DragonFly.skeleton.rsrc",
       category: "Characters",
     },
     {
@@ -53,8 +49,7 @@ export const bugdom2: GameInfo = {
     {
       name: "BuddyBug Toy",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/OttoToy.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/OttoToy.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/OttoToy.skeleton.rsrc",
       category: "Characters",
     },
     {
@@ -72,29 +67,25 @@ export const bugdom2: GameInfo = {
     {
       name: "HouseFly",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/HouseFly.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/HouseFly.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/HouseFly.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "EvilPlant",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/EvilPlant.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/EvilPlant.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/EvilPlant.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Chipmunk",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Chipmunk.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/Chipmunk.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Chipmunk.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "SnakeHead",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/SnakeHead.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/SnakeHead.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/SnakeHead.skeleton.rsrc",
       category: "Characters",
     },
     {
@@ -112,8 +103,7 @@ export const bugdom2: GameInfo = {
     {
       name: "MouseTrap",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/MouseTrap.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/MouseTrap.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/MouseTrap.skeleton.rsrc",
       category: "Characters",
     },
     {
@@ -125,8 +115,7 @@ export const bugdom2: GameInfo = {
     {
       name: "HoboBag",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/HoboBag.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/HoboBag.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/HoboBag.skeleton.rsrc",
       category: "Characters",
     },
     {
@@ -138,8 +127,7 @@ export const bugdom2: GameInfo = {
     {
       name: "ComputerBug",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/ComputerBug.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/ComputerBug.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/ComputerBug.skeleton.rsrc",
       category: "Characters",
     },
     {
@@ -151,15 +139,13 @@ export const bugdom2: GameInfo = {
     {
       name: "Soldier",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Soldier.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/Soldier.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Soldier.skeleton.rsrc",
       category: "Characters",
     },
     {
       name: "Checkpoint",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Checkpoint.bg3d",
-      skeletonFile:
-        "/PangeaRSEdit/games/bugdom2/skeletons/Checkpoint.skeleton.rsrc",
+      skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Checkpoint.skeleton.rsrc",
       category: "Characters",
     },
 

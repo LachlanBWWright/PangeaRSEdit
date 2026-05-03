@@ -18,6 +18,7 @@ import {
 
 import { Material, Document } from "@gltf-transform/core";
 import { decodeJpegNode } from "../../../utils/jpegDecompress";
+import { uint8ArraySchema, arrayBufferSchema } from "../../../schemas/common";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -205,7 +206,7 @@ export function gltfMaterialsToBg3d(
       const baseColorTex = mat.getBaseColorTexture();
       if (baseColorTex) {
         const image = baseColorTex.getImage();
-        if (image instanceof Uint8Array) {
+        if (image && uint8ArraySchema.safeParse(image).success) {
           // Verify this is valid PNG data by checking PNG signature
           const isPNG =
             image.length >= 8 &&
@@ -223,8 +224,9 @@ export function gltfMaterialsToBg3d(
             // Even if PNG is stored as RGBA in glTF (due to pngjs library limitations),
             // we convert back to RGB to match original format and prevent file size inflation
             let imageBuffer: ArrayBuffer;
-            if (image.buffer instanceof ArrayBuffer) {
-              imageBuffer = image.buffer;
+            const bufferParseResult = arrayBufferSchema.safeParse(image.buffer);
+            if (bufferParseResult.success) {
+              imageBuffer = bufferParseResult.data;
             } else {
               // Handle SharedArrayBuffer or other ArrayBufferLike types
               const temp = new Uint8Array(image.buffer);

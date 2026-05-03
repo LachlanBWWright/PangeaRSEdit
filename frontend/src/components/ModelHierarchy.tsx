@@ -1,122 +1,14 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Group, Object3D } from "three";
 import { ModelNode } from "./model-viewer/types";
+import { HierarchyNodeItem } from "@/components/model-viewer/modelHierarchyTree";
 
 interface ModelHierarchyProps {
   nodes: ModelNode[];
   clonedScene?: Group;
   onVisibilityChange: (nodeObject: Object3D, visible: boolean) => void;
-}
-
-function NodeItem({
-  node,
-  level = 0,
-  onVisibilityChange,
-  nodeObject,
-}: {
-  node: ModelNode;
-  level?: number;
-  onVisibilityChange: (nodeObject: Object3D, visible: boolean) => void;
-  nodeObject: Object3D;
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const [visible, setVisible] = useState(true);
-  const hasChildren = node.children && node.children.length > 0;
-
-  const handleVisibilityToggle = () => {
-    const newVisible = !visible;
-    setVisible(newVisible);
-    onVisibilityChange(nodeObject, newVisible);
-  };
-
-  return (
-    <div className="space-y-1">
-      <div
-        className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 transition-colors bg-gray-800"
-        style={{ paddingLeft: `${level * 16 + 8}px` }}
-      >
-        {hasChildren && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-4 h-4 p-0 text-gray-300 hover:text-white"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? (
-              <ChevronDown className="w-3 h-3" />
-            ) : (
-              <ChevronRight className="w-3 h-3" />
-            )}
-          </Button>
-        )}
-        {!hasChildren && <div className="w-4" />}
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-5 h-5 p-0 hover:bg-gray-600"
-          onClick={handleVisibilityToggle}
-          title={visible ? "Hide node" : "Show node"}
-        >
-          {visible ? (
-            <Eye className="w-4 h-4 text-green-400" />
-          ) : (
-            <EyeOff className="w-4 h-4 text-red-400" />
-          )}
-        </Button>
-
-        <span
-          className="text-sm flex-1 truncate text-white font-medium min-w-0"
-          title={node.name}
-        >
-          {node.name}
-        </span>
-
-        <div className="flex items-center gap-1 flex-none">
-          {node.polyCount !== undefined && (
-            <span
-              className="text-xs text-gray-500 tabular-nums"
-              title={`${node.polyCount.toLocaleString()} triangles`}
-              aria-label={`${node.polyCount.toLocaleString()} triangles`}
-            >
-              {node.polyCount.toLocaleString()}▾
-            </span>
-          )}
-          <span className="text-xs text-gray-400 capitalize px-1 py-0.5 bg-gray-700 rounded">
-            {node.type}
-          </span>
-        </div>
-      </div>
-
-      {hasChildren && expanded && node.children && (
-        <div>
-          {node.children.map((child) => {
-            // Use the stored THREE object reference for proper matching
-            // This avoids index mismatch issues when bones/joints are filtered out
-            const childObject = child.threeObject;
-            if (!childObject) {
-              console.warn(
-                `Child node ${child.name} has no THREE object reference`,
-              );
-              return null;
-            }
-            return (
-              <NodeItem
-                key={`${child.name}-${child.nodeIndex}`}
-                node={child}
-                level={level + 1}
-                onVisibilityChange={onVisibilityChange}
-                nodeObject={childObject}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function ModelHierarchy({
@@ -165,7 +57,7 @@ export function ModelHierarchy({
             return null;
           }
           return (
-            <NodeItem
+            <HierarchyNodeItem
               key={`${node.name}-${node.nodeIndex}`}
               node={node}
               onVisibilityChange={onVisibilityChange}

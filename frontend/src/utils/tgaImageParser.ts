@@ -1,26 +1,12 @@
-/**
- * TGA Image Parser
- * Converts TGA files to HTMLCanvasElement for rendering
- * Unlike tgaParser.ts which extracts only the palette,
- * this parser converts the full image to canvas
- *
- * All functions return Result types for explicit error handling.
- */
-
 import { err, ok, type Result } from "neverthrow";
 import { parseTGAHeader } from "./tgaCommon";
 
-/**
- * Convert TGA image to HTMLCanvasElement
- * Supports:
- * - Uncompressed RGB/RGBA (types 2, 3)
- * - RLE compressed RGB/RGBA (types 10, 11)
- * - RLE compressed indexed color (type 9)
- */
-export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement, Error> {
+/** Parses a TGA file buffer into a canvas element, supporting the project's image types. */
+export function parseTGAToCanvas(
+  buffer: ArrayBuffer,
+): Result<HTMLCanvasElement, string> {
   const data = new DataView(buffer);
   const header = parseTGAHeader(data);
-
   console.log("[TGA] Parsing TGA header:", {
     imageType: header.imageType,
     imageWidth: header.imageWidth,
@@ -28,85 +14,57 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
     pixelDepth: header.pixelDepth,
     colorMapType: header.colorMapType,
   });
-
-  // Validate header
   if (header.imageWidth === 0 || header.imageHeight === 0) {
-    return err(new Error("Invalid TGA: image dimensions are zero"));
+    return err("Invalid TGA: image dimensions are zero");
   }
-
-  // Support uncompressed (2, 3), RLE compressed (10, 11), and RLE indexed (9) TGA
   const isRLE =
     header.imageType === 9 ||
     header.imageType === 10 ||
     header.imageType === 11;
   const isUncompressed = header.imageType === 2 || header.imageType === 3;
   const isIndexed = header.imageType === 9 || header.colorMapType === 1;
-
   if (!isRLE && !isUncompressed) {
     return err(
-      new Error(
-        `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
-      )
+      `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
     );
   }
-
-  // For indexed color, pixel depth is 8 bits per pixel
-  // For RGB/RGBA, pixel depth is 16, 24, or 32 bits per pixel
   let bytesPerPixel = header.pixelDepth / 8;
   let is16Bit = false;
-
   if (isIndexed) {
     if (header.pixelDepth !== 8) {
       return err(
-        new Error(
-          `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
-        )
+        `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
       );
     }
     bytesPerPixel = 1; // indexed color is 1 byte per pixel
   } else {
     if (header.pixelDepth === 16) {
-      // 16-bit formats: ARGB1555 or BGR555, stored as little-endian uint16
       is16Bit = true;
       bytesPerPixel = 2;
     } else if (bytesPerPixel !== 3 && bytesPerPixel !== 4) {
       return err(
-        new Error(
-          `Unsupported pixel depth: ${header.pixelDepth} bits (must be 16, 24 or 32)`,
-        )
+        `Unsupported pixel depth: ${header.pixelDepth} bits (must be 16, 24 or 32)`,
       );
     }
   }
-
-  // Create canvas
   const canvas = document.createElement("canvas");
   canvas.width = header.imageWidth;
   canvas.height = header.imageHeight;
   const ctx = canvas.getContext("2d");
-
   if (!ctx) {
-    return err(new Error("Failed to get canvas context"));
+    return err("Failed to get canvas context");
   }
-
-  // Create image data
   const imageData = ctx.createImageData(header.imageWidth, header.imageHeight);
   const pixels = imageData.data;
-
-  // Read color map if present (for indexed color)
   let colorMap: Uint8Array | undefined;
   let colorMapOffset = 18 + header.idLength;
-
   if (header.colorMapType === 1) {
     const colorMapSize = (header.colorMapLength * header.colorMapDepth) / 8;
     colorMap = new Uint8Array(buffer, colorMapOffset, colorMapSize);
     colorMapOffset += colorMapSize;
   }
-
   const dataOffset = colorMapOffset;
-
-  // Parse pixel data
   if (isIndexed && colorMap) {
-    // For indexed color, parse indices then convert using color map
     parseIndexedData(
       data,
       dataOffset,
@@ -148,31 +106,17 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
       pixels,
     );
   }
-
-  // Handle vertical flip (TGA coordinates origin at bottom-left by default)
   const isOriginBottom = (header.imageDescriptor & 0x20) === 0;
   if (isOriginBottom) {
     flipImageVertically(pixels, header.imageWidth, header.imageHeight);
   }
-
-  // Draw to canvas
   ctx.putImageData(imageData, 0, 0);
-
   console.log("[TGA] Successfully created canvas:", {
     width: canvas.width,
     height: canvas.height,
   });
-
   return ok(canvas);
 }
-
-/**
- * Decode a single 16-bit ARGB1555 / BGR555 word to RGBA bytes.
- * Bit layout (little-endian uint16): A[15] R[14:10] G[9:5] B[4:0]
- * When the MSB (alpha bit) is 0 and the upper bits look like BGR555 the
- * image is treated as fully opaque (alpha=255), which is correct for the
- * Bugdom 2 sprite sheets that store plain colour without an alpha channel.
- */
 function decode16BitPixel(
   word: number,
   imageDescriptor: number,
@@ -181,7 +125,6 @@ function decode16BitPixel(
 ): void {
   const hasAlphaAttr = (imageDescriptor & 0x0f) !== 0;
   if (hasAlphaAttr) {
-    // ARGB1555: bit 15 = alpha (1=opaque, 0=transparent)
     const a = (word >> 15) & 1 ? 255 : 0;
     const r = Math.round(((word >> 10) & 0x1f) * (255 / 31));
     const g = Math.round(((word >> 5) & 0x1f) * (255 / 31));
@@ -191,7 +134,6 @@ function decode16BitPixel(
     outPixels[pixelIndex * 4 + 2] = b;
     outPixels[pixelIndex * 4 + 3] = a;
   } else {
-    // BGR555 (no alpha): bits 14:10=R, 9:5=G, 4:0=B, opaque
     const r = Math.round(((word >> 10) & 0x1f) * (255 / 31));
     const g = Math.round(((word >> 5) & 0x1f) * (255 / 31));
     const b = Math.round((word & 0x1f) * (255 / 31));
@@ -201,11 +143,6 @@ function decode16BitPixel(
     outPixels[pixelIndex * 4 + 3] = 255;
   }
 }
-
-/**
- * Parse 16-bit TGA pixel data (uncompressed or RLE).
- * Supports ARGB1555 and BGR555 encodings.
- */
 function parse16BitData(
   data: DataView,
   offset: number,
@@ -218,14 +155,12 @@ function parse16BitData(
   let pixelIndex = 0;
   let dataOffset = offset;
   const totalPixels = width * height;
-
   if (isRLE) {
     while (pixelIndex < totalPixels && dataOffset < data.byteLength) {
       const packetHeader = data.getUint8(dataOffset);
       dataOffset++;
       const isRLEPacket = (packetHeader & 0x80) !== 0;
       const packetCount = (packetHeader & 0x7f) + 1;
-
       if (isRLEPacket) {
         if (dataOffset + 2 > data.byteLength) break;
         const word = data.getUint16(dataOffset, true);
@@ -253,9 +188,6 @@ function parse16BitData(
     }
   }
 }
-
-/**
- */
 function parseUncompressedData(
   data: DataView,
   offset: number,
@@ -266,33 +198,24 @@ function parseUncompressedData(
 ): void {
   let pixelIndex = 0;
   let dataOffset = offset;
-
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // TGA stores as BGR(A), convert to RGBA
       if (dataOffset + bytesPerPixel > data.byteLength) {
         break;
       }
-
       const b = data.getUint8(dataOffset);
       const g = data.getUint8(dataOffset + 1);
       const r = data.getUint8(dataOffset + 2);
       const a = bytesPerPixel === 4 ? data.getUint8(dataOffset + 3) : 255;
-
       pixels[pixelIndex * 4 + 0] = r;
       pixels[pixelIndex * 4 + 1] = g;
       pixels[pixelIndex * 4 + 2] = b;
       pixels[pixelIndex * 4 + 3] = a;
-
       pixelIndex++;
       dataOffset += bytesPerPixel;
     }
   }
 }
-
-/**
- * Parse RLE (Run-Length Encoded) TGA pixel data
- */
 function parseRLEData(
   data: DataView,
   offset: number,
@@ -304,25 +227,18 @@ function parseRLEData(
   let pixelIndex = 0;
   let dataOffset = offset;
   const totalPixels = width * height;
-
   while (pixelIndex < totalPixels && dataOffset < data.byteLength) {
     const packetHeader = data.getUint8(dataOffset);
     dataOffset++;
-
     const isRLE = (packetHeader & 0x80) !== 0;
     const packetCount = (packetHeader & 0x7f) + 1;
-
     if (isRLE) {
-      // Repeated pixel (RLE packet)
       if (dataOffset + bytesPerPixel > data.byteLength) break;
-
       const b = data.getUint8(dataOffset);
       const g = data.getUint8(dataOffset + 1);
       const r = data.getUint8(dataOffset + 2);
       const a = bytesPerPixel === 4 ? data.getUint8(dataOffset + 3) : 255;
       dataOffset += bytesPerPixel;
-
-      // Repeat this pixel packetCount times
       for (let i = 0; i < packetCount && pixelIndex < totalPixels; i++) {
         pixels[pixelIndex * 4 + 0] = r;
         pixels[pixelIndex * 4 + 1] = g;
@@ -331,30 +247,22 @@ function parseRLEData(
         pixelIndex++;
       }
     } else {
-      // Raw pixels (non-RLE packet)
       for (let i = 0; i < packetCount && pixelIndex < totalPixels; i++) {
         if (dataOffset + bytesPerPixel > data.byteLength) break;
-
         const b = data.getUint8(dataOffset);
         const g = data.getUint8(dataOffset + 1);
         const r = data.getUint8(dataOffset + 2);
         const a = bytesPerPixel === 4 ? data.getUint8(dataOffset + 3) : 255;
-
         pixels[pixelIndex * 4 + 0] = r;
         pixels[pixelIndex * 4 + 1] = g;
         pixels[pixelIndex * 4 + 2] = b;
         pixels[pixelIndex * 4 + 3] = a;
-
         pixelIndex++;
         dataOffset += bytesPerPixel;
       }
     }
   }
 }
-
-/**
- * Parse indexed color TGA pixel data using a color map
- */
 function parseIndexedData(
   data: DataView,
   offset: number,
@@ -371,24 +279,16 @@ function parseIndexedData(
   let pixelIndex = 0;
   let dataOffset = offset;
   const totalPixels = width * height;
-
   if (isRLE) {
-    // RLE indexed data
     while (pixelIndex < totalPixels && dataOffset < data.byteLength) {
       const packetHeader = data.getUint8(dataOffset);
       dataOffset++;
-
       const isRLEPacket = (packetHeader & 0x80) !== 0;
       const packetCount = (packetHeader & 0x7f) + 1;
-
       if (isRLEPacket) {
-        // Repeated index (RLE packet)
         if (dataOffset >= data.byteLength) break;
-
         const colorIndex = data.getUint8(dataOffset);
         dataOffset++;
-
-        // Repeat this color packetCount times
         for (let i = 0; i < packetCount && pixelIndex < totalPixels; i++) {
           applyColorFromMap(
             pixels,
@@ -401,13 +301,10 @@ function parseIndexedData(
           pixelIndex++;
         }
       } else {
-        // Raw indices (non-RLE packet)
         for (let i = 0; i < packetCount && pixelIndex < totalPixels; i++) {
           if (dataOffset >= data.byteLength) break;
-
           const colorIndex = data.getUint8(dataOffset);
           dataOffset++;
-
           applyColorFromMap(
             pixels,
             pixelIndex,
@@ -421,14 +318,11 @@ function parseIndexedData(
       }
     }
   } else {
-    // Uncompressed indexed data
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         if (dataOffset >= data.byteLength) break;
-
         const colorIndex = data.getUint8(dataOffset);
         dataOffset++;
-
         applyColorFromMap(
           pixels,
           pixelIndex,
@@ -442,10 +336,6 @@ function parseIndexedData(
     }
   }
 }
-
-/**
- * Apply a color from the color map to a pixel in the image data
- */
 function applyColorFromMap(
   pixels: Uint8ClampedArray,
   pixelIndex: number,
@@ -454,37 +344,25 @@ function applyColorFromMap(
   colorMapBytesPerEntry: number,
   colorMap: Uint8Array,
 ): void {
-  // Calculate offset into color map
   const adjustedIndex = colorIndex - colorMapOrigin;
   const colorOffset = adjustedIndex * colorMapBytesPerEntry;
-
   if (colorOffset + colorMapBytesPerEntry > colorMap.length) {
-    // Index out of bounds, use transparent black
     pixels[pixelIndex * 4 + 0] = 0;
     pixels[pixelIndex * 4 + 1] = 0;
     pixels[pixelIndex * 4 + 2] = 0;
     pixels[pixelIndex * 4 + 3] = 255;
     return;
   }
-
-  // Color map entries in TGA are stored as BGR(A)
-  // TGA format: byte[0]=B, byte[1]=G, byte[2]=R, (byte[3]=A)
   const b = colorMap[colorOffset] ?? 0;
   const g = colorMap[colorOffset + 1] ?? 0;
   const r = colorMap[colorOffset + 2] ?? 0;
   const a =
-    colorMapBytesPerEntry === 4 ? colorMap[colorOffset + 3] ?? 255 : 255;
-
-  // Store as RGBA in canvas pixel data
+    colorMapBytesPerEntry === 4 ? (colorMap[colorOffset + 3] ?? 255) : 255;
   pixels[pixelIndex * 4 + 0] = r;
   pixels[pixelIndex * 4 + 1] = g;
   pixels[pixelIndex * 4 + 2] = b;
   pixels[pixelIndex * 4 + 3] = a;
 }
-
-/**
- * Flip image vertically (TGA has inverted Y axis by default)
- */
 function flipImageVertically(
   pixels: Uint8ClampedArray,
   width: number,
@@ -492,18 +370,11 @@ function flipImageVertically(
 ): void {
   const bytesPerRow = width * 4;
   const tempRow = new Uint8ClampedArray(bytesPerRow);
-
   for (let y = 0; y < Math.floor(height / 2); y++) {
     const topOffset = y * bytesPerRow;
     const bottomOffset = (height - 1 - y) * bytesPerRow;
-
-    // Copy top row to temp
     tempRow.set(pixels.subarray(topOffset, topOffset + bytesPerRow));
-
-    // Copy bottom row to top
     pixels.copyWithin(topOffset, bottomOffset, bottomOffset + bytesPerRow);
-
-    // Copy temp to bottom
     pixels.set(tempRow, bottomOffset);
   }
 }

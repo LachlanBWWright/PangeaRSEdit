@@ -71,7 +71,7 @@ describe("Three.js exporter skeleton roundtrip", () => {
     const skeleton = await parseSkeletonRsrc(bufferFromFile(SKEL_PATH));
     const parsedResult = parseBG3D(bufferFromFile(BG3D_PATH), skeleton);
     if (parsedResult.isErr()) {
-      expect.fail(`Failed to parse Otto skeleton input: ${parsedResult.error.message}`);
+      expect.fail(`Failed to parse Otto skeleton input: ${parsedResult.error}`);
     }
     const parsed = parsedResult.value;
     expect(parsed.skeleton).toBeTruthy();

@@ -14,13 +14,14 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-        description: "Initial animation frame (passed to MakeNewShape as frameNum)",
-        codeSample: {
-          code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
-          fileName: "src/Misc/Bonus.c",
-          lineNumber: 388,
-        },
+      description:
+        "Initial animation frame (passed to MakeNewShape as frameNum)",
+      codeSample: {
+        code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
+        fileName: "src/Misc/Bonus.c",
+        lineNumber: 388,
       },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -31,13 +32,13 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-        description: "Key frame (initial animation frame passed to MakeNewShape)",
-        codeSample: {
-          code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
-          fileName: "src/Misc/Bonus.c",
-          lineNumber: 453,
-        },
+      description: "Key frame (initial animation frame passed to MakeNewShape)",
+      codeSample: {
+        code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
+        fileName: "src/Misc/Bonus.c",
+        lineNumber: 453,
       },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -58,7 +59,8 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
     },
     p1: {
       type: "Integer",
-      description: "Temporary flag (1=disappears after GAME_FPS*6 seconds, 0=permanent)",
+      description:
+        "Temporary flag (1=disappears after GAME_FPS*6 seconds, 0=permanent)",
       codeSample: {
         code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
         fileName: "src/MeAndMo/Weapon.c",
@@ -84,7 +86,8 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
     },
     p1: {
       type: "Integer",
-      description: "Temporary flag (1=disappears after GAME_FPS*6 seconds, 0=permanent)",
+      description:
+        "Temporary flag (1=disappears after GAME_FPS*6 seconds, 0=permanent)",
       codeSample: {
         code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
         fileName: "src/Misc/Bonus.c",

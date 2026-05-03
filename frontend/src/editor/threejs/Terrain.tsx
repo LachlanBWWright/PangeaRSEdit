@@ -98,7 +98,7 @@ export const TerrainGeometry = forwardRef<Mesh, {
   if (combinedImgResult.isErr()) {
     console.error(
       "Failed to combine map images:",
-      combinedImgResult.error.message,
+      combinedImgResult.error,
     );
     return null;
   }

@@ -9,17 +9,23 @@ import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 import { selectItem, updateItem } from "../../../data/selectors";
 import { ShowMightyMikeItemImages } from "./MightyMikeItemMenu";
-import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
+import {
+  loadItemImage,
+  type ItemFrameImage,
+} from "@/utils/mightyMikeShapeImageLoader";
 import { CurrentScene } from "@/data/game/gameAtoms";
 import { ResultAsync } from "neverthrow";
-import {
-  ITEM_BOX_OFFSET,
-  ITEM_BOX_SIZE,
-  ITEM_TAG_GAP,
-  ItemTypeNumber,
-} from "../shared/nodeVisuals";
+import { ItemTypeNumber } from "../shared/nodeVisuals";
 import type { HoverTagInfo } from "../shared/nodeVisuals";
 import { mapErr } from "@/utils/mapErr";
+import {
+  createHoverTag,
+  getFallbackFrameOffset,
+  MIGHTY_MIKE_BOX_SIZE,
+  toBoxPosition,
+  toDraggedItemPosition,
+  toSpritePosition,
+} from "@/editor/subviews/items/mightyMikeItemState";
 
 export const MightyMikeItem = memo(function MightyMikeItem({
   itemData,
@@ -35,13 +41,15 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   const setSelectedItem = useSetAtom(SelectedItem);
   const item = useMemo(
     () => selectItem({ Itms: itemData.Itms }, itemIdx),
-    [itemData.Itms, itemIdx]
+    [itemData.Itms, itemIdx],
   );
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
   const showItemImages = useAtomValue(ShowMightyMikeItemImages);
   const currentScene = useAtomValue(CurrentScene);
-  const [itemImageData, setItemImageData] = useState<ItemFrameImage | null>(null);
+  const [itemImageData, setItemImageData] = useState<ItemFrameImage | null>(
+    null,
+  );
 
   const handleMouseDown = useCallback(
     () => setSelectedItem(itemIdx),
@@ -49,21 +57,21 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   );
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      // Apply the sprite's frame offset to map canvas top-left back to item world position.
-      // offsetX/offsetY are the sprite hot-spot offsets from the game's FrameHeader.
-      const ox = itemImageData ? itemImageData.offsetX : -ITEM_BOX_OFFSET;
-      const oy = itemImageData ? itemImageData.offsetY : -ITEM_BOX_OFFSET;
-      updateItem(setItemData, itemIdx, {
-        x: Math.round(e.target.x() - ox),
-        z: Math.round(e.target.y() - oy),
-      });
+      const fallbackOffset = getFallbackFrameOffset();
+      const offsetX = itemImageData ? itemImageData.offsetX : fallbackOffset.x;
+      const offsetY = itemImageData ? itemImageData.offsetY : fallbackOffset.y;
+      updateItem(
+        setItemData,
+        itemIdx,
+        toDraggedItemPosition(e.target.x(), e.target.y(), offsetX, offsetY),
+      );
     },
     [itemIdx, setItemData, itemImageData],
   );
 
   const itemName = useMemo(
-    () => item ? getItemName(globals, item.type) : "",
-    [item, globals]
+    () => (item ? getItemName(globals, item.type) : ""),
+    [item, globals],
   );
 
   // Load item image when toggle is on
@@ -81,7 +89,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
       if (loadResult.isErr()) {
         console.warn(
           `Unexpected error loading image for item ${item.type}:`,
-          loadResult.error.message,
+          loadResult.error,
         );
         setItemImageData(null);
         return;
@@ -91,7 +99,10 @@ export const MightyMikeItem = memo(function MightyMikeItem({
       if (result.isOk()) {
         setItemImageData(result.value);
       } else {
-        console.warn(`Failed to load image for item ${item.type}:`, result.error.message);
+        console.warn(
+          `Failed to load image for item ${item.type}:`,
+          result.error,
+        );
         setItemImageData(null);
       }
     };
@@ -106,11 +117,17 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   // the same way the game does: drawX = item.x + offsetX, drawY = item.z + offsetY.
   if (showItemImages && itemImageData) {
     const { canvas, offsetX, offsetY } = itemImageData;
-    const drawX = item.x + offsetX;
-    const drawY = item.z + offsetY;
+    const spritePosition = toSpritePosition(item.x, item.z, offsetX, offsetY);
     const handleMouseOver = () => {
       setHovering(true);
-      onHoverChange({ x: drawX + canvas.width + ITEM_TAG_GAP, y: drawY, text: itemName, fill: "red", textColor: "black" });
+      onHoverChange(
+        createHoverTag(
+          spritePosition.x,
+          spritePosition.y,
+          canvas.width,
+          itemName,
+        ),
+      );
     };
     const handleMouseLeave = () => {
       setHovering(false);
@@ -119,8 +136,8 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     return (
       <KonvaImage
         image={canvas}
-        x={drawX}
-        y={drawY}
+        x={spritePosition.x}
+        y={spritePosition.y}
         width={canvas.width}
         height={canvas.height}
         draggable
@@ -134,11 +151,17 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   }
 
   // Default: show box like original Item component
-  const boxX = item.x - ITEM_BOX_OFFSET;
-  const boxY = item.z - ITEM_BOX_OFFSET;
+  const boxPosition = toBoxPosition(item.x, item.z);
   const handleMouseOver = () => {
     setHovering(true);
-    onHoverChange({ x: boxX + ITEM_BOX_SIZE + ITEM_TAG_GAP, y: boxY, text: itemName, fill: "red", textColor: "black" });
+    onHoverChange(
+      createHoverTag(
+        boxPosition.x,
+        boxPosition.y,
+        MIGHTY_MIKE_BOX_SIZE,
+        itemName,
+      ),
+    );
   };
   const handleMouseLeave = () => {
     setHovering(false);
@@ -147,10 +170,10 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   return (
     <>
       <Rect
-        x={boxX}
-        y={boxY}
-        width={ITEM_BOX_SIZE}
-        height={ITEM_BOX_SIZE}
+        x={boxPosition.x}
+        y={boxPosition.y}
+        width={MIGHTY_MIKE_BOX_SIZE}
+        height={MIGHTY_MIKE_BOX_SIZE}
         stroke="red"
         fill="red"
         draggable
@@ -164,8 +187,8 @@ export const MightyMikeItem = memo(function MightyMikeItem({
 
       {!hovering && (
         <ItemTypeNumber
-         x={boxX}
-         y={boxY}
+          x={boxPosition.x}
+          y={boxPosition.y}
           value={item.type.toString()}
           fill="black"
         />
@@ -173,4 +196,3 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     </>
   );
 });
-

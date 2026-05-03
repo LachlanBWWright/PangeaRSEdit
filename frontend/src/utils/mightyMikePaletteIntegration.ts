@@ -65,14 +65,14 @@ export function setMightyMikeTileTransparency(colorIndices: number[]): void {
 export function renderTileWithDynamicPalette(
   tileData: Uint8Array,
   tileSize = 32
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   const canvas = document.createElement("canvas");
   canvas.width = tileSize;
   canvas.height = tileSize;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) {
-    return err(new Error("Failed to get canvas 2D context"));
+    return err("Failed to get canvas 2D context");
   }
 
   const imageData = ctx.createImageData(tileSize, tileSize);
@@ -105,7 +105,7 @@ export function rerenderAllTilesWithCurrentPalette(
   tileDataBuffer: Uint8Array,
   numTiles: number,
   tileSize = 32
-): Result<HTMLCanvasElement[], Error> {
+): Result<HTMLCanvasElement[], string> {
   const canvases: HTMLCanvasElement[] = [];
   const bytesPerTile = tileSize * tileSize;
 
@@ -117,7 +117,7 @@ export function rerenderAllTilesWithCurrentPalette(
     );
     const canvasResult = renderTileWithDynamicPalette(tileSlice, tileSize);
     if (canvasResult.isErr()) {
-      return err(new Error(`Failed to render tile ${tileIndex}: ${canvasResult.error.message}`));
+      return err("Failed to render tile ${tileIndex}: ${canvasResult.error}");
     }
     canvases.push(canvasResult.value);
   }

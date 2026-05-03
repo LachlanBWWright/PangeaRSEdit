@@ -12,18 +12,35 @@
  */
 
 import { Layer, Image, Rect } from "react-konva";
-import { Fragment, memo, useMemo } from "react";
+import { Fragment, memo, useEffect, useMemo } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import {
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/LevelTypes";
-import {
-  TILENUM_MASK,
   buildAllBugdomSupertiles,
+  buildSupertileFromTiles,
 } from "./BugdomTileRenderer.utils";
+import {
+  getChangedSupertiles,
+  getExpectedLayrLength,
+  getMaxTileIndex,
+  isLikelyInvalidBugdomLayrData,
+} from "@/editor/subviews/bugdom/bugdomTileCacheState";
+
+interface BugdomSupertileCacheEntry {
+  readonly layerSnapshot: number[];
+  readonly canvases: HTMLCanvasElement[];
+  readonly mapWidth: number;
+  readonly mapHeight: number;
+  readonly tilesPerSupertile: number;
+  readonly tileSize: number;
+  readonly xlatTable: { idx: number }[] | undefined;
+  readonly tileImages: HTMLCanvasElement[];
+  readonly layerKey: 1000 | 1001;
+}
+
+let bugdomSupertileCache: BugdomSupertileCacheEntry | null = null;
 
 /**
  * Main Bugdom tiles component for rendering in Konva
@@ -52,11 +69,16 @@ export const BugdomSupertiles = memo(
     const supertilePixelSize = globals.SUPERTILE_TEXMAP_SIZE; // 160 for Bugdom (5 * 32)
 
     const supertilesWide = Math.ceil(header.mapWidth / tilesPerSupertile);
-
+    const supertilesDeep = Math.ceil(header.mapHeight / tilesPerSupertile);
     // Build all supertile images from individual tiles
-    const supertileImages = useMemo(() => {
+    // The cache update logic is intentionally hand-rolled so we can reuse
+    // unchanged supertile canvases and redraw only the tiles that changed.
+    const { supertileImages, nextCache } = useMemo(() => {
       if (!terrainData.Layr?.[layerKey]?.obj || tileImages.length === 0) {
-        return [];
+        return {
+          supertileImages: [],
+          nextCache: bugdomSupertileCache,
+        };
       }
 
       const layerData = terrainData.Layr[layerKey].obj;
@@ -64,12 +86,7 @@ export const BugdomSupertiles = memo(
       // Detect invalid/test data by checking if Layr values are sequential
       // Real Bugdom data has tile indices (typically < numTiles) with flip/rotate bits
       // Invalid test data often has sequential values 0, 1, 2, 3...
-      const isLikelyInvalidData =
-        layerData.length > 100 &&
-        layerData[0] === 0 &&
-        layerData[1] === 1 &&
-        layerData[2] === 2 &&
-        layerData[3] === 3;
+      const isLikelyInvalidData = isLikelyInvalidBugdomLayrData(layerData);
 
       if (isLikelyInvalidData) {
         console.error(
@@ -80,9 +97,7 @@ export const BugdomSupertiles = memo(
       }
 
       // Check if Xlat table is too small for the tile indices in Layr
-      const maxTileIndex = Math.max(
-        ...layerData.slice(0, 100).map((v) => v & TILENUM_MASK),
-      );
+      const maxTileIndex = getMaxTileIndex(layerData);
       if (xlatTable && maxTileIndex >= xlatTable.length) {
         console.warn(
           `BugdomTileRenderer: Layr contains tile indices (max: ${maxTileIndex}) larger than Xlat table (${xlatTable.length} entries).\n` +
@@ -91,7 +106,10 @@ export const BugdomSupertiles = memo(
       }
 
       // Validate that Layr has correct number of entries
-      const expectedLayrLength = header.mapWidth * header.mapHeight;
+      const expectedLayrLength = getExpectedLayrLength(
+        header.mapWidth,
+        header.mapHeight,
+      );
       if (layerData.length !== expectedLayrLength) {
         console.error(
           `BugdomTileRenderer: Layr length mismatch! ` +
@@ -101,14 +119,77 @@ export const BugdomSupertiles = memo(
         );
       }
 
-      return buildAllBugdomSupertiles(
-        headerData,
-        terrainData.Layr[layerKey].obj,
-        xlatTable,
-        tileImages,
+      const cache = bugdomSupertileCache;
+      const needsFullRebuild =
+        cache === null ||
+        cache.mapWidth !== header.mapWidth ||
+        cache.mapHeight !== header.mapHeight ||
+        cache.tilesPerSupertile !== tilesPerSupertile ||
+        cache.tileSize !== tileSize ||
+        cache.layerKey !== layerKey ||
+        cache.tileImages !== tileImages ||
+        cache.xlatTable !== xlatTable ||
+        cache.layerSnapshot.length !== layerData.length ||
+        cache.canvases.length !== supertilesWide * supertilesDeep;
+
+      if (needsFullRebuild) {
+        const nextCanvases = buildAllBugdomSupertiles(
+          headerData,
+          terrainData.Layr[layerKey].obj,
+          xlatTable,
+          tileImages,
+          tilesPerSupertile,
+          tileSize,
+        );
+        const nextCache: BugdomSupertileCacheEntry = {
+          layerSnapshot: layerData.slice(),
+          canvases: nextCanvases,
+          mapWidth: header.mapWidth,
+          mapHeight: header.mapHeight,
+          tilesPerSupertile,
+          tileSize,
+          xlatTable,
+          tileImages,
+          layerKey,
+        };
+        return { supertileImages: nextCanvases, nextCache };
+      }
+
+      const changedSupertiles = getChangedSupertiles(
+        cache.layerSnapshot,
+        layerData,
+        header.mapWidth,
         tilesPerSupertile,
-        tileSize,
       );
+
+      if (changedSupertiles.size === 0) {
+        return { supertileImages: cache.canvases, nextCache: cache };
+      }
+
+      const nextCanvases = cache.canvases.slice();
+      for (const stIndex of changedSupertiles) {
+        const stRow = Math.floor(stIndex / supertilesWide);
+        const stCol = stIndex % supertilesWide;
+        nextCanvases[stIndex] = buildSupertileFromTiles(
+          stRow * tilesPerSupertile,
+          stCol * tilesPerSupertile,
+          header.mapWidth,
+          header.mapHeight,
+          layerData,
+          xlatTable,
+          tileImages,
+          tilesPerSupertile,
+          tileSize,
+          stIndex === 0,
+        );
+      }
+
+      const nextCache: BugdomSupertileCacheEntry = {
+        ...cache,
+        layerSnapshot: layerData.slice(),
+        canvases: nextCanvases,
+      };
+      return { supertileImages: nextCanvases, nextCache };
     }, [
       headerData,
       terrainData.Layr,
@@ -116,10 +197,16 @@ export const BugdomSupertiles = memo(
       xlatTable,
       tilesPerSupertile,
       tileSize,
+      layerKey,
       header.mapWidth,
       header.mapHeight,
-      layerKey,
-      ]);
+      supertilesDeep,
+      supertilesWide,
+    ]);
+
+    useEffect(() => {
+      bugdomSupertileCache = nextCache;
+    }, [nextCache]);
 
     return (
       <Layer>

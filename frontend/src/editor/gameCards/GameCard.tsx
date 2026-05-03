@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { progressToast } from "@/toasts/progressToast";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
@@ -15,31 +16,15 @@ import {
   updateStagedFiles,
 } from "./uploadStagingUtils";
 import { cn } from "@/lib/utils";
+import {
+  formatTypeList,
+  getGameCardModelPath,
+  getLevelFileType,
+  getSupportedUploadTypes,
+  getTextureFileType,
+} from "./gameCardDisplayState";
 
 const GAME_CARD_PREVIEW_HEIGHT_CLASS = "h-60";
-
-const getModelPath = (gameType: Game): string | undefined => {
-  switch (gameType) {
-    case Game.OTTO_MATIC:
-      return "/glbModels/OttoMatic.glb";
-    case Game.BUGDOM:
-      return "/glbModels/Bugdom1.glb";
-    case Game.BUGDOM_2:
-      return "/glbModels/Bugdom2.glb";
-    case Game.CRO_MAG:
-      return "/glbModels/CroMag.glb";
-    case Game.NANOSAUR:
-      return "/glbModels/Nanosaur1.glb";
-    case Game.NANOSAUR_2:
-      return "/glbModels/Nanosaur2.glb";
-    case Game.BILLY_FRONTIER:
-      return "/glbModels/BillyFrontier.glb";
-    case Game.MIGHTY_MIKE:
-      return undefined;
-    default:
-      return "/glbModels/OttoMatic.glb";
-  }
-};
 
 export function GameCard({
   title,
@@ -59,7 +44,7 @@ export function GameCard({
   handleParseLevelDataFile: (
     file: Blob,
     gameType: GlobalsInterface,
-  ) => Promise<Result<unknown, Error>>;
+  ) => Promise<Result<unknown, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
@@ -67,7 +52,7 @@ export function GameCard({
   setTunnelFileName: (name: string) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
 }) {
-  const modelPath = getModelPath(globals.GAME_TYPE);
+  const modelPath = getGameCardModelPath(globals.GAME_TYPE);
   const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
   const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
   const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
@@ -79,13 +64,12 @@ export function GameCard({
   const stagedLevelRef = useRef<File | null>(null);
   const stagedTextureRef = useRef<File | null>(null);
 
-  const levelFileType = isMightyMike
-    ? ".map"
-    : isNanosaur1
-      ? ".ter"
-      : ".ter.rsrc";
-  const textureFileType =
-    isMightyMike || isBugdom1 ? null : isNanosaur1 ? ".trt" : ".ter";
+  const levelFileType = getLevelFileType(isMightyMike, globals.DATA_TYPE);
+  const textureFileType = getTextureFileType(
+    isMightyMike,
+    isBugdom1,
+    isNanosaur1,
+  );
 
   const accepts = useMemo(() => {
     return getUploadAcceptTypes({
@@ -102,16 +86,11 @@ export function GameCard({
     stagedLevelFile,
     stagedTextureFile,
   ]);
-  const allTypes = [
+  const allTypes = getSupportedUploadTypes(
     levelFileType,
     textureFileType,
-    isBugdom2 ? ".tun" : null,
-  ].filter((t): t is string => t !== null);
-
-  const formatTypeList = (types: string[]) => {
-    if (types.length <= 1) return types[0] ?? "";
-    return types.slice(0, -1).join(", ") + " or " + types[types.length - 1];
-  };
+    isBugdom2,
+  );
 
   const stagedBadge = (name: string, kind: "level" | "texture") => (
     <span className="inline-flex items-center gap-0.5">
@@ -148,27 +127,69 @@ export function GameCard({
   };
 
   const loadStagedLevel = async (levelFile: File, textureFile: File | null) => {
-    const toastId = toast.loading("Loading level files...");
-    setMapImages([]);
+    const toastId = "level-load-progress";
+    progressToast.start({
+      id: toastId,
+      title: "Loading level files...",
+      description: levelFile.name,
+      current: 0,
+      completed: textureFile ? 4 : 2,
+    });
     setMapFile(levelFile);
+    progressToast.update({
+      id: toastId,
+      title: "Parsing level data...",
+      description: levelFile.name,
+      current: 1,
+      completed: textureFile ? 4 : 2,
+    });
     const parseResult = await handleParseLevelDataFile(levelFile, globals);
     if (parseResult.isErr()) {
-      toast.dismiss(toastId);
-      toast.error("Failed to parse level data", {
-        description: parseResult.error.message,
+      progressToast.fail({
+        id: toastId,
+        title: "Failed to parse level data",
+        description: parseResult.error,
       });
       return;
     }
     if (textureFile) {
+      progressToast.update({
+        id: toastId,
+        title: "Decoding terrain textures...",
+        description: textureFile.name,
+        current: 2,
+        completed: 4,
+      });
       const buffer = await textureFile.arrayBuffer();
       const mapImagesResult = await loadMapImages(
         new DataView(buffer),
         globals,
+        ({ completed, total }) => {
+          if (total <= 0) {
+            return;
+          }
+
+          const percent = Math.floor((completed / total) * 100);
+          progressToast.update({
+            id: toastId,
+            title: "Decoding terrain textures...",
+            description: `${completed}/${total} supertiles (${percent}%)`,
+            current: 2 + completed / total,
+            completed: 4,
+          });
+        },
       );
       if (mapImagesResult.isErr()) {
-        toast.dismiss(toastId);
-        toast.error("Failed to load textures", {
-          description: mapImagesResult.error.message,
+        progressToast.fail({
+          id: toastId,
+          title: "Failed to load textures",
+          description: mapImagesResult.error,
+        });
+        console.error("[terrain] staged texture decode failed", {
+          gameName: globals.GAME_NAME,
+          levelFile: levelFile.name,
+          textureFile: textureFile.name,
+          error: mapImagesResult.error,
         });
         return;
       }
@@ -176,8 +197,10 @@ export function GameCard({
       setMapImages(mapImagesResult.value);
     }
     clearStaged();
-    toast.dismiss(toastId);
-    toast.success("Level loaded");
+    progressToast.complete({
+      id: toastId,
+      title: "Level loaded",
+    });
   };
 
   const handleFile = async (file: File) => {
@@ -191,7 +214,7 @@ export function GameCard({
       const result = parseTunnelFile(await file.arrayBuffer());
       if (result.isErr()) {
         toast.error("Failed to parse tunnel file", {
-          description: result.error.message,
+          description: result.error,
         });
         return;
       }
@@ -287,7 +310,7 @@ export function GameCard({
   return (
     <Card
       className={cn(
-        "flex flex-col min-h-[500px] h-full bg-gray-800 border-gray-700 text-white",
+        "flex flex-col min-h-125 h-full bg-gray-800 border-gray-700 text-white",
       )}
     >
       <CardContent className="flex h-full min-h-0 flex-col gap-2 p-3">

@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PangeaRSEdit.Api", "PangeaRSEdit.Api\PangeaRSEdit.Api.csproj", "{4B3218C7-D55F-4BD0-A495-6CB264321726}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PangeaRSEdit.Application", "PangeaRSEdit.Application\PangeaRSEdit.Application.csproj", "{2969A3E4-1059-4084-9C15-6DBD0889D6D3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PangeaRSEdit.Domain", "PangeaRSEdit.Domain\PangeaRSEdit.Domain.csproj", "{15F451B7-6CBC-4304-85CD-5A7E5499AEFD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PangeaRSEdit.Infrastructure", "PangeaRSEdit.Infrastructure\PangeaRSEdit.Infrastructure.csproj", "{2DE2B096-E67A-45E3-B743-C88D65BBF5FB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PangeaRSEdit.Tests", "PangeaRSEdit.Tests\PangeaRSEdit.Tests.csproj", "{138925C2-8E86-4F8A-8E5C-D531AAE1421B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4B3218C7-D55F-4BD0-A495-6CB264321726}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B3218C7-D55F-4BD0-A495-6CB264321726}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B3218C7-D55F-4BD0-A495-6CB264321726}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B3218C7-D55F-4BD0-A495-6CB264321726}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2969A3E4-1059-4084-9C15-6DBD0889D6D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2969A3E4-1059-4084-9C15-6DBD0889D6D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2969A3E4-1059-4084-9C15-6DBD0889D6D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2969A3E4-1059-4084-9C15-6DBD0889D6D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15F451B7-6CBC-4304-85CD-5A7E5499AEFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15F451B7-6CBC-4304-85CD-5A7E5499AEFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15F451B7-6CBC-4304-85CD-5A7E5499AEFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15F451B7-6CBC-4304-85CD-5A7E5499AEFD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2DE2B096-E67A-45E3-B743-C88D65BBF5FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2DE2B096-E67A-45E3-B743-C88D65BBF5FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2DE2B096-E67A-45E3-B743-C88D65BBF5FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2DE2B096-E67A-45E3-B743-C88D65BBF5FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{138925C2-8E86-4F8A-8E5C-D531AAE1421B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{138925C2-8E86-4F8A-8E5C-D531AAE1421B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{138925C2-8E86-4F8A-8E5C-D531AAE1421B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{138925C2-8E86-4F8A-8E5C-D531AAE1421B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

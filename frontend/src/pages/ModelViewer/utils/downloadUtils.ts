@@ -15,29 +15,32 @@ import { DEFAULT_BG3D_EXPORT_TARGET, type BG3DExportTarget } from "../../../mode
 import { getGlbToBg3dWorkerResponse } from "./bg3dGltfWorkerResponses";
 import type { Texture } from "../types";
 import { ResultAsync, err, ok, type Result } from "neverthrow";
+import { arrayBufferSchema, stringSchema, uint8ArraySchema } from "../../../schemas/common";
 
 
 async function loadGlbBytes(
   gltfSource: string | ArrayBuffer,
-): Promise<Result<ArrayBuffer, Error>> {
-  if (gltfSource instanceof ArrayBuffer) {
-    return ok(gltfSource);
+): Promise<Result<ArrayBuffer, string>> {
+  const arrayBufferResult = arrayBufferSchema.safeParse(gltfSource);
+  if (arrayBufferResult.success) {
+    return ok(arrayBufferResult.data);
+  }
+
+  const stringResult = stringSchema.safeParse(gltfSource);
+  if (!stringResult.success) {
+    return err("Invalid gltfSource type: expected string or ArrayBuffer");
   }
 
   const responseResult = await ResultAsync.fromPromise(
-    fetch(gltfSource),
+    fetch(stringResult.data),
     mapErr,
   );
   if (responseResult.isErr()) {
-    return err(
-      responseResult.error instanceof Error
-        ? responseResult.error
-        : new Error(String(responseResult.error)),
-    );
+    return err(responseResult.error);
   }
 
   if (!responseResult.value.ok) {
-    return err(new Error(`Failed to fetch GLB data: ${responseResult.value.status}`));
+    return err(`Failed to fetch GLB data: ${responseResult.value.status}`);
   }
 
   const bytesResult = await ResultAsync.fromPromise(
@@ -45,11 +48,7 @@ async function loadGlbBytes(
     mapErr,
   );
   if (bytesResult.isErr()) {
-    return err(
-      bytesResult.error instanceof Error
-        ? bytesResult.error
-        : new Error(String(bytesResult.error)),
-    );
+    return err(bytesResult.error);
   }
 
   return ok(bytesResult.value);
@@ -57,7 +56,7 @@ async function loadGlbBytes(
 
 async function glbUrlToBg3dResponse(
   gltfSource: string | ArrayBuffer,
-): Promise<Result<BG3DGltfWorkerResponse, Error>> {
+): Promise<Result<BG3DGltfWorkerResponse, string>> {
   const glbBytesResult = await loadGlbBytes(gltfSource);
   if (glbBytesResult.isErr()) {
     return err(glbBytesResult.error);
@@ -83,11 +82,7 @@ async function glbUrlToBg3dResponse(
     mapErr,
   );
   if (workerResult.isErr()) {
-    return err(
-      workerResult.error instanceof Error
-        ? workerResult.error
-        : new Error(String(workerResult.error)),
-    );
+    return err(workerResult.error);
   }
 
   return ok(workerResult.value);
@@ -104,11 +99,17 @@ export interface ThreeDMFDownloadArtifacts {
 }
 
 function toBlobPart(data: ArrayBuffer | Uint8Array): ArrayBuffer {
-  if (data instanceof ArrayBuffer) {
-    return data;
+  const parseResult = arrayBufferSchema.safeParse(data);
+  if (parseResult.success) {
+    return parseResult.data;
   }
-  const copy = new ArrayBuffer(data.byteLength);
-  new Uint8Array(copy).set(data);
+  const uint8Result = uint8ArraySchema.safeParse(data);
+  if (!uint8Result.success) {
+    return new ArrayBuffer(0); // Should never reach with valid input
+  }
+  const uint8Data = uint8Result.data;
+  const copy = new ArrayBuffer(uint8Data.byteLength);
+  new Uint8Array(copy).set(uint8Data);
   return copy;
 }
 
@@ -116,7 +117,7 @@ export async function getBG3DDownloadArtifacts(
   gltfSource: string | ArrayBuffer,
   modelFileName = "Model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<BG3DDownloadArtifacts, Error>> {
+): Promise<Result<BG3DDownloadArtifacts, string>> {
   const result = await glbUrlToBg3dResponse(gltfSource);
   if (result.isErr()) {
     return err(result.error);
@@ -135,9 +136,7 @@ export async function getBG3DDownloadArtifacts(
     ? ok(workerResponse.parsed)
     : parseBG3D(workerResponse.result);
   if (parsedResult.isErr()) {
-    return err(
-      new Error(`Failed to parse converted BG3D for export: ${parsedResult.error.message}`),
-    );
+    return err(`Failed to parse converted BG3D for export: ${parsedResult.error}`);
   }
   const parsed = parsedResult.value;
 
@@ -171,7 +170,7 @@ export async function get3DMFDownloadArtifacts(
   gltfSource: string | ArrayBuffer,
   modelFileName = "model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<ThreeDMFDownloadArtifacts, Error>> {
+): Promise<Result<ThreeDMFDownloadArtifacts, string>> {
   const result = await glbUrlToBg3dResponse(gltfSource);
   if (result.isErr()) {
     return err(result.error);
@@ -191,23 +190,19 @@ export async function get3DMFDownloadArtifacts(
     : parseBG3D(workerResponse.result);
   if (parsedBg3dResult.isErr()) {
     return err(
-      new Error(
-        `Failed to parse GLB-derived BG3D: ${parsedBg3dResult.error.message}`,
-      ),
+      `Failed to parse GLB-derived BG3D: ${parsedBg3dResult.error}`,
     );
   }
   const parsedBg3d = parsedBg3dResult.value;
 
   const metaResult = bg3dParseResultToMetaFile(parsedBg3d);
   if (metaResult.isErr()) {
-    return err(
-      new Error(`Failed to convert BG3D export data to 3DMF: ${metaResult.error.message}`),
-    );
+    return err(`Failed to convert BG3D export data to 3DMF: ${metaResult.error}`);
   }
 
   const writeResult = write3DMFFromMetaFile(metaResult.value);
   if (writeResult.isErr()) {
-    return err(new Error(`Failed to serialize 3DMF export: ${writeResult.error.message}`));
+    return err("Failed to serialize 3DMF export: ${writeResult.error}");
   }
 
   let skeletonBytes: ArrayBuffer | undefined;
@@ -265,7 +260,7 @@ export async function downloadBG3DModel(
   modelFileName = "model",
   skeletonFileName = "model.skeleton",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<void, Error>> {
+): Promise<Result<void, string>> {
   const downloadBlob = (data: ArrayBuffer | Uint8Array, fileName: string) => {
     const blob = new Blob([toBlobPart(data)], {
       type: "application/octet-stream",
@@ -321,7 +316,7 @@ export async function download3DMFModel(
   gltfSource: string | ArrayBuffer,
   fileName = "model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
-): Promise<Result<void, Error>> {
+): Promise<Result<void, string>> {
   const bytesResult = await get3DMFDownloadArtifacts(
     gltfSource,
     fileName,

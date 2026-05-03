@@ -24,9 +24,7 @@ declare global {
         argTypes: string[],
         args: unknown[],
       ) => unknown;
-      FS?: {
-        writeFile: (path: string, data: Uint8Array) => void;
-      };
+      FS?: { writeFile: (path: string, data: Uint8Array) => void };
       [key: string]: unknown;
     };
 

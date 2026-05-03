@@ -1,20 +1,9 @@
-/**
- * Common Level Data Types
- *
- * These are generic level data structures shared across ALL Pangea games.
- * Game-specific variations should be created in separate files.
- */
 
 import { FenceType } from "../../data/fences/ottoFenceType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
 
-// ============================================================================
 // HEADER TYPES
-// ============================================================================
 
-/**
- * Base header interface - fields common to ALL games
- */
 export interface BaseHeader {
   version: number;
   numItems: number;
@@ -27,9 +16,6 @@ export interface BaseHeader {
   numFences: number;
 }
 
-/**
- * Standard header - used by Otto Matic, Bugdom 2, Nanosaur 2, Billy Frontier
- */
 export interface StandardHeader extends BaseHeader {
   numTilePages: number;
   numTiles: number;
@@ -38,9 +24,6 @@ export interface StandardHeader extends BaseHeader {
   numCheckpoints: number;
 }
 
-/**
- * Cro-Mag header - uses numPaths instead of numWaterPatches
- */
 export interface CroMagHeader extends BaseHeader {
   numTilePages: number;
   numTiles: number;
@@ -49,22 +32,14 @@ export interface CroMagHeader extends BaseHeader {
   numCheckpoints: number;
 }
 
-// ============================================================================
 // TILE AND TERRAIN TYPES
-// ============================================================================
 
-/**
- * Tile attribute - flags and parameters for each tile
- */
 export interface TileAttribute {
   flags: number;
   p0: number;
   p1: number;
 }
 
-/**
- * Extended tile attribute (Bugdom 1, Nanosaur 1 style)
- */
 export interface ExtendedTileAttribute {
   bits: number;
   parm0: number;
@@ -76,29 +51,18 @@ export interface ExtendedTileAttribute {
   p1: number;
 }
 
-/**
- * Supertile grid entry with isEmpty flag
- */
 export interface SupertileGridEntry {
   padByte?: string;
   isEmpty: boolean;
   superTileId: number;
 }
 
-/**
- * Simplified supertile grid entry (-1 = empty)
- */
 export interface SimplifiedSupertileGridEntry {
   superTileId: number;
 }
 
-// ============================================================================
 // ITEM TYPES
-// ============================================================================
 
-/**
- * Terrain item - generic type parameter for item type enum
- */
 export interface TerrainItem<TItemType = number> {
   x: number;
   z: number;
@@ -110,13 +74,8 @@ export interface TerrainItem<TItemType = number> {
   p3: number;
 }
 
-// ============================================================================
 // FENCE TYPES
-// ============================================================================
 
-/**
- * Fence definition
- */
 export interface Fence {
   fenceType: FenceType;
   numNubs: number;
@@ -127,34 +86,20 @@ export interface Fence {
   bbRight: number;
 }
 
-/**
- * Fence nub coordinates
- */
 export type FenceNub = [x: number, y: number];
 
-// ============================================================================
 // SPLINE TYPES
-// ============================================================================
 
-/**
- * Spline nub
- */
 export interface SplineNub {
   x: number;
   z: number;
 }
 
-/**
- * Spline point
- */
 export interface SplinePoint {
   x: number;
   z: number;
 }
 
-/**
- * Spline item - generic type parameter for item type enum
- */
 export interface SplineItem<TSplineItemType = number> {
   flags: number;
   p0: number;
@@ -165,9 +110,6 @@ export interface SplineItem<TSplineItemType = number> {
   type: TSplineItemType;
 }
 
-/**
- * Spline definition
- */
 export interface Spline {
   bbBottom: number;
   bbLeft: number;
@@ -178,15 +120,10 @@ export interface Spline {
   numPoints: number;
 }
 
-// ============================================================================
 // WATER/LIQUID TYPES
-// ============================================================================
 
 export const LIQUID_NUBS_COUNT = 100;
 
-/**
- * Liquid/water body
- */
 export interface Liquid {
   bBoxBottom: number;
   bBoxLeft: number;
@@ -202,13 +139,8 @@ export interface Liquid {
   nubs: [number, number][];
 }
 
-// ============================================================================
 // CHECKPOINT TYPE
-// ============================================================================
 
-/**
- * Checkpoint/line marker
- */
 export interface Checkpoint {
   unused: number;
   infoBits: number;
@@ -218,13 +150,8 @@ export interface Checkpoint {
   z2: number;
 }
 
-// ============================================================================
 // DATA SECTION INTERFACES (Resource format wrappers)
-// ============================================================================
 
-/**
- * Level metadata from resource fork
- */
 export interface LevelMetadata {
   file_attributes: number;
   junk1: number;
@@ -235,9 +162,6 @@ export interface LevelMetadata {
   [key: string]: unknown;
 }
 
-/**
- * Header data section wrapper
- */
 export interface HeaderData<THeader = StandardHeader> {
   Hedr: {
     1000: {
@@ -248,9 +172,6 @@ export interface HeaderData<THeader = StandardHeader> {
   };
 }
 
-/**
- * Fence data section
- */
 export interface FenceData {
   Fenc: {
     1000: {
@@ -269,9 +190,6 @@ export interface FenceData {
   >;
 }
 
-/**
- * Spline data section
- */
 export interface SplineData<TSplineItem = SplineItem> {
   SpNb: Record<
     number,
@@ -306,9 +224,6 @@ export interface SplineData<TSplineItem = SplineItem> {
   };
 }
 
-/**
- * Liquid/Water data section
- */
 export interface LiquidData {
   Liqd: {
     1000: {
@@ -319,9 +234,6 @@ export interface LiquidData {
   };
 }
 
-/**
- * Item data section
- */
 export interface ItemData<TItem = TerrainItem> {
   Itms: {
     1000: {
@@ -332,9 +244,6 @@ export interface ItemData<TItem = TerrainItem> {
   };
 }
 
-/**
- * Terrain data section - tiles, coordinates, textures
- */
 export interface TerrainData<
   TTileAttribute = TileAttribute,
   TSupertileGrid = SupertileGridEntry | SimplifiedSupertileGridEntry,
@@ -415,17 +324,11 @@ export interface TerrainData<
     }
   >;
   _metadata: LevelMetadata;
-  /** Game-specific tileset data stored dynamically (e.g. MightyMikeTileSet). */
-  tileset?: unknown;
+    tileset?: unknown;
 }
 
-// ============================================================================
 // COMPLETE LEVEL DATA INTERFACE
-// ============================================================================
 
-/**
- * Complete level data structure - combines all sections
- */
 export interface LevelData<
   THeader = StandardHeader,
   TItem = TerrainItem,
@@ -439,22 +342,14 @@ export interface LevelData<
     Partial<ItemData<TItem>>,
     TerrainData<TTileAttribute, TSupertileGrid> {}
 
-// ============================================================================
 // TYPE GUARDS
-// ============================================================================
 
-/**
- * Check if supertile grid entry has isEmpty field
- */
 export function hasIsEmptyField(
   grid: SupertileGridEntry | SimplifiedSupertileGridEntry
 ): grid is SupertileGridEntry {
   return "isEmpty" in grid;
 }
 
-/**
- * Check if supertile is empty based on entry type
- */
 export function isSupertileEmpty(
   grid: SupertileGridEntry | SimplifiedSupertileGridEntry
 ): boolean {
@@ -464,11 +359,6 @@ export function isSupertileEmpty(
   return grid.superTileId === -1;
 }
 
-/**
- * Create the correct blank supertile entry for the given game.
- * Games using SimplifiedSupertileGridEntry (e.g. Bugdom 2) have EMPTY_TILE_IDX = -1.
- * All other games use SupertileGridEntry with isEmpty = true.
- */
 export function createBlankSupertileEntry(
   emptyTileIdx: number,
 ): SupertileGridEntry | SimplifiedSupertileGridEntry {
@@ -478,9 +368,6 @@ export function createBlankSupertileEntry(
   return { isEmpty: true, superTileId: 0 };
 }
 
-/**
- * Check if header has numTilePages/numTiles (full format)
- */
 export function hasFullHeader(
   header: StandardHeader | BaseHeader
 ): header is StandardHeader {

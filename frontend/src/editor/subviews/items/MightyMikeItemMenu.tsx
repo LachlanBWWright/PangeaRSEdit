@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
-import { getItemTypes } from "@/data/items/getItemTypes";
 import { Image as ImageIcon, ImageOff } from "lucide-react";
 import { parseU8 } from "@/utils/numberParsers";
 import { atom } from "jotai";
@@ -30,10 +29,21 @@ import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
 import { ParamTooltip } from "./ParamTooltip";
 import { getParamTooltip } from "./getParamTooltip";
 import { CurrentScene, MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
-import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
+import {
+  loadItemImage,
+  type ItemFrameImage,
+} from "@/utils/mightyMikeShapeImageLoader";
 import { ResultAsync } from "neverthrow";
 import { TileCanvas } from "../shared/TileCanvas";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import {
+  deleteSelectedMightyMikeItem,
+  getMightyMikeItemValues,
+  getSelectedMightyMikeItem,
+  updateSelectedMightyMikeItemParam,
+  updateSelectedMightyMikeItemPosition,
+  updateSelectedMightyMikeItemType,
+} from "@/editor/subviews/items/mightyMikeItemMenuState";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -53,17 +63,9 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const [currentScene, setCurrentScene] = useAtom(CurrentScene);
   const [previewImage, setPreviewImage] = useState<ItemFrameImage | null>(null);
 
-  const itemValues = useMemo(() => {
-    const result = getItemTypes(globals);
-    return result.isOk()
-      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
-      : [];
-  }, [globals]);
+  const itemValues = useMemo(() => getMightyMikeItemValues(globals), [globals]);
 
-  const selectedItemData =
-    itemData.Itms !== undefined && selectedItem !== undefined
-      ? itemData.Itms?.[1000]?.obj?.[selectedItem]
-      : null;
+  const selectedItemData = getSelectedMightyMikeItem(itemData, selectedItem);
   const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
 
   useEffect(() => {
@@ -141,7 +143,9 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => window.open("#/sprite-viewer", "_blank", "noopener,noreferrer")}
+          onClick={() =>
+            window.open("#/sprite-viewer", "_blank", "noopener,noreferrer")
+          }
         >
           Sprite Viewer
         </Button>
@@ -167,11 +171,11 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
                 setItemData((itemData) => {
-                  if (selectedItem === undefined) return;
-                  const item = itemData.Itms[1000]?.obj?.[selectedItem];
-                  if (item) {
-                    item.type = newItemType;
-                  }
+                  updateSelectedMightyMikeItemType(
+                    itemData,
+                    selectedItem,
+                    newItemType,
+                  );
                 });
               }}
             >
@@ -203,9 +207,12 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   const v = parseInt(e.target.value);
                   if (!isNaN(v)) {
                     setItemData((itemData) => {
-                      if (selectedItem === undefined) return;
-                      const item = itemData.Itms[1000]?.obj?.[selectedItem];
-                      if (item) item.x = v;
+                      updateSelectedMightyMikeItemPosition(
+                        itemData,
+                        selectedItem,
+                        "x",
+                        v,
+                      );
                     });
                   }
                 }}
@@ -219,9 +226,12 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   const v = parseInt(e.target.value);
                   if (!isNaN(v)) {
                     setItemData((itemData) => {
-                      if (selectedItem === undefined) return;
-                      const item = itemData.Itms[1000]?.obj?.[selectedItem];
-                      if (item) item.z = v;
+                      updateSelectedMightyMikeItemPosition(
+                        itemData,
+                        selectedItem,
+                        "z",
+                        v,
+                      );
                     });
                   }
                 }}
@@ -230,7 +240,9 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
                 const value = selectedItemData[paramKey];
-                const itemParams = getMightyMikeItemParams(selectedItemData.type);
+                const itemParams = getMightyMikeItemParams(
+                  selectedItemData.type,
+                );
                 const param = itemParams[paramKey];
                 const tooltip = getParamTooltip(param);
                 const label =
@@ -239,11 +251,12 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                     : `Parameter ${i}`;
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
-                    if (selectedItem === undefined) return;
-                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
-                    if (item) {
-                      item[paramKey] = v;
-                    }
+                    updateSelectedMightyMikeItemParam(
+                      itemData,
+                      selectedItem,
+                      paramKey,
+                      v,
+                    );
                   });
                 };
                 return [
@@ -278,7 +291,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               onClick={() => {
                 if (selectedItem === undefined) return;
                 setItemData((itemData) => {
-                  itemData.Itms[1000].obj.splice(selectedItem, 1);
+                  deleteSelectedMightyMikeItem(itemData, selectedItem);
                 });
                 setSelectedItem(undefined);
               }}
@@ -297,10 +310,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const globals = useAtomValue(Globals);
 
   const itemValues = useMemo(() => {
-    const result = getItemTypes(globals);
-    return result.isOk()
-      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
-      : [];
+    return getMightyMikeItemValues(globals);
   }, [globals]);
 
   if (clickToAddItem !== undefined)

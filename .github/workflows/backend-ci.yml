@@ -1,0 +1,34 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore backend
+        run: dotnet restore backend/PangeaRSEdit.sln
+
+      - name: Backend formatting check
+        run: dotnet format backend/PangeaRSEdit.sln --verify-no-changes --verbosity minimal
+
+      - name: Build backend
+        run: dotnet build backend/PangeaRSEdit.sln --configuration Release --no-restore
+
+      - name: Test backend
+        run: dotnet test backend/PangeaRSEdit.sln --configuration Release --no-build

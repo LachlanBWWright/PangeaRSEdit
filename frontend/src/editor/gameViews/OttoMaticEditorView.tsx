@@ -1,6 +1,6 @@
 /**
  * Otto Matic Editor View
- * 
+ *
  * Complete editor view for Otto Matic with all features:
  * - Fences, water, items, splines
  * - Electric floor tile options
@@ -43,7 +43,6 @@ import {
   createZoomOutHandler,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
-import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
 import { useSetAtom } from "jotai";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
@@ -55,6 +54,7 @@ import {
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
+import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
 
 export function OttoMaticEditorView({
   headerData,
@@ -83,7 +83,7 @@ export function OttoMaticEditorView({
 
   const handleKeyDown = useMemo(
     () => createUndoRedoKeyHandler(undoData, redoData),
-    [undoData, redoData]
+    [undoData, redoData],
   );
 
   useWindowKeyDown(handleKeyDown);
@@ -93,28 +93,25 @@ export function OttoMaticEditorView({
 
   const setItemDataNotNull: Updater<ItemData> = useMemo(
     () => createNonNullUpdater(setItemData),
-    [setItemData]
+    [setItemData],
   );
   const setLiquidDataNotNull: Updater<LiquidData> = useMemo(
     () => createNonNullUpdater(setLiquidData),
-    [setLiquidData]
+    [setLiquidData],
   );
   const setFenceDataNotNull: Updater<FenceData> = useMemo(
     () => createNonNullUpdater(setFenceData),
-    [setFenceData]
+    [setFenceData],
   );
   const setSplineDataNotNull: Updater<SplineData> = useMemo(
     () => createNonNullUpdater(setSplineData),
-    [setSplineData]
+    [setSplineData],
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
   useEffect(() => {
     setEditorNavbarTabs(
-      <StandardEditorToolbar
-        terrainHasSTgd={showSupertileMenu}
-        compact
-      />,
+      <StandardEditorToolbar terrainHasSTgd={showSupertileMenu} compact />,
     );
     return () => setEditorNavbarTabs(null);
   }, [setEditorNavbarTabs, showSupertileMenu]);
@@ -123,52 +120,51 @@ export function OttoMaticEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    const result = applySupertileResizeToAtomicData(
-      {
-        headerData,
-        itemData,
-        liquidData,
-        fenceData,
-        splineData,
-        terrainData,
-      },
+    resizeEditorAtomicSupertiles({
+      headerData,
+      itemData,
+      liquidData,
+      fenceData,
+      splineData,
+      terrainData,
       globals,
-      {
-        direction,
-        tileCount: supertileCount * globals.TILES_PER_SUPERTILE,
-        defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
-      },
-    );
-    if (result.isErr()) {
-      console.error("Failed to resize level:", result.error.message);
-      return;
-    }
-    const resized = result.value.data;
-    if (resized.headerData) setHeaderData(resized.headerData);
-    if (resized.itemData !== undefined) setItemData(resized.itemData);
-    if (resized.liquidData !== undefined) setLiquidData(resized.liquidData);
-    if (resized.fenceData !== undefined) setFenceData(resized.fenceData);
-    if (resized.splineData !== undefined) setSplineData(resized.splineData);
-    if (resized.terrainData) setTerrainData(resized.terrainData);
+      direction,
+      supertileCount,
+      defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
+      setHeaderData,
+      setItemData,
+      setLiquidData,
+      setFenceData,
+      setSplineData,
+      setTerrainData,
+    });
   };
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
       <MenuSection>
-        {view === View.fences && (
-          fenceData ? (
-            <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+        {view === View.fences &&
+          (fenceData ? (
+            <FenceMenu
+              fenceData={fenceData}
+              setFenceData={setFenceDataNotNull}
+            />
           ) : (
-            <EmptyFencePrompt onInitialize={() => setFenceData(createEmptyFenceData())} />
-          )
-        )}
-        {view === View.water && (
-          liquidData ? (
-            <WaterMenu liquidData={liquidData} setLiquidData={setLiquidDataNotNull} />
+            <EmptyFencePrompt
+              onInitialize={() => setFenceData(createEmptyFenceData())}
+            />
+          ))}
+        {view === View.water &&
+          (liquidData ? (
+            <WaterMenu
+              liquidData={liquidData}
+              setLiquidData={setLiquidDataNotNull}
+            />
           ) : (
-            <EmptyWaterPrompt onInitialize={() => setLiquidData(createEmptyLiquidData())} />
-          )
-        )}
+            <EmptyWaterPrompt
+              onInitialize={() => setLiquidData(createEmptyLiquidData())}
+            />
+          ))}
         {view === View.items && itemData && (
           <ItemMenu
             itemData={itemData}
@@ -177,8 +173,8 @@ export function OttoMaticEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.splines && (
-          splineData ? (
+        {view === View.splines &&
+          (splineData ? (
             <SplineMenu
               splineData={splineData}
               setSplineData={setSplineDataNotNull}
@@ -186,11 +182,15 @@ export function OttoMaticEditorView({
               setHeaderData={setHeaderData}
             />
           ) : (
-            <EmptySplinePrompt onInitialize={() => setSplineData(createEmptySplineData())} />
-          )
-        )}
+            <EmptySplinePrompt
+              onInitialize={() => setSplineData(createEmptySplineData())}
+            />
+          ))}
         {view === View.tiles && (
-          <OttoMaticTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
+          <OttoMaticTilesMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+          />
         )}
         {view === View.supertiles && showSupertileMenu && (
           <SupertileMenu

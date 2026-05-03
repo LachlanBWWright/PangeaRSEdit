@@ -23,7 +23,7 @@ describe("Citation Extractor", () => {
     it("should extract citations for otto matic", () => {
       const citations = extractCitations("ottomatic");
       expect(citations.length).toBeGreaterThan(0);
-      
+
       // Check structure of first citation
       const first = citations[0];
       expect(first).toHaveProperty("game", "ottomatic");
@@ -32,26 +32,32 @@ describe("Citation Extractor", () => {
       expect(first).toHaveProperty("citation");
       expect(first).toHaveProperty("sourceFile");
     });
-  });
 
-  describe("extractAllCitations", () => {
     it("should extract citations from all games", () => {
       const allCitations = extractAllCitations();
       expect(allCitations.length).toBeGreaterThan(0);
-      
+
       // Check that we have citations from multiple games
-      const games = new Set(allCitations.map(c => c.game));
+      const games = new Set(allCitations.map((c) => c.game));
       expect(games.size).toBeGreaterThan(1);
       expect(games.has("mightymike")).toBe(true);
     });
 
     it("should use path-qualified filenames for all extracted citations", () => {
       const allCitations = extractAllCitations();
-      for (const citation of allCitations) {
-        expect(citation.citation.fileName.includes("/")).toBe(true);
-        expect(citation.citation.url.startsWith("https://github.com/")).toBe(true);
-        expect(citation.citation.lineNumber).toBeGreaterThan(0);
-      }
+      expect(
+        allCitations.every((citation) =>
+          citation.citation.fileName.includes("/"),
+        ),
+      ).toBe(true);
+      expect(
+        allCitations.every((citation) =>
+          citation.citation.url.startsWith("https://github.com/"),
+        ),
+      ).toBe(true);
+      expect(
+        allCitations.every((citation) => citation.citation.lineNumber > 0),
+      ).toBe(true);
     });
   });
 
@@ -84,10 +90,12 @@ describe("Citation Extractor", () => {
     });
 
     it("should report no missing citations for each game with item params", () => {
-      for (const game of getGamesWithItemParams()) {
-        const missingForGame = getAllMissingCitations().filter((item) => item.game === game);
-        expect(missingForGame).toEqual([]);
-      }
+      const missingByGame = getGamesWithItemParams().map((game) =>
+        getAllMissingCitations().filter((item) => item.game === game),
+      );
+      expect(
+        missingByGame.every((missingForGame) => missingForGame.length === 0),
+      ).toBe(true);
     });
   });
 });
@@ -116,7 +124,9 @@ describe("Game Repositories", () => {
   describe("getGitHubRawUrl", () => {
     it("should construct correct raw URL", () => {
       const url = getGitHubRawUrl("ottomatic", "Items/Items.c");
-      expect(url).toBe("https://raw.githubusercontent.com/jorio/OttoMatic/master/src/Items/Items.c");
+      expect(url).toBe(
+        "https://raw.githubusercontent.com/jorio/OttoMatic/master/src/Items/Items.c",
+      );
     });
 
     it("should return null for unknown game", () => {
@@ -128,7 +138,9 @@ describe("Game Repositories", () => {
   describe("getGitHubPermalink", () => {
     it("should construct correct permalink URL", () => {
       const url = getGitHubPermalink("ottomatic", "Items/Items.c", 100);
-      expect(url).toBe("https://github.com/jorio/OttoMatic/blob/master/src/Items/Items.c#L100");
+      expect(url).toBe(
+        "https://github.com/jorio/OttoMatic/blob/master/src/Items/Items.c#L100",
+      );
     });
 
     it("should return null for unknown game", () => {

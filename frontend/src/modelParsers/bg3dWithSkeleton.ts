@@ -30,12 +30,12 @@ function is3DMFBuffer(buffer: ArrayBuffer): boolean {
  * Parse a BG3D or 3DMF file along with its associated skeleton file
  * @param modelBuffer ArrayBuffer containing the .bg3d or .3dmf file
  * @param skeletonBuffer ArrayBuffer containing the .skeleton.rsrc file
- * @returns Promise<Result<BG3DParseResult, Error>> with skeleton data included
+ * @returns Promise<Result<BG3DParseResult, string>> with skeleton data included
  */
 export async function parseBG3DWithSkeleton(
   modelBuffer: ArrayBuffer,
   skeletonBuffer: ArrayBuffer,
-): Promise<Result<BG3DParseResult, Error>> {
+): Promise<Result<BG3DParseResult, string>> {
   console.log("Parsing skeleton resource...");
 
   // Parse skeleton data using the existing skeleton parser
@@ -73,12 +73,12 @@ export async function parseBG3DWithSkeleton(
  * Parse a BG3D or 3DMF file with skeleton data from a SkeletonResource object
  * @param modelBuffer ArrayBuffer containing the .bg3d or .3dmf file
  * @param skeleton Parsed skeleton resource
- * @returns Result<BG3DParseResult, Error> with skeleton data included
+ * @returns Result<BG3DParseResult, string> with skeleton data included
  */
 export function parseBG3DWithSkeletonResource(
   modelBuffer: ArrayBuffer,
   skeleton: SkeletonResource,
-): Result<BG3DParseResult, Error> {
+): Result<BG3DParseResult, string> {
   return parseModelWithSkeletonResource(modelBuffer, skeleton);
 }
 
@@ -88,7 +88,7 @@ export function parseBG3DWithSkeletonResource(
 function parseModelWithSkeletonResource(
   modelBuffer: ArrayBuffer,
   skeleton: SkeletonResource,
-): Result<BG3DParseResult, Error> {
+): Result<BG3DParseResult, string> {
   if (is3DMFBuffer(modelBuffer)) {
     // Parse 3DMF file - note: 3DMF models with skeletons may need special handling
     // For now, parse the model and add skeleton data manually

@@ -61,9 +61,9 @@ export class BigEndianReader {
   /**
    * Read a uint8
    */
-  readUint8(): Result<number, Error> {
+  readUint8(): Result<number, string> {
     if (this.offset + 1 > this.buffer.byteLength) {
-      return err(new Error(`EOF reading uint8 at offset ${this.offset}`));
+      return err(`EOF reading uint8 at offset ${this.offset}`);
     }
     const value = this.view.getUint8(this.offset);
     this.offset += 1;
@@ -73,9 +73,9 @@ export class BigEndianReader {
   /**
    * Read a uint16 (big-endian)
    */
-  readUint16(): Result<number, Error> {
+  readUint16(): Result<number, string> {
     if (this.offset + 2 > this.buffer.byteLength) {
-      return err(new Error(`EOF reading uint16 at offset ${this.offset}`));
+      return err(`EOF reading uint16 at offset ${this.offset}`);
     }
     const value = this.view.getUint16(this.offset, false);
     this.offset += 2;
@@ -85,9 +85,9 @@ export class BigEndianReader {
   /**
    * Read a uint32 (big-endian)
    */
-  readUint32(): Result<number, Error> {
+  readUint32(): Result<number, string> {
     if (this.offset + 4 > this.buffer.byteLength) {
-      return err(new Error(`EOF reading uint32 at offset ${this.offset}`));
+      return err(`EOF reading uint32 at offset ${this.offset}`);
     }
     const value = this.view.getUint32(this.offset, false);
     this.offset += 4;
@@ -96,17 +96,17 @@ export class BigEndianReader {
 
   /**
    * Read a uint64 (big-endian) as a JavaScript number.
-   * 
+   *
    * Note: JavaScript Number type can only safely represent integers up to
    * Number.MAX_SAFE_INTEGER (2^53 - 1 = 9,007,199,254,740,991). Values
    * larger than this may lose precision. For 3DMF files, this is typically
    * acceptable as file offsets rarely exceed this limit.
-   * 
-   * @returns Result<number, Error> The 64-bit integer as a JavaScript number
+   *
+   * @returns Result<number, string> The 64-bit integer as a JavaScript number
    */
-  readUint64(): Result<number, Error> {
+  readUint64(): Result<number, string> {
     if (this.offset + 8 > this.buffer.byteLength) {
-      return err(new Error(`EOF reading uint64 at offset ${this.offset}`));
+      return err(`EOF reading uint64 at offset ${this.offset}`);
     }
     const high = this.view.getUint32(this.offset, false);
     const low = this.view.getUint32(this.offset + 4, false);
@@ -119,9 +119,9 @@ export class BigEndianReader {
   /**
    * Read a float32 (big-endian)
    */
-  readFloat32(): Result<number, Error> {
+  readFloat32(): Result<number, string> {
     if (this.offset + 4 > this.buffer.byteLength) {
-      return err(new Error(`EOF reading float32 at offset ${this.offset}`));
+      return err(`EOF reading float32 at offset ${this.offset}`);
     }
     const value = this.view.getFloat32(this.offset, false);
     this.offset += 4;
@@ -131,9 +131,9 @@ export class BigEndianReader {
   /**
    * Read raw bytes
    */
-  readBytes(count: number): Result<Uint8Array, Error> {
+  readBytes(count: number): Result<Uint8Array, string> {
     if (this.offset + count > this.buffer.byteLength) {
-      return err(new Error(`EOF reading ${count} bytes at offset ${this.offset}`));
+      return err(`EOF reading ${count} bytes at offset ${this.offset}`);
     }
     const bytes = new Uint8Array(this.buffer, this.offset, count);
     this.offset += count;
@@ -143,18 +143,19 @@ export class BigEndianReader {
   /**
    * Read a FourCC code as a string
    */
-  readFourCC(): Result<string, Error> {
+  readFourCC(): Result<string, string> {
     const result = this.readUint32();
     if (result.isErr()) {
       return err(result.error);
     }
     const fourCC = result.value;
-    return ok(String.fromCharCode(
+    const chars = String.fromCharCode(
       (fourCC >> 24) & 0xff,
       (fourCC >> 16) & 0xff,
       (fourCC >> 8) & 0xff,
-      fourCC & 0xff
-    ));
+      fourCC & 0xff,
+    );
+    return ok(chars);
   }
 
   /**
@@ -181,7 +182,8 @@ export class BigEndianWriter {
   private offset: number;
   private capacity: number;
 
-  constructor(initialCapacity: number = 1024 * 1024) { // 1MB default
+  constructor(initialCapacity: number = 1024 * 1024) {
+    // 1MB default
     this.capacity = initialCapacity;
     this.buffer = new ArrayBuffer(this.capacity);
     this.view = new DataView(this.buffer);
@@ -193,17 +195,15 @@ export class BigEndianWriter {
    */
   private ensureCapacity(additionalBytes: number): void {
     const required = this.offset + additionalBytes;
-    if (required > this.capacity) {
-      // Double capacity until we have enough
-      while (this.capacity < required) {
-        this.capacity *= 2;
-      }
-      const newBuffer = new ArrayBuffer(this.capacity);
-      const newArray = new Uint8Array(newBuffer);
-      newArray.set(new Uint8Array(this.buffer, 0, this.offset));
-      this.buffer = newBuffer;
-      this.view = new DataView(this.buffer);
+    if (required <= this.capacity) return;
+    while (this.capacity < required) {
+      this.capacity *= 2;
     }
+    const newBuffer = new ArrayBuffer(this.capacity);
+    const newArray = new Uint8Array(newBuffer);
+    newArray.set(new Uint8Array(this.buffer, 0, this.offset));
+    this.buffer = newBuffer;
+    this.view = new DataView(this.buffer);
   }
 
   /**
@@ -282,9 +282,9 @@ export class BigEndianWriter {
   /**
    * Write a FourCC code from string
    */
-  writeFourCC(str: string): Result<void, Error> {
+  writeFourCC(str: string): Result<void, string> {
     if (str.length !== 4) {
-      return err(new Error(`FourCC must be exactly 4 characters: ${str}`));
+      return err("FourCC must be exactly 4 characters: ${str}");
     }
     const value =
       ((str.charCodeAt(0) & 0xff) << 24) |

@@ -1,13 +1,6 @@
-/**
- * Item Categories for filtering and grouping items in the map view.
- * 
- * Items are categorized based on their naming patterns and behavior.
- * This categorization enables filtering by category in the editor.
- */
+/** Item categories for filtering and grouping items in the map view. */
 
-/**
- * High-level item categories for filtering
- */
+/** High-level item categories used by the editor UI. */
 export enum ItemCategory {
   ENEMY = "enemy",
   POWERUP = "powerup",
@@ -17,9 +10,7 @@ export enum ItemCategory {
   UNKNOWN = "unknown",
 }
 
-/**
- * Patterns used to detect item categories from item type names
- */
+/** Patterns used to detect item categories from item type names. */
 const CATEGORY_PATTERNS: { category: ItemCategory; patterns: RegExp[] }[] = [
   {
     category: ItemCategory.ENEMY,
@@ -100,11 +91,7 @@ const CATEGORY_PATTERNS: { category: ItemCategory; patterns: RegExp[] }[] = [
   },
 ];
 
-/**
- * Categorize an item based on its type name.
- * @param itemTypeName - The name of the item type (e.g., "Enemy_Squooshy")
- * @returns The category this item belongs to
- */
+/** Categorizes an item based on its type name. */
 export function categorizeItem(itemTypeName: string): ItemCategory {
   for (const { category, patterns } of CATEGORY_PATTERNS) {
     for (const pattern of patterns) {
@@ -116,9 +103,7 @@ export function categorizeItem(itemTypeName: string): ItemCategory {
   return ItemCategory.UNKNOWN;
 }
 
-/**
- * Get display name for a category
- */
+/** Returns the display label for a category. */
 export function getCategoryDisplayName(category: ItemCategory): string {
   switch (category) {
     case ItemCategory.ENEMY:
@@ -136,9 +121,7 @@ export function getCategoryDisplayName(category: ItemCategory): string {
   }
 }
 
-/**
- * Get color for a category (for UI display)
- */
+/** Returns the Tailwind color class used for a category badge. */
 export function getCategoryColor(category: ItemCategory): string {
   switch (category) {
     case ItemCategory.ENEMY:
@@ -156,9 +139,7 @@ export function getCategoryColor(category: ItemCategory): string {
   }
 }
 
-/**
- * Get all categories as an array (useful for iteration)
- */
+/** Returns all item categories in a stable iteration order. */
 export function getAllCategories(): ItemCategory[] {
   return [
     ItemCategory.ENEMY,

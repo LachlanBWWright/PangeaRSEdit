@@ -4,6 +4,7 @@
 
 import { BG3DBone } from "../../parseBG3D";
 import { Document, Skin, Node, Buffer } from "@gltf-transform/core";
+import { uint16ArraySchema, float32ArraySchema } from "../../../schemas/common";
 
 // Minimal shape for original skeleton binary data we read in this module
 interface SkeletonResourceLike {
@@ -113,25 +114,27 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
           const weightsArrayRaw = weightsAcc.getArray();
           // Normalize typed array views to expected element types
           // Note: byteOffset is guaranteed to be present on ArrayBufferView (defaults to 0)
-          const jointsArray = jointsArrayRaw instanceof Uint16Array
-            ? jointsArrayRaw
-            : isArrayBufferView(jointsArrayRaw)
+          const jointsResult = jointsArrayRaw ? uint16ArraySchema.safeParse(jointsArrayRaw) : null;
+          const jointsArray = jointsResult?.success
+            ? jointsResult.data
+            : jointsArrayRaw && isArrayBufferView(jointsArrayRaw)
               ? new Uint16Array(
-                  jointsArrayRaw.buffer,
-                  jointsArrayRaw.byteOffset,
-                  jointsArrayRaw.byteLength / Uint16Array.BYTES_PER_ELEMENT,
+                  (jointsArrayRaw as ArrayBufferView).buffer,
+                  (jointsArrayRaw as ArrayBufferView).byteOffset,
+                  (jointsArrayRaw as ArrayBufferView).byteLength / Uint16Array.BYTES_PER_ELEMENT,
                 )
               : Array.isArray(jointsArrayRaw)
                 ? new Uint16Array(jointsArrayRaw)
                 : new Uint16Array(0);
 
-          const weightsArray = weightsArrayRaw instanceof Float32Array
-            ? weightsArrayRaw
-            : isArrayBufferView(weightsArrayRaw)
+          const weightsResult = weightsArrayRaw ? float32ArraySchema.safeParse(weightsArrayRaw) : null;
+          const weightsArray = weightsResult?.success
+            ? weightsResult.data
+            : weightsArrayRaw && isArrayBufferView(weightsArrayRaw)
               ? new Float32Array(
-                  weightsArrayRaw.buffer,
-                  weightsArrayRaw.byteOffset,
-                  weightsArrayRaw.byteLength / Float32Array.BYTES_PER_ELEMENT,
+                  (weightsArrayRaw as ArrayBufferView).buffer,
+                  (weightsArrayRaw as ArrayBufferView).byteOffset,
+                  (weightsArrayRaw as ArrayBufferView).byteLength / Float32Array.BYTES_PER_ELEMENT,
                 )
               : Array.isArray(weightsArrayRaw)
                 ? new Float32Array(weightsArrayRaw)

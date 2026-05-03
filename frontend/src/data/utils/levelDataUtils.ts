@@ -9,22 +9,27 @@ import {
 } from "../../python/structSpecs/LevelTypes";
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
+import { plainObjectSchema, recordSchema } from "../../schemas/common";
+
+// Zod schema for LevelData-like objects
+const levelDataLikeSchema = recordSchema.refine(
+  (value) => {
+    if (!("Hedr" in value) || !("_metadata" in value)) return false;
+    if (!("STgd" in value || "Layr" in value)) return false;
+    if (!("ItCo" in value) || !("YCrd" in value)) return false;
+    return true;
+  },
+  { message: "Must have required LevelData fields: Hedr, _metadata, STgd/Layr, ItCo, YCrd" }
+);
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for LevelData - checks for required keys
 export function isLevelDataLike(value: unknown): value is LevelData {
-  if (!isRecord(value)) return false;
-  // Hedr and _metadata are always required for a valid LevelData
-  if (!("Hedr" in value) || !("_metadata" in value)) return false;
-  // At least one terrain key must exist
-  if (!("STgd" in value || "Layr" in value)) return false;
-  // ItCo and YCrd are also required for terrain
-  if (!("ItCo" in value) || !("YCrd" in value)) return false;
-  return true;
+  return levelDataLikeSchema.safeParse(value).success;
 }
 
 /**
@@ -163,7 +168,7 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
  */
 export function combineLevelData(
   atomicData: AtomicLevelData,
-): Result<LevelData, Error> {
+): Result<LevelData, string> {
   const {
     headerData,
     itemData,
@@ -177,9 +182,7 @@ export function combineLevelData(
   // are allowed to be missing and will simply not be included in the serialized output.
   if (!headerData || !terrainData) {
     return err(
-      new Error(
-        "Cannot combine level data: critical header or terrain is missing",
-      ),
+      "Cannot combine level data: critical header or terrain is missing"
     );
   }
 
@@ -212,7 +215,7 @@ export function combineLevelData(
   if (isLevelDataLike(combined)) {
     return ok(combined);
   }
-  return err(new Error("Combined data is not valid LevelData"));
+  return err("Combined data is not valid LevelData");
 }
 
 /**
@@ -331,7 +334,7 @@ export function sanitizeResourceForkJson(
       const hasObj =
         (Array.isArray(obj) && obj.length > 0) ||
         (isRecord(obj) && !Array.isArray(obj));
-      const hasData = typeof dataField === "string" && dataField.length > 0;
+      const hasData = typeof dataField === "string" && dataField.trim().length > 0;
       if (!hasObj && !hasData) {
         continue;
       }

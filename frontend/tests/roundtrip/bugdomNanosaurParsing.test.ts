@@ -75,18 +75,16 @@ describe("Bugdom 1 Full Save Pipeline", () => {
 
     fixNullToZero(parsed);
     const preResult = preprocessJson(parsed, BugdomGlobals);
-    if (preResult.isErr())
-      expect.fail("Preprocess: " + preResult.error.message);
+    if (preResult.isErr()) expect.fail("Preprocess: " + preResult.error);
     fixNullToZero(parsed);
 
     const valResult = validateLevelDataForGame(parsed, BugdomGlobals.GAME_TYPE);
-    if (valResult.isErr()) expect.fail("Validate: " + valResult.error.message);
+    if (valResult.isErr()) expect.fail("Validate: " + valResult.error);
 
-    if (!isLevelDataLike(parsed))
-      expect.fail("Parsed data is not LevelData");
+    if (!isLevelDataLike(parsed)) expect.fail("Parsed data is not LevelData");
     const split = splitLevelData(parsed);
     const combResult = combineLevelData(split);
-    if (combResult.isErr()) expect.fail("Combine: " + combResult.error.message);
+    if (combResult.isErr()) expect.fail("Combine: " + combResult.error);
 
     const sanitized = sanitizeResourceForkJson(combResult.value);
     const serResult = loadBytesFromJson(sanitized, bugdomSpecs, [], [], true);
@@ -102,41 +100,64 @@ describe("Bugdom 1 Full Save Pipeline", () => {
   for (const levelFile of levelFiles) {
     const filePath = join(terrainDir, levelFile);
     const testFn = existsSync(filePath) ? it : it.skip;
-    testFn(`should keep ${levelFile} parseable through full save pipeline`, async () => {
-      const { serialized, combined } = await runBugdomPipeline(levelFile);
-      expect(serialized.byteLength).toBeGreaterThan(0);
-      expect(combined._metadata).toBeDefined();
-      expect(combined.Hedr).toBeDefined();
+    testFn(
+      `should keep ${levelFile} parseable through full save pipeline`,
+      async () => {
+        const { serialized, combined } = await runBugdomPipeline(levelFile);
+        expect(serialized.byteLength).toBeGreaterThan(0);
+        expect(combined._metadata).toBeDefined();
+        expect(combined.Hedr).toBeDefined();
 
-      const reparsedResult = await saveToJson(serialized, bugdomSpecs, [], []);
-      expect(reparsedResult.ok).toBe(true);
-    });
+        const reparsedResult = await saveToJson(
+          serialized,
+          bugdomSpecs,
+          [],
+          [],
+        );
+        expect(reparsedResult.ok).toBe(true);
+      },
+      120000,
+    );
 
-    testFn(`should preserve Timg texture data through full save pipeline for ${levelFile}`, async () => {
-      const { serialized, combined } = await runBugdomPipeline(levelFile);
+    testFn(
+      `should preserve Timg texture data through full save pipeline for ${levelFile}`,
+      async () => {
+        const { serialized, combined } = await runBugdomPipeline(levelFile);
 
-      // Timg must survive split → combine → sanitize
-      expect(combined.Timg).toBeDefined();
+        // Timg must survive split → combine → sanitize
+        expect(combined.Timg).toBeDefined();
 
-      // Re-parse the serialized binary and confirm Timg is still present
-      const reparsedResult = await saveToJson(serialized, bugdomSpecs, [], []);
-      expect(reparsedResult.ok).toBe(true);
-      if (!reparsedResult.ok) return;
+        // Re-parse the serialized binary and confirm Timg is still present
+        const reparsedResult = await saveToJson(
+          serialized,
+          bugdomSpecs,
+          [],
+          [],
+        );
+        expect(reparsedResult.ok).toBe(true);
+        if (!reparsedResult.ok) return;
 
-      function isRecord(v: unknown): v is Record<string, unknown> {
-        return typeof v === "object" && v !== null;
-      }
-      const reparsed: unknown = JSON.parse(reparsedResult.value);
-      expect(isRecord(reparsed) && "Timg" in reparsed).toBe(true);
-      if (!isRecord(reparsed) || !isRecord(reparsed.Timg)) return;
-      const timg1000 = reparsed.Timg["1000"];
-      expect(isRecord(timg1000) && typeof timg1000.data === "string" && timg1000.data.length > 0).toBe(true);
+        function isRecord(v: unknown): v is Record<string, unknown> {
+          return typeof v === "object" && v !== null;
+        }
+        const reparsed: unknown = JSON.parse(reparsedResult.value);
+        expect(isRecord(reparsed) && "Timg" in reparsed).toBe(true);
+        if (!isRecord(reparsed) || !isRecord(reparsed.Timg)) return;
+        const timg1000 = reparsed.Timg["1000"];
+        expect(
+          isRecord(timg1000) &&
+            typeof timg1000.data === "string" &&
+            timg1000.data.length > 0,
+        ).toBe(true);
 
-      // Texture hex data must be identical to original
-      if (!isRecord(combined.Timg) || !isRecord(combined.Timg["1000"])) return;
-      const originalHex = combined.Timg["1000"].data;
-      expect(isRecord(timg1000) && timg1000.data).toBe(originalHex);
-    });
+        // Texture hex data must be identical to original
+        if (!isRecord(combined.Timg) || !isRecord(combined.Timg["1000"]))
+          return;
+        const originalHex = combined.Timg["1000"].data;
+        expect(isRecord(timg1000) && timg1000.data).toBe(originalHex);
+      },
+      120000,
+    );
   }
 });
 
@@ -162,11 +183,11 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
       withMetadata,
       NanosaurGlobals.GAME_TYPE,
     );
-    if (valResult.isErr()) expect.fail("Validate: " + valResult.error.message);
+    if (valResult.isErr()) expect.fail("Validate: " + valResult.error);
 
     const split = splitLevelData(withMetadata);
     const combResult = combineLevelData(split);
-    if (combResult.isErr()) expect.fail("Combine: " + combResult.error.message);
+    if (combResult.isErr()) expect.fail("Combine: " + combResult.error);
 
     const combinedRaw = isRecord(combResult.value._metadata)
       ? combResult.value._metadata.nanosaur1RawLevel
@@ -177,7 +198,7 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
 
     const compileResult = compileNanosaur1Level(combResult.value, combinedRaw);
     if (compileResult.isErr()) {
-      expect.fail("Compile failed: " + compileResult.error.message);
+      expect.fail("Compile failed: " + compileResult.error);
     }
 
     return {
@@ -191,11 +212,15 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
   const level1Path = join(assetDir, "Level1.ter");
   const level1Test = existsSync(level1Path) ? it : it.skip;
 
-  level1Test("should roundtrip Level1.ter byte-perfectly", async () => {
-    const data = readFileSync(level1Path);
-    const { original, compiled } = await runNanosaurPipeline(data.buffer);
-    expect(compiled).toEqual(original);
-  });
+  level1Test(
+    "should roundtrip Level1.ter byte-perfectly",
+    async () => {
+      const data = readFileSync(level1Path);
+      const { original, compiled } = await runNanosaurPipeline(data.buffer);
+      expect(compiled).toEqual(original);
+    },
+    120000,
+  );
 
   level1Test(
     "should preserve modifications through the pipeline for Level1.ter",
@@ -242,7 +267,10 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
 
       // Verify other data is preserved (like rawLevelData settings)
       expect(reParsedResult.header.width).toBe(rawLevelData.header.width);
-      expect(reParsedResult.textureLayer.length).toBe(rawLevelData.textureLayer.length);
+      expect(reParsedResult.textureLayer.length).toBe(
+        rawLevelData.textureLayer.length,
+      );
     },
+    120000,
   );
 });

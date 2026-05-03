@@ -9,6 +9,7 @@ import { TestModelViewer } from "./pages/TestModelViewer";
 import { ItemModelViewer } from "./pages/ItemModelViewer";
 import { ItemAuditPage } from "./pages/ItemAuditPage";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 
 export function App() {
   return (
@@ -30,6 +31,7 @@ export function App() {
           </div>
         </div>
       </HashRouter>
+      <Toaster />
     </TooltipProvider>
   );
 }

@@ -1,14 +1,15 @@
 import { parseNumKData } from "../parseHelpers";
 import type { NumKRaw } from "../parseSkeletonRsrcTS";
+import { plainObjectSchema, numKRawSchema } from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for NumKRaw
 function isNumKRaw(value: unknown): value is NumKRaw {
-  return isRecord(value) && typeof value.numKeyFrames === "number";
+  return numKRawSchema.safeParse(value).success;
 }
 
 export function handleNumK(
@@ -17,16 +18,23 @@ export function handleNumK(
   hexData: string,
 ): NumKRaw[] {
   // Check if resourceData has obj field (rsrcdump format)
-  if (isRecord(resourceData) && "obj" in resourceData && Array.isArray(resourceData.obj)) {
+  if (
+    isRecord(resourceData) &&
+    "obj" in resourceData &&
+    Array.isArray(resourceData.obj)
+  ) {
     const objArr = resourceData.obj;
-    if (objArr.length > 0 && isNumKRaw(objArr[0])) {
+    if (objArr.length > 0 && isNumKRaw(objArr[0]))
       return objArr.filter(isNumKRaw);
-    }
   }
-  
-  if (Array.isArray(resourceData) && resourceData.length > 0 && isNumKRaw(resourceData[0])) {
+
+  if (
+    Array.isArray(resourceData) &&
+    resourceData.length > 0 &&
+    isNumKRaw(resourceData[0])
+  ) {
     return resourceData.filter(isNumKRaw);
   }
-  
+
   return parseNumKData(hexData);
 }

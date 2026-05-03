@@ -159,7 +159,11 @@ export function invert(m: Mat4): Mat4 {
     at(a, 8) * at(a, 1) * at(a, 6) -
     at(a, 8) * at(a, 2) * at(a, 5);
 
-  const det = at(a, 0) * at(inv, 0) + at(a, 1) * at(inv, 4) + at(a, 2) * at(inv, 8) + at(a, 3) * at(inv, 12);
+  const det =
+    at(a, 0) * at(inv, 0) +
+    at(a, 1) * at(inv, 4) +
+    at(a, 2) * at(inv, 8) +
+    at(a, 3) * at(inv, 12);
   if (det === 0) {
     // Return identity to match former behavior
     return createMatrix4();
@@ -167,10 +171,7 @@ export function invert(m: Mat4): Mat4 {
 
   const invDet = 1.0 / det;
   for (let i = 0; i < 16; i++) {
-    const val = inv[i];
-    if (val !== undefined) {
-      inv[i] = val * invDet;
-    }
+    inv[i] = (inv[i] ?? 0) * invDet;
   }
   return inv;
 }

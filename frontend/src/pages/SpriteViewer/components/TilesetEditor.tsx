@@ -37,9 +37,7 @@ export function TilesetEditor({
   const filteredTiles = tileSearchFilter
     ? Array.from({ length: tileCount })
         .map((_, i) => i)
-        .filter((i) =>
-          i.toString().includes(tileSearchFilter.toLowerCase())
-        )
+        .filter((i) => i.toString().includes(tileSearchFilter.toLowerCase()))
     : Array.from({ length: tileCount }).map((_, i) => i);
 
   return (
@@ -53,7 +51,9 @@ export function TilesetEditor({
           {/* Palette Scene Selector */}
           {onPaletteSceneChange && (
             <div>
-              <label className="text-xs text-gray-400 block mb-2">Render Palette</label>
+              <label className="text-xs text-gray-400 block mb-2">
+                Render Palette
+              </label>
               <Select
                 value={currentPaletteScene ?? ""}
                 onValueChange={(value) => onPaletteSceneChange(value)}
@@ -74,14 +74,20 @@ export function TilesetEditor({
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500 mt-1">
-                Tileset: {currentTilesetScene ? currentTilesetScene.charAt(0).toUpperCase() + currentTilesetScene.slice(1) : "None"}
+                Tileset:{" "}
+                {currentTilesetScene
+                  ? currentTilesetScene.charAt(0).toUpperCase() +
+                    currentTilesetScene.slice(1)
+                  : "None"}
               </p>
             </div>
           )}
 
           {/* View Mode Selector */}
           <div>
-            <label className="text-xs text-gray-400 block mb-2">View Mode</label>
+            <label className="text-xs text-gray-400 block mb-2">
+              View Mode
+            </label>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -162,7 +168,7 @@ export function TilesetEditor({
 
       {/* Tile Details (when individual tile is selected) */}
       {selectedTileIndex !== undefined && (
-        <Card className="bg-gray-800 border-gray-700 border-blue-500">
+        <Card className="bg-gray-800 border-gray-700 ">
           <CardHeader>
             <CardTitle className="text-white text-sm">
               Tile #{selectedTileIndex}
@@ -262,7 +268,8 @@ export function TilesetEditor({
           <CardContent className="space-y-3">
             <div className="text-xs space-y-2 text-gray-300">
               <p>
-                <span className="text-gray-400">Tile Index:</span> {selectedTileIndex}
+                <span className="text-gray-400">Tile Index:</span>{" "}
+                {selectedTileIndex}
               </p>
               <p>
                 <span className="text-gray-400">Dimensions:</span> 32×32 pixels

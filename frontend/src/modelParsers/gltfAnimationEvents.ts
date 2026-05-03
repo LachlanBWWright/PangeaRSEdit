@@ -100,14 +100,12 @@ export async function updateGlbAnimationEvents(
   buffer: ArrayBuffer,
   animationIndex: number,
   events: AnimationEvent[],
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer, string>> {
   const io = new WebIO();
   const doc = await io.readBinary(new Uint8Array(buffer));
   const animation = doc.getRoot().listAnimations()[animationIndex];
   if (!animation) {
-    return err(
-      new Error(`Animation #${animationIndex + 1} was not found in the GLB`),
-    );
+    return err(`Animation #${animationIndex + 1} was not found in the GLB`);
   }
 
   const nextExtras = isRecord(animation.getExtras())

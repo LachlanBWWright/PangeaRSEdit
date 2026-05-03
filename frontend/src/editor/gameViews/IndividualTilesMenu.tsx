@@ -39,7 +39,7 @@ import {
   Export3DScene,
   Show3DItemModels,
 } from "@/data/canvasView/canvasViewAtoms";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
@@ -90,14 +90,13 @@ export function IndividualTilesMenu({
     terrainData.YCrd?.[1001]?.obj,
   );
 
-  useEffect(() => {
-    if (tileView !== TileViews.Topology) {
-      // Reset shared TileViewMode to avoid stale state in topology-only editors.
-      setTileView(TileViews.Topology);
-      return;
-    }
+  // Synchronously reset to 2D topology view before the first paint so the
+  // correct canvas mode is active when the layout is first drawn.
+  // Jotai setters are stable references, so this only runs once on mount.
+  useLayoutEffect(() => {
+    setTileView(TileViews.Topology);
     setCanvasViewMode(CanvasView.TWO_D);
-  }, [tileView, setCanvasViewMode, setTileView]);
+  }, [setTileView, setCanvasViewMode]);
 
   useEffect(() => {
     if (!hasRoofLayer) {
@@ -149,12 +148,7 @@ export function IndividualTilesMenu({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-sm text-gray-500 p-2 bg-gray-800 rounded">
-        <p>This game uses individual 32x32 tiles.</p>
-        <p>Tile attributes are edited through the Supertiles menu.</p>
-      </div>
-
+    <div className="flex flex-col gap-2 p-1">
       {tileView === TileViews.Topology && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
           <p>Brush Mode</p>

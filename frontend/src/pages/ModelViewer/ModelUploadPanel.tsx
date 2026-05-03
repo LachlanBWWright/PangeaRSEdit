@@ -14,8 +14,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { toast } from "sonner";
 import type { UploadStep } from "./types";
+import {
+  getUploadDropzoneText,
+  processUploadSelection,
+} from "@/pages/ModelViewer/modelUploadPanelState";
 
 /* interface Texture {
   name: string;
@@ -40,7 +43,7 @@ interface Props {
     bg3dFile: File,
     skeletonFile?: File,
     gameLabel?: string,
-  ) => Promise<import("neverthrow").Result<void, Error>>;
+  ) => Promise<import("neverthrow").Result<void, string>>;
   modelBaseName: string;
   onModelBaseNameChange: (baseName: string) => void;
   exportTargets: { id: string; label: string }[];
@@ -72,12 +75,8 @@ export function ModelUploadPanel({
   const fileAccept = ".bg3d,.3dmf,.glb";
   const awaitingSkeleton =
     uploadStep === "select-skeleton" && pendingBg3dFile !== null;
-  const dropzoneTitle = awaitingSkeleton
-    ? "Drop skeleton file here or click to select"
-    : "Drop a model file here or click to select";
-  const dropzoneBody = awaitingSkeleton
-    ? "Optional: add the matching .skeleton.rsrc file for animations."
-    : "Upload .bg3d, .3dmf, or .glb. BG3D and 3DMF files can optionally use a matching .skeleton.rsrc file.";
+  const { title: dropzoneTitle, body: dropzoneBody } =
+    getUploadDropzoneText(awaitingSkeleton);
 
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -124,7 +123,9 @@ export function ModelUploadPanel({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept={awaitingSkeleton ? ".skeleton.rsrc,.rsrc" : fileAccept}
+                  accept={
+                    awaitingSkeleton ? ".skeleton.rsrc,.rsrc" : fileAccept
+                  }
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -132,31 +133,12 @@ export function ModelUploadPanel({
                       return;
                     }
 
-                    if (awaitingSkeleton) {
-                      const isSkeletonFile =
-                        file.name.toLowerCase().endsWith(".skeleton.rsrc") ||
-                        file.name.toLowerCase().endsWith(".rsrc");
-                      if (isSkeletonFile) {
-                        handleSkeletonFileSelect(file);
-                      } else {
-                        toast.error(
-                          `"${file.name}" is not a .skeleton.rsrc or .rsrc file. Please select a valid skeleton file or skip this step.`,
-                        );
-                      }
-                      return;
-                    }
-
-                    if (
-                      file.name.toLowerCase().endsWith(".bg3d") ||
-                      file.name.toLowerCase().endsWith(".3dmf") ||
-                      file.name.toLowerCase().endsWith(".glb")
-                    ) {
-                      handleBg3dFileSelect(file);
-                    } else {
-                      toast.error(
-                        `"${file.name}" is not a supported model file. Please select a .bg3d, .3dmf, or .glb file.`,
-                      );
-                    }
+                    processUploadSelection({
+                      file,
+                      awaitingSkeleton,
+                      handleSkeletonFileSelect,
+                      handleBg3dFileSelect,
+                    });
                   }}
                 />
                 {awaitingSkeleton && (
@@ -201,7 +183,7 @@ export function ModelUploadPanel({
                     <button
                       type="button"
                       aria-label="Export basename help"
-                      className="flex h-7 w-7 min-h-[1.75rem] min-w-[1.75rem] aspect-square items-center justify-center rounded-full border border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      className="flex h-7 w-7 min-h-7 min-w-7 aspect-square items-center justify-center rounded-full border border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600"
                     >
                       <Info className="h-4 w-4" />
                     </button>

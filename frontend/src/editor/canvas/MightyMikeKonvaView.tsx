@@ -11,7 +11,7 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
@@ -25,6 +25,17 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { View } from "../viewEnum";
+import { TileBrushPreviewLayer } from "../subviews/tileBrushes/TileBrushPreviewLayer";
+import {
+  tileBrushModeAtom,
+  tileBrushPreviewAtom,
+  selectedTileBrushIdAtom,
+  tileBrushAnchorAtom,
+  tileBrushesAtom,
+} from "@/data/tileBrushes/tileBrushAtoms";
+import { TILE_SIZE } from "../subviews/supertiles/mightyMikeSupertilesHelpers";
+import { applyTileBrush } from "@/data/tileBrushes/tileBrushApply";
+import type Konva from "konva";
 
 export interface StageData {
   scale: number;
@@ -58,6 +69,61 @@ export function MightyMikeKonvaView({
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
   const showCollisionOverlay = useAtomValue(ShowMightyMikeCollisionOverlay);
+  const tileBrushMode = useAtomValue(tileBrushModeAtom);
+  const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
+  const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
+  const tileBrushAnchor = useAtomValue(tileBrushAnchorAtom);
+  const tileBrushes = useAtomValue(tileBrushesAtom);
+
+  const header = headerData.Hedr[1000].obj;
+  const mapWidth = header.mapWidth;
+  const layr = terrainData.Layr?.[1000]?.obj ?? [];
+  const mapHeight = Math.ceil(layr.length / mapWidth);
+
+  const getMapTileFromStageEvent = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = e.target.getStage()?.getRelativePointerPosition();
+      if (!pos) return null;
+      const tileX = Math.floor(pos.x / TILE_SIZE);
+      const tileY = Math.floor(pos.y / TILE_SIZE);
+      if (tileX < 0 || tileY < 0 || tileX >= mapWidth || tileY >= mapHeight)
+        return null;
+      return { x: tileX, y: tileY };
+    },
+    [mapWidth, mapHeight],
+  );
+
+  const handleStageBrushStamp = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (tileBrushMode !== "stamp" || !selectedBrushId) return;
+      const tilePos = getMapTileFromStageEvent(e);
+      if (!tilePos) return;
+      const brush = tileBrushes.find((b) => b.id === selectedBrushId);
+      if (!brush) return;
+      setTerrainData((draft) => {
+        applyTileBrush({
+          draft,
+          layer: 1000,
+          mapWidth,
+          mapHeight,
+          targetX: tilePos.x,
+          targetY: tilePos.y,
+          brush,
+          anchor: tileBrushAnchor,
+        });
+      });
+    },
+    [
+      tileBrushMode,
+      selectedBrushId,
+      tileBrushes,
+      tileBrushAnchor,
+      mapWidth,
+      mapHeight,
+      setTerrainData,
+      getMapTileFromStageEvent,
+    ],
+  );
 
   const [containerRef, containerSize] = useContainerSize();
 
@@ -81,12 +147,16 @@ export function MightyMikeKonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={true}
+        draggable={tileBrushMode !== "stamp"}
         onClick={(e) => {
+          if (tileBrushMode === "stamp") {
+            handleStageBrushStamp(e);
+            return;
+          }
           if (clickToAddItem === undefined) return;
-          const stage = e.target.getStage();
+          const stageRef = e.target.getStage();
 
-          const pos = stage?.getRelativePointerPosition();
+          const pos = stageRef?.getRelativePointerPosition();
           if (!pos) return;
           const x = Math.round(pos.x);
           const z = Math.round(pos.y);
@@ -104,6 +174,13 @@ export function MightyMikeKonvaView({
             });
           });
         }}
+        onMouseMove={(e) => {
+          if (tileBrushMode === "stamp") {
+            const pos = getMapTileFromStageEvent(e);
+            setTileBrushPreview(pos);
+          }
+        }}
+        onMouseLeave={() => setTileBrushPreview(null)}
         onDblClick={() => {
           setSelectedItem(undefined);
         }}
@@ -111,15 +188,15 @@ export function MightyMikeKonvaView({
           e.evt.preventDefault();
 
           const scaleBy = 1.05;
-          const stage = e.target.getStage();
-          if (!stage) return;
-          const oldScale = stage.scaleX();
-          const pointerPosition = stage.getPointerPosition();
+          const stageRef = e.target.getStage();
+          if (!stageRef) return;
+          const oldScale = stageRef.scaleX();
+          const pointerPosition = stageRef.getPointerPosition();
           if (!pointerPosition) return;
 
           const mousePointTo = {
-            x: pointerPosition.x / oldScale - stage.x() / oldScale,
-            y: pointerPosition.y / oldScale - stage.y() / oldScale,
+            x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
+            y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
           };
 
           const newScale =
@@ -151,6 +228,13 @@ export function MightyMikeKonvaView({
             setItemData={setItemDataNotNull}
           />
         )}
+
+        {/* Tile brush stamp preview */}
+        <TileBrushPreviewLayer
+          tileSize={TILE_SIZE}
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+        />
       </Stage>
     </div>
   );

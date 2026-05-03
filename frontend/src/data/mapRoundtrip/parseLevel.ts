@@ -14,10 +14,60 @@ import { fixNullToZero } from "../processors/nullToZeroFixer";
 import { DataType, GlobalsInterface } from "../globals/globals";
 import { err, ok, Result } from "neverthrow";
 import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import { errorSchema, plainObjectSchema } from "../../schemas/common";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
+}
+
+interface DiffEntry {
+  path: string;
+  original: unknown;
+  roundtrip: unknown;
+}
+
+function compareValues(
+  obj1: unknown,
+  obj2: unknown,
+  path: string,
+  differences: DiffEntry[],
+): void {
+  if (obj1 === obj2) return;
+  if (typeof obj1 !== typeof obj2) {
+    differences.push({ path, original: obj1, roundtrip: obj2 });
+    return;
+  }
+  if (obj1 === null || obj2 === null) {
+    if (obj1 !== obj2)
+      differences.push({ path, original: obj1, roundtrip: obj2 });
+    return;
+  }
+  if (Array.isArray(obj1) && Array.isArray(obj2)) {
+    if (obj1.length !== obj2.length) {
+      differences.push({
+        path: `${path}.length`,
+        original: obj1.length,
+        roundtrip: obj2.length,
+      });
+    }
+    const maxLen = Math.max(obj1.length, obj2.length);
+    for (let i = 0; i < maxLen; i++)
+      compareValues(obj1[i], obj2[i], `${path}[${i}]`, differences);
+    return;
+  }
+  if (isRecord(obj1) && isRecord(obj2)) {
+    const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+    for (const key of allKeys)
+      compareValues(obj1[key], obj2[key], `${path}.${key}`, differences);
+    return;
+  }
+  if (typeof obj1 === "number" && typeof obj2 === "number") {
+    if (Math.abs(obj1 - obj2) > 0.0001)
+      differences.push({ path, original: obj1, roundtrip: obj2 });
+    return;
+  }
+  differences.push({ path, original: obj1, roundtrip: obj2 });
 }
 
 /**
@@ -31,7 +81,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   options: ParseLevelOptions,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData, string>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   const bytes = new Uint8Array(buffer);
@@ -44,7 +94,7 @@ export async function parseLevelBuffer(
 
   const parsedJsonResult = parseResult.ok
     ? ok(parseResult.value)
-    : err(new Error(parseResult.error));
+    : err(parseResult.error);
 
   if (parsedJsonResult.isErr()) {
     return err(parsedJsonResult.error);
@@ -52,7 +102,10 @@ export async function parseLevelBuffer(
 
   const parsedResult = Result.fromThrowable(
     (json: string) => JSON.parse(json) as unknown,
-    (error) => (error instanceof Error ? error : new Error(String(error))),
+    (error) => {
+      const parsed = errorSchema.safeParse(error);
+      return parsed.success ? parsed.data : String(error);
+    },
   )(parsedJsonResult.value);
   if (parsedResult.isErr()) {
     return err(parsedResult.error);
@@ -65,9 +118,9 @@ export async function parseLevelBuffer(
     if (isLevelDataLike(parsedResult.value)) {
       return ok(parsedResult.value);
     }
-    return err(new Error("Parsed data does not match LevelData structure"));
+    return err("Parsed data does not match LevelData structure");
   }
-  return err(new Error("Parsed data is not an object"));
+  return err("Parsed data is not an object");
 }
 
 // Type guard for LevelData - checks basic structure
@@ -85,10 +138,13 @@ function isLevelDataLike(value: unknown): value is LevelData {
 export function parseNanosaur1Buffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
-): Result<LevelData, Error> {
+): Result<LevelData, string> {
   const parseRawLevel = Result.fromThrowable(
     () => parseNanosaur1Level(buffer),
-    (error) => (error instanceof Error ? error : new Error(String(error))),
+    (error) => {
+      const parsed = errorSchema.safeParse(error);
+      return parsed.success ? parsed.data : String(error);
+    },
   );
   const rawLevelResult = parseRawLevel();
 
@@ -115,7 +171,7 @@ export function parseNanosaur1Buffer(
 export async function serializeLevelData(
   levelData: LevelData,
   options: SerializeLevelOptions,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer, string>> {
   const { structSpecs } = options;
 
   const saveResult = loadBytesFromJson(
@@ -128,7 +184,7 @@ export async function serializeLevelData(
 
   const serializedResult = saveResult.ok
     ? ok(saveResult.value)
-    : err(new Error(saveResult.error));
+    : err(saveResult.error);
 
   if (serializedResult.isErr()) {
     return err(serializedResult.error);
@@ -136,7 +192,7 @@ export async function serializeLevelData(
 
   const resultBuffer = serializedResult.value.buffer;
   if (!(resultBuffer instanceof ArrayBuffer)) {
-    return err(new Error("Result buffer is not an ArrayBuffer"));
+    return err("Result buffer is not an ArrayBuffer");
   }
   return ok(resultBuffer);
 }
@@ -152,7 +208,7 @@ export async function serializeLevelData(
 export async function parseLevelForGame(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData, string>> {
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1 uses its own TRT file parser
     return parseNanosaur1Buffer(buffer, gameType);
@@ -168,7 +224,7 @@ export async function parseLevelForGame(
 
   // Apply preprocessing (LevelData must be a record for preprocessJson)
   if (!isRecord(parseResult.value)) {
-    return err(new Error("Parsed data is not an object"));
+    return err("Parsed data is not an object");
   }
   const preprocessResult = preprocessJson(parseResult.value, gameType);
   if (preprocessResult.isErr()) {
@@ -203,9 +259,7 @@ export async function performRoundtrip(
   const originalResult = await parseLevelForGame(buffer, gameType);
 
   if (originalResult.isErr()) {
-    return err(
-      new Error(`Failed to parse original: ${originalResult.error.message}`),
-    );
+    return err(new Error(`Failed to parse original: ${originalResult.error}`));
   }
 
   // Serialize back to binary
@@ -214,9 +268,7 @@ export async function performRoundtrip(
   });
 
   if (serializedResult.isErr()) {
-    return err(
-      new Error(`Failed to serialize: ${serializedResult.error.message}`),
-    );
+    return err(new Error(`Failed to serialize: ${serializedResult.error}`));
   }
 
   // Parse the serialized buffer
@@ -227,7 +279,7 @@ export async function performRoundtrip(
 
   if (roundtripResult.isErr()) {
     return err(
-      new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`),
+      new Error(`Failed to parse roundtrip: ${roundtripResult.error}`),
     );
   }
 
@@ -253,73 +305,9 @@ export function compareLevelData(
   equal: boolean;
   differences: { path: string; original: unknown; roundtrip: unknown }[];
 } {
-  const differences: {
-    path: string;
-    original: unknown;
-    roundtrip: unknown;
-  }[] = [];
-
-  function compare(obj1: unknown, obj2: unknown, path: string): void {
-    if (obj1 === obj2) return;
-
-    if (typeof obj1 !== typeof obj2) {
-      differences.push({ path, original: obj1, roundtrip: obj2 });
-      return;
-    }
-
-    if (obj1 === null || obj2 === null) {
-      if (obj1 !== obj2) {
-        differences.push({ path, original: obj1, roundtrip: obj2 });
-      }
-      return;
-    }
-
-    if (Array.isArray(obj1) && Array.isArray(obj2)) {
-      if (obj1.length !== obj2.length) {
-        differences.push({
-          path: `${path}.length`,
-          original: obj1.length,
-          roundtrip: obj2.length,
-        });
-      }
-      const maxLen = Math.max(obj1.length, obj2.length);
-      for (let i = 0; i < maxLen; i++) {
-        compare(obj1[i], obj2[i], `${path}[${i}]`);
-      }
-      return;
-    }
-
-    if (isRecord(obj1) && isRecord(obj2)) {
-      const keys1 = Object.keys(obj1);
-      const keys2 = Object.keys(obj2);
-      const allKeys = new Set([...keys1, ...keys2]);
-
-      for (const key of allKeys) {
-        compare(obj1[key], obj2[key], `${path}.${key}`);
-      }
-      return;
-    }
-
-    // Primitive values
-    if (obj1 !== obj2) {
-      // For numbers, allow small floating point differences
-      if (typeof obj1 === "number" && typeof obj2 === "number") {
-        const diff = Math.abs(obj1 - obj2);
-        if (diff > 0.0001) {
-          differences.push({ path, original: obj1, roundtrip: obj2 });
-        }
-      } else {
-        differences.push({ path, original: obj1, roundtrip: obj2 });
-      }
-    }
-  }
-
-  compare(original, roundtrip, "");
-
-  return {
-    equal: differences.length === 0,
-    differences,
-  };
+  const differences: DiffEntry[] = [];
+  compareValues(original, roundtrip, "", differences);
+  return { equal: differences.length === 0, differences };
 }
 
 /**
@@ -349,9 +337,7 @@ export function compareBuffers(
 
   for (let i = 0; i < minLen; i++) {
     if (view1[i] !== view2[i]) {
-      if (firstDifferenceOffset === null) {
-        firstDifferenceOffset = i;
-      }
+      if (firstDifferenceOffset === null) firstDifferenceOffset = i;
       differenceCount++;
     }
   }

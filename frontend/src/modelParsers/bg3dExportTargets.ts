@@ -6,6 +6,7 @@ export interface BG3DAliasResourceTarget {
   companionExtension: "bg3d" | "3df";
 }
 
+/** Describes a BG3D export destination and the alias resources it needs. */
 export interface BG3DExportTarget {
   id: string;
   label: string;
@@ -16,6 +17,7 @@ export interface BG3DExportTarget {
   aliasResources?: BG3DAliasResourceTarget[];
 }
 
+/** Default export target used for Otto Matic-compatible BG3D exports. */
 export const DEFAULT_BG3D_EXPORT_TARGET: BG3DExportTarget = {
   id: "ottomatic",
   label: "Otto Matic",
@@ -37,6 +39,7 @@ export const DEFAULT_BG3D_EXPORT_TARGET: BG3DExportTarget = {
   ],
 };
 
+/** All supported BG3D export targets exposed by the editor. */
 export const BG3D_EXPORT_TARGETS: BG3DExportTarget[] = [
   DEFAULT_BG3D_EXPORT_TARGET,
   {
@@ -92,6 +95,7 @@ export const BG3D_EXPORT_TARGETS: BG3DExportTarget[] = [
   },
 ];
 
+/** Returns the export target matching the provided id, or the default target. */
 export function getBG3DExportTarget(id: string): BG3DExportTarget {
   return (
     BG3D_EXPORT_TARGETS.find((target) => target.id === id) ??
@@ -99,6 +103,7 @@ export function getBG3DExportTarget(id: string): BG3DExportTarget {
   );
 }
 
+/** Maps a game enum to the BG3D export target used by that game's assets. */
 export function getBG3DExportTargetForGame(game: Game): BG3DExportTarget {
   switch (game) {
     case Game.BUGDOM:

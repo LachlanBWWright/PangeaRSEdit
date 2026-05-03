@@ -5,8 +5,8 @@
  * These functions are parameterized to receive all required data as arguments.
  */
 
+import type { DraftFunction, Updater } from "use-immer";
 import type { Draft } from "immer";
-import type { Updater } from "use-immer";
 import type {
   ItemData,
   LiquidData,
@@ -14,24 +14,25 @@ import type {
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
 
-type DraftFunction<T> = (draft: Draft<T>) => void;
+function applyNonNullUpdate<T extends object>(
+  current: Draft<T> | null,
+  updater: T | DraftFunction<T>,
+): T | Draft<T> | null {
+  if (!current) return current;
+  if (typeof updater !== "function") return updater;
+  updater(current);
+  return current;
+}
 
 /**
  * Creates an Updater wrapper that only applies updates when data is non-null.
  * This is useful for menus that expect non-null data.
  */
-export function createNonNullUpdater<T extends object>(setter: Updater<T | null>): Updater<T> {
+export function createNonNullUpdater<T extends object>(
+  setter: Updater<T | null>,
+): Updater<T> {
   return (updater: T | DraftFunction<T>) => {
-    setter((current) => {
-      if (!current) return current;
-      if (typeof updater === "function") {
-        // Since T extends object, we know updater is a DraftFunction<T> here
-        const draftFn: DraftFunction<T> = updater;
-        draftFn(current);
-        return current;
-      }
-      return updater;
-    });
+    setter((current) => applyNonNullUpdate(current, updater));
   };
 }
 

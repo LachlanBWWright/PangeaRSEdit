@@ -6,14 +6,47 @@
  */
 
 import { Game } from "../../data/globals/globals";
-import { OTTO_LEVELS, type OttoLevelInfo, inferLevelNumberFromFilename as inferOttoLevel } from "./ottoLevelNumbers";
-import { NANOSAUR_LEVELS, type NanosaurLevelInfo, inferLevelNumberFromFilename as inferNanosaurLevel } from "./nanosaurLevelNumbers";
-import { BUGDOM_LEVELS, type BugdomLevelInfo, inferLevelNumberFromFilename as inferBugdomLevel } from "./bugdomLevelNumbers";
-import { BUGDOM2_LEVELS, type Bugdom2LevelInfo, inferLevelNumberFromFilename as inferBugdom2Level } from "./bugdom2LevelNumbers";
-import { CROMAG_TRACKS, getCroMagVfsTerrainFile, type CroMagTrackInfo, inferLevelNumberFromFilename as inferCroMagLevel } from "./croMagLevelNumbers";
-import { BILLY_FRONTIER_AREAS, type BillyFrontierAreaInfo, inferLevelNumberFromFilename as inferBillyLevel } from "./billyFrontierLevelNumbers";
-import { MIGHTY_MIKE_LEVELS, type MightyMikeLevelInfo, inferLevelNumberFromFilename as inferMightyMikeLevel } from "./mightyMikeLevelNumbers";
-import { NANOSAUR2_LEVELS, type Nanosaur2LevelInfo, inferLevelNumberFromFilename as inferNanosaur2Level } from "./nanosaur2LevelNumbers";
+import {
+  OTTO_LEVELS,
+  type OttoLevelInfo,
+  inferLevelNumberFromFilename as inferOttoLevel,
+} from "./ottoLevelNumbers";
+import {
+  NANOSAUR_LEVELS,
+  type NanosaurLevelInfo,
+  inferLevelNumberFromFilename as inferNanosaurLevel,
+} from "./nanosaurLevelNumbers";
+import {
+  BUGDOM_LEVELS,
+  type BugdomLevelInfo,
+  inferLevelNumberFromFilename as inferBugdomLevel,
+} from "./bugdomLevelNumbers";
+import {
+  BUGDOM2_LEVELS,
+  type Bugdom2LevelInfo,
+  inferLevelNumberFromFilename as inferBugdom2Level,
+} from "./bugdom2LevelNumbers";
+import {
+  CROMAG_TRACKS,
+  getCroMagVfsTerrainFile,
+  type CroMagTrackInfo,
+  inferLevelNumberFromFilename as inferCroMagLevel,
+} from "./croMagLevelNumbers";
+import {
+  BILLY_FRONTIER_AREAS,
+  type BillyFrontierAreaInfo,
+  inferLevelNumberFromFilename as inferBillyLevel,
+} from "./billyFrontierLevelNumbers";
+import {
+  MIGHTY_MIKE_LEVELS,
+  type MightyMikeLevelInfo,
+  inferLevelNumberFromFilename as inferMightyMikeLevel,
+} from "./mightyMikeLevelNumbers";
+import {
+  NANOSAUR2_LEVELS,
+  type Nanosaur2LevelInfo,
+  inferLevelNumberFromFilename as inferNanosaur2Level,
+} from "./nanosaur2LevelNumbers";
 
 export type AnyLevelInfo =
   | OttoLevelInfo
@@ -58,9 +91,7 @@ export interface GamePortConfig {
    * Window globals to set BEFORE loading the game script.
    * Used by games like Bugdom that read window.BUGDOM_START_LEVEL etc.
    */
-  readonly getPreLoadVars?: (
-    levelIndex: number,
-  ) => Record<string, unknown>;
+  readonly getPreLoadVars?: (levelIndex: number) => Record<string, unknown>;
   /**
    * After Module.onRuntimeInitialized fires, call this ccall to skip the
    * title screen / jump to a specific level.
@@ -92,9 +123,7 @@ export function buildPangeaPortsUrl(
   config: GamePortConfig,
   levelIndex: number,
 ): string {
-  const normalizedBaseUrl = baseUrl.endsWith("/")
-    ? baseUrl
-    : `${baseUrl}/`;
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   const url = new URL(config.siteLaunchPath, normalizedBaseUrl);
   url.search = config.buildLaunchQuery(levelIndex).toString();
   return url.toString();
@@ -134,7 +163,8 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.OTTO_MATIC]: {
     game: Game.OTTO_MATIC,
     siteLaunchPath: "OttoMatic-Android/OttoMatic.html",
-    buildLaunchQuery: (n) => new URLSearchParams({ level: String(n), embed: "1" }),
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "ottomatic",
     mainJs: "OttoMatic.js",
     prefsFolderName: "OttoMatic",
@@ -164,11 +194,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     game: Game.NANOSAUR,
     siteLaunchPath: "Nanosaur-android/game/index.html",
     buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        level: String(n),
-        skipMenu: "1",
-        embed: "1",
-      }),
+      new URLSearchParams({ level: String(n), skipMenu: "1", embed: "1" }),
     wasmDir: "nanosaur",
     mainJs: "Nanosaur.js",
     prefsFolderName: "Nanosaur",
@@ -191,10 +217,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     game: Game.BUGDOM,
     siteLaunchPath: "Bugdom-android/game.html",
     buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        level: String(n),
-        embed: "1",
-      }),
+      new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "bugdom",
     mainJs: "Bugdom.js",
     prefsFolderName: "Bugdom",
@@ -221,10 +244,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     game: Game.BUGDOM_2,
     siteLaunchPath: "Bugdom2-Android/Bugdom2.html",
     buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        level: String(n),
-        embed: "1",
-      }),
+      new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "bugdom2",
     mainJs: "Bugdom2.js",
     prefsFolderName: "Bugdom2",
@@ -247,11 +267,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     game: Game.CRO_MAG,
     siteLaunchPath: "CroMagRally-Android/game/CroMagRally.html",
     buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        track: String(n),
-        car: "1",
-        embed: "1",
-      }),
+      new URLSearchParams({ track: String(n), car: "1", embed: "1" }),
     wasmDir: "cromagrally",
     mainJs: "CroMagRally.js",
     prefsFolderName: "CroMagRally",
@@ -273,10 +289,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     game: Game.BILLY_FRONTIER,
     siteLaunchPath: "BillyFrontier-Android/game/billyfrontier.html",
     buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        level: String(n),
-        embed: "1",
-      }),
+      new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "billyfrontier",
     mainJs: "billyfrontier.js",
     prefsFolderName: "BillyFrontier",
@@ -300,11 +313,10 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.MIGHTY_MIKE]: {
     game: Game.MIGHTY_MIKE,
     siteLaunchPath: "MightyMike-Android/index.html",
-    buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        level: `${String(Math.floor(n / 3))}:${String(n % 3)}`,
-        embed: "1",
-      }),
+    buildLaunchQuery: (n) => {
+      const level = `${String(Math.floor(n / 3))}:${String(n % 3)}`;
+      return new URLSearchParams({ level, embed: "1" });
+    },
     wasmDir: "mightymike",
     mainJs: "MightyMike.js",
     prefsFolderName: "MightyMike",
@@ -316,7 +328,9 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     terrain: {
-      getDataPath: (f) => `/Data/Terrain/${f}`,
+      getDataPath: (f) => `/Data/Maps/${f}`,
+      setPathFn: "Boot_SetCustomMapPath",
+      getSetPathArg: (f) => `:Maps:${f}`,
     },
     wasmAvailable: true,
   },
@@ -325,10 +339,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     game: Game.NANOSAUR_2,
     siteLaunchPath: "Nanosaur2-Android/Nanosaur2.html",
     buildLaunchQuery: (n) =>
-      new URLSearchParams({
-        level: String(n),
-        embed: "1",
-      }),
+      new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "nanosaur2",
     mainJs: "Nanosaur2.js",
     prefsFolderName: "Nanosaur2",

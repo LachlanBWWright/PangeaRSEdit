@@ -1,6 +1,6 @@
 /**
  * Bugdom Editor View
- * 
+ *
  * For Bugdom 1 which uses individual 32x32 tiles
  * Has fences, items, splines but different tile system (no water)
  */
@@ -9,6 +9,7 @@ import { useEffect, useMemo } from "react";
 import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
+import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 
@@ -38,7 +39,6 @@ import {
   createZoomOutHandler,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
-import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
 import { useSetAtom } from "jotai";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
@@ -49,6 +49,7 @@ import {
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
+import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
 
 export function BugdomEditorView({
   headerData,
@@ -71,11 +72,12 @@ export function BugdomEditorView({
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
   const view = useAtomValue(ActiveView);
+  const selectedTile = useAtomValue(SelectedTile);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
     () => createUndoRedoKeyHandler(undoData, redoData),
-    [undoData, redoData]
+    [undoData, redoData],
   );
 
   useWindowKeyDown(handleKeyDown);
@@ -85,24 +87,21 @@ export function BugdomEditorView({
 
   const setItemDataNotNull: Updater<ItemData> = useMemo(
     () => createNonNullUpdater(setItemData),
-    [setItemData]
+    [setItemData],
   );
   const setFenceDataNotNull: Updater<FenceData> = useMemo(
     () => createNonNullUpdater(setFenceData),
-    [setFenceData]
+    [setFenceData],
   );
   const setSplineDataNotNull: Updater<SplineData> = useMemo(
     () => createNonNullUpdater(setSplineData),
-    [setSplineData]
+    [setSplineData],
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
   useEffect(() => {
     setEditorNavbarTabs(
-      <Bugdom1EditorToolbar
-        terrainHasSTgd={showSupertileMenu}
-        compact
-      />,
+      <Bugdom1EditorToolbar terrainHasSTgd={showSupertileMenu} compact />,
     );
     return () => setEditorNavbarTabs(null);
   }, [setEditorNavbarTabs, showSupertileMenu]);
@@ -111,44 +110,42 @@ export function BugdomEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    const result = applySupertileResizeToAtomicData(
-      {
-        headerData,
-        itemData,
-        liquidData: null,
-        fenceData,
-        splineData,
-        terrainData,
-      },
+    resizeEditorAtomicSupertiles({
+      headerData,
+      itemData,
+      liquidData: null,
+      fenceData,
+      splineData,
+      terrainData,
       globals,
-      {
-        direction,
-        tileCount: supertileCount * globals.TILES_PER_SUPERTILE,
-        defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
+      direction,
+      supertileCount,
+      defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
+      setHeaderData,
+      setItemData,
+      setLiquidData: () => {
+        // Bugdom 1 doesn't have liquid data
       },
-    );
-    if (result.isErr()) {
-      console.error("Failed to resize level:", result.error.message);
-      return;
-    }
-    const resized = result.value.data;
-    if (resized.headerData) setHeaderData(resized.headerData);
-    if (resized.itemData !== undefined) setItemData(resized.itemData);
-    if (resized.fenceData !== undefined) setFenceData(resized.fenceData);
-    if (resized.splineData !== undefined) setSplineData(resized.splineData);
-    if (resized.terrainData) setTerrainData(resized.terrainData);
+      setFenceData,
+      setSplineData,
+      setTerrainData,
+    });
   };
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection>
-        {view === View.fences && (
-          fenceData ? (
-            <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+      <MenuSection scrollable={view !== View.supertiles}>
+        {view === View.fences &&
+          (fenceData ? (
+            <FenceMenu
+              fenceData={fenceData}
+              setFenceData={setFenceDataNotNull}
+            />
           ) : (
-            <EmptyFencePrompt onInitialize={() => setFenceData(createEmptyFenceData())} />
-          )
-        )}
+            <EmptyFencePrompt
+              onInitialize={() => setFenceData(createEmptyFenceData())}
+            />
+          ))}
         {view === View.items && itemData && (
           <ItemMenu
             itemData={itemData}
@@ -157,8 +154,8 @@ export function BugdomEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.splines && (
-          splineData ? (
+        {view === View.splines &&
+          (splineData ? (
             <SplineMenu
               splineData={splineData}
               setSplineData={setSplineDataNotNull}
@@ -166,9 +163,10 @@ export function BugdomEditorView({
               setHeaderData={setHeaderData}
             />
           ) : (
-            <EmptySplinePrompt onInitialize={() => setSplineData(createEmptySplineData())} />
-          )
-        )}
+            <EmptySplinePrompt
+              onInitialize={() => setSplineData(createEmptySplineData())}
+            />
+          ))}
         {view === View.tiles && (
           <IndividualTilesMenu
             headerData={headerData}
@@ -178,6 +176,7 @@ export function BugdomEditorView({
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
+            key={selectedTile}
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}

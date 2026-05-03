@@ -2,9 +2,10 @@
  * Keyframe Editor component for editing animation keyframes
  */
 
-import { useMemo, type MouseEvent, type RefObject } from "react";
+import { useMemo, useState, type MouseEvent, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Check, Pencil, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AnimationControls } from "./AnimationControls";
-import type { AnimationEvent, AnimationInfo, Keyframe, TimelineRow } from "./types";
+import type {
+  AnimationEvent,
+  AnimationInfo,
+  Keyframe,
+  TimelineRow,
+} from "./types";
+import type { BoneInfluenceRow } from "./rigToolsState";
 import {
   formatBoneLabel,
   formatTime,
@@ -78,6 +85,16 @@ interface KeyframeEditorProps {
   onStop: () => void;
   onReset: () => void;
   onSeek: (time: number) => void;
+  boneRenameInput: string;
+  boneInfluenceRows: BoneInfluenceRow[];
+  skinData?:
+    | import("@/modelEditing/weights/weightTypes").SkinWeightsData
+    | null;
+  onBoneRenameInputChange: (value: string) => void;
+  onRenameSelectedBone: () => void;
+  onRepairWeights?: (
+    repaired: import("@/modelEditing/weights/weightTypes").SkinWeightsData,
+  ) => void;
 }
 
 export function KeyframeEditor({
@@ -125,7 +142,13 @@ export function KeyframeEditor({
   onStop,
   onReset,
   onSeek,
+  boneRenameInput,
+  onBoneRenameInputChange,
+  onRenameSelectedBone,
 }: KeyframeEditorProps) {
+  const [editingTimelineBoneName, setEditingTimelineBoneName] = useState<
+    string | null
+  >(null);
   const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
   const ticksPerSecond = TICKS_PER_SECOND;
   const timelineDuration = duration;
@@ -139,7 +162,8 @@ export function KeyframeEditor({
   );
   const clampTimelinePercent = (position: number) =>
     Math.min(99.5, Math.max(0, position));
-  const showKeyframeDetails = selectedKeyframeIndex !== null || isCreatingKeyframe;
+  const showKeyframeDetails =
+    selectedKeyframeIndex !== null || isCreatingKeyframe;
   const valuesHelpText =
     selectedTrackProperty === "rotation"
       ? "Rotation uses quaternion components: X, Y, Z, and W. These are not degrees; W is the scalar component."
@@ -212,10 +236,63 @@ export function KeyframeEditor({
     () =>
       timelineRows.map((row) => {
         const isSelected = row.boneName === selectedBoneName;
+        const isEditing = row.boneName === editingTimelineBoneName;
         return (
           <div key={row.boneName} className="space-y-1">
-            <div className="text-[10px] uppercase tracking-wide text-gray-400">
-              {formatBoneLabel(row.boneName)}
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400">
+              {isEditing ? (
+                <>
+                  <Input
+                    value={boneRenameInput}
+                    onChange={(event) =>
+                      onBoneRenameInputChange(event.target.value)
+                    }
+                    className="h-7 border-gray-600 bg-gray-900 text-xs text-white"
+                    placeholder="Bone name"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => {
+                      onRenameSelectedBone();
+                      setEditingTimelineBoneName(null);
+                    }}
+                    disabled={!boneRenameInput.trim()}
+                    aria-label={`Rename ${row.boneName}`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => setEditingTimelineBoneName(null)}
+                    aria-label={`Cancel renaming ${row.boneName}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="truncate">
+                    {formatBoneLabel(row.boneName)}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => {
+                      onBoneNameChange(row.boneName);
+                      onBoneRenameInputChange(row.boneName);
+                      setEditingTimelineBoneName(row.boneName);
+                    }}
+                    aria-label={`Edit ${row.boneName}`}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
             </div>
             <div
               className={`relative h-8 overflow-hidden rounded-md ${
@@ -273,6 +350,11 @@ export function KeyframeEditor({
         );
       }),
     [
+      boneRenameInput,
+      editingTimelineBoneName,
+      onBoneNameChange,
+      onBoneRenameInputChange,
+      onRenameSelectedBone,
       onTimelineRowClick,
       rulerTicks,
       selectedBoneName,
@@ -306,9 +388,10 @@ export function KeyframeEditor({
 
   if (!selectedAnimationInfo) {
     return (
-      <p className="text-xs text-gray-400">
-        Select an animation to edit keyframes.
-      </p>
+      <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 text-sm text-gray-400">
+        Select an animation to edit the timeline. Rig and weight tools are
+        available in the dedicated panel above the animation editor.
+      </div>
     );
   }
 
@@ -318,7 +401,9 @@ export function KeyframeEditor({
     }
     const rect = event.currentTarget.getBoundingClientRect();
     const position = (event.clientX - rect.left) / rect.width;
-    onSeek(Math.min(timelineDuration, Math.max(0, position * timelineDuration)));
+    onSeek(
+      Math.min(timelineDuration, Math.max(0, position * timelineDuration)),
+    );
   };
 
   return (
@@ -491,15 +576,17 @@ export function KeyframeEditor({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                  {Object.entries(TRACK_PROPERTY_CONFIG).map(([key, config]) => (
-                    <SelectItem
-                      key={key}
-                      value={key}
-                      className="text-white focus:bg-gray-600"
-                    >
-                      {config.label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(TRACK_PROPERTY_CONFIG).map(
+                    ([key, config]) => (
+                      <SelectItem
+                        key={key}
+                        value={key}
+                        className="text-white focus:bg-gray-600"
+                      >
+                        {config.label}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -559,143 +646,152 @@ export function KeyframeEditor({
                   : "border-gray-700 bg-gray-900/20"
               }`}
             >
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-semibold text-gray-200">
-              {isCreatingKeyframe
-                ? "Creating new keyframe"
-                : selectedKeyframeIndex !== null
-                  ? `Editing keyframe #${selectedKeyframeIndex + 1}`
-                  : "Keyframe details"}
-            </div>
-            {isCreatingKeyframe && (
-              <div className="text-[10px] uppercase tracking-wide text-blue-200">
-                Auto-saves when valid
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs text-gray-300">Time (seconds)</label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={keyframeTimeInput}
-              onChange={(event) => onTimeInputChange(event.target.value)}
-              className={KEYFRAME_TIME_INPUT_CLASS}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs text-gray-300">Values</label>
-            <p className="text-[10px] leading-snug text-gray-500">
-              {valuesHelpText}
-            </p>
-            {boneTransform && selectedTrackProperty === "position" && (
-              <div className="space-y-1 text-[10px] text-gray-400">
-                {boneTransform.map((val, index) => {
-                  const fallbackLabels = ["X", "Y", "Z", "W"];
-                  const label =
-                    selectedTrackConfig.components[index] ??
-                    fallbackLabels[index] ??
-                    `Component ${index + 1}`;
-                  return (
-                    <div key={`gizmo-${index}`}>
-                      Gizmo {label}: {val.toFixed(2)}
-                    </div>
-                  );
-                })}
-                <Button size="sm" onClick={onUseBoneTransform}>
-                  Use Gizmo Position
-                </Button>
-                <p className="text-amber-400 text-[10px] leading-snug mt-1">
-                  Click &quot;Use Gizmo Position&quot; to apply the gizmo position to this keyframe.
-                </p>
-              </div>
-            )}
-            {boneRotation && selectedTrackProperty === "rotation" && onUseGizmoRotation && (
-              <div className="space-y-1 text-[10px] text-gray-400">
-                {boneRotation.map((val, index) => {
-                  const labels = ["X", "Y", "Z", "W"];
-                  const label = labels[index] ?? `Q${index}`;
-                  return (
-                    <div key={`gizmo-rot-${index}`}>
-                      Gizmo {label}: {val.toFixed(4)}
-                    </div>
-                  );
-                })}
-                <Button size="sm" onClick={onUseGizmoRotation}>
-                  Use Gizmo Rotation
-                </Button>
-                <p className="text-amber-400 text-[10px] leading-snug mt-1">
-                  Click &quot;Use Gizmo Rotation&quot; to apply the quaternion to this keyframe.
-                </p>
-              </div>
-            )}
-            {boneScale && selectedTrackProperty === "scale" && onUseGizmoScale && (
-              <div className="space-y-1 text-[10px] text-gray-400">
-                {boneScale.map((val, index) => {
-                  const labels = ["X", "Y", "Z"];
-                  const label = labels[index] ?? `S${index}`;
-                  return (
-                    <div key={`gizmo-scale-${index}`}>
-                      Gizmo {label}: {val.toFixed(4)}
-                    </div>
-                  );
-                })}
-                <Button size="sm" onClick={onUseGizmoScale}>
-                  Use Gizmo Scale
-                </Button>
-                <p className="text-amber-400 text-[10px] leading-snug mt-1">
-                  Click &quot;Use Gizmo Scale&quot; to apply the scale to this keyframe.
-                </p>
-              </div>
-            )}
-            <div className="space-y-3">
-              {selectedTrackConfig.components.map((label, index) => (
-                <div key={label} className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wide text-gray-400">
-                    {label}
-                  </label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder={label}
-                    value={keyframeValueInputs[index] ?? ""}
-                    onChange={(event) =>
-                      onValueInputChange(index, event.target.value)
-                    }
-                    className={KEYFRAME_VALUE_INPUT_CLASS}
-                  />
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-gray-200">
+                  {isCreatingKeyframe
+                    ? "Creating new keyframe"
+                    : selectedKeyframeIndex !== null
+                      ? `Editing keyframe #${selectedKeyframeIndex + 1}`
+                      : "Keyframe details"}
                 </div>
-              ))}
+                {isCreatingKeyframe && (
+                  <div className="text-[10px] uppercase tracking-wide text-blue-200">
+                    Auto-saves when valid
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-300">Time (seconds)</label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={keyframeTimeInput}
+                  onChange={(event) => onTimeInputChange(event.target.value)}
+                  className={KEYFRAME_TIME_INPUT_CLASS}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-300">Values</label>
+                <p className="text-[10px] leading-snug text-gray-500">
+                  {valuesHelpText}
+                </p>
+                {boneTransform && selectedTrackProperty === "position" && (
+                  <div className="space-y-1 text-[10px] text-gray-400">
+                    {boneTransform.map((val, index) => {
+                      const fallbackLabels = ["X", "Y", "Z", "W"];
+                      const label =
+                        selectedTrackConfig.components[index] ??
+                        fallbackLabels[index] ??
+                        `Component ${index + 1}`;
+                      return (
+                        <div key={`gizmo-${index}`}>
+                          Gizmo {label}: {val.toFixed(2)}
+                        </div>
+                      );
+                    })}
+                    <Button size="sm" onClick={onUseBoneTransform}>
+                      Use Gizmo Position
+                    </Button>
+                    <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                      Click &quot;Use Gizmo Position&quot; to apply the gizmo
+                      position to this keyframe.
+                    </p>
+                  </div>
+                )}
+                {boneRotation &&
+                  selectedTrackProperty === "rotation" &&
+                  onUseGizmoRotation && (
+                    <div className="space-y-1 text-[10px] text-gray-400">
+                      {boneRotation.map((val, index) => {
+                        const labels = ["X", "Y", "Z", "W"];
+                        const label = labels[index] ?? `Q${index}`;
+                        return (
+                          <div key={`gizmo-rot-${index}`}>
+                            Gizmo {label}: {val.toFixed(4)}
+                          </div>
+                        );
+                      })}
+                      <Button size="sm" onClick={onUseGizmoRotation}>
+                        Use Gizmo Rotation
+                      </Button>
+                      <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                        Click &quot;Use Gizmo Rotation&quot; to apply the
+                        quaternion to this keyframe.
+                      </p>
+                    </div>
+                  )}
+                {boneScale &&
+                  selectedTrackProperty === "scale" &&
+                  onUseGizmoScale && (
+                    <div className="space-y-1 text-[10px] text-gray-400">
+                      {boneScale.map((val, index) => {
+                        const labels = ["X", "Y", "Z"];
+                        const label = labels[index] ?? `S${index}`;
+                        return (
+                          <div key={`gizmo-scale-${index}`}>
+                            Gizmo {label}: {val.toFixed(4)}
+                          </div>
+                        );
+                      })}
+                      <Button size="sm" onClick={onUseGizmoScale}>
+                        Use Gizmo Scale
+                      </Button>
+                      <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                        Click &quot;Use Gizmo Scale&quot; to apply the scale to
+                        this keyframe.
+                      </p>
+                    </div>
+                  )}
+                <div className="space-y-3">
+                  {selectedTrackConfig.components.map((label, index) => (
+                    <div key={label} className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wide text-gray-400">
+                        {label}
+                      </label>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={label}
+                        value={keyframeValueInputs[index] ?? ""}
+                        onChange={(event) =>
+                          onValueInputChange(index, event.target.value)
+                        }
+                        className={KEYFRAME_VALUE_INPUT_CLASS}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {keyframeError && (
+                <p className="text-xs text-red-300">{keyframeError}</p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => {
+                    const keyframe =
+                      selectedKeyframeIndex !== null
+                        ? selectedKeyframes[selectedKeyframeIndex]
+                        : null;
+                    const message =
+                      keyframe && selectedKeyframeIndex !== null
+                        ? `Delete keyframe #${selectedKeyframeIndex + 1} at ${formatTime(
+                            keyframe.time,
+                          )}?`
+                        : "Delete this keyframe?";
+                    if (window.confirm(message)) {
+                      onDeleteKeyframe();
+                    }
+                  }}
+                  disabled={selectedKeyframeIndex === null}
+                >
+                  Delete Keyframe
+                </Button>
+              </div>
             </div>
-          </div>
-          {keyframeError && <p className="text-xs text-red-300">{keyframeError}</p>}
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              size="sm"
-              variant="destructive"
-              className="flex-1"
-              onClick={() => {
-                const keyframe =
-                  selectedKeyframeIndex !== null
-                    ? selectedKeyframes[selectedKeyframeIndex]
-                    : null;
-                const message =
-                  keyframe && selectedKeyframeIndex !== null
-                    ? `Delete keyframe #${selectedKeyframeIndex + 1} at ${formatTime(
-                        keyframe.time,
-                      )}?`
-                    : "Delete this keyframe?";
-                if (window.confirm(message)) {
-                  onDeleteKeyframe();
-                }
-              }}
-              disabled={selectedKeyframeIndex === null}
-            >
-              Delete Keyframe
-            </Button>
-          </div>
-        </div>
-      )}
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 /**
  * Nanosaur Editor View
- * 
+ *
  * For Nanosaur 1 which uses individual tiles but has minimal features:
  * - No fences
  * - No water bodies
@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { Nanosaur1EditorToolbar } from "../toolbars/Nanosaur1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
+import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 
@@ -31,13 +32,11 @@ import {
   createZoomOutHandler,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
-import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
 import type { NanosaurEditorViewProps } from "../utils/editorViewTypes";
-import {
-  ItemData,
-} from "@/python/structSpecs/LevelTypes";
+import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
+import { resizeNanosaurSupertiles } from "@/editor/gameViews/nanosaurEditorState";
 
 export function NanosaurEditorView({
   headerData,
@@ -55,11 +54,12 @@ export function NanosaurEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const view = useAtomValue(ActiveView);
+  const selectedTile = useAtomValue(SelectedTile);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
     () => createUndoRedoKeyHandler(undoData, redoData),
-    [undoData, redoData]
+    [undoData, redoData],
   );
 
   useWindowKeyDown(handleKeyDown);
@@ -69,7 +69,7 @@ export function NanosaurEditorView({
 
   const setItemDataNotNull: Updater<ItemData> = useMemo(
     () => createNonNullUpdater(setItemData),
-    [setItemData]
+    [setItemData],
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
@@ -77,38 +77,23 @@ export function NanosaurEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    const result = applySupertileResizeToAtomicData(
-      {
-        headerData,
-        itemData,
-        liquidData: null,
-        fenceData: null,
-        splineData: null,
-        terrainData,
-      },
+    resizeNanosaurSupertiles({
+      headerData,
+      itemData,
+      terrainData,
       globals,
-      {
-        direction,
-        tileCount: supertileCount * globals.TILES_PER_SUPERTILE,
-        defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
-      },
-    );
-    if (result.isErr()) {
-      console.error("Failed to resize level:", result.error.message);
-      return;
-    }
-    const resized = result.value.data;
-    if (resized.headerData) setHeaderData(resized.headerData);
-    if (resized.itemData !== undefined) setItemData(resized.itemData);
-    if (resized.terrainData) setTerrainData(resized.terrainData);
+      setHeaderData,
+      setItemData,
+      setTerrainData,
+      direction,
+      supertileCount,
+    });
   };
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <Nanosaur1EditorToolbar
-        terrainHasSTgd={showSupertileMenu}
-      />
-      <MenuSection>
+      <Nanosaur1EditorToolbar terrainHasSTgd={showSupertileMenu} />
+      <MenuSection scrollable={view !== View.supertiles}>
         {view === View.items && itemData && (
           <ItemMenu
             itemData={itemData}
@@ -126,6 +111,7 @@ export function NanosaurEditorView({
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
+            key={selectedTile}
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}

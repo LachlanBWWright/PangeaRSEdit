@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AnimationClip, AnimationMixer, Object3D, VectorKeyframeTrack } from "three";
+import {
+  AnimationClip,
+  AnimationMixer,
+  Object3D,
+  VectorKeyframeTrack,
+} from "three";
 import { syncAnimationActionTime } from "./hooks";
 
 describe("syncAnimationActionTime", () => {

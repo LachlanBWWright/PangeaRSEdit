@@ -259,8 +259,7 @@ describe("BG3D Format Difference Tests", () => {
     const parsedRes = parseBG3D(buffer);
     if (!parsedRes.isOk()) {
       if (
-        parsedRes.error instanceof Error &&
-        parsedRes.error.message.includes("Unknown BG3D tag: 13")
+        parsedRes.error.includes("Unknown BG3D tag: 13")
       ) {
         console.error(
           "JPEG texture tag (13) not supported - need to implement",

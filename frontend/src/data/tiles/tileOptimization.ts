@@ -1,6 +1,6 @@
 /**
  * Tile Optimization
- * 
+ *
  * Utilities for optimizing tile data, including removing unused tiles
  * and defragmenting the tile index space.
  */
@@ -23,18 +23,16 @@ export interface TileOptimizationResult {
  * Analyze tiles to find which can be safely removed
  * This is a read-only operation that doesn't modify data
  */
-export function analyzeUnusedTiles(
-  terrainData: TerrainData,
-): {
+export function analyzeUnusedTiles(terrainData: TerrainData): {
   unusedIndices: number[];
   canOptimize: boolean;
   estimatedSavings: number;
 } {
   const tiles = extractTileInfo(terrainData);
-  const unusedTiles = tiles.filter(t => t.usageCount === 0);
-  
+  const unusedTiles = tiles.filter((t) => t.usageCount === 0);
+
   return {
-    unusedIndices: unusedTiles.map(t => t.attributeIndex),
+    unusedIndices: unusedTiles.map((t) => t.attributeIndex),
     canOptimize: unusedTiles.length > 0,
     estimatedSavings: unusedTiles.length,
   };
@@ -49,24 +47,22 @@ export function computeCompactedIndexMapping(
 ): Map<number, number> {
   const tiles = extractTileInfo(terrainData);
   const usedIndices = new Set(
-    tiles
-      .filter(t => t.usageCount > 0)
-      .map(t => t.attributeIndex)
+    tiles.filter((t) => t.usageCount > 0).map((t) => t.attributeIndex),
   );
-  
+
   const mapping = new Map<number, number>();
   let newIndex = 0;
-  
+
   const atrb = terrainData.Atrb?.[1000]?.obj;
   if (!atrb) return mapping;
-  
+
   for (let oldIndex = 0; oldIndex < atrb.length; oldIndex++) {
     if (usedIndices.has(oldIndex)) {
       mapping.set(oldIndex, newIndex);
       newIndex++;
     }
   }
-  
+
   return mapping;
 }
 
@@ -82,16 +78,16 @@ export function compactTileIndices(
     removedCount: 0,
     oldToNewMapping: new Map(),
   };
-  
+
   const atrb = terrainDraft.Atrb?.[1000]?.obj;
   const layr = terrainDraft.Layr?.[1000]?.obj;
   const xlat = terrainDraft.Xlat?.[1000]?.obj;
-  
+
   if (!atrb || !layr) {
     result.message = "Missing required terrain data";
     return result;
   }
-  
+
   // Find used attribute indices
   const usedIndices = new Set<number>();
   for (const idx of layr) {
@@ -99,29 +95,29 @@ export function compactTileIndices(
       usedIndices.add(idx);
     }
   }
-  
+
   // Build mapping from old to new indices
   const oldToNew = new Map<number, number>();
   let newIndex = 0;
-  
+
   for (let oldIndex = 0; oldIndex < atrb.length; oldIndex++) {
     if (usedIndices.has(oldIndex)) {
       oldToNew.set(oldIndex, newIndex);
       newIndex++;
     }
   }
-  
+
   const removedCount = atrb.length - oldToNew.size;
-  
+
   if (removedCount === 0) {
     result.success = true;
     result.message = "No unused tiles to remove";
     return result;
   }
-  
+
   // Filter attributes to only used ones, preserving order
   const newAtrb = atrb.filter((_, idx) => usedIndices.has(idx));
-  
+
   // Filter xlat table if it exists
   if (xlat) {
     const newXlat = xlat.filter((_, idx) => usedIndices.has(idx));
@@ -130,26 +126,24 @@ export function compactTileIndices(
       xlatEntry.obj = newXlat;
     }
   }
-  
+
   // Remap layer indices
   for (let i = 0; i < layr.length; i++) {
     const oldIdx = layr[i];
-    if (oldIdx !== undefined) {
-      const newIdx = oldToNew.get(oldIdx);
-      if (newIdx !== undefined) {
-        layr[i] = newIdx;
-      }
-    }
+    if (oldIdx === undefined) continue;
+    const newIdx = oldToNew.get(oldIdx);
+    if (newIdx === undefined) continue;
+    layr[i] = newIdx;
   }
-  
+
   // Update attribute array
   terrainDraft.Atrb[1000].obj = newAtrb;
-  
+
   result.success = true;
   result.removedCount = removedCount;
   result.oldToNewMapping = oldToNew;
   result.message = `Removed ${removedCount} unused tile(s)`;
-  
+
   return result;
 }
 
@@ -157,56 +151,53 @@ export function compactTileIndices(
  * Check if optimization would cause any issues
  * Returns warnings about potential problems
  */
-export function validateOptimization(
-  terrainData: TerrainData,
-): string[] {
+export function validateOptimization(terrainData: TerrainData): string[] {
   const warnings: string[] = [];
-  
+
   const atrb = terrainData.Atrb?.[1000]?.obj;
   const layr = terrainData.Layr?.[1000]?.obj;
-  
+
   if (!atrb) {
     warnings.push("No tile attributes found");
     return warnings;
   }
-  
+
   if (!layr) {
     warnings.push("No terrain layer found");
     return warnings;
   }
-  
+
   // Check for invalid references in layer
   for (let i = 0; i < layr.length; i++) {
     const idx = layr[i];
     if (idx !== undefined && (idx < 0 || idx >= atrb.length)) {
-      warnings.push(`Invalid tile reference at cell ${i}: index ${idx} out of range`);
+      warnings.push(
+        `Invalid tile reference at cell ${i}: index ${idx} out of range`,
+      );
     }
   }
-  
+
   return warnings;
 }
 
 /**
  * Get optimization statistics
  */
-export function getOptimizationStats(
-  terrainData: TerrainData,
-): {
+export function getOptimizationStats(terrainData: TerrainData): {
   totalTiles: number;
   usedTiles: number;
   unusedTiles: number;
   percentageUnused: number;
 } {
   const tiles = extractTileInfo(terrainData);
-  const usedCount = tiles.filter(t => t.usageCount > 0).length;
+  const usedCount = tiles.filter((t) => t.usageCount > 0).length;
   const unusedCount = tiles.length - usedCount;
-  
+
   return {
     totalTiles: tiles.length,
     usedTiles: usedCount,
     unusedTiles: unusedCount,
-    percentageUnused: tiles.length > 0 
-      ? Math.round((unusedCount / tiles.length) * 100) 
-      : 0,
+    percentageUnused:
+      tiles.length > 0 ? Math.round((unusedCount / tiles.length) * 100) : 0,
   };
 }
