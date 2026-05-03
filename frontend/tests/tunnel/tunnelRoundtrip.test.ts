@@ -366,7 +366,7 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     
     expect(result.isOk()).toBe(false);
     if (!result.isOk()) {
-      expect(result.error.message).toContain("too small");
+      expect(result.error).toContain("too small");
     }
   });
 });

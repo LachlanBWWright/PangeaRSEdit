@@ -1,4 +1,5 @@
 import {
+  Float32BufferAttribute,
   Group,
   SkeletonHelper,
   Mesh,
@@ -13,8 +14,16 @@ import {
   MeshStandardMaterial,
   MeshPhysicalMaterial,
 } from "three";
-import { useEffect, useRef, memo } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useEffect, useRef, memo, useCallback } from "react";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import { buildWeightColorMap } from "@/modelEditing/weights/weightVisualization";
+import type {
+  SkinWeightsData,
+  WeightBrushSettings,
+  WeightVisualizationMode,
+} from "@/modelEditing/weights/weightTypes";
+import type { WeightBrushHit } from "@/modelEditing/weights/weightBrushStroke";
+import type { ViewerInteractionMode } from "@/components/model-viewer/types";
 
 interface BoneTubeRef {
   tube: Mesh;
@@ -41,6 +50,62 @@ interface EnhancedModelMeshProps {
   position?: [number, number, number];
   selectedBoneName?: string | null;
   previewLighting?: boolean;
+  skinData?: SkinWeightsData | null;
+  weightBrushSettings?: WeightBrushSettings | null;
+  weightVisualizationMode?: WeightVisualizationMode;
+  interactionMode?: ViewerInteractionMode;
+  onWeightBrushStroke?: (hit: WeightBrushHit) => void;
+}
+
+interface WeightVisualizationRestoreEntry {
+  mesh: SkinnedMesh;
+  material: Material | Material[];
+  colorAttribute: ReturnType<SkinnedMesh["geometry"]["getAttribute"]> | null;
+}
+
+function createWeightVisualizationMaterial(material: Material): Material {
+  if (material instanceof MeshStandardMaterial) {
+    const cloned = material.clone();
+    cloned.vertexColors = true;
+    cloned.map = null;
+    cloned.normalMap = null;
+    cloned.roughnessMap = null;
+    cloned.metalnessMap = null;
+    cloned.emissiveMap = null;
+    cloned.color.setRGB(1, 1, 1);
+    return cloned;
+  }
+
+  if (material instanceof MeshPhysicalMaterial) {
+    const cloned = material.clone();
+    cloned.vertexColors = true;
+    cloned.map = null;
+    cloned.normalMap = null;
+    cloned.roughnessMap = null;
+    cloned.metalnessMap = null;
+    cloned.emissiveMap = null;
+    cloned.color.setRGB(1, 1, 1);
+    return cloned;
+  }
+
+  if (material instanceof MeshBasicMaterial) {
+    const cloned = material.clone();
+    cloned.vertexColors = true;
+    cloned.map = null;
+    cloned.color.setRGB(1, 1, 1);
+    return cloned;
+  }
+
+  return material;
+}
+
+function disposeMaterials(material: Material | Material[]): void {
+  if (Array.isArray(material)) {
+    material.forEach((entry) => entry.dispose());
+    return;
+  }
+
+  material.dispose();
 }
 
 function EnhancedModelMeshComponent({
@@ -50,9 +115,15 @@ function EnhancedModelMeshComponent({
   position = [0, 0, 0],
   selectedBoneName = null,
   previewLighting = false,
+  skinData = null,
+  weightBrushSettings = null,
+  weightVisualizationMode = "none",
+  interactionMode = "navigate",
+  onWeightBrushStroke,
 }: EnhancedModelMeshProps) {
   const skeletonHelpersRef = useRef<(SkeletonHelper | Mesh)[]>([]);
   const boneTubesRef = useRef<BoneTubeRef[]>([]);
+  const activePaintPointerIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!scene) return;
@@ -131,7 +202,6 @@ function EnhancedModelMeshComponent({
       );
     }
 
-
     // Clean up previous skeleton helpers
     skeletonHelpersRef.current.forEach((helper) => {
       // Handle both SkeletonHelper and Mesh objects
@@ -168,7 +238,9 @@ function EnhancedModelMeshComponent({
 
           // Create bone joint spheres
           const boneGeometry = new SphereGeometry(0.5, 8, 8);
-          const boneMaterial = new MeshBasicMaterial({ color: defaultBoneColor });
+          const boneMaterial = new MeshBasicMaterial({
+            color: defaultBoneColor,
+          });
 
           skeleton.bones.forEach((bone) => {
             const boneMesh = new Mesh(boneGeometry, boneMaterial.clone());
@@ -300,6 +372,127 @@ function EnhancedModelMeshComponent({
     });
   }, [selectedBoneName, showSkeleton]);
 
+  useEffect(() => {
+    if (!scene || !skinData || weightVisualizationMode === "none") {
+      return undefined;
+    }
+
+    const colorMap = buildWeightColorMap(
+      skinData,
+      weightVisualizationMode,
+      weightBrushSettings?.targetBone ?? null,
+    );
+    const restoreEntries: WeightVisualizationRestoreEntry[] = [];
+    let vertexOffset = 0;
+
+    scene.traverse((object) => {
+      if (!(object instanceof SkinnedMesh)) {
+        return;
+      }
+
+      const positionAttribute = object.geometry.getAttribute("position");
+      if (!positionAttribute) {
+        return;
+      }
+
+      restoreEntries.push({
+        mesh: object,
+        material: object.material,
+        colorAttribute: object.geometry.getAttribute("color") ?? null,
+      });
+
+      const colorValues = new Float32Array(positionAttribute.count * 3);
+      for (
+        let vertexIndex = 0;
+        vertexIndex < positionAttribute.count;
+        vertexIndex += 1
+      ) {
+        const color = colorMap[vertexOffset + vertexIndex] ?? [128, 128, 128];
+        colorValues[vertexIndex * 3] = color[0] / 255;
+        colorValues[vertexIndex * 3 + 1] = color[1] / 255;
+        colorValues[vertexIndex * 3 + 2] = color[2] / 255;
+      }
+
+      object.geometry.setAttribute(
+        "color",
+        new Float32BufferAttribute(colorValues, 3),
+      );
+      object.material = Array.isArray(object.material)
+        ? object.material.map(createWeightVisualizationMaterial)
+        : createWeightVisualizationMaterial(object.material);
+
+      vertexOffset += positionAttribute.count;
+    });
+
+    return () => {
+      restoreEntries.forEach((entry) => {
+        if (entry.mesh.material !== entry.material) {
+          disposeMaterials(entry.mesh.material);
+        }
+        entry.mesh.material = entry.material;
+        if (entry.colorAttribute) {
+          entry.mesh.geometry.setAttribute("color", entry.colorAttribute);
+        } else {
+          entry.mesh.geometry.deleteAttribute("color");
+        }
+      });
+    };
+  }, [
+    scene,
+    skinData,
+    weightBrushSettings?.targetBone,
+    weightVisualizationMode,
+  ]);
+
+  const applyBrushStroke = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      if (
+        !onWeightBrushStroke ||
+        !weightBrushSettings?.targetBone ||
+        interactionMode !== "paint-weights"
+      ) {
+        return;
+      }
+
+      if (!(event.object instanceof SkinnedMesh)) {
+        return;
+      }
+
+      const localPoint = event.object.worldToLocal(event.point.clone());
+      onWeightBrushStroke({
+        meshUuid: event.object.uuid,
+        localPoint: [localPoint.x, localPoint.y, localPoint.z],
+      });
+      event.stopPropagation();
+    },
+    [interactionMode, onWeightBrushStroke, weightBrushSettings?.targetBone],
+  );
+
+  const handleWeightPointerDown = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      activePaintPointerIdRef.current = event.pointerId;
+      applyBrushStroke(event);
+    },
+    [applyBrushStroke],
+  );
+
+  const handleWeightPointerMove = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      if (
+        activePaintPointerIdRef.current !== event.pointerId ||
+        (event.nativeEvent.buttons & 1) !== 1
+      ) {
+        return;
+      }
+      applyBrushStroke(event);
+    },
+    [applyBrushStroke],
+  );
+
+  const handleWeightPointerEnd = useCallback(() => {
+    activePaintPointerIdRef.current = null;
+  }, []);
+
   if (!scene) {
     console.warn("No scene available");
     return null;
@@ -307,7 +500,13 @@ function EnhancedModelMeshComponent({
 
   return (
     <group position={position}>
-      <primitive object={scene} />
+      <primitive
+        object={scene}
+        onPointerDown={handleWeightPointerDown}
+        onPointerMove={handleWeightPointerMove}
+        onPointerUp={handleWeightPointerEnd}
+        onPointerLeave={handleWeightPointerEnd}
+      />
     </group>
   );
 }

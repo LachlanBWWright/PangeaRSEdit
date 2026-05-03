@@ -1,6 +1,6 @@
 /**
  * EditorView - Main entry point for the level editor
- * 
+ *
  * This component delegates to game-specific EditorViews based on the current game type.
  * Each game has its own EditorView that composes the appropriate menus and features.
  */

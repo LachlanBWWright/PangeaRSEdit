@@ -229,7 +229,7 @@ describe("Skeleton keyframe round-trip (3DMF)", () => {
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
     const parsedResult = parseBG3DWithSkeletonResource(dmfBuffer, skeletonResource);
     if (parsedResult.isErr()) {
-      console.warn("Skipping: failed to parse 3DMF with skeleton:", parsedResult.error.message);
+      console.warn("Skipping: failed to parse 3DMF with skeleton:", parsedResult.error);
       return;
     }
     const parsed = parsedResult.value;

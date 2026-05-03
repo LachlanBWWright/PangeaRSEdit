@@ -144,11 +144,11 @@ function cloneSkeletonResource(skeletonResource: SkeletonResource): SkeletonReso
 /**
  * Convert SkeletonResource JSON to binary .rsrc format
  * @param skeletonResource The skeleton resource to convert
- * @returns Result<ArrayBuffer, Error>
+ * @returns Result<ArrayBuffer, string>
  */
 export function skeletonResourceToBinary(
   skeletonResource: SkeletonResource,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   console.log(
     "Converting SkeletonResource to binary format using rsrcdump-ts...",
   );
@@ -179,8 +179,7 @@ export function skeletonResourceToBinary(
   );
 
   if (!isOk(result)) {
-    const msg = typeof result.error === "string" ? result.error : String(result.error);
-    return err(new Error(`Failed to serialize skeleton: ${msg}`));
+    return err(`Failed to serialize skeleton: ${result.error}`);
   }
 
   // loadBytesFromJson returns Uint8Array on success

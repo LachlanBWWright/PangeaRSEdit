@@ -22,6 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AnimationInfo } from "./types";
+import {
+  createAnimationDialogOpenHandler,
+  createAnimationSubmitHandler,
+  toAnimationSourceOptions,
+} from "@/components/AnimationViewer/animationCreatorState";
 
 interface AnimationCreatorProps {
   editableAnimations: AnimationInfo[];
@@ -44,25 +49,19 @@ export function AnimationCreator({
   const [sourceAnimation, setSourceAnimation] = useState<string>("none");
 
   const sourceOptions = useMemo(
-    () => editableAnimations.map((anim) => ({ id: String(anim.index), name: anim.name })),
+    () => toAnimationSourceOptions(editableAnimations),
     [editableAnimations],
   );
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (nextOpen) {
-      setSourceAnimation("none");
-    }
-  };
-
-  const handleCreate = () => {
-    const parsedSourceIndex =
-      sourceAnimation === "none"
-        ? null
-        : Number.parseInt(sourceAnimation, 10);
-    onCreate(Number.isNaN(parsedSourceIndex) ? null : parsedSourceIndex);
-    setOpen(false);
-  };
+  const handleOpenChange = createAnimationDialogOpenHandler(
+    setOpen,
+    setSourceAnimation,
+  );
+  const handleCreate = createAnimationSubmitHandler(
+    sourceAnimation,
+    onCreate,
+    setOpen,
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

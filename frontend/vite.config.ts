@@ -73,21 +73,23 @@ function serveStaticDirectory(basePath: string, rootDir: string): Plugin {
           return;
         }
 
-        try {
-          const stats = fs.statSync(targetPath);
-          if (stats.isDirectory()) {
-            targetPath = path.join(targetPath, "index.html");
-          }
-          if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isFile()) {
-            next();
-            return;
-          }
-          res.statusCode = 200;
-          res.setHeader("Content-Type", mimeTypeFor(targetPath));
-          fs.createReadStream(targetPath).pipe(res);
-        } catch {
+        if (!fs.existsSync(targetPath)) {
           next();
+          return;
         }
+
+        const stats = fs.statSync(targetPath);
+        if (stats.isDirectory()) {
+          targetPath = path.join(targetPath, "index.html");
+        }
+        if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isFile()) {
+          next();
+          return;
+        }
+
+        res.statusCode = 200;
+        res.setHeader("Content-Type", mimeTypeFor(targetPath));
+        fs.createReadStream(targetPath).pipe(res);
       });
     },
     closeBundle() {

@@ -1,6 +1,4 @@
-/**
- * Shared TGA parsing utilities
- */
+/** Shared TGA parsing utilities. */
 
 export interface TGAHeader {
   idLength: number;
@@ -17,9 +15,7 @@ export interface TGAHeader {
   imageDescriptor: number;
 }
 
-/**
- * Parse TGA file header (18 bytes)
- */
+/** Parses the fixed 18-byte TGA file header into a typed structure. */
 export function parseTGAHeader(data: DataView): TGAHeader {
   return {
     idLength: data.getUint8(0),

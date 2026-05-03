@@ -15,7 +15,7 @@ import { isRawNanosaurAttribute, isRawNanosaurItem } from "./typeGuards";
 export function compileNanosaur1Level(
   levelData: LevelData,
   rawLevelData: Nanosaur1LevelData,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   const header = rawLevelData.header;
     const mapWidth = header.width;
     const mapHeight = header.depth;

@@ -1,7 +1,4 @@
-import {
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { GlobalsInterface, DataType } from "@/data/globals/globals";
 import { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
@@ -11,14 +8,14 @@ export function combineMapImagesFromSTgd(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   if (mapImages.length === 0) {
-    return err(new Error("No map images to combine"));
+    return err("No map images to combine");
   }
 
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header || !terrainData.STgd?.[1000]?.obj) {
-    return err(new Error("Missing header or supertile data"));
+    return err("Missing header or supertile data");
   }
 
   const numWide = header.mapWidth;
@@ -31,7 +28,7 @@ export function combineMapImagesFromSTgd(
   combinedCanvas.height =
     (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numHigh;
   const ctx = combinedCanvas.getContext("2d");
-  if (!ctx) return err(new Error("Could not get canvas context"));
+  if (!ctx) return err("Could not get canvas context");
 
   const supertilesWide = numWide / globals.TILES_PER_SUPERTILE;
   const supertilesHigh = numHigh / globals.TILES_PER_SUPERTILE;
@@ -44,13 +41,10 @@ export function combineMapImagesFromSTgd(
       const tileId = stgdEntry.superTileId ?? stgdEntry;
       if (tileId === globals.EMPTY_TILE_IDX) continue;
       const tileImg = mapImages[tileId];
-      if (tileImg) {
-        ctx.drawImage(
-          tileImg,
-          i * globals.SUPERTILE_TEXMAP_SIZE,
-          j * globals.SUPERTILE_TEXMAP_SIZE,
-        );
-      }
+      if (!tileImg) continue;
+      const tdx = i * globals.SUPERTILE_TEXMAP_SIZE;
+      const tdy = j * globals.SUPERTILE_TEXMAP_SIZE;
+      ctx.drawImage(tileImg, tdx, tdy);
     }
   }
 
@@ -62,14 +56,14 @@ export function combineMapImagesFromTiles(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   if (mapImages.length === 0) {
-    return err(new Error("No tile images to combine"));
+    return err("No tile images to combine");
   }
 
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header || !terrainData.Layr?.[1000]?.obj) {
-    return err(new Error("Missing header or layer data"));
+    return err("Missing header or layer data");
   }
 
   const numWide = header.mapWidth;
@@ -81,7 +75,7 @@ export function combineMapImagesFromTiles(
   combinedCanvas.width = numWide * tileSize;
   combinedCanvas.height = numHigh * tileSize;
   const ctx = combinedCanvas.getContext("2d");
-  if (!ctx) return err(new Error("Could not get canvas context"));
+  if (!ctx) return err("Could not get canvas context");
 
   const layerData = terrainData.Layr[1000].obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
@@ -106,12 +100,8 @@ export function combineMapImagesFromTiles(
       let tileIndex = tileValue & TILENUM_MASK;
 
       // Apply Xlat translation if available
-      if (xlatTable && tileIndex < xlatTable.length) {
-        const translatedEntry = xlatTable[tileIndex];
-        if (translatedEntry !== undefined) {
-          tileIndex = translatedEntry.idx;
-        }
-      }
+      const translated = xlatTable?.[tileIndex];
+      if (translated !== undefined) tileIndex = translated.idx;
 
       const tileImg = mapImages[tileIndex];
       if (!tileImg) continue;
@@ -129,17 +119,9 @@ export function combineMapImagesFromTiles(
       ctx.translate(destX + tileSize / 2, destY + tileSize / 2);
 
       // Apply rotation
-      switch (rotation) {
-        case TILE_ROT1:
-          ctx.rotate(Math.PI / 2);
-          break;
-        case TILE_ROT2:
-          ctx.rotate(Math.PI);
-          break;
-        case TILE_ROT3:
-          ctx.rotate((3 * Math.PI) / 2);
-          break;
-      }
+      if (rotation === TILE_ROT1) ctx.rotate(Math.PI / 2);
+      else if (rotation === TILE_ROT2) ctx.rotate(Math.PI);
+      else if (rotation === TILE_ROT3) ctx.rotate((3 * Math.PI) / 2);
 
       // Apply flips
       const scaleX = flipX ? -1 : 1;
@@ -147,13 +129,7 @@ export function combineMapImagesFromTiles(
       ctx.scale(scaleX, scaleY);
 
       // Draw the tile
-      ctx.drawImage(
-        tileImg,
-        -tileSize / 2,
-        -tileSize / 2,
-        tileSize,
-        tileSize,
-      );
+      ctx.drawImage(tileImg, -tileSize / 2, -tileSize / 2, tileSize, tileSize);
 
       ctx.restore();
     }
@@ -167,7 +143,7 @@ export function combineMapImages(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement, string> {
   // Bugdom 1 and Nanosaur 1 use individual tiles (RSRC_FORK and TRT_FILE)
   if (
     globals.DATA_TYPE === DataType.RSRC_FORK ||

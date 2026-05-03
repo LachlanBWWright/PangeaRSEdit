@@ -1,157 +1,246 @@
-/**
- * Edit Operations for Level Data
- * 
- * Discriminated union types for all possible level editing operations.
- * Each operation is designed to be reversible for undo/redo support.
- * 
- * These types enable pure function implementations that can be tested
- * independently of React components.
- */
-
+import { err, ok, type Result } from "neverthrow";
 import type {
-  TerrainItem,
-  SplineNub,
-} from "@/python/structSpecs/LevelTypes";
-import { Result } from "neverthrow";
-import { ok, err } from "neverthrow";
+  EditOperation,
+  MoveFenceNubOperation,
+  MoveItemOperation,
+  MoveSplineNubOperation,
+  UpdateItemParamsOperation,
+  UpdateTerrainHeightOperation,
+  UpdateTileAttributeOperation,
+} from "./editOperationTypes";
+export type {
+  AddItemOperation,
+  AddSplineNubOperation,
+  DeleteItemOperation,
+  DeleteSplineNubOperation,
+  EditOperation,
+  ItemParams,
+  MoveFenceNubOperation,
+  MoveItemOperation,
+  MoveSplineNubOperation,
+  TileAttribute,
+  UpdateItemParamsOperation,
+  UpdateTerrainHeightOperation,
+  UpdateTileAttributeOperation,
+} from "./editOperationTypes";
 
-/**
- * All possible edit operations that can be performed on level data.
- * Each operation captures the data needed to apply and reverse it.
- */
-export type EditOperation =
-  | MoveItemOperation
-  | UpdateItemParamsOperation
-  | DeleteItemOperation
-  | AddItemOperation
-  | MoveSplineNubOperation
-  | AddSplineNubOperation
-  | DeleteSplineNubOperation
-  | MoveFenceNubOperation
-  | UpdateTerrainHeightOperation
-  | UpdateTileAttributeOperation;
-
-/**
- * Move an item to new coordinates
- */
-export interface MoveItemOperation {
-  type: "MoveItem";
-  itemIndex: number;
-  oldX: number;
-  oldZ: number;
-  newX: number;
-  newZ: number;
+function reverseMoveItem(op: MoveItemOperation): MoveItemOperation {
+  return {
+    type: "MoveItem",
+    itemIndex: op.itemIndex,
+    oldX: op.newX,
+    oldZ: op.newZ,
+    newX: op.oldX,
+    newZ: op.oldZ,
+  };
 }
 
-/**
- * Update item parameters (flags and p0-p3)
- */
-export interface UpdateItemParamsOperation {
-  type: "UpdateItemParams";
-  itemIndex: number;
-  oldParams: ItemParams;
-  newParams: ItemParams;
+function reverseUpdateItemParams(
+  op: UpdateItemParamsOperation,
+): UpdateItemParamsOperation {
+  return {
+    type: "UpdateItemParams",
+    itemIndex: op.itemIndex,
+    oldParams: op.newParams,
+    newParams: op.oldParams,
+  };
 }
 
-export interface ItemParams {
-  flags: number;
-  p0: number;
-  p1: number;
-  p2: number;
-  p3: number;
+function reverseMoveSplineNub(
+  op: MoveSplineNubOperation,
+): MoveSplineNubOperation {
+  return {
+    type: "MoveSplineNub",
+    splineIndex: op.splineIndex,
+    nubIndex: op.nubIndex,
+    oldX: op.newX,
+    oldZ: op.newZ,
+    newX: op.oldX,
+    newZ: op.oldZ,
+  };
 }
 
-/**
- * Delete an item from the level
- */
-export interface DeleteItemOperation {
-  type: "DeleteItem";
-  itemIndex: number;
-  deletedItem: TerrainItem;
+function reverseMoveFenceNub(op: MoveFenceNubOperation): MoveFenceNubOperation {
+  return {
+    type: "MoveFenceNub",
+    fenceIndex: op.fenceIndex,
+    nubIndex: op.nubIndex,
+    oldX: op.newX,
+    oldY: op.newY,
+    newX: op.oldX,
+    newY: op.oldY,
+  };
 }
 
-/**
- * Add a new item to the level
- */
-export interface AddItemOperation {
-  type: "AddItem";
-  item: TerrainItem;
-  insertIndex?: number;
+function reverseUpdateTerrainHeight(
+  op: UpdateTerrainHeightOperation,
+): UpdateTerrainHeightOperation {
+  return {
+    type: "UpdateTerrainHeight",
+    x: op.x,
+    z: op.z,
+    oldHeight: op.newHeight,
+    newHeight: op.oldHeight,
+    layer: op.layer,
+  };
 }
 
-/**
- * Move a spline control point (nub)
- */
-export interface MoveSplineNubOperation {
-  type: "MoveSplineNub";
-  splineIndex: number;
-  nubIndex: number;
-  oldX: number;
-  oldZ: number;
-  newX: number;
-  newZ: number;
+function reverseUpdateTileAttribute(
+  op: UpdateTileAttributeOperation,
+): UpdateTileAttributeOperation {
+  return {
+    type: "UpdateTileAttribute",
+    x: op.x,
+    z: op.z,
+    oldAttribute: op.newAttribute,
+    newAttribute: op.oldAttribute,
+  };
 }
 
-/**
- * Add a new nub to a spline
- */
-export interface AddSplineNubOperation {
-  type: "AddSplineNub";
-  splineIndex: number;
-  insertIndex: number;
-  nub: SplineNub;
+function reverseDeleteItem(
+  op: Extract<EditOperation, { type: "DeleteItem" }>,
+): Extract<EditOperation, { type: "AddItem" }> {
+  return {
+    type: "AddItem",
+    item: op.deletedItem,
+    insertIndex: op.itemIndex,
+  };
 }
 
-/**
- * Delete a nub from a spline
- */
-export interface DeleteSplineNubOperation {
-  type: "DeleteSplineNub";
-  splineIndex: number;
-  nubIndex: number;
-  deletedNub: SplineNub;
+function reverseAddItem(
+  op: Extract<EditOperation, { type: "AddItem" }>,
+): Extract<EditOperation, { type: "DeleteItem" }> {
+  return {
+    type: "DeleteItem",
+    itemIndex: op.insertIndex ?? -1,
+    deletedItem: op.item,
+  };
 }
 
-/**
- * Move a fence control point
- */
-export interface MoveFenceNubOperation {
-  type: "MoveFenceNub";
-  fenceIndex: number;
-  nubIndex: number;
-  oldX: number;
-  oldY: number;
-  newX: number;
-  newY: number;
+function reverseAddSplineNub(
+  op: Extract<EditOperation, { type: "AddSplineNub" }>,
+): Extract<EditOperation, { type: "DeleteSplineNub" }> {
+  return {
+    type: "DeleteSplineNub",
+    splineIndex: op.splineIndex,
+    nubIndex: op.insertIndex,
+    deletedNub: op.nub,
+  };
 }
 
-/**
- * Update terrain height at a coordinate
- */
-export interface UpdateTerrainHeightOperation {
-  type: "UpdateTerrainHeight";
-  x: number;
-  z: number;
-  oldHeight: number;
-  newHeight: number;
-  layer?: number;
+function reverseDeleteSplineNub(
+  op: Extract<EditOperation, { type: "DeleteSplineNub" }>,
+): Extract<EditOperation, { type: "AddSplineNub" }> {
+  return {
+    type: "AddSplineNub",
+    splineIndex: op.splineIndex,
+    insertIndex: op.nubIndex,
+    nub: op.deletedNub,
+  };
 }
 
-/**
- * Update tile attribute at a coordinate
- */
-export interface UpdateTileAttributeOperation {
-  type: "UpdateTileAttribute";
-  x: number;
-  z: number;
-  oldAttribute: TileAttribute;
-  newAttribute: TileAttribute;
+function mergeTypeError(
+  expected: EditOperation["type"],
+): Result<never, string> {
+  return err(`Incompatible merge: expected ${expected} for second operation`);
 }
 
-export interface TileAttribute {
-  flags: number;
-  p0: number;
-  p1: number;
+function mergeMoveItem(
+  first: MoveItemOperation,
+  second: EditOperation,
+): Result<EditOperation, string> {
+  if (second.type !== "MoveItem") return mergeTypeError("MoveItem");
+  return ok({
+    type: "MoveItem",
+    itemIndex: first.itemIndex,
+    oldX: first.oldX,
+    oldZ: first.oldZ,
+    newX: second.newX,
+    newZ: second.newZ,
+  });
+}
+
+function mergeUpdateItemParams(
+  first: UpdateItemParamsOperation,
+  second: EditOperation,
+): Result<EditOperation, string> {
+  if (second.type !== "UpdateItemParams") {
+    return mergeTypeError("UpdateItemParams");
+  }
+
+  return ok({
+    type: "UpdateItemParams",
+    itemIndex: first.itemIndex,
+    oldParams: first.oldParams,
+    newParams: second.newParams,
+  });
+}
+
+function mergeMoveSplineNub(
+  first: MoveSplineNubOperation,
+  second: EditOperation,
+): Result<EditOperation, string> {
+  if (second.type !== "MoveSplineNub") return mergeTypeError("MoveSplineNub");
+  return ok({
+    type: "MoveSplineNub",
+    splineIndex: first.splineIndex,
+    nubIndex: first.nubIndex,
+    oldX: first.oldX,
+    oldZ: first.oldZ,
+    newX: second.newX,
+    newZ: second.newZ,
+  });
+}
+
+function mergeMoveFenceNub(
+  first: MoveFenceNubOperation,
+  second: EditOperation,
+): Result<EditOperation, string> {
+  if (second.type !== "MoveFenceNub") return mergeTypeError("MoveFenceNub");
+  return ok({
+    type: "MoveFenceNub",
+    fenceIndex: first.fenceIndex,
+    nubIndex: first.nubIndex,
+    oldX: first.oldX,
+    oldY: first.oldY,
+    newX: second.newX,
+    newY: second.newY,
+  });
+}
+
+function mergeUpdateTerrainHeight(
+  first: UpdateTerrainHeightOperation,
+  second: EditOperation,
+): Result<EditOperation, string> {
+  if (second.type !== "UpdateTerrainHeight") {
+    return mergeTypeError("UpdateTerrainHeight");
+  }
+
+  return ok({
+    type: "UpdateTerrainHeight",
+    x: first.x,
+    z: first.z,
+    oldHeight: first.oldHeight,
+    newHeight: second.newHeight,
+    layer: first.layer,
+  });
+}
+
+function mergeUpdateTileAttribute(
+  first: UpdateTileAttributeOperation,
+  second: EditOperation,
+): Result<EditOperation, string> {
+  if (second.type !== "UpdateTileAttribute") {
+    return mergeTypeError("UpdateTileAttribute");
+  }
+
+  return ok({
+    type: "UpdateTileAttribute",
+    x: first.x,
+    z: first.z,
+    oldAttribute: first.oldAttribute,
+    newAttribute: second.newAttribute,
+  });
 }
 
 /**
@@ -161,95 +250,34 @@ export interface TileAttribute {
 export function reverseOperation(op: EditOperation): EditOperation {
   switch (op.type) {
     case "MoveItem":
-      return {
-        type: "MoveItem",
-        itemIndex: op.itemIndex,
-        oldX: op.newX,
-        oldZ: op.newZ,
-        newX: op.oldX,
-        newZ: op.oldZ,
-      };
+      return reverseMoveItem(op);
 
     case "UpdateItemParams":
-      return {
-        type: "UpdateItemParams",
-        itemIndex: op.itemIndex,
-        oldParams: op.newParams,
-        newParams: op.oldParams,
-      };
+      return reverseUpdateItemParams(op);
 
     case "DeleteItem":
-      return {
-        type: "AddItem",
-        item: op.deletedItem,
-        insertIndex: op.itemIndex,
-      };
+      return reverseDeleteItem(op);
 
     case "AddItem":
-      // For undoing an add, we need the added item's data
-      // This assumes the add was at the end if no insertIndex
-      return {
-        type: "DeleteItem",
-        itemIndex: op.insertIndex ?? -1, // -1 means last item
-        deletedItem: op.item,
-      };
+      return reverseAddItem(op);
 
     case "MoveSplineNub":
-      return {
-        type: "MoveSplineNub",
-        splineIndex: op.splineIndex,
-        nubIndex: op.nubIndex,
-        oldX: op.newX,
-        oldZ: op.newZ,
-        newX: op.oldX,
-        newZ: op.oldZ,
-      };
+      return reverseMoveSplineNub(op);
 
     case "AddSplineNub":
-      return {
-        type: "DeleteSplineNub",
-        splineIndex: op.splineIndex,
-        nubIndex: op.insertIndex,
-        deletedNub: op.nub,
-      };
+      return reverseAddSplineNub(op);
 
     case "DeleteSplineNub":
-      return {
-        type: "AddSplineNub",
-        splineIndex: op.splineIndex,
-        insertIndex: op.nubIndex,
-        nub: op.deletedNub,
-      };
+      return reverseDeleteSplineNub(op);
 
     case "MoveFenceNub":
-      return {
-        type: "MoveFenceNub",
-        fenceIndex: op.fenceIndex,
-        nubIndex: op.nubIndex,
-        oldX: op.newX,
-        oldY: op.newY,
-        newX: op.oldX,
-        newY: op.oldY,
-      };
+      return reverseMoveFenceNub(op);
 
     case "UpdateTerrainHeight":
-      return {
-        type: "UpdateTerrainHeight",
-        x: op.x,
-        z: op.z,
-        oldHeight: op.newHeight,
-        newHeight: op.oldHeight,
-        layer: op.layer,
-      };
+      return reverseUpdateTerrainHeight(op);
 
     case "UpdateTileAttribute":
-      return {
-        type: "UpdateTileAttribute",
-        x: op.x,
-        z: op.z,
-        oldAttribute: op.newAttribute,
-        newAttribute: op.oldAttribute,
-      };
+      return reverseUpdateTileAttribute(op);
   }
 }
 
@@ -265,9 +293,7 @@ export function canMergeOperations(
 
   switch (first.type) {
     case "MoveItem":
-      return (
-        second.type === "MoveItem" && first.itemIndex === second.itemIndex
-      );
+      return second.type === "MoveItem" && first.itemIndex === second.itemIndex;
 
     case "UpdateItemParams":
       return (
@@ -316,86 +342,27 @@ export function canMergeOperations(
 export function mergeOperations(
   first: EditOperation,
   second: EditOperation,
-): Result<EditOperation, Error> {
+): Result<EditOperation, string> {
   switch (first.type) {
     case "MoveItem":
-      if (second.type !== "MoveItem") {
-        return err(new Error("Incompatible merge: expected MoveItem for second operation"));
-      }
-      return ok({
-        type: "MoveItem",
-        itemIndex: first.itemIndex,
-        oldX: first.oldX,
-        oldZ: first.oldZ,
-        newX: second.newX,
-        newZ: second.newZ,
-      });
+      return mergeMoveItem(first, second);
 
     case "UpdateItemParams":
-      if (second.type !== "UpdateItemParams") {
-        return err(new Error("Incompatible merge: expected UpdateItemParams for second operation"));
-      }
-      return ok({
-        type: "UpdateItemParams",
-        itemIndex: first.itemIndex,
-        oldParams: first.oldParams,
-        newParams: second.newParams,
-      });
+      return mergeUpdateItemParams(first, second);
 
     case "MoveSplineNub":
-      if (second.type !== "MoveSplineNub") {
-        return err(new Error("Incompatible merge: expected MoveSplineNub for second operation"));
-      }
-      return ok({
-        type: "MoveSplineNub",
-        splineIndex: first.splineIndex,
-        nubIndex: first.nubIndex,
-        oldX: first.oldX,
-        oldZ: first.oldZ,
-        newX: second.newX,
-        newZ: second.newZ,
-      });
+      return mergeMoveSplineNub(first, second);
 
     case "MoveFenceNub":
-      if (second.type !== "MoveFenceNub") {
-        return err(new Error("Incompatible merge: expected MoveFenceNub for second operation"));
-      }
-      return ok({
-        type: "MoveFenceNub",
-        fenceIndex: first.fenceIndex,
-        nubIndex: first.nubIndex,
-        oldX: first.oldX,
-        oldY: first.oldY,
-        newX: second.newX,
-        newY: second.newY,
-      });
+      return mergeMoveFenceNub(first, second);
 
     case "UpdateTerrainHeight":
-      if (second.type !== "UpdateTerrainHeight") {
-        return err(new Error("Incompatible merge: expected UpdateTerrainHeight for second operation"));
-      }
-      return ok({
-        type: "UpdateTerrainHeight",
-        x: first.x,
-        z: first.z,
-        oldHeight: first.oldHeight,
-        newHeight: second.newHeight,
-        layer: first.layer,
-      });
+      return mergeUpdateTerrainHeight(first, second);
 
     case "UpdateTileAttribute":
-      if (second.type !== "UpdateTileAttribute") {
-        return err(new Error("Incompatible merge: expected UpdateTileAttribute for second operation"));
-      }
-      return ok({
-        type: "UpdateTileAttribute",
-        x: first.x,
-        z: first.z,
-        oldAttribute: first.oldAttribute,
-        newAttribute: second.newAttribute,
-      });
+      return mergeUpdateTileAttribute(first, second);
 
     default:
-      return err(new Error("Cannot merge operations of this type"));
+      return err("Cannot merge operations of this type");
   }
 }

@@ -4,10 +4,26 @@ import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
+import { plainObjectSchema, recordSchema } from "@/schemas/common";
+import { z } from "zod";
+
+// Zod schema for record with obj field containing an array or object
+const objRecordSchema = recordSchema.refine(
+  (value) => {
+    const entries = Object.entries(value);
+    return entries.length > 0 && entries.some(([, val]) => 
+      plainObjectSchema.safeParse(val).success && 
+      typeof val === "object" && 
+      val !== null &&
+      "obj" in val
+    );
+  },
+  { message: "Must contain at least one entry with an 'obj' field" }
+);
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for obj records
@@ -15,7 +31,7 @@ export function isObjRecord(
   value: unknown,
 ): value is Record<number, { obj: unknown }> {
   if (!isRecord(value)) return false;
-  return true; // We just need it to be a record
+  return objRecordSchema.safeParse(value).success;
 }
 
 /**
@@ -34,7 +50,7 @@ function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
 export function preprocessJson(
   json: Record<string, unknown>,
   globals: GlobalsInterface,
-): Result<void, Error> {
+): Result<void, string> {
   const anyJson = json;
 
   // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
@@ -55,16 +71,16 @@ export function preprocessJson(
     const layr1000 = layrRecord[1000];
     const atrb1000 = atrbRecord[1000];
     if (!layr1000 || !atrb1000 || !isRecord(layr1000) || !isRecord(atrb1000)) {
-      return err(new Error("Layr[1000] or Atrb[1000] is undefined or invalid"));
+      return err("Layr[1000] or Atrb[1000] is undefined or invalid");
     }
     const layrArr = layr1000.obj;
     const atrbArr = atrb1000.obj;
 
     if (!Array.isArray(layrArr)) {
-      return err(new Error("Layr[1000].obj is not an array"));
+      return err("Layr[1000].obj is not an array");
     }
     if (!Array.isArray(atrbArr)) {
-      return err(new Error("Atrb[1000].obj is not an array"));
+      return err("Atrb[1000].obj is not an array");
     }
 
     const newAtrbArr = [];
@@ -74,11 +90,11 @@ export function preprocessJson(
       newLayrArr.push(i);
       const layrIndex = layrArr[i];
       if (layrIndex === undefined) {
-        return err(new Error(`Layr index ${i} is undefined`));
+        return err("Layr index ${i} is undefined");
       }
       const atrbValue = atrbArr[layrIndex];
       if (atrbValue === undefined) {
-        return err(new Error(`Atrb index ${layrIndex} is undefined`));
+        return err("Atrb index ${layrIndex} is undefined");
       }
       newAtrbArr.push(atrbValue);
     }
@@ -91,11 +107,11 @@ export function preprocessJson(
     const liqd = anyJson.Liqd;
     const liqd1000 = liqd[1000];
     if (!liqd1000 || !isRecord(liqd1000)) {
-      return err(new Error("Liqd[1000] is undefined or invalid"));
+      return err("Liqd[1000] is undefined or invalid");
     }
     const liquidObj = liqd1000.obj;
     if (!Array.isArray(liquidObj)) {
-      return err(new Error("Liqd[1000].obj is not an array"));
+      return err("Liqd[1000].obj is not an array");
     }
     for (const waterItem of liquidObj) {
       if (!isRecord(waterItem)) continue;
@@ -106,16 +122,14 @@ export function preprocessJson(
       if (item["x`y"] && Array.isArray(item["x`y"])) {
         const xyArray = item["x`y"];
         // Convert from [{x, y}, ...] to [[x, y], ...]
+        const coordSchema = z.object({ x: z.number(), y: z.number() });
         const nubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < xyArray.length && xyArray[i]) {
             const coord = xyArray[i];
-            if (
-              isRecord(coord) &&
-              typeof coord.x === "number" &&
-              typeof coord.y === "number"
-            ) {
-              nubs.push([coord.x, coord.y]);
+            const parsed = coordSchema.safeParse(coord);
+            if (parsed.success) {
+              nubs.push([parsed.data.x, parsed.data.y]);
             } else {
               nubs.push([0, 0]);
             }
@@ -135,25 +149,21 @@ export function preprocessJson(
         const existingNubs = item.nubs;
 
         // Validate each nub is a proper [number, number] tuple
+        const nubSchema = z.union([
+          z.tuple([z.number(), z.number()]),
+          z.object({ x: z.number(), y: z.number() })
+        ]);
         const validatedNubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < existingNubs.length && existingNubs[i]) {
             const nub = existingNubs[i];
-            // Handle both array tuple and object format
-            if (
-              Array.isArray(nub) &&
-              nub.length >= 2 &&
-              typeof nub[0] === "number" &&
-              typeof nub[1] === "number"
-            ) {
-              validatedNubs.push([nub[0], nub[1]]);
-            } else if (
-              isRecord(nub) &&
-              typeof nub.x === "number" &&
-              typeof nub.y === "number"
-            ) {
-              // Handle {x, y} object format
-              validatedNubs.push([nub.x, nub.y]);
+            const parsed = nubSchema.safeParse(nub);
+            if (parsed.success) {
+              if (Array.isArray(parsed.data)) {
+                validatedNubs.push(parsed.data);
+              } else {
+                validatedNubs.push([parsed.data.x, parsed.data.y]);
+              }
             } else {
               validatedNubs.push([0, 0]);
             }
@@ -169,17 +179,19 @@ export function preprocessJson(
       const nubs: [number, number][] = [];
       let hasAnyNubFields = false;
 
+      const numberSchema = z.number();
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
         const xKey = `x_${i}`;
         const yKey = `y_${i}`;
         const xVal = item[xKey];
         const yVal = item[yKey];
 
-        if (typeof xVal === "number" && typeof yVal === "number") {
+        const xParse = numberSchema.safeParse(xVal);
+        const yParse = numberSchema.safeParse(yVal);
+        if (xParse.success && yParse.success) {
           hasAnyNubFields = true;
-          nubs.push([xVal, yVal]);
+          nubs.push([xParse.data, yParse.data]);
         } else {
-          // Missing individual fields, use 0,0 as fallback
           nubs.push([0, 0]);
         }
       }

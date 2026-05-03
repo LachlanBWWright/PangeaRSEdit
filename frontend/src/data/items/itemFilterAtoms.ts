@@ -1,12 +1,25 @@
 /**
  * Item Filter State Atoms
- * 
+ *
  * Jotai atoms for managing item visibility filters in the map view.
  * Supports filtering by category, specific item types, and search queries.
  */
 
 import { atom } from "jotai";
 import { ItemCategory } from "./itemCategories";
+
+function makeCategories(
+  ...shown: ItemCategory[]
+): Record<ItemCategory, boolean> {
+  return {
+    [ItemCategory.ENEMY]: shown.includes(ItemCategory.ENEMY),
+    [ItemCategory.POWERUP]: shown.includes(ItemCategory.POWERUP),
+    [ItemCategory.ENVIRONMENTAL]: shown.includes(ItemCategory.ENVIRONMENTAL),
+    [ItemCategory.TRIGGER]: shown.includes(ItemCategory.TRIGGER),
+    [ItemCategory.PLAYER]: shown.includes(ItemCategory.PLAYER),
+    [ItemCategory.UNKNOWN]: shown.includes(ItemCategory.UNKNOWN),
+  };
+}
 
 /**
  * Filter mode determines how filters are applied
@@ -88,14 +101,7 @@ export const FILTER_PRESETS: FilterPreset[] = [
     description: "Show only enemy items",
     state: {
       mode: FilterMode.SHOW_SELECTED,
-      categories: {
-        [ItemCategory.ENEMY]: true,
-        [ItemCategory.POWERUP]: false,
-        [ItemCategory.ENVIRONMENTAL]: false,
-        [ItemCategory.TRIGGER]: false,
-        [ItemCategory.PLAYER]: false,
-        [ItemCategory.UNKNOWN]: false,
-      },
+      categories: makeCategories(ItemCategory.ENEMY),
     },
   },
   {
@@ -103,14 +109,7 @@ export const FILTER_PRESETS: FilterPreset[] = [
     description: "Show only powerup items",
     state: {
       mode: FilterMode.SHOW_SELECTED,
-      categories: {
-        [ItemCategory.ENEMY]: false,
-        [ItemCategory.POWERUP]: true,
-        [ItemCategory.ENVIRONMENTAL]: false,
-        [ItemCategory.TRIGGER]: false,
-        [ItemCategory.PLAYER]: false,
-        [ItemCategory.UNKNOWN]: false,
-      },
+      categories: makeCategories(ItemCategory.POWERUP),
     },
   },
   {
@@ -118,14 +117,7 @@ export const FILTER_PRESETS: FilterPreset[] = [
     description: "Show triggers, checkpoints, and player spawns",
     state: {
       mode: FilterMode.SHOW_SELECTED,
-      categories: {
-        [ItemCategory.ENEMY]: false,
-        [ItemCategory.POWERUP]: false,
-        [ItemCategory.ENVIRONMENTAL]: false,
-        [ItemCategory.TRIGGER]: true,
-        [ItemCategory.PLAYER]: true,
-        [ItemCategory.UNKNOWN]: false,
-      },
+      categories: makeCategories(ItemCategory.TRIGGER, ItemCategory.PLAYER),
     },
   },
   {
@@ -133,14 +125,7 @@ export const FILTER_PRESETS: FilterPreset[] = [
     description: "Hide environmental decorations",
     state: {
       mode: FilterMode.HIDE_SELECTED,
-      categories: {
-        [ItemCategory.ENEMY]: false,
-        [ItemCategory.POWERUP]: false,
-        [ItemCategory.ENVIRONMENTAL]: true,
-        [ItemCategory.TRIGGER]: false,
-        [ItemCategory.PLAYER]: false,
-        [ItemCategory.UNKNOWN]: false,
-      },
+      categories: makeCategories(ItemCategory.ENVIRONMENTAL),
     },
   },
 ];

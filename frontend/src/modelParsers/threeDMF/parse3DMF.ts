@@ -113,7 +113,7 @@ function readTriangleVertexIndices(
   numTriangles: number,
   numVertices: number,
   triangles: TQ3TriMeshTriangleData[]
-): Result<void, Error> {
+): Result<void, string> {
   for (let i = 0; i < numTriangles; i++) {
     let v0: number, v1: number, v2: number;
     
@@ -166,14 +166,14 @@ function readTriangleVertexIndices(
 function parseTmsh(
   state: ParserState,
   chunkSize: number
-): Result<void, Error> {
+): Result<void, string> {
   const { reader } = state;
 
   if (chunkSize < 52) {
-    return err(new Error("Illegal tmsh size"));
+    return err("Illegal tmsh size");
   }
   if (state.currentMesh !== null) {
-    return err(new Error("Current mesh already set"));
+    return err("Current mesh already set");
   }
 
   // Read header
@@ -198,10 +198,10 @@ function parseTmsh(
   reader.skip(4); // numVertexAttributes
 
   if (numEdges !== 0) {
-    return err(new Error("Edges are not supported"));
+    return err("Edges are not supported");
   }
   if (numEdgeAttributes !== 0) {
-    return err(new Error("Edge attributes are not supported"));
+    return err("Edge attributes are not supported");
   }
 
   // Create mesh
@@ -227,7 +227,7 @@ function parseTmsh(
     if (tri) {
       for (const index of tri.pointIndices) {
         if (index >= numVertices) {
-          return err(new Error(`Vertex index ${index} out of range`));
+          return err(`Vertex index ${index} out of range`);
         }
       }
     }
@@ -282,14 +282,14 @@ function parseTmsh(
 function parseAtar(
   state: ParserState,
   chunkSize: number
-): Result<void, Error> {
+): Result<void, string> {
   const { reader } = state;
 
   if (chunkSize < 20) {
-    return err(new Error("Illegal atar size"));
+    return err("Illegal atar size");
   }
   if (!state.currentMesh) {
-    return err(new Error("No current mesh for atar"));
+    return err("No current mesh for atar");
   }
 
   const mesh = state.currentMesh;
@@ -301,7 +301,7 @@ function parseAtar(
   const zeroResult = reader.readUint32();
   if (zeroResult.isErr()) return err(zeroResult.error);
   if (zeroResult.value !== 0) {
-    return err(new Error("Expected zero in atar header"));
+    return err("Expected zero in atar header");
   }
 
   const positionOfArrayResult = reader.readUint32();
@@ -317,24 +317,24 @@ function parseAtar(
   // attributeUseFlag is usually 0 or 1
 
   if (attributeType < 1 || attributeType >= AttributeType.NumTypes) {
-    return err(new Error(`Illegal attribute type: ${attributeType}`));
+    return err(`Illegal attribute type: ${attributeType}`);
   }
   if (positionOfArray > 2) {
-    return err(new Error(`Illegal position of array: ${positionOfArray}`));
+    return err(`Illegal position of array: ${positionOfArray}`);
   }
 
   const isTriangleAttribute = positionOfArray === AttributeArrayPosition.TriangleAttribute;
   const isVertexAttribute = positionOfArray === AttributeArrayPosition.VertexAttribute;
 
   if (!isTriangleAttribute && !isVertexAttribute) {
-    return err(new Error("Only face or vertex attributes are supported"));
+    return err("Only face or vertex attributes are supported");
   }
 
   // Handle vertex UVs
   if (isVertexAttribute && 
       (attributeType === AttributeType.ShadingUV || attributeType === AttributeType.SurfaceUV)) {
     if (mesh.vertexUVs !== null) {
-      return err(new Error("Current mesh already has vertex UVs"));
+      return err("Current mesh already has vertex UVs");
     }
 
     mesh.vertexUVs = new Array(mesh.numPoints);
@@ -351,7 +351,7 @@ function parseAtar(
   // Handle vertex normals
   else if (isVertexAttribute && attributeType === AttributeType.Normal) {
     if (mesh.vertexNormals !== null) {
-      return err(new Error("Current mesh already has vertex normals"));
+      return err("Current mesh already has vertex normals");
     }
 
     mesh.vertexNormals = new Array(mesh.numPoints);
@@ -374,7 +374,7 @@ function parseAtar(
   // Handle vertex colors
   else if (isVertexAttribute && attributeType === AttributeType.DiffuseColor) {
     if (mesh.vertexColors !== null) {
-      return err(new Error("Current mesh already has vertex colors"));
+      return err("Current mesh already has vertex colors");
     }
 
     mesh.vertexColors = new Array(mesh.numPoints);
@@ -400,7 +400,7 @@ function parseAtar(
     reader.skip(mesh.numTriangles * 3 * 4);
   }
   else {
-    return err(new Error(`Unsupported attribute combination: type=${attributeType}, position=${positionOfArray}`));
+    return err(`Unsupported attribute combination: type=${attributeType}, position=${positionOfArray}`);
   }
 
   return ok(undefined);
@@ -413,14 +413,14 @@ function parsePixmap(
   state: ParserState,
   chunkType: number,
   chunkSize: number
-): Result<TQ3Pixmap, Error> {
+): Result<TQ3Pixmap, string> {
   const { reader } = state;
 
   const isMipmap = chunkType === CHUNK_TXMM;
   const chunkHeaderSize = isMipmap ? 8 * 4 : 7 * 4;
 
   if (chunkSize < chunkHeaderSize) {
-    return err(new Error("Incorrect chunk header size for pixmap"));
+    return err("Incorrect chunk header size for pixmap");
   }
 
   let pixelType: number;
@@ -435,7 +435,7 @@ function parsePixmap(
     const useMipmappingResult = reader.readUint32();
     if (useMipmappingResult.isErr()) return err(useMipmappingResult.error);
     if (useMipmappingResult.value !== 0) {
-      return err(new Error("Mipmapping not supported"));
+      return err("Mipmapping not supported");
     }
 
     const pixelTypeResult = reader.readUint32();
@@ -455,7 +455,7 @@ function parsePixmap(
     if (offsetResult.isErr()) return err(offsetResult.error);
 
     if (offsetResult.value !== 0) {
-      return err(new Error("Unsupported texture offset"));
+      return err("Unsupported texture offset");
     }
 
     pixelType = pixelTypeResult.value;
@@ -496,11 +496,11 @@ function parsePixmap(
   }
 
   if (chunkSize !== chunkHeaderSize + imageSize) {
-    return err(new Error(`Incorrect chunk size: expected ${chunkHeaderSize + imageSize}, got ${chunkSize}`));
+    return err(`Incorrect chunk size: expected ${chunkHeaderSize + imageSize}, got ${chunkSize}`);
   }
 
   if (bitOrder !== Endian.Big) {
-    return err(new Error("Unsupported bit order"));
+    return err("Unsupported bit order");
   }
 
   // Find bytes per pixel
@@ -510,7 +510,7 @@ function parsePixmap(
   } else if (pixelType === PixelType.RGB32 || pixelType === PixelType.ARGB32) {
     bytesPerPixel = 4;
   } else {
-    return err(new Error(`Unrecognized pixel type: ${pixelType}`));
+    return err(`Unrecognized pixel type: ${pixelType}`);
   }
 
   const trimmedRowBytes = bytesPerPixel * width;
@@ -544,13 +544,13 @@ function parsePixmap(
 /**
  * Get the current texture shader being built
  */
-function getCurrentTextureShader(state: ParserState): Result<TQ3TextureShader, Error> {
+function getCurrentTextureShader(state: ParserState): Result<TQ3TextureShader, string> {
   if (state.metaFile.numTextures === 0) {
-    return err(new Error("No texture shader opened"));
+    return err("No texture shader opened");
   }
   const shader = state.metaFile.textures[state.metaFile.numTextures - 1];
   if (!shader) {
-    return err(new Error("Texture shader is undefined"));
+    return err("Texture shader is undefined");
   }
   return ok(shader);
 }
@@ -559,11 +559,11 @@ function getCurrentTextureShader(state: ParserState): Result<TQ3TextureShader, E
  * Parse a single chunk
  * Returns the chunk type that was parsed
  */
-function parseOneChunk(state: ParserState): Result<number, Error> {
+function parseOneChunk(state: ParserState): Result<number, string> {
   const { reader } = state;
 
   if (state.currentDepth < 0) {
-    return err(new Error("Depth underflow"));
+    return err("Depth underflow");
   }
 
   // Read chunk type and size
@@ -581,7 +581,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
   switch (chunkType) {
     case 0: {
       // Early EOF indicator (signals end of file or corruption)
-      return err(new Error("Early EOF in 3DMF"));
+      return err("Early EOF in 3DMF");
     }
 
     case CHUNK_CNTR: {
@@ -630,7 +630,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
 
     case CHUNK_ENDG: {
       if (chunkSize !== 0) {
-        return err(new Error("Illegal endg size"));
+        return err("Illegal endg size");
       }
       break;
     }
@@ -638,14 +638,14 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
     case CHUNK_TMSH: {
       // TriMesh
       if (state.currentMesh !== null) {
-        return err(new Error("Nested meshes not supported"));
+        return err("Nested meshes not supported");
       }
 
       const result = parseTmsh(state, chunkSize);
       if (result.isErr()) return err(result.error);
 
       if (!state.currentMesh) {
-        return err(new Error("currentMesh wasn't set by parseTmsh"));
+        return err("currentMesh wasn't set by parseTmsh");
       }
 
       // Add to current group if available
@@ -671,7 +671,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
 
     case CHUNK_ATTR: {
       if (chunkSize !== 0) {
-        return err(new Error("Illegal attr size"));
+        return err("Illegal attr size");
       }
       break;
     }
@@ -679,10 +679,10 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
     case CHUNK_KDIF: {
       // Diffuse color
       if (chunkSize !== 12) {
-        return err(new Error("Illegal kdif size"));
+        return err("Illegal kdif size");
       }
       if (!state.currentMesh) {
-        return err(new Error("Stray kdif chunk"));
+        return err("Stray kdif chunk");
       }
 
       const rResult = reader.readFloat32();
@@ -701,10 +701,10 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
     case CHUNK_KXPR: {
       // Transparency color
       if (chunkSize !== 12) {
-        return err(new Error("Illegal kxpr size"));
+        return err("Illegal kxpr size");
       }
       if (!state.currentMesh) {
-        return err(new Error("Stray kxpr chunk"));
+        return err("Stray kxpr chunk");
       }
 
       const rResult = reader.readFloat32();
@@ -724,7 +724,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       let internalTextureID: number;
 
       if (chunkSize !== 0) {
-        return err(new Error("Illegal txsu size"));
+        return err("Illegal txsu size");
       }
 
       const existingTexture = state.knownTextures.get(chunkOffset);
@@ -741,7 +741,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
 
       if (state.currentMesh) {
         if (state.currentMesh.internalTextureID >= 0) {
-          return err(new Error("Current mesh already has a texture"));
+          return err("Current mesh already has a texture");
         }
         state.currentMesh.internalTextureID = internalTextureID;
         state.currentMesh.texturingMode = TexturingMode.Invalid; // Will be determined later
@@ -769,7 +769,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
     case CHUNK_SHDR: {
       // Shader UV boundary
       if (chunkSize !== 8) {
-        return err(new Error("Illegal shdr size"));
+        return err("Illegal shdr size");
       }
 
       const shaderResult = getCurrentTextureShader(state);
@@ -781,10 +781,10 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       if (boundaryVResult.isErr()) return err(boundaryVResult.error);
 
       if (!isShaderUVBoundary(boundaryUResult.value)) {
-        return err(new Error(`Invalid shader U boundary ${boundaryUResult.value}`));
+        return err(`Invalid shader U boundary ${boundaryUResult.value}`);
       }
       if (!isShaderUVBoundary(boundaryVResult.value)) {
-        return err(new Error(`Invalid shader V boundary ${boundaryVResult.value}`));
+        return err(`Invalid shader V boundary ${boundaryVResult.value}`);
       }
       shaderResult.value.boundaryU = boundaryUResult.value;
       shaderResult.value.boundaryV = boundaryVResult.value;
@@ -794,7 +794,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
     case CHUNK_RFRN: {
       // Reference (into TOC)
       if (chunkSize !== 4) {
-        return err(new Error("Illegal rfrn size"));
+        return err("Illegal rfrn size");
       }
 
       const targetResult = reader.readUint32();
@@ -803,7 +803,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
 
       const tocEntry = state.referenceTOC.get(target);
       if (!tocEntry) {
-        return err(new Error(`Reference target ${target} not found in TOC`));
+        return err(`Reference target ${target} not found in TOC`);
       }
 
       // Save position and jump to referenced chunk
@@ -824,7 +824,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
     default: {
       // Unknown chunk - skip it
       // In production we might want to log this, but for strict parsing:
-      // return err(new Error(`Unrecognized 3DMF chunk: ${fourCCToString(chunkType)} (0x${chunkType.toString(16)})`));
+      // return err("Unrecognized 3DMF chunk: ${fourCCToString(chunkType)} (0x${chunkType.toString(16)})");
       reader.skip(chunkSize);
       break;
     }
@@ -836,21 +836,21 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
 /**
  * Read the 3DMF file header and TOC
  */
-function readHeaderAndTOC(state: ParserState): Result<void, Error> {
+function readHeaderAndTOC(state: ParserState): Result<void, string> {
   const { reader } = state;
 
   // Read magic number
   const magicResult = reader.readUint32();
   if (magicResult.isErr()) return err(magicResult.error);
   if (magicResult.value !== CHUNK_3DMF) {
-    return err(new Error(`Not a 3DMF file (got ${fourCCToString(magicResult.value)})`));
+    return err(`Not a 3DMF file (got ${fourCCToString(magicResult.value)})`);
   }
 
   // Read header length
   const headerLenResult = reader.readUint32();
   if (headerLenResult.isErr()) return err(headerLenResult.error);
   if (headerLenResult.value !== 16) {
-    return err(new Error(`Bad 3DMF header length: ${headerLenResult.value}`));
+    return err(`Bad 3DMF header length: ${headerLenResult.value}`);
   }
 
   // Read version
@@ -863,14 +863,14 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
   const versionMinor = versionMinorResult.value;
 
   if (versionMajor !== 1 || (versionMinor !== 5 && versionMinor !== 6)) {
-    return err(new Error(`Unsupported 3DMF version: ${versionMajor}.${versionMinor}`));
+    return err(`Unsupported 3DMF version: ${versionMajor}.${versionMinor}`);
   }
 
   // Read flags
   const flagsResult = reader.readUint32();
   if (flagsResult.isErr()) return err(flagsResult.error);
   if (flagsResult.value !== 0) {
-    return err(new Error("Database or Stream modes aren't supported"));
+    return err("Database or Stream modes aren't supported");
   }
 
   // Read TOC offset
@@ -887,7 +887,7 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
     const tocMagicResult = reader.readUint32();
     if (tocMagicResult.isErr()) return err(tocMagicResult.error);
     if (tocMagicResult.value !== CHUNK_TOC) {
-      return err(new Error("Expecting toc magic"));
+      return err("Expecting toc magic");
     }
 
     reader.skip(4);  // tocSize
@@ -904,10 +904,10 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
     if (nEntriesResult.isErr()) return err(nEntriesResult.error);
 
     if (tocEntryTypeResult.value !== 1) {
-      return err(new Error("Only QD3D 1.5 3DMF TOCs are recognized"));
+      return err("Only QD3D 1.5 3DMF TOCs are recognized");
     }
     if (tocEntrySizeResult.value !== 16) {
-      return err(new Error("Incorrect tocEntrySize"));
+      return err("Incorrect tocEntrySize");
     }
 
     // Read TOC entries
@@ -935,9 +935,9 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
 /**
  * Parse a 3DMF file
  * @param buffer ArrayBuffer containing the 3DMF file
- * @returns Result<TQ3MetaFile, Error>
+ * @returns Result<TQ3MetaFile, string>
  */
-export function parse3DMFToMetaFile(buffer: ArrayBuffer): Result<TQ3MetaFile, Error> {
+export function parse3DMFToMetaFile(buffer: ArrayBuffer): Result<TQ3MetaFile, string> {
   const reader = new BigEndianReader(buffer);
   const state: ParserState = {
     reader,
@@ -958,7 +958,7 @@ export function parse3DMFToMetaFile(buffer: ArrayBuffer): Result<TQ3MetaFile, Er
     const result = parseOneChunk(state);
     if (result.isErr()) {
       // Check if it's an early EOF error (which is acceptable at end of some files)
-      if (result.error.message === "Early EOF in 3DMF") {
+      if (result.error === "Early EOF in 3DMF") {
         break;
       }
       return err(result.error);

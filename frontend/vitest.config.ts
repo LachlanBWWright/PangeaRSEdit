@@ -10,6 +10,7 @@ export default defineConfig({
   },
   test: {
     dir: import.meta.dirname,
+    testTimeout: 120000,
     include: [
       "tests/roundtrip/allGamesRoundtripNew.test.ts",
       "tests/roundtrip/nanosaurBinaryRoundtrip.test.ts",

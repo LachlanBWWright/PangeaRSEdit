@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Play, Trash2 } from "lucide-react";
 import type { AnimationEvent, AnimationInfo } from "./types";
 import {
   ANIMEVENT_TYPE_CONFIG,
@@ -26,6 +26,13 @@ import {
   TICKS_PER_SECOND,
   type ModelSourceKind,
 } from "./utils";
+import {
+  getFallbackEventValueForType,
+  parseEventIntegerInput,
+  parseEventTimeInput,
+  updateAnimationEvent,
+} from "@/components/AnimationViewer/animationEventEditorState";
+import { hasAnimationEventSoundPreview } from "./animationSoundPlayer";
 
 interface AnimationEventEditorProps {
   selectedAnimationInfo: AnimationInfo | null;
@@ -37,6 +44,7 @@ interface AnimationEventEditorProps {
   onAddEvent: () => void;
   onUpdateEvent: (index: number, event: AnimationEvent) => void;
   onDeleteEvent: (index: number) => void;
+  onPreviewEvent: (event: AnimationEvent) => void;
 }
 
 export function AnimationEventEditor({
@@ -49,6 +57,7 @@ export function AnimationEventEditor({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
+  onPreviewEvent,
 }: AnimationEventEditorProps) {
   if (!selectedAnimationInfo) {
     return (
@@ -106,50 +115,43 @@ export function AnimationEventEditor({
                 modelSourceKind,
                 gameLabel,
               );
+              const canPreviewSound =
+                isSoundValue &&
+                hasAnimationEventSoundPreview(
+                  event.value,
+                  modelSourceKind,
+                  gameLabel,
+                );
               const selected = selectedEventIndex === index;
               const updateEvent = (patch: Partial<AnimationEvent>) => {
-                onUpdateEvent(index, {
-                  time: event.time,
-                  type: event.type,
-                  value: event.value,
-                  ...patch,
-                });
+                onUpdateEvent(index, updateAnimationEvent(event, patch));
               };
               const handleTimeChange = (value: string) => {
-                if (value.trim().length === 0) {
-                  return;
-                }
-                const nextTime = Math.round(Number.parseFloat(value));
-                if (!Number.isFinite(nextTime) || nextTime < 0) {
+                const nextTime = parseEventTimeInput(value);
+                if (nextTime === null) {
                   return;
                 }
                 updateEvent({ time: nextTime });
               };
               const handleTypeChange = (value: string) => {
-                const nextType = Number.parseInt(value, 10);
-                if (!Number.isFinite(nextType)) {
+                const nextType = parseEventIntegerInput(value);
+                if (nextType === null) {
                   return;
                 }
-                const nextOptions = getAnimationEventValueOptions(
+                const fallbackValue = getFallbackEventValueForType(
+                  event.value,
                   nextType,
                   modelSourceKind,
                   gameLabel,
                 );
-                const fallbackValue =
-                  nextOptions.length > 0
-                    ? Number.parseInt(nextOptions[0]?.value ?? "0", 10)
-                    : event.value;
                 updateEvent({
                   type: nextType,
-                  value: Number.isFinite(fallbackValue) ? fallbackValue : 0,
+                  value: fallbackValue,
                 });
               };
               const handleValueChange = (value: string) => {
-                if (value.trim().length === 0) {
-                  return;
-                }
-                const nextValue = Number.parseInt(value, 10);
-                if (!Number.isFinite(nextValue)) {
+                const nextValue = parseEventIntegerInput(value);
+                if (nextValue === null) {
                   return;
                 }
                 updateEvent({ value: nextValue });
@@ -175,18 +177,35 @@ export function AnimationEventEditor({
                         {details ? ` • ${details}` : ""}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="h-8 px-3"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteEvent(index);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="ml-2">Delete</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {isSoundValue && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3"
+                          disabled={!canPreviewSound}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPreviewEvent(event);
+                          }}
+                        >
+                          <Play className="h-4 w-4" />
+                          <span className="ml-2">Preview</span>
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 px-3"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteEvent(index);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="ml-2">Delete</span>
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -210,7 +229,10 @@ export function AnimationEventEditor({
                       <div className="text-[10px] uppercase tracking-wide text-gray-500">
                         Type
                       </div>
-                      <Select value={type.toString()} onValueChange={handleTypeChange}>
+                      <Select
+                        value={type.toString()}
+                        onValueChange={handleTypeChange}
+                      >
                         <SelectTrigger className="h-8 w-full min-w-0 border-gray-600 bg-gray-700 text-white">
                           <SelectValue />
                         </SelectTrigger>
@@ -264,13 +286,12 @@ export function AnimationEventEditor({
                           className="h-8 w-full min-w-0 border-gray-600 bg-gray-700 text-white"
                         />
                       )}
-                      <p className="break-words text-[10px] text-gray-500">
+                      <p className="wrap-break-word text-[10px] text-gray-500">
                         {valueLabel}
                         {details ? ` • ${details}` : ""}
                       </p>
                     </div>
                   </div>
-
                 </div>
               );
             })}

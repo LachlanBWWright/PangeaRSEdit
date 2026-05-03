@@ -1,19 +1,26 @@
 import { parseRelPData } from "../parseHelpers";
 import type { RelPRaw } from "../parseSkeletonRsrcTS";
+import { plainObjectSchema, relPRawSchema } from "@/schemas/common";
 
 // Type guard for checking if value is a record
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return plainObjectSchema.safeParse(value).success;
 }
 
 // Type guard for RelPRaw
 function isRelPRaw(value: unknown): value is RelPRaw {
-  return (
-    isRecord(value) &&
-    typeof value.relOffsetX === "number" &&
-    typeof value.relOffsetY === "number" &&
-    typeof value.relOffsetZ === "number"
+  return relPRawSchema.safeParse(value).success;
+}
+
+function parseRelPObjArray(
+  resourceName: string,
+  objArr: RelPRaw[],
+): RelPRaw[] | null {
+  if (objArr.length === 0 || !isRelPRaw(objArr[0])) return null;
+  console.log(
+    `[DEBUG] Using rsrcdump-parsed RelP data from 'obj' field for ${resourceName}: ${objArr.length} points`,
   );
+  return objArr.filter(isRelPRaw);
 }
 
 export function handleRelP(
@@ -31,28 +38,32 @@ export function handleRelP(
       resourceKeys: isRecord(resourceData) ? Object.keys(resourceData) : [],
       hasData: isRecord(resourceData) && "data" in resourceData,
       hasObj: isRecord(resourceData) && "obj" in resourceData,
-      hasConversionError: isRecord(resourceData) && "conversionError" in resourceData,
+      hasConversionError:
+        isRecord(resourceData) && "conversionError" in resourceData,
     },
   );
-  
+
   // Check if resourceData has obj field (rsrcdump format)
-  if (isRecord(resourceData) && "obj" in resourceData && Array.isArray(resourceData.obj)) {
-    const objArr = resourceData.obj;
-    if (objArr.length > 0 && isRelPRaw(objArr[0])) {
-      console.log(
-        `[DEBUG] Using rsrcdump-parsed RelP data from 'obj' field for ${resourceName}: ${objArr.length} points`,
-      );
-      return objArr.filter(isRelPRaw);
-    }
+  if (
+    isRecord(resourceData) &&
+    "obj" in resourceData &&
+    Array.isArray(resourceData.obj)
+  ) {
+    const parsedObj = parseRelPObjArray(resourceName, resourceData.obj);
+    if (parsedObj) return parsedObj;
   }
-  
-  if (Array.isArray(resourceData) && resourceData.length > 0 && isRelPRaw(resourceData[0])) {
+
+  if (
+    Array.isArray(resourceData) &&
+    resourceData.length > 0 &&
+    isRelPRaw(resourceData[0])
+  ) {
     console.log(
       `[DEBUG] Using rsrcdump-parsed RelP data (array format) for ${resourceName}: ${resourceData.length} points`,
     );
     return resourceData.filter(isRelPRaw);
   }
-  
+
   console.log(
     `[DEBUG] Fallback: parsing RelP ${resourceName} from hexData (${
       hexData?.length || 0

@@ -11,7 +11,7 @@ import { Result } from "neverthrow";
  */
 export function classicPostprocessor(
   canvases: HTMLCanvasElement[],
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer, string> {
   const TILE_SIZE = 32;
   const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE * 2;
   const tileCount = canvases.length;
@@ -24,11 +24,11 @@ export function classicPostprocessor(
   for (let t = 0; t < tileCount; t++) {
     const canvas = canvases[t];
     if (!canvas) {
-      return err(new Error(`Canvas at index ${t} is undefined`));
+      return err("Canvas at index ${t} is undefined");
     }
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      return err(new Error("Canvas context not available"));
+      return err("Canvas context not available");
     }
     const imageData = ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
     const data = imageData.data;

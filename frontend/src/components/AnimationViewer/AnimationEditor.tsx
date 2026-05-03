@@ -13,6 +13,14 @@ import {
 } from "@/components/ui/select";
 import type { AnimationInfo } from "./types";
 import type { LoopMode } from "./hooks";
+import {
+  asLoopMode,
+  canApplyAnimationEdit,
+  confirmDeleteAnimation,
+  getDurationModeDescription,
+  getEffectiveLoopMode,
+  getPlaybackModeDescription,
+} from "@/components/AnimationViewer/animationEditorState";
 
 interface AnimationEditorProps {
   selectedAnimationInfo: AnimationInfo | null;
@@ -49,8 +57,7 @@ export function AnimationEditor({
     );
   }
 
-  const effectiveMode: LoopMode =
-    selectedAnimationInfo.loopMode ?? (selectedAnimationInfo.loop ? "loop" : "once");
+  const effectiveMode: LoopMode = getEffectiveLoopMode(selectedAnimationInfo);
 
   return (
     <div className="space-y-3">
@@ -81,8 +88,9 @@ export function AnimationEditor({
           <Select
             value={effectiveMode}
             onValueChange={(value) => {
-              if (value === "loop" || value === "pingpong" || value === "once") {
-                onLoopModeChange(value);
+              const mode = asLoopMode(value);
+              if (mode) {
+                onLoopModeChange(mode);
               }
             }}
           >
@@ -93,7 +101,10 @@ export function AnimationEditor({
               <SelectItem value="loop" className="text-white focus:bg-gray-600">
                 Loop
               </SelectItem>
-              <SelectItem value="pingpong" className="text-white focus:bg-gray-600">
+              <SelectItem
+                value="pingpong"
+                className="text-white focus:bg-gray-600"
+              >
                 Zigzag (Ping-Pong)
               </SelectItem>
               <SelectItem value="once" className="text-white focus:bg-gray-600">
@@ -102,11 +113,7 @@ export function AnimationEditor({
             </SelectContent>
           </Select>
           <p className="text-xs text-gray-400">
-            {effectiveMode === "loop"
-              ? "Animation repeats from start when finished."
-              : effectiveMode === "pingpong"
-                ? "Animation plays forward then backward (zigzag)."
-                : "Animation plays once and stops at the end."}
+            {getPlaybackModeDescription(effectiveMode)}
           </p>
         </>
       </div>
@@ -129,9 +136,7 @@ export function AnimationEditor({
           </SelectContent>
         </Select>
         <p className="text-xs text-gray-400">
-          {durationMode === "scale"
-            ? "Keyframes will be scaled proportionally to the new duration."
-            : "Keyframes beyond the new duration will be removed."}
+          {getDurationModeDescription(durationMode)}
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -140,8 +145,11 @@ export function AnimationEditor({
           className="flex-1"
           onClick={onApplyChanges}
           disabled={
-            editName === selectedAnimationInfo.name &&
-            editDurationInput === String(selectedAnimationInfo.duration)
+            !canApplyAnimationEdit(
+              selectedAnimationInfo,
+              editName,
+              editDurationInput,
+            )
           }
         >
           Apply Changes
@@ -151,11 +159,7 @@ export function AnimationEditor({
           variant="destructive"
           className="flex-1"
           onClick={() => {
-            if (
-              window.confirm(
-                `Delete animation "${selectedAnimationInfo.name}"?`,
-              )
-            ) {
+            if (confirmDeleteAnimation(selectedAnimationInfo.name)) {
               onDeleteAnimation();
             }
           }}

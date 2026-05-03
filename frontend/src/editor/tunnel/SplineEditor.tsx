@@ -16,6 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import {
+  filterTunnelItemsByName,
+  getSplineIndexFromProgress,
+  getSplineProgress,
+  radToDeg,
+  updateTunnelItemOffset,
+  updateTunnelItemRotation,
+} from "@/editor/tunnel/splineEditorState";
 
 interface SplineEditorProps {
   tunnelData: TunnelData;
@@ -23,36 +31,6 @@ interface SplineEditorProps {
   selectedItemIndex: number | null;
   onSelectItem: (index: number | null) => void;
   onUpdateItem: (index: number, item: TunnelItem) => void;
-}
-
-/**
- * Calculate the spline progress (0-100%) from spline index
- */
-function getSplineProgress(splineIndex: number, totalSplinePoints: number): number {
-  if (totalSplinePoints <= 1) return 0;
-  return (splineIndex / (totalSplinePoints - 1)) * 100;
-}
-
-/**
- * Calculate spline index from progress percentage
- */
-function getSplineIndexFromProgress(progress: number, totalSplinePoints: number): number {
-  if (totalSplinePoints <= 1) return 0;
-  return Math.round((progress / 100) * (totalSplinePoints - 1));
-}
-
-/**
- * Calculate rotation angle in degrees from radians
- */
-function radToDeg(radians: number): number {
-  return (radians * 180) / Math.PI;
-}
-
-/**
- * Convert degrees to radians
- */
-function degToRad(degrees: number): number {
-  return (degrees * Math.PI) / 180;
 }
 
 export function SplineEditor({
@@ -69,12 +47,7 @@ export function SplineEditor({
 
   // Filter items by search term
   const filteredItems = useMemo(() => {
-    return tunnelData.items
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) =>
-        getItemName(item.type).toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort((a, b) => a.item.splineIndex - b.item.splineIndex);
+    return filterTunnelItemsByName(tunnelData.items, searchTerm, getItemName);
   }, [tunnelData.items, searchTerm, getItemName]);
 
   const selectedItem =
@@ -83,41 +56,38 @@ export function SplineEditor({
   const handleSplineProgressChange = useCallback(
     (progress: number) => {
       if (selectedItemIndex === null || !selectedItem) return;
-      const newSplineIndex = getSplineIndexFromProgress(progress, totalSplinePoints);
+      const newSplineIndex = getSplineIndexFromProgress(
+        progress,
+        totalSplinePoints,
+      );
       onUpdateItem(selectedItemIndex, {
         ...selectedItem,
         splineIndex: newSplineIndex,
       });
     },
-    [selectedItemIndex, selectedItem, totalSplinePoints, onUpdateItem]
+    [selectedItemIndex, selectedItem, totalSplinePoints, onUpdateItem],
   );
 
   const handleRotationChange = useCallback(
     (axis: "x" | "y" | "z", degrees: number) => {
       if (selectedItemIndex === null || !selectedItem) return;
-      onUpdateItem(selectedItemIndex, {
-        ...selectedItem,
-        rot: {
-          ...selectedItem.rot,
-          [axis]: degToRad(degrees),
-        },
-      });
+      onUpdateItem(
+        selectedItemIndex,
+        updateTunnelItemRotation(selectedItem, axis, degrees),
+      );
     },
-    [selectedItemIndex, selectedItem, onUpdateItem]
+    [selectedItemIndex, selectedItem, onUpdateItem],
   );
 
   const handleOffsetChange = useCallback(
     (axis: "x" | "y" | "z", value: number) => {
       if (selectedItemIndex === null || !selectedItem) return;
-      onUpdateItem(selectedItemIndex, {
-        ...selectedItem,
-        positionOffset: {
-          ...selectedItem.positionOffset,
-          [axis]: value,
-        },
-      });
+      onUpdateItem(
+        selectedItemIndex,
+        updateTunnelItemOffset(selectedItem, axis, value),
+      );
     },
-    [selectedItemIndex, selectedItem, onUpdateItem]
+    [selectedItemIndex, selectedItem, onUpdateItem],
   );
 
   const currentProgress = selectedItem
@@ -145,7 +115,10 @@ export function SplineEditor({
       {/* Item list sorted by spline position */}
       <div className="flex-1 overflow-y-auto mb-4 space-y-1">
         {filteredItems.map(({ item, index }) => {
-          const progress = getSplineProgress(item.splineIndex, totalSplinePoints);
+          const progress = getSplineProgress(
+            item.splineIndex,
+            totalSplinePoints,
+          );
           return (
             <div
               key={index}

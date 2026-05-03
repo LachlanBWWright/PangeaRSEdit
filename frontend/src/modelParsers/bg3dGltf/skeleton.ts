@@ -30,7 +30,7 @@ import {
 export function bg3dSkeletonToGltf(
   parsedSkeleton: BG3DSkeleton,
   doc: Document,
-): Result<{ skin: Skin | null; animations: unknown[] }, Error> {
+): Result<{ skin: Skin | null; animations: unknown[] }, string> {
   console.log("Creating skeleton system with new implementation...");
   console.log(
     `Input skeleton has ${parsedSkeleton.bones.length} bones, ${parsedSkeleton.animations.length} animations`,
@@ -53,9 +53,7 @@ export function bg3dSkeletonToGltf(
   const skeletonSystem = skeletonSystemResult.value;
 
   console.log(
-    `Skeleton system created: skin=${!!skeletonSystem.skin}, joints=${
-      skeletonSystem.skin?.listJoints().length
-    }, animations=${skeletonSystem.animations.length}`,
+    `Skeleton system created: skin=${!!skeletonSystem.skin}, joints=${skeletonSystem.skin?.listJoints().length}, animations=${skeletonSystem.animations.length}`,
   );
 
   return ok(skeletonSystem);
@@ -123,7 +121,9 @@ export async function originalSkeletonBinaryToBg3d(
 ): Promise<BG3DSkeleton> {
   console.log("Using original skeleton binary for exact roundtrip");
   // Parse the original skeleton binary to get exact skeleton data
-  const originalSkeletonResource = await parseSkeletonRsrc(originalSkeletonBinary);
+  const originalSkeletonResource = await parseSkeletonRsrc(
+    originalSkeletonBinary,
+  );
 
   // Extract bones from original binary
   const bones = originalSkeletonBinaryToBg3dBones(originalSkeletonResource);

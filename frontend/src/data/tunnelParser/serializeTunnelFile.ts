@@ -218,61 +218,48 @@ function serializeSection(writer: BinaryWriter, section: TunnelSection): void {
  */
 export function serializeTunnelFile(
   data: TunnelData,
-): Result<ArrayBuffer, Error> {
-  const serializeResult = Result.fromThrowable(
-    () => {
-      const writer = new BinaryWriter();
+): Result<ArrayBuffer, string> {
+  const serializeResult = Result.fromThrowable(() => {
+    const writer = new BinaryWriter();
 
-      // Write header (88 bytes)
-      writer.writeUint16(data.header.versionMajor);
-      writer.writeUint16(data.header.versionMinor);
-      writer.writeBoolean(data.header.fullPipe);
-      writer.writePadding(3); // alignment padding
-      writer.writeInt32(data.header.numNubs);
-      writer.writeInt32(data.header.numSplinePoints);
-      writer.writeInt32(data.header.numSections);
-      writer.writeInt32(data.header.numItems);
-      writer.writePadding(64); // reserved fields (16 * int32)
+    // Write header (88 bytes)
+    writer.writeUint16(data.header.versionMajor);
+    writer.writeUint16(data.header.versionMinor);
+    writer.writeBoolean(data.header.fullPipe);
+    writer.writePadding(3); // alignment padding
+    writer.writeInt32(data.header.numNubs);
+    writer.writeInt32(data.header.numSplinePoints);
+    writer.writeInt32(data.header.numSections);
+    writer.writeInt32(data.header.numItems);
+    writer.writePadding(64); // reserved fields (16 * int32)
 
-      // Write alias data (empty for modern use)
-      writer.writeInt32(0); // alias size = 0
+    // Write alias data (empty for modern use)
+    writer.writeInt32(0); // alias size = 0
 
-      // Write spline nubs
-      for (const nub of data.nubs) {
-        serializeSplinePoint(writer, nub);
-      }
+    // Write spline nubs
+    for (const nub of data.nubs) serializeSplinePoint(writer, nub);
 
-      // Write tunnel texture
-      serializeTexture(writer, data.tunnelTexture);
+    // Write tunnel texture
+    serializeTexture(writer, data.tunnelTexture);
 
-      // Write water texture
-      serializeTexture(writer, data.waterTexture);
+    // Write water texture
+    serializeTexture(writer, data.waterTexture);
 
-      // Write items
-      for (const item of data.items) {
-        serializeItem(writer, item);
-      }
+    // Write items
+    for (const item of data.items) serializeItem(writer, item);
 
-      // Write spline points
-      for (const point of data.splinePoints) {
-        serializeSplinePoint(writer, point);
-      }
+    // Write spline points
+    for (const point of data.splinePoints) serializeSplinePoint(writer, point);
 
-      // Write sections
-      for (const section of data.sections) {
-        serializeSection(writer, section);
-      }
+    // Write sections
+    for (const section of data.sections) serializeSection(writer, section);
 
-      return writer.getBuffer();
-    },
-    mapErr,
-  )();
+    return writer.getBuffer();
+  }, mapErr)();
 
   if (serializeResult.isErr()) {
     return err(
-      new Error(
-        `Failed to serialize tunnel file: ${serializeResult.error.message}`,
-      ),
+      `Failed to serialize tunnel file: ${serializeResult.error}`,
     );
   }
 

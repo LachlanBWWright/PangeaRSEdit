@@ -31,7 +31,7 @@ import {
 interface GameTestConfig {
   name: string;
   specs: string[];
-  validator: (data: unknown) => Result<unknown, Error>;
+  validator: (data: unknown) => Result<unknown, string>;
   terrainDir: string;
   sampleFile: string;
 }
@@ -131,7 +131,7 @@ describe("Level Data Validation", () => {
           // Log the validation error for debugging
           console.log(
             `${config.name} validation error:`,
-            validationResult.error.message
+            validationResult.error
           );
           // Log keys in the data to understand what's being validated
           console.log(
@@ -261,7 +261,7 @@ describe("Invalid Data Handling", () => {
 
     const result = validateOttoMaticLevel(dataWithExtra);
     if (!result.isOk()) {
-      console.log("Passthrough test error:", result.error?.message);
+      console.log("Passthrough test error:", result.error);
     }
     // Should pass because schema uses passthrough()
     expect(result.isOk()).toBe(true);

@@ -1,6 +1,6 @@
 /**
  * Mighty Mike Editor View
- * 
+ *
  * For Mighty Mike which uses individual tiles:
  * - Items
  * - Terrain tiles
@@ -25,17 +25,15 @@ import {
   createZoomInHandler,
   createZoomOutHandler,
 } from "../utils/editorViewUtils";
-import { applyResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
 import { useAtomValue, useSetAtom } from "jotai";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
-import {
-  ItemData,
-} from "@/python/structSpecs/LevelTypes";
+import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { CurrentScene } from "@/data/game/gameAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
+import { resizeEditorAtomicTiles } from "@/editor/gameViews/editorResizeState";
 
 function getCurrentSceneFromTerrainData(
   terrainData: MightyMikeEditorViewProps["terrainData"],
@@ -77,7 +75,7 @@ export function MightyMikeEditorView({
 
   const handleKeyDown = useMemo(
     () => createUndoRedoKeyHandler(undoData, redoData),
-    [undoData, redoData]
+    [undoData, redoData],
   );
 
   useWindowKeyDown(handleKeyDown);
@@ -87,11 +85,7 @@ export function MightyMikeEditorView({
   }, [setCurrentScene, terrainData]);
 
   useEffect(() => {
-    setEditorNavbarTabs(
-      <MightyMikeEditorToolbar
-        compact
-      />,
-    );
+    setEditorNavbarTabs(<MightyMikeEditorToolbar compact />);
     return () => setEditorNavbarTabs(null);
   }, [setEditorNavbarTabs]);
 
@@ -100,39 +94,45 @@ export function MightyMikeEditorView({
 
   const setItemDataNotNull: Updater<ItemData> = useMemo(
     () => createNonNullUpdater(setItemData),
-    [setItemData]
+    [setItemData],
   );
 
-  const handleResize = (direction: "top" | "bottom" | "left" | "right", tileCount: number) => {
-    const result = applyResizeToAtomicData(
-      {
-        headerData,
-        itemData,
-        liquidData: null,
-        fenceData: null,
-        splineData: null,
-        terrainData,
-      },
+  const handleResize = (
+    direction: "top" | "bottom" | "left" | "right",
+    tileCount: number,
+  ) => {
+    resizeEditorAtomicTiles({
+      headerData,
+      itemData,
+      liquidData: null,
+      fenceData: null,
+      splineData: null,
+      terrainData,
       globals,
-      {
-        direction,
-        tileCount,
-        defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
+      direction,
+      tileCount,
+      defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
+      setHeaderData,
+      setItemData,
+      setLiquidData: () => {
+        // Mighty Mike doesn't have liquid data
       },
-    );
-    if (result.isErr()) {
-      console.error("Failed to resize level:", result.error.message);
-      return;
-    }
-    const resized = result.value.data;
-    if (resized.headerData) setHeaderData(resized.headerData);
-    if (resized.itemData !== undefined) setItemData(resized.itemData);
-    if (resized.terrainData) setTerrainData(resized.terrainData);
+      setFenceData: () => {
+        // Mighty Mike doesn't have fence data
+      },
+      setSplineData: () => {
+        // Mighty Mike doesn't have spline data
+      },
+      setTerrainData,
+    });
   };
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection className="border-b border-gray-600">
+      <MenuSection
+        className="border-b border-gray-600"
+        scrollable={view !== View.supertiles}
+      >
         {view === View.items && itemData && (
           <MightyMikeItemMenu
             itemData={itemData}
@@ -144,7 +144,6 @@ export function MightyMikeEditorView({
         {view === View.supertiles && (
           <MightyMikeTileMenu
             headerData={headerData}
-            setHeaderData={setHeaderData}
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}
@@ -152,9 +151,7 @@ export function MightyMikeEditorView({
             onResize={handleResize}
           />
         )}
-        {view === View.tiles && (
-          <MightyMikeAltMapEditorPanel />
-        )}
+        {view === View.tiles && <MightyMikeAltMapEditorPanel />}
       </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">

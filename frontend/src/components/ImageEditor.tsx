@@ -1,38 +1,28 @@
-import { useState, useRef, useEffect, useMemo } from "react";
-import { Stage, Layer, Image, Line } from "react-konva";
-import { Button } from "@/components/ui/button";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Save, X, Undo, Redo, ZoomIn, ZoomOut } from "lucide-react";
 import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
 import Konva from "konva";
 import { mapErr } from "@/utils/mapErr";
-// removed result shim; use direct promise handling
-import { hexToRgb } from "@/utils/colorUtils";
-// Event typing removed - handlers don't need explicit event param here
-
-interface BrushStroke {
-  points: number[];
-  color: string;
-  size: number;
-  shape: "circle" | "square";
-}
+import { ImageEditorCanvas } from "./ImageEditor/ImageEditorCanvas";
+import { ImageEditorFooter } from "./ImageEditor/ImageEditorFooter";
+import { buildSelectedColorHighlightCanvas } from "./ImageEditor/selectedColorHighlight";
+import type { BrushStroke, ImageEditorSaveAction } from "./ImageEditor/types";
+import { DEFAULT_IMAGE_EDITOR_COLOR_PALETTE } from "./ImageEditor/colorPalette";
+import { LoadingImageEditorDialog } from "./ImageEditor/LoadingImageEditorDialog";
 
 interface ImageEditorProps {
   isOpen: boolean;
   onClose: () => void;
   imageUrl: string;
   onSave: (editedImageData: ImageData) => Promise<void>;
-  saveActions?: {
-    label: string;
-    onSave: (editedImageData: ImageData) => Promise<void>;
-  }[];
+  saveActions?: ImageEditorSaveAction[];
   imageName?: string;
   /**
    * When provided, the editor operates in palette-constrained mode:
@@ -79,50 +69,24 @@ export function ImageEditor({
   const layerRef = useRef<Konva.Layer>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Predefined color palette (used only in free-color mode)
-  const colorPalette = [
-    "#ffffff",
-    "#000000",
-    "#ff0000",
-    "#00ff00",
-    "#0000ff",
-    "#ffff00",
-    "#ff00ff",
-    "#00ffff",
-    "#ff8000",
-    "#8000ff",
-    "#808080",
-    "#c0c0c0",
-    "#800000",
-    "#008000",
-    "#000080",
-    "#808000",
-    "#800080",
-    "#008080",
-    "#ff8080",
-    "#80ff80",
-  ];
+  const colorPalette = Array.from(DEFAULT_IMAGE_EDITOR_COLOR_PALETTE);
 
-  // Load image when dialog opens; state is reset inside onload to avoid cascading setState in effect
   useEffect(() => {
     if (!isOpen || !imageUrl) return;
     const img = new window.Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       setImage(img);
-      // Calculate scale for display
       const scaleX = Math.min(800 / img.width, 1);
       const scaleY = Math.min(600 / img.height, 1);
       const finalScale = Math.min(scaleX, scaleY);
       setScale(finalScale);
       setBaseScale(finalScale);
 
-      // Reset editor state
       setStrokes([]);
       setCurrentStroke(null);
       setHistory([]);
       setHistoryIndex(-1);
-      // Default brush to first palette color when in palette mode
       const defaultPaletteColor = paletteColors?.[0];
       if (defaultPaletteColor) {
         setBrushColor(defaultPaletteColor);
@@ -160,8 +124,19 @@ export function ImageEditor({
     }
   };
 
+  const snapToImagePixel = useCallback(
+    (value: number, maxExclusive: number): number => {
+      const snapped = Math.floor(value);
+      if (snapped < 0) return 0;
+      if (snapped >= maxExclusive) return Math.max(0, maxExclusive - 1);
+      return snapped;
+    },
+    [],
+  );
+
   const handleMouseDown = () => {
     if (tool !== "brush") return;
+    if (!image) return;
 
     const stage = stageRef.current;
     if (!stage) return;
@@ -170,16 +145,15 @@ export function ImageEditor({
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
-    // Adjust coordinates for scale
     const adjustedPos = {
-      x: pos.x / scale,
-      y: pos.y / scale,
+      x: snapToImagePixel(pos.x / scale, image.width),
+      y: snapToImagePixel(pos.y / scale, image.height),
     };
 
     const newStroke: BrushStroke = {
       points: [adjustedPos.x, adjustedPos.y],
       color: brushColor,
-      size: (brushSize[0] ?? 10) / scale, // Adjust brush size for scale
+      size: brushSize[0] ?? 10,
       shape: brushShape,
     };
 
@@ -188,6 +162,7 @@ export function ImageEditor({
 
   const handleMouseMove = () => {
     if (!isDrawing || tool !== "brush" || !currentStroke) return;
+    if (!image) return;
 
     const stage = stageRef.current;
     if (!stage) return;
@@ -195,10 +170,9 @@ export function ImageEditor({
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
-    // Adjust coordinates for scale
     const adjustedPos = {
-      x: pos.x / scale,
-      y: pos.y / scale,
+      x: snapToImagePixel(pos.x / scale, image.width),
+      y: snapToImagePixel(pos.y / scale, image.height),
     };
 
     const updatedStroke = {
@@ -229,7 +203,6 @@ export function ImageEditor({
 
     setSaving(true);
 
-    // Create a canvas to combine the original image with edits
     const canvas = document.createElement("canvas");
     canvas.width = image.width;
     canvas.height = image.height;
@@ -241,10 +214,8 @@ export function ImageEditor({
       return;
     }
 
-    // Draw the original image
     ctx.drawImage(image, 0, 0);
 
-    // Draw all strokes on top (strokes are already in original image coordinates)
     strokes.forEach((stroke) => {
       if (stroke.points.length < 2) return;
 
@@ -272,10 +243,8 @@ export function ImageEditor({
       ctx.stroke();
     });
 
-    // Get image data from the canvas
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    // Call the save callback
     const saveResult = await ResultAsync.fromPromise(
       customSaveHandler(imageData),
       mapErr,
@@ -342,66 +311,20 @@ export function ImageEditor({
     };
   }, [baseScale]);
 
-  const selectedColorHighlightCanvas = useMemo(() => {
-    if (!image || !paletteColors || !highlightSelectedColorUsage) {
-      return null;
-    }
-
-    const rgb = hexToRgb(brushColor);
-    if (!rgb) {
-      return null;
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      return null;
-    }
-
-    ctx.drawImage(image, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const { data } = imageData;
-    for (let index = 0; index < data.length; index += 4) {
-      const matches =
-        data[index] === rgb.r &&
-        data[index + 1] === rgb.g &&
-        data[index + 2] === rgb.b &&
-        (data[index + 3] ?? 0) > 0;
-
-      if (matches) {
-        data[index] = 255;
-        data[index + 1] = 255;
-        data[index + 2] = 0;
-        data[index + 3] = 220;
-      } else {
-        data[index + 3] = 0;
-      }
-    }
-    ctx.putImageData(imageData, 0, 0);
-    return canvas;
-  }, [brushColor, highlightSelectedColorUsage, image, paletteColors]);
+  const selectedColorHighlightCanvas = useMemo(
+    () =>
+      buildSelectedColorHighlightCanvas(
+        image,
+        paletteColors,
+        highlightSelectedColorUsage,
+        brushColor,
+      ),
+    [brushColor, highlightSelectedColorUsage, image, paletteColors],
+  );
 
   if (!image) {
     return (
-      <Dialog
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!open) handleClose();
-        }}
-      >
-        <DialogContent className="max-w-4xl h-[80vh] text-white">
-          <DialogHeader>
-            <DialogTitle className="text-white">
-              Loading Image Editor...
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex items-center justify-center h-full">
-            <div className="text-gray-400">Loading image...</div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <LoadingImageEditorDialog isOpen={isOpen} onRequestClose={handleClose} />
     );
   }
 
@@ -420,7 +343,6 @@ export function ImageEditor({
         </DialogHeader>
 
         <div className="flex flex-1 gap-4 overflow-hidden">
-          {/* Tools Panel */}
           <ToolsPanel
             brushSize={brushSize}
             setBrushSize={setBrushSize}
@@ -434,170 +356,34 @@ export function ImageEditor({
             highlightSelectedColorUsage={highlightSelectedColorUsage}
             setHighlightSelectedColorUsage={setHighlightSelectedColorUsage}
           />
-
-          {/* Canvas Area */}
-          <div className="flex-1 bg-gray-900 rounded overflow-hidden relative">
-            {/* Overlay Controls */}
-            <div className="absolute top-4 right-4 z-10 flex flex-row items-center gap-2 bg-gray-800/90 p-1.5 rounded-lg shadow-xl border border-gray-700">
-              <div className="flex items-center gap-1 border-r border-gray-700 pr-2 mr-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
-                  onClick={undo}
-                  disabled={historyIndex < 0}
-                  title="Undo"
-                >
-                  <Undo className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
-                  onClick={redo}
-                  disabled={historyIndex >= history.length - 1}
-                  title="Redo"
-                >
-                  <Redo className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
-                  onClick={zoomOut}
-                  title="Zoom out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
-                  onClick={zoomIn}
-                  title="Zoom in"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-12"
-                  onClick={resetZoom}
-                >
-                  {Math.round(scale * 100)}%
-                </Button>
-              </div>
-            </div>
-
-            <div
-              ref={containerRef}
-              className="w-full h-full overflow-auto custom-scrollbar"
-            >
-              <div
-                className="flex p-20"
-                style={{
-                  minWidth: "100%",
-                  minHeight: "100%",
-                  width: image.width * scale + 160,
-                  height: image.height * scale + 160,
-                }}
-              >
-                <div className="m-auto shadow-2xl border border-gray-800">
-                  <Stage
-                    ref={stageRef}
-                    width={image.width * scale}
-                    height={image.height * scale}
-                    scaleX={scale}
-                    scaleY={scale}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                  >
-                    <Layer ref={layerRef}>
-                      <Image image={image} />
-                      {selectedColorHighlightCanvas && (
-                        <Image
-                          image={selectedColorHighlightCanvas}
-                          opacity={0.45}
-                        />
-                      )}
-
-                      {/* Render completed strokes */}
-                      {strokes.map((stroke, i) => (
-                        <Line
-                          key={i}
-                          points={stroke.points}
-                          stroke={stroke.color}
-                          strokeWidth={stroke.size}
-                          lineCap={
-                            stroke.shape === "circle" ? "round" : "square"
-                          }
-                          lineJoin={
-                            stroke.shape === "circle" ? "round" : "miter"
-                          }
-                          globalCompositeOperation="source-over"
-                        />
-                      ))}
-
-                      {/* Render current stroke */}
-                      {currentStroke && (
-                        <Line
-                          points={currentStroke.points}
-                          stroke={currentStroke.color}
-                          strokeWidth={currentStroke.size}
-                          lineCap={
-                            currentStroke.shape === "circle"
-                              ? "round"
-                              : "square"
-                          }
-                          lineJoin={
-                            currentStroke.shape === "circle" ? "round" : "miter"
-                          }
-                          globalCompositeOperation="source-over"
-                        />
-                      )}
-                    </Layer>
-                  </Stage>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ImageEditorCanvas
+            image={image}
+            scale={scale}
+            historyIndex={historyIndex}
+            historyLength={history.length}
+            undo={undo}
+            redo={redo}
+            zoomOut={zoomOut}
+            zoomIn={zoomIn}
+            resetZoom={resetZoom}
+            containerRef={containerRef}
+            stageRef={stageRef}
+            layerRef={layerRef}
+            handleMouseDown={handleMouseDown}
+            handleMouseMove={handleMouseMove}
+            handleMouseUp={handleMouseUp}
+            selectedColorHighlightCanvas={selectedColorHighlightCanvas}
+            strokes={strokes}
+            currentStroke={currentStroke}
+          />
         </div>
-
-        {/* Bottom Actions */}
-        <div className="flex justify-between items-center pt-4 border-t border-gray-600">
-          <Button onClick={handleClose} variant="outline">
-            <X className="w-4 h-4 mr-2" />
-            Cancel
-          </Button>
-
-          {saveActions && saveActions.length > 0 ? (
-            <div className="flex gap-2">
-              {saveActions.map((action) => (
-                <Button
-                  key={action.label}
-                  onClick={() => handleSave(action.onSave)}
-                  disabled={saving}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? "Saving..." : action.label}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <Button
-              onClick={() => handleSave(onSave)}
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          )}
-        </div>
+        <ImageEditorFooter
+          handleClose={handleClose}
+          saveActions={saveActions}
+          handleSave={handleSave}
+          onSave={onSave}
+          saving={saving}
+        />
       </DialogContent>
     </Dialog>
   );

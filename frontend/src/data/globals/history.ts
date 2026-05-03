@@ -1,4 +1,4 @@
 import { atom } from "jotai";
 
-//For whhen history shouldn't be updated
+/** Blocks history updates while the flag is set. */
 export const BlockHistoryUpdate = atom(false);

@@ -24,6 +24,7 @@ export interface GLTFAnalysis {
   }[];
 }
 
+/** Reads a GLB buffer and produces a compact summary of its nodes, materials, and textures. */
 export async function analyzeGLTF(
   glbArrayBuffer: ArrayBuffer,
 ): Promise<GLTFAnalysis> {
@@ -48,9 +49,7 @@ export async function analyzeGLTF(
       const nodeMesh = node.getMesh();
       analysis.nodes.push({
         name: node.getName() || `Node_${index}`,
-        meshes: nodeMesh
-          ? [doc.getRoot().listMeshes().indexOf(nodeMesh)]
-          : [],
+        meshes: nodeMesh ? [doc.getRoot().listMeshes().indexOf(nodeMesh)] : [],
         children: node
           .listChildren()
           .map((child) => doc.getRoot().listNodes().indexOf(child)),
@@ -75,7 +74,10 @@ export async function analyzeGLTF(
       }[] = [
         { getter: () => material.getBaseColorTexture(), type: "baseColor" },
         { getter: () => material.getNormalTexture(), type: "normal" },
-        { getter: () => material.getMetallicRoughnessTexture(), type: "metallicRoughness" },
+        {
+          getter: () => material.getMetallicRoughnessTexture(),
+          type: "metallicRoughness",
+        },
         { getter: () => material.getOcclusionTexture(), type: "occlusion" },
         { getter: () => material.getEmissiveTexture(), type: "emissive" },
       ];
@@ -108,6 +110,7 @@ export async function analyzeGLTF(
   return analysis;
 }
 
+/** Splits a GLTF document into one document per node that owns a mesh. */
 export function splitGLTFByNodes(doc: Document): Document[] {
   const documents: Document[] = [];
 

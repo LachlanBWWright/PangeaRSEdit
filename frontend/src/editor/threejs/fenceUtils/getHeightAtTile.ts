@@ -1,7 +1,4 @@
-import {
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { GlobalsInterface } from "@/data/globals/globals";
 import { flattenCoords } from "./flattenCoords";
 

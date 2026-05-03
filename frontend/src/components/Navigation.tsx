@@ -16,6 +16,7 @@ import {
   editorNavbarOpenAtom,
   editorNavbarTabsAtom,
 } from "@/data/globals/editorNavbarAtoms";
+import { UserMenu } from "@/components/UserMenu";
 
 export function Navigation() {
   const location = useLocation();
@@ -27,17 +28,21 @@ export function Navigation() {
   const showEditorNavbar = location.pathname === "/" && editorNavbarOpen;
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-1 min-h-14 flex items-center gap-2 md:gap-4 overflow-hidden">
-      <div className="flex-1 min-w-0 overflow-x-auto">
-        {showEditorNavbar ? (
-          <div className="flex items-center gap-2 md:gap-4 whitespace-nowrap w-full pr-1 overflow-hidden">
+    <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-1 min-h-14 flex items-center gap-2 md:gap-4 overflow-visible">
+      {showEditorNavbar ? (
+        <div className="flex-1 min-w-0 overflow-visible">
+          <div className="flex items-center gap-2 md:gap-4 whitespace-nowrap w-full pr-1 overflow-visible">
             {editorNavbarLeft}
             <div className="flex flex-1 min-w-0 overflow-x-auto items-stretch rounded-md bg-muted p-1 text-muted-foreground border border-border">
               {editorNavbarTabs}
             </div>
-            <div className="flex items-center gap-2 shrink-0">{editorNavbarActions}</div>
+            <div className="relative flex items-center gap-2 shrink-0 overflow-visible">
+              {editorNavbarActions}
+            </div>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <div className="flex-1 min-w-0 overflow-x-auto">
           <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap min-w-max pr-1">
             <Button
               asChild
@@ -51,7 +56,9 @@ export function Navigation() {
             </Button>
             <Button
               asChild
-              variant={location.pathname === "/model-viewer" ? "default" : "ghost"}
+              variant={
+                location.pathname === "/model-viewer" ? "default" : "ghost"
+              }
               className="flex items-center gap-2"
             >
               <Link to="/model-viewer" className="text-white">
@@ -61,7 +68,9 @@ export function Navigation() {
             </Button>
             <Button
               asChild
-              variant={location.pathname === "/sprite-viewer" ? "default" : "ghost"}
+              variant={
+                location.pathname === "/sprite-viewer" ? "default" : "ghost"
+              }
               className="flex items-center gap-2"
             >
               <Link to="/sprite-viewer" className="text-white">
@@ -71,19 +80,23 @@ export function Navigation() {
             </Button>
             <Button
               asChild
-              variant={location.pathname === "/download-levels" ? "default" : "ghost"}
+              variant={
+                location.pathname === "/download-levels" ? "default" : "ghost"
+              }
               className="flex items-center gap-2"
             >
               <Link to="/download-levels" className="text-white">
                 <Download className="w-4 h-4" />
-                <span>Download Levels</span>
+                <span>Custom Levels</span>
               </Link>
             </Button>
             {showExperimentalLinks && (
               <>
                 <Button
                   asChild
-                  variant={location.pathname === "/item-models" ? "default" : "ghost"}
+                  variant={
+                    location.pathname === "/item-models" ? "default" : "ghost"
+                  }
                   className="flex items-center gap-2"
                 >
                   <Link to="/item-models" className="text-white">
@@ -93,7 +106,9 @@ export function Navigation() {
                 </Button>
                 <Button
                   asChild
-                  variant={location.pathname === "/test-models" ? "default" : "ghost"}
+                  variant={
+                    location.pathname === "/test-models" ? "default" : "ghost"
+                  }
                   className="flex items-center gap-2"
                 >
                   <Link to="/test-models" className="text-white">
@@ -103,7 +118,9 @@ export function Navigation() {
                 </Button>
                 <Button
                   asChild
-                  variant={location.pathname === "/item-audit" ? "default" : "ghost"}
+                  variant={
+                    location.pathname === "/item-audit" ? "default" : "ghost"
+                  }
                   className="flex items-center gap-2"
                 >
                   <Link to="/item-audit" className="text-white">
@@ -114,7 +131,10 @@ export function Navigation() {
               </>
             )}
           </div>
-        )}
+        </div>
+      )}
+      <div className={showEditorNavbar ? "hidden" : "ml-auto shrink-0"}>
+        <UserMenu />
       </div>
     </nav>
   );

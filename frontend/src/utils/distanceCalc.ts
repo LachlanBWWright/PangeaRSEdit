@@ -1,5 +1,6 @@
-//Adapted from Pangea Software source code
+// Adapted from Pangea Software source code.
 
+/** Returns a fast approximation of the Euclidean distance between two points. */
 export function calcQuickDistance(
   x1: number,
   y1: number,
@@ -10,8 +11,8 @@ export function calcQuickDistance(
   const diffY = Math.abs(y1 - y2);
 
   if (diffX > diffY) {
-    return diffX + 0.375 * diffY; // same as (3*diffY)/8
-  } else {
-    return diffY + 0.375 * diffX;
+    return diffX + 0.375 * diffY; // same as (3 * diffY) / 8
   }
+
+  return diffY + 0.375 * diffX;
 }

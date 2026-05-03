@@ -1,6 +1,6 @@
 /**
  * Level Editor Service
- * 
+ *
  * A service class that applies edit operations to level data using Immer.
  * This provides a clean interface for editing levels with full undo/redo support.
  */
@@ -14,10 +14,7 @@ import type {
   FenceData,
   LiquidData,
 } from "@/python/structSpecs/LevelTypes";
-import {
-  type EditOperation,
-  reverseOperation,
-} from "./editOperations";
+import { type EditOperation, reverseOperation } from "./editOperations";
 import {
   applyItemEditToDraft,
   applySplineEditToDraft,
@@ -76,13 +73,10 @@ export function applyEdit(
   operation: EditOperation,
 ): LevelEditorState {
   const newData = applyOperationToData(state.data, operation);
-  
+
   return {
     data: newData,
-    undoStack: [
-      ...state.undoStack,
-      { operation, timestamp: Date.now() },
-    ],
+    undoStack: [...state.undoStack, { operation, timestamp: Date.now() }],
     redoStack: [], // Clear redo stack when new edit is made
     isDirty: true,
   };
@@ -92,9 +86,7 @@ export function applyEdit(
  * Undo the last operation
  * Returns null if nothing to undo
  */
-export function undoEdit(
-  state: LevelEditorState,
-): LevelEditorState | null {
+export function undoEdit(state: LevelEditorState): LevelEditorState | null {
   const lastEntry = state.undoStack[state.undoStack.length - 1];
   if (!lastEntry) {
     return null;
@@ -106,10 +98,7 @@ export function undoEdit(
   return {
     data: newData,
     undoStack: state.undoStack.slice(0, -1),
-    redoStack: [
-      ...state.redoStack,
-      lastEntry,
-    ],
+    redoStack: [...state.redoStack, lastEntry],
     isDirty: state.undoStack.length > 1,
   };
 }
@@ -118,9 +107,7 @@ export function undoEdit(
  * Redo the last undone operation
  * Returns null if nothing to redo
  */
-export function redoEdit(
-  state: LevelEditorState,
-): LevelEditorState | null {
+export function redoEdit(state: LevelEditorState): LevelEditorState | null {
   const lastEntry = state.redoStack[state.redoStack.length - 1];
   if (!lastEntry) {
     return null;
@@ -130,10 +117,7 @@ export function redoEdit(
 
   return {
     data: newData,
-    undoStack: [
-      ...state.undoStack,
-      lastEntry,
-    ],
+    undoStack: [...state.undoStack, lastEntry],
     redoStack: state.redoStack.slice(0, -1),
     isDirty: true,
   };
@@ -168,6 +152,58 @@ export function clearHistory(state: LevelEditorState): LevelEditorState {
 /**
  * Apply operation to level data using Immer
  */
+function applyItemEdit(
+  data: EditableLevelData,
+  operation: EditOperation,
+): EditableLevelData {
+  if (!data.itemData) return data;
+  return {
+    ...data,
+    itemData: produce(data.itemData, (draft: Draft<ItemData>) => {
+      applyItemEditToDraft(draft, operation);
+    }),
+  };
+}
+
+function applySplineEdit(
+  data: EditableLevelData,
+  operation: EditOperation,
+): EditableLevelData {
+  if (!data.splineData) return data;
+  return {
+    ...data,
+    splineData: produce(data.splineData, (draft: Draft<SplineData>) => {
+      applySplineEditToDraft(draft, operation);
+    }),
+  };
+}
+
+function applyFenceEdit(
+  data: EditableLevelData,
+  operation: EditOperation,
+): EditableLevelData {
+  if (!data.fenceData) return data;
+  return {
+    ...data,
+    fenceData: produce(data.fenceData, (draft: Draft<FenceData>) => {
+      applyFenceEditToDraft(draft, operation);
+    }),
+  };
+}
+
+function applyTerrainEdit(
+  data: EditableLevelData,
+  operation: EditOperation,
+  mapWidth: number,
+): EditableLevelData {
+  return {
+    ...data,
+    terrainData: produce(data.terrainData, (draft: Draft<TerrainData>) => {
+      applyTerrainEditToDraft(draft, operation, mapWidth);
+    }),
+  };
+}
+
 function applyOperationToData(
   data: EditableLevelData,
   operation: EditOperation,
@@ -175,51 +211,20 @@ function applyOperationToData(
   const mapWidth = data.headerData.Hedr[1000].obj.mapWidth;
 
   switch (operation.type) {
-    // Item operations
     case "MoveItem":
     case "UpdateItemParams":
     case "DeleteItem":
     case "AddItem":
-      if (!data.itemData) return data;
-      return {
-        ...data,
-        itemData: produce(data.itemData, (draft: Draft<ItemData>) => {
-          applyItemEditToDraft(draft, operation);
-        }),
-      };
-
-    // Spline operations
+      return applyItemEdit(data, operation);
     case "MoveSplineNub":
     case "AddSplineNub":
     case "DeleteSplineNub":
-      if (!data.splineData) return data;
-      return {
-        ...data,
-        splineData: produce(data.splineData, (draft: Draft<SplineData>) => {
-          applySplineEditToDraft(draft, operation);
-        }),
-      };
-
-    // Fence operations
+      return applySplineEdit(data, operation);
     case "MoveFenceNub":
-      if (!data.fenceData) return data;
-      return {
-        ...data,
-        fenceData: produce(data.fenceData, (draft: Draft<FenceData>) => {
-          applyFenceEditToDraft(draft, operation);
-        }),
-      };
-
-    // Terrain operations
+      return applyFenceEdit(data, operation);
     case "UpdateTerrainHeight":
     case "UpdateTileAttribute":
-      return {
-        ...data,
-        terrainData: produce(data.terrainData, (draft: Draft<TerrainData>) => {
-          applyTerrainEditToDraft(draft, operation, mapWidth);
-        }),
-      };
-
+      return applyTerrainEdit(data, operation, mapWidth);
     default:
       return data;
   }

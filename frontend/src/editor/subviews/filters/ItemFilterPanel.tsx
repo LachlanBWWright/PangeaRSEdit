@@ -1,7 +1,17 @@
 import React, { useMemo, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { itemFilterStateAtom, FilterMode, DEFAULT_FILTER_STATE } from "@/data/items/itemFilterAtoms";
+import {
+  itemFilterStateAtom,
+  DEFAULT_FILTER_STATE,
+} from "@/data/items/itemFilterAtoms";
 import { Globals } from "@/data/globals/globals";
+import {
+  createHideAllFilterState,
+  filterItemTypesBySearch,
+  isFilterTypeVisible,
+  toSortedItemTypes,
+  toggleHiddenItemType,
+} from "@/editor/subviews/filters/itemFilterPanelState";
 
 interface ItemFilterPanelProps {
   isOpen: boolean;
@@ -12,62 +22,34 @@ interface ItemFilterPanelProps {
  * Item filter panel showing per-type toggles for all item types in the current game.
  * Replaces the old category-based filter with individual item visibility controls.
  */
-export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({ isOpen, onClose }) => {
+export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const [filter, setFilter] = useAtom(itemFilterStateAtom);
   const globals = useAtomValue(Globals);
   const [search, setSearch] = useState("");
 
   const allItemTypes = useMemo(() => {
-    const types = globals.ITEM_TYPES;
-    return Object.entries(types)
-      .map(([id, name]) => ({ id: Number(id), name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [globals.ITEM_TYPES]);
+    return toSortedItemTypes(globals);
+  }, [globals]);
 
   const filteredTypes = useMemo(() => {
-    if (!search.trim()) return allItemTypes;
-    const q = search.toLowerCase();
-    return allItemTypes.filter((t) => t.name.toLowerCase().includes(q));
+    return filterItemTypesBySearch(allItemTypes, search);
   }, [allItemTypes, search]);
 
   const isTypeVisible = (id: number): boolean => {
-    if (filter.mode === FilterMode.SHOW_ALL) return true;
-    if (filter.mode === FilterMode.HIDE_SELECTED) return !filter.itemTypes[id];
-    return !!filter.itemTypes[id];
+    return isFilterTypeVisible(filter, id);
   };
 
   const toggleType = (id: number) => {
-    const currentlyVisible = isTypeVisible(id);
-    if (currentlyVisible) {
-      // Hide this type
-      const newItemTypes = { ...filter.itemTypes, [id]: true as const };
-      setFilter({
-        ...filter,
-        mode: FilterMode.HIDE_SELECTED,
-        itemTypes: newItemTypes,
-      });
-    } else {
-      // Show this type — remove from hidden set using omit pattern
-      const newItemTypes = Object.fromEntries(
-        Object.entries(filter.itemTypes).filter(([k]) => Number(k) !== id),
-      ) as Record<number, boolean | undefined>;
-      const hasHidden = Object.values(newItemTypes).some(Boolean);
-      setFilter({
-        ...filter,
-        mode: hasHidden ? FilterMode.HIDE_SELECTED : FilterMode.SHOW_ALL,
-        itemTypes: newItemTypes,
-      });
-    }
+    setFilter(toggleHiddenItemType(filter, id));
   };
 
   const showAll = () => setFilter(DEFAULT_FILTER_STATE);
 
   const hideAll = () => {
-    const allHidden: Record<number, boolean | undefined> = {};
-    allItemTypes.forEach(({ id }) => {
-      allHidden[id] = true;
-    });
-    setFilter({ ...filter, mode: FilterMode.HIDE_SELECTED, itemTypes: allHidden });
+    setFilter(createHideAllFilterState(filter, allItemTypes));
   };
 
   const visibleCount = allItemTypes.filter((t) => isTypeVisible(t.id)).length;
@@ -118,7 +100,9 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({ isOpen, onClos
       {/* Per-type toggle list */}
       <div className="flex-1 overflow-y-auto px-1 py-1">
         {filteredTypes.length === 0 ? (
-          <p className="text-gray-500 text-xs text-center py-3">No items match</p>
+          <p className="text-gray-500 text-xs text-center py-3">
+            No items match
+          </p>
         ) : (
           filteredTypes.map(({ id, name }) => {
             const visible = isTypeVisible(id);
@@ -133,10 +117,14 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({ isOpen, onClos
                   onChange={() => toggleType(id)}
                   className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
                 />
-                <span className={`text-xs truncate ${visible ? "text-white" : "text-gray-500 line-through"}`}>
+                <span
+                  className={`text-xs truncate ${visible ? "text-white" : "text-gray-500 line-through"}`}
+                >
                   {name}
                 </span>
-                <span className="ml-auto text-xs text-gray-600 flex-none">{id}</span>
+                <span className="ml-auto text-xs text-gray-600 flex-none">
+                  {id}
+                </span>
               </label>
             );
           })

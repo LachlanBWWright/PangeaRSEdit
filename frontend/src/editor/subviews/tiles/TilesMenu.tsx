@@ -34,7 +34,15 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
-import { Globals, Game } from "../../../data/globals/globals";
+import { Globals } from "../../../data/globals/globals";
+import {
+  getNextCanvasViewMode,
+  getTabForTileView,
+  getTileMenuFlags,
+  getTileViewForTab,
+  parseFiniteNumber,
+  parseIntOrZero,
+} from "@/editor/subviews/tiles/tilesMenuState";
 
 export function TilesMenu({
   headerData,
@@ -68,22 +76,12 @@ export function TilesMenu({
   // Determine which tile options are available for this game
   const gameType = globals.GAME_TYPE;
 
-  // Electric Floor options are only available in Otto Matic
-  const hasElectricFloorOptions = gameType === Game.OTTO_MATIC;
-
-  // Some games may have Atrb data (for tile attribute editing)
-  // Nanosaur 1 and Bugdom 1 use individual tiles, not tile attributes like Otto Matic
-  const usesIndividualTiles =
-    gameType === Game.BUGDOM || gameType === Game.NANOSAUR;
-
-  // Only show tile flags if game uses tile attribute system
-  const hasTileFlags = !usesIndividualTiles;
-
-
+  const { hasElectricFloorOptions, hasTileFlags, usesIndividualTiles } =
+    getTileMenuFlags(gameType);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value);
-    if (isNaN(newValue)) return;
+    const newValue = parseFiniteNumber(e.target.value);
+    if (newValue === null) return;
 
     setHeaderData((draft) => {
       draft.Hedr[1000].obj.minY = newValue;
@@ -91,8 +89,8 @@ export function TilesMenu({
   };
 
   const handleMaxYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value);
-    if (isNaN(newValue)) return;
+    const newValue = parseFiniteNumber(e.target.value);
+    if (newValue === null) return;
 
     setHeaderData((draft) => {
       draft.Hedr[1000].obj.maxY = newValue;
@@ -102,20 +100,13 @@ export function TilesMenu({
   return (
     <div className="flex flex-col gap-2">
       <Tabs
-        value={
-          tileView === TileViews.Topology
-            ? "topology"
-            : tileView === TileViews.Flags
-            ? "flags"
-            : tileView === TileViews.ElectricFloor0
-            ? "electric0"
-            : "electric1"
-        }
+        value={getTabForTileView(tileView)}
         onValueChange={(v) => {
-          if (v === "topology") setTileView(TileViews.Topology);
-          else if (v === "flags") { setTileView(TileViews.Flags); setCanvasViewMode(CanvasView.TWO_D); }
-          else if (v === "electric0") { setTileView(TileViews.ElectricFloor0); setCanvasViewMode(CanvasView.TWO_D); }
-          else if (v === "electric1") { setTileView(TileViews.ElectricFloor1); setCanvasViewMode(CanvasView.TWO_D); }
+          const { tileView: nextTileView, forceTwoD } = getTileViewForTab(v);
+          setTileView(nextTileView);
+          if (forceTwoD) {
+            setCanvasViewMode(CanvasView.TWO_D);
+          }
         }}
       >
         <TabsList className="grid grid-flow-col auto-cols-fr w-full">
@@ -145,113 +136,116 @@ export function TilesMenu({
           <div className="text-sm text-blue-400 p-3 bg-blue-950/30 rounded border border-blue-800/50 mb-3">
             <p className="font-semibold mb-1">✨ Topology Editing</p>
             <p>• Hover over the 3D view to see brush radius (green circle)</p>
-            <p>• Click and drag to paint height changes directly onto terrain</p>
+            <p>
+              • Click and drag to paint height changes directly onto terrain
+            </p>
             <p>• Changes apply immediately to the heightmap</p>
           </div>
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
-          <p>Brush Mode</p>
-          <Select
-            value={brushMode.toString()}
-            onValueChange={(e) => {
-              setBrushMode(parseInt(e));
-            }}
-          >
-            <SelectTrigger>
-              {brushMode === TopologyBrushMode.CIRCLE_BRUSH
-                ? "Circle Brush"
-                : "Square Brush"}
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={TopologyBrushMode.CIRCLE_BRUSH.toString()}>
-                Circle Brush
-              </SelectItem>
-              <SelectItem value={TopologyBrushMode.SQUARE_BRUSH.toString()}>
-                Square Brush
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+            <p>Brush Mode</p>
+            <Select
+              value={brushMode.toString()}
+              onValueChange={(e) => {
+                setBrushMode(parseIntOrZero(e));
+              }}
+            >
+              <SelectTrigger>
+                {brushMode === TopologyBrushMode.CIRCLE_BRUSH
+                  ? "Circle Brush"
+                  : "Square Brush"}
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TopologyBrushMode.CIRCLE_BRUSH.toString()}>
+                  Circle Brush
+                </SelectItem>
+                <SelectItem value={TopologyBrushMode.SQUARE_BRUSH.toString()}>
+                  Square Brush
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-          <p>Adjustment Mode</p>
-          <Select
-            value={valueMode.toString()}
-            onValueChange={(e) => {
-              setValueMode(parseInt(e));
-            }}
-          >
-            <SelectTrigger>
-              {valueMode === TopologyValueMode.SET_VALUE && "Set To Value"}
-              {valueMode === TopologyValueMode.DELTA_VALUE && "Adjust By Value"}
-              {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
-                "Adjust By Value (With Dropoff)"}
-            </SelectTrigger>
+            <p>Adjustment Mode</p>
+            <Select
+              value={valueMode.toString()}
+              onValueChange={(e) => {
+                setValueMode(parseIntOrZero(e));
+              }}
+            >
+              <SelectTrigger>
+                {valueMode === TopologyValueMode.SET_VALUE && "Set To Value"}
+                {valueMode === TopologyValueMode.DELTA_VALUE &&
+                  "Adjust By Value"}
+                {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
+                  "Adjust By Value (With Dropoff)"}
+              </SelectTrigger>
 
-            <SelectContent>
-              <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>
-                Set To Value
-              </SelectItem>
-              <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
-                Adjust By Value
-              </SelectItem>
-              <SelectItem
-                value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
-              >
-                Adjust By Value (With Dropoff)
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              <SelectContent>
+                <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>
+                  Set To Value
+                </SelectItem>
+                <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
+                  Adjust By Value
+                </SelectItem>
+                <SelectItem
+                  value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
+                >
+                  Adjust By Value (With Dropoff)
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-          <p>Brush Radius</p>
-          <Input
-            type="number"
-            defaultValue={brushRadius}
-            onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
-          />
-          <p>Height Value</p>
-          <Input
-            type="number"
-            defaultValue={value}
-            onChange={(e) => setValue(parseInt(e.target.value) || 0)}
-          />
+            <p>Brush Radius</p>
+            <Input
+              type="number"
+              defaultValue={brushRadius}
+              onChange={(e) => setBrushRadius(parseIntOrZero(e.target.value))}
+            />
+            <p>Height Value</p>
+            <Input
+              type="number"
+              defaultValue={value}
+              onChange={(e) => setValue(parseIntOrZero(e.target.value))}
+            />
 
-          <p>Min Height</p>
-          <Input type="number" value={minY} onChange={handleMinYChange} />
-          <p>Max Height</p>
-          <Input type="number" value={maxY} onChange={handleMaxYChange} />
-          <p>Topology View Opacity</p>
-          <Input
-            type="number"
-            defaultValue={toplogyOpacity}
-            onChange={(e) =>
-              setTopologyOpacity(parseFloat(e.target.value) || 1)
-            }
-          />
+            <p>Min Height</p>
+            <Input type="number" value={minY} onChange={handleMinYChange} />
+            <p>Max Height</p>
+            <Input type="number" value={maxY} onChange={handleMaxYChange} />
+            <p>Topology View Opacity</p>
+            <Input
+              type="number"
+              defaultValue={toplogyOpacity}
+              onChange={(e) => {
+                const nextValue = parseFiniteNumber(e.target.value);
+                setTopologyOpacity(nextValue ?? 1);
+              }}
+            />
 
-          <div className="flex flex-row justify-between gap-2 items-center col-span-2">
-            <div className="flex items-center gap-2">
-              <p>Show 3D View (Experimental)</p>
-              <Switch
-                checked={canvasViewMode === CanvasView.THREE_D}
-                onCheckedChange={(e) => {
-                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D);
-                  if (e) {
-                    setShow3DSplines(true);
-                    setShow3DItems(true);
-                    setShow3DFences(true);
-                    setShow3DLiquid(true);
-                  }
-                }}
-              />
-            </div>
+            <div className="flex flex-row justify-between gap-2 items-center col-span-2">
+              <div className="flex items-center gap-2">
+                <p>Show 3D View (Experimental)</p>
+                <Switch
+                  checked={canvasViewMode === CanvasView.THREE_D}
+                  onCheckedChange={(e) => {
+                    setCanvasViewMode(getNextCanvasViewMode(e));
+                    if (e) {
+                      setShow3DSplines(true);
+                      setShow3DItems(true);
+                      setShow3DFences(true);
+                      setShow3DLiquid(true);
+                    }
+                  }}
+                />
+              </div>
 
-            {/* Download button lives on the same row as the toggle for discoverability */}
-            <div className="flex items-center gap-2">
-              <Button onClick={() => setExport3DScene((c) => c + 1)}>
-                Download 3D (GLB)
-              </Button>
+              {/* Download button lives on the same row as the toggle for discoverability */}
+              <div className="flex items-center gap-2">
+                <Button onClick={() => setExport3DScene((c) => c + 1)}>
+                  Download 3D (GLB)
+                </Button>
+              </div>
             </div>
           </div>
-
-        </div>
         </>
       )}
 
@@ -277,7 +271,7 @@ export function TilesMenu({
                   type="number"
                   defaultValue={brushRadius}
                   onChange={(e) =>
-                    setBrushRadius(parseInt(e.target.value) || 0)
+                    setBrushRadius(parseIntOrZero(e.target.value))
                   }
                 />
                 <p>Brush Type</p>

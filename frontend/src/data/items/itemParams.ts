@@ -110,10 +110,16 @@ export interface ItemParams {
   p3: ParamDescription;
 }
 
-function toCitation(game: string, label: string, codeSample: CodeSample): Citation {
+function toCitation(
+  game: string,
+  label: string,
+  codeSample: CodeSample,
+): Citation {
   return {
     label,
-    url: getGitHubPermalink(game, codeSample.fileName, codeSample.lineNumber) ?? "",
+    url:
+      getGitHubPermalink(game, codeSample.fileName, codeSample.lineNumber) ??
+      "",
     fileName: codeSample.fileName,
     lineNumber: codeSample.lineNumber,
     endLineNumber: codeSample.endLineNumber,
@@ -226,7 +232,9 @@ export function defineItemParams(
 ): Partial<Record<number, ItemParams>>;
 export function defineItemParams(
   game: string,
-  params: Record<number, ItemParamsSource> | Partial<Record<number, ItemParamsSource>>,
+  params:
+    | Record<number, ItemParamsSource>
+    | Partial<Record<number, ItemParamsSource>>,
 ): Record<number, ItemParams> | Partial<Record<number, ItemParams>> {
   const normalizedParams: Record<number, ItemParams> = {};
 

@@ -2,13 +2,13 @@ const RING_BUFF_SIZE = 4096; //4095 - 0x0fff
 const THRESHOLD = 2; //Minimum length
 const MAX_SIZE = 18; //Min of 2 + 4 byte uint (2+16)
 
-//Good explanation of LZSS: https://moddingwiki.shikadi.net/wiki/LZSS_compression
-//Java LZSS Implementation: https://github.com/crosswire/jsword-migration/blob/master/jsword/src/main/java/org/crosswire/common/compress/LZSS.java
+// Good explanation of LZSS: https://moddingwiki.shikadi.net/wiki/LZSS_compression
+// Java LZSS Implementation: https://github.com/crosswire/jsword-migration/blob/master/jsword/src/main/java/org/crosswire/common/compress/LZSS.java
 
+/** Decompresses an LZSS payload into a new DataView of the requested size. */
 export function lzssDecompress(
   compressedDataView: DataView,
   outputSize: number,
-  //outputBuffer: DataView,
 ) {
   const outputBuffer = new DataView(new ArrayBuffer(outputSize));
 
@@ -77,6 +77,7 @@ export function lzssDecompress(
   return outputBuffer;
 }
 
+/** Compresses a DataView using the project's LZSS format. */
 export function lzssCompress(decompressedDataView: DataView) {
   const outputBuffer = new DataView(
     new ArrayBuffer(decompressedDataView.byteLength * 2),

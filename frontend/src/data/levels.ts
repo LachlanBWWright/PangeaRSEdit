@@ -1,4 +1,6 @@
 import level1hardRsrc from "./levelFiles/level1Hard/EarthFarm.ter.rsrc?url";
+import { Game } from "./globals/globals";
+import { GAME_PORT_CONFIGS } from "@/editor/utils/gamePortConfig";
 
 export interface Level {
   id: string;
@@ -11,7 +13,21 @@ export interface Level {
   difficulty?: "Easy" | "Medium" | "Hard";
   terFile?: string;
   rsrcFile?: string;
+  /** The level index to launch in the game preview for this custom level */
+  previewLevelNumber?: number;
 }
+
+/** Maps the string game key used in Level records to the Game enum */
+export const GAME_KEY_TO_ENUM: Record<string, Game> = {
+  billyFrontier: Game.BILLY_FRONTIER,
+  bugdom: Game.BUGDOM,
+  bugdom2: Game.BUGDOM_2,
+  croMag: Game.CRO_MAG,
+  mightyMike: Game.MIGHTY_MIKE,
+  nanosaur: Game.NANOSAUR,
+  nanosaur2: Game.NANOSAUR_2,
+  ottoMatic: Game.OTTO_MATIC,
+};
 
 export const levelsData: Level[] = [
   // Otto Matic
@@ -24,6 +40,7 @@ export const levelsData: Level[] = [
     summary: "A harder version of Level 1's first level.",
     description: "Farms have tractors, right?",
     rsrcFile: level1hardRsrc,
+    previewLevelNumber: 0,
   },
 ];
 
@@ -49,3 +66,6 @@ export const getGamesByCategory = () => {
     levels: levelsData.filter((level) => level.game === game),
   }));
 };
+
+/** Ordered list of all 8 games for the launcher section */
+export const ALL_GAME_CONFIGS = Object.values(GAME_PORT_CONFIGS);

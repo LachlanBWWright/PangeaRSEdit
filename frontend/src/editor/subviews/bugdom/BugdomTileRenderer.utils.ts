@@ -45,22 +45,20 @@ export function drawTileIntoBuffer(
   const texMapNum = tileValue & TILENUM_MASK;
 
   if (texMapNum >= tileImages.length) {
-    if (debugLog) {
+    if (debugLog)
       console.warn(
         `drawTileIntoBuffer: texMapNum ${texMapNum} >= tileImages.length ${tileImages.length}`,
       );
-    }
     destCtx.fillStyle = "magenta";
     destCtx.fillRect(destX, destY, tileSize, tileSize);
     return;
   }
 
   if (!tileImages[texMapNum]) {
-    if (debugLog) {
+    if (debugLog)
       console.warn(
         `drawTileIntoBuffer: tileImages[${texMapNum}] is null/undefined`,
       );
-    }
     destCtx.fillStyle = "cyan";
     destCtx.fillRect(destX, destY, tileSize, tileSize);
     return;
@@ -116,11 +114,10 @@ export function translateTileIndex(
   const otherBits = tileValue & ~TILENUM_MASK;
 
   if (tileIndex >= xlatTable.length) {
-    if (logWarnings) {
+    if (logWarnings)
       console.warn(
         `translateTileIndex: tile index ${tileIndex} exceeds Xlat table size ${xlatTable.length}`,
       );
-    }
     return otherBits;
   }
 
@@ -131,11 +128,10 @@ export function translateTileIndex(
   const translatedIndex = xlatEntry.idx;
 
   if (translatedIndex < 0 || translatedIndex >= numTileImages) {
-    if (logWarnings) {
+    if (logWarnings)
       console.warn(
         `translateTileIndex: Xlat[${tileIndex}] = ${translatedIndex} is out of range [0, ${numTileImages})`,
       );
-    }
     return otherBits;
   }
 
@@ -175,30 +171,25 @@ export function buildSupertileFromTiles(
       const mapRow = startRow + tileRow;
       const mapCol = startCol + tileCol;
 
-      if (mapRow >= mapHeight || mapCol >= mapWidth) {
-        continue;
-      }
+      if (mapRow >= mapHeight || mapCol >= mapWidth) continue;
 
       const flatIndex = mapRow * mapWidth + mapCol;
-      if (flatIndex >= layerData.length) {
-        continue;
-      }
+      if (flatIndex >= layerData.length) continue;
 
       const tileValue = layerData[flatIndex];
-      if (tileValue === undefined) {
-        continue;
-      }
+      if (tileValue === undefined) continue;
 
+      const logTile = debugFirstSupertile && tilesDrawn < 5;
       const translatedTile = translateTileIndex(
         tileValue,
         xlatTable,
         tileImages.length,
-        debugFirstSupertile && tilesDrawn < 5,
+        logTile,
       );
 
       const destX = tileCol * tileSize;
       const destY = tileRow * tileSize;
-
+      const logDraw = debugFirstSupertile && tilesDrawn < 10;
       drawTileIntoBuffer(
         translatedTile,
         tileImages,
@@ -206,7 +197,7 @@ export function buildSupertileFromTiles(
         destX,
         destY,
         tileSize,
-        debugFirstSupertile && tilesDrawn < 10,
+        logDraw,
       );
       tilesDrawn++;
     }
@@ -271,7 +262,8 @@ export function isBugdomGame(globals: { DATA_TYPE: DataType }): boolean {
  */
 export function usesIndividualTiles(globals: { DATA_TYPE: DataType }): boolean {
   return (
-    globals.DATA_TYPE === DataType.RSRC_FORK || globals.DATA_TYPE === DataType.TRT_FILE
+    globals.DATA_TYPE === DataType.RSRC_FORK ||
+    globals.DATA_TYPE === DataType.TRT_FILE
   );
 }
 

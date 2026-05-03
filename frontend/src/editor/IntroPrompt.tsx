@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { ResultAsync, okAsync } from "neverthrow";
 import {
   HeaderData,
   ItemData,
@@ -11,14 +12,6 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Updater, useImmer } from "use-immer";
 import {
   Globals,
@@ -31,6 +24,7 @@ import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import { toast } from "sonner";
+import { errorSchema } from "@/schemas/common";
 import {
   AtomicLevelData,
   splitLevelData,
@@ -48,20 +42,36 @@ import { isNanosaur1LevelData } from "./loadLogic/typeGuards";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { prepareDownloadData } from "./utils/introPromptUtils";
 import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
+import { NewMapConfirmDialog } from "./IntroPrompt/NewMapConfirmDialog";
 import { TestGameDialog } from "./TestGameDialog";
+import { LevelActionMenu } from "./LevelActionMenu";
 import {
   GAME_PORT_CONFIGS,
   inferPreviewLevelFromFilename,
 } from "./utils/gamePortConfig";
+import { MIGHTY_MIKE_LEVELS } from "./utils/mightyMikeLevelNumbers";
 import { buildPreviewTerrainBlobs } from "@/data/saveMap/saveMap";
 import {
   editorNavbarActionsAtom,
   editorNavbarLeftAtom,
   editorNavbarOpenAtom,
 } from "@/data/globals/editorNavbarAtoms";
+import { serializeNanosaurTerrainTextures } from "@/data/processors/classicProprocessor";
+import { createSavedLevel } from "@/api/savedLevelsApi";
+import { getMe } from "@/api/authApi";
+import { getGoogleSignInUrl } from "@/api/authApi";
+import { mapErr } from "@/utils/mapErr";
+import { currentAuthUserAtom } from "@/data/globals/authState";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getCanonicalMightyMikeFilename(fileName: string): string {
+  const match = MIGHTY_MIKE_LEVELS.find(
+    (level) => level.terrainFile.toLowerCase() === fileName.toLowerCase(),
+  );
+  return match?.terrainFile ?? fileName;
 }
 
 export interface DataHistory {
@@ -71,6 +81,7 @@ export interface DataHistory {
 
 export function IntroPrompt() {
   const globals = useAtomValue(Globals);
+  const authUser = useAtomValue(currentAuthUserAtom);
   const setGlobals = useSetAtom(Globals);
   const setEditorNavbarOpen = useSetAtom(editorNavbarOpenAtom);
   const setEditorNavbarLeft = useSetAtom(editorNavbarLeftAtom);
@@ -87,6 +98,7 @@ export function IntroPrompt() {
   // Tunnel data for Bugdom 2 tunnel levels
   const [tunnelData, setTunnelData] = useState<TunnelData | null>(null);
   const [tunnelFileName, setTunnelFileName] = useState<string>("");
+  const canSaveToCloud = authUser !== null;
 
   // Safe item types tracking
   const setSafeItemTypes = useSetAtom(SafeItemTypes);
@@ -112,8 +124,15 @@ export function IntroPrompt() {
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [newMapConfirmOpen, setNewMapConfirmOpen] = useState(false);
   const [previewLevelNumber, setPreviewLevelNumber] = useState(0);
-  const [terrainDataBytes, setTerrainDataBytes] = useState<Uint8Array | null | undefined>(undefined);
-  const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<Uint8Array | null | undefined>(undefined);
+  const [terrainDataBytes, setTerrainDataBytes] = useState<
+    Uint8Array | null | undefined
+  >(undefined);
+  const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<
+    Uint8Array | null | undefined
+  >(undefined);
+  const [terrainTextureBytes, setTerrainTextureBytes] = useState<
+    Uint8Array | null | undefined
+  >(undefined);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -232,7 +251,10 @@ export function IntroPrompt() {
   useEffect(() => {
     if (!mapFile) return;
     const portConfig = GAME_PORT_CONFIGS[globals.GAME_TYPE];
-    const inferred = inferPreviewLevelFromFilename(globals.GAME_TYPE, mapFile.name);
+    const inferred = inferPreviewLevelFromFilename(
+      globals.GAME_TYPE,
+      mapFile.name,
+    );
     const level = inferred ?? portConfig?.defaultLevel ?? 0;
     Promise.resolve().then(() => setPreviewLevelNumber(level));
   }, [mapFile, globals.GAME_TYPE]);
@@ -290,7 +312,8 @@ export function IntroPrompt() {
       return;
     }
 
-    toast.loading("Processing map data...");
+    const saveToastId = "save-map";
+    toast.loading("Processing map data...", { id: saveToastId });
 
     // Combine atomic data for file I/O
     // Combine atomic data for serialization; optional sections may be missing
@@ -302,7 +325,8 @@ export function IntroPrompt() {
         combinedDataResult.error,
       );
       toast.error("Download failed", {
-        description: combinedDataResult.error.message,
+        id: saveToastId,
+        description: combinedDataResult.error,
       });
       return;
     }
@@ -340,6 +364,7 @@ export function IntroPrompt() {
       if (!isNanosaur1LevelData(rawLevelData)) {
         console.error("Missing raw Nanosaur 1 level data");
         toast.error("Download failed", {
+          id: saveToastId,
           description: "Missing original raw data. Please reload the level.",
         });
         return;
@@ -348,7 +373,10 @@ export function IntroPrompt() {
       const result = compileNanosaur1Level(combinedData, rawLevelData);
       if (result.isErr()) {
         console.error("Nanosaur compilation failed:", result.error);
-        toast.error("Download failed", { description: result.error.message });
+        toast.error("Download failed", {
+          id: saveToastId,
+          description: result.error,
+        });
         return;
       }
 
@@ -358,7 +386,10 @@ export function IntroPrompt() {
       const result = serializeMightyMikeLevel(combinedData);
       if (result.isErr()) {
         console.error("Mighty Mike serialization failed:", result.error);
-        toast.error("Download failed", { description: result.error.message });
+        toast.error("Download failed", {
+          id: saveToastId,
+          description: result.error,
+        });
         return;
       }
       mapBlob = new Blob([result.value], { type: ".map" });
@@ -373,7 +404,8 @@ export function IntroPrompt() {
       if (validation.isErr()) {
         console.error("Invalid JSON for resource fork:", validation.error);
         toast.error("Download failed", {
-          description: `Invalid map data structure for resource fork: ${validation.error.message}`,
+          id: saveToastId,
+          description: `Invalid map data structure for resource fork: ${validation.error}`,
         });
         return;
       }
@@ -390,6 +422,7 @@ export function IntroPrompt() {
       if (!saveResult.ok) {
         console.error("Download failed:", saveResult.error);
         toast.error("Download failed", {
+          id: saveToastId,
           description: String(saveResult.error),
         });
         return;
@@ -400,6 +433,7 @@ export function IntroPrompt() {
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
         toast.error("Download failed", {
+          id: saveToastId,
           description: "Generated map data is empty",
         });
         return;
@@ -412,7 +446,11 @@ export function IntroPrompt() {
 
     const downloadLink = document.createElement("a");
     downloadLink.href = mapUrl;
-    downloadLink.setAttribute("download", mapFile.name);
+    const mapDownloadName =
+      globals.GAME_TYPE === Game.MIGHTY_MIKE
+        ? getCanonicalMightyMikeFilename(mapFile.name)
+        : mapFile.name;
+    downloadLink.setAttribute("download", mapDownloadName);
     downloadLink.click();
 
     // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
@@ -423,38 +461,53 @@ export function IntroPrompt() {
       globals.DATA_TYPE === DataType.RSRC_FORK ||
       globals.DATA_TYPE === DataType.MIGHTY_MIKE
     ) {
-      toast.success("Map Downloaded!");
+      toast.success("Map Downloaded!", { id: saveToastId });
       return;
     }
 
-    // For Nanosaur 1 (TRT_FILE), download the original .trt file directly — the raw
-    // 16-bit ARGB1555 format is incompatible with the LZSS-based re-encoding below.
+    // For Nanosaur 1 (TRT_FILE), serialize the edited tile images back into the
+    // original raw 16-bit texture file format.
     if (globals.DATA_TYPE === DataType.TRT_FILE) {
-      if (mapImagesFile) {
-        const trtBuffer = await mapImagesFile.arrayBuffer();
-        const trtBlob = new Blob([trtBuffer], {
-          type: "application/octet-stream",
+      if (!mapImages || mapImages.length === 0) {
+        toast.error("Download failed", {
+          id: saveToastId,
+          description: "No tile images are loaded for this level.",
         });
-        const trtUrl = URL.createObjectURL(trtBlob);
-        const trtLink = document.createElement("a");
-        trtLink.href = trtUrl;
-        trtLink.setAttribute("download", mapImagesFile.name);
-        trtLink.click();
-        URL.revokeObjectURL(trtUrl);
+        return;
       }
-      toast.success("Map Downloaded!");
+
+      const textureResult = serializeNanosaurTerrainTextures(mapImages);
+      if (textureResult.isErr()) {
+        toast.error("Download failed", {
+          id: saveToastId,
+          description: textureResult.error,
+        });
+        return;
+      }
+
+      const trtBlob = new Blob([textureResult.value], {
+        type: "application/octet-stream",
+      });
+      const trtUrl = URL.createObjectURL(trtBlob);
+      const trtLink = document.createElement("a");
+      trtLink.href = trtUrl;
+      trtLink.setAttribute("download", mapImagesFile?.name || "images.trt");
+      trtLink.click();
+      URL.revokeObjectURL(trtUrl);
+      toast.success("Map Downloaded!", { id: saveToastId });
       return;
     }
 
     //Download Images
     if (!mapImages) {
       toast.error("Download failed", {
+        id: saveToastId,
         description: "No map images are loaded for this level.",
       });
       return;
     }
 
-    toast.loading("Saving Map - Compressing textures");
+    toast.loading("Saving Map - Compressing textures", { id: saveToastId });
 
     //Webworker promise
     const compressTextures = new Promise<DataView[]>((res, err) => {
@@ -463,12 +516,12 @@ export function IntroPrompt() {
       for (let i = 0; i < mapImages.length; i++) {
         const canvas = mapImages[i];
         if (!canvas) {
-          err(new Error(`Canvas at index ${i} is undefined`));
+          err("Canvas at index ${i} is undefined");
           return;
         }
         const canvasCtx = canvas.getContext("2d");
         if (!canvasCtx) {
-          err(new Error("Could not get canvas context"));
+          err("Could not get canvas context");
           return;
         }
 
@@ -543,7 +596,7 @@ export function IntroPrompt() {
     );
     imageDownloadLink.click();
 
-    toast.success("Map Downloaded!");
+    toast.success("Map Downloaded!", { id: saveToastId });
   }, [mapFile, mapImagesFile, mapImages, globals, getCurrentAtomicData]);
 
   useEffect(() => {
@@ -571,6 +624,7 @@ export function IntroPrompt() {
     setTunnelFileName("");
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
+    setTerrainTextureBytes(undefined);
   }, [setAllAtomicData]);
 
   const handleCreateBlankLevel = useCallback(
@@ -580,7 +634,7 @@ export function IntroPrompt() {
       const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
       if (result.isErr()) {
         toast.error("Failed to create blank level", {
-          description: result.error.message,
+          description: result.error,
         });
         return;
       }
@@ -629,31 +683,67 @@ export function IntroPrompt() {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
     if (combinedDataResult.isErr()) {
       toast.error("Preview failed", {
-        description: combinedDataResult.error.message,
+        description: combinedDataResult.error,
       });
       return;
     }
     const combinedData = prepareDownloadData(combinedDataResult.value, globals);
+    console.info("[GamePreview] Preparing preview level data", {
+      game: globals.GAME_NAME,
+      dataType: globals.DATA_TYPE,
+      levelNumber: previewLevelNumber,
+      hasMapImages: Boolean(mapImages?.length),
+      mapImagesCount: mapImages?.length ?? 0,
+    });
     // Reset bytes to undefined (loading sentinel) and open the dialog immediately so
     // the user sees the level selector without any delay.  Serialization (including
     // async LZSS compression for STANDARD games) runs in the background.  The
     // GamePreviewHost shows "Preparing level data…" until the bytes arrive.
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
+    setTerrainTextureBytes(undefined);
     setTestDialogOpen(true);
-    void buildPreviewTerrainBlobs(combinedData, globals, mapImages).then((blobs) => {
-      if (!blobs) {
+    void buildPreviewTerrainBlobs(combinedData, globals, mapImages)
+      .then((blobs) => {
+        if (!blobs) {
+          console.error(
+            "[GamePreview] Preview serialization returned no bytes",
+            {
+              game: globals.GAME_NAME,
+              dataType: globals.DATA_TYPE,
+            },
+          );
+          toast.error("Preview failed", {
+            description: "Could not serialize the selected level for preview.",
+          });
+          setTerrainDataBytes(null);
+          setTerrainRsrcBytes(null);
+          setTerrainTextureBytes(null);
+          return;
+        }
+        console.info("[GamePreview] Preview level data serialized", {
+          game: globals.GAME_NAME,
+          dataBytes: blobs.dataBytes?.byteLength ?? null,
+          rsrcBytes: blobs.rsrcBytes?.byteLength ?? null,
+          textureBytes: blobs.textureBytes?.byteLength ?? null,
+        });
+        setTerrainDataBytes(blobs.dataBytes);
+        setTerrainRsrcBytes(blobs.rsrcBytes);
+        setTerrainTextureBytes(blobs.textureBytes);
+      })
+      .catch((error: unknown) => {
+        console.error("[GamePreview] Preview serialization failed", error);
+        const parseResult = errorSchema.safeParse(error);
         toast.error("Preview failed", {
-          description: "Could not serialize the selected level for preview.",
+          description: parseResult.success
+            ? parseResult.data
+            : "Could not serialize the selected level for preview.",
         });
         setTerrainDataBytes(null);
         setTerrainRsrcBytes(null);
-        return;
-      }
-      setTerrainDataBytes(blobs.dataBytes);
-      setTerrainRsrcBytes(blobs.rsrcBytes);
-    });
-  }, [getCurrentAtomicData, globals, mapImages]);
+        setTerrainTextureBytes(null);
+      });
+  }, [getCurrentAtomicData, globals, mapImages, previewLevelNumber]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
@@ -678,6 +768,72 @@ export function IntroPrompt() {
     setProcessed(true);
   }, [getCurrentAtomicData, globals, setAllAtomicData, setBlockHistoryUpdate]);
 
+  const handleSaveToCloud = useCallback(() => {
+    const cloudToastId = "save-to-cloud";
+    toast.loading("Checking sign-in…", { id: cloudToastId });
+    void ResultAsync.fromPromise(getMe(), mapErr)
+      .andThen((meResult) => {
+        if (meResult.isErr()) {
+          toast.error("Sign in to save to cloud", {
+            id: cloudToastId,
+            description: "Use the account button in the top right.",
+            action: {
+              label: "Sign in",
+              onClick: () => {
+                window.location.href = getGoogleSignInUrl(window.location.href);
+              },
+            },
+          });
+          return okAsync(undefined);
+        }
+
+        const combinedDataResult = combineLevelData(getCurrentAtomicData());
+        if (combinedDataResult.isErr()) {
+          toast.error("Could not save: level data error", {
+            id: cloudToastId,
+            description: combinedDataResult.error,
+          });
+          return okAsync(undefined);
+        }
+
+        toast.loading("Saving to cloud…", { id: cloudToastId });
+        return ResultAsync.fromPromise(
+          createSavedLevel({
+            gameName: String(globals.GAME_TYPE),
+            levelId: mapFile?.name ?? "unknown",
+            displayName: mapFile?.name ?? "Untitled Level",
+            payload: combinedDataResult.value,
+            sourceFileMetadata: mapFile
+              ? { fileName: mapFile.name, fileSize: mapFile.size }
+              : undefined,
+          }),
+          mapErr,
+        ).andThen((saveResult) => {
+          if (saveResult.isOk()) {
+            toast.success("Level saved to cloud!", { id: cloudToastId });
+            return okAsync(undefined);
+          }
+
+          toast.error("Save failed", {
+            id: cloudToastId,
+            description: saveResult.error.message,
+          });
+          return okAsync(undefined);
+        });
+      })
+      .mapErr((error) => {
+        toast.error("Save failed", {
+          id: cloudToastId,
+          description: error,
+        });
+        return error;
+      })
+      .match(
+        () => undefined,
+        () => undefined,
+      );
+  }, [getCurrentAtomicData, globals, mapFile]);
+
   const handleConfirmNewMap = useCallback(() => {
     setNewMapConfirmOpen(false);
     clearAllState();
@@ -691,18 +847,13 @@ export function IntroPrompt() {
     const editorActions =
       mapFile && mapImages ? (
         <>
-          {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-            <Button
-              data-testid="test-level-button"
-              variant="outline"
-              onClick={handleTestLevel}
-            >
-              Preview in Game
-            </Button>
-          )}
-          <Button data-testid="download-button" onClick={handleDownload}>
-            Download
-          </Button>
+          <LevelActionMenu
+            canPreviewInGame={Boolean(GAME_PORT_CONFIGS[globals.GAME_TYPE])}
+            canSaveToCloud={canSaveToCloud === true}
+            onPreviewInGame={handleTestLevel}
+            onDownload={handleDownload}
+            onSaveToCloud={handleSaveToCloud}
+          />
           {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
             <TestGameDialog
               open={testDialogOpen}
@@ -712,6 +863,7 @@ export function IntroPrompt() {
               onLevelNumberChange={setPreviewLevelNumber}
               terrainDataBytes={terrainDataBytes}
               terrainRsrcBytes={terrainRsrcBytes}
+              terrainTextureBytes={terrainTextureBytes}
             />
           )}
         </>
@@ -720,27 +872,24 @@ export function IntroPrompt() {
     setEditorNavbarOpen(Boolean(left || editorActions));
     setEditorNavbarLeft(left);
     setEditorNavbarActions(editorActions);
-    return () => {
-      setEditorNavbarOpen(false);
-      setEditorNavbarLeft(null);
-      setEditorNavbarActions(null);
-    };
   }, [
     globals.GAME_TYPE,
     handleDownload,
+    handleSaveToCloud,
     handleTestLevel,
     mapFile,
     mapImages,
+    canSaveToCloud,
     previewLevelNumber,
     setEditorNavbarActions,
     setEditorNavbarLeft,
     setEditorNavbarOpen,
     terrainDataBytes,
     terrainRsrcBytes,
+    terrainTextureBytes,
     testDialogOpen,
   ]);
 
-  // If we have tunnel data, show the tunnel editor
   if (tunnelData) {
     return (
       <TunnelEditor
@@ -766,28 +915,14 @@ export function IntroPrompt() {
         onCreateBlankLevel={handleCreateBlankLevel}
       />
     );
+
   return (
     <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full p-2 md:p-6 flex-1 min-h-0">
-      <Dialog open={newMapConfirmOpen} onOpenChange={setNewMapConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Start a new map?</DialogTitle>
-            <DialogDescription>
-              This will clear the current level from the editor. Any unsaved
-              changes will be lost.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setNewMapConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmNewMap}>Yes, go back</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NewMapConfirmDialog
+        open={newMapConfirmOpen}
+        onOpenChange={setNewMapConfirmOpen}
+        onConfirm={handleConfirmNewMap}
+      />
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
       {mapImages && headerData && terrainData ? (
         <EditorView

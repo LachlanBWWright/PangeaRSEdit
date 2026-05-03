@@ -33,12 +33,13 @@ onmessage = async (event: MessageEvent<LzssMessage>) => {
     const decompressedDataView = imageDataToSixteenBit(event.data.uIntArray);
 
     const compressedDataView = lzssCompress(decompressedDataView);
+    const compressMsg = {
+      id: event.data.id,
+      type: "compressRes",
+      dataBuffer: compressedDataView.buffer,
+    } satisfies LzssResponse;
     postMessage(
-      {
-        id: event.data.id,
-        type: "compressRes",
-        dataBuffer: compressedDataView.buffer,
-      } satisfies LzssResponse,
+      compressMsg,
       //event.origin,
       /* [compressedDataView.buffer], */
     );

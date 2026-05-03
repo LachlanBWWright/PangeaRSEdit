@@ -45,6 +45,10 @@ import {
   hasAccessibleOverlayData,
   supportsAccessibilityOverlay,
 } from "../utils/terrainAccessibility";
+import {
+  createHeaderHeightChangeHandler,
+  getHeaderHeightBounds,
+} from "@/editor/gameViews/tilesMenuState";
 
 export function StandardTilesMenu({
   headerData,
@@ -73,12 +77,10 @@ export function StandardTilesMenu({
   );
   const globals = useAtomValue(Globals);
 
-  const header = headerData?.Hedr?.[1000]?.obj;
-  const minY = header?.minY || 0;
-  const maxY = header?.maxY || 0;
+  const { minY, maxY } = getHeaderHeightBounds(headerData);
   const canShowAccessibilityOverlay = hasAccessibleOverlayData(
     globals.GAME_TYPE,
-    header,
+    headerData?.Hedr?.[1000]?.obj,
     terrainData.YCrd?.[1000]?.obj,
     terrainData.YCrd?.[1001]?.obj,
   );
@@ -93,27 +95,14 @@ export function StandardTilesMenu({
     showAccessibilityOverlay,
   ]);
 
-  const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value);
-    if (isNaN(newValue)) return;
-
-    setHeaderData((draft) => {
-      if (draft.Hedr?.[1000]?.obj) {
-        draft.Hedr[1000].obj.minY = newValue;
-      }
-    });
-  };
-
-  const handleMaxYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value);
-    if (isNaN(newValue)) return;
-
-    setHeaderData((draft) => {
-      if (draft.Hedr?.[1000]?.obj) {
-        draft.Hedr[1000].obj.maxY = newValue;
-      }
-    });
-  };
+  const handleMinYChange = createHeaderHeightChangeHandler(
+    setHeaderData,
+    "minY",
+  );
+  const handleMaxYChange = createHeaderHeightChangeHandler(
+    setHeaderData,
+    "maxY",
+  );
 
   return (
     <div className="flex flex-col gap-2">

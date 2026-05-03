@@ -33,7 +33,7 @@ export function createAtomicData(
   liquidData: AtomicLevelData["liquidData"],
   fenceData: AtomicLevelData["fenceData"],
   splineData: AtomicLevelData["splineData"],
-  terrainData: AtomicLevelData["terrainData"]
+  terrainData: AtomicLevelData["terrainData"],
 ): AtomicLevelData {
   return {
     headerData,
@@ -52,7 +52,7 @@ export function createAtomicData(
 export function updateHistory(
   currentHistory: DataHistory,
   currentData: AtomicLevelData,
-  blockUpdate: boolean
+  blockUpdate: boolean,
 ): DataHistory | null {
   // Don't update history if change is coming from undo/redo
   if (blockUpdate) {
@@ -89,7 +89,7 @@ export function updateHistory(
  * Returns null if undo is not possible, otherwise returns the previous state.
  */
 export function calculateUndo(
-  history: DataHistory
+  history: DataHistory,
 ): { newIndex: number; data: AtomicLevelData } | null {
   if (history.index <= 0) {
     return null;
@@ -110,7 +110,7 @@ export function calculateUndo(
  * Returns null if redo is not possible, otherwise returns the next state.
  */
 export function calculateRedo(
-  history: DataHistory
+  history: DataHistory,
 ): { newIndex: number; data: AtomicLevelData } | null {
   if (history.index >= history.items.length - 1) {
     return null;
@@ -133,17 +133,16 @@ export function createUndoHandler(
   history: DataHistory,
   setDataHistory: Updater<DataHistory>,
   setAllAtomicData: (data: AtomicLevelData) => void,
-  setBlockHistoryUpdate: (value: boolean) => void
+  setBlockHistoryUpdate: (value: boolean) => void,
 ): () => void {
   return () => {
     const result = calculateUndo(history);
-    if (result) {
-      setDataHistory((draft) => {
-        draft.index = result.newIndex;
-      });
-      setAllAtomicData(result.data);
-      setBlockHistoryUpdate(true);
-    }
+    if (!result) return;
+    setDataHistory((draft) => {
+      draft.index = result.newIndex;
+    });
+    setAllAtomicData(result.data);
+    setBlockHistoryUpdate(true);
   };
 }
 
@@ -155,24 +154,26 @@ export function createRedoHandler(
   history: DataHistory,
   setDataHistory: Updater<DataHistory>,
   setAllAtomicData: (data: AtomicLevelData) => void,
-  setBlockHistoryUpdate: (value: boolean) => void
+  setBlockHistoryUpdate: (value: boolean) => void,
 ): () => void {
   return () => {
     const result = calculateRedo(history);
-    if (result) {
-      setDataHistory((draft) => {
-        draft.index = result.newIndex;
-      });
-      setAllAtomicData(result.data);
-      setBlockHistoryUpdate(true);
-    }
+    if (!result) return;
+    setDataHistory((draft) => {
+      draft.index = result.newIndex;
+    });
+    setAllAtomicData(result.data);
+    setBlockHistoryUpdate(true);
   };
 }
 
 /**
  * Check if save operation is possible
  */
-export function canSaveMap(mapFile: File | undefined, mapImagesFile: File | undefined): boolean {
+export function canSaveMap(
+  mapFile: File | undefined,
+  mapImagesFile: File | undefined,
+): boolean {
   return mapFile !== undefined && mapImagesFile !== undefined;
 }
 
@@ -194,7 +195,11 @@ export function prepareDownloadData(
   }
   let workingData = structuredClone(cloneableData);
   ottoPreprocessor((updater) => {
-    const next = typeof updater === "function" ? updater(workingData) : updater;
+    if (typeof updater !== "function") {
+      workingData = updater;
+      return;
+    }
+    const next = updater(workingData);
     if (next !== undefined) {
       workingData = next;
     }

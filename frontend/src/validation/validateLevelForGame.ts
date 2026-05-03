@@ -13,9 +13,15 @@ import { validateOttoMaticLevel, LevelDataSchema } from "./games/ottoMatic";
 import { validateBugdomLevel, bugdomLevelSchema } from "./games/bugdom";
 import { validateBugdom2Level, bugdom2LevelSchema } from "./games/bugdom2";
 import { validateNanosaurLevel, nanosaurLevelSchema } from "./games/nanosaur";
-import { validateNanosaur2Level, nanosaur2LevelSchema } from "./games/nanosaur2";
+import {
+  validateNanosaur2Level,
+  nanosaur2LevelSchema,
+} from "./games/nanosaur2";
 import { validateCroMagLevel, croMagLevelSchema } from "./games/croMag";
-import { validateBillyFrontierLevel, billyFrontierLevelSchema } from "./games/billyFrontier";
+import {
+  validateBillyFrontierLevel,
+  billyFrontierLevelSchema,
+} from "./games/billyFrontier";
 
 // Re-export individual validators
 export {
@@ -49,6 +55,13 @@ export interface ValidationResult<T> {
   warnings?: string[];
 }
 
+function warnUnknownGameFallback(gameType: Game): void {
+  console.warn(
+    `Unknown game type ${gameType}, using Otto Matic validation as fallback.` +
+      " To fix: Add validation schema for this game in src/validation/games/",
+  );
+}
+
 /**
  * Validate level data using the appropriate schema for the given game type.
  * Returns a Result with the validated data or an error.
@@ -60,7 +73,7 @@ export interface ValidationResult<T> {
 export function validateLevelDataForGame(
   data: unknown,
   gameType: Game,
-): Result<unknown, Error> {
+): Result<unknown, string> {
   switch (gameType) {
     case Game.OTTO_MATIC:
       return validateOttoMaticLevel(data);
@@ -92,10 +105,7 @@ export function validateLevelDataForGame(
       // Unknown game type - try Otto Matic validation as fallback
       // This can happen if a new game is added but validation schema is not yet implemented
       // Action: Add a new case above for the new game type and create its validation schema
-      console.warn(
-        `Unknown game type ${gameType}, using Otto Matic validation as fallback. ` +
-        `To fix: Add validation schema for this game in src/validation/games/`
-      );
+      warnUnknownGameFallback(gameType);
       return validateOttoMaticLevel(data);
   }
 }
@@ -133,7 +143,7 @@ export function getGameName(gameType: Game): string {
 export function validateLevelDataWithWarnings(
   data: unknown,
   gameType: Game,
-): { result: Result<unknown, Error>; warnings: string[] } {
+): { result: Result<unknown, string>; warnings: string[] } {
   const warnings: string[] = [];
 
   // Perform base validation
@@ -142,7 +152,7 @@ export function validateLevelDataWithWarnings(
   // If validation failed, check if it's a recoverable error
   if (validationResult.isErr()) {
     // Check for common recoverable issues
-    const errorMessage = validationResult.error.message;
+    const errorMessage = validationResult.error;
 
     // Check if it's just missing optional fields
     if (errorMessage.includes("optional")) {

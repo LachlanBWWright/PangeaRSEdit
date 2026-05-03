@@ -37,7 +37,7 @@ describe("BG3D glTF worker response helpers", () => {
       return;
     }
 
-    expect(response.error.message).toBe(
+    expect(response.error).toBe(
       "Failed to convert GLB to BG3D for BG3D export: unexpected worker response type bg3d-to-glb",
     );
   });

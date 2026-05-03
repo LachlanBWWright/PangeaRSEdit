@@ -1,5 +1,6 @@
 import { jpegCompress } from "./jpegCompress";
 
+/** Message sent to the JPEG compression worker. */
 export interface JpegCompressMessage {
   id: number;
   type: "compress";
@@ -7,6 +8,7 @@ export interface JpegCompressMessage {
   quality?: number;
 }
 
+/** Response posted back from the JPEG compression worker. */
 export interface JpegCompressResponse {
   id: number;
   type: "compressRes";
@@ -20,11 +22,8 @@ onmessage = async (event: MessageEvent<JpegCompressMessage>) => {
       imageData = event.data.input;
     } else {
       // Reconstruct ImageData if sent as plain object
-      imageData = new ImageData(
-        new Uint8ClampedArray(event.data.input.data),
-        event.data.input.width,
-        event.data.input.height,
-      );
+      const { data, width, height } = event.data.input;
+      imageData = new ImageData(new Uint8ClampedArray(data), width, height);
     }
     const jpegResult = await jpegCompress(imageData, event.data.quality);
     if (jpegResult.isErr()) {

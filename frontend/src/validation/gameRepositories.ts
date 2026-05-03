@@ -1,6 +1,6 @@
 /**
  * Game Source Repository Mapping
- * 
+ *
  * Maps game names to their GitHub repositories for citation verification.
  * These are the original Pangea game source code repositories maintained by jorio.
  */
@@ -9,7 +9,7 @@ export interface GameRepository {
   owner: string;
   repo: string;
   branch: string;
-  sourcePath: string;  // Path to Source directory
+  sourcePath: string; // Path to Source directory
 }
 
 function normalizeRepositoryFilePath(
@@ -77,20 +77,17 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
   },
 };
 
+/** Resolves a game name to its repository key when that repository is known. */
 export function getGameKeyFromName(gameName: string): string | null {
   const normalizedName = gameName.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  for (const [key, repo] of Object.entries(GAME_REPOSITORIES)) {
-    const normalizedRepo = repo.repo.replace(/[^a-z0-9]/gi, "").toLowerCase();
-    if (normalizedRepo === normalizedName) {
-      return key;
-    }
-  }
-  return null;
+  const match = Object.entries(GAME_REPOSITORIES).find(
+    ([, repo]) =>
+      repo.repo.replace(/[^a-z0-9]/gi, "").toLowerCase() === normalizedName,
+  );
+  return match?.[0] ?? null;
 }
 
-/**
- * Get the GitHub raw content URL for a file in a game's repository
- */
+/** Builds the GitHub raw-content URL for a file in a game's repository. */
 export function getGitHubRawUrl(game: string, filePath: string): string | null {
   const repo = GAME_REPOSITORIES[game];
   if (!repo) return null;
@@ -101,10 +98,12 @@ export function getGitHubRawUrl(game: string, filePath: string): string | null {
   return `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.branch}/${repo.sourcePath}/${normalizedPath}`;
 }
 
-/**
- * Get the GitHub permalink URL for a file at a specific line number
- */
-export function getGitHubPermalink(game: string, filePath: string, lineNumber: number): string | null {
+/** Builds the GitHub permalink URL for a file at a specific line number. */
+export function getGitHubPermalink(
+  game: string,
+  filePath: string,
+  lineNumber: number,
+): string | null {
   const repo = GAME_REPOSITORIES[game];
   if (!repo) return null;
   const normalizedPath = normalizeRepositoryFilePath(repo, filePath);
@@ -113,16 +112,12 @@ export function getGitHubPermalink(game: string, filePath: string, lineNumber: n
   return `https://github.com/${repo.owner}/${repo.repo}/blob/${repo.branch}/${repo.sourcePath}/${normalizedPath}#L${lineNumber}`;
 }
 
-/**
- * Check if a game has a known repository
- */
+/** Returns true when the game name maps to a known repository definition. */
 export function hasKnownRepository(game: string): boolean {
   return game in GAME_REPOSITORIES;
 }
 
-/**
- * Get all known game names
- */
+/** Returns all game keys that have repository metadata available. */
 export function getKnownGames(): string[] {
   return Object.keys(GAME_REPOSITORIES);
 }

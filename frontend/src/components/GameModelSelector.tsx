@@ -31,7 +31,7 @@ export interface GameModelSelectorProps {
     bg3dFile: File,
     skeletonFile?: File,
     gameLabel?: string,
-  ) => Promise<Result<void, Error>>;
+  ) => Promise<Result<void, string>>;
   loading: boolean;
 }
 

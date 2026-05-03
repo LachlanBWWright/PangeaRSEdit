@@ -10,23 +10,28 @@
  * @returns Promise resolving to ImageData (RGBA)
  */
 import Jpeg from "jpeg-js";
+import { uint8ArraySchema, arrayBufferSchema } from "../schemas/common";
+
 export async function decodeJpegBrowser(
   jpegData: ArrayBuffer | Uint8Array,
 ): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     // Always copy to a new ArrayBuffer to avoid SharedArrayBuffer issues
     let arrayBuffer: ArrayBuffer;
-    if (jpegData instanceof Uint8Array) {
-      const tmp = new Uint8Array(jpegData.byteLength);
-      tmp.set(jpegData);
-      arrayBuffer = tmp.buffer;
-    } else if (jpegData instanceof ArrayBuffer) {
-      const tmp = new Uint8Array(jpegData.byteLength);
-      tmp.set(new Uint8Array(jpegData));
+    const uint8ParseResult = uint8ArraySchema.safeParse(jpegData);
+    if (uint8ParseResult.success) {
+      const tmp = new Uint8Array(uint8ParseResult.data.byteLength);
+      tmp.set(uint8ParseResult.data);
       arrayBuffer = tmp.buffer;
     } else {
-      reject(new Error("Invalid jpegData type"));
-      return;
+      const arrayBufferParseResult = arrayBufferSchema.safeParse(jpegData);
+      if (!arrayBufferParseResult.success) {
+        reject(new Error("Invalid jpegData type"));
+        return;
+      }
+      const tmp = new Uint8Array(arrayBufferParseResult.data.byteLength);
+      tmp.set(new Uint8Array(arrayBufferParseResult.data));
+      arrayBuffer = tmp.buffer;
     }
     const blob = new Blob([arrayBuffer], { type: "image/jpeg" });
 
@@ -38,10 +43,7 @@ export async function decodeJpegBrowser(
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Could not get 2D context"));
-        return;
-      }
+      if (!ctx) return reject(new Error("Could not get 2D context"));
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, img.width, img.height);
       URL.revokeObjectURL(url);
@@ -61,7 +63,6 @@ export async function decodeJpegBrowser(
  * @returns ImageData (RGBA)
  */
 export function decodeJpegNode(jpegData: ArrayBuffer): ImageData {
-   
   const resData = Jpeg.decode(new Uint8Array(jpegData), { useTArray: true });
   // Copy to a new Uint8ClampedArray backed by a real ArrayBuffer
   const clamped = new Uint8ClampedArray(resData.data.length);
@@ -84,12 +85,28 @@ export function decodeJpegNode(jpegData: ArrayBuffer): ImageData {
  * Encode an ArrayBuffer or Uint8Array to a base64 string
  */
 export function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
-  let bytes: Uint8Array;
-  if (buffer instanceof Uint8Array) {
-    bytes = buffer;
-  } else {
-    bytes = new Uint8Array(buffer);
+  const uint8Result = uint8ArraySchema.safeParse(buffer);
+  if (uint8Result.success) {
+    const bytes = uint8Result.data;
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte ?? 0);
+    }
+    return btoa(binary);
   }
+
+  const arrayBufferResult = arrayBufferSchema.safeParse(buffer);
+  if (arrayBufferResult.success) {
+    const bytes = new Uint8Array(arrayBufferResult.data);
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte ?? 0);
+    }
+    return btoa(binary);
+  }
+
+  // If not Uint8Array and not ArrayBuffer, still try with type hint for fallback
+  const bytes = new Uint8Array(buffer);
   let binary = "";
   for (const byte of bytes) {
     binary += String.fromCharCode(byte ?? 0);

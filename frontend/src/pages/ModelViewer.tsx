@@ -7,8 +7,15 @@ import {
   type AnimationEvent,
   type ModelSourceKind,
 } from "@/components/AnimationViewer";
+import {
+  collectBoneInfluenceRowsFromSkinData,
+  collectBoneInfluenceRows,
+  pinSelectedBoneRow,
+} from "@/components/AnimationViewer/rigToolsState";
+import { ModelRigPanel } from "@/components/ModelRigPanel";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload } from "lucide-react";
+import { Redo2, Undo2, Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
@@ -20,10 +27,13 @@ import {
 } from "@/components/ui/resizable";
 import { ResultAsync, err, ok } from "neverthrow";
 
-import { BG3D_EXPORT_TARGETS, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
+import {
+  BG3D_EXPORT_TARGETS,
+  getBG3DExportTarget,
+} from "@/modelParsers/bg3dExportTargets";
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { AnimationMixer, Group } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
@@ -50,6 +60,69 @@ import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
 import type { UploadStep } from "./ModelViewer/types";
 import type { Texture, ModelNode } from "./ModelViewer/types";
 import { mapErr } from "@/utils/mapErr";
+import { extractUvLayout } from "@/modelEditing/uv/extractUvLayout";
+import { applyUvEditToScene } from "@/modelEditing/uv/applyUvEditToScene";
+import { applyUvEditToBg3d } from "@/modelEditing/uv/applyUvEditToBg3d";
+import type { UvLayout } from "@/modelEditing/uv/uvTypes";
+import { extractSkinWeights } from "@/modelEditing/weights/extractSkinWeights";
+import { applyWeightEditToScene } from "@/modelEditing/weights/applyWeightEditToScene";
+import { applyWeightBrushStroke } from "@/modelEditing/weights/weightBrushStroke";
+import {
+  defaultWeightBrushSettings,
+  type SkinWeightsData,
+  type WeightBrushSettings,
+  type WeightVisualizationMode,
+} from "@/modelEditing/weights/weightTypes";
+import type { ViewerInteractionMode } from "@/components/model-viewer/types";
+
+type ViewerHistoryAction =
+  | {
+      type: "uv";
+      textureName: string;
+      before: UvLayout;
+      after: UvLayout;
+    }
+  | {
+      type: "weights";
+      before: SkinWeightsData;
+      after: SkinWeightsData;
+    }
+  | {
+      type: "bone-rename";
+      beforeName: string;
+      afterName: string;
+    };
+
+function renameAnimationBone(
+  animation: AnimationInfo,
+  currentName: string,
+  nextName: string,
+): AnimationInfo {
+  const cloned = animation.clip.clone();
+  cloned.tracks.forEach((track) => {
+    if (track.name.startsWith(`${currentName}.`)) {
+      track.name = `${nextName}.${track.name.slice(currentName.length + 1)}`;
+    }
+  });
+  return {
+    ...animation,
+    clip: cloned,
+  };
+}
+
+function renameModelNodeBone(
+  node: ModelNode,
+  currentName: string,
+  nextName: string,
+): ModelNode {
+  return {
+    ...node,
+    name: node.name === currentName ? nextName : node.name,
+    children: node.children?.map((child) =>
+      renameModelNodeBone(child, currentName, nextName),
+    ),
+  };
+}
 
 export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
@@ -72,14 +145,18 @@ export function ModelViewer() {
   const [boneRotation, setBoneRotation] = useState<
     [number, number, number, number] | null
   >(null);
-  const [boneScale, setBoneScale] = useState<
-    [number, number, number] | null
-  >(null);
-  const [gizmoMode, setGizmoMode] = useState<import("@/components/model-viewer/types").GizmoMode>("translate");
+  const [boneScale, setBoneScale] = useState<[number, number, number] | null>(
+    null,
+  );
+  const [gizmoMode, setGizmoMode] =
+    useState<import("@/components/model-viewer/types").GizmoMode>("translate");
   const [uploadStep, setUploadStep] = useState<UploadStep>("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
+  const [showSkeletonOverlay, setShowSkeletonOverlay] =
+    useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
+  const [boneRenameInput, setBoneRenameInput] = useState<string>("");
   const latestAnimationsRef = useRef<AnimationInfo[]>([]);
   const animationPersistRequestIdRef = useRef(0);
   const hasAnimations = animations.length > 0;
@@ -90,7 +167,29 @@ export function ModelViewer() {
   const [gameLabel, setGameLabel] = useState<string | null>(null);
   const [modelSourceKind, setModelSourceKind] =
     useState<ModelSourceKind | null>(null);
+  const [uvLayoutOverridesWithScene, setUvLayoutOverridesWithScene] = useState<{
+    scene: Group;
+    overrides: Map<string, UvLayout>;
+  } | null>(null);
+  const [skinDataWithScene, setSkinDataWithScene] = useState<{
+    scene: Group;
+    data: SkinWeightsData;
+  } | null>(null);
+  const [weightBrushSettings, setWeightBrushSettings] =
+    useState<WeightBrushSettings>(defaultWeightBrushSettings);
+  const [interactionMode, setInteractionMode] =
+    useState<ViewerInteractionMode>("navigate");
+  const [weightVisualizationMode, setWeightVisualizationMode] =
+    useState<WeightVisualizationMode>("none");
+  const [viewerHistory, setViewerHistory] = useState<{
+    past: ViewerHistoryAction[];
+    future: ViewerHistoryAction[];
+  }>({
+    past: [],
+    future: [],
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const viewerHistoryRef = useRef(viewerHistory);
   const effectiveModelBaseName = modelBaseName.trim() || "model";
   // Initialize file upload hook
   const { uploadFile } = useFileUpload({
@@ -135,6 +234,7 @@ export function ModelViewer() {
     }
     return uploadFile(bg3dFile, skeletonFile).then((result) => {
       if (result.isOk()) {
+        setViewerHistory({ past: [], future: [] });
         setModelSessionId((current) => current + 1);
       }
       return result;
@@ -150,7 +250,9 @@ export function ModelViewer() {
     }
 
     setPendingBg3dFile(file);
-    setModelSourceKind(file.name.toLowerCase().endsWith(".3dmf") ? "3dmf" : "bg3d");
+    setModelSourceKind(
+      file.name.toLowerCase().endsWith(".3dmf") ? "3dmf" : "bg3d",
+    );
     setUploadStep("select-skeleton");
   };
 
@@ -173,7 +275,11 @@ export function ModelViewer() {
     const files = Array.from(e.dataTransfer.files);
     const modelFile = files.find((file) => {
       const name = file.name.toLowerCase();
-      return name.endsWith(".bg3d") || name.endsWith(".3dmf") || name.endsWith(".glb");
+      return (
+        name.endsWith(".bg3d") ||
+        name.endsWith(".3dmf") ||
+        name.endsWith(".glb")
+      );
     });
     const skeletonFile = files.find((file) =>
       file.name.toLowerCase().endsWith(".skeleton.rsrc"),
@@ -220,7 +326,9 @@ export function ModelViewer() {
 
       const exporter = new GLTFExporter();
       const exportScene = prepareSceneForAnimationExport(scene);
-      const animationsToExport = animationInfos.map((animation) => animation.clip);
+      const animationsToExport = animationInfos.map(
+        (animation) => animation.clip,
+      );
 
       const exportedResult = await ResultAsync.fromPromise(
         new Promise<ArrayBuffer>((resolve, reject) => {
@@ -232,7 +340,9 @@ export function ModelViewer() {
                 return;
               }
               reject(
-                new Error("GLTFExporter returned JSON output instead of GLB bytes"),
+                new Error(
+                  "GLTFExporter returned JSON output instead of GLB bytes",
+                ),
               );
             },
             (error) => {
@@ -305,14 +415,15 @@ export function ModelViewer() {
 
       const requestId = ++animationPersistRequestIdRef.current;
 
-      const exportedBufferResult = await exportSceneWithAnimations(animationInfos);
+      const exportedBufferResult =
+        await exportSceneWithAnimations(animationInfos);
       if (exportedBufferResult.isErr()) {
         console.error(
           "Failed to export animation edits to GLB",
           exportedBufferResult.error,
         );
         toast.error(
-          `Failed to export animation edits to GLB: ${exportedBufferResult.error.message}`,
+          `Failed to export animation edits to GLB: ${exportedBufferResult.error}`,
         );
         return;
       }
@@ -330,7 +441,7 @@ export function ModelViewer() {
           bufferWithEventsResult.error,
         );
         toast.error(
-          `Failed to update animation event metadata: ${bufferWithEventsResult.error.message}`,
+          `Failed to update animation event metadata: ${bufferWithEventsResult.error}`,
         );
         return;
       }
@@ -338,14 +449,14 @@ export function ModelViewer() {
       const normalizedBufferResult = await ResultAsync.fromPromise(
         normalizeGlbBuffer(bufferWithEventsResult.value),
         mapErr,
-        );
+      );
       if (normalizedBufferResult.isErr()) {
         console.error(
           "Failed to normalize animation-edited GLB",
           normalizedBufferResult.error,
         );
         toast.error(
-          `Failed to normalize animation-edited GLB: ${normalizedBufferResult.error.message}`,
+          `Failed to normalize animation-edited GLB: ${normalizedBufferResult.error}`,
         );
         return;
       }
@@ -372,7 +483,7 @@ export function ModelViewer() {
       const metadataResult = await ResultAsync.fromPromise(
         extractAnimationMetadataFromGlb(normalizedBuffer),
         mapErr,
-        );
+      );
       if (metadataResult.isOk()) {
         setGltfAnimationMetadata(metadataResult.value);
       }
@@ -434,6 +545,290 @@ export function ModelViewer() {
     [persistAnimations],
   );
 
+  // Derive UV layouts from scene, merging any user-applied overrides.
+  // Overrides are scoped to the current scene so they reset on model reload.
+  const uvLayouts = useMemo<Map<string, UvLayout>>(() => {
+    if (!scene || textures.length === 0) return new Map();
+    const base = new Map<string, UvLayout>();
+    for (const texture of textures) {
+      const result = extractUvLayout(scene, texture);
+      if (result.isOk()) {
+        base.set(texture.name, result.value);
+      }
+    }
+    const overrides =
+      uvLayoutOverridesWithScene?.scene === scene
+        ? uvLayoutOverridesWithScene.overrides
+        : null;
+    if (overrides) {
+      for (const [k, v] of overrides) {
+        base.set(k, v);
+      }
+    }
+    return base;
+  }, [scene, textures, uvLayoutOverridesWithScene]);
+
+  // Derive skin data from scene, applying any user repair overrides.
+  // Override is scoped to the current scene so it resets on model reload.
+  const skinData = useMemo<SkinWeightsData | null>(() => {
+    if (!scene) return null;
+    if (skinDataWithScene?.scene === scene) return skinDataWithScene.data;
+    const result = extractSkinWeights(scene);
+    return result.isOk() ? result.value : null;
+  }, [scene, skinDataWithScene]);
+
+  useEffect(() => {
+    viewerHistoryRef.current = viewerHistory;
+  }, [viewerHistory]);
+
+  const pushViewerHistory = useCallback((action: ViewerHistoryAction) => {
+    setViewerHistory((current) => ({
+      past: [...current.past, action],
+      future: [],
+    }));
+  }, []);
+
+  const applyCommittedUvLayout = useCallback(
+    (textureName: string, updatedLayout: UvLayout) => {
+      if (!scene) {
+        return false;
+      }
+
+      applyUvEditToScene(scene, updatedLayout);
+      setBg3dParsed((currentParsed) => {
+        if (!currentParsed) {
+          return currentParsed;
+        }
+
+        const result = applyUvEditToBg3d(currentParsed, updatedLayout);
+        return result.isOk() ? result.value : currentParsed;
+      });
+      setUvLayoutOverridesWithScene((prev) => {
+        const existing =
+          prev?.scene === scene
+            ? new Map(prev.overrides)
+            : new Map<string, UvLayout>();
+        existing.set(textureName, updatedLayout);
+        return { scene, overrides: existing };
+      });
+
+      return true;
+    },
+    [scene],
+  );
+
+  const applyBoneRenameChange = useCallback(
+    (currentName: string, nextName: string) => {
+      if (!scene || currentName === nextName) {
+        return false;
+      }
+
+      let renamed = false;
+      scene.traverse((object) => {
+        if (object.name === currentName) {
+          object.name = nextName;
+          renamed = true;
+        }
+      });
+
+      if (!renamed) {
+        return false;
+      }
+
+      setAnimations((currentAnimations) =>
+        currentAnimations.map((animation) =>
+          renameAnimationBone(animation, currentName, nextName),
+        ),
+      );
+      latestAnimationsRef.current = latestAnimationsRef.current.map(
+        (animation) => renameAnimationBone(animation, currentName, nextName),
+      );
+      setBg3dParsed((currentParsed) => {
+        if (!currentParsed?.skeleton?.bones) {
+          return currentParsed;
+        }
+
+        return {
+          ...currentParsed,
+          skeleton: {
+            ...currentParsed.skeleton,
+            bones: currentParsed.skeleton.bones.map((bone) =>
+              bone.name === currentName ? { ...bone, name: nextName } : bone,
+            ),
+          },
+        };
+      });
+      setModelNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          renameModelNodeBone(node, currentName, nextName),
+        ),
+      );
+      setSelectedBoneName(nextName);
+      setBoneRenameInput(nextName);
+      setWeightBrushSettings((current) =>
+        current.targetBone === currentName
+          ? { ...current, targetBone: nextName }
+          : current,
+      );
+
+      return true;
+    },
+    [scene],
+  );
+
+  const applyViewerHistoryAction = useCallback(
+    (action: ViewerHistoryAction, direction: "undo" | "redo") => {
+      if (action.type === "uv") {
+        return applyCommittedUvLayout(
+          action.textureName,
+          direction === "undo" ? action.before : action.after,
+        );
+      }
+
+      if (action.type === "weights") {
+        if (!scene) {
+          return false;
+        }
+
+        const nextData = direction === "undo" ? action.before : action.after;
+        applyWeightEditToScene(scene, nextData);
+        setSkinDataWithScene({ scene, data: nextData });
+        return true;
+      }
+
+      return applyBoneRenameChange(
+        direction === "undo" ? action.afterName : action.beforeName,
+        direction === "undo" ? action.beforeName : action.afterName,
+      );
+    },
+    [applyBoneRenameChange, applyCommittedUvLayout, scene],
+  );
+
+  const handleUndoViewerChange = useCallback(() => {
+    const action = viewerHistoryRef.current.past.at(-1);
+    if (!action) {
+      return;
+    }
+
+    if (!applyViewerHistoryAction(action, "undo")) {
+      toast.error("Could not undo the last model viewer change");
+      return;
+    }
+
+    setViewerHistory((current) => ({
+      past: current.past.slice(0, -1),
+      future: [action, ...current.future],
+    }));
+  }, [applyViewerHistoryAction]);
+
+  const handleRedoViewerChange = useCallback(() => {
+    const action = viewerHistoryRef.current.future[0];
+    if (!action) {
+      return;
+    }
+
+    if (!applyViewerHistoryAction(action, "redo")) {
+      toast.error("Could not redo the last model viewer change");
+      return;
+    }
+
+    setViewerHistory((current) => ({
+      past: [...current.past, action],
+      future: current.future.slice(1),
+    }));
+  }, [applyViewerHistoryAction]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      const isModifierPressed = event.ctrlKey || event.metaKey;
+      if (!isModifierPressed || event.key.toLowerCase() !== "z") {
+        return;
+      }
+
+      event.preventDefault();
+      if (event.shiftKey) {
+        handleRedoViewerChange();
+        return;
+      }
+
+      handleUndoViewerChange();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleRedoViewerChange, handleUndoViewerChange]);
+
+  const handleApplyUvEdit = useCallback(
+    (textureName: string, updatedLayout: UvLayout) => {
+      const previousLayout = uvLayouts.get(textureName);
+      if (!previousLayout) {
+        return;
+      }
+
+      if (applyCommittedUvLayout(textureName, updatedLayout)) {
+        pushViewerHistory({
+          type: "uv",
+          textureName,
+          before: previousLayout,
+          after: updatedLayout,
+        });
+      }
+    },
+    [applyCommittedUvLayout, pushViewerHistory, uvLayouts],
+  );
+
+  const handlePreviewUvEdit = useCallback(
+    (_textureName: string, updatedLayout: UvLayout) => {
+      if (!scene) {
+        return;
+      }
+
+      applyUvEditToScene(scene, updatedLayout);
+    },
+    [scene],
+  );
+
+  const handleResetUvPreview = useCallback(
+    (textureName: string) => {
+      if (!scene) {
+        return;
+      }
+
+      const committedLayout = uvLayouts.get(textureName);
+      if (!committedLayout) {
+        return;
+      }
+
+      applyUvEditToScene(scene, committedLayout);
+    },
+    [scene, uvLayouts],
+  );
+
+  const handleRepairWeights = useCallback(
+    (repaired: SkinWeightsData) => {
+      if (!scene || !skinData) return;
+      applyWeightEditToScene(scene, repaired);
+      setSkinDataWithScene({ scene, data: repaired });
+      pushViewerHistory({
+        type: "weights",
+        before: skinData,
+        after: repaired,
+      });
+    },
+    [pushViewerHistory, scene, skinData],
+  );
+
   const handleBoneTransformChange = useCallback(
     (position: [number, number, number]) => {
       setBoneTransform(position);
@@ -458,16 +853,115 @@ export function ModelViewer() {
   const handleGizmoModeChange = useCallback(
     (mode: import("@/components/model-viewer/types").GizmoMode) => {
       setGizmoMode(mode);
+      setInteractionMode("bone-edit");
     },
     [],
   );
 
   const handleBoneSelectionChange = useCallback((boneName: string | null) => {
     setSelectedBoneName(boneName);
+    setBoneRenameInput(boneName ?? "");
+    if (boneName) {
+      setWeightBrushSettings((current) => ({
+        ...current,
+        targetBone: boneName,
+      }));
+    }
     setBoneTransform(null);
     setBoneRotation(null);
     setBoneScale(null);
   }, []);
+
+  const handleRenameSelectedBone = useCallback(() => {
+    if (!scene || !selectedBoneName) {
+      toast.error("Select a bone before renaming");
+      return;
+    }
+    const nextName = boneRenameInput.trim();
+    if (!nextName) {
+      toast.error("Bone name cannot be empty");
+      return;
+    }
+    if (nextName === selectedBoneName) {
+      return;
+    }
+
+    if (!applyBoneRenameChange(selectedBoneName, nextName)) {
+      toast.error("Selected bone was not found in the loaded model");
+      return;
+    }
+    pushViewerHistory({
+      type: "bone-rename",
+      beforeName: selectedBoneName,
+      afterName: nextName,
+    });
+    toast.success(`Renamed bone '${selectedBoneName}' to '${nextName}'`);
+  }, [
+    applyBoneRenameChange,
+    boneRenameInput,
+    pushViewerHistory,
+    scene,
+    selectedBoneName,
+  ]);
+
+  const boneInfluenceRows = useMemo(
+    () =>
+      skinData
+        ? collectBoneInfluenceRowsFromSkinData(skinData)
+        : collectBoneInfluenceRows(scene),
+    [scene, skinData],
+  );
+
+  const displayedBoneInfluenceRows = useMemo(() => {
+    if (!selectedBoneName) {
+      return boneInfluenceRows;
+    }
+    return pinSelectedBoneRow(boneInfluenceRows, selectedBoneName);
+  }, [boneInfluenceRows, selectedBoneName]);
+
+  const handleWeightBrushSettingsChange = useCallback(
+    (settings: WeightBrushSettings) => {
+      setWeightBrushSettings(settings);
+      if (settings.targetBone) {
+        handleBoneSelectionChange(settings.targetBone);
+      }
+    },
+    [handleBoneSelectionChange],
+  );
+
+  const handleWeightBrushStroke = useCallback(
+    (
+      hit: import("@/modelEditing/weights/weightBrushStroke").WeightBrushHit,
+    ) => {
+      if (
+        !scene ||
+        !skinData ||
+        !weightBrushSettings.targetBone ||
+        interactionMode !== "paint-weights"
+      ) {
+        return;
+      }
+
+      const nextData = applyWeightBrushStroke(
+        scene,
+        skinData,
+        weightBrushSettings,
+        hit,
+      );
+      if (nextData === skinData) {
+        return;
+      }
+
+      applyWeightEditToScene(scene, nextData);
+      setSkinDataWithScene({ scene, data: nextData });
+      pushViewerHistory({
+        type: "weights",
+        before: skinData,
+        after: nextData,
+      });
+    },
+    [interactionMode, pushViewerHistory, scene, skinData, weightBrushSettings],
+  );
 
   const handleAnimationEventsChange = useCallback(
     async (animationIndex: number, events: AnimationEvent[]) => {
@@ -488,14 +982,15 @@ export function ModelViewer() {
           ...bg3dParsed,
           skeleton: {
             ...bg3dParsed.skeleton,
-            animations: bg3dParsed.skeleton.animations.map((animation, index) =>
-              index === animationIndex
-                ? {
-                    ...animation,
-                    numAnimEvents: nextEvents.length,
-                    events: nextEvents,
-                  }
-                : animation,
+            animations: bg3dParsed.skeleton.animations.map(
+              (animation, index) =>
+                index === animationIndex
+                  ? {
+                      ...animation,
+                      numAnimEvents: nextEvents.length,
+                      events: nextEvents,
+                    }
+                  : animation,
             ),
           },
         };
@@ -522,11 +1017,7 @@ export function ModelViewer() {
 
         if (workerResult.isErr()) {
           toast.error(
-            `Failed to update animation events: ${
-              workerResult.error instanceof Error
-                ? workerResult.error.message
-                : String(workerResult.error)
-            }`,
+            `Failed to update animation events: ${workerResult.error}`,
           );
           return;
         }
@@ -536,7 +1027,7 @@ export function ModelViewer() {
           "update animation events",
         );
         if (responseResult.isErr()) {
-          toast.error(responseResult.error.message);
+          toast.error(responseResult.error);
           return;
         }
         const result = responseResult.value;
@@ -583,26 +1074,24 @@ export function ModelViewer() {
       }
 
       const updatedBufferResult = await ResultAsync.fromPromise(
-        updateGlbAnimationEvents(
-          gltfBuffer,
-          animationIndex,
-          nextEvents,
-        ),
+        updateGlbAnimationEvents(gltfBuffer, animationIndex, nextEvents),
         mapErr,
       );
       if (updatedBufferResult.isErr()) {
         toast.error(
-          `Failed to update animation events: ${updatedBufferResult.error.message}`,
+          `Failed to update animation events: ${updatedBufferResult.error}`,
         );
         return;
       }
       if (updatedBufferResult.value.isErr()) {
         toast.error(
-          `Failed to update animation events: ${updatedBufferResult.value.error.message}`,
+          `Failed to update animation events: ${updatedBufferResult.value.error}`,
         );
         return;
       }
-      const normalizedBuffer = await normalizeGlbBuffer(updatedBufferResult.value.value);
+      const normalizedBuffer = await normalizeGlbBuffer(
+        updatedBufferResult.value.value,
+      );
 
       if (gltfUrl) {
         URL.revokeObjectURL(gltfUrl);
@@ -646,7 +1135,10 @@ export function ModelViewer() {
       );
       if (cancelled) return;
       if (result.isErr()) {
-        console.warn("Failed to extract animation metadata from GLB", result.error);
+        console.warn(
+          "Failed to extract animation metadata from GLB",
+          result.error,
+        );
         if (!cancelled) setGltfAnimationMetadata({});
         return;
       }
@@ -672,7 +1164,10 @@ export function ModelViewer() {
         },
         {} as Record<
           string,
-          { eventCount: number; events: { time: number; type: number; value: number }[] }
+          {
+            eventCount: number;
+            events: { time: number; type: number; value: number }[];
+          }
         >,
       );
     }
@@ -721,7 +1216,7 @@ export function ModelViewer() {
     );
     if (result.isErr()) {
       console.error("Error downloading BG3D:", result.error);
-      toast.error(result.error.message);
+      toast.error(result.error);
       return;
     }
     toast.success("BG3D model downloaded");
@@ -754,7 +1249,7 @@ export function ModelViewer() {
     );
     if (result.isErr()) {
       console.error("Error downloading 3DMF:", result.error);
-      toast.error(result.error.message);
+      toast.error(result.error);
       return;
     }
     toast.success("3DMF model downloaded");
@@ -798,6 +1293,15 @@ export function ModelViewer() {
     setModelNodes([]);
     setModelBaseName("model");
     setScene(undefined);
+    setWireframeMode(false);
+    setShowSkeletonOverlay(false);
+    setLogBonePositions(false);
+    setSelectedBoneName(null);
+    setBoneRenameInput("");
+    setInteractionMode("navigate");
+    setWeightBrushSettings(defaultWeightBrushSettings);
+    setWeightVisualizationMode("none");
+    setViewerHistory({ past: [], future: [] });
     setUploadStep("select-bg3d");
     setPendingBg3dFile(null);
     setModelSessionId((current) => current + 1);
@@ -815,6 +1319,45 @@ export function ModelViewer() {
           >
             <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden px-2">
               <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden">
+                {gltfUrl && (
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white text-sm">
+                        Undo / Redo
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={handleUndoViewerChange}
+                          disabled={viewerHistory.past.length === 0}
+                        >
+                          <Undo2 className="mr-2 h-4 w-4" />
+                          Undo
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={handleRedoViewerChange}
+                          disabled={viewerHistory.future.length === 0}
+                        >
+                          <Redo2 className="mr-2 h-4 w-4" />
+                          Redo
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Tracks committed UV edits, weight changes, and bone
+                        renames for the current model session. Shortcuts:
+                        Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <ModelUploadPanel
                   gltfUrl={gltfUrl}
                   loading={loading}
@@ -846,9 +1389,12 @@ export function ModelViewer() {
                   <VisualizationOptions
                     wireframeMode={wireframeMode}
                     setWireframeMode={setWireframeMode}
+                    showSkeleton={showSkeletonOverlay}
+                    setShowSkeleton={setShowSkeletonOverlay}
                     logBonePositions={logBonePositions}
                     setLogBonePositions={setLogBonePositions}
-                    hasAnimations={hasAnimations}
+                    hasSkeleton={hasAnimations || skinData !== null}
+                    canLogBonePositions={hasAnimations}
                   />
                 )}
 
@@ -879,6 +1425,12 @@ export function ModelViewer() {
                     boneRotation={boneRotation}
                     boneScale={boneScale}
                     onGizmoModeChange={handleGizmoModeChange}
+                    boneRenameInput={boneRenameInput}
+                    boneInfluenceRows={displayedBoneInfluenceRows}
+                    skinData={skinData}
+                    onBoneRenameInputChange={setBoneRenameInput}
+                    onRenameSelectedBone={handleRenameSelectedBone}
+                    onRepairWeights={handleRepairWeights}
                   />
                 )}
 
@@ -897,6 +1449,10 @@ export function ModelViewer() {
                           onDownloadTexture={handleDownloadTexture}
                           onReplaceTexture={handleReplaceTexture}
                           onTextureEdit={handleTextureEdit}
+                          uvLayouts={uvLayouts}
+                          onPreviewUvEdit={handlePreviewUvEdit}
+                          onResetUvPreview={handleResetUvPreview}
+                          onApplyUvEdit={handleApplyUvEdit}
                         />
                       ) : (
                         <div className="space-y-3">
@@ -905,14 +1461,16 @@ export function ModelViewer() {
                           </p>
                           <div className="text-xs text-gray-500 space-y-1">
                             <p>
-                              • Some BG3D models may not contain extractable textures
+                              • Some BG3D models may not contain extractable
+                              textures
                             </p>
                             <p>
-                              • Textures may be embedded differently or compressed
+                              • Textures may be embedded differently or
+                              compressed
                             </p>
                             <p>
-                              • Try a different model format if texture editing is
-                              needed
+                              • Try a different model format if texture editing
+                              is needed
                             </p>
                           </div>
                         </div>
@@ -920,9 +1478,39 @@ export function ModelViewer() {
                     </CardContent>
                   </Card>
                 )}
+
+                {gltfUrl && skinData && (
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white text-sm">
+                        Rig & Weight Tools
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ModelRigPanel
+                        selectedBoneName={selectedBoneName}
+                        boneRenameInput={boneRenameInput}
+                        boneInfluenceRows={displayedBoneInfluenceRows}
+                        skinData={skinData}
+                        interactionMode={interactionMode}
+                        brushSettings={weightBrushSettings}
+                        visualizationMode={weightVisualizationMode}
+                        onSelectBone={(boneName) =>
+                          handleBoneSelectionChange(boneName)
+                        }
+                        onInteractionModeChange={setInteractionMode}
+                        onBoneRenameInputChange={setBoneRenameInput}
+                        onRenameSelectedBone={handleRenameSelectedBone}
+                        onBrushSettingsChange={handleWeightBrushSettingsChange}
+                        onVisualizationModeChange={setWeightVisualizationMode}
+                        onRepairWeights={handleRepairWeights}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-             </div>
-           </ResizablePanel>
+            </div>
+          </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
             <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">
@@ -935,13 +1523,21 @@ export function ModelViewer() {
                     onSceneReady={setScene}
                     onAnimationsReady={handleAnimationsReady}
                     wireframeMode={wireframeMode}
-                    showSkeleton={wireframeMode && hasAnimations}
+                    showSkeleton={
+                      showSkeletonOverlay &&
+                      (hasAnimations || skinData !== null)
+                    }
                     logBonePositions={logBonePositions}
-                    selectedBoneName={hasAnimations ? selectedBoneName : null}
+                    selectedBoneName={selectedBoneName}
                     onBoneTransformChange={handleBoneTransformChange}
                     onBoneRotationChange={handleBoneRotationChange}
                     onBoneScaleChange={handleBoneScaleChange}
                     gizmoMode={gizmoMode}
+                    interactionMode={interactionMode}
+                    skinData={skinData}
+                    weightBrushSettings={weightBrushSettings}
+                    weightVisualizationMode={weightVisualizationMode}
+                    onWeightBrushStroke={handleWeightBrushStroke}
                   />
                 </ErrorBoundary>
               ) : (
@@ -961,7 +1557,6 @@ export function ModelViewer() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-      <Toaster />
     </>
   );
 }

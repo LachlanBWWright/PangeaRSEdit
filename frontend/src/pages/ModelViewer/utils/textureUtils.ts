@@ -157,7 +157,7 @@ export async function extractTexturesFromBG3D(
         name: `Material_${materialIndex}_Texture_${textureIndex}`,
         url: imageUrl,
         type: "diffuse",
-        material: `Material ${materialIndex}`,
+        material: `Material_${materialIndex.toString().padStart(4, "0")}`,
         size: { width: imageData.width, height: imageData.height },
       });
     }

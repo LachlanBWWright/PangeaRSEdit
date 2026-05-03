@@ -3,23 +3,23 @@
  * Used when a level doesn't have these optional data structures
  */
 
-import { FenceData, LiquidData, SplineData } from "@/python/structSpecs/LevelTypes";
+import {
+  FenceData,
+  LiquidData,
+  SplineData,
+} from "@/python/structSpecs/LevelTypes";
 
 /**
  * Create an empty FenceData structure
  * This creates the minimum viable structure for a level with no fences
  */
 export function createEmptyFenceData(): FenceData {
-  return {
-    Fenc: {
-      1000: {
-        name: "Fence List",
-        obj: [],
-        order: 0,
-      },
-    },
-    FnNb: {},
+  const fenceList: FenceData["Fenc"][1000] = {
+    name: "Fence List",
+    obj: [],
+    order: 0,
   };
+  return { Fenc: { 1000: fenceList }, FnNb: {} };
 }
 
 /**
@@ -27,32 +27,25 @@ export function createEmptyFenceData(): FenceData {
  * This creates the minimum viable structure for a level with no water bodies
  */
 export function createEmptyLiquidData(): LiquidData {
-  return {
-    Liqd: {
-      1000: {
-        name: "Water List",
-        obj: [],
-        order: 0,
-      },
-    },
+  const waterList: LiquidData["Liqd"][1000] = {
+    name: "Water List",
+    obj: [],
+    order: 0,
   };
+  return { Liqd: { 1000: waterList } };
 }
 
 /**
  * Create an empty SplineData structure
  * This creates the minimum viable structure for a level with no splines
  */
-export function createEmptySplineData<TSplineItem = unknown>(): SplineData<TSplineItem> {
-  return {
-    SpNb: {},
-    SpPt: {},
-    SpIt: {},
-    Spln: {
-      1000: {
-        name: "Spline List",
-        obj: [],
-        order: 0,
-      },
-    },
+export function createEmptySplineData<
+  TSplineItem = unknown,
+>(): SplineData<TSplineItem> {
+  const splineList: SplineData<TSplineItem>["Spln"][1000] = {
+    name: "Spline List",
+    obj: [],
+    order: 0,
   };
+  return { SpNb: {}, SpPt: {}, SpIt: {}, Spln: { 1000: splineList } };
 }

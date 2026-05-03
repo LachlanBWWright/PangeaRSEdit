@@ -12,6 +12,46 @@ export interface TileFlagOperation {
   remove: number;
 }
 
+function applyBrushToTerrain(
+  data: TerrainData,
+  globals: GlobalsInterface,
+  header: { mapWidth: number; mapHeight: number },
+  centerX: number,
+  centerY: number,
+  radius: number,
+  brushType: "add" | "remove",
+  flagOperation: TileFlagOperation,
+): void {
+  if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
+  const baseX = centerX - radius;
+  const baseY = centerY - radius;
+  const size = radius * 2;
+
+  for (let i = 0; i <= size; i += globals.TILE_SIZE) {
+    for (let j = 0; j <= size; j += globals.TILE_SIZE) {
+      const tileGridX = Math.floor((baseX + i) / globals.TILE_SIZE);
+      const tileGridY = Math.floor((baseY + j) / globals.TILE_SIZE);
+
+      if (
+        tileGridX < 0 ||
+        tileGridX >= header.mapWidth ||
+        tileGridY < 0 ||
+        tileGridY >= header.mapHeight
+      )
+        continue;
+
+      const flatPos = tileGridY * header.mapWidth + tileGridX;
+      const atrbIdx = data.Layr[1000].obj[flatPos];
+      if (atrbIdx === undefined) continue;
+      const attr = data.Atrb[1000].obj[atrbIdx];
+      if (!attr) continue;
+
+      if (brushType === "add") attr.flags |= flagOperation.add;
+      else if (brushType === "remove") attr.flags &= ~flagOperation.remove;
+    }
+  }
+}
+
 export function createTileClickHandler(
   globals: GlobalsInterface,
   header: { mapWidth: number; mapHeight: number },
@@ -31,41 +71,17 @@ export function createTileClickHandler(
     const centerY = Math.round(pos.y / globals.TILE_SIZE) * globals.TILE_SIZE;
     const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
 
-    setTerrainData((data) => {
-      if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
-      const baseX = centerX - radius;
-      const baseY = centerY - radius;
-      const size = radius * 2;
-
-      for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-        for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-          const tileX = baseX + i;
-          const tileY = baseY + j;
-
-          const tileGridX = Math.floor(tileX / globals.TILE_SIZE);
-          const tileGridY = Math.floor(tileY / globals.TILE_SIZE);
-
-          if (
-            tileGridX < 0 ||
-            tileGridX >= header.mapWidth ||
-            tileGridY < 0 ||
-            tileGridY >= header.mapHeight
-          )
-            continue;
-
-          const flatPos = tileGridY * header.mapWidth + tileGridX;
-          const atrbIdx = data.Layr[1000].obj[flatPos];
-          if (atrbIdx === undefined) continue;
-          const attr = data.Atrb[1000].obj[atrbIdx];
-          if (!attr) continue;
-
-          if (brushType === "add") {
-            attr.flags |= flagOperation.add;
-          } else if (brushType === "remove") {
-            attr.flags &= ~flagOperation.remove;
-          }
-        }
-      }
-    });
+    setTerrainData((data) =>
+      applyBrushToTerrain(
+        data,
+        globals,
+        header,
+        centerX,
+        centerY,
+        radius,
+        brushType,
+        flagOperation,
+      ),
+    );
   };
 }

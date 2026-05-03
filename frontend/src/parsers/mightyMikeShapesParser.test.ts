@@ -34,7 +34,7 @@ describe("mightyMikeShapesParser", () => {
   it("should parse main.shapes file without errors", () => {
     const result = parseShapesFile(mainShapesBuffer);
     if (result.isErr()) {
-      console.error("Parse failed:", result.error.message);
+      console.error("Parse failed:", result.error);
     }
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {

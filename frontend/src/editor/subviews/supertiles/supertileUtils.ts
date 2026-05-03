@@ -1,7 +1,4 @@
-import type {
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/LevelTypes";
+import type { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 
 export const downloadSelectedTile = (
   mapImages: HTMLCanvasElement[],
@@ -53,11 +50,9 @@ export const downloadMapImage = (
       if (superTileId === 0) continue;
       const tileImage = mapImages[superTileId];
       if (!tileImage) continue;
-      context.drawImage(
-        tileImage,
-        j * globals.SUPERTILE_TEXMAP_SIZE,
-        i * globals.SUPERTILE_TEXMAP_SIZE,
-      );
+      const dx = j * globals.SUPERTILE_TEXMAP_SIZE;
+      const dy = i * globals.SUPERTILE_TEXMAP_SIZE;
+      context.drawImage(tileImage, dx, dy);
     }
   }
 

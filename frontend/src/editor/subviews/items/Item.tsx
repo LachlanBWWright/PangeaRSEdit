@@ -6,21 +6,21 @@ import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useState, useCallback, memo, useMemo } from "react";
 import { Globals } from "@/data/globals/globals";
-import { getItemName } from "@/data/items/getItemNames";
 import { updateItem } from "../../../data/selectors";
-import {
-  getLiquidPatchStyle,
-  getLiquidPatchDimensions,
-  getLiquidPatchCanvas,
-} from "@/data/items/liquidPatchItems";
+import { getLiquidPatchCanvas } from "@/data/items/liquidPatchItems";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import {
   ITEM_BOX_OFFSET,
   ITEM_BOX_SIZE,
-  ITEM_TAG_GAP,
   ItemTypeNumber,
 } from "../shared/nodeVisuals";
 import type { HoverTagInfo } from "../shared/nodeVisuals";
+import {
+  getDefaultItemHoverTag,
+  getItemBoxPosition,
+  getLiquidHoverTag,
+  getLiquidPatchLayout,
+} from "@/editor/subviews/items/itemRenderState";
 
 export const Item = memo(function Item({
   itemData,
@@ -65,37 +65,26 @@ export const Item = memo(function Item({
     },
     [itemIdx, setItemData],
   );
-  const itemX = itemPosX - ITEM_BOX_OFFSET;
-  const itemZ = itemPosZ - ITEM_BOX_OFFSET;
-  const itemName = getItemName(globals, itemType);
+  const itemBoxPosition = getItemBoxPosition(itemPosX, itemPosZ);
 
   // Check if this is a liquid patch item (water, lava, honey, slime in Bugdom 1/Nanosaur 1)
-  const liquidPatchStyle = getLiquidPatchStyle(globals, itemType);
-  const liquidPatchDimensions = useMemo(
+  const liquidPatchLayout = useMemo(
     () =>
-      liquidPatchStyle
-        ? getLiquidPatchDimensions(
-            globals,
-            itemType,
-            itemP0,
-            itemP1,
-            itemP2,
-            itemP3,
-          )
-        : null,
-    [
-      globals,
-      itemType,
-      itemP0,
-      itemP1,
-      itemP2,
-      itemP3,
-      liquidPatchStyle,
-    ],
+      getLiquidPatchLayout(
+        globals,
+        itemType,
+        itemP0,
+        itemP1,
+        itemP2,
+        itemP3,
+        itemPosX,
+        itemPosZ,
+      ),
+    [globals, itemType, itemP0, itemP1, itemP2, itemP3, itemPosX, itemPosZ],
   );
   const liquidPatchCanvas = useMemo(
     () =>
-      liquidPatchStyle
+      liquidPatchLayout
         ? getLiquidPatchCanvas(
             globals,
             headerData,
@@ -120,32 +109,32 @@ export const Item = memo(function Item({
       itemP3,
       itemPosX,
       itemPosZ,
-      liquidPatchStyle,
+      liquidPatchLayout,
     ],
   );
 
   if (item === null || item === undefined) return null;
 
   // Render liquid patch items as rectangles to resemble water bodies
-  if (liquidPatchStyle) {
-    if (!liquidPatchDimensions) {
+  if (liquidPatchLayout) {
+    if (!liquidPatchLayout.dimensions || !liquidPatchLayout.style) {
       return null;
     }
-    const dims = liquidPatchDimensions;
-
-    // Position is centered on the item coordinates
-    const rectX = itemPosX - dims.width2D / 2;
-    const rectZ = itemPosZ - dims.depth2D / 2;
+    const dims = liquidPatchLayout.dimensions;
+    const rectX = liquidPatchLayout.rectX;
+    const rectZ = liquidPatchLayout.rectZ;
+    const style = liquidPatchLayout.style;
 
     const handleLiquidMouseOver = () => {
       setHovering(true);
-      onHoverChange({
-        x: rectX + (liquidPatchCanvas ? liquidPatchCanvas.width : dims.width2D) + ITEM_TAG_GAP,
-        y: item.z - ITEM_BOX_OFFSET,
-        text: liquidPatchStyle.name,
-        fill: liquidPatchStyle.color2D,
-        textColor: "white",
-      });
+      onHoverChange(
+        getLiquidHoverTag(
+          style.name,
+          rectX,
+          liquidPatchCanvas ? liquidPatchCanvas.width : dims.width2D,
+          item.z,
+        ),
+      );
     };
     const handleLiquidMouseLeave = () => {
       setHovering(false);
@@ -184,9 +173,9 @@ export const Item = memo(function Item({
           y={rectZ}
           width={dims.width2D}
           height={dims.depth2D}
-          stroke={liquidPatchStyle.color2D}
+          stroke={style.color2D}
           strokeWidth={3}
-          fill={liquidPatchStyle.fill2D}
+          fill={style.fill2D}
           draggable
           onMouseOver={handleLiquidMouseOver}
           onMouseLeave={handleLiquidMouseLeave}
@@ -205,7 +194,7 @@ export const Item = memo(function Item({
           y={rectZ + dims.depth2D * 0.15}
           width={dims.width2D * 0.7}
           height={dims.depth2D * 0.7}
-          stroke={liquidPatchStyle.color2D}
+          stroke={style.color2D}
           strokeWidth={1}
           listening={false}
         />
@@ -215,7 +204,7 @@ export const Item = memo(function Item({
           y={item.z - 4}
           width={8}
           height={8}
-          fill={liquidPatchStyle.color2D}
+          fill={style.color2D}
           listening={false}
         />
       </>
@@ -224,13 +213,14 @@ export const Item = memo(function Item({
 
   const handleMouseOver = () => {
     setHovering(true);
-    onHoverChange({
-      x: itemX + ITEM_BOX_SIZE + ITEM_TAG_GAP,
-      y: itemZ,
-      text: itemName,
-      fill: "red",
-      textColor: "black",
-    });
+    onHoverChange(
+      getDefaultItemHoverTag(
+        globals,
+        itemType,
+        itemBoxPosition.x,
+        itemBoxPosition.z,
+      ),
+    );
   };
   const handleMouseLeave = () => {
     setHovering(false);
@@ -241,8 +231,8 @@ export const Item = memo(function Item({
   return (
     <>
       <Rect
-        x={itemX}
-        y={itemZ}
+        x={itemBoxPosition.x}
+        y={itemBoxPosition.z}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
         stroke="black"
@@ -259,8 +249,8 @@ export const Item = memo(function Item({
 
       {!hovering && (
         <ItemTypeNumber
-         x={itemX}
-         y={itemZ}
+          x={itemBoxPosition.x}
+          y={itemBoxPosition.z}
           value={item.type.toString()}
           fill="black"
         />
@@ -268,5 +258,3 @@ export const Item = memo(function Item({
     </>
   );
 });
-
-
