@@ -38,6 +38,11 @@ jobs:
       - name: Build project
         run: cd frontend && npm run build
 
+      - name: Remove non-Pages build artifacts
+        run: |
+          rm -rf frontend/dist/.generated
+          rm -rf frontend/dist/games/pangea-ports
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
