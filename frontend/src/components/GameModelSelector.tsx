@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -73,29 +72,27 @@ export function GameModelSelector({
   const effectiveModel =
     availableModels.find((m) => m === selectedModel) ?? null;
 
-  const hasSkeletonFile = effectiveModel?.skeletonFile !== undefined;
-
-  const handleLoadSelectedModel = async (loadSkeletons: boolean) => {
-    if (!effectiveModel) {
+  const handleLoadSelectedModel = async (model: GameModel) => {
+    if (!selectedGame) {
       toast.error("Please select a model to load");
       return;
     }
 
     // Fetch the model file (could be BG3D or 3DMF)
     const bg3dFetchResult = await ResultAsync.fromPromise(
-      fetch(effectiveModel.bg3dFile),
+      fetch(model.bg3dFile),
       mapErr,
     );
     if (bg3dFetchResult.isErr()) {
       console.error("Error loading selected model:", bg3dFetchResult.error);
-      toast.error(`Failed to load ${effectiveModel.name}`);
+      toast.error(`Failed to load ${model.name}`);
       return;
     }
 
     const bg3dResponse = bg3dFetchResult.value;
     if (!bg3dResponse.ok) {
       toast.error(
-        `Failed to fetch ${effectiveModel.name}: ${bg3dResponse.status}`,
+        `Failed to fetch ${model.name}: ${bg3dResponse.status}`,
       );
       return;
     }
@@ -106,17 +103,17 @@ export function GameModelSelector({
     );
     if (bg3dBufferResult.isErr()) {
       console.error("Error loading selected model:", bg3dBufferResult.error);
-      toast.error(`Failed to load ${effectiveModel.name}`);
+      toast.error(`Failed to load ${model.name}`);
       return;
     }
 
     const bg3dArrayBuffer = bg3dBufferResult.value;
 
     // Determine file extension from the URL
-    const fileExtension = effectiveModel.bg3dFile.endsWith(".3dmf")
+    const fileExtension = model.bg3dFile.endsWith(".3dmf")
       ? ".3dmf"
       : ".bg3d";
-    const fileName = `${effectiveModel.name}${fileExtension}`;
+    const fileName = `${model.name}${fileExtension}`;
 
     const bg3dFile = new File([bg3dArrayBuffer], fileName, {
       type: "application/octet-stream",
@@ -124,15 +121,14 @@ export function GameModelSelector({
 
     let skeletonFile: File | undefined;
 
-    // If skeleton file exists and user wants to load it
-    if (effectiveModel.skeletonFile && loadSkeletons) {
+    if (model.skeletonFile) {
       const skeletonFetchResult = await ResultAsync.fromPromise(
-        fetch(effectiveModel.skeletonFile),
+        fetch(model.skeletonFile),
         mapErr,
       );
       if (skeletonFetchResult.isErr()) {
         console.warn(
-          `${effectiveModel.name} skeleton file fetch failed, loading without animations`,
+          `${model.name} skeleton file fetch failed, loading without animations`,
         );
         toast.warning(
           "Skeleton file not found, loading model without animations",
@@ -146,7 +142,7 @@ export function GameModelSelector({
           );
           if (skeletonBufferResult.isErr()) {
             console.warn(
-              `${effectiveModel.name} skeleton file read failed, loading without animations`,
+              `${model.name} skeleton file read failed, loading without animations`,
             );
             toast.warning(
               "Failed to read skeleton file, loading model without animations",
@@ -155,16 +151,16 @@ export function GameModelSelector({
             const skeletonArrayBuffer = skeletonBufferResult.value;
             skeletonFile = new File(
               [skeletonArrayBuffer],
-              `${effectiveModel.name}.skeleton.rsrc`,
+              `${model.name}.skeleton.rsrc`,
               {
                 type: "application/octet-stream",
               },
             );
-            console.log(`Loaded ${effectiveModel.name} skeleton file`);
+            console.log(`Loaded ${model.name} skeleton file`);
           }
         } else {
           console.warn(
-            `${effectiveModel.name} skeleton file not found, loading without animations`,
+            `${model.name} skeleton file not found, loading without animations`,
           );
           toast.warning(
             "Skeleton file not found, loading model without animations",
@@ -176,11 +172,11 @@ export function GameModelSelector({
     const loadResult = await onLoadModel(
       bg3dFile,
       skeletonFile,
-      selectedGame?.name,
+      selectedGame.name,
     );
     if (loadResult.isErr()) {
       console.error("Error loading selected model:", loadResult.error);
-      toast.error(`Failed to load ${effectiveModel.name}`);
+      toast.error(`Failed to load ${model.name}`);
     }
   };
 
@@ -240,7 +236,11 @@ export function GameModelSelector({
               onValueChange={(modelName) => {
                 const model = availableModels.find((m) => m.name === modelName);
                 setSelectedModel(model || null);
+                if (model) {
+                  void handleLoadSelectedModel(model);
+                }
               }}
+              disabled={loading}
             >
               <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
                 <SelectValue placeholder="Select a model" />
@@ -264,36 +264,6 @@ export function GameModelSelector({
             </div>
           )}
         </div>
-      )}
-
-      {/* Skeleton Loading Option */}
-      {effectiveModel && (
-          <div className="space-y-2">
-            <label className="text-sm text-gray-300">Animation Data</label>
-            <div className="grid grid-cols-1 gap-2">
-              <Button
-                type="button"
-                disabled={!effectiveModel || loading || !hasSkeletonFile}
-                onClick={() => void handleLoadSelectedModel(true)}
-                className="w-full capitalize"
-              >
-                Load With Skeleton
-              </Button>
-              <Button
-                type="button"
-                disabled={!effectiveModel || loading}
-                onClick={() => void handleLoadSelectedModel(false)}
-                className="w-full capitalize"
-              >
-                Load Without Skeleton
-              </Button>
-            </div>
-            {!hasSkeletonFile && (
-              <p className="text-xs text-gray-500">
-                This model does not provide a companion skeleton file.
-              </p>
-            )}
-          </div>
       )}
 
       {/* Model Info */}

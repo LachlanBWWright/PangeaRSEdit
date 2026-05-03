@@ -187,10 +187,7 @@ export function buildPreviewAssetBaseUrls(config: GamePortConfig): string[] {
     `.generated/pangea-ports/wasm/${config.wasmDir}/`,
     appBaseUrl,
   ).href;
-  const legacyBase = new URL(`wasm/${config.wasmDir}/`, appBaseUrl).href;
-  return generatedBase === legacyBase
-    ? [generatedBase]
-    : [generatedBase, legacyBase];
+  return [generatedBase];
 }
 
 export function buildPreviewAssetBaseUrl(config: GamePortConfig): string {

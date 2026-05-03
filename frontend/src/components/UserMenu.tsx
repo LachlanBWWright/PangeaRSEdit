@@ -1,14 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, User } from "lucide-react";
-import { getMe, signOut, getGoogleSignInUrl } from "@/api/authApi";
+import { LogOut, User } from "lucide-react";
+import { getMe, signOut } from "@/api/authApi";
 import { toast } from "sonner";
 import type { UserProfile } from "@/api/apiSchemas";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useSetAtom } from "jotai";
 import { currentAuthUserAtom } from "@/data/globals/authState";
 
@@ -68,35 +63,36 @@ export function UserMenu({ compact = false }: UserMenuProps) {
   if (loading) return null;
 
   if (!user) {
-    const signInButton = (
-      <Button
-        size="sm"
-        variant="outline"
-        className={
-          compact
-            ? "h-9 w-9 px-0"
-            : "flex items-center gap-2 text-white border-slate-600 hover:border-slate-400"
-        }
-        onClick={() => {
-          window.location.href = getGoogleSignInUrl(window.location.href);
-        }}
-        aria-label="Sign in with Google"
-      >
-        <LogIn className="h-4 w-4" />
-        {!compact && (
-          <span className="hidden sm:inline">Sign in with Google</span>
-        )}
-      </Button>
-    );
-
-    return compact ? (
-      <Tooltip>
-        <TooltipTrigger asChild>{signInButton}</TooltipTrigger>
-        <TooltipContent>Sign in with Google</TooltipContent>
-      </Tooltip>
-    ) : (
-      signInButton
-    );
+    return null;
+    // const signInButton = (
+    //   <Button
+    //     size="sm"
+    //     variant="outline"
+    //     className={
+    //       compact
+    //         ? "h-9 w-9 px-0"
+    //         : "flex items-center gap-2 text-white border-slate-600 hover:border-slate-400"
+    //     }
+    //     onClick={() => {
+    //       window.location.href = getGoogleSignInUrl(window.location.href);
+    //     }}
+    //     aria-label="Sign in with Google"
+    //   >
+    //     <LogIn className="h-4 w-4" />
+    //     {!compact && (
+    //       <span className="hidden sm:inline">Sign in with Google</span>
+    //     )}
+    //   </Button>
+    // );
+    //
+    // return compact ? (
+    //   <Tooltip>
+    //     <TooltipTrigger asChild>{signInButton}</TooltipTrigger>
+    //     <TooltipContent>Sign in with Google</TooltipContent>
+    //   </Tooltip>
+    // ) : (
+    //   signInButton
+    // );
   }
 
   const userButton = (
