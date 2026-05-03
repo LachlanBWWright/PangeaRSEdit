@@ -24,7 +24,7 @@ export default defineConfig(
       "test-glb-export.ts",
       "dist/**",
       "coverage/**",
-      "public/.generated/**",
+      "public/generated/**",
       "public/wasm/**",
     ],
   },

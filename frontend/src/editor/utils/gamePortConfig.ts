@@ -76,7 +76,7 @@ export interface GamePortConfig {
   readonly siteLaunchPath: string;
   /** Build the query string that skips directly to the selected level/track/area. */
   readonly buildLaunchQuery: (levelIndex: number) => URLSearchParams;
-  /** Directory name under frontend/public/.generated/pangea-ports/wasm/ for local WASM files. */
+  /** Directory name under frontend/public/generated/pangea-ports/wasm/ for local WASM files. */
   readonly wasmDir: string;
   /** Main JS filename produced by the Emscripten build (e.g. "OttoMatic.js"). */
   readonly mainJs: string;
