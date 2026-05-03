@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { UserProfile } from "@/api/apiSchemas";
 import { useSetAtom } from "jotai";
 import { currentAuthUserAtom } from "@/data/globals/authState";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface UserMenuProps {
   compact?: boolean;
