@@ -7,9 +7,6 @@ import type { Plugin, ViteDevServer } from "vite";
 // https://vitejs.dev/config/
 const repoRoot = path.resolve(__dirname, "..");
 const pangeaPortsSrcDir = path.resolve(repoRoot, "games/pangea-ports");
-const pangeaPortsSrcGamesDir = path.resolve(pangeaPortsSrcDir, "games");
-const pangeaPortsDistDir = path.resolve(__dirname, "dist/games/pangea-ports");
-const pangeaPortsDistGamesDir = path.resolve(pangeaPortsDistDir, "games");
 const pangeaPortsMount = "/games/pangea-ports";
 
 function mimeTypeFor(filePath: string): string {
@@ -91,11 +88,6 @@ function serveStaticDirectory(basePath: string, rootDir: string): Plugin {
         res.setHeader("Content-Type", mimeTypeFor(targetPath));
         fs.createReadStream(targetPath).pipe(res);
       });
-    },
-    closeBundle() {
-      fs.rmSync(pangeaPortsDistDir, { recursive: true, force: true });
-      fs.mkdirSync(path.dirname(pangeaPortsDistGamesDir), { recursive: true });
-      fs.cpSync(pangeaPortsSrcGamesDir, pangeaPortsDistGamesDir, { recursive: true });
     },
   };
 }
