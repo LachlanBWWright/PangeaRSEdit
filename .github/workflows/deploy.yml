@@ -35,6 +35,9 @@ jobs:
         with:
           working-directory: frontend
 
+      - name: Build game WASM bundles
+        run: cd frontend && npm run build:games
+
       - name: Build project
         run: cd frontend && npm run build
 
