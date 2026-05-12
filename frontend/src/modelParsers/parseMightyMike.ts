@@ -15,6 +15,9 @@ export type { MightyMikeMap };
 export function parseMightyMikeTileSet(
   buffer: ArrayBuffer,
   palette?: Uint8Array,
+  options?: {
+    readonly includeImages?: boolean;
+  },
 ): Result<MightyMikeTileSet, string> {
   const decompressedBuffer = decompressIfNeeded(buffer);
   const data = new DataView(decompressedBuffer);
@@ -143,13 +146,16 @@ export function parseMightyMikeTileSet(
     transparencyColors.push(data.getUint16(offset, false));
   }
 
-  const { tileImages, collisionImages } = parseTileImages(
-    decompressedBuffer,
-    offsetToTileDefinitions,
-    numTileDefinitions,
-    transparencyColors,
-    palette,
-  );
+  const imageResult =
+    options?.includeImages === false
+      ? { tileImages: undefined, collisionImages: undefined }
+      : parseTileImages(
+          decompressedBuffer,
+          offsetToTileDefinitions,
+          numTileDefinitions,
+          transparencyColors,
+          palette,
+        );
 
   const tileset: MightyMikeTileSet = {
     numTileDefinitions,
@@ -161,8 +167,12 @@ export function parseMightyMikeTileSet(
     tileAttributes,
     tileAnimations,
     transparencyColors,
-    tileImages,
-    collisionImages,
+    ...(imageResult.tileImages
+      ? { tileImages: imageResult.tileImages }
+      : {}),
+    ...(imageResult.collisionImages
+      ? { collisionImages: imageResult.collisionImages }
+      : {}),
   };
 
   return ok(tileset);

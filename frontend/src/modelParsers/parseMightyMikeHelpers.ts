@@ -4,6 +4,10 @@ import {
   rlbDecompress,
   rlwDecompress,
 } from "../utils/rlwDecompress";
+import type { LevelIoImagePayload } from "@/data/level-io/levelIoTypes";
+import {
+  imagePayloadToCanvas,
+} from "@/data/level-io/terrainImageSnapshots";
 
 export function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
   const view = new DataView(buffer);
@@ -42,15 +46,62 @@ function createDefaultPalette(): Uint8Array {
   return palette;
 }
 
-export function parseTileImages(
+function createImagePayload(
+  width: number,
+  height: number,
+  rgbaData: Uint8ClampedArray,
+): LevelIoImagePayload {
+  const rgbaBytes = new ArrayBuffer(rgbaData.byteLength);
+  new Uint8Array(rgbaBytes).set(
+    new Uint8Array(rgbaData.buffer, rgbaData.byteOffset, rgbaData.byteLength),
+  );
+  return { width, height, rgbaBytes };
+}
+
+function readTileSetImageLayout(buffer: ArrayBuffer): {
+  readonly decompressedBuffer: ArrayBuffer;
+  readonly offsetToTileDefinitions: number;
+  readonly numTileDefinitions: number;
+  readonly transparencyColors: number[];
+} {
+  const decompressedBuffer = decompressIfNeeded(buffer);
+  const data = new DataView(decompressedBuffer);
+  const dataLength = decompressedBuffer.byteLength;
+  const offsetToTileDefinitions = data.getUint32(6, false) + 2;
+  const offsetToTileXparentList = data.getUint32(26, false) + 2;
+  const numTileDefinitions = data.getUint16(offsetToTileDefinitions - 2, false);
+  const numTileXparentColors = data.getUint16(
+    offsetToTileXparentList - 2,
+    false,
+  );
+  const transparencyColors: number[] = [];
+  for (let index = 0; index < numTileXparentColors; index += 1) {
+    const offset = offsetToTileXparentList + index * 2;
+    if (offset + 2 > dataLength) {
+      break;
+    }
+    transparencyColors.push(data.getUint16(offset, false));
+  }
+  return {
+    decompressedBuffer,
+    offsetToTileDefinitions,
+    numTileDefinitions,
+    transparencyColors,
+  };
+}
+
+function buildTileImagePayloads(
   buffer: ArrayBuffer,
   offsetToTileDefinitions: number,
   numTileDefinitions: number,
   transparencyColors?: number[],
   palette?: Uint8Array,
-): { tileImages: HTMLCanvasElement[]; collisionImages: HTMLCanvasElement[] } {
-  const tileImages: HTMLCanvasElement[] = [];
-  const collisionImages: HTMLCanvasElement[] = [];
+): {
+  tileImages: LevelIoImagePayload[];
+  collisionImages: LevelIoImagePayload[];
+} {
+  const tileImages: LevelIoImagePayload[] = [];
+  const collisionImages: LevelIoImagePayload[] = [];
   const TILE_SIZE = 32;
   const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE;
 
@@ -65,55 +116,91 @@ export function parseTileImages(
 
   const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
 
-  for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex++) {
-    const canvas = document.createElement("canvas");
-    canvas.width = TILE_SIZE;
-    canvas.height = TILE_SIZE;
-    const ctx = canvas.getContext("2d");
-
-    const collisionCanvas = document.createElement("canvas");
-    collisionCanvas.width = TILE_SIZE;
-    collisionCanvas.height = TILE_SIZE;
-    const collisionCtx = collisionCanvas.getContext("2d");
-
-    if (!ctx || !collisionCtx) {
-      console.warn(`Failed to get canvas context for tile ${tileIndex}`);
-      continue;
-    }
-
-    const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
-    const collisionData = collisionCtx.createImageData(TILE_SIZE, TILE_SIZE);
+  for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex += 1) {
+    const imageData = new Uint8ClampedArray(TILE_SIZE * TILE_SIZE * 4);
+    const collisionData = new Uint8ClampedArray(TILE_SIZE * TILE_SIZE * 4);
     const offset = tileIndex * BYTES_PER_TILE;
 
-    for (let i = 0; i < BYTES_PER_TILE; i++) {
-      if (offset + i >= tileData.length) break;
+    for (let pixelIndex = 0; pixelIndex < BYTES_PER_TILE; pixelIndex += 1) {
+      if (offset + pixelIndex >= tileData.length) {
+        break;
+      }
 
-      const colorIndex = tileData[offset + i] ?? 0;
-      const pixelOffset = i * 4;
-
+      const colorIndex = tileData[offset + pixelIndex] ?? 0;
+      const pixelOffset = pixelIndex * 4;
       const paletteOffset = (colorIndex & 0xff) * 4;
+
       if (paletteOffset + 3 < colorPalette.length) {
-        imageData.data[pixelOffset + 0] = colorPalette[paletteOffset] ?? 0;
-        imageData.data[pixelOffset + 1] = colorPalette[paletteOffset + 1] ?? 0;
-        imageData.data[pixelOffset + 2] = colorPalette[paletteOffset + 2] ?? 0;
-        imageData.data[pixelOffset + 3] =
-          colorPalette[paletteOffset + 3] ?? 255;
+        imageData[pixelOffset + 0] = colorPalette[paletteOffset] ?? 0;
+        imageData[pixelOffset + 1] = colorPalette[paletteOffset + 1] ?? 0;
+        imageData[pixelOffset + 2] = colorPalette[paletteOffset + 2] ?? 0;
+        imageData[pixelOffset + 3] = colorPalette[paletteOffset + 3] ?? 255;
       }
 
       if (!transparentSet.has(colorIndex)) {
-        collisionData.data[pixelOffset + 0] = 200;
-        collisionData.data[pixelOffset + 1] = 120;
-        collisionData.data[pixelOffset + 2] = 0;
-        collisionData.data[pixelOffset + 3] = 200;
-      } else {
-        collisionData.data[pixelOffset + 3] = 0;
+        collisionData[pixelOffset + 0] = 200;
+        collisionData[pixelOffset + 1] = 120;
+        collisionData[pixelOffset + 2] = 0;
+        collisionData[pixelOffset + 3] = 200;
       }
     }
 
-    ctx.putImageData(imageData, 0, 0);
-    collisionCtx.putImageData(collisionData, 0, 0);
-    tileImages.push(canvas);
-    collisionImages.push(collisionCanvas);
+    tileImages.push(createImagePayload(TILE_SIZE, TILE_SIZE, imageData));
+    collisionImages.push(
+      createImagePayload(TILE_SIZE, TILE_SIZE, collisionData),
+    );
+  }
+
+  return { tileImages, collisionImages };
+}
+
+export function parseMightyMikeTileImagePayloads(
+  buffer: ArrayBuffer,
+  palette?: Uint8Array,
+): {
+  tileImages: LevelIoImagePayload[];
+  collisionImages: LevelIoImagePayload[];
+} {
+  const layout = readTileSetImageLayout(buffer);
+  return buildTileImagePayloads(
+    layout.decompressedBuffer,
+    layout.offsetToTileDefinitions,
+    layout.numTileDefinitions,
+    layout.transparencyColors,
+    palette,
+  );
+}
+
+export function parseTileImages(
+  buffer: ArrayBuffer,
+  offsetToTileDefinitions: number,
+  numTileDefinitions: number,
+  transparencyColors?: number[],
+  palette?: Uint8Array,
+): { tileImages: HTMLCanvasElement[]; collisionImages: HTMLCanvasElement[] } {
+  const payloads = buildTileImagePayloads(
+    buffer,
+    offsetToTileDefinitions,
+    numTileDefinitions,
+    transparencyColors,
+    palette,
+  );
+  const tileImages: HTMLCanvasElement[] = [];
+  const collisionImages: HTMLCanvasElement[] = [];
+  for (const [index, imagePayload] of payloads.tileImages.entries()) {
+    const collisionPayload = payloads.collisionImages[index];
+    if (!collisionPayload) {
+      console.warn(`Missing collision payload for tile ${index}`);
+      continue;
+    }
+    const imageCanvasResult = imagePayloadToCanvas(imagePayload);
+    const collisionCanvasResult = imagePayloadToCanvas(collisionPayload);
+    if (imageCanvasResult.isErr() || collisionCanvasResult.isErr()) {
+      console.warn(`Failed to materialize canvas for tile ${index}`);
+      continue;
+    }
+    tileImages.push(imageCanvasResult.value);
+    collisionImages.push(collisionCanvasResult.value);
   }
 
   return { tileImages, collisionImages };

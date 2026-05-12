@@ -72,7 +72,7 @@ export function ModelUploadPanel({
   onCancelSelection,
 }: Props) {
   const [exportOpen, setExportOpen] = useState(false);
-  const fileAccept = ".bg3d,.3dmf,.glb";
+  const fileAccept = ".bg3d,.3dmf,.glb,.gltf";
   const awaitingSkeleton =
     uploadStep === "select-skeleton" && pendingBg3dFile !== null;
   const { title: dropzoneTitle, body: dropzoneBody } =

@@ -14,6 +14,7 @@ import {
   getCarouselGames,
   LEVEL_COMPONENTS_MAP,
 } from "@/editor/gameCards/gameCarouselConfig";
+import type { ParsedLevelDataFile } from "@/editor/loadLogic/parseLevelDataFile";
 
 export function GameCarousel({
   showAllGames,
@@ -31,7 +32,8 @@ export function GameCarousel({
   handleParseLevelDataFile: (
     file: Blob,
     gameType: GlobalsInterface,
-  ) => Promise<Result<unknown, string>>;
+    companionTextureFile?: File,
+  ) => Promise<Result<ParsedLevelDataFile, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
@@ -90,7 +92,8 @@ function GameCarouselItem({
   handleParseLevelDataFile: (
     file: Blob,
     gameType: GlobalsInterface,
-  ) => Promise<Result<unknown, string>>;
+    companionTextureFile?: File,
+  ) => Promise<Result<ParsedLevelDataFile, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;

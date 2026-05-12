@@ -3,7 +3,7 @@ import { openFile } from "./loadLogic/openFile";
 import { parseLevelDataFile } from "./loadLogic/parseLevelDataFile";
 
 import { useAtom } from "jotai";
-import { AtomicLevelData } from "../data/utils/levelDataUtils";
+import { AtomicLevelData, splitLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
 import { GameCarousel } from "./gameCards/GameCarousel";
 import type { TunnelData } from "@/data/tunnelParser/types";
@@ -42,9 +42,28 @@ export function UploadPrompt({
       setData,
     });
 
-  const handleParseLevelDataFile = (file: Blob, gameType: GlobalsInterface) => {
+  const handleParseLevelDataFile = async (
+    file: Blob,
+    gameType: GlobalsInterface,
+    companionTextureFile?: File,
+  ) => {
     setGlobals(gameType);
-    return parseLevelDataFile(file, gameType, setData, undefined, setMapImages);
+    const result = await parseLevelDataFile({
+      file,
+      gameType,
+      companionTextureFile,
+    });
+    if (result.isErr()) {
+      return result;
+    }
+    setData(splitLevelData(result.value.levelData));
+    if (result.value.mapImages.length > 0) {
+      setMapImages([...result.value.mapImages]);
+    }
+    if (result.value.mapImagesFile) {
+      setMapImagesFile(result.value.mapImagesFile);
+    }
+    return result;
   };
 
   return (

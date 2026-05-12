@@ -3,7 +3,6 @@ import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
 import {
   parseNanosaurTerrainTextures,
   createCanvasFromTile,
-  extractTilesFromBuffer,
 } from "@/data/processors/classicProprocessor";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
@@ -11,61 +10,7 @@ import { parseLevelDataFile } from "./parseLevelDataFile";
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
-import { plainObjectSchema, stringSchema } from "@/schemas/common";
-import { z } from "zod";
-
-function hexToUint8Array(hexString: string): Uint8Array {
-  const bytes = new Uint8Array(hexString.length / 2);
-  for (let i = 0; i < hexString.length; i += 2) {
-    bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
-  }
-  return bytes;
-}
-
-const mightyMikeLevelDataSchema = z.object({
-  tileset: z
-    .object({
-      tileImages: z.array(z.unknown()).optional(),
-      numTileDefinitions: z.number().optional(),
-      numTileAttributeEntries: z.number().optional(),
-    })
-    .optional(),
-  Hedr: z
-    .record(
-      z.string(),
-      z.object({
-        obj: z
-          .object({
-            numTiles: z.number().optional(),
-          })
-          .optional(),
-      }),
-    )
-    .optional(),
-});
-
-function isMightyMikeLevelData(
-  data: unknown,
-): data is z.infer<typeof mightyMikeLevelDataSchema> {
-  return mightyMikeLevelDataSchema.safeParse(data).success;
-}
-
-function extractTimgDataString(jsonData: unknown): string | undefined {
-  const result = plainObjectSchema.safeParse(jsonData);
-  if (!result.success) return undefined;
-  const timg = result.data.Timg;
-
-  const timgResult = plainObjectSchema.safeParse(timg);
-  if (!timgResult.success) return undefined;
-  const timg1000 = timgResult.data["1000"];
-
-  const timg1000Result = plainObjectSchema.safeParse(timg1000);
-  if (!timg1000Result.success) return undefined;
-  const data = timg1000Result.data.data;
-
-  const stringResult = stringSchema.safeParse(data);
-  return stringResult.success ? stringResult.data : undefined;
-}
+import { splitLevelData } from "@/data/utils/levelDataUtils";
 
 export interface OpenFileArgs {
   url: string;
@@ -143,10 +88,17 @@ export async function openFile({
   });
 
   const parseResult = await parseLevelDataFile(
-    file,
-    gameType,
-    setData,
-    rsrcName,
+    {
+      file,
+      gameType,
+      fileUrl: rsrcName,
+      onProgress: ({ message }) => {
+        toast.loading(message, {
+          id: loadToastId,
+          description: name,
+        });
+      },
+    },
   );
   if (parseResult.isErr()) {
     toast.error("Failed to parse level data", {
@@ -155,23 +107,18 @@ export async function openFile({
     });
     return;
   }
-  const jsonData = parseResult.value;
+  const parsedLevel = parseResult.value;
+  setData(splitLevelData(parsedLevel.levelData));
 
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    if (!isMightyMikeLevelData(jsonData)) {
-      toast.error("Mighty Mike data has an unexpected format", {
-        id: loadToastId,
-      });
-      return;
-    }
-    const tileImages = jsonData.tileset?.tileImages;
-    if (!Array.isArray(tileImages) || tileImages.length === 0) {
+    if (parsedLevel.mapImages.length === 0) {
       toast.error("No Mighty Mike tile images loaded", { id: loadToastId });
       return;
     }
-    // Type assertion is safe here because tileImages came from deserialized GLB data
-    setMapImagesFile(new File([new Uint8Array(0)], "mightyMike_tiles.bin"));
-    setMapImages(tileImages as HTMLCanvasElement[]); // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
+    if (parsedLevel.mapImagesFile) {
+      setMapImagesFile(parsedLevel.mapImagesFile);
+    }
+    setMapImages([...parsedLevel.mapImages]);
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     toast.loading("Loading terrain textures...", {
       id: loadToastId,
@@ -281,25 +228,13 @@ export async function openFile({
     setMapImagesFile(imgFile);
     setMapImages(mapImagesResult.value);
   } else {
-    // Bugdom 1-specific - image data is embedded in the Resource Fork Timg field
-    const imgString = extractTimgDataString(jsonData);
-    if (!imgString) {
+    if (parsedLevel.mapImages.length === 0) {
       toast.error("No embedded image data found", { id: loadToastId });
-      console.error("[terrain] missing embedded Bugdom 1 image data", {
-        gameName: gameType.GAME_NAME,
-        url: rUrl,
-      });
       return;
     }
-    const imgBuffer = hexToUint8Array(imgString);
-    const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
-    new Uint8Array(alignedBuffer).set(imgBuffer);
-    const tileCount = imgBuffer.byteLength / 2 / 32 / 32;
-    const tileView = new DataView(alignedBuffer);
-    const tiles = extractTilesFromBuffer(tileView, tileCount, 32, 32 * 32 * 2);
     const baseName = name.split(".")[0];
-    setMapImagesFile(new File([alignedBuffer], `${baseName}_tiles.bin`));
-    setMapImages(tiles.map(createCanvasFromTile));
+    setMapImagesFile(new File([], `${baseName}_tiles.bin`));
+    setMapImages([...parsedLevel.mapImages]);
   }
   toast.success("Level loaded", { id: loadToastId });
 }

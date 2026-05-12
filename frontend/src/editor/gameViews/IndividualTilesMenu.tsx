@@ -49,6 +49,7 @@ import {
   hasAccessibleOverlayData,
   supportsAccessibilityOverlay,
 } from "../utils/terrainAccessibility";
+import { hasCeilingHeightData } from "../utils/terrainCeiling";
 
 export function IndividualTilesMenu({
   headerData,
@@ -82,7 +83,7 @@ export function IndividualTilesMenu({
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
-  const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
+  const hasRoofLayer = hasCeilingHeightData(globals.GAME_TYPE, terrainData);
   const canShowAccessibilityOverlay = hasAccessibleOverlayData(
     globals.GAME_TYPE,
     header,
@@ -373,10 +374,14 @@ export function IndividualTilesMenu({
           </div>
           {canvasViewMode === CanvasView.THREE_D && (
             <>
-              {hasRoofLayer && (
+              {globals.GAME_TYPE === Game.BUGDOM && (
                 <div className="flex flex-row justify-center gap-2 items-center col-span-2">
                   <p>Show Ceiling Layer</p>
-                  <Switch checked={showRoof} onCheckedChange={setShowRoof} />
+                  <Switch
+                    checked={hasRoofLayer && showRoof}
+                    disabled={!hasRoofLayer}
+                    onCheckedChange={setShowRoof}
+                  />
                 </div>
               )}
               <div className="flex flex-row justify-center gap-2 items-center col-span-2">

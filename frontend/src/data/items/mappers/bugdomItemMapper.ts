@@ -14,6 +14,35 @@ import {
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
 import { BUGDOM_ITEM_MODEL_MAPPINGS } from "../bugdomItemModelMapping";
+import { ItemType } from "../bugdomItemType";
+
+function resolveVariant(
+  mapping: UniversalItemModelMapping,
+  paramValue: number,
+): UniversalItemModelMapping {
+  const variant = mapping.variants?.[paramValue];
+  if (!variant) {
+    return mapping;
+  }
+
+  return {
+    ...mapping,
+    modelFile: variant.modelFile ?? mapping.modelFile,
+    modelIndex: variant.modelIndex,
+  };
+}
+
+function resolveBugdomMapping(
+  itemType: number,
+  mapping: UniversalItemModelMapping,
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping {
+  if (itemType === ItemType.Grass || itemType === ItemType.Clover) {
+    return resolveVariant(mapping, params?.p0 ?? 0);
+  }
+
+  return mapping;
+}
 
 /**
  * Bugdom 1 item model mapper
@@ -28,8 +57,15 @@ export class BugdomItemMapper implements GameItemModelMapper {
    */
   getMapping(
     itemType: number,
+    _levelNum?: number,
+    params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
-    return BUGDOM_ITEM_MODEL_MAPPINGS[itemType];
+    const mapping = BUGDOM_ITEM_MODEL_MAPPINGS[itemType];
+    if (!mapping) {
+      return undefined;
+    }
+
+    return resolveBugdomMapping(itemType, mapping, params);
   }
   
   getMappedTypes(): number[] {

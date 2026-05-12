@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -9,6 +8,7 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ShapesFile } from "@/parsers/mightyMikeShapesParser";
+import { EditorField, EditorPanel, MetricGrid } from "./EditorPanel";
 
 interface SpriteControlsProps {
   shapesFile: ShapesFile;
@@ -31,15 +31,9 @@ export function SpriteControls({
   if (!currentShape) return null;
 
   return (
-    <div className="space-y-4">
-      {/* Shape Selection — arrows flanking the dropdown */}
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white text-sm">
-            Shapes ({shapesFile.shapes.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+    <div className="space-y-3">
+      <EditorPanel title={`Shapes (${shapesFile.shapes.length})`}>
+        <EditorField label="Shape">
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -90,17 +84,11 @@ export function SpriteControls({
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </EditorField>
+      </EditorPanel>
 
-      {/* Frame Selection */}
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white text-sm">
-            Frames ({currentShape.frames.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <EditorPanel title={`Frames (${currentShape.frames.length})`}>
+        <EditorField label="Frame">
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -130,25 +118,23 @@ export function SpriteControls({
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
+        </EditorField>
 
           {currentFrame && (
-            <div className="bg-gray-700 rounded p-2 text-xs space-y-1 text-white">
-              <div>
-                <span className="text-gray-400">Size: </span>
-                <span className="text-white">
-                  {currentFrame.header.width}×{currentFrame.header.height}px
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400">Hotspot: </span>
-                <span className="text-white">
-                  ({currentFrame.header.offsetX}, {currentFrame.header.offsetY})
-                </span>
-              </div>
-            </div>
+            <MetricGrid
+              items={[
+                {
+                  label: "Size",
+                  value: `${currentFrame.header.width}x${currentFrame.header.height}px`,
+                },
+                {
+                  label: "Hotspot",
+                  value: `(${currentFrame.header.offsetX}, ${currentFrame.header.offsetY})`,
+                },
+              ]}
+            />
           )}
-        </CardContent>
-      </Card>
+      </EditorPanel>
     </div>
   );
 }

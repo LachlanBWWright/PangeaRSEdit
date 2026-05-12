@@ -27,6 +27,7 @@ import {
   Mesh,
   Material,
   Node,
+  Primitive,
   Skin,
   Accessor,
 } from "@gltf-transform/core";
@@ -1040,25 +1041,7 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
   }
 
   // 3. Process scene hierarchy to extract geometries
-  function processMesh(mesh: Mesh): BG3DGeometry {
-    const primitives = mesh.listPrimitives();
-    const prim = primitives[0]; // Use first primitive
-    if (!prim) {
-      return {
-        vertices: [],
-        normals: [],
-        uvs: [],
-        colors: [],
-        triangles: [],
-        layerMaterialNum: [0, 0, 0, 0],
-        flags: 0,
-        boundingBox: undefined,
-        numMaterials: 0,
-        type: 0,
-        numPoints: 0,
-        numTriangles: 0,
-      };
-    }
+  function processPrimitive(prim: Primitive): BG3DGeometry {
     const extras = prim.getExtras() || {};
 
     // Extract geometry data
@@ -1157,11 +1140,15 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
     };
   }
 
+  function processMesh(mesh: Mesh): BG3DGeometry[] {
+    return mesh.listPrimitives().map((prim) => processPrimitive(prim));
+  }
+
   // Flatten a node tree into items suitable for a BG3D group
   function flattenNodeToGroupItems(node: Node): (BG3DGroup | BG3DGeometry)[] {
     const mesh = node.getMesh();
     if (mesh) {
-      return [processMesh(mesh)];
+      return processMesh(mesh);
     }
     const items: (BG3DGroup | BG3DGeometry)[] = [];
     for (const child of node.listChildren()) {
@@ -1172,7 +1159,7 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
 
   // Process scene hierarchy - collect all meshes into a single root group
   // BG3D format: root group → one sub-group per model → geometry
-  const scene = doc.getRoot().listScenes()[0];
+  const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
   if (!scene) {
     return {
       materials,

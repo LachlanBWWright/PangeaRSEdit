@@ -21,6 +21,37 @@ import {
   triMeshToBG3DGeometry,
 } from "./convertHelpers";
 
+function getDiffuseColorMaterialKey(mesh: TQ3TriMeshData): string {
+  const color = mesh.diffuseColor;
+  return `${color.r}:${color.g}:${color.b}:${color.a}`;
+}
+
+function getDiffuseColorMaterialIndex(
+  mesh: TQ3TriMeshData,
+  materials: BG3DMaterial[],
+  diffuseColorToMaterialMap: Map<string, number>,
+): number {
+  const key = getDiffuseColorMaterialKey(mesh);
+  const existingMaterialIndex = diffuseColorToMaterialMap.get(key);
+  if (existingMaterialIndex !== undefined) {
+    return existingMaterialIndex;
+  }
+
+  const materialIndex = materials.length;
+  materials.push({
+    flags: 0,
+    diffuseColor: [
+      mesh.diffuseColor.r,
+      mesh.diffuseColor.g,
+      mesh.diffuseColor.b,
+      mesh.diffuseColor.a,
+    ],
+    textures: [],
+  });
+  diffuseColorToMaterialMap.set(key, materialIndex);
+  return materialIndex;
+}
+
 export function metaFileToBG3DParseResult(
   metaFile: TQ3MetaFile,
 ): Result<BG3DParseResult, string> {
@@ -32,6 +63,7 @@ export function metaFileToBG3DParseResult(
     },
   ];
   const textureToMaterialMap = new Map<number, number>();
+  const diffuseColorToMaterialMap = new Map<string, number>();
 
   for (let i = 0; i < metaFile.numTextures; i++) {
     const shader = metaFile.textures[i];
@@ -66,6 +98,12 @@ export function metaFileToBG3DParseResult(
         const materialIdx = textureToMaterialMap.get(mesh.internalTextureID);
         if (materialIdx !== undefined)
           geometry.layerMaterialNum[0] = materialIdx;
+      } else {
+        geometry.layerMaterialNum[0] = getDiffuseColorMaterialIndex(
+          mesh,
+          materials,
+          diffuseColorToMaterialMap,
+        );
       }
       bg3dGroup.children.push(geometry);
     }
@@ -81,6 +119,12 @@ export function metaFileToBG3DParseResult(
         const materialIdx = textureToMaterialMap.get(mesh.internalTextureID);
         if (materialIdx !== undefined)
           geometry.layerMaterialNum[0] = materialIdx;
+      } else {
+        geometry.layerMaterialNum[0] = getDiffuseColorMaterialIndex(
+          mesh,
+          materials,
+          diffuseColorToMaterialMap,
+        );
       }
       rootGroup.children.push(geometry);
     }

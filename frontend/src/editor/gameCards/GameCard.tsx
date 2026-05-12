@@ -23,6 +23,7 @@ import {
   getSupportedUploadTypes,
   getTextureFileType,
 } from "./gameCardDisplayState";
+import type { ParsedLevelDataFile } from "@/editor/loadLogic/parseLevelDataFile";
 
 const GAME_CARD_PREVIEW_HEIGHT_CLASS = "h-60";
 
@@ -44,7 +45,8 @@ export function GameCard({
   handleParseLevelDataFile: (
     file: Blob,
     gameType: GlobalsInterface,
-  ) => Promise<Result<unknown, string>>;
+    companionTextureFile?: File,
+  ) => Promise<Result<ParsedLevelDataFile, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
@@ -143,7 +145,11 @@ export function GameCard({
       current: 1,
       completed: textureFile ? 4 : 2,
     });
-    const parseResult = await handleParseLevelDataFile(levelFile, globals);
+    const parseResult = await handleParseLevelDataFile(
+      levelFile,
+      globals,
+      isMightyMike ? textureFile ?? undefined : undefined,
+    );
     if (parseResult.isErr()) {
       progressToast.fail({
         id: toastId,
@@ -152,7 +158,13 @@ export function GameCard({
       });
       return;
     }
-    if (textureFile) {
+    if (parseResult.value.mapImages.length > 0) {
+      setMapImages([...parseResult.value.mapImages]);
+      if (parseResult.value.mapImagesFile) {
+        setMapImagesFile(parseResult.value.mapImagesFile);
+      }
+    }
+    if (textureFile && !isMightyMike) {
       progressToast.update({
         id: toastId,
         title: "Decoding terrain textures...",

@@ -9,7 +9,7 @@ import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { err, ok, ResultAsync, type Result } from "neverthrow";
 
 /** Supported model upload formats. */
-export type ModelUploadKind = "bg3d" | "3dmf" | "glb";
+export type ModelUploadKind = "bg3d" | "3dmf" | "gltf";
 
 /** Validated selection details for a model upload flow. */
 export interface UploadSelection {
@@ -33,17 +33,17 @@ export function validateUploadSelection(
   const fileName = bg3dFile.name.toLowerCase();
   const isBg3d = fileName.endsWith(".bg3d");
   const is3dmf = fileName.endsWith(".3dmf");
-  const isGlb = fileName.endsWith(".glb");
+  const isGltf = fileName.endsWith(".glb") || fileName.endsWith(".gltf");
 
-  if (!isBg3d && !is3dmf && !isGlb) {
-    return err("Please select a BG3D, 3DMF, or GLB file");
+  if (!isBg3d && !is3dmf && !isGltf) {
+    return err("Please select a BG3D, 3DMF, GLB, or glTF file");
   }
 
   if (skeletonFile && !isSkeletonFileName(skeletonFile.name)) {
     return err("Skeleton file must be a .skeleton.rsrc or .rsrc file");
   }
 
-  if (isGlb) return ok({ kind: "glb", bg3dFile, skeletonFile });
+  if (isGltf) return ok({ kind: "gltf", bg3dFile, skeletonFile });
   if (is3dmf) return ok({ kind: "3dmf", bg3dFile, skeletonFile });
   return ok({ kind: "bg3d", bg3dFile, skeletonFile });
 }

@@ -45,7 +45,7 @@ export function getModelToGlbWorkerResponse(
   action: string,
 ): Result<ModelToGlbWorkerResponse, string> {
   if (response.type === "error") {
-    return err("Failed to ${action}: ${response.error}");
+    return err(`Failed to ${action}: ${response.error}`);
   }
   if (!isModelToGlbWorkerResponse(response)) {
     return err(unexpectedWorkerResponseError(action, response.type));
@@ -59,7 +59,7 @@ export function getParsedToGlbWorkerResponse(
   action: string,
 ): Result<ParsedToGlbWorkerResponse, string> {
   if (response.type === "error") {
-    return err("Failed to ${action}: ${response.error}");
+    return err(`Failed to ${action}: ${response.error}`);
   }
   if (response.type !== "bg3d-parsed-to-glb") {
     return err(unexpectedWorkerResponseError(action, response.type));
@@ -73,7 +73,7 @@ export function getGlbToBg3dWorkerResponse(
   action: string,
 ): Result<GlbToBg3dWorkerResponse, string> {
   if (response.type === "error") {
-    return err("Failed to ${action}: ${response.error}");
+    return err(`Failed to ${action}: ${response.error}`);
   }
   if (response.type !== "glb-to-bg3d") {
     return err(unexpectedWorkerResponseError(action, response.type));

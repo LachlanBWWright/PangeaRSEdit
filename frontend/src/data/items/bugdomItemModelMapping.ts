@@ -55,12 +55,24 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Faucet]: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 11 }, // LAWN1_MObjType_WaterFaucet = 11
 
   // Lawn level vegetation (Lawn_Models2.3dmf - group 4: LAWN2 items; indices = LAWN2_MObjType values)
-  [ItemType.Grass]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 0 }, // LAWN2_MObjType_Grass = 0
+  [ItemType.Grass]: {
+    modelFile: "Lawn_Models2.3dmf",
+    modelPath: "models",
+    modelIndex: 0,
+    scale: 0.15,
+    variants: { 0: { modelIndex: 0 }, 1: { modelIndex: 1 } },
+  }, // LAWN2_MObjType_Grass = 0; AddGrass uses GRASS_SCALE = .15f
   [ItemType.Weed]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 2 }, // LAWN2_MObjType_Weed = 2
   [ItemType.Cosmo]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 3 }, // LAWN2_MObjType_Cosmo = 3
   [ItemType.Poppy]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 4 }, // LAWN2_MObjType_Poppy = 4
   [ItemType.SunFlower]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 5 }, // LAWN2_MObjType_Sunflower = 5
-  [ItemType.Clover]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 6 }, // LAWN2_MObjType_Clover = 6
+  [ItemType.Clover]: {
+    modelFile: "Lawn_Models2.3dmf",
+    modelPath: "models",
+    modelIndex: 6,
+    scale: 0.2,
+    variants: { 0: { modelIndex: 6 }, 1: { modelIndex: 7 } },
+  }, // LAWN2_MObjType_Clover = 6; AddClover uses CLOVER_SCALE + RandomFloat()*.1f
   [ItemType.Rock]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 8 }, // LAWN2_MObjType_Rock1 = 8
 
   // Pond level models (Pond_Models.3dmf; indices = POND_MObjType values)

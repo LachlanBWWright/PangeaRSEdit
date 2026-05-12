@@ -76,6 +76,7 @@ async function glbUrlToBg3dResponse(
       const message = {
         type: "glb-to-bg3d",
         buffer: glbBytesResult.value,
+        fileName: "model.glb",
       } satisfies BG3DGltfWorkerMessage;
       worker.postMessage(message);
     }),

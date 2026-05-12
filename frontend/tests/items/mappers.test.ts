@@ -298,6 +298,32 @@ describe("Game Item Mappers", () => {
       expect(mapping?.modelPath).toBe("skeletons");
       expect(mapping?.requiresSkeleton).toBe(true);
     });
+
+    it("should apply grass scale and p0 variant", () => {
+      const mapping = bugdomItemMapper.getMapping(6, 1, {
+        p0: 1,
+        p1: 0,
+        p2: 0,
+        p3: 0,
+      });
+
+      expect(mapping?.modelFile).toBe("Lawn_Models2.3dmf");
+      expect(mapping?.modelIndex).toBe(1);
+      expect(mapping?.scale).toBe(0.15);
+    });
+
+    it("should apply clover scale and p0 variant", () => {
+      const mapping = bugdomItemMapper.getMapping(5, 1, {
+        p0: 1,
+        p1: 0,
+        p2: 0,
+        p3: 0,
+      });
+
+      expect(mapping?.modelFile).toBe("Lawn_Models2.3dmf");
+      expect(mapping?.modelIndex).toBe(7);
+      expect(mapping?.scale).toBe(0.2);
+    });
     
     it("should return undefined for unmapped type", () => {
       const mapping = bugdomItemMapper.getMapping(99999);

@@ -21,6 +21,10 @@ const terrainIoErrorLikeSchema = z.object({
   message: z.string(),
 });
 
+const terrainWorkerPool: Worker[] = [];
+const availableTerrainWorkers: Worker[] = [];
+const pendingTerrainWorkerResolvers: ((worker: Worker) => void)[] = [];
+
 function createDecodeRequest(
   codec: TerrainTextureCodec,
   jobId: number,
@@ -95,12 +99,41 @@ async function decodeChunkWithNewWorker(
   codec: TerrainTextureCodec,
   chunk: TerrainTextureChunk,
   jobId: number,
+  workerLimit: number,
 ): Promise<DecodedTerrainTile> {
-  const worker = new TerrainCodecWorker();
   const request = createDecodeRequest(codec, jobId, chunk);
+  const worker = await acquireTerrainWorker(workerLimit);
   return decodeChunk(worker, request).finally(() => {
-    worker.terminate();
+    releaseTerrainWorker(worker);
   });
+}
+
+function ensureTerrainWorkerPool(workerLimit: number): void {
+  while (terrainWorkerPool.length < workerLimit) {
+    const worker = new TerrainCodecWorker();
+    terrainWorkerPool.push(worker);
+    availableTerrainWorkers.push(worker);
+  }
+}
+
+function acquireTerrainWorker(workerLimit: number): Promise<Worker> {
+  ensureTerrainWorkerPool(workerLimit);
+  const worker = availableTerrainWorkers.shift();
+  if (worker) {
+    return Promise.resolve(worker);
+  }
+  return new Promise((resolve) => {
+    pendingTerrainWorkerResolvers.push(resolve);
+  });
+}
+
+function releaseTerrainWorker(worker: Worker): void {
+  const nextResolver = pendingTerrainWorkerResolvers.shift();
+  if (nextResolver) {
+    nextResolver(worker);
+    return;
+  }
+  availableTerrainWorkers.push(worker);
 }
 
 async function decodeChunksWithLimit(
@@ -122,7 +155,12 @@ async function decodeChunksWithLimit(
       return;
     }
 
-    const tile = await decodeChunkWithNewWorker(codec, chunk, chunkIndex + 1);
+    const tile = await decodeChunkWithNewWorker(
+      codec,
+      chunk,
+      chunkIndex + 1,
+      workerLimit,
+    );
     decodedTiles.push(tile);
     completedChunks += 1;
     onProgress?.({ completed: completedChunks, total: chunks.length });

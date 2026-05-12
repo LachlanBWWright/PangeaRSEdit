@@ -32,6 +32,8 @@ export default defineConfig({
       "src/data/utils/*.test.ts",
       "src/data/selectors/*.test.ts",
       "src/editor/utils/*.test.ts",
+      "src/modelParsers/*.test.ts",
+      "src/pages/ModelViewer/hooks/*.test.ts",
     ],
     exclude: [
       "tests/e2e/**",

@@ -6,7 +6,8 @@ export function isSupportedModelFile(fileName: string): boolean {
   return (
     loweredName.endsWith(".bg3d") ||
     loweredName.endsWith(".3dmf") ||
-    loweredName.endsWith(".glb")
+    loweredName.endsWith(".glb") ||
+    loweredName.endsWith(".gltf")
   );
 }
 
@@ -31,7 +32,7 @@ export function getUploadDropzoneText(awaitingSkeleton: boolean): {
   }
   return {
     title: "Drop a model file here or click to select",
-    body: "Upload .bg3d, .3dmf, or .glb. BG3D and 3DMF files can optionally use a matching .skeleton.rsrc file.",
+    body: "Upload .bg3d, .3dmf, .glb, or embedded .gltf. BG3D and 3DMF files can optionally use a matching .skeleton.rsrc file.",
   };
 }
 
@@ -66,6 +67,6 @@ export function processUploadSelection({
   }
 
   toast.error(
-    `"${file.name}" is not a supported model file. Please select a .bg3d, .3dmf, or .glb file.`,
+    `"${file.name}" is not a supported model file. Please select a .bg3d, .3dmf, .glb, or embedded .gltf file.`,
   );
 }

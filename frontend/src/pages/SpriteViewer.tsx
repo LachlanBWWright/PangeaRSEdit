@@ -22,6 +22,7 @@ import { PaletteSelector } from "./SpriteViewer/components/PaletteSelector";
 import { PaletteEditor } from "./SpriteViewer/components/PaletteEditor";
 import { createPalette, clonePalette, Palette } from "./SpriteViewer/utils/paletteUtils";
 import { TilesetEditor } from "./SpriteViewer/components/TilesetEditor";
+import { EditorField, EditorPanel } from "./SpriteViewer/components/EditorPanel";
 import { MightyMikeTileset } from "@/parsers/mightyMikeTilesetParser";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -1095,38 +1096,50 @@ export function SpriteViewer() {
         ? "cell"
         : "default";
 
+  const loadedTypeLabel =
+    loadedData?.type === "sprites"
+      ? "Sprites"
+      : loadedData?.type === "tileset"
+        ? "Tileset"
+        : loadedData?.type === "tga"
+          ? "Texture"
+          : "No file";
+
   return (
-    <div className="h-full overflow-hidden p-4 bg-gray-900 text-white">
-      <ResizablePanelGroup orientation="horizontal" className="h-full w-full min-w-0">
-        {/* Left sidebar */}
-        <ResizablePanel defaultSize={28} minSize={18} className="min-h-0 min-w-0 pr-3">
-          <div className="h-full flex flex-col space-y-4 px-2 py-4 overflow-y-auto overflow-x-hidden">
-          {/* File Upload Panel */}
-          <FileUploadPanel
-            selectedType={uploadFileType}
-            onTypeChange={setUploadFileType}
-            onFileSelected={handleCustomFileUpload}
-            loading={loading}
-          />
+    <div className="h-full overflow-hidden bg-gray-950 p-3 text-white">
+      <ResizablePanelGroup
+        orientation="horizontal"
+        className="h-full w-full min-w-0"
+      >
+        <ResizablePanel
+          defaultSize={28}
+          minSize={18}
+          className="min-h-0 min-w-0 pr-3"
+        >
+          <div className="h-full flex flex-col space-y-3 overflow-y-auto overflow-x-hidden rounded-lg border border-gray-800 bg-gray-900 p-3">
+            <FileUploadPanel
+              selectedType={uploadFileType}
+              onTypeChange={setUploadFileType}
+              onFileSelected={handleCustomFileUpload}
+              loading={loading}
+            />
 
-          {/* Mighty Mike Asset Browser */}
-          <MightyMikeAssetBrowser
-            selectedType={assetFileType}
-            onTypeChange={setAssetFileType}
-            onAssetSelect={(filename) => {
-              if (assetFileType === "sprites") {
-                handleLoadSpritesFile(filename);
-              } else if (assetFileType === "tga") {
-                handleLoadTGAFile(filename);
-              } else if (assetFileType === "tileset") {
-                handleLoadTilesetFile(filename);
-              }
-            }}
-            loading={loading}
-            loadedFilename={loadedData?.filename}
-          />
+            <MightyMikeAssetBrowser
+              selectedType={assetFileType}
+              onTypeChange={setAssetFileType}
+              onAssetSelect={(filename) => {
+                if (assetFileType === "sprites") {
+                  handleLoadSpritesFile(filename);
+                } else if (assetFileType === "tga") {
+                  handleLoadTGAFile(filename);
+                } else if (assetFileType === "tileset") {
+                  handleLoadTilesetFile(filename);
+                }
+              }}
+              loading={loading}
+              loadedFilename={loadedData?.filename}
+            />
 
-          {/* Palette Components (only for sprites) */}
           {loadedData?.type === "sprites" && (
             <>
               <PaletteSelector
@@ -1169,7 +1182,6 @@ export function SpriteViewer() {
             </>
           )}
 
-          {/* Sprite Controls (only for sprites) */}
           {loadedData?.type === "sprites" && (
             <SpriteControls
               shapesFile={loadedData.data}
@@ -1183,65 +1195,72 @@ export function SpriteViewer() {
             />
           )}
 
-          {/* Pixel edit mode (only for sprites) */}
           {loadedData?.type === "sprites" && (
-            <div className="space-y-2">
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Edit Mode</p>
-              <div className="flex flex-wrap gap-1">
-                <Button
-                  size="sm"
-                  variant={editMode === "view" ? "default" : "outline"}
-                  className="text-white"
-                  onClick={() => setEditMode("view")}
-                >
-                  <Eye className="w-3 h-3 mr-1" /> View
-                </Button>
-                <Button
-                  size="sm"
-                  variant={editMode === "paint" ? "default" : "outline"}
-                  className="text-white"
-                  onClick={() => setEditMode("paint")}
-                >
-                  <Paintbrush className="w-3 h-3 mr-1" /> Paint
-                </Button>
-                <Button
-                  size="sm"
-                  variant={editMode === "erase" ? "default" : "outline"}
-                  className="text-white"
-                  onClick={() => setEditMode("erase")}
-                >
-                  <Eraser className="w-3 h-3 mr-1" /> Erase
-                </Button>
-                <Button
-                  size="sm"
-                  variant={editMode === "eyedropper" ? "default" : "outline"}
-                  className="text-white"
-                  onClick={() => setEditMode("eyedropper")}
-                >
-                  <Pipette className="w-3 h-3 mr-1" /> Pick
-                </Button>
-              </div>
-              {(editMode === "paint" || editMode === "eyedropper") && (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-6 h-6 rounded border border-gray-600 flex-shrink-0"
-                    style={{ backgroundColor: selectedColorStyle }}
-                  />
-                  <span className="text-xs text-gray-300 w-16">Index: {selectedPaletteColorIndex}</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={255}
-                    value={selectedPaletteColorIndex}
-                    onChange={(e) => setSelectedPaletteColorIndex(parseInt(e.target.value, 10))}
-                    className="flex-1"
-                  />
+            <EditorPanel title="Sprite Tools">
+              <EditorField label="Mode">
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    size="sm"
+                    variant={editMode === "view" ? "default" : "outline"}
+                    className="text-white"
+                    onClick={() => setEditMode("view")}
+                  >
+                    <Eye className="w-3 h-3 mr-1" /> View
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={editMode === "paint" ? "default" : "outline"}
+                    className="text-white"
+                    onClick={() => setEditMode("paint")}
+                  >
+                    <Paintbrush className="w-3 h-3 mr-1" /> Paint
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={editMode === "erase" ? "default" : "outline"}
+                    className="text-white"
+                    onClick={() => setEditMode("erase")}
+                  >
+                    <Eraser className="w-3 h-3 mr-1" /> Erase
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={editMode === "eyedropper" ? "default" : "outline"}
+                    className="text-white"
+                    onClick={() => setEditMode("eyedropper")}
+                  >
+                    <Pipette className="w-3 h-3 mr-1" /> Pick
+                  </Button>
                 </div>
+              </EditorField>
+              {(editMode === "paint" || editMode === "eyedropper") && (
+                <EditorField label="Palette Index">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-6 h-6 rounded border border-gray-600 flex-shrink-0"
+                      style={{ backgroundColor: selectedColorStyle }}
+                    />
+                    <span className="text-xs text-gray-300 w-16">
+                      Index: {selectedPaletteColorIndex}
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={255}
+                      value={selectedPaletteColorIndex}
+                      onChange={(e) =>
+                        setSelectedPaletteColorIndex(
+                          parseInt(e.target.value, 10),
+                        )
+                      }
+                      className="flex-1"
+                    />
+                  </div>
+                </EditorField>
               )}
-            </div>
+            </EditorPanel>
           )}
 
-          {/* Tileset Editor (only for tilesets) */}
           {loadedData?.type === "tileset" && (
             <TilesetEditor
               tileCount={loadedData.data.numTileDefinitions}
@@ -1253,7 +1272,6 @@ export function SpriteViewer() {
             />
           )}
 
-          {/* Display Options */}
           {loadedData && (
             <DisplayOptionsPanel
               options={displayOptions}
@@ -1262,9 +1280,8 @@ export function SpriteViewer() {
             />
           )}
 
-          {/* Export Options (only for sprites) */}
           {loadedData?.type === "sprites" && (
-            <div className="space-y-2">
+            <EditorPanel title="Export">
               <Button
                 variant="outline"
                 className="w-full text-white"
@@ -1281,12 +1298,11 @@ export function SpriteViewer() {
                 <Download className="w-4 h-4 mr-2" />
                 Download All Frames
               </Button>
-            </div>
+            </EditorPanel>
           )}
 
-          {/* Export Options (only for tilesets) */}
           {loadedData?.type === "tileset" && (
-            <div className="space-y-2">
+            <EditorPanel title="Export">
               <Button
                 variant="outline"
                 className="w-full text-white"
@@ -1312,61 +1328,85 @@ export function SpriteViewer() {
                 <Download className="w-4 h-4 mr-2" />
                 Download All Tiles
               </Button>
-            </div>
+            </EditorPanel>
           )}
-        </div>
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
-        {/* Main viewport */}
         <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
-          <div className="h-full relative bg-gray-800 rounded-lg overflow-hidden flex flex-col">
-          {/* Zoom overlay buttons */}
-          <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
-            <Button size="icon" variant="secondary" onClick={handleZoomIn} title="Zoom in">
-              <ZoomIn className="w-4 h-4" />
-            </Button>
-            <Button size="icon" variant="secondary" onClick={handleZoomOut} title="Zoom out">
-              <ZoomOut className="w-4 h-4" />
-            </Button>
-          </div>
+          <div className="h-full relative overflow-hidden rounded-lg border border-gray-800 bg-gray-900 flex flex-col">
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-800 px-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-100">
+                  {loadedData?.filename ?? "Sprite Editor"}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {loadedTypeLabel} | {displayOptions.zoomLevel.toFixed(1)}x
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleZoomOut}
+                  title="Zoom out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleZoomIn}
+                  title="Zoom in"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
 
-          {loadedData ? (
-            <div
-              className="flex-1 overflow-auto"
-              style={{ cursor: viewportCursor }}
-              onWheel={handleWheel}
-              onMouseDown={handleViewportMouseDown}
-              onMouseMove={handleViewportMouseMove}
-              onMouseUp={handleViewportMouseUp}
-              onMouseLeave={handleViewportMouseUp}
-            >
+            {loadedData ? (
               <div
-                className="flex items-center justify-center p-8 min-w-full min-h-full"
-                style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)` }}
+                className="flex-1 overflow-auto"
+                style={{ cursor: viewportCursor }}
+                onWheel={handleWheel}
+                onMouseDown={handleViewportMouseDown}
+                onMouseMove={handleViewportMouseMove}
+                onMouseUp={handleViewportMouseUp}
+                onMouseLeave={handleViewportMouseUp}
               >
-                <canvas
-                  ref={canvasRef}
-                  style={{ imageRendering: "pixelated" }}
-                  onMouseDown={handleCanvasMouseDown}
-                  onMouseMove={handleCanvasMouseMove}
-                  onMouseUp={handleCanvasMouseUp}
-                  onMouseLeave={handleCanvasMouseUp}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              <div className="text-center">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                  <Maximize2 className="w-12 h-12" />
+                <div
+                  className="flex items-center justify-center p-8 min-w-full min-h-full"
+                  style={{
+                    transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                  }}
+                >
+                  <canvas
+                    ref={canvasRef}
+                    style={{ imageRendering: "pixelated" }}
+                    onMouseDown={handleCanvasMouseDown}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseUp}
+                  />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">No Content Loaded</h3>
-                <p className="text-sm">Load a file to view sprites, images, or tilesets</p>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center">
+                  <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
+                    <Maximize2 className="w-12 h-12" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    No Content Loaded
+                  </h3>
+                  <p className="text-sm">
+                    Load a file to view sprites, images, or tilesets
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
