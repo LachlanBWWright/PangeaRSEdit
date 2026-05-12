@@ -162,6 +162,7 @@ export function ModelViewer() {
   const hasAnimations = animations.length > 0;
 
   const [scene, setScene] = useState<Group | undefined>(undefined);
+  const [sceneUpdateRevision, setSceneUpdateRevision] = useState(0);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const [gameLabel, setGameLabel] = useState<string | null>(null);
@@ -594,7 +595,12 @@ export function ModelViewer() {
         return false;
       }
 
-      applyUvEditToScene(scene, updatedLayout);
+      const didUpdateScene = applyUvEditToScene(scene, updatedLayout);
+      if (!didUpdateScene) {
+        toast.error("Could not apply UV edits to the current model preview");
+        return false;
+      }
+      setSceneUpdateRevision((current) => current + 1);
       setBg3dParsed((currentParsed) => {
         if (!currentParsed) {
           return currentParsed;
@@ -794,7 +800,9 @@ export function ModelViewer() {
         return;
       }
 
-      applyUvEditToScene(scene, updatedLayout);
+      if (applyUvEditToScene(scene, updatedLayout)) {
+        setSceneUpdateRevision((current) => current + 1);
+      }
     },
     [scene],
   );
@@ -810,7 +818,9 @@ export function ModelViewer() {
         return;
       }
 
-      applyUvEditToScene(scene, committedLayout);
+      if (applyUvEditToScene(scene, committedLayout)) {
+        setSceneUpdateRevision((current) => current + 1);
+      }
     },
     [scene, uvLayouts],
   );
@@ -1538,6 +1548,7 @@ export function ModelViewer() {
                     weightBrushSettings={weightBrushSettings}
                     weightVisualizationMode={weightVisualizationMode}
                     onWeightBrushStroke={handleWeightBrushStroke}
+                    sceneUpdateRevision={sceneUpdateRevision}
                   />
                 </ErrorBoundary>
               ) : (

@@ -18,6 +18,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
         {
             entity.ToTable("users");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.DisplayName).HasMaxLength(256);
             entity.Property(x => x.Email).HasMaxLength(320);
             entity.Property(x => x.AvatarUrl).HasMaxLength(2048);
@@ -29,6 +30,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
         {
             entity.ToTable("external_logins");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.Provider).HasMaxLength(64);
             entity.Property(x => x.ProviderSubject).HasMaxLength(256);
             entity.HasIndex(x => new { x.Provider, x.ProviderSubject }).IsUnique();
@@ -42,6 +44,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
         {
             entity.ToTable("saved_levels");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.Game).HasMaxLength(64);
             entity.Property(x => x.LevelKey).HasMaxLength(256);
             entity.Property(x => x.LevelName).HasMaxLength(256);
@@ -62,6 +65,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
         {
             entity.ToTable("multiplayer_lobbies");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.GameId).HasMaxLength(64);
             entity.Property(x => x.Mode).HasMaxLength(64);
             entity.Property(x => x.TrackOrLevel).HasMaxLength(256);
@@ -79,6 +83,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
         {
             entity.ToTable("multiplayer_lobby_players");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.ParticipantId).HasMaxLength(128);
             entity.Property(x => x.DisplayName).HasMaxLength(256);
             entity.HasIndex(x => new { x.LobbyId, x.ParticipantId }).IsUnique();

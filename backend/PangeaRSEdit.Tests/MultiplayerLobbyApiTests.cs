@@ -1,15 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace PangeaRSEdit.Tests;
 
-public sealed class MultiplayerLobbyApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PangeaApiFactory _factory;
 
-    public MultiplayerLobbyApiTests(WebApplicationFactory<Program> factory)
+    public MultiplayerLobbyApiTests(PangeaApiFactory factory)
     {
         _factory = factory;
     }

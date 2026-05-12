@@ -35,6 +35,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     weightBrushSettings,
     weightVisualizationMode,
     onWeightBrushStroke,
+    sceneUpdateRevision,
   } = props;
 
   // Always call hooks unconditionally (must be called in every render in same order)
@@ -161,6 +162,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
             weightVisualizationMode={weightVisualizationMode}
             interactionMode={interactionMode}
             onWeightBrushStroke={onWeightBrushStroke}
+            sceneUpdateRevision={sceneUpdateRevision}
             position={modelPosition}
           />
         )}

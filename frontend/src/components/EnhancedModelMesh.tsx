@@ -15,7 +15,7 @@ import {
   MeshPhysicalMaterial,
 } from "three";
 import { useEffect, useRef, memo, useCallback } from "react";
-import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { buildWeightColorMap } from "@/modelEditing/weights/weightVisualization";
 import type {
   SkinWeightsData,
@@ -55,6 +55,7 @@ interface EnhancedModelMeshProps {
   weightVisualizationMode?: WeightVisualizationMode;
   interactionMode?: ViewerInteractionMode;
   onWeightBrushStroke?: (hit: WeightBrushHit) => void;
+  sceneUpdateRevision?: number;
 }
 
 interface WeightVisualizationRestoreEntry {
@@ -120,10 +121,16 @@ function EnhancedModelMeshComponent({
   weightVisualizationMode = "none",
   interactionMode = "navigate",
   onWeightBrushStroke,
+  sceneUpdateRevision: _sceneUpdateRevision,
 }: EnhancedModelMeshProps) {
+  const invalidate = useThree((state) => state.invalidate);
   const skeletonHelpersRef = useRef<(SkeletonHelper | Mesh)[]>([]);
   const boneTubesRef = useRef<BoneTubeRef[]>([]);
   const activePaintPointerIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    invalidate();
+  }, [_sceneUpdateRevision, invalidate]);
 
   useEffect(() => {
     if (!scene) return;

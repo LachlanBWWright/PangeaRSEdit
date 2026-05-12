@@ -12,6 +12,7 @@ describe("deploy workflow", () => {
   it("keeps generated Pangea Ports wasm artifacts in the Pages output", async () => {
     const workflow = await readFile(workflowPath, "utf8");
 
+    expect(workflow).toContain("npm run build:games");
     expect(workflow).toContain("path: ./frontend/dist");
     expect(workflow).not.toContain("frontend/dist/generated");
   });

@@ -51,4 +51,5 @@ export interface ModelCanvasProps {
   weightBrushSettings?: WeightBrushSettings | null;
   weightVisualizationMode?: WeightVisualizationMode;
   onWeightBrushStroke?: (hit: WeightBrushHit) => void;
+  sceneUpdateRevision?: number;
 }

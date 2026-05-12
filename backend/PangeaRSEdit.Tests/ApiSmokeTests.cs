@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace PangeaRSEdit.Tests;
 
-public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ApiSmokeTests : IClassFixture<PangeaApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PangeaApiFactory _factory;
 
-    public ApiSmokeTests(WebApplicationFactory<Program> factory)
+    public ApiSmokeTests(PangeaApiFactory factory)
     {
         _factory = factory;
     }
