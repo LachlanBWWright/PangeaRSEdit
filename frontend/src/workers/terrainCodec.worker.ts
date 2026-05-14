@@ -1,28 +1,42 @@
-import { lzssDecompress } from "@/utils/lzss";
-import { sixteenBitToImageData } from "@/utils/imageConverter";
-import { decodeJpegNode } from "@/utils/jpegDecompress";
-import { Result } from "neverthrow";
 import {
   terrainCodecWorkerRequestSchema,
   type TerrainCodecWorkerRequest,
   type TerrainCodecWorkerResponse,
 } from "@/data/terrain-io/terrainCodecSchemas";
+import {
+  decodeJpegTerrainTile,
+  decodeLzssTerrainTile,
+} from "@/data/terrain-io/terrainCodecWasm";
 
-function decodeJpegRequest(
+function createInvalidRequestResponse(
   request: TerrainCodecWorkerRequest,
+  message: string,
 ): TerrainCodecWorkerResponse {
+  return {
+    type: "decode-error",
+    jobId: request.jobId,
+    id: request.id,
+    code: "terrain.decode.bad-format",
+    message,
+  };
+}
+
+async function decodeRequest(
+  request: TerrainCodecWorkerRequest,
+): Promise<TerrainCodecWorkerResponse> {
   if (request.type === "decode-jpeg") {
-    const decodeResult = Result.fromThrowable(
-      () => decodeJpegNode(request.bytes),
-      (error) => String(error),
-    )();
+    const decodeResult = await decodeJpegTerrainTile(request.id, {
+      jpegBytes: request.bytes,
+      width: request.supertileTexmapSize,
+      height: request.supertileTexmapSize,
+    });
     if (decodeResult.isErr()) {
       return {
         type: "decode-error",
         jobId: request.jobId,
         id: request.id,
-        code: "terrain.decode.failed",
-        message: decodeResult.error,
+        code: decodeResult.error.code,
+        message: decodeResult.error.message,
       };
     }
 
@@ -30,72 +44,31 @@ function decodeJpegRequest(
       type: "decoded",
       jobId: request.jobId,
       id: request.id,
-      imageData: decodeResult.value,
+      width: decodeResult.value.width,
+      height: decodeResult.value.height,
+      rgbaBytes: decodeResult.value.rgbaBytes,
     };
   }
 
-  return {
-    type: "decode-error",
-    jobId: request.jobId,
-    id: request.id,
-    code: "terrain.decode.bad-format",
-    message: "Expected a JPEG terrain decode request",
-  };
-}
-
-function decodeLzssRequest(
-  request: TerrainCodecWorkerRequest,
-): TerrainCodecWorkerResponse {
   if (request.type !== "decode-lzss") {
-    return {
-      type: "decode-error",
-      jobId: request.jobId,
-      id: request.id,
-      code: "terrain.decode.bad-format",
-      message: "Expected an LZSS terrain decode request",
-    };
+    return createInvalidRequestResponse(
+      request,
+      "Expected an LZSS terrain decode request",
+    );
   }
 
-  const outputSize =
-    request.supertileTexmapSize * request.supertileTexmapSize * 2;
-  const decompressedResult = Result.fromThrowable(
-    () => lzssDecompress(new DataView(request.bytes), outputSize),
-    (error) => String(error),
-  )();
-  if (decompressedResult.isErr()) {
+  const decodeResult = await decodeLzssTerrainTile(request.id, {
+    compressedBytes: request.bytes,
+    width: request.supertileTexmapSize,
+    height: request.supertileTexmapSize,
+  });
+  if (decodeResult.isErr()) {
     return {
       type: "decode-error",
       jobId: request.jobId,
       id: request.id,
-      code: "terrain.decode.failed",
-      message: decompressedResult.error,
-    };
-  }
-
-  const canvas = new OffscreenCanvas(
-    request.supertileTexmapSize,
-    request.supertileTexmapSize,
-  );
-  const context = canvas.getContext("2d");
-  if (!context) {
-    return {
-      type: "decode-error",
-      jobId: request.jobId,
-      id: request.id,
-      code: "terrain.decode.no-canvas-context",
-      message: "Failed to get 2D context for terrain decode",
-    };
-  }
-
-  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-  const imageResult = sixteenBitToImageData(decompressedResult.value, imageData);
-  if (imageResult.isErr()) {
-    return {
-      type: "decode-error",
-      jobId: request.jobId,
-      id: request.id,
-      code: "terrain.decode.bad-format",
-      message: imageResult.error,
+      code: decodeResult.error.code,
+      message: decodeResult.error.message,
     };
   }
 
@@ -103,7 +76,9 @@ function decodeLzssRequest(
     type: "decoded",
     jobId: request.jobId,
     id: request.id,
-    imageData,
+    width: decodeResult.value.width,
+    height: decodeResult.value.height,
+    rgbaBytes: decodeResult.value.rgbaBytes,
   };
 }
 
@@ -113,10 +88,10 @@ self.onmessage = (event: MessageEvent<unknown>) => {
     return;
   }
 
-  const request = parsed.data;
-  const response =
-    request.type === "decode-jpeg"
-      ? decodeJpegRequest(request)
-      : decodeLzssRequest(request);
-  self.postMessage(response);
+  void (async () => {
+    const response = await decodeRequest(parsed.data);
+    const transferables =
+      response.type === "decoded" ? [response.rgbaBytes] : [];
+    self.postMessage(response, { transfer: transferables });
+  })();
 };

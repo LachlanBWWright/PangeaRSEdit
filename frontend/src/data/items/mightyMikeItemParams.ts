@@ -101,7 +101,15 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
   // Item 55: Key Color
   55: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Key-color subtype/frame passed directly to the key-color shape.",
+      codeSample: {
+        code: "newObj = MakeNewShape(GroupNum_KeyColor,ObjType_KeyColor,itemPtr->parm[0],",
+        fileName: "src/Misc/MiscAnims.c",
+        lineNumber: 247,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",

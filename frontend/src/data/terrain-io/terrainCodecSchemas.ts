@@ -25,7 +25,9 @@ export const terrainCodecSuccessResponseSchema = z.object({
   type: z.literal("decoded"),
   jobId: z.number().int().nonnegative(),
   id: z.number().int().nonnegative(),
-  imageData: z.instanceof(ImageData),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  rgbaBytes: z.instanceof(ArrayBuffer),
 });
 
 export const terrainCodecErrorResponseSchema = z.object({

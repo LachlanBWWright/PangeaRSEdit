@@ -8,6 +8,8 @@ import { Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useCallback, useMemo, useState, useRef } from "react";
+import { itemFilterStateAtom } from "@/data/items/itemFilterAtoms";
+import { isSplineItemVisible } from "@/data/items/itemFilterUtils";
 import {
   SelectedSpline,
   SelectedSplineNub,
@@ -58,6 +60,7 @@ export const Spline = memo(
     onHoverChange: (tag: HoverTagInfo | null) => void;
   }) => {
     const selectedSpline = useAtomValue(SelectedSpline);
+    const itemFilterState = useAtomValue(itemFilterStateAtom);
     const [initialDragState, setInitialDragState] = useState<
       { x: number; z: number }[] | null
     >(null);
@@ -176,6 +179,9 @@ export const Spline = memo(
           );
         })}
         {items.map((item, itemIdx) => {
+          if (!isSplineItemVisible(item.type, itemFilterState)) {
+            return null;
+          }
           const pointIdx = getSplineItemPointIndex(points, item.placement);
 
           return (

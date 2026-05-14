@@ -173,21 +173,34 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
         lineNumber: 98,
       },
     },
-    p1: {
-      type: "Integer",
-      description: "Player number (for capture the flag modes)",
-      codeSample: {
-        code: "newObj->PlayerNum = itemPtr->parm[1]; // remember this for capture the flag modes",
-        fileName: "Source/Items/Wormhole.c",
-        lineNumber: 158,
-      },
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Egg already taken; only the nest remains.",
+          codeSample: {
+            code: "if (!(itemPtr->flags & ITEM_FLAGS_USER1))",
+            fileName: "Source/Items/Eggs.c",
+            lineNumber: 122,
+          },
+        },
+      ],
     },
-    p2: "Unknown",
-    p3: "Unknown",
   },
   [ItemType.EggWormhole]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Wormhole rotation (0-7, where each unit = 45°).",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
+        fileName: "Source/Items/Wormhole.c",
+        lineNumber: 150,
+      },
+    },
     p1: {
       type: "Integer",
       description: "Player number (for capture the flag modes)",
@@ -267,34 +280,54 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.BerryBush]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Berry bush variant (0 = low, 1 = high).",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_LowBerryBush + itemPtr->parm[0],",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 189,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.CatTail]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Cattail size variant (0 = small, 1 = large).",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_SmallCattail + itemPtr->parm[0],",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 192,
+      },
+    },
     p1: {
       type: "Integer",
-      description:
-        "Rotation (0-7, where each unit = 45°) or 0 for random rotation",
+      description: "Rotation (0-7, where each unit = 45°) when p3 bit 0 is clear.",
       codeSample: {
         code: ".rot = (randomRot) ? (RandomFloat()*PI2) : ((float)itemPtr->parm[1] * (PI2/8.0f)),",
         fileName: "Source/Items/Bushes.c",
         lineNumber: 200,
       },
     },
-    p2: "Unknown",
-    p3: "Unknown",
-  },
-  [ItemType.CatTail]: {
-    flags: "Unknown",
-    p0: "Unknown",
-    p1: {
-      type: "Integer",
-      description: "Color variant",
-      codeSample: {
-        code: "short color = itemPtr->parm[1];",
-        fileName: "Source/Items/Bushes.c",
-        lineNumber: 475,
-      },
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Use random rotation instead of p1.",
+          codeSample: {
+            code: "Boolean randomRot = itemPtr->parm[3] & 1;",
+            fileName: "Source/Items/Bushes.c",
+            lineNumber: 190,
+          },
+        },
+      ],
     },
-    p2: "Unknown",
-    p3: "Unknown",
   },
   [ItemType.Rock]: {
     flags: "Unknown",
@@ -694,27 +727,11 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.RamphorEnemy]: {
-    flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Height parameter for spline-based enemy",
-      codeSample: {
-        code: "long height = itemPtr->parm[0];",
-        fileName: "Source/Enemies/Enemy_Ramphor.c",
-        lineNumber: 85,
-      },
-    },
-    p1: {
-      type: "Integer",
-      description: "Speed parameter for spline-based enemy",
-      codeSample: {
-        code: "long speed = itemPtr->parm[1];",
-        fileName: "Source/Enemies/Enemy_Ramphor.c",
-        lineNumber: 86,
-      },
-    },
-    p2: "Unknown",
-    p3: "Unknown",
+    flags: "Unused on the terrain item table; terrain slot 48 is NilAdd and Ramphor is spline-only.",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
 };
 

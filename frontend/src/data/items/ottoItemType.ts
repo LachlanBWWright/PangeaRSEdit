@@ -256,7 +256,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p0: {
       type: "Integer",
       description:
-        "Plant type (0=Farm Tree, 1=Jungle Fern, 2=Jungle Flower, 3=Jungle Leafy Plant, 4=Cloud Tree, 5=Snow Tree)",
+        "Plant type (0=Farm Tree, 1=Jungle Fern, 2=Jungle Flower, 3=Jungle Leafy Plant, 4=Cloud Topiary 0, 5=Cloud Topiary 1, 6=Cloud Topiary 2, 7=Fire/Ice Pine Tree, 8=Fire/Ice Snow Tree)",
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get plant type",
         fileName: "Items/Items.c",
@@ -269,15 +269,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.SpacePodGenerator]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Rotation (0=0°, 1=90°, 2=180°, 3=270°)",
-      codeSample: {
-        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
-        fileName: "Items/Items.c",
-        lineNumber: 145,
-      },
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -749,17 +741,33 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.ExitRocket]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
+    p0: {
+      type: "Integer",
+      description: "Rocket rotation (0-7, where each unit = 45°).",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
+        fileName: "Player/Player.c",
+        lineNumber: 527,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Checkpoint]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
+    p0: {
+      type: "Integer",
+      description: "Checkpoint number.",
+      codeSample: {
+        code: "base->CheckPointNum = itemPtr->parm[0];",
+        fileName: "Items/Triggers.c",
+        lineNumber: 692,
+      },
+    },
     p1: {
       type: "Integer",
-      description: "Player rotation (0-3, multiplied by PI2/4)",
+      description: "Respawn facing (0-7, where each unit = 45°).",
       codeSample: {
         code: "base->ReincarnationAim = (float)itemPtr->parm[1] * (PI2/8.0f);",
         fileName: "Items/Triggers.c",
@@ -1272,10 +1280,32 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.HumanScientist]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
+    p0: {
+      type: "Integer",
+      description:
+        "Ignored on input; AddHumanScientist overwrites parm[0] with HUMAN_TYPE_SCIENTIST before spawning",
+      codeSample: {
+        code: "itemPtr->parm[0] = HUMAN_TYPE_SCIENTIST;",
+        fileName: "Items/Humans.c",
+        lineNumber: 1170,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Encased in ice",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1)\n\t\tEncaseHumanInIce(newObj);",
+            fileName: "Items/Humans.c",
+            lineNumber: 233,
+          },
+        },
+      ],
+    },
   },
   [ItemType.ProximityMine]: {
     flags: "Auto-fade status bits",
@@ -1349,7 +1379,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "Integer",
-      description: "Ship type (0-2)",
+      description: "Crashed ship subtype; selects the crashed-rocket model and its collision setup.",
       codeSample: {
         code: "int type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
@@ -1358,9 +1388,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Rotation (0-3, multiplied by PI2/4 = PI/2 per step)",
+      description: "Unused",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4.0f);",
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4.0f);",
         fileName: "Items/Items.c",
         lineNumber: 1871,
       },
@@ -1442,10 +1472,39 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.BumperCar]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
-    p1: "Unused",
+    p0: {
+      type: "Integer",
+      description: "Car ID within the current bumper-car area.",
+      codeSample: {
+        code: "id = itemPtr->parm[0];",
+        fileName: "Items/BumperCar.c",
+        lineNumber: 167,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Area number used to group bumper cars and gates.",
+      codeSample: {
+        code: "area = itemPtr->parm[1];",
+        fileName: "Items/BumperCar.c",
+        lineNumber: 178,
+      },
+    },
     p2: "Unused",
-    p3: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Spawn the player bumper car instead of the clown bumper car.",
+          codeSample: {
+            code: "int playerCar = itemPtr->parm[3] & 1;",
+            fileName: "Items/BumperCar.c",
+            lineNumber: 165,
+          },
+        },
+      ],
+    },
   },
   [ItemType.TireBumperStrip]: {
     flags: "Auto-fade status bits",

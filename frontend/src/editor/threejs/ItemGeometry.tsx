@@ -13,10 +13,11 @@ import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
+import { getItemModelCacheKey } from "./hooks/itemModelCacheKey";
 import { getGameMapper } from "@/data/items/mappers";
 import {
-  getParamByIndex,
   calculateRotation,
+  getParamByIndex,
   isRotationParam,
 } from "@/data/items/standardParamTypes";
 import {
@@ -181,22 +182,16 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const { modelCache, loadModel } = useItemModelCache(currentGame);
   const items = itemData.Itms?.[1000]?.obj;
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
-  const getItemCacheKey = useCallback((itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
-    const gamePrefix = `g${currentGame}_`;
-    if (mapper?.isParamDependent?.(itemType)) {
-      const config = mapper.getParamDependentConfig?.(itemType);
-      if (config) {
-        const params = { p0, p1, p2, p3 };
-        const paramValue = getParamByIndex(params, config.paramIndex);
-        return `${gamePrefix}${itemType}_p${config.paramIndex}_${paramValue}`;
-      }
-      return `${gamePrefix}${itemType}_p1_${p1}`;
-    }
-    if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
-      return `${gamePrefix}${itemType}_lv${levelNum}`;
-    }
-    return `${gamePrefix}${itemType}`;
-  }, [currentGame, mapper, levelNum]);
+  const getItemCacheKey = useCallback(
+    (itemType: number, p0: number, p1: number, p2: number, p3: number): string =>
+      getItemModelCacheKey(
+        currentGame,
+        itemType,
+        { p0, p1, p2, p3 },
+        levelNum,
+      ),
+    [currentGame, levelNum],
+  );
   const itemsByCacheKey = useMemo(() => {
     if (!items) return new Map<string, typeof items>();
     const groups = new Map<string, typeof items>();
@@ -221,9 +216,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
-        const mapping = mapper?.getMapping(firstItem.type, levelNum, params);
-        if (mapping && cachedModel.gltf.scene) {
-          const cloned = cachedModel.gltf.scene.clone(true);
+        const mapping = mapper?.getMapping(firstItem.type, levelNum, params, firstItem.flags);
+        if (mapping && cachedModel.gltf) {
+          const cloned = cachedModel.gltf.clone(true);
           const baseScale = mapping.scale ?? 1;
           const sx = baseScale * (mapping.scaleXZ ?? 1);
           const sy = baseScale * (mapping.scaleY ?? 1);
@@ -366,7 +361,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             const clonedScene = clonedScenesByCacheKey.get(itemCacheKey);
             if (clonedScene) {
               const params = { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 };
-              const mapping = mapper?.getMapping(item.type, levelNum, params);
+              const mapping = mapper?.getMapping(item.type, levelNum, params, item.flags);
               let extraRotationY = 0;
               if (mapping?.rotationParam) {
                 const rp = mapping.rotationParam;

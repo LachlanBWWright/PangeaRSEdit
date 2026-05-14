@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
+import wasm from "vite-plugin-wasm";
 import fs from "node:fs";
 import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
@@ -114,6 +115,10 @@ export default defineConfig({
     target: "es2022",
   },
   server: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
     watch: {
       ignored: [
         "**/_codeql_detected_source_root",
@@ -124,7 +129,17 @@ export default defineConfig({
       allow: [repoRoot],
     },
   },
-  plugins: [react(), serveStaticDirectory(pangeaPortsMount, pangeaPortsSrcDir)],
+  preview: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+  },
+  plugins: [
+    react(),
+    wasm(),
+    serveStaticDirectory(pangeaPortsMount, pangeaPortsSrcDir),
+  ],
   worker: { format: "es" },
   resolve: {
     alias: {

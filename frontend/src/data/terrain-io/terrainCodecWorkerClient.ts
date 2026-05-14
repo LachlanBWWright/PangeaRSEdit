@@ -25,6 +25,24 @@ const terrainWorkerPool: Worker[] = [];
 const availableTerrainWorkers: Worker[] = [];
 const pendingTerrainWorkerResolvers: ((worker: Worker) => void)[] = [];
 
+function cloneArrayBuffer(buffer: ArrayBuffer): ArrayBuffer {
+  const copy = new ArrayBuffer(buffer.byteLength);
+  new Uint8Array(copy).set(new Uint8Array(buffer));
+  return copy;
+}
+
+function createImageData(
+  rgbaBytes: ArrayBuffer,
+  width: number,
+  height: number,
+): DecodedTerrainTile["imageData"] {
+  return new ImageData(
+    new Uint8ClampedArray(cloneArrayBuffer(rgbaBytes)),
+    width,
+    height,
+  );
+}
+
 function createDecodeRequest(
   codec: TerrainTextureCodec,
   jobId: number,
@@ -73,7 +91,14 @@ async function decodeChunk(
         return;
       }
 
-      resolve({ id: parsed.data.id, imageData: parsed.data.imageData });
+      resolve({
+        id: parsed.data.id,
+        imageData: createImageData(
+          parsed.data.rgbaBytes,
+          parsed.data.width,
+          parsed.data.height,
+        ),
+      });
     };
 
     const onError = () => {

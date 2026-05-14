@@ -24,6 +24,72 @@ export interface SourceCitation {
   description: string;
 }
 
+export type SemanticCitationProof =
+  | "item-add-routine"
+  | "model-group"
+  | "model-index"
+  | "model-file"
+  | "scale"
+  | "rotation"
+  | "position"
+  | "param-domain"
+  | "child-object"
+  | "level-condition";
+
+export interface SemanticCitation extends SourceCitation {
+  proves: SemanticCitationProof;
+}
+
+export type VerificationStatus = "verified" | "approximate";
+
+export type ItemParamDomain =
+  | {
+      kind: "integer";
+      summary: string;
+      min?: number;
+      max?: number;
+    }
+  | {
+      kind: "enum";
+      summary: string;
+      values: readonly { value: number; label: string }[];
+    }
+  | {
+      kind: "bitset";
+      summary: string;
+      bits: readonly { index: number; label: string }[];
+    }
+  | {
+      kind: "rotation";
+      summary: string;
+      divisions: number;
+    }
+  | {
+      kind: "scale";
+      summary: string;
+      multiplier: number;
+      offset: number;
+    };
+
+export interface ModelPartMapping {
+  partId: string;
+  modelFile: string;
+  modelPath: "models" | "skeletons";
+  modelIndex: number;
+  groupSize?: number;
+  scale?: number;
+  scaleXZ?: number;
+  scaleY?: number;
+  rotationY?: number;
+  positionOffset?: [number, number, number];
+  citations: readonly SemanticCitation[];
+}
+
+export interface StaticAnalysisIssue {
+  severity: "warning" | "error";
+  message: string;
+}
+
 /**
  * Game repository info for constructing citation URLs
  */
@@ -137,6 +203,21 @@ export interface UniversalItemModelMapping {
   
   /** Source code citations for this mapping */
   citations?: SourceCitation[];
+
+  /** Whether the mapping is source-derived or still an approximation */
+  verificationStatus?: VerificationStatus;
+
+  /** Machine-readable citations tied to specific model semantics */
+  semanticCitations?: readonly SemanticCitation[];
+
+  /** Param semantics used by static analysis */
+  paramDomains?: Partial<Record<"p0" | "p1" | "p2" | "p3" | "flags", ItemParamDomain>>;
+
+  /** Multi-part render definitions for items that create more than one object */
+  modelParts?: readonly ModelPartMapping[];
+
+  /** Static analysis issues discovered while evaluating the mapping */
+  staticAnalysisIssues?: readonly StaticAnalysisIssue[];
 }
 
 /**
@@ -156,6 +237,7 @@ export interface GameItemModelMapper {
     itemType: number,
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
+    flags?: number,
   ): UniversalItemModelMapping | undefined;
   
   /**

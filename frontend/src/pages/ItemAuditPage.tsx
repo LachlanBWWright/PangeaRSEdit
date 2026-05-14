@@ -351,6 +351,20 @@ export function ItemAuditPage() {
                   <p>Model Index: {previewMapping.modelIndex}</p>
                   <p>Group Size: {previewMapping.groupSize ?? 1}</p>
                   <p>Rotation Y: {previewMapping.rotationY ?? 0}</p>
+                  <p>Verification: {currentEntry.verificationStatus}</p>
+                  <p>Model Parts: {currentEntry.modelPartCount}</p>
+                  <p>Static Issues: {currentEntry.staticAnalysisIssues.length}</p>
+                </div>
+              )}
+
+              {currentEntry.staticAnalysisIssues.length > 0 && (
+                <div className="space-y-2 rounded border border-amber-700/60 bg-amber-950/30 p-3">
+                  <Label>Static analysis</Label>
+                  <ul className="list-disc pl-5 text-xs text-amber-100 space-y-1">
+                    {currentEntry.staticAnalysisIssues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

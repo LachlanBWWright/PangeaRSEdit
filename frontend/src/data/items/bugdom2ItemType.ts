@@ -407,9 +407,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "ITEM_FLAGS_USER1: Task completed (head attached)",
     p0: {
       type: "Integer",
-      description: "Scarecrow part (0 = body, 1 = head separately)",
+      description: "Scarecrow part (0 = body/shirt base, nonzero = standalone head)",
       codeSample: {
-        code: "gNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;",
+        code: "if (part == 0)\n\tgNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;\nelse\n\tgNewObjectDefinition.type = GARDEN_ObjType_ScarecrowHead;",
         fileName: "Source/Items/Snails.c",
         lineNumber: 817,
       },
@@ -438,7 +438,8 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Door color",
+      description:
+        "Door model variant (garden/sidewalk/playroom/park: 0=red, 1=green, 2=blue; closet: 0=silicon door, >0=diary door)",
       codeSample: {
         code: "int\t\tdoorColor = itemPtr->parm[1];",
         fileName: "Source/Items/Items.c",
@@ -648,10 +649,10 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.SquishBerry]: {
     flags: "ITEM_FLAGS_USER1: Is squished (shows as splat)",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.DogHouse]: {
     flags: "Unknown",
@@ -737,35 +738,23 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "POW type",
+      description:
+        "POW kind (0=health, 1=flight, 2=map, 3=free life, 4=ram grain, 5=buddy bug, 6=red key, 7=green key, 8=blue key, 9=green clover, 10=blue clover, 11=gold clover, 12=shield)",
       codeSample: {
         code: "pow = MakePOW(itemPtr->parm[0], &where);",
         fileName: "Source/Items/Powerups.c",
         lineNumber: 585,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Firecracker]: {
     flags: "Unknown",
-    p0: {
-      type: "Bit Flags",
-      flags: [
-        {
-          index: 0,
-          description: "Build 2 collision boxes",
-          codeSample: {
-            code: "if (itemPtr->parm[0] & 1) { /* build 2 collision boxes */ }",
-            fileName: "Source/Items/Traps.c",
-            lineNumber: 327,
-          },
-        },
-      ],
-    },
-    p1: "Unknown",
-    p2: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
     p3: {
       type: "Bit Flags",
       flags: [
@@ -944,7 +933,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Puzzle part (0 = main puzzle base, 1+ = individual pieces)",
+      description: "Puzzle part (0 = full puzzle board, 1-3 = puzzle pieces 1-3)",
       codeSample: {
         code: "int part = itemPtr->parm[0];\nif (part == 0) {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_PuzzleMain;",
         fileName: "Source/Items/Snails2.c",
@@ -1080,7 +1069,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Stack level",
+      description: "Stack level; raises the box in stacked arrangements.",
       codeSample: {
         code: "int stackLevel = itemPtr->parm[1];",
         fileName: "Source/Items/Items2.c",
@@ -1152,7 +1141,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       flags: [
         {
           index: 0,
-          description: "Is target moth",
+          description: "Target marker only; when set, no moth model is spawned.",
           codeSample: {
             code: "if (itemPtr->parm[3] & 1) // see if target\n    return(true);",
             fileName: "Source/Enemies/Enemy_Moth.c",
@@ -1182,13 +1171,27 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       ],
     },
   },
-  [ItemType.SiliconPart]: bugdom2DefaultParams,
+  [ItemType.SiliconPart]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Silicon part (0=Chip1, 1=Chip2, 2=Battery).",
+      codeSample: {
+        code: "gNewObjectDefinition.type = CLOSET_ObjType_Chip1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 959,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
   [ItemType.NilAdd2]: bugdom2DefaultParams,
   [ItemType.BookStack]: {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Book stack type (0-2: flat book, tall book, tall stack)",
+      description: "Book stack type (0=flat book, 1=book stack, 2=tall book stack)",
       codeSample: {
         code: "int type = itemPtr->parm[0];\nif (type > 2) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_FlatBook + type;",
         fileName: "Source/Items/Items2.c",
@@ -1262,7 +1265,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Picture type (affects model)",
+      description: "Picture art (0=Brian, 1=Peter, 2=Tuncer)",
       codeSample: {
         code: "gNewObjectDefinition.type = CLOSET_ObjType_PictureFrame_Brian + itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
@@ -1327,7 +1330,21 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   [ItemType.LilyPad]: bugdom2DefaultParams,
   [ItemType.CatTail]: bugdom2DefaultParams,
   [ItemType.Bubbler]: bugdom2DefaultParams,
-  [ItemType.PlatformFlower]: bugdom2DefaultParams,
+  [ItemType.PlatformFlower]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Flower height variant (0=short, 1=medium, 2=tall).",
+      codeSample: {
+        code: "gNewObjectDefinition.type = PARK_ObjType_ShortFlower + itemPtr->parm[0];",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 1260,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
   [ItemType.FishingLure]: bugdom2DefaultParams,
   [ItemType.Silverware]: {
     flags: "Unknown",
@@ -1432,16 +1449,24 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Tin can type",
+      description: "Tin can pose (0=upright/random yaw, 1=lying on its side)",
       codeSample: {
         code: "int type = itemPtr->parm[0];\nif (type > 1) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_TinCan;",
         fileName: "Source/Items/Items3.c",
         lineNumber: 457,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: {
+      type: "Integer",
+      description: "Quarter-turn yaw used when p0 = 1.",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4);",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 470,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Detergent]: {
     flags: "Unknown",
@@ -1477,16 +1502,16 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Glider part (0 or 1)",
+      description: "Glider part (0=glider body, 1=wheel, 2=propeller)",
       codeSample: {
         code: "int part = itemPtr->parm[0];\ngNewObjectDefinition.type = GARBAGE_ObjType_Glider + part;",
         fileName: "Source/Items/Items3.c",
         lineNumber: 601,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
 };
 

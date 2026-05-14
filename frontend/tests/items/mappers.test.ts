@@ -20,6 +20,11 @@ import { nanosaur1ItemMapper } from "../../src/data/items/mappers/nanosaur1ItemM
 import { nanosaur2ItemMapper } from "../../src/data/items/mappers/nanosaur2ItemMapper";
 import { croMagItemMapper } from "../../src/data/items/mappers/croMagItemMapper";
 import { billyFrontierItemMapper } from "../../src/data/items/mappers/billyFrontierItemMapper";
+import { ItemType as BugdomItemType } from "../../src/data/items/bugdomItemType";
+import { ItemType as OttoItemType } from "../../src/data/items/ottoItemType";
+import { ItemType as Bugdom2ItemType } from "../../src/data/items/bugdom2ItemType";
+import { ItemType as BillyFrontierItemType } from "../../src/data/items/billyFrontierItemType";
+import { ItemType as Nanosaur2ItemType } from "../../src/data/items/nanosaur2ItemType";
 
 describe("Game Item Mappers", () => {
   describe("getGameMapper", () => {
@@ -208,23 +213,23 @@ describe("Game Item Mappers", () => {
     });
     
     it("should handle param-dependent Human mapping", () => {
-      // Human (type 4) should use different models based on p1 param
-      const farmerMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
+      // Human should use different models based on p0 param.
+      const farmerMapping = ottoItemMapper.getMapping(OttoItemType.Human, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
       expect(farmerMapping).toBeDefined();
       expect(farmerMapping?.modelFile).toBe("Farmer.bg3d");
       expect(farmerMapping?.skeletonFile).toBe("Farmer.skeleton.rsrc");
       
-      const beeWomanMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 1, p2: 0, p3: 0 });
+      const beeWomanMapping = ottoItemMapper.getMapping(OttoItemType.Human, undefined, { p0: 1, p1: 0, p2: 0, p3: 0 });
       expect(beeWomanMapping).toBeDefined();
       expect(beeWomanMapping?.modelFile).toBe("BeeWoman.bg3d");
       expect(beeWomanMapping?.skeletonFile).toBe("BeeWoman.skeleton.rsrc");
       
-      const scientistMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 2, p2: 0, p3: 0 });
+      const scientistMapping = ottoItemMapper.getMapping(OttoItemType.Human, undefined, { p0: 2, p1: 0, p2: 0, p3: 0 });
       expect(scientistMapping).toBeDefined();
       expect(scientistMapping?.modelFile).toBe("Scientist.bg3d");
       expect(scientistMapping?.skeletonFile).toBe("Scientist.skeleton.rsrc");
       
-      const skirtLadyMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 3, p2: 0, p3: 0 });
+      const skirtLadyMapping = ottoItemMapper.getMapping(OttoItemType.Human, undefined, { p0: 3, p1: 0, p2: 0, p3: 0 });
       expect(skirtLadyMapping).toBeDefined();
       expect(skirtLadyMapping?.modelFile).toBe("SkirtLady.bg3d");
       expect(skirtLadyMapping?.skeletonFile).toBe("SkirtLady.skeleton.rsrc");
@@ -256,6 +261,16 @@ describe("Game Item Mappers", () => {
       expect(bugdom2ItemMapper.getLevelModelFile(0)).toBe("Level1_Garden.bg3d");
       expect(bugdom2ItemMapper.getLevelModelFile(3)).toBe("Level5_Playroom.bg3d");
       expect(bugdom2ItemMapper.getLevelModelFile(99)).toBeUndefined();
+    });
+
+    it("should swap RideBall models for the playroom level", () => {
+      const sidewalkRideBall = bugdom2ItemMapper.getMapping(Bugdom2ItemType.RideBall, 1);
+      const playroomRideBall = bugdom2ItemMapper.getMapping(Bugdom2ItemType.RideBall, 3);
+
+      expect(sidewalkRideBall?.modelFile).toBe("Level2_Sidewalk.bg3d");
+      expect(sidewalkRideBall?.modelIndex).toBe(15);
+      expect(playroomRideBall?.modelFile).toBe("Level5_Playroom.bg3d");
+      expect(playroomRideBall?.modelIndex).toBe(18);
     });
     
     it("should have model mappings", () => {
@@ -329,6 +344,70 @@ describe("Game Item Mappers", () => {
       const mapping = bugdomItemMapper.getMapping(99999);
       expect(mapping).toBeUndefined();
     });
+
+    it("should resolve level-specific rock mappings", () => {
+      const mapping = bugdomItemMapper.getMapping(BugdomItemType.Rock, 3, {
+        p0: 1,
+        p1: 0,
+        p2: 0,
+        p3: 0,
+      });
+
+      expect(mapping?.modelFile).toBe("Forest_Models.3dmf");
+      expect(mapping?.modelIndex).toBe(11);
+      expect(mapping?.verificationStatus).toBe("verified");
+    });
+
+    it("should resolve LawnDoor from level, params, and flags", () => {
+      const mapping = bugdomItemMapper.getMapping(
+        BugdomItemType.LawnDoor,
+        5,
+        { p0: 2, p1: 0, p2: 0, p3: 0 },
+        1,
+      );
+
+      expect(mapping?.modelFile).toBe("Night_Models.3dmf");
+      expect(mapping?.modelIndex).toBe(15);
+      expect(mapping?.rotationY).toBe(Math.PI / 2);
+    });
+
+    it("should resolve HoneycombPlatform size and material", () => {
+      const mapping = bugdomItemMapper.getMapping(
+        BugdomItemType.HoneycombPlatform,
+        4,
+        { p0: 1, p1: 7, p2: 0, p3: 0 },
+        2,
+      );
+
+      expect(mapping?.modelIndex).toBe(1);
+      expect(mapping?.scale).toBe(1.3);
+      expect(mapping?.positionOffset).toEqual([0, -350, 0]);
+    });
+
+    it("should expose multi-part detonator mappings", () => {
+      const mapping = bugdomItemMapper.getMapping(
+        BugdomItemType.Detonator,
+        4,
+        { p0: 4, p1: 3, p2: 0, p3: 0 },
+        1,
+      );
+
+      expect(mapping?.modelIndex).toBe(7);
+      expect(mapping?.modelParts?.length).toBe(2);
+      expect(mapping?.modelParts?.[1]?.positionOffset).toEqual([0, -66, 0]);
+    });
+
+    it("should remap HoneyTube selectors and scale", () => {
+      const mapping = bugdomItemMapper.getMapping(
+        BugdomItemType.HoneyTube,
+        4,
+        { p0: 1, p1: 3, p2: 2, p3: 0 },
+      );
+
+      expect(mapping?.modelIndex).toBe(22);
+      expect(mapping?.rotationY).toBe((3 * Math.PI) / 2);
+      expect(mapping?.scale).toBe(6);
+    });
   });
   
   describe("Nanosaur2ItemMapper", () => {
@@ -366,6 +445,16 @@ describe("Game Item Mappers", () => {
         const mapping = nanosaur2ItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
         expect(mapping === undefined || mapping !== null).toBe(true);
       }
+    });
+
+    it("should preserve TowerTurret scale across level overrides", () => {
+      const forestTurret = nanosaur2ItemMapper.getMapping(Nanosaur2ItemType.TowerTurret, 0);
+      const desertTurret = nanosaur2ItemMapper.getMapping(Nanosaur2ItemType.TowerTurret, 1);
+      const swampTurret = nanosaur2ItemMapper.getMapping(Nanosaur2ItemType.TowerTurret, 2);
+
+      expect(forestTurret?.scale).toBe(2.5);
+      expect(desertTurret?.scale).toBe(2.5);
+      expect(swampTurret?.scale).toBe(2.5);
     });
   });
   
@@ -431,6 +520,60 @@ describe("Game Item Mappers", () => {
         const mapping = billyFrontierItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
         expect(mapping === undefined || mapping !== null).toBe(true);
       }
+    });
+
+    it("should include burning building variants", () => {
+      const mapping = billyFrontierItemMapper.getMapping(
+        BillyFrontierItemType.Building,
+        undefined,
+        { p0: 8, p1: 0, p2: 0, p3: 0 },
+      );
+
+      expect(mapping?.modelFile).toBe("buildings.bg3d");
+      expect(mapping?.modelIndex).toBe(8);
+    });
+
+    it("should switch plant and rock models by Billy Frontier area family", () => {
+      const townPlant = billyFrontierItemMapper.getMapping(
+        BillyFrontierItemType.Plant,
+        0,
+        { p0: 1, p1: 0, p2: 0, p3: 0 },
+      );
+      const swampPlant = billyFrontierItemMapper.getMapping(
+        BillyFrontierItemType.Plant,
+        7,
+        { p0: 1, p1: 0, p2: 0, p3: 0 },
+      );
+      const townRock = billyFrontierItemMapper.getMapping(
+        BillyFrontierItemType.Rock,
+        0,
+        { p0: 2, p1: 0, p2: 0, p3: 0 },
+      );
+      const swampRock = billyFrontierItemMapper.getMapping(
+        BillyFrontierItemType.Rock,
+        7,
+        { p0: 2, p1: 0, p2: 0, p3: 0 },
+      );
+
+      expect(townPlant?.modelFile).toBe("town.bg3d");
+      expect(townPlant?.modelIndex).toBe(7);
+      expect(swampPlant?.modelFile).toBe("swamp.bg3d");
+      expect(swampPlant?.modelIndex).toBe(8);
+      expect(townRock?.modelFile).toBe("town.bg3d");
+      expect(townRock?.modelIndex).toBe(14);
+      expect(swampRock?.modelFile).toBe("swamp.bg3d");
+      expect(swampRock?.modelIndex).toBe(4);
+    });
+
+    it("should select Billy Frontier dead tree variant from p1", () => {
+      const mapping = billyFrontierItemMapper.getMapping(
+        BillyFrontierItemType.DeadTree,
+        undefined,
+        { p0: 0, p1: 1, p2: 0, p3: 0 },
+      );
+
+      expect(mapping?.modelIndex).toBe(8);
+      expect(mapping?.rotationParam?.paramIndex).toBe(0);
     });
   });
   

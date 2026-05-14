@@ -83,7 +83,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
     }
 
     if (request.type === "serialize-download") {
-      const serializeResult = serializeLevelDownloadBytes(
+      const serializeResult = await serializeLevelDownloadBytes(
         {
           globals: request.globals,
           fileName: request.fileName,
@@ -161,13 +161,13 @@ self.onmessage = (event: MessageEvent<unknown>) => {
       transfers,
     );
   })().catch((error: unknown) => {
-    postMessageWithTransfers({
-      requestId: request.requestId,
-      type: "failed",
-      error: {
-        code: "worker.failed",
-        message: error instanceof Error ? error.message : String(error),
-      },
+      postMessageWithTransfers({
+        requestId: request.requestId,
+        type: "failed",
+        error: {
+          code: "worker.failed",
+          message: String(error),
+        },
+      });
     });
-  });
-};
+  };

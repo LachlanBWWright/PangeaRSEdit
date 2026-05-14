@@ -42,7 +42,7 @@ interface ParamDependentConfig {
  */
 const PARAM_DEPENDENT_ITEMS: Record<number, ParamDependentConfig> = {
   [ItemType.Human]: {
-    paramIndex: 1, // p1 controls human type
+    paramIndex: 0, // p0 controls human type
     paramType: OTTO_HUMAN_TYPE,
   },
   [ItemType.Rock]: {
@@ -54,6 +54,43 @@ const PARAM_DEPENDENT_ITEMS: Record<number, ParamDependentConfig> = {
     paramType: OTTO_HAY_TYPE,
   },
 };
+
+function getBasicPlantMapping(
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping {
+  const plantType = params?.p0 ?? 0;
+  switch (plantType) {
+    case 1:
+      return { modelFile: "level6_jungle.bg3d", modelPath: "models", modelIndex: 15, scale: 3.0 };
+    case 2:
+      return { modelFile: "level6_jungle.bg3d", modelPath: "models", modelIndex: 16, scale: 2.25 };
+    case 3:
+      return { modelFile: "level6_jungle.bg3d", modelPath: "models", modelIndex: 17, scale: 4.5 };
+    case 4:
+      return { modelFile: "level5_cloud.bg3d", modelPath: "models", modelIndex: 23, scale: 4.0 };
+    case 5:
+      return { modelFile: "level5_cloud.bg3d", modelPath: "models", modelIndex: 24, scale: 4.0 };
+    case 6:
+      return { modelFile: "level5_cloud.bg3d", modelPath: "models", modelIndex: 25, scale: 4.0 };
+    case 7:
+      return { modelFile: "level7_fireice.bg3d", modelPath: "models", modelIndex: 52, scale: 2.0 };
+    case 8:
+      return { modelFile: "level7_fireice.bg3d", modelPath: "models", modelIndex: 53, scale: 2.0 };
+    default:
+      return { modelFile: "level1_farm.bg3d", modelPath: "models", modelIndex: 21, scale: 5.25 };
+  }
+}
+
+function getBumperCarMapping(
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping {
+  return {
+    modelFile: "level5_cloud.bg3d",
+    modelPath: "models",
+    modelIndex: ((params?.p3 ?? 0) & 1) !== 0 ? 10 : 11,
+    scale: 1.8,
+  };
+}
 
 /**
  * Convert ModelVariant to UniversalItemModelMapping
@@ -107,6 +144,18 @@ export class OttoItemMapper implements GameItemModelMapper {
     _levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
+    if (itemType === ItemType.SpacePodGenerator || itemType === ItemType.CloudPlatform) {
+      return undefined;
+    }
+
+    if (itemType === ItemType.BasicPlant) {
+      return getBasicPlantMapping(params);
+    }
+
+    if (itemType === ItemType.BumperCar) {
+      return getBumperCarMapping(params);
+    }
+
     // Check for param-dependent items first
     const paramConfig = PARAM_DEPENDENT_ITEMS[itemType];
     if (paramConfig) {
@@ -155,7 +204,7 @@ export class OttoItemMapper implements GameItemModelMapper {
    * For param-dependent items, the model varies based on item parameters.
    */
   isParamDependent(itemType: number): boolean {
-    return itemType in PARAM_DEPENDENT_ITEMS;
+    return itemType in PARAM_DEPENDENT_ITEMS || itemType === ItemType.BasicPlant || itemType === ItemType.BumperCar;
   }
   
   /**

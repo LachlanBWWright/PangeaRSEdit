@@ -31,6 +31,10 @@ export const BILLY_SCENE_MODEL_FILES: Record<string, string> = {
   global: "global.bg3d",
 };
 
+function isBillySwampLevel(levelNum?: number): boolean {
+  return levelNum !== undefined && levelNum >= 6;
+}
+
 /**
  * Base mappings for Billy Frontier items.
  * Model indices correspond exactly to the ObjType enum values in mobjtypes.h.
@@ -104,6 +108,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 34,
+    scale: 2.0,
     rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
   },
 
@@ -128,6 +133,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "town.bg3d",
     modelPath: "models",
     modelIndex: 6,
+    scale: 2.0,
     variants: {
       0: { modelIndex: 6 },
       1: { modelIndex: 7 },
@@ -156,6 +162,8 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "town.bg3d",
     modelPath: "models",
     modelIndex: 12,
+    scale: 2.5,
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
     variants: {
       0: { modelIndex: 12 },
       1: { modelIndex: 13 },
@@ -192,6 +200,8 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "town.bg3d",
     modelPath: "models",
     modelIndex: 7,
+    scale: 2.5,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
     variants: { 0: { modelIndex: 7 }, 1: { modelIndex: 8 } },
   },
 
@@ -211,6 +221,14 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
       5: { modelIndex: 5 },
       6: { modelIndex: 6 },
       7: { modelIndex: 7 },
+      8: { modelIndex: 8 },
+      9: { modelIndex: 9 },
+      10: { modelIndex: 10 },
+      11: { modelIndex: 11 },
+      12: { modelIndex: 12 },
+      13: { modelIndex: 13 },
+      14: { modelIndex: 14 },
+      15: { modelIndex: 15 },
     },
   },
 
@@ -218,7 +236,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   [ItemType.ShootoutSaloon]: {
     modelFile: "buildings.bg3d",
     modelPath: "models",
-    modelIndex: 16,
+    modelIndex: 0,
   },
 
   // ---- SWAMP (swamp.bg3d) ----
@@ -348,24 +366,61 @@ export class BillyFrontierItemMapper implements GameItemModelMapper {
    */
   getMapping(
     itemType: number,
-    _levelNum?: number,
+    levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
     const base = BILLY_BASE_MAPPINGS[itemType];
     if (!base) return undefined;
 
-    // Handle variants based on p0
-    if (base.variants && params) {
-      const variant = base.variants[params.p0];
-      if (variant)
-        return {
+    if (itemType === ItemType.Plant) {
+      if (!params || !isBillySwampLevel(levelNum)) {
+        return this.resolveVariant(base, params?.p0);
+      }
+
+      const swampVariants = {
+        0: { modelIndex: 7 },
+        1: { modelIndex: 8 },
+        2: { modelIndex: 9 },
+        3: { modelIndex: 10 },
+      };
+
+      return this.resolveVariant(
+        {
           ...base,
-          modelFile: variant.modelFile ?? base.modelFile,
-          modelIndex: variant.modelIndex,
-        };
+          modelFile: "swamp.bg3d",
+          modelIndex: 7,
+          variants: swampVariants,
+        },
+        params.p0,
+      );
     }
 
-    return base;
+    if (itemType === ItemType.Rock) {
+      if (!params || !isBillySwampLevel(levelNum)) {
+        return this.resolveVariant(base, params?.p0);
+      }
+
+      return this.resolveVariant(
+        {
+          ...base,
+          modelFile: "swamp.bg3d",
+          modelIndex: 2,
+          variants: {
+            0: { modelIndex: 2 },
+            1: { modelIndex: 3 },
+            2: { modelIndex: 4 },
+            3: { modelIndex: 5 },
+          },
+        },
+        params.p0,
+      );
+    }
+
+    if (itemType === ItemType.DeadTree && params) {
+      return this.resolveVariant(base, params.p1);
+    }
+
+    return this.resolveVariant(base, params?.p0);
   }
 
   /**
@@ -389,6 +444,28 @@ export class BillyFrontierItemMapper implements GameItemModelMapper {
    */
   getMappingCount(): number {
     return this.getMappedTypes().length;
+  }
+
+  isLevelDependent(itemType: number): boolean {
+    return itemType === ItemType.Plant || itemType === ItemType.Rock;
+  }
+
+  private resolveVariant(
+    base: UniversalItemModelMapping,
+    variantIndex: number | undefined,
+  ): UniversalItemModelMapping {
+    if (base.variants && variantIndex !== undefined) {
+      const variant = base.variants[variantIndex];
+      if (variant) {
+        return {
+          ...base,
+          modelFile: variant.modelFile ?? base.modelFile,
+          modelIndex: variant.modelIndex,
+        };
+      }
+    }
+
+    return base;
   }
 }
 

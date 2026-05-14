@@ -38,12 +38,12 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
     return filterItemTypesBySearch(allItemTypes, search);
   }, [allItemTypes, search]);
 
-  const isTypeVisible = (id: number): boolean => {
-    return isFilterTypeVisible(filter, id);
+  const isTypeVisible = (itemType: (typeof allItemTypes)[number]): boolean => {
+    return isFilterTypeVisible(filter, itemType);
   };
 
-  const toggleType = (id: number) => {
-    setFilter(toggleHiddenItemType(filter, id));
+  const toggleType = (itemType: (typeof allItemTypes)[number]) => {
+    setFilter(toggleHiddenItemType(filter, itemType));
   };
 
   const showAll = () => setFilter(DEFAULT_FILTER_STATE);
@@ -52,7 +52,7 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
     setFilter(createHideAllFilterState(filter, allItemTypes));
   };
 
-  const visibleCount = allItemTypes.filter((t) => isTypeVisible(t.id)).length;
+  const visibleCount = allItemTypes.filter((itemType) => isTypeVisible(itemType)).length;
 
   if (!isOpen) return null;
 
@@ -104,26 +104,26 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
             No items match
           </p>
         ) : (
-          filteredTypes.map(({ id, name }) => {
-            const visible = isTypeVisible(id);
+          filteredTypes.map((itemType) => {
+            const visible = isTypeVisible(itemType);
             return (
               <label
-                key={id}
+                key={itemType.key}
                 className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-800 transition-colors"
               >
                 <input
                   type="checkbox"
                   checked={visible}
-                  onChange={() => toggleType(id)}
+                  onChange={() => toggleType(itemType)}
                   className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
                 />
                 <span
                   className={`text-xs truncate ${visible ? "text-white" : "text-gray-500 line-through"}`}
                 >
-                  {name}
+                  {itemType.label}
                 </span>
                 <span className="ml-auto text-xs text-gray-600 flex-none">
-                  {id}
+                  {itemType.id}
                 </span>
               </label>
             );

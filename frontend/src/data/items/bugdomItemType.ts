@@ -258,7 +258,16 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.Grass]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description:
+        "Grass variant (0-1); the active model file changes by level, but parm[0] selects the mesh within that level's grass set",
+      codeSample: {
+        code: "switch(gLevelType)\n{\n\tcase LEVEL_TYPE_LAWN:\n\t\tgNewObjectDefinition.type = LAWN2_MObjType_Grass + n;\n\t\tbreak;\n\tcase LEVEL_TYPE_FOREST:\n\t\tgNewObjectDefinition.type = FOREST_MObjType_Grass + n;\n\t\tbreak;\n\tcase LEVEL_TYPE_NIGHT:\n\t\tgNewObjectDefinition.type = NIGHT_MObjType_Grass + n;\n\t\tbreak;\n}",
+        fileName: "src/Items/Items.c",
+        lineNumber: 207,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -417,10 +426,18 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.WaterBug]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Initial aim (0-15, counter-clockwise).",
+      codeSample: {
+        code: "newObj->Rot.y = (float)itemPtr->parm[0] * (PI2/16.0f);",
+        fileName: "src/Ride/WaterBug.c",
+        lineNumber: 86,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Tree]: {
     flags: "Unknown",
@@ -431,10 +448,18 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.DragonFly]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Initial aim (0-15, clockwise).",
+      codeSample: {
+        code: "newObj->Rot.y = (float)itemPtr->parm[0] * -(PI2/16.0f);",
+        fileName: "src/Ride/DragonFly.c",
+        lineNumber: 102,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.CatTail]: {
     flags: "Unknown",
@@ -466,14 +491,30 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.PondGrass]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Pond grass variant (0-2)",
+      codeSample: {
+        code: 'if (itemPtr->parm[0] > 2)\n\tDoFatalAlert("AddPondGrass:parm[0] out of range!");\ngNewObjectDefinition.type = POND_MObjType_PondGrass + itemPtr->parm[0];',
+        fileName: "src/Items/Items.c",
+        lineNumber: 956,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Reed]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Reed variant (0-1)",
+      codeSample: {
+        code: 'if (itemPtr->parm[0] > 1)\n\tDoFatalAlert("AddReed:parm[0] out of range!");\ngNewObjectDefinition.type = POND_MObjType_Reed + itemPtr->parm[0];',
+        fileName: "src/Items/Items.c",
+        lineNumber: 994,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -588,17 +629,57 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.Detonator]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Detonator ID used by linked nuts and hive doors.",
+      codeSample: {
+        code: "newObj->DetonatorID = itemPtr->parm[0];",
+        fileName: "src/Items/Triggers.c",
+        lineNumber: 646,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Detonator color (0=green, 1=orange, 2=purple, 3=red, 4=teal).",
+      codeSample: {
+        code: "gNewObjectDefinition.type = HIVE_MObjType_DetonatorGreen + itemPtr->parm[1];",
+        fileName: "src/Items/Triggers.c",
+        lineNumber: 641,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.HiveDoor]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Detonator ID that opens this hive door.",
+      codeSample: {
+        code: "newObj->DetonatorID = itemPtr->parm[0];",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 286,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Door orientation (0-3, where each unit = 90°).",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 282,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Door color (0=green, 1=orange, 2=purple, 3=red, 4=teal).",
+      codeSample: {
+        code: "gNewObjectDefinition.type = HIVE_MObjType_HiveDoor_Green + itemPtr->parm[2];",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 280,
+      },
+    },
+    p3: "Unused",
   },
   [ItemType.Enemy_Mosquito]: {
     flags: "Unknown",
@@ -633,10 +714,26 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.LawnDoor]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Key ID / door color index.",
+      codeSample: {
+        code: "gNewObjectDefinition.type = LAWN1_MObjType_Door_Green + itemPtr->parm[0];",
+        fileName: "src/Items/Triggers.c",
+        lineNumber: 774,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Door orientation (0-3, where each unit = 90°).",
+      codeSample: {
+        code: "Byte aim = itemPtr->parm[1];",
+        fileName: "src/Items/Triggers.c",
+        lineNumber: 762,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Dock]: {
     flags: "Unknown",
@@ -698,10 +795,34 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.RootSwing]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Root orientation (0-8, where each unit = 40°).",
+      codeSample: {
+        code: "r = itemPtr->parm[0] * (PI2/9.0f);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 549,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Animation sync offset (0-3).",
+      codeSample: {
+        code: "newObj->SwingIndex = itemPtr->parm[1] * (PI2/4);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 575,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Additional scale factor; final scale is 1.4 + p2*0.3.",
+      codeSample: {
+        code: "gNewObjectDefinition.scale = 1.4f + ((float)itemPtr->parm[2] * .3f);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 559,
+      },
+    },
+    p3: "Unused",
   },
   [ItemType.Thorn]: {
     flags: "Unknown",
@@ -719,10 +840,34 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.FireWall]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Linked valve ID.",
+      codeSample: {
+        code: "newObj->ValveID = itemPtr->parm[0];",
+        fileName: "src/Items/Traps.c",
+        lineNumber: 757,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Axis/orientation selector (0=-, 1=\\\\, 2=|).",
+      codeSample: {
+        code: "newObj->FireWallType = itemPtr->parm[1];",
+        fileName: "src/Items/Traps.c",
+        lineNumber: 758,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Width in tiles (0 uses the source default width).",
+      codeSample: {
+        code: "newObj->FireWallWidth = itemPtr->parm[2];",
+        fileName: "src/Items/Traps.c",
+        lineNumber: 759,
+      },
+    },
+    p3: "Unused",
   },
   [ItemType.WaterValve]: {
     flags: "Unknown",
@@ -733,10 +878,34 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.HoneyTube]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Tube type (0=bent, 1=remapped to straight, 2=straight, 3=taper).",
+      codeSample: {
+        code: "if (type == 1)\n\ttype = 2;",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 774,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Tube orientation (0-3, where each unit = 90°).",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 792,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Tube size factor; final scale is 3 * (1 + p2*0.5).",
+      codeSample: {
+        code: "gNewObjectDefinition.scale = 3.0f * (1.0f + itemPtr->parm[2] * .5f);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 781,
+      },
+    },
+    p3: "Unused",
   },
   [ItemType.Enemy_Larva]: {
     flags: "Unknown",
@@ -963,17 +1132,101 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.BentAntPipe]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Pipe rotation (counter-clockwise quarter turns).",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "src/Items/Items.c",
+        lineNumber: 1049,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Linked valve ID for spew logic.",
+      codeSample: {
+        code: "newObj->ValveID = itemPtr->parm[1];",
+        fileName: "src/Items/Items.c",
+        lineNumber: 1068,
+      },
+    },
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Spew only when the linked valve is open.",
+          codeSample: {
+            code: "newObj->SpewWater = itemPtr->parm[3] & (1<<0);",
+            fileName: "src/Items/Items.c",
+            lineNumber: 1069,
+          },
+        },
+        {
+          index: 1,
+          description: "Always spew water.",
+          codeSample: {
+            code: "newObj->AlwaysSpew = itemPtr->parm[3] & (1<<1);",
+            fileName: "src/Items/Items.c",
+            lineNumber: 1070,
+          },
+        },
+      ],
+    },
   },
   [ItemType.HorizAntPipe]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Pipe rotation (counter-clockwise quarter turns).",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "src/Items/Items.c",
+        lineNumber: 1107,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Height step; raises the pipe by p1*10 units.",
+      codeSample: {
+        code: "gNewObjectDefinition.coord.y += (float)itemPtr->parm[1] * 10.0f;",
+        fileName: "src/Items/Items.c",
+        lineNumber: 1113,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Linked valve ID for spew logic.",
+      codeSample: {
+        code: "newObj->ValveID = itemPtr->parm[2];",
+        fileName: "src/Items/Items.c",
+        lineNumber: 1130,
+      },
+    },
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Spew only when the linked valve is open.",
+          codeSample: {
+            code: "newObj->SpewWater = itemPtr->parm[3] & (1<<0);",
+            fileName: "src/Items/Items.c",
+            lineNumber: 1131,
+          },
+        },
+        {
+          index: 1,
+          description: "Always spew water.",
+          codeSample: {
+            code: "newObj->AlwaysSpew = itemPtr->parm[3] & (1<<1);",
+            fileName: "src/Items/Items.c",
+            lineNumber: 1132,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Enemy_KingAnt]: {
     flags: "Unknown",
@@ -1007,23 +1260,10 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.FloorSpike]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: {
-      type: "Bit Flags",
-      flags: [
-        {
-          index: 0,
-          description: "Rotation flag",
-          codeSample: {
-            code: "if (itemPtr->parm[3] & 1) // get rotation",
-            fileName: "src/Items/Traps.c",
-            lineNumber: 531,
-          },
-        },
-      ],
-    },
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.KingWaterPipe]: {
     flags: "Unknown",

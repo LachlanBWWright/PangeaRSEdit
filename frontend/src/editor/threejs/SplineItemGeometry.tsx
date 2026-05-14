@@ -10,8 +10,11 @@ import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { LevelNumber } from "@/data/globals/levelNumber";
+import { itemFilterStateAtom } from "@/data/items/itemFilterAtoms";
+import { isSplineItemVisible } from "@/data/items/itemFilterUtils";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
+import { getItemModelCacheKey } from "./hooks/itemModelCacheKey";
 import { getGameMapper } from "@/data/items/mappers";
 import { mapErr } from "@/utils/mapErr";
 
@@ -66,6 +69,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
   const levelNum = useAtomValue(LevelNumber);
+  const itemFilterState = useAtomValue(itemFilterStateAtom);
   const currentGame = globals.GAME_TYPE;
   const { modelCache, loadModel } = useItemModelCache(currentGame);
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
@@ -77,14 +81,18 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
 
   // Collect all unique spline item types present in this level
   const uniqueSplineItemTypes = useMemo(() => {
-    const types = new Set<number>();
-    if (!splines || !splineItemsBySplineIdx) return types;
-    splines.forEach((_, splineIdx) => {
-      const itemsData = splineItemsBySplineIdx[1000 + splineIdx];
-      itemsData?.obj?.forEach((item) => types.add(item.type));
-    });
-    return types;
-  }, [splines, splineItemsBySplineIdx]);
+      const types = new Set<number>();
+      if (!splines || !splineItemsBySplineIdx) return types;
+      splines.forEach((_, splineIdx) => {
+        const itemsData = splineItemsBySplineIdx[1000 + splineIdx];
+        itemsData?.obj?.forEach((item) => {
+          if (isSplineItemVisible(item.type, itemFilterState)) {
+            types.add(item.type);
+          }
+        });
+      });
+      return types;
+  }, [itemFilterState, splines, splineItemsBySplineIdx]);
 
   // Pre-load models for all spline item types when toggle is enabled
   useEffect(() => {
@@ -105,14 +113,17 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
     const scenes = new Map<number, Group | null>();
     uniqueSplineItemTypes.forEach((itemType) => {
       const isLevelDep = mapper?.isLevelDependent?.(itemType) && levelNum !== undefined;
-      const cacheKey = isLevelDep
-        ? `g${currentGame}_${itemType}_lv${levelNum}`
-        : `g${currentGame}_${itemType}`;
+      const cacheKey = getItemModelCacheKey(
+        currentGame,
+        itemType,
+        undefined,
+        isLevelDep ? levelNum : undefined,
+      );
       const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
         const mapping = mapper?.getMapping(itemType, levelNum);
-        if (mapping && cachedModel.gltf.scene) {
-          const cloned = cachedModel.gltf.scene.clone(true);
+        if (mapping && cachedModel.gltf) {
+          const cloned = cachedModel.gltf.clone(true);
           const baseScale = mapping.scale ?? 1;
           const sx = baseScale * (mapping.scaleXZ ?? 1);
           const sy = baseScale * (mapping.scaleY ?? 1);
@@ -138,6 +149,9 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
         const pointsData = splinePointsBySplineIdx?.[1000 + splineIdx] ?? null;
 
         return itemsData.obj.map((item, itemIdx) => {
+          if (!isSplineItemVisible(item.type, itemFilterState)) {
+            return null;
+          }
           let worldX: number;
           let worldZ: number;
           let terrainY: number;
@@ -166,9 +180,12 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
 
           if (show3DItemModels) {
             const isLevelDep = mapper?.isLevelDependent?.(item.type) && levelNum !== undefined;
-            const cacheKey = isLevelDep
-              ? `g${currentGame}_${item.type}_lv${levelNum}`
-              : `g${currentGame}_${item.type}`;
+            const cacheKey = getItemModelCacheKey(
+              currentGame,
+              item.type,
+              undefined,
+              isLevelDep ? levelNum : undefined,
+            );
             const cachedModel = modelCache.get(cacheKey);
 
             if (cachedModel?.loading) {

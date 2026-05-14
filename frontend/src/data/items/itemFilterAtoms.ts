@@ -7,6 +7,7 @@
 
 import { atom } from "jotai";
 import { ItemCategory } from "./itemCategories";
+import type { FilterableItemKey } from "./itemFilterKeys";
 
 function makeCategories(
   ...shown: ItemCategory[]
@@ -44,13 +45,13 @@ export interface ItemFilterState {
   categories: Record<ItemCategory, boolean>;
 
   /** Individual item type overrides (undefined = use category setting) */
-  itemTypes: Record<number, boolean | undefined>;
+  itemTypes: Record<FilterableItemKey, boolean | undefined>;
 
   /** Search query for highlighting/filtering */
   searchQuery: string;
 
   /** List of highlighted item type IDs (from search) */
-  highlightedTypes: number[];
+  highlightedTypes: FilterableItemKey[];
 }
 
 /**

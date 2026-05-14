@@ -49,6 +49,128 @@ export const CROMAG_TRACK_MODEL_FILES: Record<number, string> = {
   17: "tarpits.bg3d",
 };
 
+function getTrackSpecificFinishLine(levelNum?: number): UniversalItemModelMapping | undefined {
+  if (levelNum === undefined) {
+    return CROMAG_BASE_MAPPINGS[ItemType.FinishLine];
+  }
+
+  const modelFile = CROMAG_TRACK_MODEL_FILES[levelNum];
+  if (!modelFile || levelNum === 12 || levelNum === 13 || levelNum === 14 || levelNum === 17) {
+    return undefined;
+  }
+
+  return { modelFile, modelPath: "models", modelIndex: 1 };
+}
+
+function getTrackSpecificTree(
+  levelNum?: number,
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping | undefined {
+  const treeType = params?.p0 ?? 0;
+  const treeIndicesByTrack: Partial<Record<number, readonly number[]>> = {
+    1: [3, 4, 5, 5],
+    2: [6],
+    4: [13, 14],
+    8: [11, 12],
+    9: [18, 19],
+    13: [2],
+  };
+  const modelFile = levelNum === undefined ? "jungle.bg3d" : CROMAG_TRACK_MODEL_FILES[levelNum];
+  const indices = levelNum === undefined ? treeIndicesByTrack[1] : treeIndicesByTrack[levelNum];
+  const modelIndex = indices?.[treeType];
+  if (!modelFile || modelIndex === undefined) {
+    return levelNum === undefined ? CROMAG_BASE_MAPPINGS[ItemType.Tree] : undefined;
+  }
+
+  return { modelFile, modelPath: "models", modelIndex };
+}
+
+function getTrackSpecificCampFire(levelNum?: number): UniversalItemModelMapping {
+  return levelNum === 2
+    ? { modelFile: "ice.bg3d", modelPath: "models", modelIndex: 3 }
+    : { modelFile: "scandinavia.bg3d", modelPath: "models", modelIndex: 18 };
+}
+
+function getTrackSpecificPillar(
+  levelNum?: number,
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping | undefined {
+  const pillarType = params?.p0 ?? 0;
+  const options: Partial<Record<number, readonly number[]>> = {
+    0: [11, 12, 13],
+    4: [2, 3, 4, 2],
+    6: [3, 2],
+    9: [13],
+    10: [8, 2, 3],
+    14: [2],
+  };
+  const track = levelNum ?? 0;
+  const modelFile = CROMAG_TRACK_MODEL_FILES[track];
+  const modelIndex = options[track]?.[pillarType];
+  if (!modelFile || modelIndex === undefined) {
+    return levelNum === undefined ? CROMAG_BASE_MAPPINGS[ItemType.Pillar] : undefined;
+  }
+
+  return { modelFile, modelPath: "models", modelIndex };
+}
+
+function getTrackSpecificBoat(levelNum?: number): UniversalItemModelMapping | undefined {
+  const options: Partial<Record<number, number>> = {
+    4: 5,
+    6: 5,
+    9: 15,
+    10: 11,
+  };
+  const track = levelNum ?? 6;
+  const modelFile = CROMAG_TRACK_MODEL_FILES[track];
+  const modelIndex = options[track];
+  if (!modelFile || modelIndex === undefined) {
+    return levelNum === undefined ? CROMAG_BASE_MAPPINGS[ItemType.Boat] : undefined;
+  }
+
+  return { modelFile, modelPath: "models", modelIndex };
+}
+
+function getTrackSpecificStatue(
+  levelNum?: number,
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping | undefined {
+  const statueType = params?.p0 ?? 0;
+  const track = levelNum ?? 6;
+  const modelFile = CROMAG_TRACK_MODEL_FILES[track];
+  const modelIndex =
+    track === 4 ? [12][statueType] : track === 6 ? [6, 9][statueType] : undefined;
+  if (!modelFile || modelIndex === undefined) {
+    return levelNum === undefined ? CROMAG_BASE_MAPPINGS[ItemType.Statue] : undefined;
+  }
+
+  return { modelFile, modelPath: "models", modelIndex };
+}
+
+function getTrackSpecificHouse(
+  levelNum?: number,
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping | undefined {
+  const houseType = params?.p0 ?? 0;
+  const options: Partial<Record<number, readonly number[]>> = {
+    1: [7, 8],
+    2: [5],
+    4: [7, 8, 9],
+    5: [5],
+    8: [5, 6, 7],
+    9: [9, 10, 11],
+    10: [5, 6, 7],
+  };
+  const track = levelNum ?? 5;
+  const modelFile = CROMAG_TRACK_MODEL_FILES[track];
+  const modelIndex = options[track]?.[houseType];
+  if (!modelFile || modelIndex === undefined) {
+    return levelNum === undefined ? CROMAG_BASE_MAPPINGS[ItemType.House] : undefined;
+  }
+
+  return { modelFile, modelPath: "models", modelIndex };
+}
+
 /**
  * Base mappings for Cro-Mag Rally items.
  * Model indices correspond exactly to *_ObjType_* enum values in mobjtypes.h.
@@ -620,9 +742,37 @@ export class CroMagItemMapper implements GameItemModelMapper {
    */
   getMapping(
     itemType: number,
-    _levelNum?: number,
+    levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
+    if (itemType === ItemType.FinishLine) {
+      return getTrackSpecificFinishLine(levelNum);
+    }
+
+    if (itemType === ItemType.Tree) {
+      return getTrackSpecificTree(levelNum, params);
+    }
+
+    if (itemType === ItemType.CampFire) {
+      return getTrackSpecificCampFire(levelNum);
+    }
+
+    if (itemType === ItemType.Pillar) {
+      return getTrackSpecificPillar(levelNum, params);
+    }
+
+    if (itemType === ItemType.Boat) {
+      return getTrackSpecificBoat(levelNum);
+    }
+
+    if (itemType === ItemType.Statue) {
+      return getTrackSpecificStatue(levelNum, params);
+    }
+
+    if (itemType === ItemType.House) {
+      return getTrackSpecificHouse(levelNum, params);
+    }
+
     const base = CROMAG_BASE_MAPPINGS[itemType];
     if (!base) return undefined;
 

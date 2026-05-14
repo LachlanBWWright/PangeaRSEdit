@@ -450,15 +450,48 @@ const billyFrontierItemTypeParamsSource: Record<
   },
   [ItemType.DeadTree]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1183,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Dead tree variant (0=upright, 1=fallen on side)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = TOWN_ObjType_DeadTree + itemPtr->parm[1];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1175,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Rock]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: {
+      type: "Integer",
+      description:
+        "Rock type (town: TallRock1/TallRock2/ShortRock1/ShortRock2; swamp: Large/Medium/Small/Tall)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1226,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1264,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },

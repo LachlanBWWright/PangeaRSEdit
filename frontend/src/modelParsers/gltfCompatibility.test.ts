@@ -198,4 +198,23 @@ describe("gltfCompatibility", () => {
     expect(result.error.code).toBe("gltf.missing-dependency");
     expect(result.error.message).toContain("mesh.bin");
   });
+
+  it("warns for optional Draco compression metadata instead of rejecting the asset", async () => {
+    const result = await normalizeGltfAsset(
+      "optional-draco.gltf",
+      createEmbeddedGltf({
+        extensionsUsed: ["KHR_draco_mesh_compression"],
+      }),
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      expect.fail(result.error.message);
+    }
+
+    const warnings = formatGltfCompatibilityWarnings(result.value.warnings);
+    expect(
+      warnings.some((warning) => warning.includes("KHR_draco_mesh_compression")),
+    ).toBe(true);
+  });
 });

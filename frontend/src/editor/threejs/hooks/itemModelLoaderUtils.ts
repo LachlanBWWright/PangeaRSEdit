@@ -118,7 +118,7 @@ export function extractSubgroupByIndex(
   gltf: GLTF,
   modelIndex: number,
   groupSize = 1,
-): GLTF | null {
+): Group | null {
   const groupsContainer =
     gltf.scene.children && gltf.scene.children.length > 0
       ? gltf.scene.children[0]
@@ -145,5 +145,5 @@ export function extractSubgroupByIndex(
     if (targetModel) newScene.add(targetModel.clone(true));
   }
   if (newScene.children.length === 0) return null;
-  return { ...gltf, scene: newScene };
+  return newScene;
 }

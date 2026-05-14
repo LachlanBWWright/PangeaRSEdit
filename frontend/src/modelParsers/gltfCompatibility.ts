@@ -167,6 +167,7 @@ function getOptionalExtensionWarnings(
     }
     return (
       extensionName === "EXT_mesh_gpu_instancing" ||
+      extensionName === "KHR_draco_mesh_compression" ||
       extensionName === "KHR_lights_punctual" ||
       extensionName === "KHR_texture_transform" ||
       extensionName.startsWith("KHR_materials_")

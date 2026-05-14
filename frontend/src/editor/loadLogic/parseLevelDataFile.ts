@@ -11,6 +11,8 @@ import {
 import { parseLevelWithWorker } from "@/data/level-io/levelIoWorkerClient";
 import type { LevelIoProgress } from "@/data/level-io/levelIoTypes";
 import type { LevelData } from "@/python/structSpecs/LevelTypes";
+import { gMightyMikePalette } from "@/utils/mightyMikePalette";
+import { clearItemImageCache } from "@/utils/mightyMikeShapeImageLoader";
 
 export interface ParsedLevelDataFile {
   readonly levelData: LevelData;
@@ -129,6 +131,16 @@ export async function parseLevelDataFile({
         });
   if (mightyMikeCompanionResult.isErr()) {
     return err(mightyMikeCompanionResult.error);
+  }
+
+  if (
+    gameType.DATA_TYPE === DataType.MIGHTY_MIKE &&
+    mightyMikeCompanionResult.value.paletteBytes
+  ) {
+    gMightyMikePalette.loadPaletteFromRGBA(
+      new Uint8Array(mightyMikeCompanionResult.value.paletteBytes),
+    );
+    clearItemImageCache();
   }
 
   const workerResult = await parseLevelWithWorker(

@@ -13,7 +13,6 @@ import {
   serializeMightyMikeLevel,
 } from "@/editor/loadLogic/parseMightyMikeFile";
 import { imageDataToSixteenBit } from "@/utils/imageConverter";
-import { lzssCompress } from "@/utils/lzss";
 import type {
   LevelIoImagePayload,
   LevelIoProgress,
@@ -22,6 +21,7 @@ import type {
 import { levelIoError, type LevelIoError } from "./levelIoErrors";
 import { mapErr } from "@/utils/mapErr";
 import { isRecord, isNanosaur1LevelData } from "@/editor/loadLogic/typeGuards";
+import { serializeCompressedTerrainImages } from "@/data/terrain-io/terrainImageSerialization";
 
 function notify(
   onProgress: ((progress: LevelIoProgress) => void) | undefined,
@@ -81,49 +81,6 @@ function serializeNanosaurTileImages(
     offset += encoded.byteLength;
   }
   return ok(buffer);
-}
-
-function combineCompressedBuffers(bufferList: readonly DataView[]): Uint8Array {
-  let totalSize = 0;
-  for (const buffer of bufferList) {
-    totalSize += 4 + (buffer?.byteLength ?? 0);
-  }
-  const combined = new DataView(new ArrayBuffer(totalSize));
-  let position = 0;
-  for (const buffer of bufferList) {
-    if (!buffer) {
-      continue;
-    }
-    combined.setInt32(position, buffer.byteLength);
-    position += 4;
-    for (let byteIndex = 0; byteIndex < buffer.byteLength; byteIndex += 1) {
-      combined.setUint8(position, buffer.getUint8(byteIndex));
-      position += 1;
-    }
-  }
-  return new Uint8Array(combined.buffer);
-}
-
-function serializeCompressedTerrain(
-  mapImages: readonly LevelIoImagePayload[],
-  onProgress?: (progress: LevelIoProgress) => void,
-): Result<Uint8Array, LevelIoError> {
-  const compressedBuffers: DataView[] = [];
-  for (let index = 0; index < mapImages.length; index += 1) {
-    const image = mapImages[index];
-    if (!image) {
-      return err(levelIoError("serialize.failed", `Missing image #${index}`));
-    }
-    notify(onProgress, {
-      stage: "serialize.textures",
-      message: "Compressing terrain textures",
-      completed: index + 1,
-      total: mapImages.length,
-    });
-    const sixteenBit = imageDataToSixteenBit(new Uint8ClampedArray(image.rgbaBytes));
-    compressedBuffers.push(lzssCompress(sixteenBit));
-  }
-  return ok(combineCompressedBuffers(compressedBuffers));
 }
 
 function serializeResourceForkBytes(
@@ -209,7 +166,7 @@ function serializePrimaryMapBytes(
   return serializeResourceForkBytes(levelData, globals, []);
 }
 
-export function serializeLevelDownloadBytes(
+export async function serializeLevelDownloadBytes(
   options: {
     readonly levelData: unknown;
     readonly globals: GlobalsInterface;
@@ -218,7 +175,7 @@ export function serializeLevelDownloadBytes(
     readonly mapImages: readonly LevelIoImagePayload[];
   },
   onProgress?: (progress: LevelIoProgress) => void,
-): Result<readonly LevelIoSerializedFile[], LevelIoError> {
+): Promise<Result<readonly LevelIoSerializedFile[], LevelIoError>> {
   if (!isLevelDataLike(options.levelData)) {
     return err(levelIoError("serialize.failed", "Level data is not valid"));
   }
@@ -301,7 +258,10 @@ export function serializeLevelDownloadBytes(
     options.globals.TILE_IMAGE_FORMAT !== TileImageFormat.JPG &&
     options.mapImages.length > 0
   ) {
-    const textureBytes = serializeCompressedTerrain(options.mapImages, onProgress);
+    const textureBytes = await serializeCompressedTerrainImages(
+      options.mapImages,
+      onProgress,
+    );
     if (textureBytes.isErr()) {
       return err(textureBytes.error);
     }
@@ -390,7 +350,7 @@ export async function preparePreviewLevelBytes(
     const dataBytes =
       options.mapImages.length === 0
         ? ok<Uint8Array, LevelIoError>(new Uint8Array(0))
-        : serializeCompressedTerrain(options.mapImages, onProgress);
+        : await serializeCompressedTerrainImages(options.mapImages, onProgress);
     if (dataBytes.isErr()) {
       return err(levelIoError("preview.failed", dataBytes.error.message));
     }

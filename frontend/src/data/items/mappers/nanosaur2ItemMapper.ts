@@ -299,6 +299,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelPath: "models",
     modelIndex: 46,
     groupSize: 4,
+    scale: 2.5,
   },
 
   // ---- LEVEL 2: DESERT (desert.bg3d) ----
@@ -539,13 +540,6 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
   },
 
-  [ItemType.RamphorEnemy]: {
-    modelFile: "ramphor.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "ramphor.skeleton.rsrc",
-  },
 };
 
 /**
@@ -575,6 +569,7 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
       modelPath: "models",
       modelIndex: 46,
       groupSize: 4,
+      scale: 2.5,
     },
     // Forest: LEVEL1_ObjType_Rock1 = 31 ... TallRock2 = 36 (Items.c: scale = 2.0)
     [ItemType.Rock]: {
@@ -615,6 +610,7 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
       modelPath: "models",
       modelIndex: 48,
       groupSize: 4,
+      scale: 2.5,
     },
     // Desert: LEVEL2_ObjType_Rock_Small1 = 39 ... Rock_Large3 = 44 (Items.c: scale = 2.0)
     [ItemType.Rock]: {
@@ -655,6 +651,7 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
       modelPath: "models",
       modelIndex: 33,
       groupSize: 4,
+      scale: 2.5,
     },
     // Swamp: LEVEL3_ObjType_Grass_Single = 13, Grass_Small = 14, Grass_Patch = 15 (Bushes.c: scale = 2.0)
     [ItemType.Grass]: {

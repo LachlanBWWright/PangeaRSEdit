@@ -42,14 +42,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
       { file: "src/Items/Items.c", line: 401, endLine: 445, description: "scale varies 2.0-4.5 by type, using ~3.0 average" },
     ],
   },
-  [ItemType.SpacePodGenerator]: {
-    modelFile: "level4_apocalypse.bg3d",
-    modelPath: "models",
-    modelIndex: 5,
-    scale: 2.0,
-    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
-    citations: [{ file: "src/Items/SpacePods.c", line: 137, description: "scale = 2.0; parm[0] * (PI/2) sets rotation" }],
-  },
+  [ItemType.SpacePodGenerator]: undefined,
   [ItemType.Enemy_Squooshy]: {
     modelFile: "Squooshy.bg3d",
     modelPath: "skeletons",
@@ -704,11 +697,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     yOffset: 200,
     citations: [{ file: "src/Enemies/Cloud/Enemy_StrongMan.c", line: 45, description: "#define STRONGMAN_SCALE 2.0f" }],
   },
-  [ItemType.CloudPlatform]: {
-    modelFile: "level5_cloud.bg3d",
-    modelPath: "models",
-    modelIndex: 5, // CloudPlatform
-  },
+  [ItemType.CloudPlatform]: undefined,
   [ItemType.CloudTunnel]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
