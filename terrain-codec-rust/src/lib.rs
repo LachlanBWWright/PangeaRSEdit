@@ -1,11 +1,13 @@
 mod errors;
 mod jpeg;
 mod lzss;
+mod nanosaur1;
 mod rgb555;
 mod terrain_image;
 
 use errors::TerrainCodecError;
 use js_sys::{Object, Reflect, Uint8Array};
+use nanosaur1::{compile_nanosaur1_level, parse_nanosaur1_level, Nanosaur1CompilePayload};
 use terrain_image::{
     decode_jpeg_terrain_tile, decode_lzss_terrain_tile, encode_jpeg_terrain_tile,
     encode_lzss_terrain_tile,
@@ -77,4 +79,22 @@ pub fn wasm_encode_jpeg_terrain_tile(
     let encoded =
         encode_jpeg_terrain_tile(rgba_bytes, width, height, quality).map_err(map_error)?;
     encoded_tile_to_js_value(encoded.encoded_bytes)
+}
+
+#[wasm_bindgen]
+pub fn wasm_parse_nanosaur1_level(level_bytes: &[u8]) -> Result<JsValue, JsValue> {
+    let parsed = parse_nanosaur1_level(level_bytes).map_err(map_error)?;
+    serde_wasm_bindgen::to_value(&parsed)
+        .map_err(|error| TerrainCodecError::decode_failed(error.to_string()).into_js_value())
+}
+
+#[wasm_bindgen]
+pub fn wasm_compile_nanosaur1_level(
+    raw_level_bytes: &[u8],
+    edits: JsValue,
+) -> Result<JsValue, JsValue> {
+    let edits: Nanosaur1CompilePayload = serde_wasm_bindgen::from_value(edits)
+        .map_err(|error| TerrainCodecError::invalid_input(error.to_string()).into_js_value())?;
+    let compiled = compile_nanosaur1_level(raw_level_bytes, edits).map_err(map_error)?;
+    encoded_tile_to_js_value(compiled)
 }

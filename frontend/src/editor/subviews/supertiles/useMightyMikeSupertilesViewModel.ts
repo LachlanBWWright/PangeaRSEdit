@@ -4,6 +4,8 @@ import { useCallback, useMemo } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import {
   CollisionBrushMode,
+  MightyMikeParamsOverlayFlagBit,
+  MightyMikeParamsOverlayMode,
   ParamBrushField,
   ParamBrushValue,
   ShowMightyMikeParamsOverlay,
@@ -62,6 +64,8 @@ export function useMightyMikeSupertilesViewModel({
   const collisionBrushMode = useAtomValue(CollisionBrushMode);
   const altMapBrushValue = useAtomValue(AltMapBrushValue);
   const showParamsOverlay = useAtomValue(ShowMightyMikeParamsOverlay);
+  const paramsOverlayMode = useAtomValue(MightyMikeParamsOverlayMode);
+  const paramsOverlayFlagBit = useAtomValue(MightyMikeParamsOverlayFlagBit);
   const paramBrushField = useAtomValue(ParamBrushField);
   const paramBrushValue = useAtomValue(ParamBrushValue);
   const showAltMap = view === View.tiles;
@@ -133,6 +137,8 @@ export function useMightyMikeSupertilesViewModel({
     () =>
       buildParamsCanvas(
         showParamsOverlay,
+        paramsOverlayMode,
+        paramsOverlayFlagBit,
         tileAttributes,
         mapWidth,
         mapHeight,
@@ -141,6 +147,8 @@ export function useMightyMikeSupertilesViewModel({
       ),
     [
       showParamsOverlay,
+      paramsOverlayMode,
+      paramsOverlayFlagBit,
       tileAttributes,
       resolvedImageIndices,
       layr,

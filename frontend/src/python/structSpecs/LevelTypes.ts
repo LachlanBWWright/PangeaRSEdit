@@ -157,6 +157,7 @@ export interface LevelMetadata {
   junk1: number;
   junk2: number;
   nanosaur1RawLevel?: unknown;
+  nanosaur1RawBytes?: ArrayBuffer;
   terrainTiles?: unknown;
   mightyMikeMapData?: unknown;
   [key: string]: unknown;

@@ -2,6 +2,7 @@ import { Result, ResultAsync } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   buildGameArguments,
+  type PreviewVfsFile,
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
@@ -21,6 +22,7 @@ export interface PreviewModuleOptions {
   readonly terrainDataBytes: Uint8Array | null;
   readonly terrainRsrcBytes: Uint8Array | null;
   readonly terrainTextureBytes: Uint8Array | null;
+  readonly customFiles?: readonly PreviewVfsFile[];
   readonly terrainPaths: PreviewTerrainPaths | null;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
@@ -40,6 +42,7 @@ export function createPreviewModule(
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
+    customFiles,
     terrainPaths,
     onStatus,
     onError,
@@ -128,6 +131,7 @@ export function createPreviewModule(
           terrainDataBytes,
           terrainRsrcBytes,
           terrainTextureBytes ?? null,
+          customFiles,
           onError,
         );
       }
@@ -224,7 +228,10 @@ export async function loadPreviewRuntime(
   const prevWindowSt = window.setTimeout;
   const prevWindowCt = window.clearTimeout;
   const patchedWindowSetTimeout = Object.assign(gameSetTimeout, prevWindowSt);
-  const patchedWindowClearTimeout = Object.assign(gameClearTimeout, prevWindowCt);
+  const patchedWindowClearTimeout = Object.assign(
+    gameClearTimeout,
+    prevWindowCt,
+  );
   Result.fromThrowable(
     () => {
       window.requestAnimationFrame = gameRaf;
@@ -271,9 +278,7 @@ export async function loadPreviewRuntime(
   if (response.isErr() || !response.value.ok) {
     const status = response.isOk() ? response.value.status : 0;
     restoreWindowGlobals();
-    return Promise.reject(
-      `Failed to load ${scriptUrl}: ${String(status)}`,
-    );
+    return Promise.reject(`Failed to load ${scriptUrl}: ${String(status)}`);
   }
 
   const sourceResult = await ResultAsync.fromPromise(
@@ -309,7 +314,11 @@ export async function loadPreviewRuntime(
         window: Window,
         raf: (cb: FrameRequestCallback) => number,
         caf: (id: number) => void,
-        st: (handler: TimerHandler, delay?: number, ...args: unknown[]) => number,
+        st: (
+          handler: TimerHandler,
+          delay?: number,
+          ...args: unknown[]
+        ) => number,
         ct: (id?: number) => void,
       ): PreviewRuntimeModule =>
         Reflect.apply(runnerFactory, undefined, [

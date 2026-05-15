@@ -200,6 +200,8 @@ export function buildAltMapCanvas(
 /** Renders param-flag overlays for the currently visible tiles. */
 export function buildParamsCanvas(
   showParamsOverlay: boolean,
+  overlayMode: "flagsAny" | "flagBit" | "p0" | "p1",
+  overlayFlagBit: number,
   tileAttributes: Record<string, unknown>[],
   mapWidth: number,
   mapHeight: number,
@@ -233,21 +235,52 @@ export function buildParamsCanvas(
     const p0 = p0Result.success ? p0Result.data : 0;
     const p1Result = numberSchema.safeParse(attr["p1"]);
     const p1 = p1Result.success ? p1Result.data : 0;
-    if (flags === 0 && p0 === 0 && p1 === 0) return;
+    const hasFlagBit = (flags & (1 << overlayFlagBit)) !== 0;
+
+    let overlayAlpha = 0;
+    let overlayColor = "rgba(220, 50, 50, 0.55)";
+    if (overlayMode === "flagsAny") {
+      if (flags === 0) {
+        return;
+      }
+      overlayAlpha = 0.55;
+      overlayColor = "rgba(220, 50, 50, 0.55)";
+    } else if (overlayMode === "flagBit") {
+      if (!hasFlagBit) {
+        return;
+      }
+      overlayAlpha = 0.65;
+      overlayColor = "rgba(255, 120, 40, 0.65)";
+    } else if (overlayMode === "p0") {
+      if (p0 === 0) {
+        return;
+      }
+      overlayAlpha = 0.55;
+      overlayColor = "rgba(50, 200, 50, 0.55)";
+    } else {
+      if (p1 === 0) {
+        return;
+      }
+      overlayAlpha = 0.55;
+      overlayColor = "rgba(50, 100, 220, 0.55)";
+    }
 
     const tx = (i % mapWidth) * TILE_SIZE;
     const ty = Math.floor(i / mapWidth) * TILE_SIZE;
-    if (flags !== 0) {
-      ctx.fillStyle = "rgba(220, 50, 50, 0.55)";
-      ctx.fillRect(tx, ty, TILE_SIZE / 2, TILE_SIZE / 2);
-    }
-    if (p0 !== 0) {
-      ctx.fillStyle = "rgba(50, 200, 50, 0.55)";
-      ctx.fillRect(tx + TILE_SIZE / 2, ty, TILE_SIZE / 2, TILE_SIZE / 2);
-    }
-    if (p1 !== 0) {
-      ctx.fillStyle = "rgba(50, 100, 220, 0.55)";
-      ctx.fillRect(tx, ty + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE / 2);
+
+    ctx.fillStyle = overlayColor;
+    ctx.globalAlpha = overlayAlpha;
+    ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+    ctx.globalAlpha = 1;
+
+    if (overlayMode === "flagBit") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      ctx.fillRect(tx, ty, TILE_SIZE, 12);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "10px sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(`B${overlayFlagBit}`, tx + 2, ty + 1);
     }
   });
   return canvas;

@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import type { ChangeEvent } from "react";
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
+import { syncMightyMikeTileValuesFromLayer } from "@/data/game/mightyMikeTileValueUtils";
 import {
   plainObjectSchema,
   unknownArraySchema,
@@ -10,6 +11,7 @@ import {
 } from "@/schemas/common";
 
 export const TILE_SIZE = 32;
+export type TileImageTransform = "rotate" | "flipX" | "flipY";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return plainObjectSchema.safeParse(value).success;
@@ -261,7 +263,45 @@ export function removePaletteTile(
     layrEntry.obj = layrEntry.obj.map(
       (logicalIndex) => logicalIndexMap.get(logicalIndex) ?? logicalIndex,
     );
+    syncMightyMikeTileValuesFromLayer(data);
   });
+}
+
+export function createTransformedTileCanvas(
+  sourceCanvas: HTMLCanvasElement,
+  transform: TileImageTransform,
+): HTMLCanvasElement | null {
+  const canvas = document.createElement("canvas");
+  canvas.width = TILE_SIZE;
+  canvas.height = TILE_SIZE;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return null;
+  }
+
+  context.save();
+  context.translate(TILE_SIZE / 2, TILE_SIZE / 2);
+  if (transform === "rotate") {
+    context.rotate(Math.PI / 2);
+  } else if (transform === "flipX") {
+    context.scale(-1, 1);
+  } else {
+    context.scale(1, -1);
+  }
+  context.drawImage(sourceCanvas, -TILE_SIZE / 2, -TILE_SIZE / 2);
+  context.restore();
+  return canvas;
+}
+
+export function findMatchingTileCanvasIndex(
+  mapImages: HTMLCanvasElement[],
+  candidate: HTMLCanvasElement,
+): number | null {
+  const candidateSignature = candidate.toDataURL("image/png");
+  const matchingIndex = mapImages.findIndex(
+    (image) => image.toDataURL("image/png") === candidateSignature,
+  );
+  return matchingIndex >= 0 ? matchingIndex : null;
 }
 
 export function downloadCanvasAsPng(

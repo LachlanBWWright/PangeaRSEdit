@@ -71,6 +71,7 @@ export interface ParsedLevelResponse {
   readonly levelData: unknown;
   readonly mapImages: readonly LevelIoImagePayload[];
   readonly collisionImages: readonly LevelIoImagePayload[];
+  readonly nanosaurRawBytes?: ArrayBuffer;
 }
 
 export interface SerializedDownloadResponse {

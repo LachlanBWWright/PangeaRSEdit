@@ -1,5 +1,6 @@
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
+import { setMightyMikeCollisionProperty } from "@/data/game/mightyMikeTileValueUtils";
 
 type TileAttributeProperty = "flags" | "p0" | "p1" | "p2" | "p3" | "p4";
 type CollisionProperty = "hasCollisionMask" | "usePixelAccurateCollision";
@@ -68,11 +69,10 @@ export function createUpdateCollisionPropertyHandler(
         !tileValues ||
         effectiveSelectedTile < 0 ||
         effectiveSelectedTile >= tileValues.length
-      )
+      ) {
         return;
-      const tileVal = tileValues[effectiveSelectedTile];
-      if (!isRecord(tileVal)) return;
-      tileVal[property] = value;
+      }
+      setMightyMikeCollisionProperty(data, effectiveSelectedTile, property, value);
     });
   };
 }

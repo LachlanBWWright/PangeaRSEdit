@@ -1,6 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Maximize2, ZoomIn, ZoomOut, Paintbrush, Eraser, Pipette, Eye } from "lucide-react";
+import {
+  Download,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
+  Paintbrush,
+  Eraser,
+  Pipette,
+  Eye,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   parseShapesFile,
@@ -10,22 +19,40 @@ import {
 } from "@/parsers/mightyMikeShapesParser";
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
 import { extractTGAPaletteRaw } from "@/utils/tgaParser";
-import { parseTilesetFile, createTilesetGridPreview, rerenderTilesetWithPalette, RGBColor } from "@/parsers/mightyMikeTilesetParser";
+import {
+  parseTilesetFile,
+  createTilesetGridPreview,
+  rerenderTilesetWithPalette,
+  RGBColor,
+} from "@/parsers/mightyMikeTilesetParser";
 import { ResultAsync } from "neverthrow";
-
 
 import { FileUploadPanel } from "./SpriteViewer/components/FileUploadPanel";
 import { MightyMikeAssetBrowser } from "./SpriteViewer/components/MightyMikeAssetBrowser";
 import { SpriteControls } from "./SpriteViewer/components/SpriteControls";
-import { DisplayOptionsPanel, DisplayOptions } from "./SpriteViewer/components/DisplayOptionsPanel";
+import {
+  DisplayOptionsPanel,
+  DisplayOptions,
+} from "./SpriteViewer/components/DisplayOptionsPanel";
 import { PaletteSelector } from "./SpriteViewer/components/PaletteSelector";
 import { PaletteEditor } from "./SpriteViewer/components/PaletteEditor";
-import { createPalette, clonePalette, Palette } from "./SpriteViewer/utils/paletteUtils";
+import {
+  createPalette,
+  clonePalette,
+  Palette,
+} from "./SpriteViewer/utils/paletteUtils";
 import { TilesetEditor } from "./SpriteViewer/components/TilesetEditor";
-import { EditorField, EditorPanel } from "./SpriteViewer/components/EditorPanel";
+import {
+  EditorField,
+  EditorPanel,
+} from "./SpriteViewer/components/EditorPanel";
 import { MightyMikeTileset } from "@/parsers/mightyMikeTilesetParser";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 import { mapErr } from "@/utils/mapErr";
 
 type FileType = "sprites" | "tga" | "tileset";
@@ -80,9 +107,13 @@ export function SpriteViewer() {
   const [selectedFrameIndex, setSelectedFrameIndex] = useState<number>(0);
 
   // Tileset-specific state
-  const [selectedTileIndex, setSelectedTileIndex] = useState<number | undefined>(undefined);
-  const [currentTilesetScene, setCurrentTilesetScene] = useState<string>("jurassic");
-  const [currentTilesetPaletteScene, setCurrentTilesetPaletteScene] = useState<string>("jurassic");
+  const [selectedTileIndex, setSelectedTileIndex] = useState<
+    number | undefined
+  >(undefined);
+  const [currentTilesetScene, setCurrentTilesetScene] =
+    useState<string>("jurassic");
+  const [currentTilesetPaletteScene, setCurrentTilesetPaletteScene] =
+    useState<string>("jurassic");
 
   // Palette state
   const [customPalettes, setCustomPalettes] = useState<Palette[]>([]);
@@ -109,8 +140,12 @@ export function SpriteViewer() {
 
   // Edit/pan state
   const [editMode, setEditMode] = useState<EditMode>("view");
-  const [selectedPaletteColorIndex, setSelectedPaletteColorIndex] = useState<number>(0);
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [selectedPaletteColorIndex, setSelectedPaletteColorIndex] =
+    useState<number>(0);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
   const [isPanning, setIsPanning] = useState(false);
 
   // Refs for imperative pan/paint tracking
@@ -134,7 +169,10 @@ export function SpriteViewer() {
       return null;
     }
 
-    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       console.error("Error reading border palette:", bufferResult.error);
       return null;
@@ -168,7 +206,10 @@ export function SpriteViewer() {
     }
 
     setLoading(true);
-    const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
+    const bufferResult = await ResultAsync.fromPromise(
+      file.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       console.error("Error loading file:", bufferResult.error);
       toast.error(bufferResult.error);
@@ -223,7 +264,9 @@ export function SpriteViewer() {
       });
       toast.success("Loaded TGA image");
     } else if (fileType === "tileset") {
-      toast.info("Custom tileset upload not yet fully supported. Use the asset browser to load tilesets.");
+      toast.info(
+        "Custom tileset upload not yet fully supported. Use the asset browser to load tilesets.",
+      );
       setLoading(false);
       return;
     }
@@ -249,7 +292,10 @@ export function SpriteViewer() {
       return;
     }
 
-    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       console.error("Error loading sprites:", bufferResult.error);
       toast.error(bufferResult.error);
@@ -313,7 +359,10 @@ export function SpriteViewer() {
       return;
     }
 
-    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       console.error("Error loading TGA:", bufferResult.error);
       toast.error(bufferResult.error);
@@ -345,7 +394,7 @@ export function SpriteViewer() {
     // The game renders levels using the border.tga palette (set during
     // InitArea → LoadBorderImage), not the per-scene cinema TGA palettes.
     const tgaUrl = `assets/mightyMike/terrain/border.tga`;
-      const tgaFetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
+    const tgaFetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
 
     if (tgaFetchResult.isErr()) {
       console.error("Error loading tileset:", tgaFetchResult.error);
@@ -361,7 +410,10 @@ export function SpriteViewer() {
       return;
     }
 
-      const tgaBufferResult = await ResultAsync.fromPromise(tgaResponse.arrayBuffer(), mapErr);
+    const tgaBufferResult = await ResultAsync.fromPromise(
+      tgaResponse.arrayBuffer(),
+      mapErr,
+    );
     if (tgaBufferResult.isErr()) {
       console.error("Error loading tileset:", tgaBufferResult.error);
       toast.error(tgaBufferResult.error);
@@ -369,161 +421,178 @@ export function SpriteViewer() {
       return;
     }
     const tgaBuffer = tgaBufferResult.value;
-      const tgaCanvasResult = parseTGAToCanvas(tgaBuffer);
+    const tgaCanvasResult = parseTGAToCanvas(tgaBuffer);
 
-      if (tgaCanvasResult.isErr()) {
-        toast.error(`Failed to parse TGA file: ${tgaCanvasResult.error}`);
-        return;
-      }
+    if (tgaCanvasResult.isErr()) {
+      toast.error(`Failed to parse TGA file: ${tgaCanvasResult.error}`);
+      return;
+    }
 
-      // Extract palette from TGA buffer and apply proper gamma correction
-      // using MightyMikePaletteManager which matches the C source code
-      const tgaView = new DataView(tgaBuffer);
+    // Extract palette from TGA buffer and apply proper gamma correction
+    // using MightyMikePaletteManager which matches the C source code
+    const tgaView = new DataView(tgaBuffer);
 
-      // Parse TGA header to find color map
-      const idLength = tgaView.getUint8(0);
-      const colorMapType = tgaView.getUint8(1);
-      const colorMapOrigin = tgaView.getUint16(3, true); // Little-endian
-      const colorMapLength = tgaView.getUint16(5, true); // Little-endian
-      const colorMapDepth = tgaView.getUint8(7); // Bits per color
-      const colorMapBytesPerEntry = colorMapDepth / 8;
+    // Parse TGA header to find color map
+    const idLength = tgaView.getUint8(0);
+    const colorMapType = tgaView.getUint8(1);
+    const colorMapOrigin = tgaView.getUint16(3, true); // Little-endian
+    const colorMapLength = tgaView.getUint16(5, true); // Little-endian
+    const colorMapDepth = tgaView.getUint8(7); // Bits per color
+    const colorMapBytesPerEntry = colorMapDepth / 8;
 
-      console.log("[TGA Palette] Header info:", {
-        idLength,
-        colorMapType,
-        colorMapOrigin,
-        colorMapLength,
-        colorMapDepth,
-        colorMapBytesPerEntry,
-        tgaBufferSize: tgaBuffer.byteLength,
-        expectedColorMapOffset: 18 + idLength,
-      });
+    console.log("[TGA Palette] Header info:", {
+      idLength,
+      colorMapType,
+      colorMapOrigin,
+      colorMapLength,
+      colorMapDepth,
+      colorMapBytesPerEntry,
+      tgaBufferSize: tgaBuffer.byteLength,
+      expectedColorMapOffset: 18 + idLength,
+    });
 
-      const palette: RGBColor[] = [];
+    const palette: RGBColor[] = [];
 
-      if (colorMapType === 1 && colorMapLength >= 256) {
-        // Color map exists, extract it as RGBA for palette manager
-        const colorMapOffset = 18 + idLength;
+    if (colorMapType === 1 && colorMapLength >= 256) {
+      // Color map exists, extract it as RGBA for palette manager
+      const colorMapOffset = 18 + idLength;
 
-        console.log("[TGA Palette] Extracting 256 colors from offset", colorMapOffset);
+      console.log(
+        "[TGA Palette] Extracting 256 colors from offset",
+        colorMapOffset,
+      );
 
-        // Build RGBA array for palette manager
-        const rgbaData = new Uint8Array(1024); // 256 colors × 4 bytes
-        for (let i = 0; i < 256; i++) {
-          const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
+      // Build RGBA array for palette manager
+      const rgbaData = new Uint8Array(1024); // 256 colors × 4 bytes
+      for (let i = 0; i < 256; i++) {
+        const entryOffset = colorMapOffset + i * colorMapBytesPerEntry;
 
-          // TGA color map is stored as BGR(A)
-          const b = tgaView.getUint8(entryOffset);
-          const g = tgaView.getUint8(entryOffset + 1);
-          const r = tgaView.getUint8(entryOffset + 2);
-          const a = 255; // Opaque
+        // TGA color map is stored as BGR(A)
+        const b = tgaView.getUint8(entryOffset);
+        const g = tgaView.getUint8(entryOffset + 1);
+        const r = tgaView.getUint8(entryOffset + 2);
+        const a = 255; // Opaque
 
-          rgbaData[i * 4 + 0] = r;
-          rgbaData[i * 4 + 1] = g;
-          rgbaData[i * 4 + 2] = b;
-          rgbaData[i * 4 + 3] = a;
+        rgbaData[i * 4 + 0] = r;
+        rgbaData[i * 4 + 1] = g;
+        rgbaData[i * 4 + 2] = b;
+        rgbaData[i * 4 + 3] = a;
 
-          palette.push({ r, g, b });
+        palette.push({ r, g, b });
 
-          // Log first few and last few colors for debugging
-          if (i < 3 || i >= 253) {
-            console.log(`[TGA Palette] Color ${i}: RGB(${r}, ${g}, ${b}) from offset ${entryOffset}`);
-          }
+        // Log first few and last few colors for debugging
+        if (i < 3 || i >= 253) {
+          console.log(
+            `[TGA Palette] Color ${i}: RGB(${r}, ${g}, ${b}) from offset ${entryOffset}`,
+          );
         }
-
-        // Load palette into MightyMikePaletteManager for gamma correction
-        gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
-
-        console.log("[TGA Palette] Successfully extracted and gamma-corrected palette");
-      } else {
-        console.error("[TGA Palette] Invalid color map:", {
-          colorMapType,
-          colorMapLength,
-          expected: "colorMapType === 1 && colorMapLength >= 256",
-        });
-        toast.error("TGA file does not have a valid color map");
-        return;
       }
 
-      // Load and parse tileset with gamma-corrected palette
-      const tilesetUrl = `assets/mightyMike/terrain/${filename}.tileset`;
-      const tilesetFetchResult = await ResultAsync.fromPromise(fetch(tilesetUrl), mapErr);
+      // Load palette into MightyMikePaletteManager for gamma correction
+      gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
 
-      if (tilesetFetchResult.isErr()) {
-        console.error("Error loading tileset:", tilesetFetchResult.error);
-        toast.error(tilesetFetchResult.error);
-        setLoading(false);
-        return;
-      }
-
-      const tilesetResponse = tilesetFetchResult.value;
-      if (!tilesetResponse.ok) {
-        toast.error(`Failed to load tileset: ${tilesetResponse.statusText}`);
-        setLoading(false);
-        return;
-      }
-
-      const tilesetBufferResult = await ResultAsync.fromPromise(tilesetResponse.arrayBuffer(), mapErr);
-      if (tilesetBufferResult.isErr()) {
-        console.error("Error loading tileset:", tilesetBufferResult.error);
-        toast.error(tilesetBufferResult.error);
-        setLoading(false);
-        return;
-      }
-      const tilesetBuffer = tilesetBufferResult.value;
-
-      // Use the gamma-corrected palette from MightyMikePaletteManager for tileset rendering
-      const tilesetPaletteRGBA = gMightyMikePalette.getPaletteAsRGBA();
-      const tilsetPalette: RGBColor[] = [];
-      for (let i = 0; i < 256; i++) {
-        const offset = i * 4;
-        tilsetPalette.push({
-          r: tilesetPaletteRGBA[offset] ?? 0,
-          g: tilesetPaletteRGBA[offset + 1] ?? 0,
-          b: tilesetPaletteRGBA[offset + 2] ?? 0,
-        });
-      }
-
-      const tilesetResult = parseTilesetFile(tilesetBuffer, tilsetPalette);
-
-      if (tilesetResult.isErr()) {
-        toast.error(`Failed to parse tileset: ${tilesetResult.error}`);
-        return;
-      }
-
-      // Create grid preview of all tiles
-      const tileset = tilesetResult.value;
-      const gridCanvas = createTilesetGridPreview(tileset);
-
-      setLoadedData({
-        type: "tileset",
-        data: tileset,
-        gridCanvas,
-        filename,
+      console.log(
+        "[TGA Palette] Successfully extracted and gamma-corrected palette",
+      );
+    } else {
+      console.error("[TGA Palette] Invalid color map:", {
+        colorMapType,
+        colorMapLength,
+        expected: "colorMapType === 1 && colorMapLength >= 256",
       });
-      setSelectedTileIndex(undefined);
-      setCurrentTilesetScene(filename);
-      setCurrentTilesetPaletteScene(filename);
+      toast.error("TGA file does not have a valid color map");
+      return;
+    }
 
-      // Apply tileset's gamma-corrected palette to current palette for shape rendering
-      // We already have it from the palette manager
-      const tilsetPaletteColors: typeof currentPalette.colors = [];
-      const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
-      for (let i = 0; i < 256; i++) {
-        const offset = i * 4;
-        tilsetPaletteColors.push({
-          r: gammaCorrectectedRGBA[offset] ?? 0,
-          g: gammaCorrectectedRGBA[offset + 1] ?? 0,
-          b: gammaCorrectectedRGBA[offset + 2] ?? 0,
-        });
-      }
+    // Load and parse tileset with gamma-corrected palette
+    const tilesetUrl = `assets/mightyMike/terrain/${filename}.tileset`;
+    const tilesetFetchResult = await ResultAsync.fromPromise(
+      fetch(tilesetUrl),
+      mapErr,
+    );
 
-      const paletteWithScene = createPalette(`${filename} Scene Palette (Gamma-Corrected)`);
-      paletteWithScene.colors = tilsetPaletteColors;
-      setCurrentPalette(paletteWithScene);
-
-      toast.success(`Loaded tileset: ${filename} (${tileset.numTileDefinitions} tiles)`);
+    if (tilesetFetchResult.isErr()) {
+      console.error("Error loading tileset:", tilesetFetchResult.error);
+      toast.error(tilesetFetchResult.error);
       setLoading(false);
+      return;
+    }
+
+    const tilesetResponse = tilesetFetchResult.value;
+    if (!tilesetResponse.ok) {
+      toast.error(`Failed to load tileset: ${tilesetResponse.statusText}`);
+      setLoading(false);
+      return;
+    }
+
+    const tilesetBufferResult = await ResultAsync.fromPromise(
+      tilesetResponse.arrayBuffer(),
+      mapErr,
+    );
+    if (tilesetBufferResult.isErr()) {
+      console.error("Error loading tileset:", tilesetBufferResult.error);
+      toast.error(tilesetBufferResult.error);
+      setLoading(false);
+      return;
+    }
+    const tilesetBuffer = tilesetBufferResult.value;
+
+    // Use the gamma-corrected palette from MightyMikePaletteManager for tileset rendering
+    const tilesetPaletteRGBA = gMightyMikePalette.getPaletteAsRGBA();
+    const tilsetPalette: RGBColor[] = [];
+    for (let i = 0; i < 256; i++) {
+      const offset = i * 4;
+      tilsetPalette.push({
+        r: tilesetPaletteRGBA[offset] ?? 0,
+        g: tilesetPaletteRGBA[offset + 1] ?? 0,
+        b: tilesetPaletteRGBA[offset + 2] ?? 0,
+      });
+    }
+
+    const tilesetResult = parseTilesetFile(tilesetBuffer, tilsetPalette);
+
+    if (tilesetResult.isErr()) {
+      toast.error(`Failed to parse tileset: ${tilesetResult.error}`);
+      return;
+    }
+
+    // Create grid preview of all tiles
+    const tileset = tilesetResult.value;
+    const gridCanvas = createTilesetGridPreview(tileset);
+
+    setLoadedData({
+      type: "tileset",
+      data: tileset,
+      gridCanvas,
+      filename,
+    });
+    setSelectedTileIndex(undefined);
+    setCurrentTilesetScene(filename);
+    setCurrentTilesetPaletteScene(filename);
+
+    // Apply tileset's gamma-corrected palette to current palette for shape rendering
+    // We already have it from the palette manager
+    const tilsetPaletteColors: typeof currentPalette.colors = [];
+    const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+    for (let i = 0; i < 256; i++) {
+      const offset = i * 4;
+      tilsetPaletteColors.push({
+        r: gammaCorrectectedRGBA[offset] ?? 0,
+        g: gammaCorrectectedRGBA[offset + 1] ?? 0,
+        b: gammaCorrectectedRGBA[offset + 2] ?? 0,
+      });
+    }
+
+    const paletteWithScene = createPalette(
+      `${filename} Scene Palette (Gamma-Corrected)`,
+    );
+    paletteWithScene.colors = tilsetPaletteColors;
+    setCurrentPalette(paletteWithScene);
+
+    toast.success(
+      `Loaded tileset: ${filename} (${tileset.numTileDefinitions} tiles)`,
+    );
+    setLoading(false);
   };
 
   // ===== Rendering =====
@@ -606,7 +675,13 @@ export function SpriteViewer() {
     const spriteDrawY = originY - offsetY * zoom;
 
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(sourceCanvas, spriteDrawX, spriteDrawY, spriteW * zoom, spriteH * zoom);
+    ctx.drawImage(
+      sourceCanvas,
+      spriteDrawX,
+      spriteDrawY,
+      spriteW * zoom,
+      spriteH * zoom,
+    );
 
     // Bounds
     if (displayOptions.showBounds) {
@@ -627,7 +702,13 @@ export function SpriteViewer() {
     ctx.moveTo(originX, originY - crosshairSize);
     ctx.lineTo(originX, originY + crosshairSize);
     ctx.stroke();
-  }, [loadedData, selectedShapeIndex, selectedFrameIndex, currentPalette.colors, displayOptions]);
+  }, [
+    loadedData,
+    selectedShapeIndex,
+    selectedFrameIndex,
+    currentPalette.colors,
+    displayOptions,
+  ]);
 
   const renderTGAOrTileset = useCallback(() => {
     if (!canvasRef.current) return;
@@ -638,7 +719,11 @@ export function SpriteViewer() {
       sourceCanvas = loadedData.data;
     } else if (loadedData?.type === "tileset") {
       // If a tile is selected, show that tile; otherwise show grid preview
-      if (selectedTileIndex !== undefined && selectedTileIndex >= 0 && selectedTileIndex < loadedData.data.tileImages.length) {
+      if (
+        selectedTileIndex !== undefined &&
+        selectedTileIndex >= 0 &&
+        selectedTileIndex < loadedData.data.tileImages.length
+      ) {
         const tileCanvas = loadedData.data.tileImages[selectedTileIndex];
         sourceCanvas = tileCanvas || loadedData.gridCanvas;
       } else {
@@ -674,54 +759,81 @@ export function SpriteViewer() {
         renderTGAOrTileset();
       }
     }
-  }, [loadedData, selectedShapeIndex, selectedFrameIndex, displayOptions, currentPalette, selectedTileIndex, renderSprites, renderTGAOrTileset]);
+  }, [
+    loadedData,
+    selectedShapeIndex,
+    selectedFrameIndex,
+    displayOptions,
+    currentPalette,
+    selectedTileIndex,
+    renderSprites,
+    renderTGAOrTileset,
+  ]);
 
   // ===== Pixel editing =====
 
-  const editPixelAtCanvasPos = useCallback((canvasX: number, canvasY: number) => {
-    if (!renderParamsRef.current) return;
-    if (loadedData?.type !== "sprites") return;
+  const editPixelAtCanvasPos = useCallback(
+    (canvasX: number, canvasY: number) => {
+      if (!renderParamsRef.current) return;
+      if (loadedData?.type !== "sprites") return;
 
-    const { originX, originY, zoom, spriteOffsetX, spriteOffsetY, spriteW, spriteH } = renderParamsRef.current;
-    const spriteDrawX = originX - spriteOffsetX * zoom;
-    const spriteDrawY = originY - spriteOffsetY * zoom;
+      const {
+        originX,
+        originY,
+        zoom,
+        spriteOffsetX,
+        spriteOffsetY,
+        spriteW,
+        spriteH,
+      } = renderParamsRef.current;
+      const spriteDrawX = originX - spriteOffsetX * zoom;
+      const spriteDrawY = originY - spriteOffsetY * zoom;
 
-    const pixelX = Math.floor((canvasX - spriteDrawX) / zoom);
-    const pixelY = Math.floor((canvasY - spriteDrawY) / zoom);
+      const pixelX = Math.floor((canvasX - spriteDrawX) / zoom);
+      const pixelY = Math.floor((canvasY - spriteDrawY) / zoom);
 
-    if (pixelX < 0 || pixelX >= spriteW || pixelY < 0 || pixelY >= spriteH) return;
+      if (pixelX < 0 || pixelX >= spriteW || pixelY < 0 || pixelY >= spriteH)
+        return;
 
-    const pixelIndex = pixelY * spriteW + pixelX;
-    const shape = loadedData.data.shapes[selectedShapeIndex];
-    if (!shape) return;
-    const frame = shape.frames[selectedFrameIndex];
-    if (!frame) return;
+      const pixelIndex = pixelY * spriteW + pixelX;
+      const shape = loadedData.data.shapes[selectedShapeIndex];
+      if (!shape) return;
+      const frame = shape.frames[selectedFrameIndex];
+      if (!frame) return;
 
-    if (editMode === "eyedropper") {
-      const colorIndex = frame.pixels[pixelIndex];
-      if (colorIndex !== undefined) {
-        setSelectedPaletteColorIndex(colorIndex);
-        toast.success(`Picked color index ${colorIndex}`);
+      if (editMode === "eyedropper") {
+        const colorIndex = frame.pixels[pixelIndex];
+        if (colorIndex !== undefined) {
+          setSelectedPaletteColorIndex(colorIndex);
+          toast.success(`Picked color index ${colorIndex}`);
+        }
+        return;
       }
-      return;
-    }
 
-    const newColor = editMode === "erase" ? 0 : selectedPaletteColorIndex;
-    const newPixels = new Uint8Array(frame.pixels);
-    newPixels[pixelIndex] = newColor;
+      const newColor = editMode === "erase" ? 0 : selectedPaletteColorIndex;
+      const newPixels = new Uint8Array(frame.pixels);
+      newPixels[pixelIndex] = newColor;
 
-    const newFrame: ShapeFrame = { ...frame, pixels: newPixels };
-    const newFrames = [...shape.frames];
-    newFrames[selectedFrameIndex] = newFrame;
-    const newShape = { ...shape, frames: newFrames };
-    const newShapes = [...loadedData.data.shapes];
-    newShapes[selectedShapeIndex] = newShape;
+      const newFrame: ShapeFrame = { ...frame, pixels: newPixels };
+      const newFrames = [...shape.frames];
+      newFrames[selectedFrameIndex] = newFrame;
+      const newShape = { ...shape, frames: newFrames };
+      const newShapes = [...loadedData.data.shapes];
+      newShapes[selectedShapeIndex] = newShape;
 
-    setLoadedData({
-      ...loadedData,
-      data: { ...loadedData.data, shapes: newShapes },
-    });
-  }, [loadedData, selectedShapeIndex, selectedFrameIndex, editMode, selectedPaletteColorIndex]);
+      setLoadedData({
+        ...loadedData,
+        data: { ...loadedData.data, shapes: newShapes },
+      });
+    },
+    [
+      loadedData,
+      selectedShapeIndex,
+      selectedFrameIndex,
+      editMode,
+      selectedPaletteColorIndex,
+    ],
+  );
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (editMode === "view") return;
@@ -732,7 +844,12 @@ export function SpriteViewer() {
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isPaintingRef.current || editMode === "view" || editMode === "eyedropper") return;
+    if (
+      !isPaintingRef.current ||
+      editMode === "view" ||
+      editMode === "eyedropper"
+    )
+      return;
     editPixelAtCanvasPos(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
   };
 
@@ -769,7 +886,9 @@ export function SpriteViewer() {
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     const factor = e.deltaY < 0 ? 1.25 : 0.8;
     setDisplayOptions((prev) => ({
       ...prev,
@@ -887,7 +1006,7 @@ export function SpriteViewer() {
     // If it's a predefined palette (scene name), load the actual palette from the TGA
     const sceneNames = ["candy", "bargain", "clown", "fairy", "jurassic"];
     const sceneName = sceneNames.find(
-      (name) => palette.name.toLowerCase() === name.toLowerCase()
+      (name) => palette.name.toLowerCase() === name.toLowerCase(),
     );
 
     if (sceneName) {
@@ -903,7 +1022,7 @@ export function SpriteViewer() {
       const tgaName = sceneToTga[sceneName] || sceneName;
       const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
 
-    const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
+      const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
       if (fetchResult.isErr()) {
         console.error("Error loading palette:", fetchResult.error);
         toast.error("Failed to load palette");
@@ -916,62 +1035,65 @@ export function SpriteViewer() {
         return;
       }
 
-    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+      const bufferResult = await ResultAsync.fromPromise(
+        response.arrayBuffer(),
+        mapErr,
+      );
       if (bufferResult.isErr()) {
         console.error("Error loading palette:", bufferResult.error);
         toast.error("Failed to load palette");
         return;
       }
       const buffer = bufferResult.value;
-        const tgaView = new DataView(buffer);
+      const tgaView = new DataView(buffer);
 
-        // Parse TGA header
-        const idLength = tgaView.getUint8(0);
-        const colorMapType = tgaView.getUint8(1);
-        const colorMapLength = tgaView.getUint16(5, true);
-        const colorMapDepth = tgaView.getUint8(7);
-        const colorMapBytesPerEntry = colorMapDepth / 8;
+      // Parse TGA header
+      const idLength = tgaView.getUint8(0);
+      const colorMapType = tgaView.getUint8(1);
+      const colorMapLength = tgaView.getUint16(5, true);
+      const colorMapDepth = tgaView.getUint8(7);
+      const colorMapBytesPerEntry = colorMapDepth / 8;
 
-        if (colorMapType === 1 && colorMapLength >= 256) {
-          const colorMapOffset = 18 + idLength;
+      if (colorMapType === 1 && colorMapLength >= 256) {
+        const colorMapOffset = 18 + idLength;
 
-          // Build RGBA array for palette manager
-          const rgbaData = new Uint8Array(1024);
-          for (let i = 0; i < 256; i++) {
-            const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
-            const b = tgaView.getUint8(entryOffset);
-            const g = tgaView.getUint8(entryOffset + 1);
-            const r = tgaView.getUint8(entryOffset + 2);
-            const a = 255;
+        // Build RGBA array for palette manager
+        const rgbaData = new Uint8Array(1024);
+        for (let i = 0; i < 256; i++) {
+          const entryOffset = colorMapOffset + i * colorMapBytesPerEntry;
+          const b = tgaView.getUint8(entryOffset);
+          const g = tgaView.getUint8(entryOffset + 1);
+          const r = tgaView.getUint8(entryOffset + 2);
+          const a = 255;
 
-            rgbaData[i * 4 + 0] = r;
-            rgbaData[i * 4 + 1] = g;
-            rgbaData[i * 4 + 2] = b;
-            rgbaData[i * 4 + 3] = a;
-          }
-
-          // Load into palette manager
-          gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
-
-          // Get gamma-corrected palette
-          const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
-          const paletteColors: typeof palette.colors = [];
-          for (let i = 0; i < 256; i++) {
-            const offset = i * 4;
-            paletteColors.push({
-              r: gammaCorrectectedRGBA[offset] ?? 0,
-              g: gammaCorrectectedRGBA[offset + 1] ?? 0,
-              b: gammaCorrectectedRGBA[offset + 2] ?? 0,
-            });
-          }
-
-          const loadedPalette = createPalette(palette.name);
-          loadedPalette.colors = paletteColors;
-          setCurrentPalette(loadedPalette);
-          toast.success(`Loaded ${palette.name} palette`);
-        } else {
-          toast.error("Invalid TGA palette format");
+          rgbaData[i * 4 + 0] = r;
+          rgbaData[i * 4 + 1] = g;
+          rgbaData[i * 4 + 2] = b;
+          rgbaData[i * 4 + 3] = a;
         }
+
+        // Load into palette manager
+        gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
+
+        // Get gamma-corrected palette
+        const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+        const paletteColors: typeof palette.colors = [];
+        for (let i = 0; i < 256; i++) {
+          const offset = i * 4;
+          paletteColors.push({
+            r: gammaCorrectectedRGBA[offset] ?? 0,
+            g: gammaCorrectectedRGBA[offset + 1] ?? 0,
+            b: gammaCorrectectedRGBA[offset + 2] ?? 0,
+          });
+        }
+
+        const loadedPalette = createPalette(palette.name);
+        loadedPalette.colors = paletteColors;
+        setCurrentPalette(loadedPalette);
+        toast.success(`Loaded ${palette.name} palette`);
+      } else {
+        toast.error("Invalid TGA palette format");
+      }
     } else {
       // Custom palette - just set it
       setCurrentPalette(palette);
@@ -1006,81 +1128,87 @@ export function SpriteViewer() {
       return;
     }
 
-    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       console.error("Error loading tileset palette:", bufferResult.error);
       toast.error("Failed to load palette");
       return;
     }
     const buffer = bufferResult.value;
-      const tgaView = new DataView(buffer);
+    const tgaView = new DataView(buffer);
 
-      // Parse TGA header
-      const idLength = tgaView.getUint8(0);
-      const colorMapType = tgaView.getUint8(1);
-      const colorMapLength = tgaView.getUint16(5, true);
-      const colorMapDepth = tgaView.getUint8(7);
-      const colorMapBytesPerEntry = colorMapDepth / 8;
+    // Parse TGA header
+    const idLength = tgaView.getUint8(0);
+    const colorMapType = tgaView.getUint8(1);
+    const colorMapLength = tgaView.getUint16(5, true);
+    const colorMapDepth = tgaView.getUint8(7);
+    const colorMapBytesPerEntry = colorMapDepth / 8;
 
-      if (colorMapType === 1 && colorMapLength >= 256) {
-        const colorMapOffset = 18 + idLength;
+    if (colorMapType === 1 && colorMapLength >= 256) {
+      const colorMapOffset = 18 + idLength;
 
-        // Build RGBA array for palette manager
-        const rgbaData = new Uint8Array(1024);
-        for (let i = 0; i < 256; i++) {
-          const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
-          const b = tgaView.getUint8(entryOffset);
-          const g = tgaView.getUint8(entryOffset + 1);
-          const r = tgaView.getUint8(entryOffset + 2);
-          const a = 255;
+      // Build RGBA array for palette manager
+      const rgbaData = new Uint8Array(1024);
+      for (let i = 0; i < 256; i++) {
+        const entryOffset = colorMapOffset + i * colorMapBytesPerEntry;
+        const b = tgaView.getUint8(entryOffset);
+        const g = tgaView.getUint8(entryOffset + 1);
+        const r = tgaView.getUint8(entryOffset + 2);
+        const a = 255;
 
-          rgbaData[i * 4 + 0] = r;
-          rgbaData[i * 4 + 1] = g;
-          rgbaData[i * 4 + 2] = b;
-          rgbaData[i * 4 + 3] = a;
-        }
+        rgbaData[i * 4 + 0] = r;
+        rgbaData[i * 4 + 1] = g;
+        rgbaData[i * 4 + 2] = b;
+        rgbaData[i * 4 + 3] = a;
+      }
 
-        // Load into palette manager
-        gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
+      // Load into palette manager
+      gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
 
-        // Get gamma-corrected palette
-        const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
-        const paletteColors: typeof currentPalette.colors = [];
-        for (let i = 0; i < 256; i++) {
-          const offset = i * 4;
-          paletteColors.push({
-            r: gammaCorrectectedRGBA[offset] ?? 0,
-            g: gammaCorrectectedRGBA[offset + 1] ?? 0,
-            b: gammaCorrectectedRGBA[offset + 2] ?? 0,
-          });
-        }
+      // Get gamma-corrected palette
+      const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+      const paletteColors: typeof currentPalette.colors = [];
+      for (let i = 0; i < 256; i++) {
+        const offset = i * 4;
+        paletteColors.push({
+          r: gammaCorrectectedRGBA[offset] ?? 0,
+          g: gammaCorrectectedRGBA[offset + 1] ?? 0,
+          b: gammaCorrectectedRGBA[offset + 2] ?? 0,
+        });
+      }
 
-        const loadedPalette = createPalette(`${sceneName} Palette (Mixed)`);
-        loadedPalette.colors = paletteColors;
-        setCurrentPalette(loadedPalette);
+      const loadedPalette = createPalette(`${sceneName} Palette (Mixed)`);
+      loadedPalette.colors = paletteColors;
+      setCurrentPalette(loadedPalette);
 
-        // Re-render the tileset with the new palette
-        if (loadedData?.type === "tileset") {
-          const newTileImages = rerenderTilesetWithPalette(loadedData.data, paletteColors);
-          const newGridCanvas = createTilesetGridPreview({
+      // Re-render the tileset with the new palette
+      if (loadedData?.type === "tileset") {
+        const newTileImages = rerenderTilesetWithPalette(
+          loadedData.data,
+          paletteColors,
+        );
+        const newGridCanvas = createTilesetGridPreview({
+          ...loadedData.data,
+          tileImages: newTileImages,
+        });
+
+        setLoadedData({
+          ...loadedData,
+          data: {
             ...loadedData.data,
             tileImages: newTileImages,
-          });
-
-          setLoadedData({
-            ...loadedData,
-            data: {
-              ...loadedData.data,
-              tileImages: newTileImages,
-            },
-            gridCanvas: newGridCanvas,
-          });
-        }
-
-        toast.success(`Applied ${sceneName} palette to tileset`);
-      } else {
-        toast.error("Invalid TGA palette format");
+          },
+          gridCanvas: newGridCanvas,
+        });
       }
+
+      toast.success(`Applied ${sceneName} palette to tileset`);
+    } else {
+      toast.error("Invalid TGA palette format");
+    }
   };
 
   const selectedColor = currentPalette.colors[selectedPaletteColorIndex];
@@ -1140,196 +1268,200 @@ export function SpriteViewer() {
               loadedFilename={loadedData?.filename}
             />
 
-          {loadedData?.type === "sprites" && (
-            <>
-              <PaletteSelector
-                palettes={customPalettes}
-                currentPalette={currentPalette}
-                onPaletteSelect={(palette) => {
-                  handlePaletteSelect(palette);
-                  setShowPaletteEditor(false);
-                }}
-                onCreateNew={() => {
-                  const newPalette = createPalette(`Custom ${customPalettes.length + 1}`);
-                  setCustomPalettes([...customPalettes, newPalette]);
-                  setCurrentPalette(newPalette);
-                  setShowPaletteEditor(true);
-                }}
-              />
-
-              {showPaletteEditor && (
-                <PaletteEditor
-                  palette={currentPalette}
-                  onPaletteChange={(updated) => {
-                    setCurrentPalette(updated);
-                    const idx = customPalettes.findIndex(
-                      (p) => p.name === updated.name,
-                    );
-                    if (idx >= 0) {
-                      const newPalettes = [...customPalettes];
-                      newPalettes[idx] = updated;
-                      setCustomPalettes(newPalettes);
-                    }
+            {loadedData?.type === "sprites" && (
+              <>
+                <PaletteSelector
+                  palettes={customPalettes}
+                  currentPalette={currentPalette}
+                  onPaletteSelect={(palette) => {
+                    handlePaletteSelect(palette);
+                    setShowPaletteEditor(false);
                   }}
-                  onSaveAsNew={(palette) => {
-                    const newPalette = clonePalette(palette);
-                    newPalette.name = `${palette.name} Copy`;
+                  onCreateNew={() => {
+                    const newPalette = createPalette(
+                      `Custom ${customPalettes.length + 1}`,
+                    );
                     setCustomPalettes([...customPalettes, newPalette]);
                     setCurrentPalette(newPalette);
+                    setShowPaletteEditor(true);
                   }}
                 />
-              )}
-            </>
-          )}
 
-          {loadedData?.type === "sprites" && (
-            <SpriteControls
-              shapesFile={loadedData.data}
-              selectedShapeIndex={selectedShapeIndex}
-              selectedFrameIndex={selectedFrameIndex}
-              onShapeChange={(idx) => {
-                setSelectedShapeIndex(idx);
-                setSelectedFrameIndex(0);
-              }}
-              onFrameChange={setSelectedFrameIndex}
-            />
-          )}
-
-          {loadedData?.type === "sprites" && (
-            <EditorPanel title="Sprite Tools">
-              <EditorField label="Mode">
-                <div className="flex flex-wrap gap-1">
-                  <Button
-                    size="sm"
-                    variant={editMode === "view" ? "default" : "outline"}
-                    className="text-white"
-                    onClick={() => setEditMode("view")}
-                  >
-                    <Eye className="w-3 h-3 mr-1" /> View
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={editMode === "paint" ? "default" : "outline"}
-                    className="text-white"
-                    onClick={() => setEditMode("paint")}
-                  >
-                    <Paintbrush className="w-3 h-3 mr-1" /> Paint
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={editMode === "erase" ? "default" : "outline"}
-                    className="text-white"
-                    onClick={() => setEditMode("erase")}
-                  >
-                    <Eraser className="w-3 h-3 mr-1" /> Erase
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={editMode === "eyedropper" ? "default" : "outline"}
-                    className="text-white"
-                    onClick={() => setEditMode("eyedropper")}
-                  >
-                    <Pipette className="w-3 h-3 mr-1" /> Pick
-                  </Button>
-                </div>
-              </EditorField>
-              {(editMode === "paint" || editMode === "eyedropper") && (
-                <EditorField label="Palette Index">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded border border-gray-600 flex-shrink-0"
-                      style={{ backgroundColor: selectedColorStyle }}
-                    />
-                    <span className="text-xs text-gray-300 w-16">
-                      Index: {selectedPaletteColorIndex}
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={255}
-                      value={selectedPaletteColorIndex}
-                      onChange={(e) =>
-                        setSelectedPaletteColorIndex(
-                          parseInt(e.target.value, 10),
-                        )
+                {showPaletteEditor && (
+                  <PaletteEditor
+                    palette={currentPalette}
+                    onPaletteChange={(updated) => {
+                      setCurrentPalette(updated);
+                      const idx = customPalettes.findIndex(
+                        (p) => p.name === updated.name,
+                      );
+                      if (idx >= 0) {
+                        const newPalettes = [...customPalettes];
+                        newPalettes[idx] = updated;
+                        setCustomPalettes(newPalettes);
                       }
-                      className="flex-1"
-                    />
+                    }}
+                    onSaveAsNew={(palette) => {
+                      const newPalette = clonePalette(palette);
+                      newPalette.name = `${palette.name} Copy`;
+                      setCustomPalettes([...customPalettes, newPalette]);
+                      setCurrentPalette(newPalette);
+                    }}
+                  />
+                )}
+              </>
+            )}
+
+            {loadedData?.type === "sprites" && (
+              <SpriteControls
+                shapesFile={loadedData.data}
+                selectedShapeIndex={selectedShapeIndex}
+                selectedFrameIndex={selectedFrameIndex}
+                onShapeChange={(idx) => {
+                  setSelectedShapeIndex(idx);
+                  setSelectedFrameIndex(0);
+                }}
+                onFrameChange={setSelectedFrameIndex}
+              />
+            )}
+
+            {loadedData?.type === "sprites" && (
+              <EditorPanel title="Sprite Tools">
+                <EditorField label="Mode">
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      size="sm"
+                      variant={editMode === "view" ? "default" : "outline"}
+                      className="text-white"
+                      onClick={() => setEditMode("view")}
+                    >
+                      <Eye className="w-3 h-3 mr-1" /> View
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={editMode === "paint" ? "default" : "outline"}
+                      className="text-white"
+                      onClick={() => setEditMode("paint")}
+                    >
+                      <Paintbrush className="w-3 h-3 mr-1" /> Paint
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={editMode === "erase" ? "default" : "outline"}
+                      className="text-white"
+                      onClick={() => setEditMode("erase")}
+                    >
+                      <Eraser className="w-3 h-3 mr-1" /> Erase
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={
+                        editMode === "eyedropper" ? "default" : "outline"
+                      }
+                      className="text-white"
+                      onClick={() => setEditMode("eyedropper")}
+                    >
+                      <Pipette className="w-3 h-3 mr-1" /> Pick
+                    </Button>
                   </div>
                 </EditorField>
-              )}
-            </EditorPanel>
-          )}
+                {(editMode === "paint" || editMode === "eyedropper") && (
+                  <EditorField label="Palette Index">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-6 rounded border border-gray-600 shrink-0"
+                        style={{ backgroundColor: selectedColorStyle }}
+                      />
+                      <span className="text-xs text-gray-300 w-16">
+                        Index: {selectedPaletteColorIndex}
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={255}
+                        value={selectedPaletteColorIndex}
+                        onChange={(e) =>
+                          setSelectedPaletteColorIndex(
+                            parseInt(e.target.value, 10),
+                          )
+                        }
+                        className="flex-1"
+                      />
+                    </div>
+                  </EditorField>
+                )}
+              </EditorPanel>
+            )}
 
-          {loadedData?.type === "tileset" && (
-            <TilesetEditor
-              tileCount={loadedData.data.numTileDefinitions}
-              selectedTileIndex={selectedTileIndex}
-              onSelectTile={setSelectedTileIndex}
-              currentTilesetScene={currentTilesetScene}
-              currentPaletteScene={currentTilesetPaletteScene}
-              onPaletteSceneChange={handleTilesetPaletteSceneChange}
-            />
-          )}
+            {loadedData?.type === "tileset" && (
+              <TilesetEditor
+                tileCount={loadedData.data.numTileDefinitions}
+                selectedTileIndex={selectedTileIndex}
+                onSelectTile={setSelectedTileIndex}
+                currentTilesetScene={currentTilesetScene}
+                currentPaletteScene={currentTilesetPaletteScene}
+                onPaletteSceneChange={handleTilesetPaletteSceneChange}
+              />
+            )}
 
-          {loadedData && (
-            <DisplayOptionsPanel
-              options={displayOptions}
-              onOptionsChange={setDisplayOptions}
-              showSpriteOptions={loadedData.type === "sprites"}
-            />
-          )}
+            {loadedData && (
+              <DisplayOptionsPanel
+                options={displayOptions}
+                onOptionsChange={setDisplayOptions}
+                showSpriteOptions={loadedData.type === "sprites"}
+              />
+            )}
 
-          {loadedData?.type === "sprites" && (
-            <EditorPanel title="Export">
-              <Button
-                variant="outline"
-                className="w-full text-white"
-                onClick={handleDownloadFrame}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download Frame
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full text-white"
-                onClick={handleDownloadAllFrames}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download All Frames
-              </Button>
-            </EditorPanel>
-          )}
+            {loadedData?.type === "sprites" && (
+              <EditorPanel title="Export">
+                <Button
+                  variant="outline"
+                  className="w-full text-white"
+                  onClick={handleDownloadFrame}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Frame
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-white"
+                  onClick={handleDownloadAllFrames}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download All Frames
+                </Button>
+              </EditorPanel>
+            )}
 
-          {loadedData?.type === "tileset" && (
-            <EditorPanel title="Export">
-              <Button
-                variant="outline"
-                className="w-full text-white"
-                onClick={handleDownloadTile}
-                disabled={selectedTileIndex === undefined}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download Tile
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full text-white"
-                onClick={handleDownloadTileset}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download Tileset
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full text-white"
-                onClick={handleDownloadAllTiles}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download All Tiles
-              </Button>
-            </EditorPanel>
-          )}
+            {loadedData?.type === "tileset" && (
+              <EditorPanel title="Export">
+                <Button
+                  variant="outline"
+                  className="w-full text-white"
+                  onClick={handleDownloadTile}
+                  disabled={selectedTileIndex === undefined}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Tile
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-white"
+                  onClick={handleDownloadTileset}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Tileset
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-white"
+                  onClick={handleDownloadAllTiles}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download All Tiles
+                </Button>
+              </EditorPanel>
+            )}
           </div>
         </ResizablePanel>
 

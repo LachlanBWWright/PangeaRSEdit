@@ -31,6 +31,8 @@ export function ModelCanvas(props: ModelCanvasProps) {
     gizmoMode = "translate",
     interactionMode = "navigate",
     previewLighting = false,
+    autoRotate = false,
+    autoRotateSpeed = 2,
     skinData,
     weightBrushSettings,
     weightVisualizationMode,
@@ -184,8 +186,8 @@ export function ModelCanvas(props: ModelCanvasProps) {
           enablePan={false}
           enableZoom={!isTransforming}
           enableRotate={interactionMode === "navigate" && !isTransforming}
-          autoRotate={false}
-          autoRotateSpeed={2}
+          autoRotate={autoRotate}
+          autoRotateSpeed={autoRotateSpeed}
         />
       </Canvas>
     </>

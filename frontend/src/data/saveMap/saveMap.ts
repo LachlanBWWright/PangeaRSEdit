@@ -8,9 +8,8 @@ import {
 import type { LevelIoProgress } from "@/data/level-io/levelIoTypes";
 
 function downloadBytes(bytes: Uint8Array, filename: string): void {
-  const blobBytes = new Uint8Array(bytes.byteLength);
-  blobBytes.set(bytes);
-  const blob = new Blob([blobBytes.buffer], {
+  const stableBytes = Uint8Array.from(bytes);
+  const blob = new Blob([stableBytes], {
     type: "application/octet-stream",
   });
   const url = URL.createObjectURL(blob);
@@ -20,7 +19,7 @@ function downloadBytes(bytes: Uint8Array, filename: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export async function buildPreviewTerrainBlobs(

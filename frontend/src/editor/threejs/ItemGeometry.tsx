@@ -1,5 +1,12 @@
 import React, { useMemo, useEffect, useRef, useCallback } from "react";
-import { Mesh, Group, DoubleSide } from "three";
+import {
+  Mesh,
+  Group,
+  DoubleSide,
+  MeshBasicMaterial,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+} from "three";
 import { ResultAsync } from "neverthrow";
 import {
   ItemData,
@@ -14,6 +21,7 @@ import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getItemModelCacheKey } from "./hooks/itemModelCacheKey";
+import { cloneGroupForItemRendering } from "./hooks/itemModelLoaderUtils";
 import { getGameMapper } from "@/data/items/mappers";
 import {
   calculateRotation,
@@ -99,6 +107,59 @@ const LoadingCube: React.FC<{
     </mesh>
   );
 };
+
+function applyLightingMode(cloned: Group, lightingMode: "unlit" | undefined): void {
+  if (lightingMode !== "unlit") {
+    return;
+  }
+
+  cloned.traverse((node) => {
+    if (!(node instanceof Mesh) || !node.material) {
+      return;
+    }
+
+    const materials = Array.isArray(node.material)
+      ? node.material
+      : [node.material];
+    materials.forEach((material) => {
+      if (material instanceof MeshBasicMaterial) {
+        material.side = DoubleSide;
+        material.toneMapped = false;
+        material.needsUpdate = true;
+        return;
+      }
+
+      if (
+        material instanceof MeshStandardMaterial ||
+        material instanceof MeshPhysicalMaterial
+      ) {
+        material.side = DoubleSide;
+        material.metalness = 0;
+        material.roughness = 1;
+        material.toneMapped = false;
+
+        if (material.map) {
+          // Textured: emit texture at full brightness, suppress diffuse so the
+          // texture is not double-counted (diffuse × lighting + emissive × map).
+          material.color.setRGB(0, 0, 0);
+          material.emissive.setRGB(1, 1, 1);
+          material.emissiveMap = material.map;
+          material.emissiveIntensity = 1;
+        } else {
+          // Untextured: emit the existing diffuse colour so the model shape is
+          // visible without lighting influencing it.
+          const { r, g, b } = material.color;
+          material.color.setRGB(0, 0, 0);
+          material.emissive.setRGB(r, g, b);
+          material.emissiveIntensity = 1;
+        }
+
+        material.needsUpdate = true;
+      }
+    });
+  });
+}
+
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
@@ -106,7 +167,7 @@ const ItemModel: React.FC<{
   extraRotationY?: number;
 }> = ({ position, clonedScene, extraRotationY }) => {
   const instanceScene = useMemo(() => {
-    const clone = clonedScene.clone(true);
+    const clone = cloneGroupForItemRendering(clonedScene);
     if (extraRotationY !== undefined && extraRotationY !== 0) {
       clone.rotateY(extraRotationY);
     }
@@ -218,8 +279,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
         const mapping = mapper?.getMapping(firstItem.type, levelNum, params, firstItem.flags);
         if (mapping && cachedModel.gltf) {
-          const cloned = cachedModel.gltf.clone(true);
+          const cloned = cloneGroupForItemRendering(cachedModel.gltf);
           const baseScale = mapping.scale ?? 1;
+          applyLightingMode(cloned, mapping.lightingMode);
           const sx = baseScale * (mapping.scaleXZ ?? 1);
           const sy = baseScale * (mapping.scaleY ?? 1);
           const sz = baseScale * (mapping.scaleXZ ?? 1);

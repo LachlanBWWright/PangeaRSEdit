@@ -3,6 +3,7 @@ import { Game } from "../../data/globals/globals";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   GAME_DISPLAY_NAMES,
+  type PreviewVfsFile,
   type PreviewRuntimeModule,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
@@ -16,7 +17,10 @@ function isFunction(fn: unknown): fn is (...args: unknown[]) => unknown {
   return typeof fn === "function";
 }
 
-function getStringField<T extends object>(obj: T, field: keyof T): string | null {
+function getStringField<T extends object>(
+  obj: T,
+  field: keyof T,
+): string | null {
   const value = obj[field];
   return typeof value === "string" ? value : null;
 }
@@ -25,7 +29,10 @@ function ensureDir(
   vfs: NonNullable<PreviewRuntimeModule["FS"]>,
   path: string,
 ): void {
-  if (isFunctionField(vfs, "analyzePath") && typeof vfs.analyzePath === "function") {
+  if (
+    isFunctionField(vfs, "analyzePath") &&
+    typeof vfs.analyzePath === "function"
+  ) {
     const analyzePath = vfs.analyzePath;
     const analyzeResult = Result.fromThrowable(
       () => analyzePath(path),
@@ -39,6 +46,31 @@ function ensureDir(
     },
     (e) => mapErr(e),
   )();
+}
+
+function ensureParentDirectory(
+  module: PreviewRuntimeModule,
+  filePath: string,
+): void {
+  const normalizedPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
+  const segments = normalizedPath
+    .split("/")
+    .filter((segment) => segment.length > 0);
+  if (segments.length < 2) {
+    return;
+  }
+
+  const vfs = module.FS;
+  if (!vfs || !isFunctionField(vfs, "mkdir")) {
+    return;
+  }
+
+  let currentPath = "";
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index] ?? "";
+    currentPath = `${currentPath}/${segment}`;
+    ensureDir(vfs, currentPath);
+  }
 }
 
 function ensurePreviewPrefsDirs(
@@ -142,9 +174,15 @@ function writeTerrainToVfs(
   terrainDataBytes: Uint8Array | null,
   terrainRsrcBytes: Uint8Array | null,
   terrainTextureBytes: Uint8Array | null,
+  customFiles: readonly PreviewVfsFile[] | undefined,
   onError: (text: string) => void,
 ): void {
-  if (!(terrainDataBytes ?? terrainRsrcBytes ?? terrainTextureBytes)) {
+  const hasTerrainBytes = Boolean(
+    terrainDataBytes ?? terrainRsrcBytes ?? terrainTextureBytes,
+  );
+  const hasCustomFiles = Boolean(customFiles && customFiles.length > 0);
+
+  if (!hasTerrainBytes && !hasCustomFiles) {
     logPreviewRuntime("No terrain bytes supplied for VFS injection", {
       game: GAME_DISPLAY_NAMES[config.game],
       level: currentLevelInfo,
@@ -209,9 +247,7 @@ function writeTerrainToVfs(
       terrainDataBytes,
     );
     if (writeDataResult.isErr()) {
-      onError(
-        `Failed to write terrain data file: ${writeDataResult.error}`,
-      );
+      onError(`Failed to write terrain data file: ${writeDataResult.error}`);
       return;
     }
     if (terrainPaths.altDataPath) {
@@ -239,9 +275,7 @@ function writeTerrainToVfs(
       terrainRsrcBytes,
     );
     if (writeRsrcResult.isErr()) {
-      onError(
-        `Failed to write terrain rsrc file: ${writeRsrcResult.error}`,
-      );
+      onError(`Failed to write terrain rsrc file: ${writeRsrcResult.error}`);
       return;
     }
   }
@@ -261,6 +295,23 @@ function writeTerrainToVfs(
         `Failed to write terrain texture file: ${writeTextureResult.error}`,
       );
       return;
+    }
+  }
+
+  if (customFiles && customFiles.length > 0) {
+    for (const file of customFiles) {
+      ensureParentDirectory(module, file.path);
+      const writeCustomResult = writeFileToVfs(module, file.path, file.data);
+      if (writeCustomResult.isErr()) {
+        onError(
+          `Failed to write preview override file ${file.path}: ${writeCustomResult.error}`,
+        );
+        return;
+      }
+      logPreviewRuntime("Injected preview override file", {
+        path: file.path,
+        byteLength: file.data.byteLength,
+      });
     }
   }
 

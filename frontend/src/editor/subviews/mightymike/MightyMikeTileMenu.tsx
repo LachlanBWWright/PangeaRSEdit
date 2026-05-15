@@ -6,6 +6,8 @@ import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { toast } from "sonner";
 import {
   CollisionBrushMode,
+  MightyMikeParamsOverlayFlagBit,
+  MightyMikeParamsOverlayMode,
   ShowMightyMikeCollisionOverlay,
   ShowMightyMikeParamsOverlay,
   ParamBrushField,
@@ -13,7 +15,6 @@ import {
 } from "@/data/game/gameAtoms";
 import {
   createCloseEditorHandler,
-  createParamBrushFieldChangeHandler,
   createSetManualTilePaletteSelectionHandler,
   createToggleBooleanHandler,
   createUpdateCollisionPropertyHandler,
@@ -21,9 +22,10 @@ import {
 } from "./MightyMikeTileMenuHandlers";
 import {
   computeSelectedPaletteTile,
+  createTransformedTileCanvas,
   createBlankTileCanvas,
   downloadCanvasAsPng,
-  findTileIndexForImage,
+  findMatchingTileCanvasIndex,
   getCurrentTileImageIndex,
   getFileFromInputEvent,
   getNumber,
@@ -34,10 +36,12 @@ import {
   removePaletteTile,
   replaceTileImage,
   saveEditedImage,
+  type TileImageTransform,
 } from "./MightyMikeTileMenuUtils";
 import {
   appendPaletteMapping,
   applySelectedTileLogicalIndex,
+  findOrCreateLogicalIndexForImage,
   getCurrentTileAttributes,
   getCurrentTileCanvas,
   getEffectiveSelectedTile,
@@ -79,6 +83,12 @@ export function MightyMikeTileMenu({
   );
   const [paramBrushField, setParamBrushField] = useAtom(ParamBrushField);
   const [paramBrushValue, setParamBrushValue] = useAtom(ParamBrushValue);
+  const [paramsOverlayMode, setParamsOverlayMode] = useAtom(
+    MightyMikeParamsOverlayMode,
+  );
+  const [paramsOverlayFlagBit, setParamsOverlayFlagBit] = useAtom(
+    MightyMikeParamsOverlayFlagBit,
+  );
 
   const [manualTilePaletteSelection, setManualTilePaletteSelection] = useState<{
     tile: number;
@@ -169,21 +179,78 @@ export function MightyMikeTileMenu({
       return;
     }
 
-    const logicalIndex = findTileIndexForImage(
-      selectedPaletteTile,
-      xlatTable,
-      mapImages.length,
-    );
-    if (logicalIndex === null) {
-      toast.error("Failed to find logical tile index for palette tile");
-      return;
-    }
-
     setTerrainData((data) => {
+      const logicalIndex = findOrCreateLogicalIndexForImage(
+        data,
+        selectedPaletteTile,
+      );
+      if (logicalIndex === null) {
+        return;
+      }
       applySelectedTileLogicalIndex(data, effectiveSelectedTile, logicalIndex);
     });
 
     toast.success(`Tile ${effectiveSelectedTile} replaced`);
+  };
+
+  const handleApplyPaletteTransform = (transform: TileImageTransform) => {
+    if (!isValidPaletteTileIndex(selectedPaletteTile, mapImages.length)) {
+      toast.error("Invalid palette tile selected");
+      return;
+    }
+
+    const sourceCanvas = mapImages[selectedPaletteTile];
+    if (!sourceCanvas) {
+      toast.error("Palette tile image not found");
+      return;
+    }
+
+    const transformedCanvas = createTransformedTileCanvas(
+      sourceCanvas,
+      transform,
+    );
+    if (!transformedCanvas) {
+      toast.error("Failed to transform palette tile");
+      return;
+    }
+
+    const existingImageIndex = findMatchingTileCanvasIndex(
+      mapImages,
+      transformedCanvas,
+    );
+    const targetImageIndex =
+      existingImageIndex === null ? mapImages.length : existingImageIndex;
+
+    if (existingImageIndex === null) {
+      setMapImages([...mapImages, transformedCanvas]);
+    }
+
+    setTerrainData((data) => {
+      if (existingImageIndex === null) {
+        appendPaletteMapping(data, targetImageIndex);
+      }
+      const logicalIndex = findOrCreateLogicalIndexForImage(
+        data,
+        targetImageIndex,
+      );
+      if (logicalIndex === null) {
+        return;
+      }
+      applySelectedTileLogicalIndex(data, effectiveSelectedTile, logicalIndex);
+    });
+
+    setManualTilePaletteSelection({
+      tile: effectiveSelectedTile,
+      palette: targetImageIndex,
+    });
+
+    toast.success(
+      transform === "rotate"
+        ? "Tile rotated"
+        : transform === "flipX"
+          ? "Tile mirrored horizontally"
+          : "Tile mirrored vertically",
+    );
   };
 
   const handleDownloadTile = () => {
@@ -355,8 +422,19 @@ export function MightyMikeTileMenu({
     setShowParamsOverlay,
     showParamsOverlay,
   );
-  const handleParamBrushFieldChange =
-    createParamBrushFieldChangeHandler(setParamBrushField);
+  const handleParamBrushFieldChange = (value: string) => {
+    if (value === "flags" || value === "p0" || value === "p1") {
+      setParamBrushField(value);
+      setShowParamsOverlay(true);
+      if (value === "flags") {
+        setParamsOverlayMode("flagBit");
+      } else {
+        setParamsOverlayMode(value);
+      }
+      return;
+    }
+    setParamBrushField(null);
+  };
   const handleCloseTileEditor = createCloseEditorHandler(
     setIsEditingTile,
     setEditingImageUrl,
@@ -371,7 +449,7 @@ export function MightyMikeTileMenu({
     );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <>
       <MightyMikeTileMenuContent
         currentImageIndex={currentImageIndex}
         currentTileCanvas={currentTileCanvas}
@@ -379,6 +457,9 @@ export function MightyMikeTileMenu({
         handleUploadTile={handleUploadTile}
         handleEditTile={handleEditTile}
         handleDownloadTile={handleDownloadTile}
+        handleRotateTile={() => handleApplyPaletteTransform("rotate")}
+        handleFlipTileHorizontal={() => handleApplyPaletteTransform("flipX")}
+        handleFlipTileVertical={() => handleApplyPaletteTransform("flipY")}
         mapWidth={mapWidth}
         mapHeight={mapHeight}
         totalTiles={totalTiles}
@@ -398,6 +479,10 @@ export function MightyMikeTileMenu({
         setParamBrushValue={setParamBrushValue}
         showParamsOverlay={showParamsOverlay}
         onToggleParamsOverlay={handleShowParamsOverlayClick}
+        paramsOverlayMode={paramsOverlayMode}
+        onParamsOverlayModeChange={setParamsOverlayMode}
+        paramsOverlayFlagBit={paramsOverlayFlagBit}
+        onParamsOverlayFlagBitChange={setParamsOverlayFlagBit}
         onResize={onResize}
         handleUpdateCollisionProperty={handleUpdateCollisionProperty}
         handleUpdateTileAttribute={handleUpdateTileAttribute}
@@ -412,16 +497,17 @@ export function MightyMikeTileMenu({
         handleRemovePaletteTile={handleRemovePaletteTile}
         handleReplaceTile={handleReplaceTile}
         onSelectPaletteTile={handleManualTilePaletteSelection}
-      />
-
-      <TileBrushPanel
-        game="mightymike"
-        terrainData={terrainData}
-        setTerrainData={setTerrainData}
-        mapWidth={mapWidth}
-        mapHeight={mapHeight}
-        selectedTileIndex={effectiveSelectedTile}
-        activeLayer={1000}
+        brushPanel={
+          <TileBrushPanel
+            game="mightymike"
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            mapWidth={mapWidth}
+            mapHeight={mapHeight}
+            selectedTileIndex={effectiveSelectedTile}
+            activeLayer={1000}
+          />
+        }
       />
 
       <MightyMikeTileMenuEditors
@@ -436,6 +522,6 @@ export function MightyMikeTileMenu({
         onSaveTileEdit={handleSaveTileEdit}
         onSavePaletteTileEdit={handleSavePaletteTileEdit}
       />
-    </div>
+    </>
   );
 }

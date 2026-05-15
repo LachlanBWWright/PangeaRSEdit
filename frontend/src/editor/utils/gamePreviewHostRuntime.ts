@@ -6,6 +6,7 @@ import {
   createPreviewModule,
   getPreviewTerrainPaths,
   loadPreviewRuntime,
+  type PreviewVfsFile,
   type PreviewRuntimeModule,
 } from "./gamePreviewRuntime";
 import { mapErr } from "../../utils/mapErr";
@@ -18,6 +19,7 @@ interface StartGamePreviewOptions {
   readonly terrainDataBytes: Uint8Array | null;
   readonly terrainRsrcBytes: Uint8Array | null;
   readonly terrainTextureBytes: Uint8Array | null;
+  readonly customFiles?: readonly PreviewVfsFile[];
   readonly runToken: number;
   readonly normalLaunch: boolean;
   readonly onStatus: (text: string) => void;
@@ -40,7 +42,9 @@ function triggerResizePulse(timerIds: Set<number>): void {
   timerIds.add(timerId);
 }
 
-function restorePreviewModule(previousModule: PreviewRuntimeModule | undefined): void {
+function restorePreviewModule(
+  previousModule: PreviewRuntimeModule | undefined,
+): void {
   if (previousModule === undefined) {
     Reflect.deleteProperty(window, "Module");
     return;
@@ -87,6 +91,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
+    customFiles,
     runToken,
     normalLaunch,
     onStatus,
@@ -141,6 +146,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           terrainDataBytes,
           terrainRsrcBytes,
           terrainTextureBytes,
+          customFiles,
           terrainPaths,
           normalLaunch,
           onStatus,

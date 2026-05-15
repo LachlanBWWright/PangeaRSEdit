@@ -416,12 +416,13 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   // Determine scene root after skeleton creation (createSkeletonSystem may have set a default scene)
   const sceneRoot = doc.getRoot().getDefaultScene() || scene;
 
-  // Find the Armature node (skeleton root) to attach skinned meshes to
-  // Skinned meshes MUST be children of (or siblings to) the skeleton root in glTF
+  // Find the skeleton root node to attach skinned meshes to.
+  // createSkin() wraps the Armature under a top-level "Skeleton" node, and skinned
+  // meshes must be descendants of that wrapper for the hierarchy to stay coherent.
   let skeletonArmatureNode: Node | null = null;
   if (gltfSkin) {
     const skeletonRoot = gltfSkin.getSkeleton();
-    if (skeletonRoot && skeletonRoot.getName() === "Armature") {
+    if (skeletonRoot) {
       skeletonArmatureNode = skeletonRoot;
     }
   }

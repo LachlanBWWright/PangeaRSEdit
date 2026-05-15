@@ -20,6 +20,8 @@ const HONEYCOMB_PLATFORM_SCALE_SMALL = 1.3;
 const DETONATOR_SCALE = 1.1;
 const PLUNGER_DOWN_Y_OFFSET = 60 * DETONATOR_SCALE;
 const BUGDOM_GRASS_SCALE = 0.15;
+const BUGDOM_WEED_SCALE = 0.2;
+const BUGDOM_FLOWER_SCALE = 0.4;
 const BUGDOM_REED_SCALE = 0.4;
 const BUGDOM_TREE_SCALE = 20;
 const BUGDOM_CHECKPOINT_SCALE = 1.5;
@@ -280,6 +282,7 @@ function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMap
   return mergePrimaryPart(
     {
       verificationStatus: "verified",
+      lightingMode: "unlit",
       citations: modelPart.citations,
       semanticCitations: modelPart.citations,
       paramDomains: {
@@ -295,6 +298,165 @@ function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMap
       staticAnalysisIssues,
     },
     [modelPart],
+  );
+}
+
+function buildCloverMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+  const params = getParams(options);
+  const citations = [
+    cite("src/Items/Items.c", 152, "AddClover add routine", "item-add-routine", 189),
+    cite("src/Items/Items.c", 166, "Clover uses LAWN2_MObjType_Clover + parm[0]", "model-index", 166),
+    cite("src/Items/Items.c", 172, "Clover uses STATUS_BIT_NULLSHADER", "model-group", 172),
+    cite("src/Items/Items.c", 176, "Clover scale is CLOVER_SCALE + RandomFloat()*.1f", "scale", 176),
+  ];
+
+  return mergePrimaryPart(
+    {
+      verificationStatus: "verified",
+      lightingMode: "unlit",
+      citations,
+      semanticCitations: citations,
+      paramDomains: {
+        p0: {
+          kind: "enum",
+          summary: "Selects one of the two clover meshes.",
+          values: [
+            { value: 0, label: "Clover A" },
+            { value: 1, label: "Clover B" },
+          ],
+        },
+      },
+    },
+    [
+      {
+        partId: "clover",
+        modelFile: "Lawn_Models2.3dmf",
+        modelPath: "models",
+        modelIndex: 6 + params.p0,
+        scale: 0.2,
+        citations,
+      },
+    ],
+  );
+}
+
+function buildWeedMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+  const params = getParams(options);
+  const citations = [
+    cite("src/Items/Items.c", 256, "AddWeed add routine", "item-add-routine", 285),
+    cite("src/Items/Items.c", 262, "Weed uses LAWN2_MObjType_Weed + parm[0]", "model-index", 262),
+    cite("src/Items/Items.c", 268, "Weed uses STATUS_BIT_NULLSHADER", "model-group", 268),
+    cite("src/Items/Items.c", 272, "Weed scale is WEED_SCALE", "scale", 272),
+  ];
+
+  return mergePrimaryPart(
+    {
+      verificationStatus: "verified",
+      lightingMode: "unlit",
+      citations,
+      semanticCitations: citations,
+      paramDomains: {
+        p0: {
+          kind: "integer",
+          summary: "Offsets the weed mesh index from LAWN2_MObjType_Weed.",
+          min: 0,
+        },
+      },
+    },
+    [
+      {
+        partId: "weed",
+        modelFile: "Lawn_Models2.3dmf",
+        modelPath: "models",
+        modelIndex: 2 + params.p0,
+        scale: BUGDOM_WEED_SCALE,
+        citations,
+      },
+    ],
+  );
+}
+
+function buildSunflowerMapping(): UniversalItemModelMapping {
+  const citations = [
+    cite("src/Items/Items.c", 292, "AddSunFlower add routine", "item-add-routine", 317),
+    cite("src/Items/Items.c", 298, "Sunflower uses LAWN2_MObjType_Sunflower", "model-index", 298),
+    cite("src/Items/Items.c", 302, "Sunflower uses STATUS_BIT_NULLSHADER", "model-group", 302),
+    cite("src/Items/Items.c", 306, "Sunflower scale is .15", "scale", 306),
+  ];
+
+  return mergePrimaryPart(
+    {
+      verificationStatus: "verified",
+      lightingMode: "unlit",
+      citations,
+      semanticCitations: citations,
+    },
+    [
+      {
+        partId: "sunflower",
+        modelFile: "Lawn_Models2.3dmf",
+        modelPath: "models",
+        modelIndex: 5,
+        scale: 0.15,
+        citations,
+      },
+    ],
+  );
+}
+
+function buildCosmoMapping(): UniversalItemModelMapping {
+  const citations = [
+    cite("src/Items/Items.c", 325, "AddCosmo add routine", "item-add-routine", 352),
+    cite("src/Items/Items.c", 331, "Cosmo uses LAWN2_MObjType_Cosmo", "model-index", 331),
+    cite("src/Items/Items.c", 335, "Cosmo uses STATUS_BIT_NULLSHADER", "model-group", 335),
+    cite("src/Items/Items.c", 339, "Cosmo scale is COSMO_SCALE + RandomFloat()*.05f", "scale", 339),
+  ];
+
+  return mergePrimaryPart(
+    {
+      verificationStatus: "verified",
+      lightingMode: "unlit",
+      citations,
+      semanticCitations: citations,
+    },
+    [
+      {
+        partId: "cosmo",
+        modelFile: "Lawn_Models2.3dmf",
+        modelPath: "models",
+        modelIndex: 3,
+        scale: BUGDOM_FLOWER_SCALE,
+        citations,
+      },
+    ],
+  );
+}
+
+function buildPoppyMapping(): UniversalItemModelMapping {
+  const citations = [
+    cite("src/Items/Items.c", 358, "AddPoppy add routine", "item-add-routine", 383),
+    cite("src/Items/Items.c", 363, "Poppy uses LAWN2_MObjType_Poppy", "model-index", 363),
+    cite("src/Items/Items.c", 367, "Poppy uses STATUS_BIT_NULLSHADER", "model-group", 367),
+    cite("src/Items/Items.c", 371, "Poppy scale is POPPY_SCALE + RandomFloat()*.05f", "scale", 371),
+  ];
+
+  return mergePrimaryPart(
+    {
+      verificationStatus: "verified",
+      lightingMode: "unlit",
+      citations,
+      semanticCitations: citations,
+    },
+    [
+      {
+        partId: "poppy",
+        modelFile: "Lawn_Models2.3dmf",
+        modelPath: "models",
+        modelIndex: 4,
+        scale: BUGDOM_FLOWER_SCALE,
+        citations,
+      },
+    ],
   );
 }
 
@@ -712,6 +874,16 @@ export function getBugdomSourceDerivedMapping(
   switch (itemType) {
     case ItemType.Rock:
       return buildRockMapping(options);
+    case ItemType.Clover:
+      return buildCloverMapping(options);
+    case ItemType.Weed:
+      return buildWeedMapping(options);
+    case ItemType.SunFlower:
+      return buildSunflowerMapping();
+    case ItemType.Cosmo:
+      return buildCosmoMapping();
+    case ItemType.Poppy:
+      return buildPoppyMapping();
     case ItemType.Tree:
       return buildTreeMapping();
     case ItemType.Checkpoint:

@@ -35,6 +35,7 @@ import type {
   LevelIoProgress,
 } from "./levelIoTypes";
 import { levelIoError, type LevelIoError } from "./levelIoErrors";
+import { parseNanosaur1LevelWithRust } from "./nanosaurLevelCodecWasm";
 
 function copyUint8ArrayToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const buffer = new ArrayBuffer(bytes.byteLength);
@@ -182,16 +183,28 @@ function extractBugdomEmbeddedImages(levelData: LevelData): LevelIoImagePayload[
   return tiles.map(tileToImagePayload);
 }
 
-function parseNanosaurLevelBytes(
+async function parseNanosaurLevelBytes(
   bytes: ArrayBuffer,
   globals: GlobalsInterface,
+  strictRustNanosaur: boolean,
   onProgress?: (progress: LevelIoProgress) => void,
-): Result<LevelData, LevelIoError> {
+): Promise<Result<LevelData, LevelIoError>> {
   notify(onProgress, {
     stage: "parse.resource-fork",
     message: "Parsing Nanosaur level",
   });
-  const rawLevelData = parseNanosaur1Level(bytes);
+  const rustParseResult = await parseNanosaur1LevelWithRust(bytes);
+  if (rustParseResult.isErr() && strictRustNanosaur) {
+    return err(
+      levelIoError(
+        "parse.failed",
+        `Nanosaur Rust parser failed: ${rustParseResult.error}`,
+      ),
+    );
+  }
+  const rawLevelData = rustParseResult.isOk()
+    ? rustParseResult.value
+    : parseNanosaur1Level(bytes);
   const compatibleLevel = nanosaur1LevelToLevelData(
     rawLevelData,
     globals.TILE_SIZE,
@@ -444,6 +457,7 @@ export async function parseLevelBytes(
     readonly mightyMikeTilesetBytes?: ArrayBuffer;
     readonly mightyMikePaletteBytes?: ArrayBuffer;
     readonly mightyMikeSceneName?: string;
+    readonly strictRustNanosaur?: boolean;
   },
   onProgress?: (progress: LevelIoProgress) => void,
 ): Promise<
@@ -457,9 +471,10 @@ export async function parseLevelBytes(
   >
 > {
   if (options.globals.DATA_TYPE === DataType.TRT_FILE) {
-    const parseResult = parseNanosaurLevelBytes(
+    const parseResult = await parseNanosaurLevelBytes(
       options.levelBytes,
       options.globals,
+      options.strictRustNanosaur ?? false,
       onProgress,
     );
     return parseResult.map((levelData) => ({

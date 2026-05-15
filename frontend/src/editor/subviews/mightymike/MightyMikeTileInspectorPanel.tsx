@@ -18,8 +18,11 @@ import { Shield, Info, Paintbrush, Layers } from "lucide-react";
 import { MightyMikeResizeMapControls } from "./MightyMikeResizeMapControls";
 import {
   getFlagChecked,
+  getFlagLabel,
   getTileInfoRows,
+  MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS,
   MIGHTY_MIKE_FLAG_OPTIONS,
+  MIGHTY_MIKE_UNUSED_FLAG_OPTIONS,
   parseInputNumber,
   toggleFlagBit,
 } from "./mightyMikeTileInspectorState";
@@ -51,6 +54,12 @@ interface MightyMikeTileInspectorPanelProps {
   setParamBrushValue: (value: number) => void;
   showParamsOverlay: boolean;
   onToggleParamsOverlay: () => void;
+  paramsOverlayMode: "flagsAny" | "flagBit" | "p0" | "p1";
+  onParamsOverlayModeChange: (
+    value: "flagsAny" | "flagBit" | "p0" | "p1",
+  ) => void;
+  paramsOverlayFlagBit: number;
+  onParamsOverlayFlagBitChange: (value: number) => void;
   handleUpdateCollisionProperty: (
     property: "hasCollisionMask" | "usePixelAccurateCollision",
     value: boolean,
@@ -88,13 +97,21 @@ export function MightyMikeTileInspectorPanel({
   onToggleCollisionBrushMode,
   onParamBrushFieldChange,
   onToggleParamsOverlay,
+  paramsOverlayMode,
+  onParamsOverlayModeChange,
+  paramsOverlayFlagBit,
+  onParamsOverlayFlagBitChange,
   onResize,
   handleUpdateCollisionProperty,
   handleUpdateTileAttribute,
   getNumber,
 }: MightyMikeTileInspectorPanelProps) {
+  const clampedOverlayFlagBit = Math.max(0, Math.min(15, paramsOverlayFlagBit));
+
+  const currentOverlayBitLabel = getFlagLabel(clampedOverlayFlagBit);
+
   return (
-    <div className="flex flex-col gap-2 text-sm overflow-y-auto">
+    <div className="flex flex-col gap-2 text-sm">
       <MightyMikeResizeMapControls onResize={onResize} />
 
       <div className="flex items-center justify-between">
@@ -163,11 +180,11 @@ export function MightyMikeTileInspectorPanel({
 
       {currentTileAttributes && (
         <div className="border-t border-gray-600 pt-2 space-y-2">
-          <p className="font-bold text-xs">Tile Parameters</p>
+          <p className="font-bold text-xs">Tile Behavior</p>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Flags</p>
+            <p className="text-xs text-gray-400 mb-1">Gameplay Flags</p>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-              {MIGHTY_MIKE_FLAG_OPTIONS.map(([bit, label]) => {
+              {MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS.map(([bit, label]) => {
                 const checked = getFlagChecked(
                   getNumber(currentTileAttributes["flags"]),
                   bit,
@@ -193,12 +210,53 @@ export function MightyMikeTileInspectorPanel({
                 );
               })}
             </div>
+
+            {MIGHTY_MIKE_UNUSED_FLAG_OPTIONS.length > 0 && (
+              <details className="mt-2 rounded border border-gray-700 px-2 py-1">
+                <summary className="cursor-pointer text-[11px] text-gray-400">
+                  Advanced: Reserved Flags
+                </summary>
+                <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                  {MIGHTY_MIKE_UNUSED_FLAG_OPTIONS.map(([bit, label]) => {
+                    const checked = getFlagChecked(
+                      getNumber(currentTileAttributes["flags"]),
+                      bit,
+                    );
+                    return (
+                      <label
+                        key={bit}
+                        className="flex items-center gap-1 text-xs cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(val) => {
+                            const current = getNumber(
+                              currentTileAttributes["flags"],
+                            );
+                            const next = toggleFlagBit(
+                              current,
+                              bit,
+                              val === true,
+                            );
+                            handleUpdateTileAttribute("flags", next);
+                          }}
+                          className="h-3 w-3"
+                        />
+                        <span title={`Bit ${bit}`}>{label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
           </div>
 
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center text-xs">
             {(["p0", "p1"] as const).map((property) => (
               <div key={property} className="contents">
-                <label className="text-gray-300">Parameter {property[1]}</label>
+                <label className="text-gray-300">
+                  {property === "p0" ? "Extra Setting A" : "Extra Setting B"}
+                </label>
                 <Input
                   type="number"
                   value={getNumber(currentTileAttributes[property]).toString()}
@@ -215,7 +273,7 @@ export function MightyMikeTileInspectorPanel({
           </div>
 
           <div className="border-t border-gray-600 pt-2">
-            <p className="text-xs text-gray-400 mb-1">Param Brush</p>
+            <p className="text-xs text-gray-400 mb-1">Paint Tool</p>
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-1">
                 <Select
@@ -227,9 +285,9 @@ export function MightyMikeTileInspectorPanel({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Off</SelectItem>
-                    <SelectItem value="flags">Flags</SelectItem>
-                    <SelectItem value="p0">Parameter 0</SelectItem>
-                    <SelectItem value="p1">Parameter 1</SelectItem>
+                    <SelectItem value="flags">Paint Gameplay Flags</SelectItem>
+                    <SelectItem value="p0">Paint Extra Setting A</SelectItem>
+                    <SelectItem value="p1">Paint Extra Setting B</SelectItem>
                   </SelectContent>
                 </Select>
                 <Input
@@ -242,6 +300,70 @@ export function MightyMikeTileInspectorPanel({
                   disabled={paramBrushField === null}
                 />
               </div>
+
+              <div className="rounded border border-gray-700 p-2">
+                <p className="mb-1 text-[11px] text-gray-300">Map Highlight</p>
+                <Select
+                  value={paramsOverlayMode}
+                  onValueChange={(value) => {
+                    if (
+                      value === "flagsAny" ||
+                      value === "flagBit" ||
+                      value === "p0" ||
+                      value === "p1"
+                    ) {
+                      onParamsOverlayModeChange(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue placeholder="Select overlay focus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="flagsAny">
+                      Tiles with any gameplay flag
+                    </SelectItem>
+                    <SelectItem value="flagBit">
+                      Tiles with one chosen flag
+                    </SelectItem>
+                    <SelectItem value="p0">
+                      Tiles with Extra Setting A
+                    </SelectItem>
+                    <SelectItem value="p1">
+                      Tiles with Extra Setting B
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {paramsOverlayMode === "flagBit" && (
+                  <div className="mt-2 space-y-1">
+                    <Select
+                      value={String(clampedOverlayFlagBit)}
+                      onValueChange={(value) => {
+                        const parsed = parseInputNumber(value);
+                        onParamsOverlayFlagBitChange(
+                          Math.max(0, Math.min(15, parsed)),
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs">
+                        <SelectValue placeholder="Select a flag" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MIGHTY_MIKE_FLAG_OPTIONS.map(([bit, label]) => (
+                          <SelectItem key={bit} value={String(bit)}>
+                            Bit {bit}: {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-[11px] text-gray-400">
+                      Highlighting {currentOverlayBitLabel}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <Button
                 size="sm"
                 variant={showParamsOverlay ? "default" : "outline"}

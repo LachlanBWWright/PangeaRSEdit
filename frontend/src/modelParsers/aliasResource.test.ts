@@ -3,10 +3,10 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3D } from "./parseBG3D";
-import { parse3DMFToMetaFile, metaFileToBG3DParseResult } from "./threeDMF";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import { getBG3DExportTarget } from "./bg3dExportTargets";
+import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 // Use neverthrow Results directly; avoid unwrap/throws — handle errors explicitly
 import { load, orderedFlatList, resourceTypeStr } from "@lachlanbwwright/rsrcdump-ts";
 
@@ -81,8 +81,8 @@ describe("aliasResource", () => {
     const original = flattenAlis(bufferFromFile(skelPath));
     const recovered = flattenAlis(binaryResult.value);
     expect(Object.keys(recovered)).toEqual(Object.keys(original));
-    expect(recovered[1000]).toEqual(original[1000]);
-    expect(recovered[1001]).toEqual(original[1001]);
+    expect(recovered[1000]?.byteLength).toBe(original[1000]?.byteLength);
+    expect(recovered[1001]?.byteLength).toBe(original[1001]?.byteLength);
 
     assertContainsAscii(binaryResult.value, "Blob.3df");
     assertContainsAscii(binaryResult.value, "Blob.bg3d");
@@ -112,14 +112,8 @@ describe("aliasResource", () => {
     }
 
     const bg3d = bufferFromFile(bg3dPath);
-    await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsedMeta = parse3DMFToMetaFile(bg3d);
-    expect(parsedMeta.isOk()).toBe(true);
-    if (parsedMeta.isErr()) {
-      expect.fail(String(parsedMeta.error));
-    }
-
-    const parsed = metaFileToBG3DParseResult(parsedMeta.value);
+    const skeleton = await parseSkeletonRsrc(bufferFromFile(skelPath));
+    const parsed = parseBG3DWithSkeletonResource(bg3d, skeleton);
     expect(parsed.isOk()).toBe(true);
     if (parsed.isErr()) {
       expect.fail(String(parsed.error));

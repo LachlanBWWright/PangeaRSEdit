@@ -7,6 +7,7 @@ import {
   startPreparedGamePreview,
   type PreviewState,
 } from "./utils/gamePreviewHostState";
+import type { PreviewVfsFile } from "./utils/gamePreviewRuntime";
 
 interface Props {
   readonly config: GamePortConfig;
@@ -30,6 +31,7 @@ interface Props {
    * `null`      = no texture file needed for this game.
    */
   readonly terrainTextureBytes: Uint8Array | null | undefined;
+  readonly customFiles?: readonly PreviewVfsFile[];
   readonly runToken: number;
   /** When true, launch from the title screen without level injection or level-jump globals. */
   readonly normalLaunch?: boolean;
@@ -42,6 +44,7 @@ export function GamePreviewHost({
   terrainDataBytes,
   terrainRsrcBytes,
   terrainTextureBytes,
+  customFiles,
   runToken,
   normalLaunch = false,
 }: Props) {
@@ -61,6 +64,7 @@ export function GamePreviewHost({
       terrainDataBytes,
       terrainRsrcBytes,
       terrainTextureBytes,
+      customFiles,
       runToken,
       normalLaunch,
       onStatus: (text) => {
@@ -83,6 +87,7 @@ export function GamePreviewHost({
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
+    customFiles,
   ]);
 
   const waitingForLevelData = isWaitingForPreviewLevelData({

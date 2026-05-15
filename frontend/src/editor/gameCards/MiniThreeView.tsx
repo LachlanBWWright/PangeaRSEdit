@@ -106,6 +106,8 @@ export function MiniThreeView({
               logBonePositions={false}
               gameType={gameType}
               previewLighting
+              autoRotate
+              autoRotateSpeed={1.5}
             />
           ) : mounted ? (
             <div className="flex items-center justify-center h-full text-gray-500">

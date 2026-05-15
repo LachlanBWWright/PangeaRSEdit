@@ -9,6 +9,7 @@ import { mapErr } from "@/utils/mapErr";
 import {
   parseShapesFile,
   shapeFrameToCanvas,
+  type ShapeAnimationCommand,
   type RGBColor,
   type ShapesFile,
 } from "../parsers/mightyMikeShapesParser";
@@ -20,6 +21,11 @@ import { err, ok, ResultAsync, type Result } from "neverthrow";
 import { gMightyMikePalette } from "./mightyMikePalette";
 
 const SHAPES_BASE_PATH = "/PangeaRSEdit/data/mightymike/shapes";
+
+const ANIMOP_FRAME = 1;
+const ANIMOP_END = 2;
+const ANIMOP_LOOP = 3;
+const ANIMOP_GOTO = 5;
 
 // Cache for loaded .shapes files
 const shapesFileCache = new Map<string, ShapesFile>();
@@ -126,7 +132,7 @@ function getFrameCacheKey(
  * Load and render a specific frame from a shape as a canvas.
  * Returns the sprite at its natural pixel size for the level editor, with frame offsets.
  */
-async function loadShapeFrame(
+export async function loadShapeFrame(
   shapesFilename: string,
   shapeIndex: number,
   frameIndex = 0,
@@ -184,6 +190,70 @@ async function loadShapeFrame(
   // Cache and return at natural pixel size
   frameCanvasCache.set(cacheKey, frameImage);
   return ok(frameImage);
+}
+
+function buildAnimationFrameCycle(commands: ShapeAnimationCommand[]): number[] {
+  const frameCycle: number[] = [];
+  const maxSteps = 128;
+  let cursor = 0;
+
+  for (let steps = 0; steps < maxSteps; steps++) {
+    if (cursor < 0 || cursor >= commands.length) {
+      break;
+    }
+
+    const command = commands[cursor];
+    if (!command) {
+      break;
+    }
+
+    if (command.opcode === ANIMOP_FRAME) {
+      frameCycle.push(command.operand);
+      cursor += 1;
+      continue;
+    }
+
+    if (command.opcode === ANIMOP_GOTO) {
+      cursor = command.operand;
+      continue;
+    }
+
+    if (command.opcode === ANIMOP_LOOP || command.opcode === ANIMOP_END) {
+      break;
+    }
+
+    cursor += 1;
+  }
+
+  return frameCycle;
+}
+
+export async function getShapeAnimationFrameCycle(
+  shapesFilename: string,
+  shapeIndex: number,
+  animationIndex: number,
+): Promise<Result<number[], string>> {
+  const shapesFileResult = await loadShapesFile(shapesFilename);
+  if (shapesFileResult.isErr()) {
+    return err(shapesFileResult.error);
+  }
+
+  const shape = shapesFileResult.value.shapes[shapeIndex];
+  if (!shape) {
+    return err(`Shape index ${shapeIndex} out of bounds`);
+  }
+
+  const animation = shape.animations[animationIndex];
+  if (!animation) {
+    return err(`Animation index ${animationIndex} out of bounds`);
+  }
+
+  const frameCycle = buildAnimationFrameCycle(animation.commands);
+  if (frameCycle.length === 0) {
+    return err(`Animation ${animationIndex} has no frame commands`);
+  }
+
+  return ok(frameCycle);
 }
 
 /**

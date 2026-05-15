@@ -218,6 +218,9 @@ export interface UniversalItemModelMapping {
 
   /** Static analysis issues discovered while evaluating the mapping */
   staticAnalysisIssues?: readonly StaticAnalysisIssue[];
+
+  /** Lighting override used when the original game renders the model with a null/unlit shader. */
+  lightingMode?: "unlit";
 }
 
 /**

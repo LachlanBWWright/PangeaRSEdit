@@ -20,7 +20,11 @@ import { ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
 import { Group } from "three";
-import { extractSubgroupByIndex, loadFileGltf } from "./itemModelLoaderUtils";
+import {
+  cloneGroupForItemRendering,
+  extractSubgroupByIndex,
+  loadFileGltf,
+} from "./itemModelLoaderUtils";
 import {
   getItemModelCacheKey,
   type ItemModelParams,
@@ -200,7 +204,7 @@ export const useItemModelCache = (
           return null;
         }
       } else {
-        finalGltf = fullGltf.scene.clone(true);
+        finalGltf = cloneGroupForItemRendering(fullGltf.scene);
       }
 
       // Cache the result

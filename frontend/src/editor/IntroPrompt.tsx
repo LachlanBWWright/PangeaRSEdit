@@ -447,17 +447,18 @@ export function IntroPrompt() {
     setTerrainRsrcBytes(undefined);
     setTerrainTextureBytes(undefined);
     setTestDialogOpen(true);
-    void buildPreviewTerrainBlobs(combinedData, globals, mapImages, ({
-      message,
-      completed,
-      total,
-    }) => {
-      const description =
-        completed && total ? `${message} (${completed}/${total})` : message;
-      toast.loading("Preparing level data...", {
-        description,
-      });
-    })
+    void buildPreviewTerrainBlobs(
+      combinedData,
+      globals,
+      mapImages,
+      ({ message, completed, total }) => {
+        const description =
+          completed && total ? `${message} (${completed}/${total})` : message;
+        toast.loading("Preparing level data...", {
+          description,
+        });
+      },
+    )
       .then((blobs) => {
         if (!blobs) {
           console.error(
@@ -510,17 +511,11 @@ export function IntroPrompt() {
   }, [clearAllState]);
 
   const handleDownload = useCallback(() => {
-    const combinedDataResult = combineLevelData(getCurrentAtomicData());
-    if (combinedDataResult.isOk()) {
-      const combinedData = prepareDownloadData(
-        combinedDataResult.value,
-        globals,
-      );
-      setAllAtomicData(splitLevelData(combinedData));
-    }
+    // Keep the click handler lightweight so the menu interaction stays responsive.
+    // The actual serialization happens in the level I/O worker inside saveMap().
     setBlockHistoryUpdate(true);
     setProcessed(true);
-  }, [getCurrentAtomicData, globals, setAllAtomicData, setBlockHistoryUpdate]);
+  }, [setBlockHistoryUpdate]);
 
   const handleSaveToCloud = useCallback(() => {
     const cloudToastId = "save-to-cloud";

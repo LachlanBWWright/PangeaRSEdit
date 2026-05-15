@@ -11,7 +11,7 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
@@ -19,6 +19,7 @@ import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
 import { MightyMikeItems } from "../subviews/MightyMikeItems";
 import { MightyMikeSupertiles } from "../subviews/supertiles/MightyMikeSupertiles";
+import { TileBrushCaptureLayer } from "../subviews/tileBrushes/TileBrushCaptureLayer";
 import {
   HeaderData,
   ItemData,
@@ -32,10 +33,15 @@ import {
   selectedTileBrushIdAtom,
   tileBrushAnchorAtom,
   tileBrushesAtom,
+  tileBrushActiveLayerAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
 import { TILE_SIZE } from "../subviews/supertiles/mightyMikeSupertilesHelpers";
-import { applyTileBrush } from "@/data/tileBrushes/tileBrushApply";
+import {
+  applyTileBrush,
+  createTileBrushFromRegion,
+} from "@/data/tileBrushes/tileBrushApply";
 import type Konva from "konva";
+import { toast } from "sonner";
 
 export interface StageData {
   scale: number;
@@ -74,11 +80,19 @@ export function MightyMikeKonvaView({
   const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
   const tileBrushAnchor = useAtomValue(tileBrushAnchorAtom);
   const tileBrushes = useAtomValue(tileBrushesAtom);
+  const activeLayer = useAtomValue(tileBrushActiveLayerAtom);
+  const setTileBrushes = useSetAtom(tileBrushesAtom);
 
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;
   const layr = terrainData.Layr?.[1000]?.obj ?? [];
   const mapHeight = Math.ceil(layr.length / mapWidth);
+  const [captureStart, setCaptureStart] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [captureEnd, setCaptureEnd] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const getMapTileFromStageEvent = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -103,7 +117,7 @@ export function MightyMikeKonvaView({
       setTerrainData((draft) => {
         applyTileBrush({
           draft,
-          layer: 1000,
+          layer: activeLayer,
           mapWidth,
           mapHeight,
           targetX: tilePos.x,
@@ -118,11 +132,42 @@ export function MightyMikeKonvaView({
       selectedBrushId,
       tileBrushes,
       tileBrushAnchor,
+      activeLayer,
       mapWidth,
       mapHeight,
       setTerrainData,
       getMapTileFromStageEvent,
     ],
+  );
+
+  const handleCaptureEnd = useCallback(
+    (start: { x: number; y: number }, end: { x: number; y: number }) => {
+      const minX = Math.min(start.x, end.x);
+      const minY = Math.min(start.y, end.y);
+      const width = Math.abs(end.x - start.x) + 1;
+      const height = Math.abs(end.y - start.y) + 1;
+      const result = createTileBrushFromRegion({
+        id: crypto.randomUUID(),
+        name: `Brush ${new Date().toLocaleTimeString()}`,
+        game: "mightymike",
+        terrainData,
+        layer: activeLayer,
+        mapWidth,
+        mapHeight,
+        startX: minX,
+        startY: minY,
+        width,
+        height,
+      });
+      result.match(
+        (brush) => {
+          setTileBrushes((prev) => [...prev, brush]);
+          toast.success(`Captured brush "${brush.name}" (${width}×${height})`);
+        },
+        (error) => toast.error(`Capture failed: ${error}`),
+      );
+    },
+    [terrainData, activeLayer, mapWidth, mapHeight, setTileBrushes],
   );
 
   const [containerRef, containerSize] = useContainerSize();
@@ -147,10 +192,33 @@ export function MightyMikeKonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={tileBrushMode !== "stamp"}
+        draggable={tileBrushMode !== "stamp" && tileBrushMode !== "capture"}
+        onMouseDown={(e) => {
+          if (tileBrushMode !== "capture") {
+            return;
+          }
+          const tilePos = getMapTileFromStageEvent(e);
+          if (!tilePos) {
+            return;
+          }
+          setCaptureStart(tilePos);
+          setCaptureEnd(tilePos);
+        }}
+        onMouseUp={(e) => {
+          if (tileBrushMode !== "capture" || !captureStart) {
+            return;
+          }
+          const tilePos = getMapTileFromStageEvent(e) ?? captureEnd ?? captureStart;
+          handleCaptureEnd(captureStart, tilePos);
+          setCaptureStart(null);
+          setCaptureEnd(null);
+        }}
         onClick={(e) => {
           if (tileBrushMode === "stamp") {
             handleStageBrushStamp(e);
+            return;
+          }
+          if (tileBrushMode === "capture") {
             return;
           }
           if (clickToAddItem === undefined) return;
@@ -175,12 +243,24 @@ export function MightyMikeKonvaView({
           });
         }}
         onMouseMove={(e) => {
+          if (tileBrushMode === "capture" && captureStart) {
+            const pos = getMapTileFromStageEvent(e);
+            if (pos) {
+              setCaptureEnd(pos);
+            }
+            return;
+          }
           if (tileBrushMode === "stamp") {
             const pos = getMapTileFromStageEvent(e);
             setTileBrushPreview(pos);
           }
         }}
-        onMouseLeave={() => setTileBrushPreview(null)}
+        onMouseLeave={() => {
+          setTileBrushPreview(null);
+          if (tileBrushMode === "capture" && captureStart) {
+            setCaptureEnd(captureStart);
+          }
+        }}
         onDblClick={() => {
           setSelectedItem(undefined);
         }}
@@ -235,6 +315,13 @@ export function MightyMikeKonvaView({
           mapWidth={mapWidth}
           mapHeight={mapHeight}
         />
+        {captureStart && captureEnd && (
+          <TileBrushCaptureLayer
+            tileSize={TILE_SIZE}
+            captureStart={captureStart}
+            captureEnd={captureEnd}
+          />
+        )}
       </Stage>
     </div>
   );

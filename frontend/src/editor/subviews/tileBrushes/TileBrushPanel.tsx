@@ -180,6 +180,13 @@ export function TileBrushPanel({
         <div className="flex gap-2">
           <Button
             size="sm"
+            variant={mode === "capture" ? "default" : "outline"}
+            onClick={() => setMode("capture")}
+          >
+            Capture
+          </Button>
+          <Button
+            size="sm"
             variant={mode === "stamp" ? "default" : "outline"}
             onClick={() => setMode("stamp")}
           >
@@ -194,6 +201,14 @@ export function TileBrushPanel({
           </Button>
         </div>
       </div>
+
+      <p className="text-xs text-gray-400">
+        {mode === "capture"
+          ? "Drag on the map to capture a multi-tile stamp."
+          : mode === "stamp"
+            ? "Click the map to stamp the selected brush."
+            : "Use Select to inspect tiles without stamping."}
+      </p>
 
       <div className="space-y-2">
         <Label className="text-xs text-gray-400">Brushes</Label>
@@ -261,7 +276,7 @@ export function TileBrushPanel({
 
       <div className="grid grid-cols-2 gap-2">
         <Button size="sm" variant="outline" onClick={handleCaptureSingleTile}>
-          Capture Tile
+          Capture Selected Tile
         </Button>
         <Button size="sm" onClick={handleStamp}>
           Stamp at Selection

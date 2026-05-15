@@ -65,9 +65,20 @@ export interface ShapeFrame {
   mask?: Uint8Array; // Byte-per-pixel mask (0x00=opaque, 0xFF=transparent)
 }
 
+export interface ShapeAnimationCommand {
+  opcode: number;
+  operand: number;
+}
+
+export interface ShapeAnimation {
+  animationIndex: number;
+  commands: ShapeAnimationCommand[];
+}
+
 export interface Shape {
   shapeIndex: number;
   frames: ShapeFrame[];
+  animations: ShapeAnimation[];
 }
 
 export interface ShapesFile {
@@ -358,9 +369,107 @@ function parseShapeList(
       });
     }
 
+    const animationListOffset = readI32BE(view, shapeBase + 6);
+    const animationListPos = shapeBase + animationListOffset;
+    if (animationListPos < 0 || animationListPos + 2 > bytes.length) {
+      return {
+        success: false,
+        shapes: [],
+        error: new Error(`Invalid animation list in shape ${i}`),
+      };
+    }
+
+    const animationCount = readI16BE(view, animationListPos);
+    if (animationCount < 0 || animationCount > 2048) {
+      return {
+        success: false,
+        shapes: [],
+        error: new Error(
+          `Invalid animation count in shape ${i}: ${animationCount}`,
+        ),
+      };
+    }
+
+    const animationOffsets: number[] = [];
+    let animationOffsetPos = animationListPos + 2;
+    for (let a = 0; a < animationCount; a++) {
+      if (animationOffsetPos + 4 > bytes.length) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Unexpected end of animation offset list in shape ${i}`,
+          ),
+        };
+      }
+      animationOffsets.push(readI32BE(view, animationOffsetPos));
+      animationOffsetPos += 4;
+    }
+
+    const animations: ShapeAnimation[] = [];
+    for (let a = 0; a < animationCount; a++) {
+      const animationOffset = animationOffsets[a];
+      if (animationOffset === undefined) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Animation offset ${a} not found in animation list for shape ${i}`,
+          ),
+        };
+      }
+
+      const animationPos = shapeBase + animationOffset;
+      if (animationPos < 0 || animationPos >= bytes.length) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(`Animation ${a} out of bounds in shape ${i}`),
+        };
+      }
+
+      const commandCount = bytes[animationPos];
+      if (commandCount === undefined) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Animation ${a} has invalid command header in shape ${i}`,
+          ),
+        };
+      }
+
+      const commandBytesStart = animationPos + 1;
+      const commandBytesLength = commandCount * 4;
+      if (commandBytesStart + commandBytesLength > bytes.length) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Animation ${a} command data out of bounds in shape ${i}`,
+          ),
+        };
+      }
+
+      const commands: ShapeAnimationCommand[] = [];
+      for (let cmd = 0; cmd < commandCount; cmd++) {
+        const commandPos = commandBytesStart + cmd * 4;
+        commands.push({
+          opcode: readI16BE(view, commandPos),
+          operand: readI16BE(view, commandPos + 2),
+        });
+      }
+
+      animations.push({
+        animationIndex: a,
+        commands,
+      });
+    }
+
     shapes.push({
       shapeIndex: i,
       frames,
+      animations,
     });
   }
 

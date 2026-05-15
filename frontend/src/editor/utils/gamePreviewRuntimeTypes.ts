@@ -24,6 +24,11 @@ export interface PreviewTerrainPaths {
   readonly altDataPath?: string;
 }
 
+export interface PreviewVfsFile {
+  readonly path: string;
+  readonly data: Uint8Array;
+}
+
 export interface PreviewRuntimeModule {
   canvas: HTMLCanvasElement;
   arguments: string[];

@@ -21,6 +21,7 @@ import {
   advancePreviewSession,
   type PreviewSession,
 } from "./utils/previewSessionState";
+import type { PreviewVfsFile } from "./utils/gamePreviewRuntime";
 
 interface Props {
   open: boolean;
@@ -31,6 +32,7 @@ interface Props {
   terrainDataBytes: Uint8Array | null | undefined;
   terrainRsrcBytes: Uint8Array | null | undefined;
   terrainTextureBytes: Uint8Array | null | undefined;
+  customFiles?: readonly PreviewVfsFile[];
   /** When true, launch from the title screen without level selection or terrain injection. */
   normalLaunch?: boolean;
 }
@@ -45,6 +47,7 @@ export function TestGameDialog(props: Props) {
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
+    customFiles,
     normalLaunch = false,
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
@@ -160,6 +163,7 @@ export function TestGameDialog(props: Props) {
               terrainDataBytes={normalLaunch ? null : terrainDataBytes}
               terrainRsrcBytes={normalLaunch ? null : terrainRsrcBytes}
               terrainTextureBytes={normalLaunch ? null : terrainTextureBytes}
+              customFiles={normalLaunch ? undefined : customFiles}
               runToken={runToken}
               normalLaunch={normalLaunch}
             />

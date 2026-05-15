@@ -1,9 +1,11 @@
 import { useAtom, useSetAtom } from "jotai";
 import { Circle, Group, Image as KonvaImage } from "react-konva";
-import { SelectedFence, SelectedFenceNub } from "../../../data/fences/fenceAtoms";
+import {
+  SelectedFence,
+  SelectedFenceNub,
+} from "../../../data/fences/fenceAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { memo, useRef } from "react";
-import { getColour } from "./Fence";
 import {
   commitFenceNubDrag,
   previewFenceNubDrag,
@@ -17,6 +19,7 @@ export const FenceNub = memo(
     nub,
     idx,
     nubIdx,
+    borderColor,
     onPreviewNub,
     setNub,
     image,
@@ -24,6 +27,7 @@ export const FenceNub = memo(
     nub: [number, number];
     idx: number;
     nubIdx: number;
+    borderColor: string;
     onPreviewNub: (nubIdx: number, nub: [number, number]) => void;
     setNub: (nubIdx: number, nub: [number, number]) => void;
     image?: HTMLImageElement | null;
@@ -33,7 +37,7 @@ export const FenceNub = memo(
     const setSelectedFenceNub = useSetAtom(SelectedFenceNub);
     const nubRafRef = useRef<number | null>(null);
     const isSelected = idx === selectedFence;
-    const color = isSelected ? "red" : getColour(idx);
+    const color = isSelected ? "red" : borderColor;
 
     const handleSelectNub = () => {
       selectFenceNub({

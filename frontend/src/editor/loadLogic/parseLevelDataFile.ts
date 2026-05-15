@@ -1,6 +1,6 @@
 import { err, ok, ResultAsync, type Result } from "neverthrow";
 import type { GlobalsInterface } from "@/data/globals/globals";
-import { DataType } from "@/data/globals/globals";
+import { DataType, Game } from "@/data/globals/globals";
 import { mapErr } from "@/utils/mapErr";
 import { loadBorderPalette } from "./mightyMikeParseHelpers";
 import { getMightyMikeSceneFromPath } from "./mightyMikeParseHelpers";
@@ -33,6 +33,21 @@ interface MightyMikeCompanionData {
   readonly paletteBytes?: ArrayBuffer;
   readonly mapImagesFile?: File;
   readonly sceneName?: string;
+}
+
+interface ParsedLevelPayload {
+  readonly levelData: LevelData;
+  readonly mapImages: readonly {
+    readonly width: number;
+    readonly height: number;
+    readonly rgbaBytes: ArrayBuffer;
+  }[];
+  readonly collisionImages: readonly {
+    readonly width: number;
+    readonly height: number;
+    readonly rgbaBytes: ArrayBuffer;
+  }[];
+  readonly nanosaurRawBytes?: ArrayBuffer;
 }
 
 function cloneArrayBuffer(buffer: Uint8Array): ArrayBuffer {
@@ -108,6 +123,64 @@ function attachCollisionImages(
   };
 }
 
+function attachNanosaurRawLevelBytes(
+  levelData: LevelData,
+  gameType: GlobalsInterface,
+  nanosaurRawBytes: ArrayBuffer | undefined,
+): LevelData {
+  if (gameType.GAME_TYPE !== Game.NANOSAUR || !nanosaurRawBytes) {
+    return levelData;
+  }
+
+  return {
+    ...levelData,
+    _metadata: {
+      ...levelData._metadata,
+      nanosaur1RawBytes: nanosaurRawBytes,
+    },
+  };
+}
+
+async function parseLevelPayloadForEditor({
+  levelBytes,
+  gameType,
+  file,
+  mightyMikeCompanionData,
+  onProgress,
+}: {
+  readonly levelBytes: ArrayBuffer;
+  readonly gameType: GlobalsInterface;
+  readonly file: Blob;
+  readonly mightyMikeCompanionData: MightyMikeCompanionData;
+  readonly onProgress?: (progress: LevelIoProgress) => void;
+}): Promise<Result<ParsedLevelPayload, string>> {
+  const workerResult = await parseLevelWithWorker(
+    {
+      globals: gameType,
+      fileName: file instanceof File ? file.name : "level",
+      levelBytes,
+      mightyMikeTilesetBytes: mightyMikeCompanionData.tilesetBytes,
+      mightyMikePaletteBytes: mightyMikeCompanionData.paletteBytes,
+      mightyMikeSceneName: mightyMikeCompanionData.sceneName,
+    },
+    onProgress,
+  );
+  if (workerResult.isErr()) {
+    return err(workerResult.error.message);
+  }
+
+  if (!isLevelDataLike(workerResult.value.levelData)) {
+    return err("Parsed level data is not valid LevelData");
+  }
+
+  return ok({
+    levelData: workerResult.value.levelData,
+    mapImages: workerResult.value.mapImages,
+    collisionImages: workerResult.value.collisionImages,
+    nanosaurRawBytes: workerResult.value.nanosaurRawBytes,
+  });
+}
+
 export async function parseLevelDataFile({
   file,
   gameType,
@@ -143,20 +216,15 @@ export async function parseLevelDataFile({
     clearItemImageCache();
   }
 
-  const workerResult = await parseLevelWithWorker(
-    {
-      globals: gameType,
-      fileName:
-        file instanceof File ? file.name : fileUrl?.split("/").pop() ?? "level",
-      levelBytes: levelBytesResult.value,
-      mightyMikeTilesetBytes: mightyMikeCompanionResult.value.tilesetBytes,
-      mightyMikePaletteBytes: mightyMikeCompanionResult.value.paletteBytes,
-      mightyMikeSceneName: mightyMikeCompanionResult.value.sceneName,
-    },
+  const workerResult = await parseLevelPayloadForEditor({
+    levelBytes: levelBytesResult.value,
+    gameType,
+    file,
+    mightyMikeCompanionData: mightyMikeCompanionResult.value,
     onProgress,
-  );
+  });
   if (workerResult.isErr()) {
-    return err(workerResult.error.message);
+    return err(workerResult.error);
   }
 
   if (!isLevelDataLike(workerResult.value.levelData)) {
@@ -175,11 +243,14 @@ export async function parseLevelDataFile({
     return err(collisionImagesResult.error);
   }
 
+  const levelData = attachNanosaurRawLevelBytes(
+    workerResult.value.levelData,
+    gameType,
+    workerResult.value.nanosaurRawBytes,
+  );
+
   return ok({
-    levelData: attachCollisionImages(
-      workerResult.value.levelData,
-      collisionImagesResult.value,
-    ),
+    levelData: attachCollisionImages(levelData, collisionImagesResult.value),
     mapImages: mapImagesResult.value,
     mapImagesFile: mightyMikeCompanionResult.value.mapImagesFile,
   });

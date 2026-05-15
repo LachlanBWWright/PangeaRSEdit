@@ -9,6 +9,7 @@
     "gltf-validator": "^2.0.0-dev.3.10"
   },
   "devDependencies": {
+    "typescript": "^6.0.3",
     "vitest": "^4.0.16"
   }
 }

@@ -9,7 +9,11 @@ export {
 export type {
   PreviewRuntimeModule,
   PreviewTerrainPaths,
+  PreviewVfsFile,
 } from "./gamePreviewRuntimeTypes";
 export { applyPreviewGlobals } from "./gamePreviewRuntimeGlobals";
 export type { PreviewModuleOptions } from "./gamePreviewRuntimeLoader";
-export { createPreviewModule, loadPreviewRuntime } from "./gamePreviewRuntimeLoader";
+export {
+  createPreviewModule,
+  loadPreviewRuntime,
+} from "./gamePreviewRuntimeLoader";

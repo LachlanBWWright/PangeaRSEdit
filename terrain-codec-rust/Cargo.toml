@@ -11,6 +11,7 @@ jpeg-decoder = "0.3"
 jpeg-encoder = "0.6"
 js-sys = "0.3"
 serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
 wasm-bindgen = "0.2"
 
 [dev-dependencies]

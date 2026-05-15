@@ -10,8 +10,8 @@ interface TileMenuShellProps {
 
 export function MightyMikeTileMenuShell({ children }: TileMenuShellProps) {
   return (
-    <div className="flex flex-col gap-2 p-2 flex-1 min-h-0 overflow-hidden">
-      <div className="grid grid-cols-3 gap-2 flex-1 min-h-0 overflow-hidden">
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
         {children}
       </div>
     </div>

@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ok } from "neverthrow";
-import { MightyMikeGlobals, OttoGlobals } from "@/data/globals/globals";
+import {
+  MightyMikeGlobals,
+  NanosaurGlobals,
+  OttoGlobals,
+} from "@/data/globals/globals";
+import type { LevelData } from "@/python/structSpecs/LevelTypes";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
 import { parseLevelDataFile } from "@/editor/loadLogic/parseLevelDataFile";
 import { clearItemImageCache } from "@/utils/mightyMikeShapeImageLoader";
+import { isRecord } from "@/editor/loadLogic/typeGuards";
 
 vi.mock("@/data/level-io/levelIoWorkerClient", () => ({
   parseLevelWithWorker: vi.fn(),
@@ -31,12 +37,39 @@ vi.mock("@/utils/mightyMikeShapeImageLoader", () => ({
 const { parseLevelWithWorker } = await import("@/data/level-io/levelIoWorkerClient");
 
 const levelData = {
-  Hedr: { 1000: { obj: { mapWidth: 1, mapHeight: 1 } } },
-  STgd: { 1000: { obj: [] } },
-  ItCo: { 1000: { obj: [] } },
-  YCrd: { 1000: { obj: [] } },
-  _metadata: {},
-};
+  Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
+  Hedr: {
+    1000: {
+      name: "Header",
+      obj: {
+        version: 1,
+        numItems: 0,
+        mapWidth: 1,
+        mapHeight: 1,
+        tileSize: 32,
+        minY: 0,
+        maxY: 0,
+        numSplines: 0,
+        numFences: 0,
+        numTilePages: 0,
+        numTiles: 0,
+        numUniqueSupertiles: 0,
+        numWaterPatches: 0,
+        numCheckpoints: 0,
+      },
+      order: 0,
+    },
+  },
+  STgd: { 1000: { name: "SuperTile Grid", obj: [], order: 0 } },
+  ItCo: { 1000: { name: "Terrain Items Color Array", data: "", order: 0 } },
+  YCrd: { 1000: { name: "Floor&Ceiling Y Coords", obj: [], order: 0 } },
+  alis: {},
+  _metadata: {
+    file_attributes: 0,
+    junk1: 0,
+    junk2: 0,
+  },
+} satisfies LevelData;
 
 class TestBlob extends Blob {
   async arrayBuffer(): Promise<ArrayBuffer> {
@@ -83,5 +116,41 @@ describe("parseLevelDataFile", () => {
     expect(result.isOk()).toBe(true);
     expect(gMightyMikePalette.loadPaletteFromRGBA).not.toHaveBeenCalled();
     expect(clearItemImageCache).not.toHaveBeenCalled();
+  });
+
+  it("parses Nanosaur levels with the worker and keeps raw bytes for save roundtrips", async () => {
+    const nanosaurRawBytes = new Uint8Array([9, 8, 7, 6]).buffer;
+    vi.mocked(parseLevelWithWorker).mockResolvedValueOnce(
+      ok({
+        requestId: "parse-level-2",
+        type: "parsed-level",
+        levelData,
+        mapImages: [],
+        collisionImages: [],
+        nanosaurRawBytes,
+      }),
+    );
+    const file = new TestBlob();
+    const result = await parseLevelDataFile({
+      file,
+      gameType: NanosaurGlobals,
+      fileUrl: "https://example.test/Level1.ter",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(parseLevelWithWorker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        globals: NanosaurGlobals,
+      }),
+      undefined,
+    );
+    if (result.isOk()) {
+      expect(isRecord(result.value.levelData._metadata)).toBe(true);
+      if (isRecord(result.value.levelData._metadata)) {
+        expect(result.value.levelData._metadata.nanosaur1RawBytes).toBe(
+          nanosaurRawBytes,
+        );
+      }
+    }
   });
 });

@@ -88,9 +88,6 @@ export function ModelUploadPanel({
       <CardContent className="space-y-4">
         {!gltfUrl ? (
           <div className="space-y-5">
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              This is a work in progress, it is not fully functional.
-            </div>
             <section className="space-y-2">
               <div className="text-sm font-medium text-white">Game Models</div>
               <div className="text-xs text-gray-400">

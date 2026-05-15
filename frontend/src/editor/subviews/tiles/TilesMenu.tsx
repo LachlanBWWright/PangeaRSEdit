@@ -223,7 +223,7 @@ export function TilesMenu({
 
             <div className="flex flex-row justify-between gap-2 items-center col-span-2">
               <div className="flex items-center gap-2">
-                <p>Show 3D View (Experimental)</p>
+                <p>Show 3D View</p>
                 <Switch
                   checked={canvasViewMode === CanvasView.THREE_D}
                   onCheckedChange={(e) => {

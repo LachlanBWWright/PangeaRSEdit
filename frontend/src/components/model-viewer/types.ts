@@ -47,6 +47,8 @@ export interface ModelCanvasProps {
   gizmoMode?: GizmoMode;
   interactionMode?: ViewerInteractionMode;
   previewLighting?: boolean;
+  autoRotate?: boolean;
+  autoRotateSpeed?: number;
   skinData?: SkinWeightsData | null;
   weightBrushSettings?: WeightBrushSettings | null;
   weightVisualizationMode?: WeightVisualizationMode;

@@ -22,6 +22,8 @@ import { levelIoError, type LevelIoError } from "./levelIoErrors";
 import { mapErr } from "@/utils/mapErr";
 import { isRecord, isNanosaur1LevelData } from "@/editor/loadLogic/typeGuards";
 import { serializeCompressedTerrainImages } from "@/data/terrain-io/terrainImageSerialization";
+import { compileNanosaur1LevelWithRust } from "./nanosaurLevelCodecWasm";
+import { parseNanosaur1Level } from "@/data/processors/classicProprocessor";
 
 function notify(
   onProgress: ((progress: LevelIoProgress) => void) | undefined,
@@ -133,14 +135,44 @@ function serializeResourceForkBytes(
   return ok(cloneUint8Array(saveResult.value.value));
 }
 
-function serializePrimaryMapBytes(
+async function serializePrimaryMapBytes(
   levelData: LevelData,
   globals: GlobalsInterface,
-): Result<Uint8Array, LevelIoError> {
+  strictRustNanosaur: boolean,
+): Promise<Result<Uint8Array, LevelIoError>> {
   if (globals.GAME_TYPE === Game.NANOSAUR) {
     const metadata = isRecord(levelData._metadata) ? levelData._metadata : undefined;
-    const rawLevel = metadata?.nanosaur1RawLevel;
-    if (!isNanosaur1LevelData(rawLevel)) {
+    const rawBytesCandidate = metadata?.nanosaur1RawBytes;
+    if (rawBytesCandidate instanceof ArrayBuffer) {
+      const compileRustResult = await compileNanosaur1LevelWithRust(
+        levelData,
+        rawBytesCandidate,
+      );
+      if (compileRustResult.isOk()) {
+        return ok(new Uint8Array(compileRustResult.value));
+      }
+      if (strictRustNanosaur) {
+        return err(
+          levelIoError(
+            "serialize.failed",
+            `Nanosaur Rust compiler failed: ${compileRustResult.error}`,
+          ),
+        );
+      }
+
+      const parsedRawLevel = parseNanosaur1Level(rawBytesCandidate);
+      const compileFallbackResult = compileNanosaur1Level(levelData, parsedRawLevel);
+      if (compileFallbackResult.isErr()) {
+        return err(levelIoError("serialize.failed", compileFallbackResult.error));
+      }
+      return ok(new Uint8Array(compileFallbackResult.value));
+    }
+
+    const rawLevelCandidate = metadata?.nanosaur1RawLevel;
+    const rawLevel = isNanosaur1LevelData(rawLevelCandidate)
+      ? rawLevelCandidate
+      : null;
+    if (!rawLevel) {
       return err(
         levelIoError(
           "serialize.failed",
@@ -163,7 +195,7 @@ function serializePrimaryMapBytes(
     return ok(new Uint8Array(serializeResult.value));
   }
 
-  return serializeResourceForkBytes(levelData, globals, []);
+  return Promise.resolve(serializeResourceForkBytes(levelData, globals, []));
 }
 
 export async function serializeLevelDownloadBytes(
@@ -173,6 +205,7 @@ export async function serializeLevelDownloadBytes(
     readonly fileName: string;
     readonly mapImagesFileName?: string;
     readonly mapImages: readonly LevelIoImagePayload[];
+    readonly strictRustNanosaur?: boolean;
   },
   onProgress?: (progress: LevelIoProgress) => void,
 ): Promise<Result<readonly LevelIoSerializedFile[], LevelIoError>> {
@@ -187,7 +220,11 @@ export async function serializeLevelDownloadBytes(
   });
 
   if (options.globals.DATA_TYPE === DataType.TRT_FILE) {
-    const mapBytesResult = serializePrimaryMapBytes(levelData, options.globals);
+    const mapBytesResult = await serializePrimaryMapBytes(
+      levelData,
+      options.globals,
+      options.strictRustNanosaur ?? true,
+    );
     if (mapBytesResult.isErr()) {
       return err(mapBytesResult.error);
     }
@@ -228,7 +265,11 @@ export async function serializeLevelDownloadBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    const mapBytesResult = serializePrimaryMapBytes(levelData, options.globals);
+    const mapBytesResult = await serializePrimaryMapBytes(
+      levelData,
+      options.globals,
+      options.strictRustNanosaur ?? true,
+    );
     if (mapBytesResult.isErr()) {
       return err(mapBytesResult.error);
     }
@@ -280,6 +321,7 @@ export async function preparePreviewLevelBytes(
     readonly levelData: unknown;
     readonly globals: GlobalsInterface;
     readonly mapImages: readonly LevelIoImagePayload[];
+    readonly strictRustNanosaur?: boolean;
   },
   onProgress?: (progress: LevelIoProgress) => void,
 ): Promise<
@@ -314,7 +356,11 @@ export async function preparePreviewLevelBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.TRT_FILE) {
-    const mapBytes = serializePrimaryMapBytes(levelData, options.globals);
+    const mapBytes = await serializePrimaryMapBytes(
+      levelData,
+      options.globals,
+      options.strictRustNanosaur ?? true,
+    );
     if (mapBytes.isErr()) {
       return err(levelIoError("preview.failed", mapBytes.error.message));
     }
@@ -366,7 +412,11 @@ export async function preparePreviewLevelBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    const dataBytes = serializePrimaryMapBytes(levelData, options.globals);
+    const dataBytes = await serializePrimaryMapBytes(
+      levelData,
+      options.globals,
+      options.strictRustNanosaur ?? true,
+    );
     if (dataBytes.isErr()) {
       return err(levelIoError("preview.failed", dataBytes.error.message));
     }

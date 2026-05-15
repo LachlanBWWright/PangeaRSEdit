@@ -1,3 +1,4 @@
+import { Game } from "@/data/globals/globals";
 import { levelIoRequestSchema } from "@/data/level-io/levelIoSchemas";
 import { parseLevelBytes } from "@/data/level-io/parseLevelBytes";
 import {
@@ -10,6 +11,28 @@ function postMessageWithTransfers(
   transfers: Transferable[] = [],
 ): void {
   globalThis.postMessage(message, { transfer: transfers });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stripWorkerOnlyMetadata(levelData: unknown, gameType: Game): unknown {
+  if (gameType !== Game.NANOSAUR || !isRecord(levelData)) {
+    return levelData;
+  }
+
+  const metadata = isRecord(levelData._metadata) ? levelData._metadata : null;
+  if (!metadata || !("nanosaur1RawLevel" in metadata)) {
+    return levelData;
+  }
+
+  const nextMetadata = { ...metadata };
+  delete nextMetadata.nanosaur1RawLevel;
+  return {
+    ...levelData,
+    _metadata: nextMetadata,
+  };
 }
 
 self.onmessage = (event: MessageEvent<unknown>) => {
@@ -48,6 +71,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
           mightyMikeTilesetBytes: request.mightyMikeTilesetBytes,
           mightyMikePaletteBytes: request.mightyMikePaletteBytes,
           mightyMikeSceneName: request.mightyMikeSceneName,
+          strictRustNanosaur: true,
         },
         notifyProgress,
       );
@@ -69,13 +93,22 @@ self.onmessage = (event: MessageEvent<unknown>) => {
       for (const image of parseResult.value.collisionImages) {
         transfers.push(image.rgbaBytes);
       }
+      const nanosaurRawBytes =
+        request.globals.GAME_TYPE === Game.NANOSAUR ? request.levelBytes : undefined;
+      if (nanosaurRawBytes) {
+        transfers.push(nanosaurRawBytes);
+      }
       postMessageWithTransfers(
         {
           requestId: request.requestId,
           type: "parsed-level",
-          levelData: parseResult.value.levelData,
+          levelData: stripWorkerOnlyMetadata(
+            parseResult.value.levelData,
+            request.globals.GAME_TYPE,
+          ),
           mapImages: parseResult.value.mapImages,
           collisionImages: parseResult.value.collisionImages,
+          nanosaurRawBytes,
         },
         transfers,
       );
@@ -90,6 +123,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
           mapImagesFileName: request.mapImagesFileName,
           levelData: request.levelData,
           mapImages: request.mapImages,
+          strictRustNanosaur: true,
         },
         notifyProgress,
       );
@@ -124,6 +158,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
         globals: request.globals,
         levelData: request.levelData,
         mapImages: request.mapImages,
+        strictRustNanosaur: true,
       },
       notifyProgress,
     );

@@ -1,4 +1,5 @@
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
+import { setMightyMikeTileLogicalIndex } from "@/data/game/mightyMikeTileValueUtils";
 import { isArray, isRecord } from "./MightyMikeTileMenuUtils";
 
 export function getTotalTileCount(mapWidth: number, mapHeight: number): number {
@@ -52,13 +53,7 @@ export function applySelectedTileLogicalIndex(
   selectedTile: number,
   logicalIndex: number,
 ): void {
-  if (!terrainData.Layr?.[1000]?.obj) {
-    return;
-  }
-  const layerArray = terrainData.Layr[1000].obj;
-  if (selectedTile >= 0 && selectedTile < layerArray.length) {
-    layerArray[selectedTile] = logicalIndex;
-  }
+  setMightyMikeTileLogicalIndex(terrainData, selectedTile, logicalIndex);
 }
 
 export function appendPaletteMapping(
@@ -68,4 +63,26 @@ export function appendPaletteMapping(
   if (terrainData.Xlat?.[1000]?.obj) {
     terrainData.Xlat[1000].obj.push({ idx: imageIndex });
   }
+}
+
+export function findOrCreateLogicalIndexForImage(
+  terrainData: TerrainData,
+  imageIndex: number,
+): number | null {
+  if (imageIndex < 0) {
+    return null;
+  }
+
+  const xlatTable = terrainData.Xlat?.[1000]?.obj;
+  if (!xlatTable) {
+    return imageIndex;
+  }
+
+  const existingIndex = xlatTable.findIndex((entry) => entry.idx === imageIndex);
+  if (existingIndex >= 0) {
+    return existingIndex;
+  }
+
+  xlatTable.push({ idx: imageIndex });
+  return xlatTable.length - 1;
 }

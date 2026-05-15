@@ -7,6 +7,7 @@ import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Globals } from "@/data/globals/globals";
+import { getFenceColor } from "@/data/fences/getFenceColor";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
 
@@ -35,9 +36,16 @@ function useFenceImage(src: string | null) {
  * Calls onClick when pressed.
  */
 function KonvaIconButton({
-  x, y, label, bgColor, onClick,
+  x,
+  y,
+  label,
+  bgColor,
+  onClick,
 }: {
-  x: number; y: number; label: string; bgColor: string;
+  x: number;
+  y: number;
+  label: string;
+  bgColor: string;
   onClick: () => void;
 }) {
   const R = 12;
@@ -76,20 +84,26 @@ export const Fence = memo(
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
-    const [previewNubs, setPreviewNubs] = useState<[number, number][] | null>(null);
+    const [previewNubs, setPreviewNubs] = useState<[number, number][] | null>(
+      null,
+    );
 
     const fenceNubs = fenceData.FnNb[NUB_KEY_BASE + fenceIdx]?.obj ?? null;
     const fenceObj = fenceNubs ? fenceData.Fenc[1000].obj[fenceIdx] : undefined;
 
     // All hooks must be called before early returns
     const isSelected = fenceIdx === selectedFence;
-    const imageSrc = fenceNubs ? getFenceImagePath(globals, fenceObj?.fenceType ?? 0) : null;
+    const imageSrc = fenceNubs
+      ? getFenceImagePath(globals, fenceObj?.fenceType ?? 0)
+      : null;
     const displayImageSrc = useFenceImageSource(imageSrc);
     const fenceImage = useFenceImage(displayImageSrc);
-    const imageColor = useMemo(
-      () => (fenceImage ? getDominantColor(fenceImage) : getColour(fenceIdx)),
-      [fenceImage, fenceIdx],
-    );
+    const imageColor = useMemo(() => {
+      if (fenceImage) {
+        return getDominantColor(fenceImage);
+      }
+      return getFenceColor(globals, fenceObj?.fenceType ?? 0, fenceIdx);
+    }, [fenceImage, fenceIdx, fenceObj?.fenceType, globals]);
     const color = isSelected ? "red" : imageColor;
 
     // Stable callbacks so FenceNub memo is not defeated on every preview update
@@ -226,6 +240,7 @@ export const Fence = memo(
             nubIdx={nubIdx}
             nub={nub}
             image={fenceImage}
+            borderColor={imageColor}
             onPreviewNub={handlePreviewNub}
             setNub={handleSetNub}
           />
@@ -236,7 +251,12 @@ export const Fence = memo(
           <>
             {/* Connecting line: add-front button → first nub */}
             <Line
-              points={[firstNub[0] - BTN_OFFSET, firstNub[1] - BTN_OFFSET, firstNub[0], firstNub[1]]}
+              points={[
+                firstNub[0] - BTN_OFFSET,
+                firstNub[1] - BTN_OFFSET,
+                firstNub[0],
+                firstNub[1],
+              ]}
               stroke="#22c55e"
               strokeWidth={1.5}
               dash={[4, 3]}
@@ -254,7 +274,12 @@ export const Fence = memo(
               <>
                 {/* Connecting line: remove-front button → first nub */}
                 <Line
-                  points={[firstNub[0] + BTN_OFFSET, firstNub[1] - BTN_OFFSET, firstNub[0], firstNub[1]]}
+                  points={[
+                    firstNub[0] + BTN_OFFSET,
+                    firstNub[1] - BTN_OFFSET,
+                    firstNub[0],
+                    firstNub[1],
+                  ]}
                   stroke="#ef4444"
                   strokeWidth={1.5}
                   dash={[4, 3]}
@@ -276,7 +301,12 @@ export const Fence = memo(
           <>
             {/* Connecting line: add-back button → last nub */}
             <Line
-              points={[lastNub[0] + BTN_OFFSET, lastNub[1] + BTN_OFFSET, lastNub[0], lastNub[1]]}
+              points={[
+                lastNub[0] + BTN_OFFSET,
+                lastNub[1] + BTN_OFFSET,
+                lastNub[0],
+                lastNub[1],
+              ]}
               stroke="#22c55e"
               strokeWidth={1.5}
               dash={[4, 3]}
@@ -294,7 +324,12 @@ export const Fence = memo(
               <>
                 {/* Connecting line: remove-back button → last nub */}
                 <Line
-                  points={[lastNub[0] - BTN_OFFSET, lastNub[1] + BTN_OFFSET, lastNub[0], lastNub[1]]}
+                  points={[
+                    lastNub[0] - BTN_OFFSET,
+                    lastNub[1] + BTN_OFFSET,
+                    lastNub[0],
+                    lastNub[1],
+                  ]}
                   stroke="#ef4444"
                   strokeWidth={1.5}
                   dash={[4, 3]}
@@ -317,7 +352,6 @@ export const Fence = memo(
   },
 );
 
-
 /** Extract the average non-transparent color from a loaded image element. */
 function getDominantColor(img: HTMLImageElement): string {
   const canvas = document.createElement("canvas");
@@ -328,7 +362,10 @@ function getDominantColor(img: HTMLImageElement): string {
   if (!ctx) return "#339933";
   ctx.drawImage(img, 0, 0, size, size);
   const data = ctx.getImageData(0, 0, size, size).data;
-  let r = 0, g = 0, b = 0, count = 0;
+  let r = 0,
+    g = 0,
+    b = 0,
+    count = 0;
   for (let i = 0; i < data.length; i += 4) {
     if ((data[i + 3] ?? 0) > 128) {
       r += data[i] ?? 0;
@@ -339,21 +376,4 @@ function getDominantColor(img: HTMLImageElement): string {
   }
   if (count === 0) return "#339933";
   return `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`;
-}
-
-
-export function getColour(index: number) {
-  switch (index % 5) {
-    case 0:
-      return "#339933";
-    case 1:
-      return "#3399ff";
-    case 2:
-      return "#993399";
-    case 3:
-      return "#ff9933";
-    case 4:
-    default:
-      return "#ff3399";
-  }
 }

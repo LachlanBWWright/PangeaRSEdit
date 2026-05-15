@@ -1,4 +1,5 @@
 import type Konva from "konva";
+import { toggleMightyMikeCollisionMask } from "@/data/game/mightyMikeTileValueUtils";
 import {
   getAltMapArray,
   isArray,
@@ -55,24 +56,7 @@ export function applyCollisionMaskToggle(
   data: TerrainData,
   tileIdx: number,
 ): void {
-  const metadata =
-    isRecord(data._metadata) &&
-    isRecord(data._metadata[1000]) &&
-    isRecord(data._metadata[1000].obj)
-      ? data._metadata[1000].obj
-      : undefined;
-  const tileValues =
-    metadata && isArray(metadata.mightyMikeTileValues)
-      ? metadata.mightyMikeTileValues
-      : undefined;
-  if (!tileValues || tileIdx < 0 || tileIdx >= tileValues.length) {
-    return;
-  }
-  const tileValue = tileValues[tileIdx];
-  if (!isRecord(tileValue)) {
-    return;
-  }
-  tileValue.hasCollisionMask = !tileValue.hasCollisionMask;
+  toggleMightyMikeCollisionMask(data, tileIdx);
 }
 
 /** Applies the active param brush value to both tileset and level attribute data. */

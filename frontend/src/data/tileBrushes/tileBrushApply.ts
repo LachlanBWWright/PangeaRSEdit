@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "neverthrow";
 import type { Draft } from "immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
+import { setMightyMikeTileLogicalIndex } from "@/data/game/mightyMikeTileValueUtils";
 import type {
   TileBrush,
   TileBrushAnchor,
@@ -157,7 +158,11 @@ export function applyTileBrush(args: ApplyTileBrushArgs): TileBrushApplyResult {
     }
 
     const mapIndex = target.y * args.mapWidth + target.x;
-    layerData[mapIndex] = cell.tileValue;
+    if (args.brush.game === "mightymike" && args.layer === 1000) {
+      setMightyMikeTileLogicalIndex(args.draft, mapIndex, cell.tileValue);
+    } else {
+      layerData[mapIndex] = cell.tileValue;
+    }
     modifiedIndices.push(mapIndex);
   }
 

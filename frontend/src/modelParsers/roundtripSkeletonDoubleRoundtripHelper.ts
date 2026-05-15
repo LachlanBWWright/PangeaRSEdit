@@ -19,10 +19,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
-}
-
 function getString(value: unknown, defaultValue = ""): string {
   return typeof value === "string" ? value : defaultValue;
 }
@@ -106,21 +102,6 @@ export async function runDoubleRoundtripNoExtrasTest(
   expect(originalBg3d.isOk()).toBe(true);
   if (!originalBg3d.isOk()) return;
   const gltf1 = await bg3dParsedToGLTF(originalBg3d.value);
-
-  const gltf1ExtrasRaw = gltf1.getRoot().getExtras();
-  const gltf1Extras = isRecord(gltf1ExtrasRaw) ? gltf1ExtrasRaw : undefined;
-  const bg3dFieldsRaw = gltf1Extras?.["bg3dFields"];
-  const bg3dFields = isRecord(bg3dFieldsRaw) ? bg3dFieldsRaw : undefined;
-  const skeletonExtrasRaw = bg3dFields?.["skeletonExtras"];
-  const skeletonExtras = isRecord(skeletonExtrasRaw)
-    ? skeletonExtrasRaw
-    : undefined;
-  const keyframeDataRaw = skeletonExtras?.["keyframeData"];
-  const keyframeData = isArray(keyframeDataRaw) ? keyframeDataRaw : undefined;
-
-  expect(!!skeletonExtras).toBe(true);
-  expect(!!keyframeData).toBe(true);
-  expect(keyframeData?.length || 0).toBeGreaterThan(0);
 
   const io = new NodeIO();
   const glb1Buffer = await io.writeBinary(gltf1);

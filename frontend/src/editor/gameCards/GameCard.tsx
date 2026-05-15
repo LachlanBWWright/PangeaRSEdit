@@ -2,8 +2,13 @@ import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { progressToast } from "@/toasts/progressToast";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
+import {
+  createCanvasFromTile,
+  parseNanosaurTerrainTextures,
+} from "@/data/processors/classicProprocessor";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
+import { MightyMikePreview } from "./MightyMikePreview";
 import { Card, CardContent } from "@/components/ui/card";
 import { Result } from "neverthrow";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
@@ -56,7 +61,6 @@ export function GameCard({
 }) {
   const modelPath = getGameCardModelPath(globals.GAME_TYPE);
   const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
-  const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
   const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
   const isBugdom1 = globals.DATA_TYPE === DataType.RSRC_FORK;
   const isNanosaur1 = globals.DATA_TYPE === DataType.TRT_FILE;
@@ -148,7 +152,7 @@ export function GameCard({
     const parseResult = await handleParseLevelDataFile(
       levelFile,
       globals,
-      isMightyMike ? textureFile ?? undefined : undefined,
+      isMightyMike ? (textureFile ?? undefined) : undefined,
     );
     if (parseResult.isErr()) {
       progressToast.fail({
@@ -173,40 +177,63 @@ export function GameCard({
         completed: 4,
       });
       const buffer = await textureFile.arrayBuffer();
-      const mapImagesResult = await loadMapImages(
-        new DataView(buffer),
-        globals,
-        ({ completed, total }) => {
-          if (total <= 0) {
-            return;
-          }
 
-          const percent = Math.floor((completed / total) * 100);
-          progressToast.update({
+      if (isNanosaur1) {
+        const tiles = parseNanosaurTerrainTextures(buffer);
+        if (tiles.length === 0) {
+          progressToast.fail({
             id: toastId,
-            title: "Decoding terrain textures...",
-            description: `${completed}/${total} supertiles (${percent}%)`,
-            current: 2 + completed / total,
-            completed: 4,
+            title: "Failed to load textures",
+            description: "No terrain textures decoded",
           });
-        },
-      );
-      if (mapImagesResult.isErr()) {
-        progressToast.fail({
-          id: toastId,
-          title: "Failed to load textures",
-          description: mapImagesResult.error,
-        });
-        console.error("[terrain] staged texture decode failed", {
-          gameName: globals.GAME_NAME,
-          levelFile: levelFile.name,
-          textureFile: textureFile.name,
-          error: mapImagesResult.error,
-        });
-        return;
+          console.error("[terrain] staged Nanosaur texture decode failed", {
+            gameName: globals.GAME_NAME,
+            levelFile: levelFile.name,
+            textureFile: textureFile.name,
+            textureBytes: buffer.byteLength,
+          });
+          return;
+        }
+
+        setMapImagesFile(textureFile);
+        setMapImages(tiles.map(createCanvasFromTile));
+      } else {
+        const mapImagesResult = await loadMapImages(
+          new DataView(buffer),
+          globals,
+          ({ completed, total }) => {
+            if (total <= 0) {
+              return;
+            }
+
+            const percent = Math.floor((completed / total) * 100);
+            progressToast.update({
+              id: toastId,
+              title: "Decoding terrain textures...",
+              description: `${completed}/${total} supertiles (${percent}%)`,
+              current: 2 + completed / total,
+              completed: 4,
+            });
+          },
+        );
+        if (mapImagesResult.isErr()) {
+          progressToast.fail({
+            id: toastId,
+            title: "Failed to load textures",
+            description: mapImagesResult.error,
+          });
+          console.error("[terrain] staged texture decode failed", {
+            gameName: globals.GAME_NAME,
+            levelFile: levelFile.name,
+            textureFile: textureFile.name,
+            error: mapImagesResult.error,
+          });
+          return;
+        }
+
+        setMapImagesFile(textureFile);
+        setMapImages(mapImagesResult.value);
       }
-      setMapImagesFile(textureFile);
-      setMapImages(mapImagesResult.value);
     }
     clearStaged();
     progressToast.complete({
@@ -331,28 +358,8 @@ export function GameCard({
         </div>
 
         <div className="flex-none flex flex-col items-center">
-          <p
-            className={cn(
-              "text-xs text-center mb-1",
-              isOttoMatic ? "invisible" : "text-gray-400",
-            )}
-          >
-            (Not Functional)
-          </p>
-
           {isMightyMike ? (
-            <div
-              className={cn(
-                "w-full flex items-center justify-center",
-                GAME_CARD_PREVIEW_HEIGHT_CLASS,
-              )}
-            >
-              <img
-                src="https://raw.githubusercontent.com/jorio/MightyMike/refs/heads/master/packaging/MightyMikeRaw.png"
-                alt="Mighty Mike"
-                className="max-w-full max-h-full object-contain"
-              />
-            </div>
+            <MightyMikePreview className={GAME_CARD_PREVIEW_HEIGHT_CLASS} />
           ) : (
             <MiniThreeView
               gltfUrl={modelPath}

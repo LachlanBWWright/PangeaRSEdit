@@ -37,6 +37,12 @@ export const CollisionBrushMode = atom<boolean>(false);
  */
 export const ShowMightyMikeParamsOverlay = atom<boolean>(false);
 
+export const MightyMikeParamsOverlayMode = atom<
+  "flagsAny" | "flagBit" | "p0" | "p1"
+>("flagsAny");
+
+export const MightyMikeParamsOverlayFlagBit = atom<number>(0);
+
 /**
  * Which tile attribute field the param brush is currently painting.
  * Null = param brush inactive (select mode).

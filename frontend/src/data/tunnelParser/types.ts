@@ -153,6 +153,8 @@ export interface TunnelSection {
 export interface TunnelData {
   /** File header */
   header: TunnelHeader;
+  /** Legacy Mac alias block bytes preserved for roundtrip safety */
+  aliasData: Uint8Array;
   /** Spline control points (nubs) */
   nubs: TunnelSplinePoint[];
   /** Main tunnel texture */

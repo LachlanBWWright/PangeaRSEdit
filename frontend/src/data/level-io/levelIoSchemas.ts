@@ -90,6 +90,7 @@ const parsedLevelResponseSchema = z.object({
   levelData: z.unknown(),
   mapImages: z.array(levelIoImagePayloadSchema),
   collisionImages: z.array(levelIoImagePayloadSchema),
+  nanosaurRawBytes: z.instanceof(ArrayBuffer).optional(),
 });
 
 const serializedFileSchema = z.object({

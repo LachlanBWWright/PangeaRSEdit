@@ -1,5 +1,6 @@
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import { startGamePreview } from "./gamePreviewHostRuntime";
+import type { PreviewVfsFile } from "./gamePreviewRuntime";
 
 export interface PreviewState {
   readonly runToken: number;
@@ -24,6 +25,7 @@ interface StartPreparedGamePreviewOptions extends PreviewTerrainBytes {
   readonly currentLevelInfo: AnyLevelInfo | undefined;
   readonly runToken: number;
   readonly normalLaunch: boolean;
+  readonly customFiles?: readonly PreviewVfsFile[];
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
 }
@@ -58,6 +60,7 @@ export function startPreparedGamePreview({
   terrainTextureBytes,
   runToken,
   normalLaunch,
+  customFiles,
   onStatus,
   onError,
 }: StartPreparedGamePreviewOptions): (() => void) | undefined {
@@ -84,6 +87,7 @@ export function startPreparedGamePreview({
     terrainDataBytes: terrainDataBytes ?? null,
     terrainRsrcBytes: terrainRsrcBytes ?? null,
     terrainTextureBytes: terrainTextureBytes ?? null,
+    customFiles,
     runToken,
     normalLaunch,
     onStatus,

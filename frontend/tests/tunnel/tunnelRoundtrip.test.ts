@@ -6,9 +6,20 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { parseTunnelFile } from "../../src/data/tunnelParser/parseTunnelFile";
 import { serializeTunnelFile } from "../../src/data/tunnelParser/serializeTunnelFile";
-import type { TunnelData, TunnelItem, TunnelSplinePoint, TunnelSection } from "../../src/data/tunnelParser/types";
+import type {
+  TunnelData,
+  TunnelItem,
+  TunnelSplinePoint,
+  TunnelSection,
+} from "../../src/data/tunnelParser/types";
+
+function getTunnelFixturePath(fileName: string): string {
+  return join(process.cwd(), "public", "games", "bugdom2", "tunnels", fileName);
+}
 
 /**
  * Create a minimal valid tunnel data structure for testing
@@ -108,6 +119,7 @@ function createMinimalTunnelData(): TunnelData {
       numSections: 1,
       numItems: 1,
     },
+    aliasData: new Uint8Array([1, 2, 3, 4]),
     nubs: [nub],
     tunnelTexture: {
       width: 4,
@@ -126,6 +138,82 @@ function createMinimalTunnelData(): TunnelData {
 }
 
 describe("Tunnel Parser Roundtrip Tests", () => {
+  it("should parse and roundtrip Plumbing.tun", () => {
+    const fixturePath = getTunnelFixturePath("Plumbing.tun");
+    expect(existsSync(fixturePath)).toBe(true);
+
+    const originalBytes = readFileSync(fixturePath);
+    const parseResult = parseTunnelFile(
+      originalBytes.buffer.slice(
+        originalBytes.byteOffset,
+        originalBytes.byteOffset + originalBytes.byteLength,
+      ),
+    );
+    expect(
+      parseResult.isOk(),
+      parseResult.isErr() ? parseResult.error : "",
+    ).toBe(true);
+    if (!parseResult.isOk()) return;
+
+    const serializeResult = serializeTunnelFile(parseResult.value);
+    expect(serializeResult.isOk()).toBe(true);
+    if (!serializeResult.isOk()) return;
+
+    const reparsedResult = parseTunnelFile(serializeResult.value);
+    expect(reparsedResult.isOk()).toBe(true);
+    if (!reparsedResult.isOk()) return;
+
+    const original = parseResult.value;
+    const reparsed = reparsedResult.value;
+
+    expect(reparsed.aliasData).toEqual(original.aliasData);
+    expect(reparsed.header.fullPipe).toBe(original.header.fullPipe);
+    expect(reparsed.header.numNubs).toBe(original.header.numNubs);
+    expect(reparsed.header.numSplinePoints).toBe(
+      original.header.numSplinePoints,
+    );
+    expect(reparsed.header.numSections).toBe(original.header.numSections);
+    expect(reparsed.header.numItems).toBe(original.header.numItems);
+  });
+
+  it("should parse and roundtrip Gutter.tun", () => {
+    const fixturePath = getTunnelFixturePath("Gutter.tun");
+    expect(existsSync(fixturePath)).toBe(true);
+
+    const originalBytes = readFileSync(fixturePath);
+    const parseResult = parseTunnelFile(
+      originalBytes.buffer.slice(
+        originalBytes.byteOffset,
+        originalBytes.byteOffset + originalBytes.byteLength,
+      ),
+    );
+    expect(
+      parseResult.isOk(),
+      parseResult.isErr() ? parseResult.error : "",
+    ).toBe(true);
+    if (!parseResult.isOk()) return;
+
+    const serializeResult = serializeTunnelFile(parseResult.value);
+    expect(serializeResult.isOk()).toBe(true);
+    if (!serializeResult.isOk()) return;
+
+    const reparsedResult = parseTunnelFile(serializeResult.value);
+    expect(reparsedResult.isOk()).toBe(true);
+    if (!reparsedResult.isOk()) return;
+
+    const original = parseResult.value;
+    const reparsed = reparsedResult.value;
+
+    expect(reparsed.aliasData).toEqual(original.aliasData);
+    expect(reparsed.header.fullPipe).toBe(original.header.fullPipe);
+    expect(reparsed.header.numNubs).toBe(original.header.numNubs);
+    expect(reparsed.header.numSplinePoints).toBe(
+      original.header.numSplinePoints,
+    );
+    expect(reparsed.header.numSections).toBe(original.header.numSections);
+    expect(reparsed.header.numItems).toBe(original.header.numItems);
+  });
+
   it("should serialize and parse back minimal tunnel data", () => {
     const originalData = createMinimalTunnelData();
 
@@ -145,11 +233,17 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     const parsedData = parseResult.value;
 
     // Verify header
-    expect(parsedData.header.versionMajor).toBe(originalData.header.versionMajor);
-    expect(parsedData.header.versionMinor).toBe(originalData.header.versionMinor);
+    expect(parsedData.header.versionMajor).toBe(
+      originalData.header.versionMajor,
+    );
+    expect(parsedData.header.versionMinor).toBe(
+      originalData.header.versionMinor,
+    );
     expect(parsedData.header.fullPipe).toBe(originalData.header.fullPipe);
     expect(parsedData.header.numNubs).toBe(originalData.header.numNubs);
-    expect(parsedData.header.numSplinePoints).toBe(originalData.header.numSplinePoints);
+    expect(parsedData.header.numSplinePoints).toBe(
+      originalData.header.numSplinePoints,
+    );
     expect(parsedData.header.numSections).toBe(originalData.header.numSections);
     expect(parsedData.header.numItems).toBe(originalData.header.numItems);
 
@@ -167,9 +261,15 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     }
 
     // Verify texture dimensions
-    expect(parsedData.tunnelTexture.width).toBe(originalData.tunnelTexture.width);
-    expect(parsedData.tunnelTexture.height).toBe(originalData.tunnelTexture.height);
-    expect(parsedData.tunnelTexture.data.length).toBe(originalData.tunnelTexture.data.length);
+    expect(parsedData.tunnelTexture.width).toBe(
+      originalData.tunnelTexture.width,
+    );
+    expect(parsedData.tunnelTexture.height).toBe(
+      originalData.tunnelTexture.height,
+    );
+    expect(parsedData.tunnelTexture.data.length).toBe(
+      originalData.tunnelTexture.data.length,
+    );
 
     // Verify items
     expect(parsedData.items.length).toBe(originalData.items.length);
@@ -184,7 +284,9 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     }
 
     // Verify spline points
-    expect(parsedData.splinePoints.length).toBe(originalData.splinePoints.length);
+    expect(parsedData.splinePoints.length).toBe(
+      originalData.splinePoints.length,
+    );
     const origSpline = originalData.splinePoints[0];
     const parsedSpline = parsedData.splinePoints[0];
     if (origSpline && parsedSpline) {
@@ -198,10 +300,18 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     const origSection = originalData.sections[0];
     const parsedSection = parsedData.sections[0];
     if (origSection && parsedSection) {
-      expect(parsedSection.tunnelMesh.numPoints).toBe(origSection.tunnelMesh.numPoints);
-      expect(parsedSection.tunnelMesh.numTriangles).toBe(origSection.tunnelMesh.numTriangles);
-      expect(parsedSection.waterMesh.numPoints).toBe(origSection.waterMesh.numPoints);
-      expect(parsedSection.waterMesh.numTriangles).toBe(origSection.waterMesh.numTriangles);
+      expect(parsedSection.tunnelMesh.numPoints).toBe(
+        origSection.tunnelMesh.numPoints,
+      );
+      expect(parsedSection.tunnelMesh.numTriangles).toBe(
+        origSection.tunnelMesh.numTriangles,
+      );
+      expect(parsedSection.waterMesh.numPoints).toBe(
+        origSection.waterMesh.numPoints,
+      );
+      expect(parsedSection.waterMesh.numTriangles).toBe(
+        origSection.waterMesh.numTriangles,
+      );
     }
   });
 
@@ -233,7 +343,9 @@ describe("Tunnel Parser Roundtrip Tests", () => {
       if (buffer1[i] !== buffer2[i]) {
         diffCount++;
         if (diffCount <= 5) {
-          console.log(`Byte diff at offset ${i}: ${buffer1[i]} vs ${buffer2[i]}`);
+          console.log(
+            `Byte diff at offset ${i}: ${buffer1[i]} vs ${buffer2[i]}`,
+          );
         }
       }
     }
@@ -363,7 +475,7 @@ describe("Tunnel Parser Roundtrip Tests", () => {
     // Create a buffer that's too small to contain the header
     const tooSmall = new ArrayBuffer(50);
     const result = parseTunnelFile(tooSmall);
-    
+
     expect(result.isOk()).toBe(false);
     if (!result.isOk()) {
       expect(result.error).toContain("too small");
