@@ -21,7 +21,10 @@ import type {
 import { levelIoError, type LevelIoError } from "./levelIoErrors";
 import { mapErr } from "@/utils/mapErr";
 import { isRecord, isNanosaur1LevelData } from "@/editor/loadLogic/typeGuards";
-import { serializeCompressedTerrainImages } from "@/data/terrain-io/terrainImageSerialization";
+import {
+  serializeCompressedTerrainImages,
+  serializeJpegTerrainImages,
+} from "@/data/terrain-io/terrainImageSerialization";
 import { compileNanosaur1LevelWithRust } from "./nanosaurLevelCodecWasm";
 import { parseNanosaur1Level } from "@/data/processors/classicProprocessor";
 
@@ -295,14 +298,11 @@ export async function serializeLevelDownloadBytes(
     },
   ];
 
-  if (
-    options.globals.TILE_IMAGE_FORMAT !== TileImageFormat.JPG &&
-    options.mapImages.length > 0
-  ) {
-    const textureBytes = await serializeCompressedTerrainImages(
-      options.mapImages,
-      onProgress,
-    );
+  if (options.mapImages.length > 0) {
+    const textureBytes =
+      options.globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG
+        ? await serializeJpegTerrainImages(options.mapImages, onProgress)
+        : await serializeCompressedTerrainImages(options.mapImages, onProgress);
     if (textureBytes.isErr()) {
       return err(textureBytes.error);
     }
@@ -385,10 +385,7 @@ export async function preparePreviewLevelBytes(
     });
   }
 
-  if (
-    options.globals.DATA_TYPE === DataType.STANDARD &&
-    options.globals.TILE_IMAGE_FORMAT !== TileImageFormat.JPG
-  ) {
+  if (options.globals.DATA_TYPE === DataType.STANDARD) {
     const rsrcBytes = serializeResourceForkBytes(levelData, options.globals, []);
     if (rsrcBytes.isErr()) {
       return err(levelIoError("preview.failed", rsrcBytes.error.message));
@@ -396,7 +393,9 @@ export async function preparePreviewLevelBytes(
     const dataBytes =
       options.mapImages.length === 0
         ? ok<Uint8Array, LevelIoError>(new Uint8Array(0))
-        : await serializeCompressedTerrainImages(options.mapImages, onProgress);
+        : options.globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG
+          ? await serializeJpegTerrainImages(options.mapImages, onProgress)
+          : await serializeCompressedTerrainImages(options.mapImages, onProgress);
     if (dataBytes.isErr()) {
       return err(levelIoError("preview.failed", dataBytes.error.message));
     }

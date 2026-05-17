@@ -1,13 +1,22 @@
-import { ResultAsync } from "neverthrow";
+import { ResultAsync, ok } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
+import {
+  createManagedMultiplayerRuntimeBridge,
+  createMultiplayerRuntimeBridge,
+  installMultiplayerRuntimeBridge,
+  type MultiplayerRuntimeManagedTransport,
+} from "@/multiplayer/runtimeBridge";
+import type { MultiplayerMatchConfig } from "@/multiplayer/types";
 import {
   applyPreviewGlobals,
   buildPreviewAssetBaseUrls,
   createPreviewModule,
   getPreviewTerrainPaths,
   loadPreviewRuntime,
+  type MultiplayerRuntimeEvent,
   type PreviewVfsFile,
   type PreviewRuntimeModule,
+  type StartNetworkMatchFn,
 } from "./gamePreviewRuntime";
 import { mapErr } from "../../utils/mapErr";
 
@@ -22,6 +31,12 @@ interface StartGamePreviewOptions {
   readonly customFiles?: readonly PreviewVfsFile[];
   readonly runToken: number;
   readonly normalLaunch: boolean;
+  readonly networkMatchConfig?: MultiplayerMatchConfig | null;
+  readonly localParticipantId?: string | null;
+  readonly networkRuntimeTransport?: MultiplayerRuntimeManagedTransport | null;
+  readonly deferNetworkStart?: boolean;
+  readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
+  readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
 }
@@ -94,12 +109,20 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     customFiles,
     runToken,
     normalLaunch,
+    networkMatchConfig,
+    localParticipantId,
+    networkRuntimeTransport,
+    deferNetworkStart = false,
+    onRuntimeEvent,
+    onStartNetworkMatchReady,
     onStatus,
     onError,
   } = options;
 
   let cancelled = false;
   let stopGame: (() => void) | null = null;
+  let uninstallRuntimeBridge: (() => void) | null = null;
+  let disposeRuntimeTransportSubscription: (() => void) | null = null;
   const resizePulseTimerIds = new Set<number>();
   const previousModule = window.Module;
   const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
@@ -125,6 +148,41 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
   const startGame = (width: number, height: number): void => {
     if (cancelled) return;
 
+    if (networkMatchConfig && !normalLaunch && !uninstallRuntimeBridge) {
+      const localPlayerIndex =
+        networkMatchConfig.players.find(
+          (player) => player.participantId === localParticipantId,
+        )?.playerIndex ?? 0;
+      const bridgeConfig = {
+        isHost: localParticipantId === networkMatchConfig.hostParticipantId,
+        localPlayerIndex,
+        playerCount: networkMatchConfig.players.length,
+        matchSeed: networkMatchConfig.seed,
+      };
+      if (networkRuntimeTransport) {
+        const managedBridge = createManagedMultiplayerRuntimeBridge(
+          bridgeConfig,
+          networkRuntimeTransport,
+        );
+        disposeRuntimeTransportSubscription = managedBridge.dispose;
+        uninstallRuntimeBridge = installMultiplayerRuntimeBridge(
+          window,
+          managedBridge.bridge,
+        );
+      } else {
+        const bridge = createMultiplayerRuntimeBridge(bridgeConfig, {
+          sendReliable: () => ok(undefined),
+          sendUnreliable: () => ok(undefined),
+          reportDesync: () => undefined,
+          reportMatchEnded: () => undefined,
+        });
+        uninstallRuntimeBridge = installMultiplayerRuntimeBridge(
+          window,
+          bridge,
+        );
+      }
+    }
+
     canvas.width = width;
     canvas.height = height;
     triggerResizePulse(resizePulseTimerIds);
@@ -148,6 +206,11 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           terrainTextureBytes,
           customFiles,
           terrainPaths,
+          networkMatchConfig,
+          localParticipantId,
+          deferNetworkStart,
+          onRuntimeEvent,
+          onStartNetworkMatchReady,
           normalLaunch,
           onStatus,
           onError,
@@ -198,6 +261,10 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     resizePulseTimerIds.clear();
     document.removeEventListener("fullscreenchange", handleFullscreenChange);
     cleanupGlobals();
+    disposeRuntimeTransportSubscription?.();
+    disposeRuntimeTransportSubscription = null;
+    uninstallRuntimeBridge?.();
+    uninstallRuntimeBridge = null;
     restorePreviewModule(previousModule);
   };
 }

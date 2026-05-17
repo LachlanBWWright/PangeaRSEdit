@@ -1,6 +1,6 @@
 import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import { z } from "zod";
-import { buildApiPath } from "@/api/apiBase";
+import { buildApiUrl } from "@/api/apiBase";
 
 const iceServerSchema = z.object({
   urls: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
@@ -21,8 +21,8 @@ function mapIceServer(server: z.infer<typeof iceServerSchema>): RTCIceServer {
 }
 
 export function fetchIceServers(): ResultAsync<readonly RTCIceServer[], string> {
-  const path = buildApiPath("/api/multiplayer/ice-servers");
-  return ResultAsync.fromPromise(fetch(path, { method: "GET" }), () => {
+  const url = buildApiUrl("/api/multiplayer/ice-servers");
+  return ResultAsync.fromPromise(fetch(url, { method: "GET" }), () => {
     return "Unable to fetch ICE servers";
   }).andThen((response) => {
     if (!response.ok) {

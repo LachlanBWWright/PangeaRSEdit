@@ -10,6 +10,14 @@ public sealed class MultiplayerLobbyEntity
     public string HostParticipantId { get; set; } = string.Empty;
     public string JoinCode { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
+    public Guid? MatchId { get; set; }
+    public int? MatchSeed { get; set; }
+    public DateTimeOffset? MatchStartedAt { get; set; }
+    public DateTimeOffset? MatchEndedAt { get; set; }
+    public string? LastReportType { get; set; }
+    public string? LastReportDetail { get; set; }
+    public string? LastReportByParticipantId { get; set; }
+    public DateTimeOffset? LastReportAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
 

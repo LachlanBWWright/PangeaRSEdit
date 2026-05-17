@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createLobby } from "@/multiplayer/api";
+import { createLobby, getLobbyPreview } from "@/multiplayer/api";
 
 describe("multiplayer api", () => {
   afterEach(() => {
@@ -47,6 +47,7 @@ describe("multiplayer api", () => {
       trackOrLevel: "ice-ramp",
       maxPlayers: 2,
       displayName: "Host",
+      isPublic: true,
     });
 
     expect(result.isOk()).toBe(true);
@@ -76,12 +77,41 @@ describe("multiplayer api", () => {
       trackOrLevel: "ice-ramp",
       maxPlayers: 2,
       displayName: "Host",
+      isPublic: true,
     });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.code).toBe("schema.invalid");
       expect(result.error.status).toBe(200);
+    }
+  });
+
+  it("parses lobby preview responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () =>
+          Promise.resolve({
+            id: "9340ea45-789f-4072-abd2-5f40eac9e4e0",
+            gameId: "cromagrally",
+            mode: "multiplayerRace",
+            trackOrLevel: "1",
+            maxPlayers: 2,
+            state: "open",
+            playerCount: 1,
+            canJoin: true,
+          }),
+      }),
+    );
+
+    const result = await getLobbyPreview("9340ea45-789f-4072-abd2-5f40eac9e4e0");
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.canJoin).toBe(true);
     }
   });
 });

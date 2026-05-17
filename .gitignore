@@ -4,6 +4,7 @@
 
 # Common ignores
 .DS_Store
+.tmp/
 node_modules/
 dist/
 .env

@@ -5,6 +5,8 @@ export interface MultiplayerLobbyPlayer {
   readonly playerIndex: number;
   readonly isHost: boolean;
   readonly isReady: boolean;
+  readonly region: string;
+  readonly pingMs: number;
   readonly joinedAt: string;
   readonly lastSeenAt: string;
 }
@@ -16,20 +18,39 @@ export interface MultiplayerLobbySummary {
   readonly mode: string;
   readonly trackOrLevel: string;
   readonly maxPlayers: number;
+  readonly isPublic: boolean;
   readonly joinCode: string;
   readonly state: string;
   readonly playerCount: number;
   readonly createdAt: string;
   readonly expiresAt: string;
+  readonly canJoin?: boolean;
 }
 
 /** Full lobby details including the current participant roster. */
+export interface MultiplayerMatchConfigPlayer {
+  readonly participantId: string;
+  readonly playerIndex: number;
+  readonly displayName: string;
+}
+
+export interface MultiplayerMatchConfig {
+  readonly matchId: string;
+  readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly seed: number;
+  readonly hostParticipantId: string;
+  readonly players: readonly MultiplayerMatchConfigPlayer[];
+}
+
 export interface MultiplayerLobbyDetails {
   readonly id: string;
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
   readonly maxPlayers: number;
+  readonly isPublic: boolean;
   readonly hostParticipantId: string;
   readonly joinCode: string;
   readonly state: string;
@@ -37,6 +58,18 @@ export interface MultiplayerLobbyDetails {
   readonly expiresAt: string;
   readonly players: readonly MultiplayerLobbyPlayer[];
   readonly participantId: string;
+  readonly matchConfig?: MultiplayerMatchConfig | null;
+}
+
+export interface MultiplayerLobbyPreview {
+  readonly id: string;
+  readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly maxPlayers: number;
+  readonly state: string;
+  readonly playerCount: number;
+  readonly canJoin: boolean;
 }
 
 /** Request body used when creating a new multiplayer lobby. */
@@ -46,6 +79,7 @@ export interface CreateLobbyInput {
   readonly trackOrLevel: string;
   readonly maxPlayers: number;
   readonly displayName: string;
+  readonly isPublic: boolean;
 }
 
 /** Request body used when joining an existing lobby. */

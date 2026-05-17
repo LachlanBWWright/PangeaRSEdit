@@ -9,9 +9,17 @@ import {
 import { createClientSession } from "@/multiplayer/webrtc/clientSession";
 
 class FakeDataChannel implements HostSessionDataChannel {
+  public readonly label: string;
   public readonly readyState = "open";
   public onopen: (() => void) | null = null;
   public onclose: (() => void) | null = null;
+  private readonly listeners = new Set<(
+    event: { readonly data: unknown },
+  ) => void>();
+
+  constructor(label = "pangea-control") {
+    this.label = label;
+  }
 
   emitOpen(): void {
     this.onopen?.();
@@ -19,6 +27,28 @@ class FakeDataChannel implements HostSessionDataChannel {
 
   emitClose(): void {
     this.onclose?.();
+  }
+
+  send(_data: ArrayBuffer): void {
+    void _data;
+  }
+
+  addEventListener(
+    type: "message",
+    listener: (event: { readonly data: unknown }) => void,
+  ): void {
+    if (type === "message") {
+      this.listeners.add(listener);
+    }
+  }
+
+  removeEventListener(
+    type: "message",
+    listener: (event: { readonly data: unknown }) => void,
+  ): void {
+    if (type === "message") {
+      this.listeners.delete(listener);
+    }
   }
 }
 
@@ -33,12 +63,15 @@ class FakePeerConnection implements HostPeerConnection {
     | null = null;
 
   public readonly dataChannel = new FakeDataChannel();
+  public readonly stateDataChannel = new FakeDataChannel("pangea-state");
 
   createDataChannel(
-    _label: string,
-    _options: { readonly ordered: boolean },
+    label: string,
+    _options: { readonly ordered: boolean; readonly maxRetransmits?: number },
   ): HostSessionDataChannel {
-    void _label;
+    if (label === "pangea-state") {
+      return this.stateDataChannel;
+    }
     void _options;
     return this.dataChannel;
   }
@@ -99,6 +132,7 @@ describe("webrtc host/client sessions", () => {
     expect(startResult.isOk()).toBe(true);
 
     fakeConnection.dataChannel.emitOpen();
+    fakeConnection.stateDataChannel.emitOpen();
     fakeConnection.connectionState = "failed";
     fakeConnection.onconnectionstatechange?.();
     hostSession.closePeer("guest-1");
@@ -130,9 +164,12 @@ describe("webrtc host/client sessions", () => {
     const offerResult = await session.receiveOffer("host-1", "offer-sdp");
     expect(offerResult.isOk()).toBe(true);
 
-    const incomingChannel = new FakeDataChannel();
-    fakeConnection.emitDataChannel(incomingChannel);
-    incomingChannel.emitOpen();
+    const incomingControlChannel = new FakeDataChannel("pangea-control");
+    const incomingStateChannel = new FakeDataChannel("pangea-state");
+    fakeConnection.emitDataChannel(incomingControlChannel);
+    fakeConnection.emitDataChannel(incomingStateChannel);
+    incomingControlChannel.emitOpen();
+    incomingStateChannel.emitOpen();
     fakeConnection.connectionState = "failed";
     fakeConnection.onconnectionstatechange?.();
     session.close();

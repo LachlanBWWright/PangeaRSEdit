@@ -87,6 +87,11 @@ function serveStaticDirectory(basePath: string, rootDir: string): Plugin {
 
         res.statusCode = 200;
         res.setHeader("Content-Type", mimeTypeFor(targetPath));
+        // Game pages must carry the same isolation headers as the parent app so
+        // browsers permit same-origin iframe embedding under COEP: require-corp.
+        res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+        res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+        res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
         fs.createReadStream(targetPath).pipe(res);
       });
     },

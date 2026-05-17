@@ -7,7 +7,6 @@ import {
 } from "./sequenceTracking";
 import {
   decodeMultiplayerPacket,
-  type MultiplayerPacketEnvelope,
 } from "./protocol";
 
 interface DataChannelMessageEvent {
@@ -16,6 +15,7 @@ interface DataChannelMessageEvent {
 
 interface RuntimeDataChannel {
   readonly readyState: string;
+  readonly bufferedAmount?: number;
   onopen?: (() => void) | null;
   onclose?: (() => void) | null;
   send(data: ArrayBuffer): void;
@@ -114,6 +114,8 @@ const TRANSPORT_VERSION = 1;
 const TRANSPORT_HEADER_SIZE = 20;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 1_000;
 const DEFAULT_HEARTBEAT_TIMEOUT_MS = 6_000;
+const STATE_CHANNEL_SOFT_BUFFER_LIMIT_BYTES = 128_000;
+const STATE_CHANNEL_HARD_BUFFER_LIMIT_BYTES = 512_000;
 
 type TransportPacketKind =
   | "heartbeat"
@@ -251,6 +253,21 @@ function sendOnChannel(
   return ok(undefined);
 }
 
+function isHighFrequencyStatePacket(bytes: ArrayBuffer): boolean {
+  const decoded = decodeMultiplayerPacket(bytes);
+  if (decoded.isErr()) {
+    return false;
+  }
+  const messageType = decoded.value.envelope.messageType;
+  return (
+    messageType === "hostSnapshot" ||
+    messageType === "hostCorrection" ||
+    messageType === "hostInputBundle" ||
+    messageType === "clientInput" ||
+    messageType === "clientInputCommand"
+  );
+}
+
 export function createWebRtcRuntimeTransport(
   options: WebRtcRuntimeTransportOptions,
 ): WebRtcRuntimeTransportHandle {
@@ -339,7 +356,7 @@ export function createWebRtcRuntimeTransport(
         // Try to decode as gameplay packet for sequence validation
         const gameplayDecoded = decodeMultiplayerPacket(parsed.value);
         if (gameplayDecoded.isOk()) {
-          const envelope = gameplayDecoded.value;
+          const envelope = gameplayDecoded.value.envelope;
           const validationResult = gameplaySequenceTracker.validate(envelope);
 
           if (!validationResult.isValid) {
@@ -476,8 +493,22 @@ export function createWebRtcRuntimeTransport(
 
   const transport: MultiplayerRuntimeManagedTransport = {
     sendReliable: (bytes) => sendOnChannel(reliableChannel, bytes),
-    sendUnreliable: (bytes) =>
-      sendOnChannel(unreliableChannel ?? reliableChannel, bytes),
+    sendUnreliable: (bytes) => {
+      if (!unreliableChannel) {
+        return err("State data channel is not available");
+      }
+      const bufferedAmount = unreliableChannel.bufferedAmount ?? 0;
+      if (
+        bufferedAmount >= STATE_CHANNEL_SOFT_BUFFER_LIMIT_BYTES &&
+        isHighFrequencyStatePacket(bytes)
+      ) {
+        return ok(undefined);
+      }
+      if (bufferedAmount >= STATE_CHANNEL_HARD_BUFFER_LIMIT_BYTES) {
+        return err("State data channel is congested");
+      }
+      return sendOnChannel(unreliableChannel, bytes);
+    },
     reportDesync: (frame, localHash, remoteHash) => {
       reportDesync?.(frame, localHash, remoteHash);
     },

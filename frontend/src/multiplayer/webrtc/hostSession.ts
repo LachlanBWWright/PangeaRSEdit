@@ -7,9 +7,11 @@ export type WebRtcSessionState =
   | "closed";
 
 export interface HostSessionDataChannel {
+  readonly label: string;
   readonly readyState: string;
   onopen: (() => void) | null;
   onclose: (() => void) | null;
+  bufferedAmount?: number;
   send(data: ArrayBuffer): void;
   addEventListener(
     type: "message",
@@ -32,7 +34,7 @@ export interface HostPeerConnection {
     | null;
   createDataChannel(
     label: string,
-    options: { readonly ordered: boolean },
+    options: { readonly ordered: boolean; readonly maxRetransmits?: number },
   ): HostSessionDataChannel;
   createOffer(): Promise<RTCSessionDescriptionInit>;
   createAnswer(): Promise<RTCSessionDescriptionInit>;
@@ -44,8 +46,13 @@ export interface HostPeerConnection {
 
 interface HostPeerHandle {
   readonly connection: HostPeerConnection;
-  readonly channel: HostSessionDataChannel;
+  readonly controlChannel: HostSessionDataChannel;
+  readonly stateChannel: HostSessionDataChannel;
   readonly openTimeoutId: number;
+  readonly opened: {
+    control: boolean;
+    state: boolean;
+  };
 }
 
 export interface HostSessionDeps {
@@ -66,7 +73,10 @@ export interface HostSessionDeps {
   ) => void;
   readonly onDataChannelOpened?: (
     participantId: string,
-    channel: HostSessionDataChannel,
+    channels: {
+      readonly controlChannel: HostSessionDataChannel;
+      readonly stateChannel: HostSessionDataChannel;
+    },
   ) => void;
   readonly dataChannelOpenTimeoutMs?: number;
 }
@@ -144,22 +154,46 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
     startPeer: (participantId) => {
       deps.onStateChanged(participantId, "connecting");
       return deps.createPeerConnection(participantId).andThen((connection) => {
-        const channel = connection.createDataChannel("pangea-runtime", {
+        const controlChannel = connection.createDataChannel("pangea-control", {
           ordered: true,
+        });
+        const stateChannel = connection.createDataChannel("pangea-state", {
+          ordered: false,
+          maxRetransmits: 0,
         });
         const openTimeoutId = window.setTimeout(() => {
           deps.onStateChanged(participantId, "failed");
           closePeer(participantId);
         }, dataChannelOpenTimeoutMs);
-        channel.onopen = () => {
+        const opened = {
+          control: false,
+          state: false,
+        };
+        const notifyOpenedIfReady = (): void => {
+          if (!opened.control || !opened.state) {
+            return;
+          }
           window.clearTimeout(openTimeoutId);
           deps.onStateChanged(participantId, "connected");
-          deps.onDataChannelOpened?.(participantId, channel);
+          deps.onDataChannelOpened?.(participantId, {
+            controlChannel,
+            stateChannel,
+          });
         };
-        channel.onclose = () => {
+        controlChannel.onopen = () => {
+          opened.control = true;
+          notifyOpenedIfReady();
+        };
+        stateChannel.onopen = () => {
+          opened.state = true;
+          notifyOpenedIfReady();
+        };
+        const onChannelClose = () => {
           window.clearTimeout(openTimeoutId);
           deps.onStateChanged(participantId, "closed");
         };
+        controlChannel.onclose = onChannelClose;
+        stateChannel.onclose = onChannelClose;
 
         connection.onconnectionstatechange = () => {
           const mappedState = mapConnectionState(connection.connectionState);
@@ -174,7 +208,13 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
           void deps.sendIceCandidate(participantId, event.candidate.candidate);
         };
 
-        peers.set(participantId, { connection, channel, openTimeoutId });
+        peers.set(participantId, {
+          connection,
+          controlChannel,
+          stateChannel,
+          openTimeoutId,
+          opened,
+        });
 
         return ResultAsync.fromPromise(
           withTimeout(

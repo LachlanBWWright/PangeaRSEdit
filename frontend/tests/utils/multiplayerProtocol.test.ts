@@ -44,6 +44,7 @@ describe("multiplayer protocol envelope", () => {
         matchSequence: 123,
         frameNumber: 456,
         senderPlayerIndex: 1,
+        reliability: "strict",
       },
       payload: Uint8Array.from([9, 8, 7]).buffer,
     });
@@ -97,6 +98,7 @@ describe("multiplayer protocol envelope", () => {
           matchSequence: 10,
           frameNumber: 20,
           senderPlayerIndex: 1,
+          reliability: "ordered",
         },
         payload: Uint8Array.from([5, 6]).buffer,
       });
@@ -122,7 +124,8 @@ describe("multiplayer protocol envelope", () => {
   });
 
   it("rejects unknown message type", () => {
-    const bytes = new ArrayBuffer(20);
+    // Buffer must be exactly HEADER_SIZE (24) bytes + 0 payload bytes to pass the size check
+    const bytes = new ArrayBuffer(24);
     const view = new DataView(bytes);
     view.setUint16(0, 1);
     view.setUint16(2, 1);
@@ -150,6 +153,7 @@ describe("multiplayer protocol envelope", () => {
         matchSequence: 1,
         frameNumber: 2,
         senderPlayerIndex: 0,
+        reliability: "ordered",
       },
       payload: new ArrayBuffer(65536),
     });

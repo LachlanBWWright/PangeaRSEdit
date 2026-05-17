@@ -28,6 +28,7 @@ export default defineConfig({
       "tests/validation/**/*.test.ts",
       "tests/splines/**/*.test.ts",
       "tests/utils/**/*.test.ts",
+      "tests/multiplayer/**/*.test.ts",
       "src/types/*.test.ts",
       "src/data/utils/*.test.ts",
       "src/data/selectors/*.test.ts",

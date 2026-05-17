@@ -99,12 +99,7 @@ export function MightyMikePreview({ className }: { className?: string }) {
   }, []);
 
   return (
-    <div
-      className={cn(
-        "w-full flex items-center justify-center rounded-md bg-gray-900/20",
-        className,
-      )}
-    >
+    <div className={cn("w-full flex items-center justify-center", className)}>
       {frameUrl ? (
         <img
           src={frameUrl}

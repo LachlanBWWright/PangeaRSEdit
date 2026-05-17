@@ -6,8 +6,12 @@ using PangeaRSEdit.Infrastructure.Persistence.Entities;
 
 namespace PangeaRSEdit.Infrastructure.Multiplayer;
 
-public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) : IMultiplayerLobbyService
+public sealed class EfMultiplayerLobbyService(
+    PangeaRSEditDbContext dbContext,
+    MultiplayerRuntimeState runtimeState) : IMultiplayerLobbyService
 {
+    private static readonly TimeSpan ParticipantStaleAfter = TimeSpan.FromMinutes(2);
+
     public async Task<AppResult<MultiplayerLobbyDetails>> CreateLobbyAsync(
         CreateLobbyRequest request,
         CancellationToken cancellationToken)
@@ -40,6 +44,8 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
             LastSeenAt = now
         });
 
+        runtimeState.SetLobbyVisibility(lobby.Id, request.IsPublic);
+
         dbContext.MultiplayerLobbies.Add(lobby);
         await dbContext.SaveChangesAsync(cancellationToken);
         return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby));
@@ -49,16 +55,26 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
         string gameId,
         CancellationToken cancellationToken)
     {
-        var lobbies = await dbContext.MultiplayerLobbies
+        var now = DateTimeOffset.UtcNow;
+        var openLobbies = await dbContext.MultiplayerLobbies
             .Include(x => x.Players)
-            .Where(x => x.GameId == gameId && x.State == "open" && x.ExpiresAt > DateTimeOffset.UtcNow)
+            .Where(x => x.GameId == gameId && x.State == "open")
+            .ToListAsync(cancellationToken);
+
+        var lobbies = openLobbies
+            .Where(x => x.ExpiresAt > now)
             .OrderByDescending(x => x.CreatedAt)
+            .ToList();
+
+        var summaries = lobbies
+            .Where(x => runtimeState.IsLobbyPublic(x.Id))
             .Select(x => new MultiplayerLobbySummary(
                 x.Id,
                 x.GameId,
                 x.Mode,
                 x.TrackOrLevel,
                 x.MaxPlayers,
+                true,
                 x.JoinCode,
                 x.State,
                 x.Players.Count,
@@ -66,9 +82,9 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
                 x.ExpiresAt
             ))
             .Cast<MultiplayerLobbySummary>()
-            .ToListAsync(cancellationToken);
+            .ToList();
 
-        return AppResult<IReadOnlyList<MultiplayerLobbySummary>>.Success(lobbies);
+        return AppResult<IReadOnlyList<MultiplayerLobbySummary>>.Success(summaries);
     }
 
     public async Task<AppResult<MultiplayerLobbyDetails>> GetLobbyAsync(
@@ -100,6 +116,11 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
         }
 
         if (lobby.State != "open")
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
+        }
+
+        if (lobby.ExpiresAt <= DateTimeOffset.UtcNow)
         {
             return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
         }
@@ -156,10 +177,13 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
         }
 
         dbContext.MultiplayerLobbyPlayers.Remove(player);
+        runtimeState.RemoveParticipant(player.ParticipantId);
+
         var remainingPlayers = lobby.Players.Where(x => x.ParticipantId != request.ParticipantId).ToList();
         if (remainingPlayers.Count == 0)
         {
             lobby.State = "closed";
+            runtimeState.RemoveLobby(lobby.Id);
         }
         else if (player.IsHost)
         {
@@ -213,6 +237,16 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
             return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyForbidden);
         }
 
+        if (lobby.ExpiresAt <= DateTimeOffset.UtcNow)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
+        }
+
+        if (lobby.State == "started")
+        {
+            return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby));
+        }
+
         if (lobby.State != "open")
         {
             return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
@@ -223,24 +257,205 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
             return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
         }
 
+        lobby.State = "connecting";
+        runtimeState.ClearRuntimeReady(lobby.Id);
+        lobby.MatchId ??= Guid.CreateVersion7();
+        lobby.MatchSeed ??= BuildMatchSeed(lobby);
+        lobby.MatchStartedAt ??= DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         lobby.State = "started";
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var matchConfig = BuildMatchConfig(lobby, lobby.MatchId.Value, lobby.MatchSeed.Value);
+        return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby, matchConfig));
+    }
+
+    public async Task<AppResult<MultiplayerLobbyDetails>> RemoveParticipantAsync(
+        RemoveLobbyParticipantRequest request,
+        CancellationToken cancellationToken)
+    {
+        var lobby = await dbContext.MultiplayerLobbies
+            .Include(x => x.Players)
+            .SingleOrDefaultAsync(x => x.Id == request.LobbyId, cancellationToken);
+        if (lobby is null)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyNotFound);
+        }
+
+        if (lobby.HostParticipantId != request.RequestingParticipantId)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyForbidden);
+        }
+
+        if (request.RequestingParticipantId == request.TargetParticipantId)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
+        }
+
+        var player = lobby.Players.SingleOrDefault(x => x.ParticipantId == request.TargetParticipantId);
+        if (player is null)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyNotFound);
+        }
+
+        dbContext.MultiplayerLobbyPlayers.Remove(player);
+        runtimeState.RemoveParticipant(player.ParticipantId);
+
         await dbContext.SaveChangesAsync(cancellationToken);
         return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby));
     }
 
-    private static MultiplayerLobbyDetails MapDetails(MultiplayerLobbyEntity lobby)
+    public async Task<AppResult<MultiplayerLobbyDetails>> HeartbeatAsync(
+        LobbyHeartbeatRequest request,
+        CancellationToken cancellationToken)
+    {
+        var lobby = await dbContext.MultiplayerLobbies
+            .Include(x => x.Players)
+            .SingleOrDefaultAsync(x => x.Id == request.LobbyId, cancellationToken);
+        if (lobby is null)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyNotFound);
+        }
+
+        var player = lobby.Players.SingleOrDefault(x => x.ParticipantId == request.ParticipantId);
+        if (player is null)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyForbidden);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        player.LastSeenAt = now;
+        if (lobby.ExpiresAt < now.AddMinutes(30))
+        {
+            lobby.ExpiresAt = now.AddHours(4);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby));
+    }
+
+    public async Task<AppResult<MultiplayerLobbyDetails>> ReportEventAsync(
+        LobbyReportEventRequest request,
+        CancellationToken cancellationToken)
+    {
+        var lobby = await dbContext.MultiplayerLobbies
+            .Include(x => x.Players)
+            .SingleOrDefaultAsync(x => x.Id == request.LobbyId, cancellationToken);
+        if (lobby is null)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyNotFound);
+        }
+
+        var player = lobby.Players.SingleOrDefault(x => x.ParticipantId == request.ParticipantId);
+        if (player is null)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyForbidden);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        player.LastSeenAt = now;
+        lobby.LastReportType = request.EventType;
+        lobby.LastReportDetail = request.Detail;
+        lobby.LastReportByParticipantId = request.ParticipantId;
+        lobby.LastReportAt = now;
+
+        if (
+            request.EventType == "match-ended" ||
+            request.EventType == "participant-disconnected" ||
+            request.EventType == "host-disconnected" ||
+            request.EventType == "desync-reported" ||
+            request.EventType == "timeout-reported"
+        )
+        {
+            lobby.State = "ended";
+            lobby.MatchEndedAt ??= now;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby));
+    }
+
+    public async Task CleanupExpiredAndStaleAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var staleBefore = now - ParticipantStaleAfter;
+        var lobbies = await dbContext.MultiplayerLobbies
+            .Include(x => x.Players)
+            .Where(x => x.State == "open" || x.State == "connecting" || x.State == "started")
+            .ToListAsync(cancellationToken);
+
+        foreach (var lobby in lobbies)
+        {
+            var stalePlayers = lobby.Players
+                .Where(player => player.LastSeenAt < staleBefore)
+                .ToList();
+
+            if (stalePlayers.Count > 0)
+            {
+                foreach (var stalePlayer in stalePlayers)
+                {
+                    dbContext.MultiplayerLobbyPlayers.Remove(stalePlayer);
+                    runtimeState.RemoveParticipant(stalePlayer.ParticipantId);
+                }
+
+                var remainingPlayers = lobby.Players
+                    .Where(player => !stalePlayers.Contains(player))
+                    .OrderBy(player => player.PlayerIndex)
+                    .ToList();
+
+                if (remainingPlayers.Count == 0)
+                {
+                    lobby.State = "expired";
+                    runtimeState.RemoveLobby(lobby.Id);
+                }
+                else
+                {
+                    var host = remainingPlayers.FirstOrDefault(player => player.IsHost);
+                    if (host is null)
+                    {
+                        var nextHost = remainingPlayers[0];
+                        nextHost.IsHost = true;
+                        lobby.HostParticipantId = nextHost.ParticipantId;
+                    }
+                    else
+                    {
+                        lobby.HostParticipantId = host.ParticipantId;
+                    }
+                }
+            }
+
+            if (lobby.ExpiresAt <= now && (lobby.State == "open" || lobby.State == "connecting"))
+            {
+                lobby.State = "expired";
+                runtimeState.RemoveLobby(lobby.Id);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private MultiplayerLobbyDetails MapDetails(
+        MultiplayerLobbyEntity lobby,
+        MultiplayerMatchConfig? matchConfig = null)
     {
         var players = lobby.Players
             .OrderBy(x => x.PlayerIndex)
-            .Select(x => new MultiplayerLobbyPlayer(
-                x.ParticipantId,
-                x.DisplayName,
-                x.PlayerIndex,
-                x.IsHost,
-                x.IsReady,
-                x.JoinedAt,
-                x.LastSeenAt
-            ))
+            .Select(x =>
+            {
+                var telemetry = runtimeState.GetParticipantTelemetry(x.ParticipantId);
+                return new MultiplayerLobbyPlayer(
+                    x.ParticipantId,
+                    x.DisplayName,
+                    x.PlayerIndex,
+                    x.IsHost,
+                    x.IsReady,
+                    telemetry.Region,
+                    telemetry.PingMs,
+                    x.JoinedAt,
+                    x.LastSeenAt
+                );
+            })
             .Cast<MultiplayerLobbyPlayer>()
             .ToList();
 
@@ -250,13 +465,57 @@ public sealed class EfMultiplayerLobbyService(PangeaRSEditDbContext dbContext) :
             lobby.Mode,
             lobby.TrackOrLevel,
             lobby.MaxPlayers,
+            runtimeState.IsLobbyPublic(lobby.Id),
             lobby.HostParticipantId,
             lobby.JoinCode,
             lobby.State,
             lobby.CreatedAt,
             lobby.ExpiresAt,
-            players
+            players,
+            matchConfig ?? TryBuildStoredMatchConfig(lobby)
         );
+    }
+
+    private static MultiplayerMatchConfig? TryBuildStoredMatchConfig(MultiplayerLobbyEntity lobby)
+    {
+        if (lobby.MatchId is null || lobby.MatchSeed is null)
+        {
+            return null;
+        }
+
+        return BuildMatchConfig(lobby, lobby.MatchId.Value, lobby.MatchSeed.Value);
+    }
+
+    private static MultiplayerMatchConfig BuildMatchConfig(
+        MultiplayerLobbyEntity lobby,
+        Guid matchId,
+        int seed)
+    {
+        var orderedPlayers = lobby.Players
+            .OrderBy(x => x.PlayerIndex)
+            .Select(x => new MultiplayerMatchConfigPlayer(
+                x.ParticipantId,
+                x.PlayerIndex,
+                x.DisplayName
+            ))
+            .Cast<MultiplayerMatchConfigPlayer>()
+            .ToList();
+
+        return new MultiplayerMatchConfig(
+            matchId,
+            lobby.GameId,
+            lobby.Mode,
+            lobby.TrackOrLevel,
+            seed,
+            lobby.HostParticipantId,
+            orderedPlayers
+        );
+    }
+
+    private static int BuildMatchSeed(MultiplayerLobbyEntity lobby)
+    {
+        var seed = Math.Abs(HashCode.Combine(lobby.Id, lobby.CreatedAt));
+        return seed == 0 ? 1 : seed;
     }
 
     private static string BuildJoinCode()

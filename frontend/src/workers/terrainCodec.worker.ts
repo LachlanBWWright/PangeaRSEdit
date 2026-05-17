@@ -4,6 +4,8 @@ import {
   type TerrainCodecWorkerResponse,
 } from "@/data/terrain-io/terrainCodecSchemas";
 import {
+  encodeJpegTerrainTile,
+  encodeLzssTerrainTile,
   decodeJpegTerrainTile,
   decodeLzssTerrainTile,
 } from "@/data/terrain-io/terrainCodecWasm";
@@ -12,11 +14,18 @@ function createInvalidRequestResponse(
   request: TerrainCodecWorkerRequest,
   message: string,
 ): TerrainCodecWorkerResponse {
+  const responseType =
+    request.type === "encode-jpeg" || request.type === "encode-lzss"
+      ? "encode-error"
+      : "decode-error";
   return {
-    type: "decode-error",
+    type: responseType,
     jobId: request.jobId,
     id: request.id,
-    code: "terrain.decode.bad-format",
+    code:
+      responseType === "encode-error"
+        ? "terrain.encode.failed"
+        : "terrain.decode.bad-format",
     message,
   };
 }
@@ -51,10 +60,58 @@ async function decodeRequest(
   }
 
   if (request.type !== "decode-lzss") {
-    return createInvalidRequestResponse(
-      request,
-      "Expected an LZSS terrain decode request",
-    );
+    if (request.type === "encode-lzss") {
+      const encodeResult = await encodeLzssTerrainTile(request.id, {
+        rgbaBytes: request.rgbaBytes,
+        width: request.width,
+        height: request.height,
+      });
+      if (encodeResult.isErr()) {
+        return {
+          type: "encode-error",
+          jobId: request.jobId,
+          id: request.id,
+          code: encodeResult.error.code,
+          message: encodeResult.error.message,
+        };
+      }
+
+      return {
+        type: "encoded",
+        jobId: request.jobId,
+        id: request.id,
+        encodedBytes: encodeResult.value.encodedBytes,
+        imageDescriptionBytes: encodeResult.value.imageDescriptionBytes,
+      };
+    }
+
+    if (request.type === "encode-jpeg") {
+      const encodeResult = await encodeJpegTerrainTile(request.id, {
+        rgbaBytes: request.rgbaBytes,
+        width: request.width,
+        height: request.height,
+        quality: request.quality,
+      });
+      if (encodeResult.isErr()) {
+        return {
+          type: "encode-error",
+          jobId: request.jobId,
+          id: request.id,
+          code: encodeResult.error.code,
+          message: encodeResult.error.message,
+        };
+      }
+
+      return {
+        type: "encoded",
+        jobId: request.jobId,
+        id: request.id,
+        encodedBytes: encodeResult.value.encodedBytes,
+        imageDescriptionBytes: encodeResult.value.imageDescriptionBytes,
+      };
+    }
+
+    return createInvalidRequestResponse(request, "Unknown terrain codec request");
   }
 
   const decodeResult = await decodeLzssTerrainTile(request.id, {
@@ -90,8 +147,14 @@ self.onmessage = (event: MessageEvent<unknown>) => {
 
   void (async () => {
     const response = await decodeRequest(parsed.data);
-    const transferables =
-      response.type === "decoded" ? [response.rgbaBytes] : [];
+    const transferables: Transferable[] =
+      response.type === "decoded"
+        ? [response.rgbaBytes]
+        : response.type === "encoded"
+          ? response.imageDescriptionBytes
+            ? [response.encodedBytes, response.imageDescriptionBytes]
+            : [response.encodedBytes]
+          : [];
     self.postMessage(response, { transfer: transferables });
   })();
 };

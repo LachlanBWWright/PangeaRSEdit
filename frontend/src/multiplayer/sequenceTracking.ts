@@ -16,10 +16,9 @@ export class GameplaySequenceTracker {
   private lastValidSequence = 0;
   private lastValidFrame = 0;
   private seenSequences = new Set<number>();
-  private readonly isHost: boolean;
 
-  constructor(isHost: boolean) {
-    this.isHost = isHost;
+  constructor(_isHost: boolean) {
+    void _isHost;
   }
 
   /**
@@ -123,10 +122,14 @@ export class GameplaySequenceTracker {
    * Clear old sequences from the tracking set to avoid unbounded growth.
    * Clears sequences older than a given window.
    */
-  prune(keepRecentCount: number = 1000): void {
+  prune(keepRecentCount = 1000): void {
     if (this.seenSequences.size > keepRecentCount) {
       const sorted = Array.from(this.seenSequences).sort((a, b) => a - b);
-      const threshold = sorted[sorted.length - keepRecentCount];
+      const thresholdIndex = sorted.length - keepRecentCount;
+      const threshold = sorted[thresholdIndex];
+      if (threshold === undefined) {
+        return;
+      }
       for (const seq of this.seenSequences) {
         if (seq < threshold) {
           this.seenSequences.delete(seq);
@@ -140,11 +143,10 @@ export class GameplaySequenceTracker {
  * Host authority enforcer: validates that packets follow host-authority rules.
  */
 export class HostAuthorityEnforcer {
-  private isHost: boolean;
   private hostParticipantId: string;
 
-  constructor(isHost: boolean, hostParticipantId: string) {
-    this.isHost = isHost;
+  constructor(_isHost: boolean, hostParticipantId: string) {
+    void _isHost;
     this.hostParticipantId = hostParticipantId;
   }
 
@@ -231,7 +233,7 @@ export class DisruptionDetector {
   private consecutiveMissing = 0;
   private readonly maxConsecutiveMissing: number;
 
-  constructor(timeoutMs: number = 6000, maxConsecutiveMissing: number = 3) {
+  constructor(timeoutMs = 6000, maxConsecutiveMissing = 3) {
     this.lastPacketTime = Date.now();
     this.timeoutMs = timeoutMs;
     this.maxConsecutiveMissing = maxConsecutiveMissing;

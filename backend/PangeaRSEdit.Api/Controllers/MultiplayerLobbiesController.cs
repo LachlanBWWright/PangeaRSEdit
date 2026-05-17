@@ -22,6 +22,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
                 body.TrackOrLevel,
                 body.MaxPlayers,
                 body.DisplayName,
+                body.IsPublic,
                 participantId
             ),
             cancellationToken
@@ -50,6 +51,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
             x.Mode,
             x.TrackOrLevel,
             x.MaxPlayers,
+            x.IsPublic,
             x.JoinCode,
             x.State,
             x.PlayerCount,
@@ -71,6 +73,32 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
         }
 
         return Ok(MapDetails(result.Value, participantId));
+    }
+
+    [HttpGet("{id:guid}/preview")]
+    public async Task<IActionResult> GetLobbyPreviewAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await lobbyService.GetLobbyAsync(id, cancellationToken);
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyNotFound);
+        }
+
+        var details = result.Value;
+        var canJoin =
+            details.State == "open"
+            && details.ExpiresAt > DateTimeOffset.UtcNow
+            && details.Players.Count < details.MaxPlayers;
+        return Ok(new MultiplayerLobbyPreviewResponse(
+            details.Id,
+            details.GameId,
+            details.Mode,
+            details.TrackOrLevel,
+            details.MaxPlayers,
+            details.State,
+            details.Players.Count,
+            canJoin
+        ));
     }
 
     [HttpPost("{id:guid}/join")]
@@ -137,6 +165,67 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
         return Ok(MapDetails(result.Value, participantId));
     }
 
+    [HttpPost("{id:guid}/heartbeat")]
+    public async Task<IActionResult> HeartbeatAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var participantId = GetOrCreateParticipantId();
+        var result = await lobbyService.HeartbeatAsync(
+            new LobbyHeartbeatRequest(id, participantId),
+            cancellationToken
+        );
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyInvalidState);
+        }
+
+        return Ok(MapDetails(result.Value, participantId));
+    }
+
+    [HttpPost("{id:guid}/report/match-ended")]
+    public async Task<IActionResult> ReportMatchEndedAsync(
+        Guid id,
+        [FromBody] MultiplayerLobbyReportBody body,
+        CancellationToken cancellationToken)
+    {
+        return await ReportEventAsync(id, "match-ended", body.Detail, cancellationToken);
+    }
+
+    [HttpPost("{id:guid}/report/participant-disconnected")]
+    public async Task<IActionResult> ReportParticipantDisconnectedAsync(
+        Guid id,
+        [FromBody] MultiplayerLobbyReportBody body,
+        CancellationToken cancellationToken)
+    {
+        return await ReportEventAsync(id, "participant-disconnected", body.Detail, cancellationToken);
+    }
+
+    [HttpPost("{id:guid}/report/host-disconnected")]
+    public async Task<IActionResult> ReportHostDisconnectedAsync(
+        Guid id,
+        [FromBody] MultiplayerLobbyReportBody body,
+        CancellationToken cancellationToken)
+    {
+        return await ReportEventAsync(id, "host-disconnected", body.Detail, cancellationToken);
+    }
+
+    [HttpPost("{id:guid}/report/desync")]
+    public async Task<IActionResult> ReportDesyncAsync(
+        Guid id,
+        [FromBody] MultiplayerLobbyReportBody body,
+        CancellationToken cancellationToken)
+    {
+        return await ReportEventAsync(id, "desync-reported", body.Detail, cancellationToken);
+    }
+
+    [HttpPost("{id:guid}/report/timeout")]
+    public async Task<IActionResult> ReportTimeoutAsync(
+        Guid id,
+        [FromBody] MultiplayerLobbyReportBody body,
+        CancellationToken cancellationToken)
+    {
+        return await ReportEventAsync(id, "timeout-reported", body.Detail, cancellationToken);
+    }
+
     private string GetOrCreateParticipantId()
     {
         var headerValue = Request.Headers["X-Participant-Id"].ToString();
@@ -157,6 +246,25 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
         };
     }
 
+    private async Task<IActionResult> ReportEventAsync(
+        Guid id,
+        string eventType,
+        string? detail,
+        CancellationToken cancellationToken)
+    {
+        var participantId = GetOrCreateParticipantId();
+        var result = await lobbyService.ReportEventAsync(
+            new LobbyReportEventRequest(id, participantId, eventType, detail),
+            cancellationToken
+        );
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyInvalidState);
+        }
+
+        return Ok(MapDetails(result.Value, participantId));
+    }
+
     private static MultiplayerLobbyDetailsResponse MapDetails(MultiplayerLobbyDetails details, string participantId)
     {
         var players = details.Players.Select(x => new MultiplayerLobbyPlayerResponse(
@@ -165,9 +273,27 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
             x.PlayerIndex,
             x.IsHost,
             x.IsReady,
+            x.Region,
+            x.PingMs,
             x.JoinedAt,
             x.LastSeenAt
         )).ToList();
+
+        var matchConfig = details.MatchConfig is null
+            ? null
+            : new MultiplayerMatchConfigResponse(
+                details.MatchConfig.MatchId,
+                details.MatchConfig.GameId,
+                details.MatchConfig.Mode,
+                details.MatchConfig.TrackOrLevel,
+                details.MatchConfig.Seed,
+                details.MatchConfig.HostParticipantId,
+                details.MatchConfig.Players.Select(x => new MultiplayerMatchConfigPlayerResponse(
+                    x.ParticipantId,
+                    x.PlayerIndex,
+                    x.DisplayName
+                )).ToList()
+            );
 
         return new MultiplayerLobbyDetailsResponse(
             details.Id,
@@ -175,13 +301,15 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
             details.Mode,
             details.TrackOrLevel,
             details.MaxPlayers,
+            details.IsPublic,
             details.HostParticipantId,
             details.JoinCode,
             details.State,
             details.CreatedAt,
             details.ExpiresAt,
             players,
-            participantId
+            participantId,
+            matchConfig
         );
     }
 }

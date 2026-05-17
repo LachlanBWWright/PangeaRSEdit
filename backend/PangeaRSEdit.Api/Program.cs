@@ -12,6 +12,7 @@ builder.Services.AddSignalR();
 builder.Services.AddPangeaInfrastructure(builder.Configuration);
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var allowedOrigins = new HashSet<string>(corsOrigins, StringComparer.OrdinalIgnoreCase);
 builder.Services
     .AddCors(options =>
     {
@@ -19,7 +20,31 @@ builder.Services
             "frontend",
             policy =>
             {
-                policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+                policy
+                    .SetIsOriginAllowed(origin =>
+                    {
+                        if (allowedOrigins.Contains(origin))
+                        {
+                            return true;
+                        }
+
+                        if (!builder.Environment.IsDevelopment())
+                        {
+                            return false;
+                        }
+
+                        if (!Uri.TryCreate(origin, UriKind.Absolute, out var parsedOrigin))
+                        {
+                            return false;
+                        }
+
+                        return string.Equals(parsedOrigin.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(parsedOrigin.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase);
+                    })
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .WithExposedHeaders("X-Participant-Id")
+                    .AllowCredentials();
             }
         );
     });

@@ -1,5 +1,6 @@
 import { Game } from "../../data/globals/globals";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
+import type { Result } from "neverthrow";
 
 export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
   [Game.OTTO_MATIC]: "Otto Matic",
@@ -31,6 +32,10 @@ export interface PreviewVfsFile {
 
 export interface PreviewRuntimeModule {
   canvas: HTMLCanvasElement;
+  preinitializedWebGLContext?:
+    | WebGLRenderingContext
+    | WebGL2RenderingContext
+    | null;
   arguments: string[];
   preInit?: (() => void)[];
   preRun: (() => void)[];
@@ -75,6 +80,20 @@ export interface PreviewRuntimeModule {
   ) => unknown;
   calledRun?: boolean;
 }
+
+export type MultiplayerRuntimeEventType =
+  | "runtimeConfigApplied"
+  | "runtimeInitialized"
+  | "runtimeLevelReady"
+  | "runtimeStartNow"
+  | "runtimeLoadFailed";
+
+export interface MultiplayerRuntimeEvent {
+  readonly type: MultiplayerRuntimeEventType;
+  readonly detail?: string;
+}
+
+export type StartNetworkMatchFn = () => Result<void, string>;
 
 declare global {
   interface Window {

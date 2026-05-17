@@ -1,9 +1,12 @@
-import { Result, ResultAsync } from "neverthrow";
+import { Result, ResultAsync, err } from "neverthrow";
+import type { MultiplayerMatchConfig } from "@/multiplayer/types";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   buildGameArguments,
   type PreviewVfsFile,
   type PreviewRuntimeModule,
+  type MultiplayerRuntimeEvent,
+  type StartNetworkMatchFn,
   type PreviewTerrainPaths,
 } from "./gamePreviewRuntimeTypes";
 import {
@@ -24,9 +27,54 @@ export interface PreviewModuleOptions {
   readonly terrainTextureBytes: Uint8Array | null;
   readonly customFiles?: readonly PreviewVfsFile[];
   readonly terrainPaths: PreviewTerrainPaths | null;
+  readonly networkMatchConfig?: MultiplayerMatchConfig | null;
+  readonly localParticipantId?: string | null;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
   readonly normalLaunch?: boolean;
+  readonly deferNetworkStart?: boolean;
+  readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
+  readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
+}
+
+function applyNetworkMatchConfig(
+  module: PreviewRuntimeModule,
+  matchConfig: MultiplayerMatchConfig,
+  localParticipantId?: string | null,
+): Result<void, string> {
+  const ccall = module.ccall;
+  if (!ccall) {
+    return err("Emscripten ccall is unavailable");
+  }
+
+  const localPlayerIndex =
+    matchConfig.players.find(
+      (player) => player.participantId === localParticipantId,
+    )?.playerIndex ?? 0;
+  const configJson = JSON.stringify({
+    ...matchConfig,
+    localPlayerIndex,
+    playerCount: matchConfig.players.length,
+  });
+  return Result.fromThrowable(
+    () => ccall("PangeaGame_SetNetworkMatchConfig", null, ["string", "number"], [configJson, configJson.length]),
+    (e) => mapErr(e),
+  )().map(() => undefined);
+}
+
+function createStartNetworkMatch(
+  module: PreviewRuntimeModule,
+): StartNetworkMatchFn {
+  return () => {
+    const ccall = module.ccall;
+    if (!ccall) {
+      return err("Emscripten ccall is unavailable");
+    }
+    return Result.fromThrowable(
+      () => ccall("PangeaGame_StartNetworkMatch", null, [], []),
+      (e) => mapErr(e),
+    )().map(() => undefined);
+  };
 }
 
 export function createPreviewModule(
@@ -44,9 +92,14 @@ export function createPreviewModule(
     terrainTextureBytes,
     customFiles,
     terrainPaths,
+    networkMatchConfig,
+    localParticipantId,
     onStatus,
     onError,
     normalLaunch = false,
+    deferNetworkStart = false,
+    onRuntimeEvent,
+    onStartNetworkMatchReady,
   } = options;
 
   let runtimeInitialized = false;
@@ -114,6 +167,7 @@ export function createPreviewModule(
       clearOverlayFallback();
       runtimeInitialized = true;
       onStatus("");
+      onRuntimeEvent?.({ type: "runtimeInitialized" });
 
       const module = moduleRef.current;
       if (!module) {
@@ -149,6 +203,38 @@ export function createPreviewModule(
               ),
             (e) => mapErr(e),
           )();
+        }
+      }
+
+      if (networkMatchConfig && !normalLaunch) {
+        const configResult = applyNetworkMatchConfig(
+          module,
+          networkMatchConfig,
+          localParticipantId,
+        );
+        if (configResult.isErr()) {
+          onRuntimeEvent?.({
+            type: "runtimeLoadFailed",
+            detail: configResult.error,
+          });
+          onError(configResult.error);
+          return;
+        }
+        onRuntimeEvent?.({ type: "runtimeConfigApplied" });
+        const startNetworkMatch = createStartNetworkMatch(module);
+        onStartNetworkMatchReady?.(startNetworkMatch);
+        onRuntimeEvent?.({ type: "runtimeLevelReady" });
+        if (!deferNetworkStart) {
+          const startResult = startNetworkMatch();
+          if (startResult.isErr()) {
+            onRuntimeEvent?.({
+              type: "runtimeLoadFailed",
+              detail: startResult.error,
+            });
+            onError(startResult.error);
+            return;
+          }
+          onRuntimeEvent?.({ type: "runtimeStartNow" });
         }
       }
     },

@@ -16,7 +16,10 @@ export interface ClientSessionDeps {
     candidate: string,
   ) => ResultAsync<void, string>;
   readonly onStateChanged: (state: WebRtcSessionState) => void;
-  readonly onDataChannelOpened: (channel: HostSessionDataChannel) => void;
+  readonly onDataChannelOpened: (channels: {
+    readonly controlChannel: HostSessionDataChannel;
+    readonly stateChannel: HostSessionDataChannel;
+  }) => void;
   readonly dataChannelOpenTimeoutMs?: number;
 }
 
@@ -71,6 +74,8 @@ function mapConnectionState(state: string): WebRtcSessionState | null {
 export function createClientSession(deps: ClientSessionDeps): ClientSession {
   let peerConnection: HostPeerConnection | null = null;
   let openTimeoutId: number | null = null;
+  let pendingControlChannel: HostSessionDataChannel | null = null;
+  let pendingStateChannel: HostSessionDataChannel | null = null;
   const dataChannelOpenTimeoutMs =
     deps.dataChannelOpenTimeoutMs ?? DATA_CHANNEL_OPEN_TIMEOUT_MS;
 
@@ -121,14 +126,31 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
             event.candidate.candidate,
           );
         };
+        const maybeNotifyChannelsReady = (): void => {
+          const controlChannel = pendingControlChannel;
+          const stateChannel = pendingStateChannel;
+          if (!controlChannel || !stateChannel) {
+            return;
+          }
+          if (openTimeoutId !== null) {
+            window.clearTimeout(openTimeoutId);
+            openTimeoutId = null;
+          }
+          deps.onStateChanged("connected");
+          deps.onDataChannelOpened({
+            controlChannel,
+            stateChannel,
+          });
+        };
         const attachDataChannel = (channel: HostSessionDataChannel): void => {
           channel.onopen = () => {
-            if (openTimeoutId !== null) {
-              window.clearTimeout(openTimeoutId);
-              openTimeoutId = null;
+            if (channel.label === "pangea-control") {
+              pendingControlChannel = channel;
             }
-            deps.onStateChanged("connected");
-            deps.onDataChannelOpened(channel);
+            if (channel.label === "pangea-state") {
+              pendingStateChannel = channel;
+            }
+            maybeNotifyChannelsReady();
           };
           channel.onclose = () => {
             if (openTimeoutId !== null) {

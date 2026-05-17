@@ -9,9 +9,9 @@ import { useRef, useMemo, useEffect, useState } from "react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Line } from "@react-three/drei";
 import * as THREE from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type {
   TunnelData,
-  TunnelItem,
   TunnelSection,
 } from "@/data/tunnelParser/types";
 import { tunnelTextureToCanvas } from "@/data/tunnelParser/textureUtils";
@@ -141,7 +141,6 @@ function SplinePath({
  */
 function ItemMarkers({
   tunnelData,
-  isPlumbing,
   showItems,
   selectedItemIndex,
   getSceneForType,
@@ -151,7 +150,6 @@ function ItemMarkers({
   onUpdateItemSplineIndex,
 }: {
   tunnelData: TunnelData;
-  isPlumbing: boolean;
   showItems: boolean;
   selectedItemIndex: number | null;
   getSceneForType: (itemType: number) => THREE.Group | null;
@@ -189,7 +187,6 @@ function ItemMarkers({
             scale={item.scale * 10}
             onPointerDown={(event: ThreeEvent<PointerEvent>) => {
               event.stopPropagation();
-              event.target.setPointerCapture(event.pointerId);
               setDragState({
                 itemIndex: index,
                 startX: event.clientX,
@@ -221,7 +218,6 @@ function ItemMarkers({
                 setDragState(null);
               }
               event.stopPropagation();
-              event.target.releasePointerCapture(event.pointerId);
             }}
             onClick={(event: ThreeEvent<MouseEvent>) => {
               event.stopPropagation();
@@ -298,11 +294,7 @@ export function TunnelViewer({
     tex.wrapT = THREE.RepeatWrapping;
     tex.needsUpdate = true;
     return tex;
-  }, [
-    tunnelData.tunnelTexture.width,
-    tunnelData.tunnelTexture.height,
-    tunnelData.tunnelTexture.data,
-  ]);
+  }, [tunnelData.tunnelTexture]);
 
   useEffect(() => {
     return () => {
@@ -316,10 +308,7 @@ export function TunnelViewer({
   }, [tunnelData]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
-  const controlsRef = useRef<{
-    target: THREE.Vector3;
-    update: () => void;
-  } | null>(null);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const lastSnapTokenRef = useRef<number>(0);
 
   useEffect(() => {
@@ -416,7 +405,6 @@ export function TunnelViewer({
         {/* Render item markers */}
         <ItemMarkers
           tunnelData={tunnelData}
-          isPlumbing={isPlumbing}
           showItems={showItems}
           selectedItemIndex={selectedItemIndex}
           getSceneForType={getSceneForType}

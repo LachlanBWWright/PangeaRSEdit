@@ -26,6 +26,11 @@ export interface TerrainDecodeProgress {
   readonly total: number;
 }
 
+export interface TerrainEncodeProgress {
+  readonly completed: number;
+  readonly total: number;
+}
+
 export interface DecodedTerrainTile {
   readonly id: number;
   readonly imageData: ImageData;

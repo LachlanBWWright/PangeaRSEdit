@@ -6,6 +6,7 @@ public sealed class MultiplayerRuntimeState
 {
     private readonly ConcurrentDictionary<Guid, bool> _lobbyVisibility = new();
     private readonly ConcurrentDictionary<string, ParticipantTelemetry> _participantTelemetry = new();
+    private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, byte>> _runtimeReadyByLobby = new();
 
     public void SetLobbyVisibility(Guid lobbyId, bool isPublic)
     {
@@ -20,6 +21,7 @@ public sealed class MultiplayerRuntimeState
     public void RemoveLobby(Guid lobbyId)
     {
         _lobbyVisibility.TryRemove(lobbyId, out _);
+        _runtimeReadyByLobby.TryRemove(lobbyId, out _);
     }
 
     public void SetParticipantRegion(string participantId, string region)
@@ -45,6 +47,31 @@ public sealed class MultiplayerRuntimeState
     public void RemoveParticipant(string participantId)
     {
         _participantTelemetry.TryRemove(participantId, out _);
+        foreach (var (_, lobbyReadySet) in _runtimeReadyByLobby)
+        {
+            lobbyReadySet.TryRemove(participantId, out _);
+        }
+    }
+
+    public void MarkRuntimeLevelReady(Guid lobbyId, string participantId)
+    {
+        var readySet = _runtimeReadyByLobby.GetOrAdd(lobbyId, _ => new ConcurrentDictionary<string, byte>());
+        readySet[participantId] = 1;
+    }
+
+    public bool IsRuntimeLevelReady(Guid lobbyId, string participantId)
+    {
+        var readySet = _runtimeReadyByLobby.GetValueOrDefault(lobbyId);
+        if (readySet is null)
+        {
+            return false;
+        }
+        return readySet.ContainsKey(participantId);
+    }
+
+    public void ClearRuntimeReady(Guid lobbyId)
+    {
+        _runtimeReadyByLobby.TryRemove(lobbyId, out _);
     }
 
     public sealed record ParticipantTelemetry(string Region, int PingMs)

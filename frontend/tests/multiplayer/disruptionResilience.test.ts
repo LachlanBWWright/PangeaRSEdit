@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   GameplaySequenceTracker,
   HostAuthorityEnforcer,
@@ -25,6 +25,22 @@ describe("Multiplayer Disruption Resilience Integration", () => {
     clientEnforcer = new HostAuthorityEnforcer(false, "host-id");
   });
 
+  const decodeEnvelope = (
+    packet: MultiplayerPacket,
+  ): MultiplayerPacket["envelope"] | null => {
+    const encoded = encodeMultiplayerPacket(packet);
+    if (encoded.isErr()) {
+      return null;
+    }
+
+    const decoded = decodeMultiplayerPacket(encoded.value);
+    if (decoded.isErr()) {
+      return null;
+    }
+
+    return decoded.value.envelope;
+  };
+
   describe("Frame-Synced Input Exchange", () => {
     it("host sends strict bundles, client sends ordered input", () => {
       // Host sends frame 0 control bundle with sequence 1
@@ -42,17 +58,11 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const hostBundleResult = encodeMultiplayerPacket(hostBundle);
-      expect(hostBundleResult.isOk()).toBe(true);
-
-      // Client receives and validates
-      const decodedBundle = decodeMultiplayerPacket(
-        hostBundleResult.value as ArrayBuffer,
-      );
-      expect(decodedBundle.isOk()).toBe(true);
-
-      const bundleEnvelope = (decodedBundle.value as MultiplayerPacket)
-        .envelope;
+      const bundleEnvelope = decodeEnvelope(hostBundle);
+      expect(bundleEnvelope).not.toBeNull();
+      if (!bundleEnvelope) {
+        return;
+      }
       const trackResult = clientTracker.validate(bundleEnvelope);
       expect(trackResult.isValid).toBe(true);
 
@@ -77,16 +87,11 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(16),
       };
 
-      const clientInputResult = encodeMultiplayerPacket(clientInput);
-      expect(clientInputResult.isOk()).toBe(true);
-
-      // Host receives and validates
-      const decodedInput = decodeMultiplayerPacket(
-        clientInputResult.value as ArrayBuffer,
-      );
-      expect(decodedInput.isOk()).toBe(true);
-
-      const inputEnvelope = (decodedInput.value as MultiplayerPacket).envelope;
+      const inputEnvelope = decodeEnvelope(clientInput);
+      expect(inputEnvelope).not.toBeNull();
+      if (!inputEnvelope) {
+        return;
+      }
       const inputTrackResult = hostTracker.validate(inputEnvelope);
       expect(inputTrackResult.isValid).toBe(true);
 
@@ -113,11 +118,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const encoded1 = encodeMultiplayerPacket(packet1);
-      const decoded1 = decodeMultiplayerPacket(encoded1.value as ArrayBuffer);
-      const result1 = clientTracker.validate(
-        (decoded1.value as MultiplayerPacket).envelope,
-      );
+      const envelope1 = decodeEnvelope(packet1);
+      expect(envelope1).not.toBeNull();
+      if (!envelope1) {
+        return;
+      }
+      const result1 = clientTracker.validate(envelope1);
       expect(result1.isValid).toBe(true);
 
       // Then sends frame 1 (out of order)
@@ -135,11 +141,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const encoded2 = encodeMultiplayerPacket(packet2);
-      const decoded2 = decodeMultiplayerPacket(encoded2.value as ArrayBuffer);
-      const result2 = clientTracker.validate(
-        (decoded2.value as MultiplayerPacket).envelope,
-      );
+      const envelope2 = decodeEnvelope(packet2);
+      expect(envelope2).not.toBeNull();
+      if (!envelope2) {
+        return;
+      }
+      const result2 = clientTracker.validate(envelope2);
       expect(result2.isValid).toBe(true); // Sequence is still valid (2 > 1)
     });
 
@@ -159,11 +166,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const enc1 = encodeMultiplayerPacket(packet1);
-      const dec1 = decodeMultiplayerPacket(enc1.value as ArrayBuffer);
-      const res1 = clientTracker.validate(
-        (dec1.value as MultiplayerPacket).envelope,
-      );
+      const envelope1 = decodeEnvelope(packet1);
+      expect(envelope1).not.toBeNull();
+      if (!envelope1) {
+        return;
+      }
+      const res1 = clientTracker.validate(envelope1);
       expect(res1.isValid).toBe(true);
       expect(res1.isGap).toBe(false);
 
@@ -182,11 +190,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const enc2 = encodeMultiplayerPacket(packet2);
-      const dec2 = decodeMultiplayerPacket(enc2.value as ArrayBuffer);
-      const res2 = clientTracker.validate(
-        (dec2.value as MultiplayerPacket).envelope,
-      );
+      const envelope2 = decodeEnvelope(packet2);
+      expect(envelope2).not.toBeNull();
+      if (!envelope2) {
+        return;
+      }
+      const res2 = clientTracker.validate(envelope2);
       expect(res2.isValid).toBe(true);
       expect(res2.isGap).toBe(true);
       expect(res2.reason).toContain("Gap detected");
@@ -209,9 +218,11 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const encoded = encodeMultiplayerPacket(packet);
-      const decoded = decodeMultiplayerPacket(encoded.value as ArrayBuffer);
-      const envelope = (decoded.value as MultiplayerPacket).envelope;
+      const envelope = decodeEnvelope(packet);
+      expect(envelope).not.toBeNull();
+      if (!envelope) {
+        return;
+      }
 
       // First delivery
       const result1 = clientTracker.validate(envelope);
@@ -240,9 +251,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const enc1 = encodeMultiplayerPacket(packet1);
-      const dec1 = decodeMultiplayerPacket(enc1.value as ArrayBuffer);
-      clientTracker.validate((dec1.value as MultiplayerPacket).envelope);
+      const envelope1 = decodeEnvelope(packet1);
+      expect(envelope1).not.toBeNull();
+      if (!envelope1) {
+        return;
+      }
+      clientTracker.validate(envelope1);
 
       // Try to receive old sequence 5
       const packet2: MultiplayerPacket = {
@@ -259,11 +273,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const enc2 = encodeMultiplayerPacket(packet2);
-      const dec2 = decodeMultiplayerPacket(enc2.value as ArrayBuffer);
-      const result = clientTracker.validate(
-        (dec2.value as MultiplayerPacket).envelope,
-      );
+      const envelope2 = decodeEnvelope(packet2);
+      expect(envelope2).not.toBeNull();
+      if (!envelope2) {
+        return;
+      }
+      const result = clientTracker.validate(envelope2);
       expect(result.isValid).toBe(false);
     });
   });
@@ -333,9 +348,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
           payload: new ArrayBuffer(0),
         };
 
-        const enc = encodeMultiplayerPacket(packet);
-        const dec = decodeMultiplayerPacket(enc.value as ArrayBuffer);
-        clientTracker.validate((dec.value as MultiplayerPacket).envelope);
+        const envelope = decodeEnvelope(packet);
+        expect(envelope).not.toBeNull();
+        if (!envelope) {
+          return;
+        }
+        clientTracker.validate(envelope);
       }
 
       // Prune to 1000 recent
@@ -356,11 +374,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(0),
       };
 
-      const enc = encodeMultiplayerPacket(newPacket);
-      const dec = decodeMultiplayerPacket(enc.value as ArrayBuffer);
-      const result = clientTracker.validate(
-        (dec.value as MultiplayerPacket).envelope,
-      );
+      const envelope = decodeEnvelope(newPacket);
+      expect(envelope).not.toBeNull();
+      if (!envelope) {
+        return;
+      }
+      const result = clientTracker.validate(envelope);
       expect(result.isValid).toBe(true);
     });
   });
@@ -382,9 +401,12 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const enc1 = encodeMultiplayerPacket(packet1);
-      const dec1 = decodeMultiplayerPacket(enc1.value as ArrayBuffer);
-      clientTracker.validate((dec1.value as MultiplayerPacket).envelope);
+      const envelope1 = decodeEnvelope(packet1);
+      expect(envelope1).not.toBeNull();
+      if (!envelope1) {
+        return;
+      }
+      clientTracker.validate(envelope1);
 
       // Should reject sequence 1 (less than last valid)
       const packet2: MultiplayerPacket = {
@@ -401,20 +423,19 @@ describe("Multiplayer Disruption Resilience Integration", () => {
         payload: new ArrayBuffer(64),
       };
 
-      const enc2 = encodeMultiplayerPacket(packet2);
-      const dec2 = decodeMultiplayerPacket(enc2.value as ArrayBuffer);
-      const beforeReset = clientTracker.validate(
-        (dec2.value as MultiplayerPacket).envelope,
-      );
+      const envelope2 = decodeEnvelope(packet2);
+      expect(envelope2).not.toBeNull();
+      if (!envelope2) {
+        return;
+      }
+      const beforeReset = clientTracker.validate(envelope2);
       expect(beforeReset.isValid).toBe(false);
 
       // Reset
       clientTracker.reset();
 
       // Now sequence 1 should be accepted
-      const afterReset = clientTracker.validate(
-        (dec2.value as MultiplayerPacket).envelope,
-      );
+      const afterReset = clientTracker.validate(envelope2);
       expect(afterReset.isValid).toBe(true);
     });
   });

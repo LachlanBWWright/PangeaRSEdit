@@ -23,9 +23,11 @@ describe("Multiplayer Protocol - Reliability Field", () => {
 
     const encoded = encodeMultiplayerPacket(packet);
     expect(encoded.isOk()).toBe(true);
+    if (encoded.isErr()) {
+      return;
+    }
 
-    const bytes = encoded.value as ArrayBuffer;
-    const view = new DataView(bytes);
+    const view = new DataView(encoded.value);
     const flags = view.getUint16(6);
     expect((flags & (1 << 15)) !== 0).toBe(true); // Strict bit should be set
   });
@@ -47,9 +49,11 @@ describe("Multiplayer Protocol - Reliability Field", () => {
 
     const encoded = encodeMultiplayerPacket(packet);
     expect(encoded.isOk()).toBe(true);
+    if (encoded.isErr()) {
+      return;
+    }
 
-    const bytes = encoded.value as ArrayBuffer;
-    const view = new DataView(bytes);
+    const view = new DataView(encoded.value);
     const flags = view.getUint16(6);
     expect((flags & (1 << 15)) !== 0).toBe(false); // Strict bit should not be set
   });
@@ -71,11 +75,17 @@ describe("Multiplayer Protocol - Reliability Field", () => {
 
     const encoded = encodeMultiplayerPacket(packet);
     expect(encoded.isOk()).toBe(true);
+    if (encoded.isErr()) {
+      return;
+    }
 
-    const decoded = decodeMultiplayerPacket(encoded.value as ArrayBuffer);
+    const decoded = decodeMultiplayerPacket(encoded.value);
     expect(decoded.isOk()).toBe(true);
+    if (decoded.isErr()) {
+      return;
+    }
 
-    const decodedPacket = decoded.value as MultiplayerPacket;
+    const decodedPacket = decoded.value;
     expect(decodedPacket.envelope.reliability).toBe("strict");
     expect(decodedPacket.envelope.messageType).toBe("matchEnd");
     expect(decodedPacket.envelope.matchSequence).toBe(12345);
@@ -98,11 +108,17 @@ describe("Multiplayer Protocol - Reliability Field", () => {
 
     const encoded = encodeMultiplayerPacket(packet);
     expect(encoded.isOk()).toBe(true);
+    if (encoded.isErr()) {
+      return;
+    }
 
-    const decoded = decodeMultiplayerPacket(encoded.value as ArrayBuffer);
+    const decoded = decodeMultiplayerPacket(encoded.value);
     expect(decoded.isOk()).toBe(true);
+    if (decoded.isErr()) {
+      return;
+    }
 
-    const decodedPacket = decoded.value as MultiplayerPacket;
+    const decodedPacket = decoded.value;
     expect(decodedPacket.envelope.reliability).toBe("ordered");
     expect(decodedPacket.envelope.messageType).toBe("clientInput");
     expect(decodedPacket.envelope.matchSequence).toBe(54321);
@@ -126,13 +142,17 @@ describe("Multiplayer Protocol - Reliability Field", () => {
 
     const encoded = encodeMultiplayerPacket(packet);
     expect(encoded.isOk()).toBe(true);
+    if (encoded.isErr()) {
+      return;
+    }
 
-    const decoded = decodeMultiplayerPacket(encoded.value as ArrayBuffer);
+    const decoded = decodeMultiplayerPacket(encoded.value);
     expect(decoded.isOk()).toBe(true);
+    if (decoded.isErr()) {
+      return;
+    }
 
-    const decodedPayload = new Uint8Array(
-      (decoded.value as MultiplayerPacket).payload,
-    );
+    const decodedPayload = new Uint8Array(decoded.value.payload);
     expect(decodedPayload).toEqual(testPayload);
   });
 });

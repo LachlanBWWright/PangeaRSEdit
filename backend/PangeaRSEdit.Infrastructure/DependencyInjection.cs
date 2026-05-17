@@ -31,7 +31,9 @@ public static class DependencyInjection
 
         services.AddScoped<IUserProfileStore, EfUserProfileStore>();
         services.AddScoped<ISavedLevelService, EfSavedLevelService>();
+        services.AddSingleton<MultiplayerRuntimeState>();
         services.AddScoped<IMultiplayerLobbyService, EfMultiplayerLobbyService>();
+        services.AddHostedService<MultiplayerLobbyCleanupHostedService>();
         return services;
     }
 }

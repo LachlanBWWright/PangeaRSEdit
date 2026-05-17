@@ -6,7 +6,7 @@
  */
 
 import { useRef, useState } from "react";
-import { ResultAsync, err, ok } from "neverthrow";
+import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import { WebIO, Document } from "@gltf-transform/core";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -126,7 +126,8 @@ function exportMeshToGlb(
 
       const io = new WebIO();
       const bytes = await io.writeBinary(doc);
-      return new Blob([bytes], { type: "model/gltf-binary" });
+      const blobBytes = Uint8Array.from(bytes);
+      return new Blob([blobBytes], { type: "model/gltf-binary" });
     })(),
     mapErr,
   );
@@ -146,119 +147,129 @@ function importGlbToMesh(file: File): ResultAsync<TunnelSectionMesh, string> {
     .andThen((doc) => {
       const mesh = doc.getRoot().listMeshes()[0];
       if (!mesh) {
-        return ResultAsync.fromSafePromise(
-          Promise.resolve(err("No mesh found in the imported GLB.")),
-        );
+        return errAsync("No mesh found in the imported GLB.");
       }
 
       const primitive = mesh.listPrimitives()[0];
       if (!primitive) {
-        return ResultAsync.fromSafePromise(
-          Promise.resolve(err("No mesh primitive found in the imported GLB.")),
-        );
+        return errAsync("No mesh primitive found in the imported GLB.");
       }
 
       const positionAccessor = primitive.getAttribute("POSITION");
       if (!positionAccessor) {
-        return ResultAsync.fromSafePromise(
-          Promise.resolve(err("Imported mesh is missing POSITION data.")),
-        );
+        return errAsync("Imported mesh is missing POSITION data.");
       }
 
-      const points = Array.from(
-        { length: positionAccessor.getCount() },
-        (_, index) => ({
-          x: positionAccessor.getX(index),
-          y: positionAccessor.getY(index),
-          z: positionAccessor.getZ(index),
-        }),
-      );
+      const positionArray = positionAccessor.getArray();
+      if (!positionArray) {
+        return errAsync("Imported mesh is missing POSITION data.");
+      }
+      const positionValues = Array.from(positionArray);
+      const points: { x: number; y: number; z: number }[] = [];
+      for (let index = 0; index < positionValues.length; index += 3) {
+        points.push({
+          x: positionValues[index] ?? 0,
+          y: positionValues[index + 1] ?? 0,
+          z: positionValues[index + 2] ?? 0,
+        });
+      }
 
       if (points.length < 3) {
-        return ResultAsync.fromSafePromise(
-          Promise.resolve(
-            err("Imported mesh must contain at least 3 vertices."),
-          ),
-        );
+        return errAsync("Imported mesh must contain at least 3 vertices.");
       }
 
       const normalAccessor = primitive.getAttribute("NORMAL");
       const normals = normalAccessor
-        ? Array.from({ length: normalAccessor.getCount() }, (_, index) => ({
-            x: normalAccessor.getX(index),
-            y: normalAccessor.getY(index),
-            z: normalAccessor.getZ(index),
-          }))
+        ? (() => {
+            const normalArray = normalAccessor.getArray();
+            if (!normalArray) {
+              return undefined;
+            }
+            const normalValues = Array.from(normalArray);
+            const nextNormals: { x: number; y: number; z: number }[] = [];
+            for (let index = 0; index < normalValues.length; index += 3) {
+              nextNormals.push({
+                x: normalValues[index] ?? 0,
+                y: normalValues[index + 1] ?? 0,
+                z: normalValues[index + 2] ?? 0,
+              });
+            }
+            return nextNormals;
+          })()
         : undefined;
 
       const uvAccessor = primitive.getAttribute("TEXCOORD_0");
       const uvs = uvAccessor
-        ? Array.from({ length: uvAccessor.getCount() }, (_, index) => ({
-            u: uvAccessor.getX(index),
-            v: uvAccessor.getY(index),
-          }))
+        ? (() => {
+            const uvArray = uvAccessor.getArray();
+            if (!uvArray) {
+              return null;
+            }
+            const uvValues = Array.from(uvArray);
+            const nextUvs: { u: number; v: number }[] = [];
+            for (let index = 0; index < uvValues.length; index += 2) {
+              nextUvs.push({
+                u: uvValues[index] ?? 0,
+                v: uvValues[index + 1] ?? 0,
+              });
+            }
+            return nextUvs;
+          })()
         : Array.from({ length: points.length }, () => ({ u: 0, v: 0 }));
 
+      if (!uvs) {
+        return errAsync("Imported mesh is missing UV data.");
+      }
+
       if (uvs.length !== points.length) {
-        return ResultAsync.fromSafePromise(
-          Promise.resolve(
-            err("Imported mesh UV count must match vertex count."),
-          ),
-        );
+        return errAsync("Imported mesh UV count must match vertex count.");
       }
 
       const indicesAccessor = primitive.getIndices();
       const triangles = indicesAccessor
-        ? Array.from(
-            { length: Math.floor(indicesAccessor.getCount() / 3) },
-            (_, triIndex) => {
-              const base = triIndex * 3;
-              return {
-                a: indicesAccessor.getX(base),
-                b: indicesAccessor.getX(base + 1),
-                c: indicesAccessor.getX(base + 2),
-              };
-            },
-          )
-        : Array.from(
-            { length: Math.floor(points.length / 3) },
-            (_, triIndex) => {
-              const base = triIndex * 3;
-              return { a: base, b: base + 1, c: base + 2 };
-            },
-          );
+        ? (() => {
+            const indexArray = indicesAccessor.getArray();
+            if (!indexArray) {
+              return null;
+            }
+            const indexValues = Array.from(indexArray);
+            const nextTriangles: { a: number; b: number; c: number }[] = [];
+            for (let index = 0; index < indexValues.length; index += 3) {
+              nextTriangles.push({
+                a: indexValues[index] ?? 0,
+                b: indexValues[index + 1] ?? 0,
+                c: indexValues[index + 2] ?? 0,
+              });
+            }
+            return nextTriangles;
+          })()
+        : Array.from({ length: Math.floor(points.length / 3) }, (_, index) => {
+            const base = index * 3;
+            return { a: base, b: base + 1, c: base + 2 };
+          });
 
-      if (triangles.length === 0) {
-        return ResultAsync.fromSafePromise(
-          Promise.resolve(
-            err("Imported mesh must contain at least one triangle."),
-          ),
-        );
+      if (!triangles) {
+        return errAsync("Imported mesh is missing index data.");
       }
 
-      return ResultAsync.fromSafePromise(
-        Promise.resolve(
-          ok({
-            bBox: {
-              min: { x: 0, y: 0, z: 0 },
-              max: { x: 0, y: 0, z: 0 },
-              isEmpty: true,
-            },
-            numPoints: points.length,
-            numTriangles: triangles.length,
-            points,
-            normals,
-            uvs,
-            triangles,
-          }),
-        ),
-      );
-    })
-    .andThen((result) =>
-      result.isOk()
-        ? ResultAsync.fromSafePromise(Promise.resolve(ok(result.value)))
-        : ResultAsync.fromSafePromise(Promise.resolve(err(result.error))),
-    );
+      if (triangles.length === 0) {
+        return errAsync("Imported mesh must contain at least one triangle.");
+      }
+
+      return okAsync({
+        bBox: {
+          min: { x: 0, y: 0, z: 0 },
+          max: { x: 0, y: 0, z: 0 },
+          isEmpty: true,
+        },
+        numPoints: points.length,
+        numTriangles: triangles.length,
+        points,
+        normals,
+        uvs,
+        triangles,
+      });
+    });
 }
 
 export function SectionInspector({
@@ -449,7 +460,7 @@ export function SectionInspector({
                 <div className="flex gap-1">
                   {onUpdateSectionMeshUv && (
                     <Button
-                      size="xs"
+                      size="sm"
                       variant="outline"
                       onClick={() => setUvEditorTarget({ meshType: "tunnel" })}
                     >
@@ -457,7 +468,7 @@ export function SectionInspector({
                     </Button>
                   )}
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     onClick={() =>
                       handleExportMesh(
@@ -484,7 +495,7 @@ export function SectionInspector({
                     }}
                   />
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     onClick={() => tunnelImportInputRef.current?.click()}
                   >
@@ -510,7 +521,7 @@ export function SectionInspector({
                 <div className="flex gap-1">
                   {onUpdateSectionMeshUv && (
                     <Button
-                      size="xs"
+                      size="sm"
                       variant="outline"
                       onClick={() => setUvEditorTarget({ meshType: "water" })}
                     >
@@ -518,7 +529,7 @@ export function SectionInspector({
                     </Button>
                   )}
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     onClick={() =>
                       handleExportMesh(
@@ -545,7 +556,7 @@ export function SectionInspector({
                     }}
                   />
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     onClick={() => waterImportInputRef.current?.click()}
                   >

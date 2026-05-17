@@ -1,5 +1,6 @@
 import { Result, err, ok } from "neverthrow";
 import { z } from "zod";
+import { decodeMultiplayerPacket } from "./protocol";
 
 const packetSchema = z.instanceof(ArrayBuffer);
 
@@ -99,7 +100,20 @@ export function createMultiplayerRuntimeBridge(
   config: MultiplayerRuntimeBridgeConfig,
   transport: MultiplayerRuntimeTransport,
 ): MultiplayerRuntimeBridge {
-  const incomingQueue: ArrayBuffer[] = [];
+  const maxIncomingQueueLength = 256;
+  const incomingQueue: {
+    readonly bytes: ArrayBuffer;
+    readonly isSnapshot: boolean;
+  }[] = [];
+
+  const dropOldestSnapshot = (): boolean => {
+    const snapshotIndex = incomingQueue.findIndex((item) => item.isSnapshot);
+    if (snapshotIndex < 0) {
+      return false;
+    }
+    incomingQueue.splice(snapshotIndex, 1);
+    return true;
+  };
 
   return {
     isEnabled: () => true,
@@ -120,12 +134,12 @@ export function createMultiplayerRuntimeBridge(
       if (!next) {
         return null;
       }
-      if (next.byteLength > maxByteCount) {
+      if (next.bytes.byteLength > maxByteCount) {
         return null;
       }
       incomingQueue.shift();
-      tracePacket("poll", next);
-      return cloneBuffer(next);
+      tracePacket("poll", next.bytes);
+      return cloneBuffer(next.bytes);
     },
     nowMilliseconds: () => performance.now(),
     reportDesync: (frame, localHash, remoteHash) => {
@@ -139,8 +153,23 @@ export function createMultiplayerRuntimeBridge(
       if (!parsed.success) {
         return err("Invalid packet payload");
       }
-      tracePacket("recv", parsed.data);
-      incomingQueue.push(cloneBuffer(parsed.data));
+      const decoded = decodeMultiplayerPacket(parsed.data);
+      const isSnapshot =
+        decoded.isOk() && decoded.value.envelope.messageType === "hostSnapshot";
+      if (incomingQueue.length >= maxIncomingQueueLength) {
+        if (!dropOldestSnapshot()) {
+          if (isSnapshot) {
+            return ok(undefined);
+          }
+          return err("Incoming runtime packet queue is full");
+        }
+      }
+      const copied = cloneBuffer(parsed.data);
+      tracePacket("recv", copied);
+      incomingQueue.push({
+        bytes: copied,
+        isSnapshot,
+      });
       return ok(undefined);
     },
   };

@@ -1,30 +1,27 @@
 [submodule "games/ottomatic"]
-	path = games/ottomatic
+	path = games/originals/ottomatic
 	url = https://github.com/jorio/ottomatic.git
 [submodule "games/cromagrally"]
-	path = games/cromagrally
+	path = games/originals/cromagrally
 	url = https://github.com/jorio/cromagrally.git
 [submodule "games/bugdom"]
-	path = games/bugdom
+	path = games/originals/bugdom
 	url = https://github.com/jorio/bugdom.git
 [submodule "games/bugdom2"]
-	path = games/bugdom2
+	path = games/originals/bugdom2
 	url = https://github.com/jorio/bugdom2.git
 [submodule "games/nanosaur"]
-	path = games/nanosaur
+	path = games/originals/nanosaur
 	url = https://github.com/jorio/nanosaur.git
 [submodule "games/nanosaur2"]
-	path = games/nanosaur2
+	path = games/originals/nanosaur2
 	url = https://github.com/jorio/nanosaur2.git
 [submodule "games/billyfrontier"]
-	path = games/billyfrontier
+	path = games/originals/billyfrontier
 	url = https://github.com/jorio/billyfrontier.git
 [submodule "games/mightymike"]
-	path = games/mightymike
+	path = games/originals/mightymike
 	url = https://github.com/jorio/MightyMike
-[submodule "games/ottomatic-wasm"]
-	path = games/ottomatic-wasm
-	url = https://github.com/LachlanBWWright/OttoMatic-Android
 [submodule "gamePorts/nanosaur"]
 	path = gamePorts/nanosaur
 	url = https://github.com/LachlanBWWright/Nanosaur-android

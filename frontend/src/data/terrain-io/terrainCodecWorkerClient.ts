@@ -2,9 +2,12 @@ import TerrainCodecWorker from "@/workers/terrainCodec.worker?worker";
 import { okAsync, ResultAsync } from "neverthrow";
 import type {
   DecodedTerrainTile,
+  EncodedTerrainTileBuffer,
+  EncodeLzssTerrainTileRequest,
   TerrainDecodeProgress,
-  TerrainTextureChunk,
   TerrainTextureCodec,
+  TerrainTextureChunk,
+  TerrainEncodeProgress,
 } from "@/data/terrain-io/terrainCodecTypes";
 import {
   terrainCodecWorkerResponseSchema,
@@ -67,6 +70,35 @@ function createDecodeRequest(
   };
 }
 
+function createEncodeRequest(
+  codec: TerrainTextureCodec,
+  jobId: number,
+  tileId: number,
+  request: EncodeLzssTerrainTileRequest,
+  quality: number,
+): TerrainCodecWorkerRequest {
+  if (codec.kind === "jpeg-supertile") {
+    return {
+      type: "encode-jpeg",
+      jobId,
+      id: tileId,
+      width: request.width,
+      height: request.height,
+      quality,
+      rgbaBytes: request.rgbaBytes,
+    };
+  }
+
+  return {
+    type: "encode-lzss",
+    jobId,
+    id: tileId,
+    width: request.width,
+    height: request.height,
+    rgbaBytes: request.rgbaBytes,
+  };
+}
+
 async function decodeChunk(
   worker: Worker,
   request: TerrainCodecWorkerRequest,
@@ -86,6 +118,16 @@ async function decodeChunk(
           terrainIoError(
             "terrain.decode.failed",
             `${parsed.data.code}: ${parsed.data.message}`,
+          ),
+        );
+        return;
+      }
+
+      if (parsed.data.type !== "decoded") {
+        reject(
+          terrainIoError(
+            "terrain.decode.failed",
+            "Terrain worker returned an unexpected response type for decode",
           ),
         );
         return;
@@ -115,7 +157,87 @@ async function decodeChunk(
     worker.addEventListener("message", onMessage);
     worker.addEventListener("error", onError);
 
+    if (request.type !== "decode-jpeg" && request.type !== "decode-lzss") {
+      reject(
+        terrainIoError(
+          "terrain.decode.failed",
+          "Terrain decode request type is invalid",
+        ),
+      );
+      return;
+    }
+
     const transferables: Transferable[] = [request.bytes];
+    worker.postMessage(request, transferables);
+  });
+}
+
+async function encodeChunk(
+  worker: Worker,
+  request: TerrainCodecWorkerRequest,
+): Promise<EncodedTerrainTileBuffer> {
+  return new Promise((resolve, reject) => {
+    const onMessage = (event: MessageEvent<unknown>) => {
+      const parsed = terrainCodecWorkerResponseSchema.safeParse(event.data);
+      if (!parsed.success || parsed.data.jobId !== request.jobId) {
+        return;
+      }
+
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("error", onError);
+
+      if (parsed.data.type === "encode-error") {
+        reject(
+          terrainIoError(
+            "terrain.encode.failed",
+            `${parsed.data.code}: ${parsed.data.message}`,
+          ),
+        );
+        return;
+      }
+
+      if (parsed.data.type !== "encoded") {
+        reject(
+          terrainIoError(
+            "terrain.encode.failed",
+            "Terrain worker returned an unexpected response type for encode",
+          ),
+        );
+        return;
+      }
+
+      resolve({
+        id: parsed.data.id,
+        encodedBytes: parsed.data.encodedBytes,
+        imageDescriptionBytes: parsed.data.imageDescriptionBytes,
+      });
+    };
+
+    const onError = () => {
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("error", onError);
+      reject(
+        terrainIoError(
+          "terrain.encode.failed",
+          "Terrain worker encountered an error",
+        ),
+      );
+    };
+
+    worker.addEventListener("message", onMessage);
+    worker.addEventListener("error", onError);
+
+    if (request.type !== "encode-jpeg" && request.type !== "encode-lzss") {
+      reject(
+        terrainIoError(
+          "terrain.encode.failed",
+          "Terrain encode request type is invalid",
+        ),
+      );
+      return;
+    }
+
+    const transferables: Transferable[] = [request.rgbaBytes];
     worker.postMessage(request, transferables);
   });
 }
@@ -201,11 +323,11 @@ async function decodeChunksWithLimit(
 }
 
 function getTerrainDecodeWorkerLimit(): number {
-  const browserWorkerLimit = navigator.hardwareConcurrency;
+  const browserWorkerLimit = navigator.hardwareConcurrency - 1;
   if (browserWorkerLimit > 0) {
     return Math.max(1, Math.min(4, browserWorkerLimit));
   }
-  return 4;
+  return 1;
 }
 
 export function decodeTerrainChunks(
@@ -238,6 +360,108 @@ export function decodeTerrainChunks(
       return terrainIoError(
         "terrain.decode.failed",
         "Failed to decode terrain textures",
+      );
+    },
+  );
+}
+
+interface TerrainEncodeImage {
+  readonly id: number;
+  readonly request: EncodeLzssTerrainTileRequest;
+}
+
+async function encodeImageWithNewWorker(
+  codec: TerrainTextureCodec,
+  image: TerrainEncodeImage,
+  jobId: number,
+  workerLimit: number,
+  jpegQuality: number,
+): Promise<EncodedTerrainTileBuffer> {
+  const request = createEncodeRequest(
+    codec,
+    jobId,
+    image.id,
+    image.request,
+    jpegQuality,
+  );
+  const worker = await acquireTerrainWorker(workerLimit);
+  return encodeChunk(worker, request).finally(() => {
+    releaseTerrainWorker(worker);
+  });
+}
+
+async function encodeImagesWithLimit(
+  codec: TerrainTextureCodec,
+  images: readonly TerrainEncodeImage[],
+  workerLimit: number,
+  jpegQuality: number,
+  onProgress?: (progress: TerrainEncodeProgress) => void,
+): Promise<EncodedTerrainTileBuffer[]> {
+  const encodedTiles: EncodedTerrainTileBuffer[] = [];
+  let nextImageIndex = 0;
+  let completedImages = 0;
+
+  async function encodeNextImage(): Promise<void> {
+    const imageIndex = nextImageIndex;
+    nextImageIndex += 1;
+
+    const image = images[imageIndex];
+    if (!image) {
+      return;
+    }
+
+    const encoded = await encodeImageWithNewWorker(
+      codec,
+      image,
+      imageIndex + 1,
+      workerLimit,
+      jpegQuality,
+    );
+    encodedTiles.push(encoded);
+    completedImages += 1;
+    onProgress?.({ completed: completedImages, total: images.length });
+    await encodeNextImage();
+  }
+
+  const activeWorkerCount = Math.min(workerLimit, images.length);
+  const workers = Array.from({ length: activeWorkerCount }, () =>
+    encodeNextImage(),
+  );
+  await Promise.all(workers);
+  return [...encodedTiles].sort((left, right) => left.id - right.id);
+}
+
+export function encodeTerrainImages(
+  codec: TerrainTextureCodec,
+  images: readonly TerrainEncodeImage[],
+  onProgress?: (progress: TerrainEncodeProgress) => void,
+  jpegQuality = 90,
+): ResultAsync<EncodedTerrainTileBuffer[], TerrainIoError> {
+  if (images.length === 0) {
+    return okAsync([]);
+  }
+
+  console.info("[terrain] encoding terrain chunks", {
+    codec: codec.kind,
+    chunks: images.length,
+  });
+
+  return ResultAsync.fromPromise(
+    encodeImagesWithLimit(
+      codec,
+      images,
+      getTerrainDecodeWorkerLimit(),
+      jpegQuality,
+      onProgress,
+    ),
+    (error) => {
+      const parsed = terrainIoErrorLikeSchema.safeParse(error);
+      if (parsed.success) {
+        return terrainIoError("terrain.encode.failed", parsed.data.message);
+      }
+      return terrainIoError(
+        "terrain.encode.failed",
+        "Failed to encode terrain textures",
       );
     },
   );

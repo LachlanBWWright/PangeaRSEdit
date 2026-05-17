@@ -72,6 +72,14 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
             entity.Property(x => x.HostParticipantId).HasMaxLength(128);
             entity.Property(x => x.JoinCode).HasMaxLength(32);
             entity.Property(x => x.State).HasMaxLength(64);
+            entity.Property(x => x.MatchId);
+            entity.Property(x => x.MatchSeed);
+            entity.Property(x => x.MatchStartedAt);
+            entity.Property(x => x.MatchEndedAt);
+            entity.Property(x => x.LastReportType).HasMaxLength(64);
+            entity.Property(x => x.LastReportDetail).HasMaxLength(512);
+            entity.Property(x => x.LastReportByParticipantId).HasMaxLength(128);
+            entity.Property(x => x.LastReportAt);
             entity.HasIndex(x => x.JoinCode);
             entity.HasMany(x => x.Players)
                 .WithOne(x => x.Lobby)

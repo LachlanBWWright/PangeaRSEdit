@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { GAME_DISPLAY_NAMES } from "./utils/gamePreviewRuntime";
 import type { AnyLevelInfo, GamePortConfig } from "./utils/gamePortConfig";
+import type { MultiplayerMatchConfig } from "@/multiplayer/types";
+import type { MultiplayerRuntimeManagedTransport } from "@/multiplayer/runtimeBridge";
 import {
   getPreviewOverlayState,
   isWaitingForPreviewLevelData,
@@ -33,6 +35,8 @@ interface Props {
   readonly terrainTextureBytes: Uint8Array | null | undefined;
   readonly customFiles?: readonly PreviewVfsFile[];
   readonly runToken: number;
+  readonly networkMatchConfig?: MultiplayerMatchConfig | null;
+  readonly networkRuntimeTransport?: MultiplayerRuntimeManagedTransport | null;
   /** When true, launch from the title screen without level injection or level-jump globals. */
   readonly normalLaunch?: boolean;
 }
@@ -46,6 +50,8 @@ export function GamePreviewHost({
   terrainTextureBytes,
   customFiles,
   runToken,
+  networkMatchConfig,
+  networkRuntimeTransport,
   normalLaunch = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -67,6 +73,8 @@ export function GamePreviewHost({
       customFiles,
       runToken,
       normalLaunch,
+      networkMatchConfig,
+      networkRuntimeTransport,
       onStatus: (text) => {
         setPreviewState({ runToken, statusText: text, errorText: null });
       },
@@ -84,6 +92,8 @@ export function GamePreviewHost({
     levelNumber,
     normalLaunch,
     runToken,
+    networkMatchConfig,
+    networkRuntimeTransport,
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,

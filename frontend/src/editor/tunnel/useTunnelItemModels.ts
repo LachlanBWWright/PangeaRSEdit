@@ -33,6 +33,7 @@ export function useTunnelItemModels(
     new Map(),
   );
   const workerRef = useRef<Worker | null>(null);
+  const inFlightTypesRef = useRef<Set<number>>(new Set());
 
   const modelFilePath = useMemo(
     () => getModelFilePath(isPlumbing),
@@ -74,16 +75,10 @@ export function useTunnelItemModels(
       ) {
         continue;
       }
-
-      setCache((previous) => {
-        const next = new Map(previous);
-        next.set(itemType, {
-          state: "loading",
-          scene: null,
-          error: null,
-        });
-        return next;
-      });
+      if (inFlightTypesRef.current.has(itemType)) {
+        continue;
+      }
+      inFlightTypesRef.current.add(itemType);
 
       void ResultAsync.fromPromise(loadFileGltf(worker, modelFilePath), mapErr)
         .andThen((gltf) => {
@@ -98,6 +93,7 @@ export function useTunnelItemModels(
         })
         .match(
           (scene) => {
+            inFlightTypesRef.current.delete(itemType);
             setCache((previous) => {
               const next = new Map(previous);
               next.set(itemType, {
@@ -109,6 +105,7 @@ export function useTunnelItemModels(
             });
           },
           (error) => {
+            inFlightTypesRef.current.delete(itemType);
             setCache((previous) => {
               const next = new Map(previous);
               next.set(itemType, {
@@ -132,6 +129,9 @@ export function useTunnelItemModels(
   };
 
   const isLoadingType = (itemType: number): boolean => {
+    if (inFlightTypesRef.current.has(itemType)) {
+      return true;
+    }
     const entry = cache.get(itemType);
     return entry?.state === "loading";
   };

@@ -576,28 +576,31 @@ export function UvMapEditor({
             >
               Show Other Meshes
             </Label>
-          <Switch
-            id="show-other-meshes"
-            checked={showOtherMeshes}
-            onCheckedChange={setShowOtherMeshes}
-          />
-        </div>
-        <div className="flex items-center justify-between rounded border border-gray-700 bg-gray-950/50 px-2 py-1.5">
-          <Label htmlFor="edit-selected-only" className="text-xs text-gray-400">
-            Edit Selected Only
-          </Label>
-          <Switch
-            id="edit-selected-only"
-            checked={editSelectedOnly}
-            onCheckedChange={setEditSelectedOnly}
-          />
-        </div>
-        {overlappingMeshes.length > 0 && (
-          <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-100">
-            {overlappingMeshes.length} overlapping track
-            {overlappingMeshes.length === 1 ? "" : "s"} near the selected UVs.
+            <Switch
+              id="show-other-meshes"
+              checked={showOtherMeshes}
+              onCheckedChange={setShowOtherMeshes}
+            />
           </div>
-        )}
+          <div className="flex items-center justify-between rounded border border-gray-700 bg-gray-950/50 px-2 py-1.5">
+            <Label
+              htmlFor="edit-selected-only"
+              className="text-xs text-gray-400"
+            >
+              Edit Selected Only
+            </Label>
+            <Switch
+              id="edit-selected-only"
+              checked={editSelectedOnly}
+              onCheckedChange={setEditSelectedOnly}
+            />
+          </div>
+          {overlappingMeshes.length > 0 && (
+            <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-100">
+              {overlappingMeshes.length} overlapping track
+              {overlappingMeshes.length === 1 ? "" : "s"} near the selected UVs.
+            </div>
+          )}
           <div className="space-y-2">
             <Label className="text-xs text-gray-400">Mesh Tracks</Label>
             <div className="max-h-[32vh] space-y-1 overflow-y-auto rounded border border-gray-700 bg-gray-950/50 p-1 xl:max-h-none">
@@ -634,7 +637,9 @@ export function UvMapEditor({
                     <div className="mt-1 flex justify-between text-[11px] text-gray-400">
                       <span>{mesh.vertices.length} vertices</span>
                       <span>
-                        {isOverlapping ? "overlap" : `${mesh.faces.length} faces`}
+                        {isOverlapping
+                          ? "overlap"
+                          : `${mesh.faces.length} faces`}
                       </span>
                     </div>
                   </button>
@@ -652,7 +657,7 @@ export function UvMapEditor({
             </div>
             <div
               ref={canvasScrollRef}
-              className="relative min-h-[260px] flex-1 overflow-auto rounded border border-gray-700 bg-checkered custom-scrollbar"
+              className="relative min-h-65 flex-1 overflow-auto rounded border border-gray-700 bg-checkered custom-scrollbar"
             >
               <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-lg border border-gray-700 bg-gray-800/90 p-1.5 shadow-xl">
                 <Button

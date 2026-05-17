@@ -3,6 +3,7 @@ import { createWebRtcRuntimeTransport } from "@/multiplayer/webrtcRuntimeTranspo
 
 class FakeDataChannel {
   public readyState = "open";
+  public bufferedAmount = 0;
   public onopen: (() => void) | null = null;
   public onclose: (() => void) | null = null;
   private readonly messageListeners = new Set<(event: { data: unknown }) => void>();
@@ -173,15 +174,15 @@ describe("webrtc runtime transport", () => {
     expect(reportMatchEnded).toHaveBeenCalledWith(4);
   });
 
-  it("falls back to reliable channel for unreliable sends", () => {
+  it("fails unreliable send when state channel is missing", () => {
     const reliable = new FakeDataChannel();
     const { transport } = createWebRtcRuntimeTransport({
       reliableChannel: reliable,
     });
 
     const payload = Uint8Array.from([42]).buffer;
-    expect(transport.sendUnreliable(payload).isOk()).toBe(true);
-    expect(reliable.sent.length).toBe(1);
+    expect(transport.sendUnreliable(payload).isErr()).toBe(true);
+    expect(reliable.sent.length).toBe(0);
   });
 
   it("rejects sends on closed channels", () => {

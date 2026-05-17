@@ -6,12 +6,18 @@ import {
 } from "@microsoft/signalr";
 import { ResultAsync, ok, err } from "neverthrow";
 import { buildApiUrl } from "@/api/apiBase";
-import type { MultiplayerLobbyDetails } from "./types";
+import {
+  MultiplayerLobbyDetailsSchema,
+  MultiplayerMatchConfigSchema,
+} from "./schemas";
+import type { MultiplayerLobbyDetails, MultiplayerMatchConfig } from "./types";
 
 export interface MultiplayerHubEvents {
   onPeerJoined: (participantId: string) => void;
   onPeerLeft: (participantId: string) => void;
   onPeerDisconnected: (participantId: string) => void;
+  onHostDisconnected: (participantId: string) => void;
+  onParticipantDisconnected: (participantId: string) => void;
   onReceiveOffer: (fromId: string, targetId: string, sdp: string) => void;
   onReceiveAnswer: (fromId: string, targetId: string, sdp: string) => void;
   onReceiveIceCandidate: (
@@ -24,7 +30,24 @@ export interface MultiplayerHubEvents {
     isReady: boolean,
     lobby: MultiplayerLobbyDetails,
   ) => void;
-  onMatchStarting: (lobbyId: string, matchConfig: unknown) => void;
+  onMatchStarting: (
+    lobbyId: string,
+    matchConfig: MultiplayerMatchConfig,
+  ) => void;
+  onLobbyParticipantsChanged: (lobby: MultiplayerLobbyDetails) => void;
+  onRemovedFromLobby: (lobbyId: string, participantId: string) => void;
+  onLobbyChatMessage: (
+    lobbyId: string,
+    participantId: string,
+    displayName: string,
+    message: string,
+    createdAt: string,
+  ) => void;
+  onRuntimeLevelReady: (
+    lobbyId: string,
+    participantId: string,
+  ) => void;
+  onRuntimeStartNow: (lobbyId: string) => void;
 }
 
 export interface MultiplayerHubError {
@@ -63,6 +86,14 @@ export class MultiplayerHubClient {
       this.events.onPeerDisconnected?.(participantId);
     });
 
+    this.connection.on("HostDisconnected", (participantId: string) => {
+      this.events.onHostDisconnected?.(participantId);
+    });
+
+    this.connection.on("ParticipantDisconnected", (participantId: string) => {
+      this.events.onParticipantDisconnected?.(participantId);
+    });
+
     this.connection.on(
       "ReceiveOffer",
       (fromId: string, targetId: string, sdp: string) => {
@@ -98,9 +129,58 @@ export class MultiplayerHubClient {
     this.connection.on(
       "MatchStarting",
       (lobbyId: string, matchConfig: unknown) => {
-        this.events.onMatchStarting?.(lobbyId, matchConfig);
+        const parsed = MultiplayerMatchConfigSchema.safeParse(matchConfig);
+        if (!parsed.success) {
+          return;
+        }
+        this.events.onMatchStarting?.(lobbyId, parsed.data);
       },
     );
+
+    this.connection.on("LobbyParticipantsChanged", (lobby: unknown) => {
+      const parsed = MultiplayerLobbyDetailsSchema.safeParse(lobby);
+      if (!parsed.success) {
+        return;
+      }
+      this.events.onLobbyParticipantsChanged?.(parsed.data);
+    });
+
+    this.connection.on(
+      "RemovedFromLobby",
+      (lobbyId: string, participantId: string) => {
+        this.events.onRemovedFromLobby?.(lobbyId, participantId);
+      },
+    );
+
+    this.connection.on(
+      "LobbyChatMessage",
+      (
+        lobbyId: string,
+        participantId: string,
+        displayName: string,
+        message: string,
+        createdAt: string,
+      ) => {
+        this.events.onLobbyChatMessage?.(
+          lobbyId,
+          participantId,
+          displayName,
+          message,
+          createdAt,
+        );
+      },
+    );
+
+    this.connection.on(
+      "RuntimeLevelReady",
+      (lobbyId: string, participantId: string) => {
+        this.events.onRuntimeLevelReady?.(lobbyId, participantId);
+      },
+    );
+
+    this.connection.on("RuntimeStartNow", (lobbyId: string) => {
+      this.events.onRuntimeStartNow?.(lobbyId);
+    });
   }
 
   connect(): ResultAsync<void, MultiplayerHubError> {
@@ -218,16 +298,90 @@ export class MultiplayerHubClient {
     );
   }
 
-  notifyMatchStarting(
-    lobbyId: string,
-    matchConfig: unknown,
-  ): ResultAsync<void, MultiplayerHubError> {
+  notifyMatchStarting(lobbyId: string): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("NotifyMatchStarting", lobbyId, matchConfig),
+      this.connection.invoke("NotifyMatchStarting", lobbyId),
       (e) => ({
         type: "hub" as const,
         message:
           e instanceof Error ? e.message : "Failed to notify match starting.",
+      }),
+    );
+  }
+
+  removeParticipant(
+    lobbyId: string,
+    targetParticipantId: string,
+  ): ResultAsync<void, MultiplayerHubError> {
+    return ResultAsync.fromPromise(
+      this.connection.invoke("RemoveParticipant", lobbyId, targetParticipantId),
+      (e) => ({
+        type: "hub" as const,
+        message:
+          e instanceof Error ? e.message : "Failed to remove participant.",
+      }),
+    );
+  }
+
+  sendLobbyChat(
+    lobbyId: string,
+    message: string,
+  ): ResultAsync<void, MultiplayerHubError> {
+    return ResultAsync.fromPromise(
+      this.connection.invoke("SendLobbyChat", lobbyId, message),
+      (e) => ({
+        type: "hub" as const,
+        message:
+          e instanceof Error ? e.message : "Failed to send chat message.",
+      }),
+    );
+  }
+
+  reportRuntimeLevelReady(
+    lobbyId: string,
+  ): ResultAsync<void, MultiplayerHubError> {
+    return ResultAsync.fromPromise(
+      this.connection.invoke("ReportRuntimeLevelReady", lobbyId),
+      (e) => ({
+        type: "hub" as const,
+        message:
+          e instanceof Error ? e.message : "Failed to report runtime readiness.",
+      }),
+    );
+  }
+
+  notifyRuntimeStartNow(
+    lobbyId: string,
+  ): ResultAsync<void, MultiplayerHubError> {
+    return ResultAsync.fromPromise(
+      this.connection.invoke("NotifyRuntimeStartNow", lobbyId),
+      (e) => ({
+        type: "hub" as const,
+        message: e instanceof Error ? e.message : "Failed to notify runtime start.",
+      }),
+    );
+  }
+
+  reportPing(
+    lobbyId: string,
+    pingMs: number,
+  ): ResultAsync<void, MultiplayerHubError> {
+    return ResultAsync.fromPromise(
+      this.connection.invoke("ReportPing", lobbyId, pingMs),
+      (e) => ({
+        type: "hub" as const,
+        message: e instanceof Error ? e.message : "Failed to report ping.",
+      }),
+    );
+  }
+
+  ping(nowMs: number): ResultAsync<number, MultiplayerHubError> {
+    return ResultAsync.fromPromise(
+      this.connection.invoke<number>("Ping", nowMs),
+      (e) => ({
+        type: "hub" as const,
+        message:
+          e instanceof Error ? e.message : "Failed to ping signaling hub.",
       }),
     );
   }

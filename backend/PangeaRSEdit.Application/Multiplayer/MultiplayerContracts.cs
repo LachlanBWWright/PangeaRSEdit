@@ -6,6 +6,7 @@ public sealed record CreateLobbyRequest(
     string TrackOrLevel,
     int MaxPlayers,
     string DisplayName,
+    bool IsPublic,
     string ParticipantId
 );
 
@@ -31,12 +32,31 @@ public sealed record StartLobbyRequest(
     string ParticipantId
 );
 
+public sealed record RemoveLobbyParticipantRequest(
+    Guid LobbyId,
+    string RequestingParticipantId,
+    string TargetParticipantId
+);
+
+public sealed record LobbyHeartbeatRequest(
+    Guid LobbyId,
+    string ParticipantId
+);
+
+public sealed record LobbyReportEventRequest(
+    Guid LobbyId,
+    string ParticipantId,
+    string EventType,
+    string? Detail
+);
+
 public sealed record MultiplayerLobbySummary(
     Guid Id,
     string GameId,
     string Mode,
     string TrackOrLevel,
     int MaxPlayers,
+    bool IsPublic,
     string JoinCode,
     string State,
     int PlayerCount,
@@ -50,8 +70,26 @@ public sealed record MultiplayerLobbyPlayer(
     int PlayerIndex,
     bool IsHost,
     bool IsReady,
+    string Region,
+    int PingMs,
     DateTimeOffset JoinedAt,
     DateTimeOffset LastSeenAt
+);
+
+public sealed record MultiplayerMatchConfigPlayer(
+    string ParticipantId,
+    int PlayerIndex,
+    string DisplayName
+);
+
+public sealed record MultiplayerMatchConfig(
+    Guid MatchId,
+    string GameId,
+    string Mode,
+    string TrackOrLevel,
+    int Seed,
+    string HostParticipantId,
+    IReadOnlyList<MultiplayerMatchConfigPlayer> Players
 );
 
 public sealed record MultiplayerLobbyDetails(
@@ -60,10 +98,12 @@ public sealed record MultiplayerLobbyDetails(
     string Mode,
     string TrackOrLevel,
     int MaxPlayers,
+    bool IsPublic,
     string HostParticipantId,
     string JoinCode,
     string State,
     DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt,
-    IReadOnlyList<MultiplayerLobbyPlayer> Players
+    IReadOnlyList<MultiplayerLobbyPlayer> Players,
+    MultiplayerMatchConfig? MatchConfig
 );

@@ -56,6 +56,44 @@ declare global {
     CheatRestoreHealth?: () => void;
     CheatFillFuel?: () => void;
     CheatGetWeapons?: () => void;
+
+    // ----- Shared multiplayer runtime bridge -----
+    PangeaNet?: {
+      isEnabled: () => boolean;
+      isHost: () => boolean;
+      getLocalPlayerIndex: () => number;
+      getPlayerCount: () => number;
+      getMatchSeed: () => number;
+      sendReliable: (bytes: ArrayBuffer) => boolean;
+      sendUnreliable: (bytes: ArrayBuffer) => boolean;
+      pollMessage: (maxByteCount: number) => ArrayBuffer | null;
+      nowMilliseconds: () => number;
+      reportDesync: (
+        frame: number,
+        localHash: number,
+        remoteHash: number,
+      ) => void;
+      reportMatchEnded: (reason: number) => void;
+    };
+
+    PangeaGame_SetNetworkMatchConfig?: (
+      json: string,
+      byteCount: number,
+    ) => void;
+    PangeaGame_StartNetworkMatch?: () => void;
+    PangeaGame_DebugGetFrameNumber?: () => number;
+    PangeaGame_DebugGetLocalPlayerIndex?: () => number;
+    PangeaGame_DebugGetPlayerCount?: () => number;
+    PangeaGame_DebugIsNetworkMatchRunning?: () => number;
+    PangeaGame_DebugHasDesync?: () => number;
+    PangeaGame_DebugGetLastSyncHash?: () => number;
+    PangeaGame_DebugGetPlayerPosition?: (
+      playerIndex: number,
+      outX: number,
+      outY: number,
+      outZ: number,
+    ) => number;
+    PangeaGame_DebugSetInputScript?: (json: string, byteCount: number) => void;
   }
 }
 

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { TextureManager } from "@/components/TextureManager";
+import { TextureManager, type Texture as TextureManagerTexture } from "@/components/TextureManager";
 import {
   tunnelTextureToDataUrl,
   tunnelTextureToCanvas,
@@ -134,7 +134,7 @@ export function TunnelTexturesPanel({
     );
   };
 
-  const handleDownloadTexture = (texture: TunnelTextureItem) => {
+  const handleDownloadTexture = (texture: TextureManagerTexture) => {
     const sourceTexture = getTextureByName(tunnelData, texture.name);
     if (!sourceTexture) {
       return;
@@ -153,18 +153,18 @@ export function TunnelTexturesPanel({
   };
 
   const handleReplaceTexture = async (
-    texture: TunnelTextureItem,
+    texture: TextureManagerTexture,
     file: File,
   ): Promise<void> => {
     const imageData = await loadImageDataFromFile(file);
-    return applyImageDataUpdate(texture.sourceName, imageData);
+    return applyImageDataUpdate(texture.name, imageData);
   };
 
   const handleTextureEdit = async (
-    texture: TunnelTextureItem,
+    texture: TextureManagerTexture,
     editedImageData: ImageData,
   ): Promise<void> => {
-    return applyImageDataUpdate(texture.sourceName, editedImageData);
+    return applyImageDataUpdate(texture.name, editedImageData);
   };
 
   return (

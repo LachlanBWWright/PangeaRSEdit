@@ -7,7 +7,9 @@ export {
   levelLabel,
 } from "./gamePreviewRuntimeTypes";
 export type {
+  MultiplayerRuntimeEvent,
   PreviewRuntimeModule,
+  StartNetworkMatchFn,
   PreviewTerrainPaths,
   PreviewVfsFile,
 } from "./gamePreviewRuntimeTypes";

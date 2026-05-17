@@ -31,4 +31,19 @@ public interface IMultiplayerLobbyService
     Task<AppResult<MultiplayerLobbyDetails>> StartLobbyAsync(
         StartLobbyRequest request,
         CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> RemoveParticipantAsync(
+        RemoveLobbyParticipantRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> HeartbeatAsync(
+        LobbyHeartbeatRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> ReportEventAsync(
+        LobbyReportEventRequest request,
+        CancellationToken cancellationToken);
+
+    Task CleanupExpiredAndStaleAsync(
+        CancellationToken cancellationToken);
 }

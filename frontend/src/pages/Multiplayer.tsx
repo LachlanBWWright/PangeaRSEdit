@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { errAsync, okAsync } from "neverthrow";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Result, ResultAsync, err, errAsync, ok, okAsync } from "neverthrow";
 import {
   createAndConnectHubClient,
   type MultiplayerHubClient,
@@ -7,6 +7,7 @@ import {
 } from "@/multiplayer/hub";
 import {
   createLobby,
+  getLobbyPreview,
   heartbeatLobby,
   joinLobby,
   listLobbies,
@@ -76,6 +77,8 @@ import {
   type WebRtcRuntimeDisruptionEvent,
   type WebRtcRuntimeTransportHandle,
 } from "@/multiplayer/webrtcRuntimeTransport";
+import { runRuntimePreflight } from "@/multiplayer/runtimePreflight/runRuntimePreflight";
+import type { StartNetworkMatchFn } from "@/editor/utils/gamePreviewRuntime";
 
 interface LobbyFormState {
   readonly gameId: string;
@@ -95,6 +98,18 @@ interface LobbyChatMessage {
 }
 
 type LobbyIntent = "create" | "join";
+type MultiplayerUiState =
+  | "idle"
+  | "preloading-game"
+  | "preflight-failed"
+  | "joining-lobby"
+  | "in-lobby"
+  | "connecting-peer"
+  | "loading-runtime"
+  | "waiting-for-peer-runtime"
+  | "waiting-for-host-start"
+  | "running"
+  | "disconnected";
 
 const defaultFormState: LobbyFormState = {
   gameId: "cromagrally",
@@ -313,14 +328,20 @@ async function preloadGameRuntimeAssets(config: GamePortConfig): Promise<void> {
   const scriptUrl = new URL(config.mainJs, baseUrl).href;
   const preloadUrls = new Set<string>([scriptUrl]);
 
-  try {
-    const scriptResponse = await fetch(scriptUrl, {
+  const scriptResponseResult = await ResultAsync.fromPromise(
+    fetch(scriptUrl, {
       credentials: "same-origin",
       cache: "force-cache",
-    });
-    if (scriptResponse.ok) {
-      const scriptText = await scriptResponse.text();
-      const matches = scriptText.matchAll(PRELOAD_DEPENDENCY_PATTERN);
+    }),
+    () => null,
+  );
+  if (scriptResponseResult.isOk() && scriptResponseResult.value.ok) {
+    const scriptTextResult = await ResultAsync.fromPromise(
+      scriptResponseResult.value.text(),
+      () => null,
+    );
+    if (scriptTextResult.isOk()) {
+      const matches = scriptTextResult.value.matchAll(PRELOAD_DEPENDENCY_PATTERN);
       for (const match of matches) {
         const dependencyPath = match[1];
         if (!dependencyPath) {
@@ -329,22 +350,40 @@ async function preloadGameRuntimeAssets(config: GamePortConfig): Promise<void> {
         preloadUrls.add(new URL(dependencyPath, baseUrl).href);
       }
     }
-  } catch {
-    // Best-effort preload only.
   }
 
   await Promise.all(
-    Array.from(preloadUrls).map(async (url) => {
-      try {
-        await fetch(url, {
+    Array.from(preloadUrls).map((url) =>
+      ResultAsync.fromPromise(
+        fetch(url, {
           credentials: "same-origin",
           cache: "force-cache",
-        });
-      } catch {
-        // Best-effort preload only.
-      }
-    }),
+        }),
+        () => null,
+      )
+        .map(() => undefined)
+        .orElse(() => okAsync(undefined)),
+    ),
   );
+}
+
+async function preflightSelection(
+  gameId: string,
+  trackOrLevel: string,
+): Promise<Result<void, string>> {
+  const spec = resolveMultiplayerLaunchSpecFromSelection(gameId, trackOrLevel);
+  if (!spec) {
+    return err(`Unsupported multiplayer game: ${gameId}`);
+  }
+  const result = await runRuntimePreflight({
+    config: spec.config,
+    gameId,
+    trackOrLevel,
+  });
+  if (result.isErr()) {
+    return err(result.error.message);
+  }
+  return ok(undefined);
 }
 
 function shouldShowDebugOverlay(): boolean {
@@ -418,6 +457,7 @@ export function MultiplayerPage() {
   );
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [statusText, setStatusText] = useState("Not connected");
+  const [uiState, setUiState] = useState<MultiplayerUiState>("idle");
   const [packetCounts] = useState<Record<string, number>>({
     hello: 0,
     helloAck: 0,
@@ -447,6 +487,14 @@ export function MultiplayerPage() {
   const stopGameRef = useRef<(() => void) | null>(null);
   const runTokenRef = useRef(0);
   const preloadedRuntimeKeysRef = useRef<Set<string>>(new Set());
+  const runtimeReadyPeersRef = useRef<Set<string>>(new Set());
+  const startNetworkMatchRef = useRef<StartNetworkMatchFn | null>(null);
+  const runtimeStartRequestedRef = useRef(false);
+  const runtimeStartNotifiedRef = useRef(false);
+  const resetLobbyChatState = (): void => {
+    setChatMessages([]);
+    setChatDraft("");
+  };
 
   useEffect(() => {
     lobbyRef.current = lobby;
@@ -456,7 +504,7 @@ export function MultiplayerPage() {
     localParticipantIdRef.current = localParticipantId;
   }, [localParticipantId]);
 
-  const closeRuntimeTransport = (): void => {
+  const closeRuntimeTransport = useCallback((): void => {
     const active = runtimeTransportRef.current;
     if (!active) {
       return;
@@ -464,9 +512,12 @@ export function MultiplayerPage() {
     active.dispose();
     runtimeTransportRef.current = null;
     setRuntimeTransportRevision((previous) => previous + 1);
-  };
+  }, []);
 
-  const bindRuntimeDataChannel = (channel: HostSessionDataChannel): void => {
+  const bindRuntimeDataChannels = (channels: {
+    readonly controlChannel: HostSessionDataChannel;
+    readonly stateChannel: HostSessionDataChannel;
+  }): void => {
     const reportRuntimeDisruption = (
       event: WebRtcRuntimeDisruptionEvent,
     ): void => {
@@ -547,7 +598,8 @@ export function MultiplayerPage() {
 
     closeRuntimeTransport();
     const nextTransport = createWebRtcRuntimeTransport({
-      reliableChannel: channel,
+      reliableChannel: channels.controlChannel,
+      unreliableChannel: channels.stateChannel,
       isHostAuthority,
       onDisruptionEvent: reportRuntimeDisruption,
     });
@@ -555,14 +607,15 @@ export function MultiplayerPage() {
     setRuntimeTransportRevision((previous) => previous + 1);
   };
 
-  const closeRtcSessions = (): void => {
+  const closeRtcSessions = useCallback((): void => {
     hostSessionRef.current?.closeAll();
     hostSessionRef.current = null;
     clientSessionRef.current?.close();
     clientSessionRef.current = null;
     closeRuntimeTransport();
     setRtcStatusText("idle");
-  };
+    setUiState("disconnected");
+  }, [closeRuntimeTransport]);
 
   useEffect(() => {
     return () => {
@@ -581,7 +634,7 @@ export function MultiplayerPage() {
         stopGameRef.current = null;
       }
     };
-  }, []);
+  }, [closeRtcSessions]);
 
   const lobbyId = lobby?.id ?? null;
 
@@ -625,7 +678,6 @@ export function MultiplayerPage() {
     }
 
     preloadedRuntimeKeysRef.current.add(preloadKey);
-    setStatusText("Preloading game assets while lobby is open…");
     void preloadGameRuntimeAssets(preloadSpec.config).then(() => {
       setStatusText("Game assets preloaded; ready to start");
     });
@@ -669,7 +721,6 @@ export function MultiplayerPage() {
 
   useEffect(() => {
     if (!lobby || !hubClientRef.current || !localParticipantId) {
-      setPingMs(null);
       return;
     }
 
@@ -693,15 +744,11 @@ export function MultiplayerPage() {
     };
   }, [lobby, localParticipantId]);
 
-  useEffect(() => {
-    setChatMessages([]);
-    setChatDraft("");
-  }, [lobbyId]);
-
   const connectHub = async (
     nextLobby: MultiplayerLobbyDetails,
   ): Promise<void> => {
     closeRtcSessions();
+    setUiState("connecting-peer");
     setForceLocalRuntimeTransport(shouldForceLocalTransport());
     const participantId = nextLobby.participantId;
     setLocalParticipantId(participantId);
@@ -709,6 +756,7 @@ export function MultiplayerPage() {
       setConnectionStatus("connected");
       setStatusText("Connected (mock hub)");
       setRtcStatusText("mock");
+      setUiState("in-lobby");
       return;
     }
 
@@ -796,6 +844,10 @@ export function MultiplayerPage() {
         );
       },
       onMatchStarting: (_, matchConfig) => {
+        runtimeReadyPeersRef.current.clear();
+        startNetworkMatchRef.current = null;
+        runtimeStartRequestedRef.current = false;
+        runtimeStartNotifiedRef.current = false;
         setLobby((previousLobby) =>
           previousLobby
             ? {
@@ -805,7 +857,8 @@ export function MultiplayerPage() {
               }
             : previousLobby,
         );
-        setStatusText("Match started");
+        setUiState("loading-runtime");
+        setStatusText("Loading runtime…");
       },
       onLobbyParticipantsChanged: (updatedLobby) => {
         setLobby(updatedLobby);
@@ -819,7 +872,13 @@ export function MultiplayerPage() {
         }
         setStatusText("You were removed by the host");
         setLobby(null);
+        runtimeReadyPeersRef.current.clear();
+        startNetworkMatchRef.current = null;
+        runtimeStartRequestedRef.current = false;
+        runtimeStartNotifiedRef.current = false;
         setLocalParticipantId(null);
+        setPingMs(null);
+        resetLobbyChatState();
       },
       onLobbyChatMessage: (
         receivedLobbyId,
@@ -838,6 +897,54 @@ export function MultiplayerPage() {
             createdAt,
           },
         ]);
+      },
+      onRuntimeLevelReady: (runtimeLobbyId, readyParticipantId) => {
+        const activeLobby = lobbyRef.current;
+        const activeParticipantId = localParticipantIdRef.current;
+        if (!activeLobby || runtimeLobbyId !== activeLobby.id) {
+          return;
+        }
+        runtimeReadyPeersRef.current.add(readyParticipantId);
+        const isLocalHost =
+          Boolean(activeParticipantId) &&
+          activeLobby.hostParticipantId === activeParticipantId;
+        if (!isLocalHost) {
+          setUiState("waiting-for-host-start");
+          setStatusText("Waiting for host to start match…");
+          return;
+        }
+        const allParticipantsReady = activeLobby.players.every((player) =>
+          runtimeReadyPeersRef.current.has(player.participantId),
+        );
+        if (!allParticipantsReady) {
+          setUiState("waiting-for-peer-runtime");
+          setStatusText("Waiting for peers to finish runtime load…");
+          return;
+        }
+        const hubClient = hubClientRef.current;
+        if (hubClient && !runtimeStartNotifiedRef.current) {
+          runtimeStartNotifiedRef.current = true;
+          void hubClient.notifyRuntimeStartNow(activeLobby.id);
+        }
+      },
+      onRuntimeStartNow: (runtimeLobbyId) => {
+        const activeLobby = lobbyRef.current;
+        if (!activeLobby || runtimeLobbyId !== activeLobby.id) {
+          return;
+        }
+        const startNetworkMatch = startNetworkMatchRef.current;
+        if (!startNetworkMatch) {
+          runtimeStartRequestedRef.current = true;
+          return;
+        }
+        const started = startNetworkMatch();
+        if (started.isErr()) {
+          setErrorText(started.error);
+          setUiState("disconnected");
+          return;
+        }
+        setUiState("running");
+        setStatusText("Match started");
       },
     };
 
@@ -861,6 +968,7 @@ export function MultiplayerPage() {
     hubClientRef.current = connectResult.value;
     setConnectionStatus(getConnectionStatus(connectResult.value));
     setStatusText("Connected");
+    setUiState("in-lobby");
 
     if (!canUseWebRtc) {
       return;
@@ -870,24 +978,32 @@ export function MultiplayerPage() {
     const createConnectionForHost = (peerParticipantId: string) => {
       void peerParticipantId;
       const created = createPeerConnection(iceServers);
-      return created.isOk() ? okAsync(created.value) : errAsync(created.error);
+      if (created.isErr()) {
+        return errAsync(created.error);
+      }
+      return okAsync(created.value);
     };
     const createConnectionForClient = () => {
       const created = createPeerConnection(iceServers);
-      return created.isOk() ? okAsync(created.value) : errAsync(created.error);
+      if (created.isErr()) {
+        return errAsync(created.error);
+      }
+      return okAsync(created.value);
     };
 
     if (isLocalHost) {
       hostSessionRef.current = createHostSession({
         createPeerConnection: createConnectionForHost,
         sendOffer: (targetParticipantId, sdp) =>
-          connectResult.value.sendOffer(nextLobby.id, targetParticipantId, sdp),
+          connectResult.value
+            .sendOffer(nextLobby.id, targetParticipantId, sdp)
+            .mapErr((error) => error.message),
         sendIceCandidate: (targetParticipantId, candidate) =>
           connectResult.value.sendIceCandidate(
             nextLobby.id,
             targetParticipantId,
             candidate,
-          ),
+          ).mapErr((error) => error.message),
         onStateChanged: (_, state) => {
           setRtcStatusText(state);
           if (state === "failed") {
@@ -897,8 +1013,8 @@ export function MultiplayerPage() {
             );
           }
         },
-        onDataChannelOpened: (_, channel) => {
-          bindRuntimeDataChannel(channel);
+        onDataChannelOpened: (_, channels) => {
+          bindRuntimeDataChannels(channels);
           setRtcStatusText("connected");
         },
       });
@@ -913,17 +1029,15 @@ export function MultiplayerPage() {
       clientSessionRef.current = createClientSession({
         createPeerConnection: createConnectionForClient,
         sendAnswer: (targetParticipantId, sdp) =>
-          connectResult.value.sendAnswer(
-            nextLobby.id,
-            targetParticipantId,
-            sdp,
-          ),
+          connectResult.value
+            .sendAnswer(nextLobby.id, targetParticipantId, sdp)
+            .mapErr((error) => error.message),
         sendIceCandidate: (targetParticipantId, candidate) =>
           connectResult.value.sendIceCandidate(
             nextLobby.id,
             targetParticipantId,
             candidate,
-          ),
+          ).mapErr((error) => error.message),
         onStateChanged: (state) => {
           setRtcStatusText(state);
           if (state === "failed") {
@@ -933,8 +1047,8 @@ export function MultiplayerPage() {
             );
           }
         },
-        onDataChannelOpened: (channel) => {
-          bindRuntimeDataChannel(channel);
+        onDataChannelOpened: (channels) => {
+          bindRuntimeDataChannels(channels);
           setRtcStatusText("connected");
         },
       });
@@ -944,6 +1058,18 @@ export function MultiplayerPage() {
   const handleCreateLobby = async (): Promise<void> => {
     setBusy(true);
     setErrorText(null);
+    setUiState("preloading-game");
+    const preflightResult = await preflightSelection(
+      formState.gameId,
+      formState.trackOrLevel,
+    );
+    if (preflightResult.isErr()) {
+      setErrorText(preflightResult.error);
+      setUiState("preflight-failed");
+      setBusy(false);
+      return;
+    }
+    setUiState("joining-lobby");
     const result = await createLobby(formState);
     if (result.isErr()) {
       setErrorText(result.error.message);
@@ -951,6 +1077,9 @@ export function MultiplayerPage() {
       return;
     }
     setLobby(result.value);
+    setUiState("in-lobby");
+    setPingMs(null);
+    resetLobbyChatState();
     setJoinLobbyId(result.value.id);
     await connectHub(result.value);
     setBusy(false);
@@ -959,8 +1088,33 @@ export function MultiplayerPage() {
   const handleJoinLobby = async (): Promise<void> => {
     setBusy(true);
     setErrorText(null);
+    setUiState("preloading-game");
+    const previewResult = await getLobbyPreview(joinLobbyId.trim());
+    if (previewResult.isErr()) {
+      setErrorText(previewResult.error.message);
+      setUiState("preflight-failed");
+      setBusy(false);
+      return;
+    }
+    if (!previewResult.value.canJoin) {
+      setErrorText("Lobby is not open for joining.");
+      setUiState("preflight-failed");
+      setBusy(false);
+      return;
+    }
+    const preflightResult = await preflightSelection(
+      previewResult.value.gameId,
+      previewResult.value.trackOrLevel,
+    );
+    if (preflightResult.isErr()) {
+      setErrorText(preflightResult.error);
+      setUiState("preflight-failed");
+      setBusy(false);
+      return;
+    }
+    setUiState("joining-lobby");
     const result = await joinLobby({
-      lobbyId: joinLobbyId,
+      lobbyId: joinLobbyId.trim(),
       displayName: formState.displayName,
     });
     if (result.isErr()) {
@@ -969,6 +1123,9 @@ export function MultiplayerPage() {
       return;
     }
     setLobby(result.value);
+    setUiState("in-lobby");
+    setPingMs(null);
+    resetLobbyChatState();
     await connectHub(result.value);
     setBusy(false);
   };
@@ -978,6 +1135,31 @@ export function MultiplayerPage() {
     setLobbyIntent("join");
     setBusy(true);
     setErrorText(null);
+    setUiState("preloading-game");
+    const lobbySummary = publicLobbies.find((item) => item.id === lobbyIdToJoin);
+    if (!lobbySummary) {
+      setErrorText("Lobby no longer exists");
+      setUiState("preflight-failed");
+      setBusy(false);
+      return;
+    }
+    if (lobbySummary.canJoin === false) {
+      setErrorText("Lobby is not open for joining.");
+      setUiState("preflight-failed");
+      setBusy(false);
+      return;
+    }
+    const preflightResult = await preflightSelection(
+      lobbySummary.gameId,
+      lobbySummary.trackOrLevel,
+    );
+    if (preflightResult.isErr()) {
+      setErrorText(preflightResult.error);
+      setUiState("preflight-failed");
+      setBusy(false);
+      return;
+    }
+    setUiState("joining-lobby");
     const result = await joinLobby({
       lobbyId: lobbyIdToJoin,
       displayName: formState.displayName,
@@ -988,6 +1170,9 @@ export function MultiplayerPage() {
       return;
     }
     setLobby(result.value);
+    setUiState("in-lobby");
+    setPingMs(null);
+    resetLobbyChatState();
     await connectHub(result.value);
     setBusy(false);
   };
@@ -1055,9 +1240,17 @@ export function MultiplayerPage() {
     }
     closeRtcSessions();
     setLobby(null);
+    runtimeReadyPeersRef.current.clear();
+    startNetworkMatchRef.current = null;
+    runtimeStartRequestedRef.current = false;
+    runtimeStartNotifiedRef.current = false;
+    runtimeStartNotifiedRef.current = false;
     setLocalParticipantId(null);
+    setPingMs(null);
+    resetLobbyChatState();
     setConnectionStatus("disconnected");
     setStatusText("Disconnected");
+    setUiState("disconnected");
     setBusy(false);
   };
 
@@ -1136,18 +1329,26 @@ export function MultiplayerPage() {
 
     const launchSpec = resolveMultiplayerLaunchSpec(activeMatchConfig);
     if (!launchSpec) {
-      setErrorText(`Unsupported multiplayer game: ${activeMatchConfig.gameId}`);
+      queueMicrotask(() => {
+        setErrorText(`Unsupported multiplayer game: ${activeMatchConfig.gameId}`);
+      });
       return;
     }
 
     const canvas = gameCanvasRef.current;
     if (!canvas) {
-      setErrorText("Game canvas is not ready");
+      queueMicrotask(() => {
+        setErrorText("Game canvas is not ready");
+      });
       return;
     }
 
-    setErrorText(null);
-    setStatusText("Launching multiplayer runtime…");
+    queueMicrotask(() => {
+      setErrorText(null);
+      setUiState("loading-runtime");
+      setStatusText("Launching multiplayer runtime…");
+    });
+    runtimeStartRequestedRef.current = false;
     runTokenRef.current += 1;
     const useFallbackTransport =
       shouldUseMockHub() || forceLocalRuntimeTransport;
@@ -1162,7 +1363,10 @@ export function MultiplayerPage() {
       : (runtimeTransportRef.current?.transport ?? null);
 
     if (!activeRuntimeTransport) {
-      setStatusText("Waiting for peer data channel…");
+      queueMicrotask(() => {
+        setUiState("connecting-peer");
+        setStatusText("Waiting for peer data channel…");
+      });
       return () => {
         mockRuntimeTransportHandle?.dispose();
       };
@@ -1181,12 +1385,49 @@ export function MultiplayerPage() {
       networkMatchConfig: activeMatchConfig,
       localParticipantId,
       networkRuntimeTransport: activeRuntimeTransport,
+      deferNetworkStart: true,
+      onStartNetworkMatchReady: (start) => {
+        startNetworkMatchRef.current = start;
+        if (runtimeStartRequestedRef.current) {
+          runtimeStartRequestedRef.current = false;
+          const started = start();
+          if (started.isErr()) {
+            setErrorText(started.error);
+            setUiState("disconnected");
+            return;
+          }
+          setUiState("running");
+          setStatusText("Match started");
+        }
+      },
+      onRuntimeEvent: (event) => {
+        if (event.type === "runtimeConfigApplied") {
+          setUiState("waiting-for-peer-runtime");
+          setStatusText("Runtime configured. Waiting for peers…");
+          return;
+        }
+        if (event.type === "runtimeLevelReady") {
+          runtimeReadyPeersRef.current.add(localParticipantId);
+          const activeLobby = lobbyRef.current;
+          const hubClient = hubClientRef.current;
+          if (hubClient && activeLobby) {
+            void hubClient.reportRuntimeLevelReady(activeLobby.id);
+          }
+          return;
+        }
+        if (event.type === "runtimeLoadFailed") {
+          setUiState("disconnected");
+          if (event.detail) {
+            setErrorText(event.detail);
+          }
+        }
+      },
       onStatus: (text) => {
         if (text.trim().length > 0) {
           setStatusText(text);
           return;
         }
-        setStatusText("Match started");
+        setStatusText("Runtime ready");
       },
       onError: (message) => {
         setErrorText(message);
@@ -1195,6 +1436,9 @@ export function MultiplayerPage() {
     stopGameRef.current = stop;
 
     return () => {
+      startNetworkMatchRef.current = null;
+      runtimeStartRequestedRef.current = false;
+      runtimeStartNotifiedRef.current = false;
       if (stopGameRef.current === stop) {
         stop();
         stopGameRef.current = null;
@@ -1203,8 +1447,10 @@ export function MultiplayerPage() {
     };
   }, [
     activeMatchLaunchKey,
+    activeMatchConfig,
     runtimeTransportRevision,
     forceLocalRuntimeTransport,
+    localParticipantId,
   ]);
 
   const handleCopyLobbyId = (): void => {
@@ -1227,6 +1473,7 @@ export function MultiplayerPage() {
         setErrorText("Could not copy lobby ID");
       });
   };
+  const displayedPingMs = lobby && localParticipantId ? pingMs : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-4 text-foreground md:p-8">
@@ -1424,7 +1671,11 @@ export function MultiplayerPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={busy}
+                        disabled={
+                          busy ||
+                          uiState === "preloading-game" ||
+                          item.canJoin === false
+                        }
                         onClick={() => {
                           void handleQuickJoinLobby(item.id);
                         }}
@@ -1442,12 +1693,19 @@ export function MultiplayerPage() {
 
           <div className="flex flex-wrap gap-2">
             {lobbyIntent === "create" ? (
-              <Button disabled={busy} onClick={() => void handleCreateLobby()}>
+              <Button
+                disabled={busy || uiState === "preloading-game"}
+                onClick={() => void handleCreateLobby()}
+              >
                 Create Lobby
               </Button>
             ) : (
               <Button
-                disabled={busy || joinLobbyId.trim().length === 0}
+                disabled={
+                  busy ||
+                  uiState === "preloading-game" ||
+                  joinLobbyId.trim().length === 0
+                }
                 onClick={() => void handleJoinLobby()}
               >
                 Join Lobby
@@ -1466,13 +1724,17 @@ export function MultiplayerPage() {
             <strong>Connection:</strong> {connectionStatus}
           </div>
           <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+            <strong>Phase:</strong> {uiState}
+          </div>
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
             <strong>Data Channel:</strong> {rtcStatusText}
           </div>
           <div className="rounded-md border border-border bg-muted/40 px-3 py-2 md:col-span-2">
             <strong>Status:</strong> {statusText}
           </div>
           <div className="rounded-md border border-border bg-muted/40 px-3 py-2 md:col-span-2">
-            <strong>Ping:</strong> {pingMs === null ? "n/a" : `${pingMs} ms`}
+            <strong>Ping:</strong>{" "}
+            {displayedPingMs === null ? "n/a" : `${displayedPingMs} ms`}
           </div>
           {errorText ? (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive md:col-span-2">

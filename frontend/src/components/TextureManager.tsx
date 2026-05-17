@@ -13,7 +13,7 @@ import {
 } from "@/components/TextureManager/textureManagerState";
 import type { UvLayout } from "@/modelEditing/uv/uvTypes";
 
-interface Texture {
+export interface Texture {
   name: string;
   url: string;
   type: "diffuse" | "normal" | "other";

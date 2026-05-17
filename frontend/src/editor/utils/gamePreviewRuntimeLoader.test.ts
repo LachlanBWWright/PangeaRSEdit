@@ -97,4 +97,45 @@ describe("game preview runtime loader", () => {
     expect(parsedPayload.data.localPlayerIndex).toBe(0);
     expect(parsedPayload.data.playerCount).toBe(2);
   });
+
+  it("reports an error when ccall is unavailable for network launch", () => {
+    const onError = vi.fn();
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      networkMatchConfig: {
+        matchId: "m-1",
+        gameId: "cro-mag",
+        mode: "race",
+        trackOrLevel: "0",
+        seed: 1337,
+        hostParticipantId: "host",
+        players: [
+          {
+            participantId: "host",
+            playerIndex: 0,
+            displayName: "Host",
+          },
+          {
+            participantId: "guest",
+            playerIndex: 1,
+            displayName: "Guest",
+          },
+        ],
+      },
+      onStatus: () => undefined,
+      onError,
+    });
+
+    module.onRuntimeInitialized?.();
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
 });

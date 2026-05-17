@@ -344,8 +344,7 @@ describe("DisruptionDetector", () => {
     expect(detector.getElapsedSinceLastPacket()).toBeLessThan(10);
   });
 
-  it("detects timeout", (context) => {
-    const startTime = Date.now();
+  it("detects timeout", () => {
     detector = new DisruptionDetector(50, 2);
 
     return new Promise((resolve) => {
