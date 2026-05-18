@@ -2,7 +2,6 @@ import { Result, err, ok } from "neverthrow";
 import type { MultiplayerRuntimeManagedTransport } from "./runtimeBridge";
 import {
   GameplaySequenceTracker,
-  HostAuthorityEnforcer,
   DisruptionDetector,
 } from "./sequenceTracking";
 import {
@@ -294,10 +293,6 @@ export function createWebRtcRuntimeTransport(
   let syncPaused = false;
   let controlSequence = 1;
   const gameplaySequenceTracker = new GameplaySequenceTracker(isHostAuthority);
-  const hostAuthorityEnforcer = new HostAuthorityEnforcer(
-    isHostAuthority,
-    "host",
-  );
   const disruptionDetector = new DisruptionDetector(heartbeatTimeoutMs);
 
   function emitDisruption(event: WebRtcRuntimeDisruptionEvent): void {
@@ -375,16 +370,6 @@ export function createWebRtcRuntimeTransport(
               expectedSequence: validationResult.expectedSequence ?? 0,
               receivedSequence: envelope.matchSequence,
             });
-          }
-
-          // Authority enforcement
-          const authorityCheckResult = hostAuthorityEnforcer.validateAuthority(
-            envelope,
-            String(envelope.senderPlayerIndex),
-          );
-          if (!authorityCheckResult.isValid) {
-            // Authority violation - reject but don't pause (could be benign out-of-order)
-            return;
           }
 
           // Reset disruption detector on valid packet

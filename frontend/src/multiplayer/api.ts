@@ -134,8 +134,11 @@ export async function createLobby(
 export async function listLobbies(
   input: ListLobbiesInput,
 ): Promise<Result<readonly MultiplayerLobbySummary[], MultiplayerApiError>> {
+  const query = input.gameId
+    ? `?gameId=${encodeURIComponent(input.gameId)}`
+    : "";
   const response = await fetchJson(
-    `${BASE_PATH}?gameId=${encodeURIComponent(input.gameId)}`,
+    `${BASE_PATH}${query}`,
     {
       method: "GET",
       headers: {

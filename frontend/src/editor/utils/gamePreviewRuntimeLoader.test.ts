@@ -5,21 +5,29 @@ import { GAME_PORT_CONFIGS } from "./gamePortConfig";
 import { createPreviewModule } from "./gamePreviewRuntimeLoader";
 
 const launchPayloadSchema = z.object({
+  lobbyId: z.string(),
   matchId: z.string(),
   gameId: z.string(),
   mode: z.string(),
   trackOrLevel: z.string(),
   seed: z.number(),
+  hostPlayerIndex: z.number(),
+  maxPlayers: z.number(),
+  requiredProtocolVersion: z.number(),
+  requiredRuntimeVersion: z.string(),
   hostParticipantId: z.string(),
   players: z.array(
     z.object({
       participantId: z.string(),
       playerIndex: z.number(),
       displayName: z.string(),
+      connectionState: z.string(),
     }),
   ),
   localPlayerIndex: z.number(),
   playerCount: z.number(),
+  matchIdLow: z.number(),
+  matchIdHigh: z.number(),
 });
 
 describe("game preview runtime loader", () => {
@@ -37,22 +45,29 @@ describe("game preview runtime loader", () => {
       terrainTextureBytes: null,
       terrainPaths: null,
       networkMatchConfig: {
-        matchId: "m-1",
+        lobbyId: "f0985d6e-f6a8-4f55-b903-6d98ec3133ce",
+        matchId: "8f5fd112-87d8-41dd-8656-4745b3caa34e",
         gameId: "cro-mag",
         mode: "race",
         trackOrLevel: "0",
         seed: 1337,
+        hostPlayerIndex: 0,
+        maxPlayers: 2,
+        requiredProtocolVersion: 1,
+        requiredRuntimeVersion: "host-authoritative-v2",
         hostParticipantId: "host",
         players: [
           {
             participantId: "host",
             playerIndex: 0,
             displayName: "Host",
+            connectionState: "connected",
           },
           {
             participantId: "guest",
             playerIndex: 1,
             displayName: "Guest",
+            connectionState: "connected",
           },
         ],
       },
@@ -112,22 +127,29 @@ describe("game preview runtime loader", () => {
       terrainTextureBytes: null,
       terrainPaths: null,
       networkMatchConfig: {
-        matchId: "m-1",
+        lobbyId: "f0985d6e-f6a8-4f55-b903-6d98ec3133ce",
+        matchId: "8f5fd112-87d8-41dd-8656-4745b3caa34e",
         gameId: "cro-mag",
         mode: "race",
         trackOrLevel: "0",
         seed: 1337,
+        hostPlayerIndex: 0,
+        maxPlayers: 2,
+        requiredProtocolVersion: 1,
+        requiredRuntimeVersion: "host-authoritative-v2",
         hostParticipantId: "host",
         players: [
           {
             participantId: "host",
             playerIndex: 0,
             displayName: "Host",
+            connectionState: "connected",
           },
           {
             participantId: "guest",
             playerIndex: 1,
             displayName: "Guest",
+            connectionState: "connected",
           },
         ],
       },

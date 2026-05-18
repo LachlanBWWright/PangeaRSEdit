@@ -37,16 +37,22 @@ interface MockLobbyState {
   players: MockLobbyPlayer[];
   participantId: string;
   matchConfig?: {
+    lobbyId: string;
     matchId: string;
     gameId: string;
     mode: string;
     trackOrLevel: string;
     seed: number;
+    hostPlayerIndex: number;
+    maxPlayers: number;
+    requiredProtocolVersion: number;
+    requiredRuntimeVersion: string;
     hostParticipantId: string;
     players: {
       participantId: string;
       playerIndex: number;
       displayName: string;
+      connectionState: string;
     }[];
   };
 }
@@ -208,16 +214,22 @@ async function installMockApi(
       }
       lobby.state = "started";
       lobby.matchConfig = {
+        lobbyId: lobby.id,
         matchId: "00000000-0000-4000-8000-000000000ccc",
         gameId: lobby.gameId,
         mode: lobby.mode,
         trackOrLevel: lobby.trackOrLevel,
         seed: 99999,
+        hostPlayerIndex: 0,
+        maxPlayers: lobby.maxPlayers,
+        requiredProtocolVersion: 1,
+        requiredRuntimeVersion: "host-authoritative-v2",
         hostParticipantId,
         players: lobby.players.map((p) => ({
           participantId: p.participantId,
           playerIndex: p.playerIndex,
           displayName: p.displayName,
+          connectionState: "connected",
         })),
       };
       await json(withParticipant(lobby, participantId));

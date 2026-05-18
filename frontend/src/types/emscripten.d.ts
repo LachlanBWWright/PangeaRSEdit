@@ -64,6 +64,8 @@ declare global {
       getLocalPlayerIndex: () => number;
       getPlayerCount: () => number;
       getMatchSeed: () => number;
+      getMatchIdLow: () => number;
+      getMatchIdHigh: () => number;
       sendReliable: (bytes: ArrayBuffer) => boolean;
       sendUnreliable: (bytes: ArrayBuffer) => boolean;
       pollMessage: (maxByteCount: number) => ArrayBuffer | null;

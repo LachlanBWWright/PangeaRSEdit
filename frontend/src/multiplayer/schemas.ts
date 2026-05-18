@@ -17,14 +17,20 @@ export const MultiplayerMatchConfigPlayerSchema = z.object({
   participantId: z.string().min(1),
   playerIndex: z.number().int().nonnegative(),
   displayName: z.string().min(1),
+  connectionState: z.string().min(1),
 });
 
 export const MultiplayerMatchConfigSchema = z.object({
+  lobbyId: z.string().uuid(),
   matchId: z.string().uuid(),
   gameId: z.string().min(1),
   mode: z.string().min(1),
   trackOrLevel: z.string().min(1),
   seed: z.number().int().positive(),
+  hostPlayerIndex: z.number().int().nonnegative(),
+  maxPlayers: z.number().int().min(2).max(6),
+  requiredProtocolVersion: z.number().int().positive(),
+  requiredRuntimeVersion: z.string().min(1),
   hostParticipantId: z.string().min(1),
   players: z.array(MultiplayerMatchConfigPlayerSchema),
 });

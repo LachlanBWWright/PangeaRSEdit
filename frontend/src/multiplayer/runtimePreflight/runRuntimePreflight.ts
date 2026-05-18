@@ -59,6 +59,7 @@ function hasRequiredExports(
 async function fetchWithTimeout(
   url: string,
   timeoutMs: number,
+  method: "GET" | "HEAD" = "GET",
 ): Promise<Response | null> {
   const abortController = new AbortController();
   const timeoutId = window.setTimeout(() => {
@@ -66,6 +67,7 @@ async function fetchWithTimeout(
   }, timeoutMs);
 
   const response = await fetch(url, {
+    method,
     credentials: "same-origin",
     cache: "force-cache",
     signal: abortController.signal,
@@ -120,7 +122,11 @@ export async function runRuntimePreflight(input: {
   let wasmFetched = false;
   let dataFetched = false;
   for (const url of preloadUrls) {
-    const response = await fetchWithTimeout(url, DEPENDENCY_FETCH_TIMEOUT_MS);
+    const response = await fetchWithTimeout(
+      url,
+      DEPENDENCY_FETCH_TIMEOUT_MS,
+      "HEAD",
+    );
     if (!response || !response.ok) {
       return err({
         code: "preflight.asset-missing",

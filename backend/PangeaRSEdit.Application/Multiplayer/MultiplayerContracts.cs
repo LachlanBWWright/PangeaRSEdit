@@ -79,15 +79,21 @@ public sealed record MultiplayerLobbyPlayer(
 public sealed record MultiplayerMatchConfigPlayer(
     string ParticipantId,
     int PlayerIndex,
-    string DisplayName
+    string DisplayName,
+    string ConnectionState
 );
 
 public sealed record MultiplayerMatchConfig(
+    Guid LobbyId,
     Guid MatchId,
     string GameId,
     string Mode,
     string TrackOrLevel,
     int Seed,
+    int HostPlayerIndex,
+    int MaxPlayers,
+    int RequiredProtocolVersion,
+    string RequiredRuntimeVersion,
     string HostParticipantId,
     IReadOnlyList<MultiplayerMatchConfigPlayer> Players
 );

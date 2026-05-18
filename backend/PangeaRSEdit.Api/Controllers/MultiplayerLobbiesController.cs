@@ -282,16 +282,22 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
         var matchConfig = details.MatchConfig is null
             ? null
             : new MultiplayerMatchConfigResponse(
+                details.MatchConfig.LobbyId,
                 details.MatchConfig.MatchId,
                 details.MatchConfig.GameId,
                 details.MatchConfig.Mode,
                 details.MatchConfig.TrackOrLevel,
                 details.MatchConfig.Seed,
+                details.MatchConfig.HostPlayerIndex,
+                details.MatchConfig.MaxPlayers,
+                details.MatchConfig.RequiredProtocolVersion,
+                details.MatchConfig.RequiredRuntimeVersion,
                 details.MatchConfig.HostParticipantId,
                 details.MatchConfig.Players.Select(x => new MultiplayerMatchConfigPlayerResponse(
                     x.ParticipantId,
                     x.PlayerIndex,
-                    x.DisplayName
+                    x.DisplayName,
+                    x.ConnectionState
                 )).ToList()
             );
 

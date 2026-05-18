@@ -11,6 +11,8 @@ public sealed class EfMultiplayerLobbyService(
     MultiplayerRuntimeState runtimeState) : IMultiplayerLobbyService
 {
     private static readonly TimeSpan ParticipantStaleAfter = TimeSpan.FromMinutes(2);
+    private const int RequiredProtocolVersion = 1;
+    private const string RequiredRuntimeVersion = "host-authoritative-v2";
 
     public async Task<AppResult<MultiplayerLobbyDetails>> CreateLobbyAsync(
         CreateLobbyRequest request,
@@ -476,7 +478,7 @@ public sealed class EfMultiplayerLobbyService(
         );
     }
 
-    private static MultiplayerMatchConfig? TryBuildStoredMatchConfig(MultiplayerLobbyEntity lobby)
+    private MultiplayerMatchConfig? TryBuildStoredMatchConfig(MultiplayerLobbyEntity lobby)
     {
         if (lobby.MatchId is null || lobby.MatchSeed is null)
         {
@@ -486,27 +488,37 @@ public sealed class EfMultiplayerLobbyService(
         return BuildMatchConfig(lobby, lobby.MatchId.Value, lobby.MatchSeed.Value);
     }
 
-    private static MultiplayerMatchConfig BuildMatchConfig(
+    private MultiplayerMatchConfig BuildMatchConfig(
         MultiplayerLobbyEntity lobby,
         Guid matchId,
         int seed)
     {
+        var hostPlayerIndex = lobby.Players
+            .SingleOrDefault(x => x.ParticipantId == lobby.HostParticipantId)
+            ?.PlayerIndex ?? 0;
+        var staleCutoff = DateTimeOffset.UtcNow - ParticipantStaleAfter;
         var orderedPlayers = lobby.Players
             .OrderBy(x => x.PlayerIndex)
             .Select(x => new MultiplayerMatchConfigPlayer(
                 x.ParticipantId,
                 x.PlayerIndex,
-                x.DisplayName
+                x.DisplayName,
+                x.LastSeenAt < staleCutoff ? "stale" : "connected"
             ))
             .Cast<MultiplayerMatchConfigPlayer>()
             .ToList();
 
         return new MultiplayerMatchConfig(
+            lobby.Id,
             matchId,
             lobby.GameId,
             lobby.Mode,
             lobby.TrackOrLevel,
             seed,
+            hostPlayerIndex,
+            lobby.MaxPlayers,
+            RequiredProtocolVersion,
+            RequiredRuntimeVersion,
             lobby.HostParticipantId,
             orderedPlayers
         );

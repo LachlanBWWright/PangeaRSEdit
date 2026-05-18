@@ -1,5 +1,11 @@
 import { Result, err, ok } from "neverthrow";
 import { z } from "zod";
+import {
+  PNET_PACKET_TYPE_HOST_SNAPSHOT,
+  PNET_PLAYER_NA,
+  decodePnetHeader,
+  isPnetHostPacketType,
+} from "./pnetPacket";
 import { decodeMultiplayerPacket } from "./protocol";
 
 const packetSchema = z.instanceof(ArrayBuffer);
@@ -26,6 +32,9 @@ export interface MultiplayerRuntimeBridgeConfig {
   readonly localPlayerIndex: number;
   readonly playerCount: number;
   readonly matchSeed: number;
+  readonly hostPlayerIndex: number;
+  readonly matchIdLow: number;
+  readonly matchIdHigh: number;
 }
 
 export interface MultiplayerRuntimeBridge {
@@ -34,6 +43,8 @@ export interface MultiplayerRuntimeBridge {
   readonly getLocalPlayerIndex: () => number;
   readonly getPlayerCount: () => number;
   readonly getMatchSeed: () => number;
+  readonly getMatchIdLow: () => number;
+  readonly getMatchIdHigh: () => number;
   readonly sendReliable: (bytes: ArrayBuffer) => boolean;
   readonly sendUnreliable: (bytes: ArrayBuffer) => boolean;
   readonly pollMessage: (maxByteCount: number) => ArrayBuffer | null;
@@ -54,6 +65,8 @@ interface RuntimeBridgeWindow {
     getLocalPlayerIndex: () => number;
     getPlayerCount: () => number;
     getMatchSeed: () => number;
+    getMatchIdLow: () => number;
+    getMatchIdHigh: () => number;
     sendReliable: (bytes: ArrayBuffer) => boolean;
     sendUnreliable: (bytes: ArrayBuffer) => boolean;
     pollMessage: (maxByteCount: number) => ArrayBuffer | null;
@@ -96,6 +109,18 @@ function tracePacket(
   );
 }
 
+function isHostAuthoritativeMessageType(messageType: string): boolean {
+  return (
+    messageType === "hostSnapshot" ||
+    messageType === "hostCorrection" ||
+    messageType === "hostEvent" ||
+    messageType === "hostPause" ||
+    messageType === "hostResume" ||
+    messageType === "hostDisconnect" ||
+    messageType === "hostInputBundle"
+  );
+}
+
 export function createMultiplayerRuntimeBridge(
   config: MultiplayerRuntimeBridgeConfig,
   transport: MultiplayerRuntimeTransport,
@@ -121,6 +146,8 @@ export function createMultiplayerRuntimeBridge(
     getLocalPlayerIndex: () => config.localPlayerIndex,
     getPlayerCount: () => config.playerCount,
     getMatchSeed: () => config.matchSeed,
+    getMatchIdLow: () => config.matchIdLow,
+    getMatchIdHigh: () => config.matchIdHigh,
     sendReliable: (bytes) => {
       tracePacket("send", bytes);
       return transport.sendReliable(bytes).isOk();
@@ -153,9 +180,40 @@ export function createMultiplayerRuntimeBridge(
       if (!parsed.success) {
         return err("Invalid packet payload");
       }
+
+      const decodedPnet = decodePnetHeader(parsed.data);
+      if (decodedPnet.isOk()) {
+        const header = decodedPnet.value;
+        if (
+          header.matchIdLow !== config.matchIdLow ||
+          header.matchIdHigh !== config.matchIdHigh
+        ) {
+          return err("Rejected packet with mismatched match identity");
+        }
+        if (
+          !config.isHost &&
+          isPnetHostPacketType(header.packetType) &&
+          header.playerIndex !== PNET_PLAYER_NA &&
+          header.playerIndex !== config.hostPlayerIndex
+        ) {
+          return err("Rejected non-host authoritative packet");
+        }
+      }
+
       const decoded = decodeMultiplayerPacket(parsed.data);
       const isSnapshot =
-        decoded.isOk() && decoded.value.envelope.messageType === "hostSnapshot";
+        (decoded.isOk() &&
+          decoded.value.envelope.messageType === "hostSnapshot") ||
+        (decodedPnet.isOk() &&
+          decodedPnet.value.packetType === PNET_PACKET_TYPE_HOST_SNAPSHOT);
+      if (
+        !config.isHost &&
+        decoded.isOk() &&
+        isHostAuthoritativeMessageType(decoded.value.envelope.messageType) &&
+        decoded.value.envelope.senderPlayerIndex !== config.hostPlayerIndex
+      ) {
+        return err("Rejected non-host authoritative packet");
+      }
       if (incomingQueue.length >= maxIncomingQueueLength) {
         if (!dropOldestSnapshot()) {
           if (isSnapshot) {
@@ -185,6 +243,8 @@ export function installMultiplayerRuntimeBridge(
     getLocalPlayerIndex: bridge.getLocalPlayerIndex,
     getPlayerCount: bridge.getPlayerCount,
     getMatchSeed: bridge.getMatchSeed,
+    getMatchIdLow: bridge.getMatchIdLow,
+    getMatchIdHigh: bridge.getMatchIdHigh,
     sendReliable: bridge.sendReliable,
     sendUnreliable: bridge.sendUnreliable,
     pollMessage: bridge.pollMessage,

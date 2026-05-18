@@ -6,6 +6,26 @@ import {
   installMultiplayerRuntimeBridge,
 } from "@/multiplayer/runtimeBridge";
 
+function encodePnetV2Header(input: {
+  readonly packetType: number;
+  readonly matchIdLow: number;
+  readonly matchIdHigh: number;
+  readonly playerIndex: number;
+}): ArrayBuffer {
+  const bytes = new ArrayBuffer(28);
+  const view = new DataView(bytes);
+  view.setUint32(0, 0x54454e50, true);
+  view.setUint16(4, 2, true);
+  view.setUint16(6, input.packetType, true);
+  view.setUint32(8, input.matchIdLow, true);
+  view.setUint32(12, input.matchIdHigh, true);
+  view.setUint32(16, 12, true);
+  view.setUint32(20, 1, true);
+  view.setUint16(24, input.playerIndex, true);
+  view.setUint16(26, 0, true);
+  return bytes;
+}
+
 describe("multiplayer runtime bridge", () => {
   it("queues and polls incoming packets in order", () => {
     const bridge = createMultiplayerRuntimeBridge(
@@ -14,6 +34,9 @@ describe("multiplayer runtime bridge", () => {
         localPlayerIndex: 0,
         playerCount: 2,
         matchSeed: 1234,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
       },
       {
         sendReliable: () => ok(undefined),
@@ -49,6 +72,9 @@ describe("multiplayer runtime bridge", () => {
         localPlayerIndex: 1,
         playerCount: 2,
         matchSeed: 999,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
       },
       {
         sendReliable: () => ok(undefined),
@@ -80,6 +106,9 @@ describe("multiplayer runtime bridge", () => {
         localPlayerIndex: 0,
         playerCount: 2,
         matchSeed: 42,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
       },
       {
         sendReliable: () => ok(undefined),
@@ -104,6 +133,9 @@ describe("multiplayer runtime bridge", () => {
         localPlayerIndex: 1,
         playerCount: 2,
         matchSeed: 55,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
       },
       {
         sendReliable: () => ok(undefined),
@@ -147,6 +179,9 @@ describe("multiplayer runtime bridge", () => {
         localPlayerIndex: 0,
         playerCount: 2,
         matchSeed: 31415,
+        hostPlayerIndex: 0,
+        matchIdLow: 111,
+        matchIdHigh: 222,
       },
       {
         sendReliable: () => ok(undefined),
@@ -161,6 +196,8 @@ describe("multiplayer runtime bridge", () => {
     expect(bridge.getLocalPlayerIndex()).toBe(0);
     expect(bridge.getPlayerCount()).toBe(2);
     expect(bridge.getMatchSeed()).toBe(31415);
+    expect(bridge.getMatchIdLow()).toBe(111);
+    expect(bridge.getMatchIdHigh()).toBe(222);
   });
 
   it("clones incoming packets", () => {
@@ -170,6 +207,9 @@ describe("multiplayer runtime bridge", () => {
         localPlayerIndex: 1,
         playerCount: 2,
         matchSeed: 12,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
       },
       {
         sendReliable: () => ok(undefined),
@@ -190,6 +230,98 @@ describe("multiplayer runtime bridge", () => {
     expect(Array.from(new Uint8Array(packet))).toEqual([1, 2, 3]);
   });
 
+  it("rejects raw PNET packets with mismatched match identity", () => {
+    const bridge = createMultiplayerRuntimeBridge(
+      {
+        isHost: false,
+        localPlayerIndex: 1,
+        playerCount: 2,
+        matchSeed: 10,
+        hostPlayerIndex: 0,
+        matchIdLow: 0x01020304,
+        matchIdHigh: 0x11223344,
+      },
+      {
+        sendReliable: () => ok(undefined),
+        sendUnreliable: () => ok(undefined),
+        reportDesync: () => undefined,
+        reportMatchEnded: () => undefined,
+      },
+    );
+
+    const packet = encodePnetV2Header({
+      packetType: 3,
+      matchIdLow: 0xaaaaaaaa,
+      matchIdHigh: 0xbbbbbbbb,
+      playerIndex: 0,
+    });
+
+    expect(bridge.enqueueIncoming(packet).isErr()).toBe(true);
+  });
+
+  it("rejects raw host packets from non-host player index on clients", () => {
+    const bridge = createMultiplayerRuntimeBridge(
+      {
+        isHost: false,
+        localPlayerIndex: 1,
+        playerCount: 2,
+        matchSeed: 10,
+        hostPlayerIndex: 0,
+        matchIdLow: 0x01020304,
+        matchIdHigh: 0x11223344,
+      },
+      {
+        sendReliable: () => ok(undefined),
+        sendUnreliable: () => ok(undefined),
+        reportDesync: () => undefined,
+        reportMatchEnded: () => undefined,
+      },
+    );
+
+    const packet = encodePnetV2Header({
+      packetType: 3,
+      matchIdLow: 0x01020304,
+      matchIdHigh: 0x11223344,
+      playerIndex: 1,
+    });
+
+    expect(bridge.enqueueIncoming(packet).isErr()).toBe(true);
+  });
+
+  it("drops newest snapshot when queue is full of non-snapshots", () => {
+    const bridge = createMultiplayerRuntimeBridge(
+      {
+        isHost: true,
+        localPlayerIndex: 0,
+        playerCount: 2,
+        matchSeed: 10,
+        hostPlayerIndex: 0,
+        matchIdLow: 0x01020304,
+        matchIdHigh: 0x11223344,
+      },
+      {
+        sendReliable: () => ok(undefined),
+        sendUnreliable: () => ok(undefined),
+        reportDesync: () => undefined,
+        reportMatchEnded: () => undefined,
+      },
+    );
+
+    for (let index = 0; index < 256; index += 1) {
+      expect(
+        bridge.enqueueIncoming(Uint8Array.from([index % 255]).buffer).isOk(),
+      ).toBe(true);
+    }
+
+    const snapshotPacket = encodePnetV2Header({
+      packetType: 3,
+      matchIdLow: 0x01020304,
+      matchIdHigh: 0x11223344,
+      playerIndex: 0,
+    });
+    expect(bridge.enqueueIncoming(snapshotPacket).isOk()).toBe(true);
+  });
+
   it("installs and uninstalls PangeaNet", () => {
     const bridge = createMultiplayerRuntimeBridge(
       {
@@ -197,6 +329,9 @@ describe("multiplayer runtime bridge", () => {
         localPlayerIndex: 0,
         playerCount: 2,
         matchSeed: 10,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
       },
       {
         sendReliable: () => ok(undefined),

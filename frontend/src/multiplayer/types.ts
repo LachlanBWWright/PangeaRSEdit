@@ -32,14 +32,20 @@ export interface MultiplayerMatchConfigPlayer {
   readonly participantId: string;
   readonly playerIndex: number;
   readonly displayName: string;
+  readonly connectionState: string;
 }
 
 export interface MultiplayerMatchConfig {
+  readonly lobbyId: string;
   readonly matchId: string;
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
   readonly seed: number;
+  readonly hostPlayerIndex: number;
+  readonly maxPlayers: number;
+  readonly requiredProtocolVersion: number;
+  readonly requiredRuntimeVersion: string;
   readonly hostParticipantId: string;
   readonly players: readonly MultiplayerMatchConfigPlayer[];
 }
@@ -99,9 +105,9 @@ export interface StartLobbyInput {
   readonly lobbyId: string;
 }
 
-/** Query input used when listing lobbies for a game. */
+/** Query input used when listing open public lobbies. */
 export interface ListLobbiesInput {
-  readonly gameId: string;
+  readonly gameId?: string;
 }
 
 /** Standard error shape returned by the multiplayer API layer. */

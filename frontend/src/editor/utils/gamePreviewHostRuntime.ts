@@ -7,6 +7,7 @@ import {
   type MultiplayerRuntimeManagedTransport,
 } from "@/multiplayer/runtimeBridge";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
+import { deriveMatchIdPair } from "@/multiplayer/pnetPacket";
 import {
   applyPreviewGlobals,
   buildPreviewAssetBaseUrls,
@@ -73,6 +74,29 @@ function observeStableCanvasSize(
   isCancelled: () => boolean,
 ): () => void {
   let startTimer: number | undefined;
+  let frameId: number | undefined;
+  let sizeResolved = false;
+
+  const resolveSize = (width: number, height: number): void => {
+    if (sizeResolved || isCancelled()) {
+      return;
+    }
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    sizeResolved = true;
+    if (startTimer !== undefined) {
+      window.clearTimeout(startTimer);
+      startTimer = undefined;
+    }
+    if (frameId !== undefined) {
+      window.cancelAnimationFrame(frameId);
+      frameId = undefined;
+    }
+    observer.disconnect();
+    onStableSize(width, height);
+  };
+
   const observer = new ResizeObserver((entries) => {
     if (isCancelled()) return;
     const rect = entries[0]?.contentRect;
@@ -84,15 +108,32 @@ function observeStableCanvasSize(
 
     if (startTimer !== undefined) window.clearTimeout(startTimer);
     startTimer = window.setTimeout(() => {
-      if (isCancelled()) return;
-      observer.disconnect();
-      onStableSize(width, height);
+      resolveSize(width, height);
     }, 150);
   });
   observer.observe(canvas);
 
+  const pollCanvasSize = () => {
+    if (isCancelled() || sizeResolved) {
+      return;
+    }
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (width > 0 && height > 0) {
+      resolveSize(width, height);
+      return;
+    }
+    frameId = window.requestAnimationFrame(pollCanvasSize);
+  };
+  frameId = window.requestAnimationFrame(pollCanvasSize);
+
   return () => {
-    if (startTimer !== undefined) window.clearTimeout(startTimer);
+    if (startTimer !== undefined) {
+      window.clearTimeout(startTimer);
+    }
+    if (frameId !== undefined) {
+      window.cancelAnimationFrame(frameId);
+    }
     observer.disconnect();
   };
 }
@@ -153,11 +194,15 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
         networkMatchConfig.players.find(
           (player) => player.participantId === localParticipantId,
         )?.playerIndex ?? 0;
+      const matchIdPair = deriveMatchIdPair(networkMatchConfig.matchId);
       const bridgeConfig = {
         isHost: localParticipantId === networkMatchConfig.hostParticipantId,
         localPlayerIndex,
         playerCount: networkMatchConfig.players.length,
         matchSeed: networkMatchConfig.seed,
+        hostPlayerIndex: networkMatchConfig.hostPlayerIndex,
+        matchIdLow: matchIdPair.low || networkMatchConfig.seed,
+        matchIdHigh: matchIdPair.high,
       };
       if (networkRuntimeTransport) {
         const managedBridge = createManagedMultiplayerRuntimeBridge(

@@ -1,5 +1,6 @@
 import { Result, ResultAsync, err } from "neverthrow";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
+import { deriveMatchIdPair } from "@/multiplayer/pnetPacket";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   buildGameArguments,
@@ -51,10 +52,16 @@ function applyNetworkMatchConfig(
     matchConfig.players.find(
       (player) => player.participantId === localParticipantId,
     )?.playerIndex ?? 0;
+  const matchIdPair = deriveMatchIdPair(matchConfig.matchId);
+  const normalizedMatchIdLow =
+    matchIdPair.low === 0 ? matchConfig.seed : matchIdPair.low;
+  const normalizedMatchIdHigh = matchIdPair.high;
   const configJson = JSON.stringify({
     ...matchConfig,
     localPlayerIndex,
     playerCount: matchConfig.players.length,
+    matchIdLow: normalizedMatchIdLow,
+    matchIdHigh: normalizedMatchIdHigh,
   });
   return Result.fromThrowable(
     () => ccall("PangeaGame_SetNetworkMatchConfig", null, ["string", "number"], [configJson, configJson.length]),
