@@ -54,13 +54,20 @@ public sealed class EfMultiplayerLobbyService(
     }
 
     public async Task<AppResult<IReadOnlyList<MultiplayerLobbySummary>>> ListLobbiesAsync(
-        string gameId,
+        string? gameId,
         CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
-        var openLobbies = await dbContext.MultiplayerLobbies
+        var query = dbContext.MultiplayerLobbies
             .Include(x => x.Players)
-            .Where(x => x.GameId == gameId && x.State == "open")
+            .Where(x => x.State == "open");
+
+        if (!string.IsNullOrWhiteSpace(gameId))
+        {
+            query = query.Where(x => x.GameId == gameId);
+        }
+
+        var openLobbies = await query
             .ToListAsync(cancellationToken);
 
         var lobbies = openLobbies

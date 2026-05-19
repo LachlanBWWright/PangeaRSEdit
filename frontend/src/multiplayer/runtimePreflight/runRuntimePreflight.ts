@@ -5,7 +5,7 @@ import { buildPreviewAssetBaseUrls } from "@/editor/utils/gamePreviewRuntime";
 const PRELOAD_DEPENDENCY_PATTERN =
   /["'`]([^"'`]+\.(?:wasm|data|mem|worker\.js))["'`]/g;
 const SCRIPT_FETCH_TIMEOUT_MS = 15_000;
-const DEPENDENCY_FETCH_TIMEOUT_MS = 60_000;
+const DEPENDENCY_FETCH_TIMEOUT_MS = 120_000;
 
 const REQUIRED_EXPORTS = [
   "PangeaGame_SetNetworkMatchConfig",
@@ -35,6 +35,13 @@ export interface RuntimePreflightError {
   readonly message: string;
 }
 
+export interface RuntimePreflightProgress {
+  readonly title: string;
+  readonly description?: string;
+  readonly current: number;
+  readonly completed: number;
+}
+
 function toAssetPath(url: string): string {
   const parsed = new URL(url, window.location.origin);
   return parsed.pathname.toLowerCase();
@@ -59,7 +66,6 @@ function hasRequiredExports(
 async function fetchWithTimeout(
   url: string,
   timeoutMs: number,
-  method: "GET" | "HEAD" = "GET",
 ): Promise<Response | null> {
   const abortController = new AbortController();
   const timeoutId = window.setTimeout(() => {
@@ -67,7 +73,6 @@ async function fetchWithTimeout(
   }, timeoutMs);
 
   const response = await fetch(url, {
-    method,
     credentials: "same-origin",
     cache: "force-cache",
     signal: abortController.signal,
@@ -81,6 +86,7 @@ export async function runRuntimePreflight(input: {
   readonly config: GamePortConfig;
   readonly gameId: string;
   readonly trackOrLevel: string;
+  readonly onProgress?: (progress: RuntimePreflightProgress) => void;
 }): Promise<Result<RuntimePreflightReport, RuntimePreflightError>> {
   const startedAt = performance.now();
   const baseUrl = buildPreviewAssetBaseUrls(input.config)[0];
@@ -92,6 +98,12 @@ export async function runRuntimePreflight(input: {
   }
 
   const scriptUrl = new URL(input.config.mainJs, baseUrl).href;
+  input.onProgress?.({
+    title: "Preloading game runtime...",
+    description: input.config.mainJs,
+    current: 0,
+    completed: 3,
+  });
   const scriptResponse = await fetchWithTimeout(
     scriptUrl,
     SCRIPT_FETCH_TIMEOUT_MS,
@@ -104,6 +116,12 @@ export async function runRuntimePreflight(input: {
   }
 
   const scriptText = await scriptResponse.text().catch(() => "");
+  input.onProgress?.({
+    title: "Validating game runtime...",
+    description: input.config.mainJs,
+    current: 1,
+    completed: 3,
+  });
   const exportsResult = hasRequiredExports(scriptText);
   if (exportsResult.isErr()) {
     return err(exportsResult.error);
@@ -119,18 +137,39 @@ export async function runRuntimePreflight(input: {
     preloadUrls.add(new URL(dependencyPath, baseUrl).href);
   }
 
+  const assetUrls = Array.from(preloadUrls);
+  const completedProgress = assetUrls.length + 2;
+  input.onProgress?.({
+    title: "Checking runtime assets...",
+    description: `${String(assetUrls.length)} assets`,
+    current: 2,
+    completed: completedProgress,
+  });
+
   let wasmFetched = false;
   let dataFetched = false;
-  for (const url of preloadUrls) {
+  for (const [index, url] of assetUrls.entries()) {
+    input.onProgress?.({
+      title: "Checking runtime assets...",
+      description: toAssetPath(url),
+      current: 2 + index,
+      completed: completedProgress,
+    });
     const response = await fetchWithTimeout(
       url,
       DEPENDENCY_FETCH_TIMEOUT_MS,
-      "HEAD",
     );
     if (!response || !response.ok) {
       return err({
         code: "preflight.asset-missing",
         message: `Runtime asset missing: ${url}`,
+      });
+    }
+    const payload = await response.arrayBuffer().catch(() => null);
+    if (!payload) {
+      return err({
+        code: "preflight.asset-missing",
+        message: `Runtime asset failed to load: ${url}`,
       });
     }
     const path = toAssetPath(url);
@@ -140,12 +179,18 @@ export async function runRuntimePreflight(input: {
     if (path.endsWith(".data")) {
       dataFetched = true;
     }
+    input.onProgress?.({
+      title: "Checking runtime assets...",
+      description: toAssetPath(url),
+      current: 3 + index,
+      completed: completedProgress,
+    });
   }
 
   return ok({
     gameId: input.gameId,
     trackOrLevel: input.trackOrLevel,
-    assetUrlsChecked: Array.from(preloadUrls),
+    assetUrlsChecked: assetUrls,
     jsFetched: true,
     wasmFetched,
     dataFetched,

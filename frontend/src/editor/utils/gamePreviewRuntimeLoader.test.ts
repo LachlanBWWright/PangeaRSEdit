@@ -25,6 +25,7 @@ const launchPayloadSchema = z.object({
     }),
   ),
   localPlayerIndex: z.number(),
+  isHost: z.number(),
   playerCount: z.number(),
   matchIdLow: z.number(),
   matchIdHigh: z.number(),
@@ -71,6 +72,7 @@ describe("game preview runtime loader", () => {
           },
         ],
       },
+      localParticipantId: "host",
       onStatus: () => undefined,
       onError: () => undefined,
     });
@@ -110,6 +112,7 @@ describe("game preview runtime loader", () => {
     }
 
     expect(parsedPayload.data.localPlayerIndex).toBe(0);
+    expect(parsedPayload.data.isHost).toBe(1);
     expect(parsedPayload.data.playerCount).toBe(2);
   });
 
@@ -153,11 +156,67 @@ describe("game preview runtime loader", () => {
           },
         ],
       },
+      localParticipantId: "host",
       onStatus: () => undefined,
       onError,
     });
 
     module.onRuntimeInitialized?.();
     expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an error when local participant is missing from match players", () => {
+    const ccall = vi.fn();
+    const onError = vi.fn();
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      networkMatchConfig: {
+        lobbyId: "f0985d6e-f6a8-4f55-b903-6d98ec3133ce",
+        matchId: "8f5fd112-87d8-41dd-8656-4745b3caa34e",
+        gameId: "cro-mag",
+        mode: "race",
+        trackOrLevel: "0",
+        seed: 1337,
+        hostPlayerIndex: 0,
+        maxPlayers: 2,
+        requiredProtocolVersion: 1,
+        requiredRuntimeVersion: "host-authoritative-v2",
+        hostParticipantId: "host",
+        players: [
+          {
+            participantId: "host",
+            playerIndex: 0,
+            displayName: "Host",
+            connectionState: "connected",
+          },
+          {
+            participantId: "guest",
+            playerIndex: 1,
+            displayName: "Guest",
+            connectionState: "connected",
+          },
+        ],
+      },
+      localParticipantId: "missing-participant",
+      onStatus: () => undefined,
+      onError,
+    });
+
+    module.ccall = ccall;
+    module.onRuntimeInitialized?.();
+
+    expect(ccall).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(
+      "Local participant missing-participant was not found in match player list",
+    );
   });
 });

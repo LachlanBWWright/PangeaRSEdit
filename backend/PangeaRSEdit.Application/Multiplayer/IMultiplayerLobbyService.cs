@@ -9,7 +9,7 @@ public interface IMultiplayerLobbyService
         CancellationToken cancellationToken);
 
     Task<AppResult<IReadOnlyList<MultiplayerLobbySummary>>> ListLobbiesAsync(
-        string gameId,
+        string? gameId,
         CancellationToken cancellationToken);
 
     Task<AppResult<MultiplayerLobbyDetails>> GetLobbyAsync(

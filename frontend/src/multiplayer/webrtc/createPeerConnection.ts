@@ -11,6 +11,8 @@ function adaptDataChannel(channel: RTCDataChannel): HostSessionDataChannel {
     event: { readonly data: unknown },
   ) => void>();
 
+  channel.binaryType = "arraybuffer";
+
   channel.addEventListener("open", () => {
     onopen?.();
   });

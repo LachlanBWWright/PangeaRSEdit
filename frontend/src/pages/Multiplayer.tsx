@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { startGamePreview } from "@/editor/utils/gamePreviewHostRuntime";
 import { buildPreviewAssetBaseUrls } from "@/editor/utils/gamePreviewRuntime";
@@ -81,9 +82,17 @@ import {
   createClientRuntimeTransportGuard,
   createHostRuntimeTransportMultiplexer,
 } from "@/multiplayer/runtimeTransportMultiplexer";
-import { deriveMatchIdPair } from "@/multiplayer/pnetPacket";
+import {
+  getMultiplayerNetworkDebugOptions,
+  getMultiplayerRuntimeDebugStats,
+  setMultiplayerNetworkDebugOptions,
+  type MultiplayerNetworkDebugOptions,
+  type MultiplayerRuntimeDebugStats,
+} from "@/multiplayer/runtimeBridge";
+import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
 import { runRuntimePreflight } from "@/multiplayer/runtimePreflight/runRuntimePreflight";
 import type { StartNetworkMatchFn } from "@/editor/utils/gamePreviewRuntime";
+import { progressToast } from "@/toasts/progressToast";
 
 interface LobbyFormState {
   readonly gameId: string;
@@ -121,6 +130,8 @@ type MultiplayerUiState =
   | "waiting-for-host-start"
   | "running"
   | "disconnected";
+
+type NetworkDebugOptionKey = keyof MultiplayerNetworkDebugOptions;
 
 const defaultFormState: LobbyFormState = {
   gameId: "cromagrally",
@@ -401,18 +412,50 @@ async function preflightSelection(
   gameId: string,
   trackOrLevel: string,
 ): Promise<Result<void, string>> {
+  const toastId = "multiplayer-game-preload-progress";
   const spec = resolveMultiplayerLaunchSpecFromSelection(gameId, trackOrLevel);
   if (!spec) {
+    progressToast.fail({
+      id: toastId,
+      title: "Failed to preload game",
+      description: `Unsupported multiplayer game: ${gameId}`,
+    });
     return err(`Unsupported multiplayer game: ${gameId}`);
   }
+  progressToast.start({
+    id: toastId,
+    title: "Preloading game...",
+    description: `${gameId} ${trackOrLevel}`,
+    current: 0,
+    completed: 3,
+  });
   const result = await runRuntimePreflight({
     config: spec.config,
     gameId,
     trackOrLevel,
+    onProgress: (progress) => {
+      progressToast.update({
+        id: toastId,
+        title: progress.title,
+        description: progress.description,
+        current: progress.current,
+        completed: progress.completed,
+      });
+    },
   });
   if (result.isErr()) {
+    progressToast.fail({
+      id: toastId,
+      title: "Failed to preload game",
+      description: result.error.message,
+    });
     return err(result.error.message);
   }
+  progressToast.complete({
+    id: toastId,
+    title: "Game preloaded",
+    description: `${String(result.value.assetUrlsChecked.length)} runtime assets checked`,
+  });
   return ok(undefined);
 }
 
@@ -540,6 +583,14 @@ export function MultiplayerPage() {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [runtimeTransportRevision, setRuntimeTransportRevision] = useState(0);
+  const [runtimeDebugStats, setRuntimeDebugStats] =
+    useState<MultiplayerRuntimeDebugStats>(() =>
+      getMultiplayerRuntimeDebugStats(),
+    );
+  const [networkDebugOptions, setNetworkDebugOptions] =
+    useState<MultiplayerNetworkDebugOptions>(() =>
+      getMultiplayerNetworkDebugOptions(),
+    );
   const [rtcStatusText, setRtcStatusText] = useState("idle");
   const [forceLocalRuntimeTransport, setForceLocalRuntimeTransport] =
     useState(false);
@@ -576,6 +627,30 @@ export function MultiplayerPage() {
   const resetLobbyChatState = (): void => {
     setChatMessages([]);
     setChatDraft("");
+  };
+
+  const updateNetworkDebugOption = (
+    key: NetworkDebugOptionKey,
+    value: number,
+  ): void => {
+    setNetworkDebugOptions((previous) => {
+      const next = {
+        ...previous,
+        [key]: value,
+      };
+      setMultiplayerNetworkDebugOptions(next);
+      return getMultiplayerNetworkDebugOptions();
+    });
+  };
+
+  const resetNetworkDebugOptions = (): void => {
+    setMultiplayerNetworkDebugOptions({
+      latencyMs: 0,
+      packetLossPercent: 0,
+      packetBurstPercent: 0,
+      packetBurstSize: 1,
+    });
+    setNetworkDebugOptions(getMultiplayerNetworkDebugOptions());
   };
 
   useEffect(() => {
@@ -683,7 +758,10 @@ export function MultiplayerPage() {
         if (!matchConfig) {
           return null;
         }
-        const pair = deriveMatchIdPair(matchConfig.matchId);
+        const pair = deriveRuntimeMatchIdPair(
+          matchConfig.matchId,
+          matchConfig.seed,
+        );
         return {
           matchIdLow: pair.low,
           matchIdHigh: pair.high,
@@ -733,7 +811,10 @@ export function MultiplayerPage() {
         if (!matchConfig) {
           return null;
         }
-        const pair = deriveMatchIdPair(matchConfig.matchId);
+        const pair = deriveRuntimeMatchIdPair(
+          matchConfig.matchId,
+          matchConfig.seed,
+        );
         return {
           matchIdLow: pair.low,
           matchIdHigh: pair.high,
@@ -799,27 +880,6 @@ export function MultiplayerPage() {
   }, [closeRtcSessions]);
 
   const lobbyId = lobby?.id ?? null;
-
-  useEffect(() => {
-    if (lobbyIntent !== "create" || lobby) {
-      return;
-    }
-
-    const preloadSpec = resolveMultiplayerLaunchSpecFromSelection(
-      formState.gameId,
-      formState.trackOrLevel,
-    );
-    if (!preloadSpec) {
-      return;
-    }
-
-    const preloadKey = `selection:${formState.gameId}:${formState.trackOrLevel}`;
-    if (preloadedRuntimeKeysRef.current.has(preloadKey)) {
-      return;
-    }
-    preloadedRuntimeKeysRef.current.add(preloadKey);
-    void preloadGameRuntimeAssets(preloadSpec.config);
-  }, [formState.gameId, formState.trackOrLevel, lobby, lobbyIntent]);
 
   useEffect(() => {
     if (!lobby || lobby.state === "started") {
@@ -1474,14 +1534,29 @@ export function MultiplayerPage() {
   const isHost = Boolean(localParticipant?.isHost);
   const showDebugOverlay = shouldShowDebugOverlay();
 
+  useEffect(() => {
+    if (!showDebugOverlay) {
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      setRuntimeDebugStats(getMultiplayerRuntimeDebugStats());
+    }, 500);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [showDebugOverlay]);
+
   const activeMatchConfig =
     lobby?.state === "started" && lobby.matchConfig ? lobby.matchConfig : null;
   const activeMatchConfigRef = useRef<MultiplayerMatchConfig | null>(null);
-  activeMatchConfigRef.current = activeMatchConfig;
   const activeMatchLaunchKey =
     activeMatchConfig && localParticipantId
       ? `${activeMatchConfig.matchId}:${localParticipantId}`
       : null;
+
+  useEffect(() => {
+    activeMatchConfigRef.current = activeMatchConfig;
+  }, [activeMatchConfig]);
 
   useEffect(() => {
     const stopGame = stopGameRef.current;
@@ -1618,6 +1693,8 @@ export function MultiplayerPage() {
       },
       onError: (message) => {
         setErrorText(message);
+        setUiState("disconnected");
+        setStatusText("Runtime failed to launch");
       },
     });
     stopGameRef.current = stop;
@@ -1666,54 +1743,57 @@ export function MultiplayerPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 text-foreground md:p-8">
-      <div className="space-y-2 rounded-xl border border-border bg-linear-to-r from-slate-950/95 via-slate-900/90 to-slate-800/80 p-4 md:p-5">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
-          Multiplayer
-        </h1>
-        <p className="text-sm text-slate-200">
-          Create a lobby or join by ID, then ready up and launch together.
-        </p>
-      </div>
+    <div className="min-h-screen w-full space-y-6 p-4 text-foreground md:p-8">
+      {!lobby ? (
+        <div className="space-y-2 rounded-xl border border-border bg-linear-to-r from-slate-950/95 via-slate-900/90 to-slate-800/80 p-4 md:p-5">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
+            Multiplayer
+          </h1>
+          <p className="text-sm text-slate-200">
+            Create a lobby or join by ID, then ready up and launch together.
+          </p>
+        </div>
+      ) : null}
 
-      <Card className="border-border bg-card shadow-sm">
-        <CardHeader className="space-y-3">
-          <CardTitle>Lobby Setup</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Choose your role first, then complete only the fields needed for
-            that role.
-          </CardDescription>
-          <Tabs
-            value={lobbyIntent}
-            onValueChange={(value) => {
-              setLobbyIntent(toLobbyIntent(value));
-            }}
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="create" disabled={busy || Boolean(lobby)}>
-                Host / Create
-              </TabsTrigger>
-              <TabsTrigger value="join" disabled={busy || Boolean(lobby)}>
-                Join Existing
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="multiplayer-display-name">Display Name</Label>
-              <Input
-                id="multiplayer-display-name"
-                value={formState.displayName}
-                onChange={(event) => {
-                  setFormState({
-                    ...formState,
-                    displayName: event.target.value,
-                  });
-                }}
-              />
-            </div>
+      {!lobby ? (
+        <Card className="border-border bg-card shadow-sm">
+          <CardHeader className="space-y-3">
+            <CardTitle>Lobby Setup</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Choose your role first, then complete only the fields needed for
+              that role.
+            </CardDescription>
+            <Tabs
+              value={lobbyIntent}
+              onValueChange={(value) => {
+                setLobbyIntent(toLobbyIntent(value));
+              }}
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="create" disabled={busy || Boolean(lobby)}>
+                  Host / Create
+                </TabsTrigger>
+                <TabsTrigger value="join" disabled={busy || Boolean(lobby)}>
+                  Join Existing
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="multiplayer-display-name">Display Name</Label>
+                <Input
+                  id="multiplayer-display-name"
+                  value={formState.displayName}
+                  onChange={(event) => {
+                    setFormState({
+                      ...formState,
+                      displayName: event.target.value,
+                    });
+                  }}
+                />
+              </div>
 
             {lobbyIntent === "join" ? (
               <div className="space-y-2">
@@ -1946,8 +2026,9 @@ export function MultiplayerPage() {
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-border bg-card shadow-sm">
         <CardHeader>
@@ -1979,21 +2060,132 @@ export function MultiplayerPage() {
       </Card>
 
       {activeMatchConfig ? (
-        <Card className="border-slate-800 bg-slate-950 text-slate-100 shadow-sm">
-          <CardContent className="p-0">
-            <div
-              className="w-full overflow-hidden rounded-xl bg-black"
-              style={{ aspectRatio: "4/3" }}
-            >
-              <canvas
-                id="canvas"
-                ref={gameCanvasRef}
-                className="h-full w-full bg-black"
-                aria-label="Multiplayer Game"
-              />
+        <div className="space-y-3">
+          <Card className="border-slate-800 bg-slate-950 text-slate-100 shadow-sm">
+            <CardContent className="p-0">
+              <div
+                className="w-full overflow-hidden rounded-xl bg-black"
+                style={{ aspectRatio: "4/3" }}
+              >
+                <canvas
+                  id="canvas"
+                  ref={gameCanvasRef}
+                  className="h-full w-full bg-black"
+                  aria-label="Multiplayer Game"
+                />
+              </div>
+            </CardContent>
+          </Card>
+          {showDebugOverlay ? (
+            <div className="rounded-md border border-emerald-800 bg-black/90 p-4 text-sm text-emerald-100">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="font-semibold">Network Impairment</div>
+                  <div className="text-xs text-emerald-300">
+                    Applies only in this browser while multiplayerDebug=1.
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={resetNetworkDebugOptions}
+                >
+                  Reset
+                </Button>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="network-debug-latency">
+                      Artificial latency
+                    </Label>
+                    <span className="tabular-nums">
+                      {networkDebugOptions.latencyMs} ms
+                    </span>
+                  </div>
+                  <Slider
+                    id="network-debug-latency"
+                    min={0}
+                    max={1000}
+                    step={25}
+                    value={[networkDebugOptions.latencyMs]}
+                    onValueChange={(value) => {
+                      updateNetworkDebugOption("latencyMs", value[0] ?? 0);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="network-debug-loss">Packet loss</Label>
+                    <span className="tabular-nums">
+                      {networkDebugOptions.packetLossPercent}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="network-debug-loss"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[networkDebugOptions.packetLossPercent]}
+                    onValueChange={(value) => {
+                      updateNetworkDebugOption(
+                        "packetLossPercent",
+                        value[0] ?? 0,
+                      );
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="network-debug-burst">
+                      Packet burst chance
+                    </Label>
+                    <span className="tabular-nums">
+                      {networkDebugOptions.packetBurstPercent}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="network-debug-burst"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[networkDebugOptions.packetBurstPercent]}
+                    onValueChange={(value) => {
+                      updateNetworkDebugOption(
+                        "packetBurstPercent",
+                        value[0] ?? 0,
+                      );
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="network-debug-burst-size">
+                      Burst packet count
+                    </Label>
+                    <span className="tabular-nums">
+                      {networkDebugOptions.packetBurstSize}
+                    </span>
+                  </div>
+                  <Slider
+                    id="network-debug-burst-size"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={[networkDebugOptions.packetBurstSize]}
+                    onValueChange={(value) => {
+                      updateNetworkDebugOption(
+                        "packetBurstSize",
+                        value[0] ?? 1,
+                      );
+                    }}
+                  />
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          ) : null}
+        </div>
       ) : null}
 
       {lobby ? (
@@ -2156,22 +2348,35 @@ export function MultiplayerPage() {
             <strong>ICE state:</strong> n/a
           </div>
           <div>
-            <strong>Data-channel state:</strong> n/a
+            <strong>Data-channel state:</strong> {rtcStatusText}
           </div>
           <div>
             <strong>Packet counts:</strong> {JSON.stringify(packetCounts)}
           </div>
           <div>
-            <strong>Last sent frame:</strong> n/a
+            <strong>PNET sent reliable/unreliable:</strong>{" "}
+            {String(runtimeDebugStats.sentReliable)}/
+            {String(runtimeDebugStats.sentUnreliable)}
           </div>
           <div>
-            <strong>Last received frame:</strong> n/a
+            <strong>PNET recv/poll/reject:</strong>{" "}
+            {String(runtimeDebugStats.received)}/
+            {String(runtimeDebugStats.polled)}/{String(runtimeDebugStats.rejected)}
           </div>
           <div>
-            <strong>Input delay:</strong> n/a
+            <strong>PNET impaired drop/delay:</strong>{" "}
+            {String(runtimeDebugStats.impairedDropped)}/
+            {String(runtimeDebugStats.impairedDelayed)}
           </div>
           <div>
-            <strong>Queued input frames:</strong> n/a
+            <strong>PNET queue depth:</strong>{" "}
+            {String(runtimeDebugStats.queueDepth)}
+          </div>
+          <div>
+            <strong>PNET last:</strong>{" "}
+            {runtimeDebugStats.lastPacketDirection ?? "n/a"} type{" "}
+            {String(runtimeDebugStats.lastPacketType ?? "n/a")} seq{" "}
+            {String(runtimeDebugStats.lastPacketSequence ?? "n/a")}
           </div>
           <div>
             <strong>Current game frame:</strong> n/a
@@ -2181,6 +2386,10 @@ export function MultiplayerPage() {
           </div>
           <div>
             <strong>Last network error:</strong> {errorText ?? "none"}
+          </div>
+          <div>
+            <strong>Last PNET error:</strong>{" "}
+            {runtimeDebugStats.lastError ?? "none"}
           </div>
           <div>
             <strong>TURN relay usage:</strong> n/a

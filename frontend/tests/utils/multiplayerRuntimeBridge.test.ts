@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-import { ok } from "neverthrow";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { err, ok } from "neverthrow";
 import {
   createManagedMultiplayerRuntimeBridge,
   createMultiplayerRuntimeBridge,
+  getMultiplayerRuntimeDebugStats,
   installMultiplayerRuntimeBridge,
+  setMultiplayerNetworkDebugOptions,
 } from "@/multiplayer/runtimeBridge";
 
 function encodePnetV2Header(input: {
@@ -11,11 +13,12 @@ function encodePnetV2Header(input: {
   readonly matchIdLow: number;
   readonly matchIdHigh: number;
   readonly playerIndex: number;
+  readonly version?: number;
 }): ArrayBuffer {
   const bytes = new ArrayBuffer(28);
   const view = new DataView(bytes);
   view.setUint32(0, 0x54454e50, true);
-  view.setUint16(4, 2, true);
+  view.setUint16(4, input.version ?? 2, true);
   view.setUint16(6, input.packetType, true);
   view.setUint32(8, input.matchIdLow, true);
   view.setUint32(12, input.matchIdHigh, true);
@@ -27,6 +30,15 @@ function encodePnetV2Header(input: {
 }
 
 describe("multiplayer runtime bridge", () => {
+  afterEach(() => {
+    setMultiplayerNetworkDebugOptions({
+      latencyMs: 0,
+      packetLossPercent: 0,
+      packetBurstPercent: 0,
+      packetBurstSize: 1,
+    });
+  });
+
   it("queues and polls incoming packets in order", () => {
     const bridge = createMultiplayerRuntimeBridge(
       {
@@ -123,6 +135,107 @@ describe("multiplayer runtime bridge", () => {
 
     expect(reportDesync).toHaveBeenCalledWith(100, 111, 222);
     expect(reportMatchEnded).toHaveBeenCalledWith(3);
+  });
+
+  it("falls back to reliable send when unreliable send fails", () => {
+    const sendReliable = vi.fn(() => ok(undefined));
+    const sendUnreliable = vi.fn(() => err("State data channel is congested"));
+    const bridge = createMultiplayerRuntimeBridge(
+      {
+        isHost: false,
+        localPlayerIndex: 1,
+        playerCount: 2,
+        matchSeed: 42,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
+      },
+      {
+        sendReliable,
+        sendUnreliable,
+        reportDesync: () => undefined,
+        reportMatchEnded: () => undefined,
+      },
+    );
+
+    const payload = Uint8Array.from([1, 2, 3]).buffer;
+    expect(bridge.sendUnreliable(payload)).toBe(true);
+    expect(sendUnreliable).toHaveBeenCalledTimes(1);
+    expect(sendReliable).toHaveBeenCalledTimes(1);
+  });
+
+  it("can drop outgoing packets with debug impairment enabled", () => {
+    const sendReliable = vi.fn(() => ok(undefined));
+    setMultiplayerNetworkDebugOptions({
+      latencyMs: 0,
+      packetLossPercent: 100,
+      packetBurstPercent: 0,
+      packetBurstSize: 1,
+    });
+    const bridge = createMultiplayerRuntimeBridge(
+      {
+        isHost: false,
+        localPlayerIndex: 1,
+        playerCount: 2,
+        matchSeed: 42,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
+      },
+      {
+        sendReliable,
+        sendUnreliable: () => ok(undefined),
+        reportDesync: () => undefined,
+        reportMatchEnded: () => undefined,
+      },
+    );
+
+    expect(bridge.sendReliable(Uint8Array.from([1, 2, 3]).buffer)).toBe(true);
+    expect(sendReliable).not.toHaveBeenCalled();
+    expect(getMultiplayerRuntimeDebugStats().impairedDropped).toBeGreaterThan(0);
+    setMultiplayerNetworkDebugOptions({
+      latencyMs: 0,
+      packetLossPercent: 0,
+      packetBurstPercent: 0,
+      packetBurstSize: 1,
+    });
+  });
+
+  it("can drop incoming packets with debug impairment enabled", () => {
+    setMultiplayerNetworkDebugOptions({
+      latencyMs: 0,
+      packetLossPercent: 100,
+      packetBurstPercent: 0,
+      packetBurstSize: 1,
+    });
+    const bridge = createMultiplayerRuntimeBridge(
+      {
+        isHost: false,
+        localPlayerIndex: 1,
+        playerCount: 2,
+        matchSeed: 42,
+        hostPlayerIndex: 0,
+        matchIdLow: 11,
+        matchIdHigh: 22,
+      },
+      {
+        sendReliable: () => ok(undefined),
+        sendUnreliable: () => ok(undefined),
+        reportDesync: () => undefined,
+        reportMatchEnded: () => undefined,
+      },
+    );
+
+    expect(bridge.enqueueIncoming(Uint8Array.from([4, 5, 6]).buffer).isOk()).toBe(
+      true,
+    );
+    expect(bridge.pollMessage(16)).toBeNull();
+    setMultiplayerNetworkDebugOptions({
+      latencyMs: 0,
+      packetLossPercent: 0,
+      packetBurstPercent: 0,
+      packetBurstSize: 1,
+    });
   });
 
   it("subscribes incoming packets through managed transport", () => {
@@ -283,6 +396,36 @@ describe("multiplayer runtime bridge", () => {
       matchIdLow: 0x01020304,
       matchIdHigh: 0x11223344,
       playerIndex: 1,
+    });
+
+    expect(bridge.enqueueIncoming(packet).isErr()).toBe(true);
+  });
+
+  it("rejects raw PNET packets with unsupported version", () => {
+    const bridge = createMultiplayerRuntimeBridge(
+      {
+        isHost: false,
+        localPlayerIndex: 1,
+        playerCount: 2,
+        matchSeed: 10,
+        hostPlayerIndex: 0,
+        matchIdLow: 0x01020304,
+        matchIdHigh: 0x11223344,
+      },
+      {
+        sendReliable: () => ok(undefined),
+        sendUnreliable: () => ok(undefined),
+        reportDesync: () => undefined,
+        reportMatchEnded: () => undefined,
+      },
+    );
+
+    const packet = encodePnetV2Header({
+      packetType: 3,
+      matchIdLow: 0x01020304,
+      matchIdHigh: 0x11223344,
+      playerIndex: 0,
+      version: 99,
     });
 
     expect(bridge.enqueueIncoming(packet).isErr()).toBe(true);

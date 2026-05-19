@@ -9,6 +9,8 @@ import type { Plugin, ViteDevServer } from "vite";
 const repoRoot = path.resolve(__dirname, "..");
 const pangeaPortsSrcDir = path.resolve(repoRoot, "games/pangea-ports");
 const pangeaPortsMount = "/games/pangea-ports";
+const generatedAssetsDir = path.resolve(__dirname, "public/generated");
+const generatedAssetsMount = "/PangeaRSEdit/generated";
 
 function mimeTypeFor(filePath: string): string {
   switch (path.extname(filePath).toLowerCase()) {
@@ -92,6 +94,10 @@ function serveStaticDirectory(basePath: string, rootDir: string): Plugin {
         res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
         res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
         res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+        if (req.method === "HEAD") {
+          res.end();
+          return;
+        }
         fs.createReadStream(targetPath).pipe(res);
       });
     },
@@ -147,6 +153,7 @@ export default defineConfig({
       },
     }),
     wasm(),
+    serveStaticDirectory(generatedAssetsMount, generatedAssetsDir),
     serveStaticDirectory(pangeaPortsMount, pangeaPortsSrcDir),
   ],
   worker: { format: "es" },

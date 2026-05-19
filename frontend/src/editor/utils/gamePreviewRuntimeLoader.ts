@@ -1,6 +1,7 @@
 import { Result, ResultAsync, err } from "neverthrow";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
-import { deriveMatchIdPair } from "@/multiplayer/pnetPacket";
+import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
+import { resolveLocalPlayerIndex } from "@/multiplayer/participantIndex";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   buildGameArguments,
@@ -15,6 +16,8 @@ import {
   writeTerrainToVfs,
 } from "./gamePreviewRuntimeVfs";
 import { mapErr } from "../../utils/mapErr";
+
+const RUNTIME_SCRIPT_FETCH_TIMEOUT_MS = 20_000;
 
 export interface PreviewModuleOptions {
   readonly config: GamePortConfig;
@@ -48,20 +51,26 @@ function applyNetworkMatchConfig(
     return err("Emscripten ccall is unavailable");
   }
 
-  const localPlayerIndex =
-    matchConfig.players.find(
-      (player) => player.participantId === localParticipantId,
-    )?.playerIndex ?? 0;
-  const matchIdPair = deriveMatchIdPair(matchConfig.matchId);
-  const normalizedMatchIdLow =
-    matchIdPair.low === 0 ? matchConfig.seed : matchIdPair.low;
-  const normalizedMatchIdHigh = matchIdPair.high;
+  const localPlayerIndexResult = resolveLocalPlayerIndex(
+    matchConfig,
+    localParticipantId,
+  );
+  if (localPlayerIndexResult.isErr()) {
+    return err(localPlayerIndexResult.error);
+  }
+  const localPlayerIndex = localPlayerIndexResult.value;
+  const matchIdPair = deriveRuntimeMatchIdPair(
+    matchConfig.matchId,
+    matchConfig.seed,
+  );
   const configJson = JSON.stringify({
     ...matchConfig,
     localPlayerIndex,
+    hostPlayerIndex: matchConfig.hostPlayerIndex,
+    isHost: localParticipantId === matchConfig.hostParticipantId ? 1 : 0,
     playerCount: matchConfig.players.length,
-    matchIdLow: normalizedMatchIdLow,
-    matchIdHigh: normalizedMatchIdHigh,
+    matchIdLow: matchIdPair.low,
+    matchIdHigh: matchIdPair.high,
   });
   return Result.fromThrowable(
     () => ccall("PangeaGame_SetNetworkMatchConfig", null, ["string", "number"], [configJson, configJson.length]),
@@ -350,10 +359,19 @@ export async function loadPreviewRuntime(
     (e) => mapErr(e),
   )();
 
+  const abortController = new AbortController();
+  const fetchTimeoutId = realSetTimeout(() => {
+    abortController.abort();
+  }, RUNTIME_SCRIPT_FETCH_TIMEOUT_MS);
+
   const response = await ResultAsync.fromPromise(
-    fetch(scriptUrl, { credentials: "same-origin" }),
+    fetch(scriptUrl, {
+      credentials: "same-origin",
+      signal: abortController.signal,
+    }),
     (e) => mapErr(e),
   );
+  realClearTimeout(fetchTimeoutId);
 
   function restoreWindowGlobals(): void {
     Result.fromThrowable(

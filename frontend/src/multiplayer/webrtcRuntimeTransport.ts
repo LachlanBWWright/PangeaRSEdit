@@ -487,7 +487,7 @@ export function createWebRtcRuntimeTransport(
         bufferedAmount >= STATE_CHANNEL_SOFT_BUFFER_LIMIT_BYTES &&
         isHighFrequencyStatePacket(bytes)
       ) {
-        return ok(undefined);
+        return err("State data channel is congested");
       }
       if (bufferedAmount >= STATE_CHANNEL_HARD_BUFFER_LIMIT_BYTES) {
         return err("State data channel is congested");

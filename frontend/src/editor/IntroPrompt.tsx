@@ -447,6 +447,7 @@ export function IntroPrompt() {
     setTerrainRsrcBytes(undefined);
     setTerrainTextureBytes(undefined);
     setTestDialogOpen(true);
+    const previewToastId = "prepare-preview-level-data";
     void buildPreviewTerrainBlobs(
       combinedData,
       globals,
@@ -455,6 +456,7 @@ export function IntroPrompt() {
         const description =
           completed && total ? `${message} (${completed}/${total})` : message;
         toast.loading("Preparing level data...", {
+          id: previewToastId,
           description,
         });
       },
@@ -469,6 +471,7 @@ export function IntroPrompt() {
             },
           );
           toast.error("Preview failed", {
+            id: previewToastId,
             description: "Could not serialize the selected level for preview.",
           });
           setTerrainDataBytes(null);
@@ -485,11 +488,13 @@ export function IntroPrompt() {
         setTerrainDataBytes(blobs.dataBytes);
         setTerrainRsrcBytes(blobs.rsrcBytes);
         setTerrainTextureBytes(blobs.textureBytes);
+        toast.dismiss(previewToastId);
       })
       .catch((error: unknown) => {
         console.error("[GamePreview] Preview serialization failed", error);
         const parseResult = errorSchema.safeParse(error);
         toast.error("Preview failed", {
+          id: previewToastId,
           description: parseResult.success
             ? parseResult.data
             : "Could not serialize the selected level for preview.",

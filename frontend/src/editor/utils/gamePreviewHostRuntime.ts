@@ -7,7 +7,8 @@ import {
   type MultiplayerRuntimeManagedTransport,
 } from "@/multiplayer/runtimeBridge";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
-import { deriveMatchIdPair } from "@/multiplayer/pnetPacket";
+import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
+import { resolveLocalPlayerIndex } from "@/multiplayer/participantIndex";
 import {
   applyPreviewGlobals,
   buildPreviewAssetBaseUrls,
@@ -74,6 +75,7 @@ function observeStableCanvasSize(
   isCancelled: () => boolean,
 ): () => void {
   let startTimer: number | undefined;
+  let fallbackTimer: number | undefined;
   let frameId: number | undefined;
   let sizeResolved = false;
 
@@ -88,6 +90,10 @@ function observeStableCanvasSize(
     if (startTimer !== undefined) {
       window.clearTimeout(startTimer);
       startTimer = undefined;
+    }
+    if (fallbackTimer !== undefined) {
+      window.clearTimeout(fallbackTimer);
+      fallbackTimer = undefined;
     }
     if (frameId !== undefined) {
       window.cancelAnimationFrame(frameId);
@@ -126,10 +132,16 @@ function observeStableCanvasSize(
     frameId = window.requestAnimationFrame(pollCanvasSize);
   };
   frameId = window.requestAnimationFrame(pollCanvasSize);
+  fallbackTimer = window.setTimeout(() => {
+    resolveSize(800, 600);
+  }, 2_000);
 
   return () => {
     if (startTimer !== undefined) {
       window.clearTimeout(startTimer);
+    }
+    if (fallbackTimer !== undefined) {
+      window.clearTimeout(fallbackTimer);
     }
     if (frameId !== undefined) {
       window.cancelAnimationFrame(frameId);
@@ -176,6 +188,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
   );
   const assetBaseUrls = buildPreviewAssetBaseUrls(config);
   const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
+  onStatus("Waiting for game canvas...");
 
   const handleFullscreenChange = () => {
     if (cancelled) return;
@@ -190,18 +203,26 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     if (cancelled) return;
 
     if (networkMatchConfig && !normalLaunch && !uninstallRuntimeBridge) {
-      const localPlayerIndex =
-        networkMatchConfig.players.find(
-          (player) => player.participantId === localParticipantId,
-        )?.playerIndex ?? 0;
-      const matchIdPair = deriveMatchIdPair(networkMatchConfig.matchId);
+      const localPlayerIndexResult = resolveLocalPlayerIndex(
+        networkMatchConfig,
+        localParticipantId,
+      );
+      if (localPlayerIndexResult.isErr()) {
+        onError(localPlayerIndexResult.error);
+        return;
+      }
+      const localPlayerIndex = localPlayerIndexResult.value;
+      const matchIdPair = deriveRuntimeMatchIdPair(
+        networkMatchConfig.matchId,
+        networkMatchConfig.seed,
+      );
       const bridgeConfig = {
         isHost: localParticipantId === networkMatchConfig.hostParticipantId,
         localPlayerIndex,
         playerCount: networkMatchConfig.players.length,
         matchSeed: networkMatchConfig.seed,
         hostPlayerIndex: networkMatchConfig.hostPlayerIndex,
-        matchIdLow: matchIdPair.low || networkMatchConfig.seed,
+        matchIdLow: matchIdPair.low,
         matchIdHigh: matchIdPair.high,
       };
       if (networkRuntimeTransport) {
@@ -264,6 +285,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
         window.Module = activeModule;
         const scriptUrl =
           new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
+        onStatus("Loading runtime script...");
         const stopOrErr = await ResultAsync.fromPromise(
           loadPreviewRuntime(activeModule, scriptUrl),
           (e) => mapErr(e),

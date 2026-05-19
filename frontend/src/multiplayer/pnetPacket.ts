@@ -13,6 +13,7 @@ export const PNET_PACKET_TYPE_RESUME = 7;
 export const PNET_PACKET_TYPE_DISCONNECT = 8;
 export const PNET_PACKET_TYPE_PROTOCOL_ERROR = 9;
 export const PNET_PACKET_TYPE_VEHICLE_TYPE = 10;
+export const PNET_PACKET_TYPE_KEYFRAME_RESEND_REQUEST = 11;
 
 const PNET_HEADER_SIZE_V1 = 24;
 const PNET_HEADER_SIZE_V2 = 28;
@@ -33,7 +34,8 @@ export function isPnetClientPacketType(packetType: number): boolean {
   return (
     packetType === PNET_PACKET_TYPE_CLIENT_INPUT ||
     packetType === PNET_PACKET_TYPE_CLIENT_ACK ||
-    packetType === PNET_PACKET_TYPE_VEHICLE_TYPE
+    packetType === PNET_PACKET_TYPE_VEHICLE_TYPE ||
+    packetType === PNET_PACKET_TYPE_KEYFRAME_RESEND_REQUEST
   );
 }
 
@@ -114,5 +116,19 @@ export function deriveMatchIdPair(matchId: string): {
   return {
     low: Number.isNaN(low) ? 0 : low,
     high: Number.isNaN(high) ? 0 : high,
+  };
+}
+
+export function deriveRuntimeMatchIdPair(
+  matchId: string,
+  seed: number,
+): {
+  readonly low: number;
+  readonly high: number;
+} {
+  const pair = deriveMatchIdPair(matchId);
+  return {
+    low: pair.low === 0 ? seed : pair.low,
+    high: pair.high,
   };
 }

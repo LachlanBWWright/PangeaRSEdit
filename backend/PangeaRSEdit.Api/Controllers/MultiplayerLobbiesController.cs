@@ -37,7 +37,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
     }
 
     [HttpGet]
-    public async Task<IActionResult> ListLobbiesAsync([FromQuery] string gameId, CancellationToken cancellationToken)
+    public async Task<IActionResult> ListLobbiesAsync([FromQuery] string? gameId, CancellationToken cancellationToken)
     {
         var result = await lobbyService.ListLobbiesAsync(gameId, cancellationToken);
         if (!result.IsSuccess || result.Value is null)
