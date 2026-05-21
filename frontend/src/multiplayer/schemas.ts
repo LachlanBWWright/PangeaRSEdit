@@ -84,3 +84,12 @@ export const MultiplayerLobbyPreviewSchema = z.object({
 export const MultiplayerLobbyListSchema = z.object({
   items: z.array(MultiplayerLobbySummarySchema),
 });
+
+export const HubBooleanResultSchema = z.object({
+  value: z.boolean().nullable().optional(),
+  errorCode: z.string().nullable().optional(),
+});
+
+export const HubThrownErrorSchema = z.object({
+  message: z.string().min(1),
+});

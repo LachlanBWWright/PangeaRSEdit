@@ -35,6 +35,8 @@ import {
   type SourceCitation,
   type VerificationStatus,
 } from "@/data/items/itemModelTypes";
+import { validateItemModelMapping } from "@/data/items/itemModelAuditRules";
+import { findBestItemScreenshot, getItemScreenshotManifest } from "@/data/items/itemScreenshotManifest";
 import type {
   Citation,
   ItemParams,
@@ -85,6 +87,13 @@ export interface ItemAuditEntry {
   verificationStatus: VerificationStatus;
   modelPartCount: number;
   staticAnalysisIssues: string[];
+  screenshot:
+    | {
+        imageUrl: string;
+        verificationStatus: "verified" | "approximate";
+        variantKey: string;
+      }
+    | null;
   paramDetails: {
     p0: ParamAuditDetail;
     p1: ParamAuditDetail;
@@ -233,22 +242,10 @@ function buildModelCitations(
 function buildStaticAnalysisIssues(
   mapping: ReturnType<NonNullable<ReturnType<typeof getGameMapper>>["getMapping"]>,
 ): string[] {
-  if (!mapping) {
-    return ["No model mapping exists for this item type."];
-  }
-
-  const issues = [...(mapping.staticAnalysisIssues ?? []).map((issue) => issue.message)];
-  if (mapping.verificationStatus !== "verified") {
-    issues.push("Mapping is still approximate and not fully source-derived.");
-  }
-  if ((mapping.semanticCitations ?? []).length === 0 && (mapping.citations ?? []).length === 0) {
-    issues.push("Mapping has no source citations.");
-  }
-  if ((mapping.modelParts ?? []).some((part) => part.citations.length === 0)) {
-    issues.push("One or more model parts are missing semantic citations.");
-  }
-
-  return issues;
+  return [
+    ...(mapping?.staticAnalysisIssues ?? []).map((issue) => issue.message),
+    ...validateItemModelMapping(mapping),
+  ];
 }
 
 /** Creates a blank audit decision with every status set to unknown. */
@@ -302,6 +299,7 @@ export function buildItemAuditEntries(
     return [];
   }
   const mapper = getGameMapper(game);
+  const screenshotManifest = getItemScreenshotManifest();
   const typeIds = Object.keys(config.itemNames)
     .map((value) => Number(value))
     .filter((value) => !Number.isNaN(value))
@@ -310,6 +308,13 @@ export function buildItemAuditEntries(
   return typeIds.map((itemType) => {
     const itemParams = config.itemParams?.[itemType];
     const mapping = mapper?.getMapping(itemType);
+      const screenshot = screenshotManifest.isOk()
+        ? findBestItemScreenshot(screenshotManifest.value, {
+            game,
+            kind: "terrainItem",
+            itemType,
+          })
+        : null;
       return {
         itemType,
         itemName: config.itemNames[itemType] ?? `Item ${itemType}`,
@@ -322,6 +327,13 @@ export function buildItemAuditEntries(
         verificationStatus: mapping?.verificationStatus ?? "approximate",
         modelPartCount: mapping?.modelParts?.length ?? 1,
         staticAnalysisIssues: buildStaticAnalysisIssues(mapping),
+        screenshot: screenshot
+          ? {
+              imageUrl: screenshot.imageUrl,
+              verificationStatus: screenshot.verificationStatus,
+              variantKey: screenshot.variantKey,
+            }
+          : null,
         paramDetails: {
           p0: paramAuditDetail(itemParams?.p0),
           p1: paramAuditDetail(itemParams?.p1),

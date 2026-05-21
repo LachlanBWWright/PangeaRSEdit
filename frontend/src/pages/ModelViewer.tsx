@@ -1328,7 +1328,7 @@ export function ModelViewer() {
             className="min-h-0 min-w-0 pr-3"
           >
             <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden px-2">
-              <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden">
+              <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden py-1 pb-4">
                 {gltfUrl && (
                   <Card className="bg-gray-800 border-gray-700">
                     <CardHeader>
@@ -1522,7 +1522,11 @@ export function ModelViewer() {
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
+          <ResizablePanel
+            defaultSize={72}
+            minSize={35}
+            className="min-h-0 pl-3"
+          >
             <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">
               {/* Main viewport - 3D Scene */}
               {gltfUrl ? (

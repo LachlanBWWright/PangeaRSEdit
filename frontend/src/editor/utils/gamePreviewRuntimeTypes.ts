@@ -78,6 +78,7 @@ export interface PreviewRuntimeModule {
     argTypes: string[],
     args: unknown[],
   ) => unknown;
+  setCanvasSize?: (width: number, height: number) => void;
   calledRun?: boolean;
 }
 

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import {
@@ -852,7 +853,14 @@ export function ItemModelViewer() {
                         item.hasMapping ? "text-green-300" : "text-gray-400"
                       }`}
                     >
-                      {formatItemDisplay(item)}
+                      <ItemThumbnail
+                        game={selectedGame.id}
+                        kind={item.isSplineItem ? "splineItem" : "terrainItem"}
+                        itemType={item.type}
+                        label={formatItemDisplay(item)}
+                        params={itemParams}
+                        className="py-1"
+                      />
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -901,9 +909,17 @@ export function ItemModelViewer() {
           )}
 
           {/* Selected Item Info */}
-          {selectedItem && (
+          {selectedItem && selectedGame && (
             <div className="p-3 bg-gray-700/50 rounded text-sm space-y-1">
-              <div className="text-white font-medium">{selectedItem.name}</div>
+              <ItemThumbnail
+                game={selectedGame.id}
+                kind={selectedItem.isSplineItem ? "splineItem" : "terrainItem"}
+                itemType={selectedItem.type}
+                label={selectedItem.name}
+                params={itemParams}
+                className="mb-2"
+                metadata={`Type ${String(selectedItem.type)}`}
+              />
               <div className="text-gray-400">Type: {selectedItem.type}</div>
               {selectedItem.isSplineItem && (
                 <div className="text-cyan-300">↺ Can be a spline item</div>

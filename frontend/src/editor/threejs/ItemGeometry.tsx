@@ -34,18 +34,30 @@ import {
   LiquidPatchStyle,
 } from "@/data/items/liquidPatchItems";
 import { mapErr } from "@/utils/mapErr";
+import { sampleTerrainHeightForItemPlacement } from "./threeItemInteraction";
 interface ItemGeometryProps {
   itemData: ItemData;
   headerData: HeaderData;
   terrainData: TerrainData;
-  onItemPointerDown?: (itemIdx: number) => void;
-  draggingItemIdx?: number | null;
-  topologyVersion?: number;
+   onItemPointerDown?: (
+     itemIdx: number,
+     pointerId: number,
+     worldX: number,
+     worldZ: number,
+   ) => void;
+   onItemPointerEnter?: (itemIdx: number | null) => void;
+   onItemPointerLeave?: () => void;
+   hoveredItemIdx?: number | null;
+   selectedItemIdx?: number | null;
+   draggingItemIdx?: number | null;
+   topologyVersion?: number;
 }
 const ITEM_SIZE = 50; // World units for item cube size
 const DRAG_HIGHLIGHT_COLOR = 0x00aaff;
 const DRAG_HIGHLIGHT_OPACITY = 0.4;
 const DRAG_HIGHLIGHT_SCALE = 0.8;
+const HOVER_HIGHLIGHT_COLOR = 0xfacc15;
+const SELECTED_HIGHLIGHT_COLOR = 0x22c55e;
 const ColoredCube: React.FC<{
   position: [number, number, number];
   itemType: number;
@@ -233,6 +245,10 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   headerData,
   terrainData,
   onItemPointerDown,
+  onItemPointerEnter,
+  onItemPointerLeave,
+  hoveredItemIdx,
+  selectedItemIdx,
   draggingItemIdx,
 }) => {
   const globals = useAtomValue(Globals);
@@ -341,22 +357,61 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           terrainData,
           globals,
         );
+        const terrainHeightResult = sampleTerrainHeightForItemPlacement(
+          item.x,
+          item.z,
+          headerData,
+          terrainData,
+          globals,
+        );
         const position: [number, number, number] = [
           worldX,
-          terrainY + ITEM_SIZE / 2,
+          terrainHeightResult.match(
+            (height) => height + ITEM_SIZE / 2,
+            () => terrainY + ITEM_SIZE / 2,
+          ),
           worldZ,
         ];
         const isDragging = draggingItemIdx === idx;
+        const isHovered = hoveredItemIdx === idx;
+        const isSelected = selectedItemIdx === idx;
         const wrapWithDrag = (content: React.ReactNode) =>
           onItemPointerDown ? (
             <group
               key={`item-drag-${idx}`}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                onItemPointerEnter?.(idx);
+              }}
+              onPointerOut={(e) => {
+                e.stopPropagation();
+                onItemPointerLeave?.();
+              }}
               onPointerDown={(e) => {
                 e.stopPropagation();
-                if (e.nativeEvent.button === 0) onItemPointerDown(idx);
+                if (e.nativeEvent.button === 0) {
+                  onItemPointerDown(
+                    idx,
+                    e.nativeEvent.pointerId,
+                    e.point.x,
+                    e.point.z,
+                  );
+                }
               }}
             >
               {content}
+              {isSelected && !isDragging ? (
+                <mesh position={[0, 0, 0]}>
+                  <sphereGeometry args={[ITEM_SIZE * 0.9, 10, 10]} />
+                  <meshBasicMaterial color={SELECTED_HIGHLIGHT_COLOR} wireframe />
+                </mesh>
+              ) : null}
+              {isHovered && !isDragging ? (
+                <mesh position={[0, 0, 0]}>
+                  <sphereGeometry args={[ITEM_SIZE * 0.7, 8, 8]} />
+                  <meshBasicMaterial color={HOVER_HIGHLIGHT_COLOR} transparent opacity={0.5} wireframe />
+                </mesh>
+              ) : null}
               {isDragging && (
                 <mesh position={[0, 0, 0]}>
                   <sphereGeometry args={[ITEM_SIZE * DRAG_HIGHLIGHT_SCALE, 8, 8]} />

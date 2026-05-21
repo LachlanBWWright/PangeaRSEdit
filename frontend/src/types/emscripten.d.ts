@@ -89,6 +89,10 @@ declare global {
     PangeaGame_DebugIsNetworkMatchRunning?: () => number;
     PangeaGame_DebugHasDesync?: () => number;
     PangeaGame_DebugGetLastSyncHash?: () => number;
+    PangeaGame_DebugGetLastVisualEventSequence?: () => number;
+    PangeaGame_DebugGetAppliedVisualEventSequence?: () => number;
+    PangeaGame_DebugGetDuplicateVisualEventCount?: () => number;
+    PangeaGame_DebugGetStaleVisualEventCount?: () => number;
     PangeaGame_DebugGetPlayerPosition?: (
       playerIndex: number,
       outX: number,

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import {
   Select,
   SelectContent,
@@ -258,7 +259,16 @@ export function ItemAuditPage() {
           {currentEntry && (
             <div className="space-y-4">
               <div className="flex justify-between items-center rounded-lg border border-gray-700 bg-gray-900/60 p-3">
-                <div>
+                <div className="flex items-center gap-3">
+                  <ItemThumbnail
+                    game={selectedGame}
+                    kind="terrainItem"
+                    itemType={currentEntry.itemType}
+                    label={currentEntry.itemName}
+                    params={previewParams}
+                    metadata={`Type ${String(currentEntry.itemType)}`}
+                  />
+                  <div>
                   <p className="text-sm text-gray-400">
                     Item {currentIndex + 1} of {entries.length}
                   </p>
@@ -271,6 +281,15 @@ export function ItemAuditPage() {
                       ? `${previewMapping.modelPath}/${previewMapping.modelFile}`
                       : "Not mapped"}
                   </p>
+                  {currentEntry.screenshot ? (
+                    <p className="text-sm text-gray-400">
+                      Screenshot: {currentEntry.screenshot.verificationStatus} (
+                      {currentEntry.screenshot.variantKey})
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500">Screenshot: no screenshot</p>
+                  )}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button

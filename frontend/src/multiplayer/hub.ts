@@ -4,9 +4,11 @@ import {
   HubConnectionState,
   LogLevel,
 } from "@microsoft/signalr";
-import { ResultAsync, ok, err } from "neverthrow";
+import { ResultAsync, ok, err, type Result } from "neverthrow";
 import { buildApiUrl } from "@/api/apiBase";
 import {
+  HubBooleanResultSchema,
+  HubThrownErrorSchema,
   MultiplayerLobbyDetailsSchema,
   MultiplayerMatchConfigSchema,
 } from "./schemas";
@@ -57,6 +59,37 @@ export interface MultiplayerHubError {
 
 const HUB_URL = buildApiUrl("/api/multiplayer/signaling");
 const RECONNECT_DELAYS_MS = [0, 2000, 5000, 10000];
+
+function toHubError(error: unknown, fallbackMessage: string): MultiplayerHubError {
+  const parsed = HubThrownErrorSchema.safeParse(error);
+
+  return {
+    type: "hub",
+    message: parsed.success ? parsed.data.message : fallbackMessage,
+  };
+}
+
+function parseHubBooleanResult(
+  value: unknown,
+  fallbackMessage: string,
+): Result<void, MultiplayerHubError> {
+  const parsed = HubBooleanResultSchema.safeParse(value);
+  if (!parsed.success) {
+    return err({
+      type: "hub",
+      message: fallbackMessage,
+    });
+  }
+
+  if (parsed.data.errorCode) {
+    return err({
+      type: "hub",
+      message: parsed.data.errorCode,
+    });
+  }
+
+  return ok(undefined);
+}
 
 export class MultiplayerHubClient {
   private connection: HubConnection;
@@ -212,27 +245,19 @@ export class MultiplayerHubClient {
     participantId: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("JoinLobby", lobbyId, participantId),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error
-            ? e.message
-            : "Failed to join lobby signaling group.",
-      }),
+      this.connection.invoke<unknown>("JoinLobby", lobbyId, participantId),
+      (e) => toHubError(e, "Failed to join lobby signaling group."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to join lobby signaling group."),
     );
   }
 
   leaveLobby(lobbyId: string): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("LeaveLobby", lobbyId),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error
-            ? e.message
-            : "Failed to leave lobby signaling group.",
-      }),
+      this.connection.invoke<unknown>("LeaveLobby", lobbyId),
+      (e) => toHubError(e, "Failed to leave lobby signaling group."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to leave lobby signaling group."),
     );
   }
 
@@ -242,12 +267,9 @@ export class MultiplayerHubClient {
     sdp: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("SendOffer", lobbyId, targetParticipantId, sdp),
-      (e) => ({
-        type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to send offer.",
-      }),
-    );
+      this.connection.invoke<unknown>("SendOffer", lobbyId, targetParticipantId, sdp),
+      (e) => toHubError(e, "Failed to send offer."),
+    ).andThen((value) => parseHubBooleanResult(value, "Failed to send offer."));
   }
 
   sendAnswer(
@@ -256,12 +278,9 @@ export class MultiplayerHubClient {
     sdp: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("SendAnswer", lobbyId, targetParticipantId, sdp),
-      (e) => ({
-        type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to send answer.",
-      }),
-    );
+      this.connection.invoke<unknown>("SendAnswer", lobbyId, targetParticipantId, sdp),
+      (e) => toHubError(e, "Failed to send answer."),
+    ).andThen((value) => parseHubBooleanResult(value, "Failed to send answer."));
   }
 
   sendIceCandidate(
@@ -276,11 +295,9 @@ export class MultiplayerHubClient {
         targetParticipantId,
         candidate,
       ),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error ? e.message : "Failed to send ICE candidate.",
-      }),
+      (e) => toHubError(e, "Failed to send ICE candidate."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to send ICE candidate."),
     );
   }
 
@@ -289,23 +306,19 @@ export class MultiplayerHubClient {
     isReady: boolean,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("SetReady", lobbyId, isReady),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error ? e.message : "Failed to update ready state.",
-      }),
+      this.connection.invoke<unknown>("SetReady", lobbyId, isReady),
+      (e) => toHubError(e, "Failed to update ready state."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to update ready state."),
     );
   }
 
   notifyMatchStarting(lobbyId: string): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("NotifyMatchStarting", lobbyId),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error ? e.message : "Failed to notify match starting.",
-      }),
+      this.connection.invoke<unknown>("NotifyMatchStarting", lobbyId),
+      (e) => toHubError(e, "Failed to notify match starting."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to notify match starting."),
     );
   }
 
@@ -314,12 +327,10 @@ export class MultiplayerHubClient {
     targetParticipantId: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("RemoveParticipant", lobbyId, targetParticipantId),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error ? e.message : "Failed to remove participant.",
-      }),
+      this.connection.invoke<unknown>("RemoveParticipant", lobbyId, targetParticipantId),
+      (e) => toHubError(e, "Failed to remove participant."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to remove participant."),
     );
   }
 
@@ -328,12 +339,10 @@ export class MultiplayerHubClient {
     message: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("SendLobbyChat", lobbyId, message),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error ? e.message : "Failed to send chat message.",
-      }),
+      this.connection.invoke<unknown>("SendLobbyChat", lobbyId, message),
+      (e) => toHubError(e, "Failed to send chat message."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to send chat message."),
     );
   }
 
@@ -341,12 +350,10 @@ export class MultiplayerHubClient {
     lobbyId: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("ReportRuntimeLevelReady", lobbyId),
-      (e) => ({
-        type: "hub" as const,
-        message:
-          e instanceof Error ? e.message : "Failed to report runtime readiness.",
-      }),
+      this.connection.invoke<unknown>("ReportRuntimeLevelReady", lobbyId),
+      (e) => toHubError(e, "Failed to report runtime readiness."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to report runtime readiness."),
     );
   }
 
@@ -354,11 +361,10 @@ export class MultiplayerHubClient {
     lobbyId: string,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("NotifyRuntimeStartNow", lobbyId),
-      (e) => ({
-        type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to notify runtime start.",
-      }),
+      this.connection.invoke<unknown>("NotifyRuntimeStartNow", lobbyId),
+      (e) => toHubError(e, "Failed to notify runtime start."),
+    ).andThen((value) =>
+      parseHubBooleanResult(value, "Failed to notify runtime start."),
     );
   }
 
@@ -367,12 +373,9 @@ export class MultiplayerHubClient {
     pingMs: number,
   ): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
-      this.connection.invoke("ReportPing", lobbyId, pingMs),
-      (e) => ({
-        type: "hub" as const,
-        message: e instanceof Error ? e.message : "Failed to report ping.",
-      }),
-    );
+      this.connection.invoke<unknown>("ReportPing", lobbyId, pingMs),
+      (e) => toHubError(e, "Failed to report ping."),
+    ).andThen((value) => parseHubBooleanResult(value, "Failed to report ping."));
   }
 
   ping(nowMs: number): ResultAsync<number, MultiplayerHubError> {

@@ -1,4 +1,4 @@
-import { ResultAsync, ok } from "neverthrow";
+import { Result, ResultAsync, ok } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   createManagedMultiplayerRuntimeBridge,
@@ -57,6 +57,67 @@ function triggerResizePulse(timerIds: Set<number>): void {
     emitResize();
   }, 120);
   timerIds.add(timerId);
+}
+
+function applyRuntimeCanvasSize(
+  module: PreviewRuntimeModule,
+  width: number,
+  height: number,
+): void {
+  if (module.setCanvasSize) {
+    Result.fromThrowable(
+      () => {
+        module.setCanvasSize?.(width, height);
+      },
+      (e) => mapErr(e),
+    )();
+    return;
+  }
+
+  if (module.canvas.width !== width || module.canvas.height !== height) {
+    module.canvas.width = width;
+    module.canvas.height = height;
+  }
+}
+
+function syncRuntimeCanvasSize(module: PreviewRuntimeModule): void {
+  const width = Math.round(module.canvas.clientWidth);
+  const height = Math.round(module.canvas.clientHeight);
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  applyRuntimeCanvasSize(module, width, height);
+}
+
+function scheduleStartupCanvasSync(
+  module: PreviewRuntimeModule,
+  timerIds: Set<number>,
+  frameIds: Set<number>,
+): void {
+  const sync = (): void => {
+    syncRuntimeCanvasSize(module);
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  const requestSyncFrame = (): void => {
+    const frameId = window.requestAnimationFrame(() => {
+      frameIds.delete(frameId);
+      sync();
+    });
+    frameIds.add(frameId);
+  };
+
+  sync();
+  requestSyncFrame();
+  requestSyncFrame();
+
+  for (const delay of [50, 150, 300, 600]) {
+    const timerId = window.setTimeout(() => {
+      timerIds.delete(timerId);
+      sync();
+    }, delay);
+    timerIds.add(timerId);
+  }
 }
 
 function restorePreviewModule(
@@ -177,6 +238,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
   let uninstallRuntimeBridge: (() => void) | null = null;
   let disposeRuntimeTransportSubscription: (() => void) | null = null;
   const resizePulseTimerIds = new Set<number>();
+  const resizePulseFrameIds = new Set<number>();
   const previousModule = window.Module;
   const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
   const cleanupGlobals = applyPreviewGlobals(
@@ -281,6 +343,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           onStatus,
           onError,
         });
+        syncRuntimeCanvasSize(activeModule);
 
         window.Module = activeModule;
         const scriptUrl =
@@ -305,7 +368,11 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           return;
         }
         stopGame = stopOrErr.value;
-        triggerResizePulse(resizePulseTimerIds);
+        scheduleStartupCanvasSync(
+          activeModule,
+          resizePulseTimerIds,
+          resizePulseFrameIds,
+        );
         return;
       }
     })();
@@ -325,7 +392,11 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     for (const timerId of resizePulseTimerIds) {
       window.clearTimeout(timerId);
     }
+    for (const frameId of resizePulseFrameIds) {
+      window.cancelAnimationFrame(frameId);
+    }
     resizePulseTimerIds.clear();
+    resizePulseFrameIds.clear();
     document.removeEventListener("fullscreenchange", handleFullscreenChange);
     cleanupGlobals();
     disposeRuntimeTransportSubscription?.();

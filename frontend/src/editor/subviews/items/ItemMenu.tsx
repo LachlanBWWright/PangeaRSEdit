@@ -25,6 +25,8 @@ import { Globals } from "@/data/globals/globals";
 import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { LevelNumber } from "@/data/globals/levelNumber";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import {
   deleteSelectedItem,
   filterSafeItemValues,
@@ -48,6 +50,7 @@ export const ItemMenu = memo(function ItemMenu({
   setHeaderData?: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
+  const levelNum = useAtomValue(LevelNumber);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
@@ -122,23 +125,30 @@ export const ItemMenu = memo(function ItemMenu({
             value={selectedItemData.type.toString() ?? ""}
             onValueChange={handleTypeChange}
           >
-            <SelectTrigger>
-              <SelectValue>
-                {getItemName(globals, selectedItemData.type)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {itemValues.map((key) => (
-                <SelectItem
+              <SelectTrigger>
+                <SelectValue>
+                  {getItemName(globals, selectedItemData.type)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {itemValues.map((key) => (
+                  <SelectItem
                   key={key}
-                  className="text-white"
-                  value={key.toString()}
-                >
-                  {getItemName(globals, key)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                    className="text-white"
+                    value={key.toString()}
+                  >
+                    <ItemThumbnail
+                      game={globals.GAME_TYPE}
+                      kind="terrainItem"
+                      itemType={key}
+                      label={getItemName(globals, key)}
+                      levelNum={levelNum}
+                      className="py-1"
+                    />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
           {/* Safe Items Filter Toggle */}
           {safeItemTypes.size > 0 && (
@@ -267,27 +277,33 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   if (clickToAddItem !== undefined)
     return (
       <>
-        <Select
-          value={getItemName(globals, clickToAddItem)}
-          onValueChange={(e) => {
+          <Select
+            value={getItemName(globals, clickToAddItem)}
+            onValueChange={(e) => {
             const newItemType = parseInt(e);
             setClickToAddItem(newItemType);
           }}
-        >
-          <SelectTrigger>
-            <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {itemValues.map((key) => (
-              <SelectItem
+          >
+            <SelectTrigger>
+              <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {itemValues.map((key) => (
+                <SelectItem
                 key={key}
-                className="text-white"
-                value={key.toString()}
-              >
-                {getItemName(globals, key)}
-              </SelectItem>
-            ))}
-          </SelectContent>
+                  className="text-white"
+                  value={key.toString()}
+                >
+                  <ItemThumbnail
+                    game={globals.GAME_TYPE}
+                    kind="terrainItem"
+                    itemType={key}
+                    label={getItemName(globals, key)}
+                    className="py-1"
+                  />
+                </SelectItem>
+              ))}
+            </SelectContent>
         </Select>
 
         <p>Click on the Canvas to add the selected item</p>

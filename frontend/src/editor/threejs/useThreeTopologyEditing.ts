@@ -3,6 +3,7 @@ import type { RefObject } from "react";
 import type { Mesh } from "three";
 import type { Event } from "three";
 import type { Updater } from "use-immer";
+import { useAtom } from "jotai";
 import type {
   HeaderData,
   ItemData,
@@ -23,11 +24,18 @@ import {
   worldToTile,
 } from "../utils/topologyBrushUtils";
 import { hasNativePointerEvent, hasPointProperty } from "./threeExportHelpers";
+import { SelectedItem } from "@/data/items/itemAtoms";
+import {
+  createThreeItemDragState,
+  getDraggedItemPlacement,
+  updateTerrainItemPlacement,
+} from "./threeItemInteraction";
 
 interface UseThreeTopologyEditingArgs {
   globals: GlobalsInterface;
   header: HeaderData["Hedr"][1000]["obj"];
   terrainData: TerrainData;
+  itemData: ItemData | null;
   setTerrainData?: Updater<TerrainData>;
   setItemData?: Updater<ItemData | null>;
   isEditingTopology: boolean;
@@ -46,6 +54,7 @@ export function useThreeTopologyEditing({
   globals,
   header,
   terrainData,
+  itemData,
   setTerrainData,
   setItemData,
   isEditingTopology,
@@ -68,9 +77,13 @@ export function useThreeTopologyEditing({
   const [isShiftHeld, setIsShiftHeld] = useState(false);
   const [topologyVersion, setTopologyVersion] = useState(0);
   const [draggingItemIdx, setDraggingItemIdx] = useState<number | null>(null);
+  const [hoveredItemIdx, setHoveredItemIdx] = useState<number | null>(null);
+  const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
 
   const lastBrushCenterRef = useRef<{ x: number; y: number } | null>(null);
-  const dragItemRef = useRef<number | null>(null);
+  const dragItemRef = useRef<ReturnType<typeof createThreeItemDragState> | null>(
+    null,
+  );
   const topologyStrokeRef = useRef<{
     floorSnapshot: number[];
     roofSnapshot: number[] | undefined;
@@ -229,13 +242,21 @@ export function useThreeTopologyEditing({
         const worldX = event.point.x;
         const worldZ = event.point.z;
         const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
-        const itemIdx = dragItemRef.current;
+        const dragState = dragItemRef.current;
         setItemData((data) => {
-          if (!data) return;
-          const item = data.Itms[1000]?.obj?.[itemIdx];
-          if (!item) return;
-          item.x = Math.round(worldX / scale);
-          item.z = Math.round(worldZ / scale);
+          if (!data || !dragState) return;
+          const nextPlacement = getDraggedItemPlacement(
+            dragState,
+            scale,
+            worldX,
+            worldZ,
+          );
+          updateTerrainItemPlacement(
+            data,
+            dragState.itemIndex,
+            nextPlacement.x,
+            nextPlacement.z,
+          );
         });
         return;
       }
@@ -330,12 +351,21 @@ export function useThreeTopologyEditing({
   );
 
   const handleItemPointerDown = useCallback(
-    (itemIdx: number) => {
-      if (!setItemData) return;
-      dragItemRef.current = itemIdx;
+    (itemIdx: number, pointerId: number, worldX: number, worldZ: number) => {
+      const item = itemData?.Itms?.[1000]?.obj?.[itemIdx];
+      if (!setItemData || !item) return;
+      setSelectedItem(itemIdx);
+      dragItemRef.current = createThreeItemDragState(
+        itemIdx,
+        pointerId,
+        item.x,
+        item.z,
+        worldX,
+        worldZ,
+      );
       setDraggingItemIdx(itemIdx);
     },
-    [setItemData],
+    [itemData, setItemData, setSelectedItem],
   );
 
   const handlePointerUp = useCallback(() => {
@@ -370,11 +400,15 @@ export function useThreeTopologyEditing({
     isShiftHeld,
     topologyVersion,
     draggingItemIdx,
+    hoveredItemIdx,
+    selectedItemIdx: selectedItem ?? null,
     displacementMagnitude,
     displacementDirection,
     handlePointerMove,
     handlePointerDown,
     handlePointerUp,
     handleItemPointerDown,
+    handleItemPointerEnter: setHoveredItemIdx,
+    handleItemPointerLeave: () => setHoveredItemIdx(null),
   };
 }

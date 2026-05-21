@@ -542,6 +542,46 @@ function filterPublicLobbies(
   });
 }
 
+interface NativeVisualDebugStats {
+  readonly frameNumber: number | null;
+  readonly hasDesync: boolean | null;
+  readonly lastSyncHash: number | null;
+  readonly lastVisualEventSequence: number | null;
+  readonly appliedVisualEventSequence: number | null;
+  readonly duplicateVisualEventCount: number | null;
+  readonly staleVisualEventCount: number | null;
+}
+
+function readNativeVisualDebugStats(): NativeVisualDebugStats {
+  if (typeof window === "undefined") {
+    return {
+      frameNumber: null,
+      hasDesync: null,
+      lastSyncHash: null,
+      lastVisualEventSequence: null,
+      appliedVisualEventSequence: null,
+      duplicateVisualEventCount: null,
+      staleVisualEventCount: null,
+    };
+  }
+  return {
+    frameNumber: window.PangeaGame_DebugGetFrameNumber?.() ?? null,
+    hasDesync:
+      window.PangeaGame_DebugHasDesync !== undefined
+        ? window.PangeaGame_DebugHasDesync() !== 0
+        : null,
+    lastSyncHash: window.PangeaGame_DebugGetLastSyncHash?.() ?? null,
+    lastVisualEventSequence:
+      window.PangeaGame_DebugGetLastVisualEventSequence?.() ?? null,
+    appliedVisualEventSequence:
+      window.PangeaGame_DebugGetAppliedVisualEventSequence?.() ?? null,
+    duplicateVisualEventCount:
+      window.PangeaGame_DebugGetDuplicateVisualEventCount?.() ?? null,
+    staleVisualEventCount:
+      window.PangeaGame_DebugGetStaleVisualEventCount?.() ?? null,
+  };
+}
+
 export function MultiplayerPage() {
   const RUNTIME_PROTOCOL_VERSION = 1;
   const RUNTIME_COMPAT_VERSION = "host-authoritative-v2";
@@ -587,6 +627,9 @@ export function MultiplayerPage() {
     useState<MultiplayerRuntimeDebugStats>(() =>
       getMultiplayerRuntimeDebugStats(),
     );
+  const [nativeDebugStats, setNativeDebugStats] = useState<NativeVisualDebugStats>(
+    () => readNativeVisualDebugStats(),
+  );
   const [networkDebugOptions, setNetworkDebugOptions] =
     useState<MultiplayerNetworkDebugOptions>(() =>
       getMultiplayerNetworkDebugOptions(),
@@ -1540,6 +1583,7 @@ export function MultiplayerPage() {
     }
     const intervalId = window.setInterval(() => {
       setRuntimeDebugStats(getMultiplayerRuntimeDebugStats());
+      setNativeDebugStats(readNativeVisualDebugStats());
     }, 500);
     return () => {
       window.clearInterval(intervalId);
@@ -2379,10 +2423,30 @@ export function MultiplayerPage() {
             {String(runtimeDebugStats.lastPacketSequence ?? "n/a")}
           </div>
           <div>
-            <strong>Current game frame:</strong> n/a
+            <strong>Current game frame:</strong>{" "}
+            {nativeDebugStats.frameNumber ?? "n/a"}
           </div>
           <div>
-            <strong>Last sync hash:</strong> n/a
+            <strong>Last sync hash:</strong>{" "}
+            {nativeDebugStats.lastSyncHash ?? "n/a"}
+          </div>
+          <div>
+            <strong>Game desync flag:</strong>{" "}
+            {nativeDebugStats.hasDesync === null
+              ? "n/a"
+              : nativeDebugStats.hasDesync
+                ? "yes"
+                : "no"}
+          </div>
+          <div>
+            <strong>Visual events sent/applied:</strong>{" "}
+            {nativeDebugStats.lastVisualEventSequence ?? "n/a"}/
+            {nativeDebugStats.appliedVisualEventSequence ?? "n/a"}
+          </div>
+          <div>
+            <strong>Visual events duplicate/stale:</strong>{" "}
+            {nativeDebugStats.duplicateVisualEventCount ?? "n/a"}/
+            {nativeDebugStats.staleVisualEventCount ?? "n/a"}
           </div>
           <div>
             <strong>Last network error:</strong> {errorText ?? "none"}

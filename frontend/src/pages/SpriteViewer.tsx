@@ -1234,7 +1234,7 @@ export function SpriteViewer() {
           : "No file";
 
   return (
-    <div className="h-full overflow-hidden bg-gray-950 p-3 text-white">
+    <div className="h-full overflow-hidden bg-gray-900 p-4 text-white">
       <ResizablePanelGroup
         orientation="horizontal"
         className="h-full w-full min-w-0"
@@ -1244,231 +1244,237 @@ export function SpriteViewer() {
           minSize={18}
           className="min-h-0 min-w-0 pr-3"
         >
-          <div className="h-full flex flex-col space-y-3 overflow-y-auto overflow-x-hidden rounded-lg border border-gray-800 bg-gray-900 p-3">
-            <FileUploadPanel
-              selectedType={uploadFileType}
-              onTypeChange={setUploadFileType}
-              onFileSelected={handleCustomFileUpload}
-              loading={loading}
-            />
+          <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden px-2">
+            <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden py-1 pb-4">
+              <FileUploadPanel
+                selectedType={uploadFileType}
+                onTypeChange={setUploadFileType}
+                onFileSelected={handleCustomFileUpload}
+                loading={loading}
+              />
 
-            <MightyMikeAssetBrowser
-              selectedType={assetFileType}
-              onTypeChange={setAssetFileType}
-              onAssetSelect={(filename) => {
-                if (assetFileType === "sprites") {
-                  handleLoadSpritesFile(filename);
-                } else if (assetFileType === "tga") {
-                  handleLoadTGAFile(filename);
-                } else if (assetFileType === "tileset") {
-                  handleLoadTilesetFile(filename);
-                }
-              }}
-              loading={loading}
-              loadedFilename={loadedData?.filename}
-            />
+              <MightyMikeAssetBrowser
+                selectedType={assetFileType}
+                onTypeChange={setAssetFileType}
+                onAssetSelect={(filename) => {
+                  if (assetFileType === "sprites") {
+                    handleLoadSpritesFile(filename);
+                  } else if (assetFileType === "tga") {
+                    handleLoadTGAFile(filename);
+                  } else if (assetFileType === "tileset") {
+                    handleLoadTilesetFile(filename);
+                  }
+                }}
+                loading={loading}
+                loadedFilename={loadedData?.filename}
+              />
 
-            {loadedData?.type === "sprites" && (
-              <>
-                <PaletteSelector
-                  palettes={customPalettes}
-                  currentPalette={currentPalette}
-                  onPaletteSelect={(palette) => {
-                    handlePaletteSelect(palette);
-                    setShowPaletteEditor(false);
-                  }}
-                  onCreateNew={() => {
-                    const newPalette = createPalette(
-                      `Custom ${customPalettes.length + 1}`,
-                    );
-                    setCustomPalettes([...customPalettes, newPalette]);
-                    setCurrentPalette(newPalette);
-                    setShowPaletteEditor(true);
-                  }}
-                />
-
-                {showPaletteEditor && (
-                  <PaletteEditor
-                    palette={currentPalette}
-                    onPaletteChange={(updated) => {
-                      setCurrentPalette(updated);
-                      const idx = customPalettes.findIndex(
-                        (p) => p.name === updated.name,
-                      );
-                      if (idx >= 0) {
-                        const newPalettes = [...customPalettes];
-                        newPalettes[idx] = updated;
-                        setCustomPalettes(newPalettes);
-                      }
+              {loadedData?.type === "sprites" && (
+                <>
+                  <PaletteSelector
+                    palettes={customPalettes}
+                    currentPalette={currentPalette}
+                    onPaletteSelect={(palette) => {
+                      handlePaletteSelect(palette);
+                      setShowPaletteEditor(false);
                     }}
-                    onSaveAsNew={(palette) => {
-                      const newPalette = clonePalette(palette);
-                      newPalette.name = `${palette.name} Copy`;
+                    onCreateNew={() => {
+                      const newPalette = createPalette(
+                        `Custom ${customPalettes.length + 1}`,
+                      );
                       setCustomPalettes([...customPalettes, newPalette]);
                       setCurrentPalette(newPalette);
+                      setShowPaletteEditor(true);
                     }}
                   />
-                )}
-              </>
-            )}
 
-            {loadedData?.type === "sprites" && (
-              <SpriteControls
-                shapesFile={loadedData.data}
-                selectedShapeIndex={selectedShapeIndex}
-                selectedFrameIndex={selectedFrameIndex}
-                onShapeChange={(idx) => {
-                  setSelectedShapeIndex(idx);
-                  setSelectedFrameIndex(0);
-                }}
-                onFrameChange={setSelectedFrameIndex}
-              />
-            )}
-
-            {loadedData?.type === "sprites" && (
-              <EditorPanel title="Sprite Tools">
-                <EditorField label="Mode">
-                  <div className="flex flex-wrap gap-1">
-                    <Button
-                      size="sm"
-                      variant={editMode === "view" ? "default" : "outline"}
-                      className="text-white"
-                      onClick={() => setEditMode("view")}
-                    >
-                      <Eye className="w-3 h-3 mr-1" /> View
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={editMode === "paint" ? "default" : "outline"}
-                      className="text-white"
-                      onClick={() => setEditMode("paint")}
-                    >
-                      <Paintbrush className="w-3 h-3 mr-1" /> Paint
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={editMode === "erase" ? "default" : "outline"}
-                      className="text-white"
-                      onClick={() => setEditMode("erase")}
-                    >
-                      <Eraser className="w-3 h-3 mr-1" /> Erase
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={
-                        editMode === "eyedropper" ? "default" : "outline"
-                      }
-                      className="text-white"
-                      onClick={() => setEditMode("eyedropper")}
-                    >
-                      <Pipette className="w-3 h-3 mr-1" /> Pick
-                    </Button>
-                  </div>
-                </EditorField>
-                {(editMode === "paint" || editMode === "eyedropper") && (
-                  <EditorField label="Palette Index">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded border border-gray-600 shrink-0"
-                        style={{ backgroundColor: selectedColorStyle }}
-                      />
-                      <span className="text-xs text-gray-300 w-16">
-                        Index: {selectedPaletteColorIndex}
-                      </span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={255}
-                        value={selectedPaletteColorIndex}
-                        onChange={(e) =>
-                          setSelectedPaletteColorIndex(
-                            parseInt(e.target.value, 10),
-                          )
+                  {showPaletteEditor && (
+                    <PaletteEditor
+                      palette={currentPalette}
+                      onPaletteChange={(updated) => {
+                        setCurrentPalette(updated);
+                        const idx = customPalettes.findIndex(
+                          (p) => p.name === updated.name,
+                        );
+                        if (idx >= 0) {
+                          const newPalettes = [...customPalettes];
+                          newPalettes[idx] = updated;
+                          setCustomPalettes(newPalettes);
                         }
-                        className="flex-1"
-                      />
+                      }}
+                      onSaveAsNew={(palette) => {
+                        const newPalette = clonePalette(palette);
+                        newPalette.name = `${palette.name} Copy`;
+                        setCustomPalettes([...customPalettes, newPalette]);
+                        setCurrentPalette(newPalette);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+
+              {loadedData?.type === "sprites" && (
+                <SpriteControls
+                  shapesFile={loadedData.data}
+                  selectedShapeIndex={selectedShapeIndex}
+                  selectedFrameIndex={selectedFrameIndex}
+                  onShapeChange={(idx) => {
+                    setSelectedShapeIndex(idx);
+                    setSelectedFrameIndex(0);
+                  }}
+                  onFrameChange={setSelectedFrameIndex}
+                />
+              )}
+
+              {loadedData?.type === "sprites" && (
+                <EditorPanel title="Sprite Tools">
+                  <EditorField label="Mode">
+                    <div className="flex flex-wrap gap-1">
+                      <Button
+                        size="sm"
+                        variant={editMode === "view" ? "default" : "outline"}
+                        className="text-white"
+                        onClick={() => setEditMode("view")}
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={editMode === "paint" ? "default" : "outline"}
+                        className="text-white"
+                        onClick={() => setEditMode("paint")}
+                      >
+                        <Paintbrush className="w-3 h-3 mr-1" /> Paint
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={editMode === "erase" ? "default" : "outline"}
+                        className="text-white"
+                        onClick={() => setEditMode("erase")}
+                      >
+                        <Eraser className="w-3 h-3 mr-1" /> Erase
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={
+                          editMode === "eyedropper" ? "default" : "outline"
+                        }
+                        className="text-white"
+                        onClick={() => setEditMode("eyedropper")}
+                      >
+                        <Pipette className="w-3 h-3 mr-1" /> Pick
+                      </Button>
                     </div>
                   </EditorField>
-                )}
-              </EditorPanel>
-            )}
+                  {(editMode === "paint" || editMode === "eyedropper") && (
+                    <EditorField label="Palette Index">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-6 h-6 rounded border border-gray-600 shrink-0"
+                          style={{ backgroundColor: selectedColorStyle }}
+                        />
+                        <span className="text-xs text-gray-300 w-16">
+                          Index: {selectedPaletteColorIndex}
+                        </span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={255}
+                          value={selectedPaletteColorIndex}
+                          onChange={(e) =>
+                            setSelectedPaletteColorIndex(
+                              parseInt(e.target.value, 10),
+                            )
+                          }
+                          className="flex-1"
+                        />
+                      </div>
+                    </EditorField>
+                  )}
+                </EditorPanel>
+              )}
 
-            {loadedData?.type === "tileset" && (
-              <TilesetEditor
-                tileCount={loadedData.data.numTileDefinitions}
-                selectedTileIndex={selectedTileIndex}
-                onSelectTile={setSelectedTileIndex}
-                currentTilesetScene={currentTilesetScene}
-                currentPaletteScene={currentTilesetPaletteScene}
-                onPaletteSceneChange={handleTilesetPaletteSceneChange}
-              />
-            )}
+              {loadedData?.type === "tileset" && (
+                <TilesetEditor
+                  tileCount={loadedData.data.numTileDefinitions}
+                  selectedTileIndex={selectedTileIndex}
+                  onSelectTile={setSelectedTileIndex}
+                  currentTilesetScene={currentTilesetScene}
+                  currentPaletteScene={currentTilesetPaletteScene}
+                  onPaletteSceneChange={handleTilesetPaletteSceneChange}
+                />
+              )}
 
-            {loadedData && (
-              <DisplayOptionsPanel
-                options={displayOptions}
-                onOptionsChange={setDisplayOptions}
-                showSpriteOptions={loadedData.type === "sprites"}
-              />
-            )}
+              {loadedData && (
+                <DisplayOptionsPanel
+                  options={displayOptions}
+                  onOptionsChange={setDisplayOptions}
+                  showSpriteOptions={loadedData.type === "sprites"}
+                />
+              )}
 
-            {loadedData?.type === "sprites" && (
-              <EditorPanel title="Export">
-                <Button
-                  variant="outline"
-                  className="w-full text-white"
-                  onClick={handleDownloadFrame}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Frame
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full text-white"
-                  onClick={handleDownloadAllFrames}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download All Frames
-                </Button>
-              </EditorPanel>
-            )}
+              {loadedData?.type === "sprites" && (
+                <EditorPanel title="Export">
+                  <Button
+                    variant="outline"
+                    className="w-full text-white"
+                    onClick={handleDownloadFrame}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Frame
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full text-white"
+                    onClick={handleDownloadAllFrames}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download All Frames
+                  </Button>
+                </EditorPanel>
+              )}
 
-            {loadedData?.type === "tileset" && (
-              <EditorPanel title="Export">
-                <Button
-                  variant="outline"
-                  className="w-full text-white"
-                  onClick={handleDownloadTile}
-                  disabled={selectedTileIndex === undefined}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Tile
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full text-white"
-                  onClick={handleDownloadTileset}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Tileset
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full text-white"
-                  onClick={handleDownloadAllTiles}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download All Tiles
-                </Button>
-              </EditorPanel>
-            )}
+              {loadedData?.type === "tileset" && (
+                <EditorPanel title="Export">
+                  <Button
+                    variant="outline"
+                    className="w-full text-white"
+                    onClick={handleDownloadTile}
+                    disabled={selectedTileIndex === undefined}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Tile
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full text-white"
+                    onClick={handleDownloadTileset}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Tileset
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full text-white"
+                    onClick={handleDownloadAllTiles}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download All Tiles
+                  </Button>
+                </EditorPanel>
+              )}
+            </div>
           </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
-        <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
-          <div className="h-full relative overflow-hidden rounded-lg border border-gray-800 bg-gray-900 flex flex-col">
+        <ResizablePanel
+          defaultSize={72}
+          minSize={35}
+          className="min-h-0 pl-3"
+        >
+          <div className="h-full relative overflow-hidden rounded-lg bg-gray-800 flex flex-col">
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-800 px-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-gray-100">

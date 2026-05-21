@@ -72,7 +72,7 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(222.2 47.4% 8%);
+  background: transparent;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb {
@@ -83,10 +83,9 @@ body {
   background: hsl(217.2 32.6% 38%);
 }
 ::-webkit-scrollbar-corner {
-  background: hsl(222.2 47.4% 8%);
+  background: transparent;
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(217.2 32.6% 28%) hsl(222.2 47.4% 8%);
+  scrollbar-color: hsl(217.2 32.6% 28%) transparent;
 }
-
