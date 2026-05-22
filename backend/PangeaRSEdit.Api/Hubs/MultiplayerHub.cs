@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using Microsoft.AspNetCore.SignalR;
+using PangeaRSEdit.Application.Common;
 using PangeaRSEdit.Application.Multiplayer;
 using PangeaRSEdit.Infrastructure.Multiplayer;
 
@@ -27,19 +28,19 @@ public sealed class MultiplayerHub : Hub
     /// Join the SignalR group for a lobby so subsequent signaling messages
     /// are visible to all participants in that lobby.
     /// </summary>
-    public async Task JoinLobby(Guid lobbyId, string participantId)
+    public async Task<AppResult<bool>> JoinLobby(Guid lobbyId, string participantId)
     {
         var result = await _lobbyService.GetLobbyAsync(lobbyId, CancellationToken.None);
         if (!result.IsSuccess)
         {
-            throw new HubException($"Lobby not found: {lobbyId}");
+            return AppResult<bool>.Failure(AppErrors.LobbyNotFound);
         }
 
         var lobby = result.Value!;
         var isMember = lobby.Players.Any(p => p.ParticipantId == participantId);
         if (!isMember)
         {
-            throw new HubException("Participant is not a member of this lobby.");
+            return AppResult<bool>.Failure(AppErrors.LobbyForbidden);
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, LobbyGroupName(lobbyId));
@@ -53,12 +54,14 @@ public sealed class MultiplayerHub : Hub
         // Notify other participants that this peer has connected
         await Clients.OthersInGroup(LobbyGroupName(lobbyId))
             .SendAsync("PeerJoined", participantId);
+
+        return AppResult<bool>.Success(true);
     }
 
     /// <summary>
     /// Leave the lobby group and notify remaining participants.
     /// </summary>
-    public async Task LeaveLobby(Guid lobbyId)
+    public async Task<AppResult<bool>> LeaveLobby(Guid lobbyId)
     {
         var participantId = GetCallerParticipantId();
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, LobbyGroupName(lobbyId));
@@ -72,66 +75,145 @@ public sealed class MultiplayerHub : Hub
 
         Context.Items.Remove("lobbyId");
         Context.Items.Remove("participantId");
+        return AppResult<bool>.Success(true);
     }
 
     /// <summary>
     /// Relay a WebRTC offer SDP to a specific peer in the same lobby.
     /// </summary>
-    public async Task SendOffer(Guid lobbyId, string targetParticipantId, string sdp)
+    public async Task<AppResult<bool>> SendOffer(Guid lobbyId, string targetParticipantId, string sdp)
     {
-        var lobby = await GetAuthorizedLobbyAsync(lobbyId);
-        ValidateSdpSize(sdp);
-        var fromId = GetCallerParticipantId()!;
-        ValidateSignalingAllowed(lobby);
-        ValidateTargetParticipant(lobby, targetParticipantId);
-        var targetConnectionId = GetTargetConnectionId(targetParticipantId);
+        var lobbyResult = await GetAuthorizedLobbyAsync(lobbyId);
+        if (!lobbyResult.IsSuccess || lobbyResult.Value is null)
+        {
+            return AppResult<bool>.Failure(lobbyResult.ErrorCode ?? AppErrors.LobbyNotFound);
+        }
 
-        await Clients.Client(targetConnectionId)
+        var sdpResult = ValidateSdpSize(sdp);
+        if (!sdpResult.IsSuccess)
+        {
+            return sdpResult;
+        }
+
+        var lobby = lobbyResult.Value;
+        var fromId = GetCallerParticipantId()!;
+        var signalingResult = ValidateSignalingAllowed(lobby);
+        if (!signalingResult.IsSuccess)
+        {
+            return signalingResult;
+        }
+
+        var targetResult = ValidateTargetParticipant(lobby, targetParticipantId);
+        if (!targetResult.IsSuccess)
+        {
+            return targetResult;
+        }
+
+        var connectionResult = GetTargetConnectionId(targetParticipantId);
+        if (!connectionResult.IsSuccess || connectionResult.Value is null)
+        {
+            return AppResult<bool>.Failure(connectionResult.ErrorCode ?? AppErrors.LobbyForbidden);
+        }
+
+        await Clients.Client(connectionResult.Value)
             .SendAsync("ReceiveOffer", fromId, targetParticipantId, sdp);
+        return AppResult<bool>.Success(true);
     }
 
     /// <summary>
     /// Relay a WebRTC answer SDP to a specific peer in the same lobby.
     /// </summary>
-    public async Task SendAnswer(Guid lobbyId, string targetParticipantId, string sdp)
+    public async Task<AppResult<bool>> SendAnswer(Guid lobbyId, string targetParticipantId, string sdp)
     {
-        var lobby = await GetAuthorizedLobbyAsync(lobbyId);
-        ValidateSdpSize(sdp);
-        var fromId = GetCallerParticipantId()!;
-        ValidateSignalingAllowed(lobby);
-        ValidateTargetParticipant(lobby, targetParticipantId);
-        var targetConnectionId = GetTargetConnectionId(targetParticipantId);
+        var lobbyResult = await GetAuthorizedLobbyAsync(lobbyId);
+        if (!lobbyResult.IsSuccess || lobbyResult.Value is null)
+        {
+            return AppResult<bool>.Failure(lobbyResult.ErrorCode ?? AppErrors.LobbyNotFound);
+        }
 
-        await Clients.Client(targetConnectionId)
+        var sdpResult = ValidateSdpSize(sdp);
+        if (!sdpResult.IsSuccess)
+        {
+            return sdpResult;
+        }
+
+        var lobby = lobbyResult.Value;
+        var fromId = GetCallerParticipantId()!;
+        var signalingResult = ValidateSignalingAllowed(lobby);
+        if (!signalingResult.IsSuccess)
+        {
+            return signalingResult;
+        }
+
+        var targetResult = ValidateTargetParticipant(lobby, targetParticipantId);
+        if (!targetResult.IsSuccess)
+        {
+            return targetResult;
+        }
+
+        var connectionResult = GetTargetConnectionId(targetParticipantId);
+        if (!connectionResult.IsSuccess || connectionResult.Value is null)
+        {
+            return AppResult<bool>.Failure(connectionResult.ErrorCode ?? AppErrors.LobbyForbidden);
+        }
+
+        await Clients.Client(connectionResult.Value)
             .SendAsync("ReceiveAnswer", fromId, targetParticipantId, sdp);
+        return AppResult<bool>.Success(true);
     }
 
     /// <summary>
     /// Relay a WebRTC ICE candidate to a specific peer in the same lobby.
     /// </summary>
-    public async Task SendIceCandidate(Guid lobbyId, string targetParticipantId, string candidate)
+    public async Task<AppResult<bool>> SendIceCandidate(Guid lobbyId, string targetParticipantId, string candidate)
     {
-        var lobby = await GetAuthorizedLobbyAsync(lobbyId);
-        if (candidate.Length > 4096)
+        var lobbyResult = await GetAuthorizedLobbyAsync(lobbyId);
+        if (!lobbyResult.IsSuccess || lobbyResult.Value is null)
         {
-            throw new HubException("ICE candidate payload too large.");
+            return AppResult<bool>.Failure(lobbyResult.ErrorCode ?? AppErrors.LobbyNotFound);
         }
 
-        var fromId = GetCallerParticipantId()!;
-        ValidateSignalingAllowed(lobby);
-        ValidateTargetParticipant(lobby, targetParticipantId);
-        var targetConnectionId = GetTargetConnectionId(targetParticipantId);
+        if (candidate.Length > 4096)
+        {
+            return AppResult<bool>.Failure(AppErrors.LobbyInvalidState);
+        }
 
-        await Clients.Client(targetConnectionId)
+        var lobby = lobbyResult.Value;
+        var fromId = GetCallerParticipantId()!;
+        var signalingResult = ValidateSignalingAllowed(lobby);
+        if (!signalingResult.IsSuccess)
+        {
+            return signalingResult;
+        }
+
+        var targetResult = ValidateTargetParticipant(lobby, targetParticipantId);
+        if (!targetResult.IsSuccess)
+        {
+            return targetResult;
+        }
+
+        var connectionResult = GetTargetConnectionId(targetParticipantId);
+        if (!connectionResult.IsSuccess || connectionResult.Value is null)
+        {
+            return AppResult<bool>.Failure(connectionResult.ErrorCode ?? AppErrors.LobbyForbidden);
+        }
+
+        await Clients.Client(connectionResult.Value)
             .SendAsync("ReceiveIceCandidate", fromId, targetParticipantId, candidate);
+        return AppResult<bool>.Success(true);
     }
 
     /// <summary>
     /// Update the caller's ready state and broadcast the change to the lobby group.
     /// </summary>
-    public async Task SetReady(Guid lobbyId, bool isReady)
+    public async Task<AppResult<bool>> SetReady(Guid lobbyId, bool isReady)
     {
-        ValidateLobbyMembership(lobbyId);
+        var membershipResult = ValidateLobbyMembership(lobbyId);
+        if (!membershipResult.IsSuccess)
+        {
+            return membershipResult;
+        }
+
         var participantId = GetCallerParticipantId()!;
 
         var result = await _lobbyService.SetReadyAsync(
@@ -140,20 +222,26 @@ public sealed class MultiplayerHub : Hub
 
         if (!result.IsSuccess)
         {
-            throw new HubException(result.ErrorCode ?? "Failed to update ready state.");
+            return AppResult<bool>.Failure(result.ErrorCode ?? AppErrors.LobbyInvalidState);
         }
 
         await Clients.Group(LobbyGroupName(lobbyId))
             .SendAsync("PlayerReadyChanged", participantId, isReady, result.Value);
+        return AppResult<bool>.Success(true);
     }
 
     /// <summary>
     /// Start the lobby and notify participants with a server-issued match config.
     /// Only the lobby host may call this.
     /// </summary>
-    public async Task NotifyMatchStarting(Guid lobbyId)
+    public async Task<AppResult<bool>> NotifyMatchStarting(Guid lobbyId)
     {
-        ValidateLobbyMembership(lobbyId);
+        var membershipResult = ValidateLobbyMembership(lobbyId);
+        if (!membershipResult.IsSuccess)
+        {
+            return membershipResult;
+        }
+
         var participantId = GetCallerParticipantId()!;
 
         var startResult = await _lobbyService.StartLobbyAsync(
@@ -161,21 +249,27 @@ public sealed class MultiplayerHub : Hub
             CancellationToken.None);
         if (!startResult.IsSuccess)
         {
-            throw new HubException(startResult.ErrorCode ?? "Failed to start lobby.");
+            return AppResult<bool>.Failure(startResult.ErrorCode ?? AppErrors.LobbyInvalidState);
         }
 
         if (startResult.Value?.MatchConfig is null)
         {
-            throw new HubException("Match config is unavailable.");
+            return AppResult<bool>.Failure(AppErrors.LobbyInvalidState);
         }
 
         await Clients.Group(LobbyGroupName(lobbyId))
             .SendAsync("MatchStarting", lobbyId, startResult.Value.MatchConfig);
+        return AppResult<bool>.Success(true);
     }
 
-    public async Task RemoveParticipant(Guid lobbyId, string targetParticipantId)
+    public async Task<AppResult<bool>> RemoveParticipant(Guid lobbyId, string targetParticipantId)
     {
-        ValidateLobbyMembership(lobbyId);
+        var membershipResult = ValidateLobbyMembership(lobbyId);
+        if (!membershipResult.IsSuccess)
+        {
+            return membershipResult;
+        }
+
         var participantId = GetCallerParticipantId()!;
 
         var removeResult = await _lobbyService.RemoveParticipantAsync(
@@ -183,7 +277,7 @@ public sealed class MultiplayerHub : Hub
             CancellationToken.None);
         if (!removeResult.IsSuccess || removeResult.Value is null)
         {
-            throw new HubException(removeResult.ErrorCode ?? "Failed to remove participant.");
+            return AppResult<bool>.Failure(removeResult.ErrorCode ?? AppErrors.LobbyInvalidState);
         }
 
         _runtimeState.RemoveParticipant(targetParticipantId);
@@ -196,27 +290,34 @@ public sealed class MultiplayerHub : Hub
 
         await Clients.Group(LobbyGroupName(lobbyId))
             .SendAsync("LobbyParticipantsChanged", removeResult.Value);
+        return AppResult<bool>.Success(true);
     }
 
-    public async Task SendLobbyChat(Guid lobbyId, string message)
+    public async Task<AppResult<bool>> SendLobbyChat(Guid lobbyId, string message)
     {
-        var lobby = await GetAuthorizedLobbyAsync(lobbyId);
+        var lobbyResult = await GetAuthorizedLobbyAsync(lobbyId);
+        if (!lobbyResult.IsSuccess || lobbyResult.Value is null)
+        {
+            return AppResult<bool>.Failure(lobbyResult.ErrorCode ?? AppErrors.LobbyNotFound);
+        }
+
         if (string.IsNullOrWhiteSpace(message))
         {
-            throw new HubException("Message cannot be empty.");
+            return AppResult<bool>.Failure(AppErrors.LobbyInvalidState);
         }
 
         var trimmedMessage = message.Trim();
         if (trimmedMessage.Length > 400)
         {
-            throw new HubException("Message too long.");
+            return AppResult<bool>.Failure(AppErrors.LobbyInvalidState);
         }
 
+        var lobby = lobbyResult.Value;
         var participantId = GetCallerParticipantId()!;
         var sender = lobby.Players.SingleOrDefault(x => x.ParticipantId == participantId);
         if (sender is null)
         {
-            throw new HubException("Participant is not a member of this lobby.");
+            return AppResult<bool>.Failure(AppErrors.LobbyForbidden);
         }
 
         await Clients.Group(LobbyGroupName(lobbyId)).SendAsync(
@@ -226,43 +327,62 @@ public sealed class MultiplayerHub : Hub
             sender.DisplayName,
             trimmedMessage,
             DateTimeOffset.UtcNow);
+        return AppResult<bool>.Success(true);
     }
 
-    public Task ReportPing(Guid lobbyId, int pingMs)
+    public Task<AppResult<bool>> ReportPing(Guid lobbyId, int pingMs)
     {
-        ValidateLobbyMembership(lobbyId);
+        var membershipResult = ValidateLobbyMembership(lobbyId);
+        if (!membershipResult.IsSuccess)
+        {
+            return Task.FromResult(membershipResult);
+        }
+
         var participantId = GetCallerParticipantId()!;
         _runtimeState.SetParticipantPing(participantId, pingMs);
-        return Task.CompletedTask;
+        return Task.FromResult(AppResult<bool>.Success(true));
     }
 
-    public async Task ReportRuntimeLevelReady(Guid lobbyId)
+    public async Task<AppResult<bool>> ReportRuntimeLevelReady(Guid lobbyId)
     {
-        var lobby = await GetAuthorizedLobbyAsync(lobbyId);
+        var lobbyResult = await GetAuthorizedLobbyAsync(lobbyId);
+        if (!lobbyResult.IsSuccess)
+        {
+            return AppResult<bool>.Failure(lobbyResult.ErrorCode ?? AppErrors.LobbyNotFound);
+        }
+
         var participantId = GetCallerParticipantId()!;
         _runtimeState.MarkRuntimeLevelReady(lobbyId, participantId);
         await Clients.Group(LobbyGroupName(lobbyId))
             .SendAsync("RuntimeLevelReady", lobbyId, participantId);
+        return AppResult<bool>.Success(true);
     }
 
-    public async Task NotifyRuntimeStartNow(Guid lobbyId)
+    public async Task<AppResult<bool>> NotifyRuntimeStartNow(Guid lobbyId)
     {
-        var lobby = await GetAuthorizedLobbyAsync(lobbyId);
+        var lobbyResult = await GetAuthorizedLobbyAsync(lobbyId);
+        if (!lobbyResult.IsSuccess || lobbyResult.Value is null)
+        {
+            return AppResult<bool>.Failure(lobbyResult.ErrorCode ?? AppErrors.LobbyNotFound);
+        }
+
+        var lobby = lobbyResult.Value;
         var participantId = GetCallerParticipantId()!;
         if (lobby.HostParticipantId != participantId)
         {
-            throw new HubException("Only the host can start runtime simulation.");
+            return AppResult<bool>.Failure(AppErrors.LobbyForbidden);
         }
 
         var allReady = lobby.Players.All(player => _runtimeState.IsRuntimeLevelReady(lobbyId, player.ParticipantId));
         if (!allReady)
         {
-            throw new HubException("Not all participants have completed runtime load.");
+            return AppResult<bool>.Failure(AppErrors.LobbyInvalidState);
         }
 
         await Clients.Group(LobbyGroupName(lobbyId))
             .SendAsync("RuntimeStartNow", lobbyId);
         _runtimeState.ClearRuntimeReady(lobbyId);
+        return AppResult<bool>.Success(true);
     }
 
     public Task<long> Ping(long clientTimeMs)
@@ -314,72 +434,85 @@ public sealed class MultiplayerHub : Hub
     private string? GetCallerParticipantId() =>
         Context.Items.TryGetValue("participantId", out var p) ? p as string : null;
 
-    private void ValidateLobbyMembership(Guid lobbyId)
+    private AppResult<bool> ValidateLobbyMembership(Guid lobbyId)
     {
         if (!Context.Items.TryGetValue("lobbyId", out var stored) ||
             stored is not Guid storedId ||
             storedId != lobbyId)
         {
-            throw new HubException("Caller has not joined this lobby.");
+            return AppResult<bool>.Failure(AppErrors.LobbyForbidden);
         }
+
+        return AppResult<bool>.Success(true);
     }
 
-    private static void ValidateSdpSize(string sdp)
+    private static AppResult<bool> ValidateSdpSize(string sdp)
     {
         // SDP descriptions are typically a few KB; cap at 64 KB to prevent abuse
         if (sdp.Length > 65536)
         {
-            throw new HubException("SDP payload too large.");
+            return AppResult<bool>.Failure(AppErrors.LobbyInvalidState);
         }
+
+        return AppResult<bool>.Success(true);
     }
 
-    private async Task<MultiplayerLobbyDetails> GetAuthorizedLobbyAsync(Guid lobbyId)
+    private async Task<AppResult<MultiplayerLobbyDetails>> GetAuthorizedLobbyAsync(Guid lobbyId)
     {
-        ValidateLobbyMembership(lobbyId);
+        var membershipResult = ValidateLobbyMembership(lobbyId);
+        if (!membershipResult.IsSuccess)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(membershipResult.ErrorCode ?? AppErrors.LobbyForbidden);
+        }
+
         var participantId = GetCallerParticipantId();
         if (participantId is null)
         {
-            throw new HubException("Caller has no participant identity.");
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyForbidden);
         }
 
         var result = await _lobbyService.GetLobbyAsync(lobbyId, CancellationToken.None);
         if (!result.IsSuccess || result.Value is null)
         {
-            throw new HubException("Lobby not found.");
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyNotFound);
         }
 
         if (result.Value.Players.All(p => p.ParticipantId != participantId))
         {
-            throw new HubException("Participant is not a member of this lobby.");
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyForbidden);
         }
 
-        return result.Value;
+        return AppResult<MultiplayerLobbyDetails>.Success(result.Value);
     }
 
-    private static void ValidateTargetParticipant(MultiplayerLobbyDetails lobby, string targetParticipantId)
+    private static AppResult<bool> ValidateTargetParticipant(MultiplayerLobbyDetails lobby, string targetParticipantId)
     {
         if (lobby.Players.All(p => p.ParticipantId != targetParticipantId))
         {
-            throw new HubException("Target participant is not a member of this lobby.");
+            return AppResult<bool>.Failure(AppErrors.LobbyForbidden);
         }
+
+        return AppResult<bool>.Success(true);
     }
 
-    private static void ValidateSignalingAllowed(MultiplayerLobbyDetails lobby)
+    private static AppResult<bool> ValidateSignalingAllowed(MultiplayerLobbyDetails lobby)
     {
         if (lobby.State == "started")
         {
-            throw new HubException("Signaling is closed after gameplay starts.");
+            return AppResult<bool>.Failure(AppErrors.LobbyInvalidState);
         }
+
+        return AppResult<bool>.Success(true);
     }
 
-    private static string GetTargetConnectionId(string targetParticipantId)
+    private static AppResult<string> GetTargetConnectionId(string targetParticipantId)
     {
         if (!ParticipantConnectionIds.TryGetValue(targetParticipantId, out var connectionId))
         {
-            throw new HubException("Target participant is not connected.");
+            return AppResult<string>.Failure(AppErrors.LobbyInvalidState);
         }
 
-        return connectionId;
+        return AppResult<string>.Success(connectionId);
     }
 
     private static string ResolveRegion(IPAddress? ipAddress)

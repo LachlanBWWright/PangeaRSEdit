@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
+using PangeaRSEdit.Application.Common;
 
 namespace PangeaRSEdit.Tests;
 
@@ -110,8 +110,10 @@ public sealed class MultiplayerHubApiTests : IClassFixture<PangeaApiFactory>
         var intruderHub = CreateHubConnection();
         await intruderHub.StartAsync();
 
-        await Assert.ThrowsAsync<HubException>(() =>
-            intruderHub.InvokeAsync("JoinLobby", lobbyId, "unknown-participant"));
+        var result = await intruderHub.InvokeAsync<AppResult<bool>>("JoinLobby", lobbyId, "unknown-participant");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(AppErrors.LobbyForbidden, result.ErrorCode);
 
         await intruderHub.DisposeAsync();
     }
@@ -134,12 +136,16 @@ public sealed class MultiplayerHubApiTests : IClassFixture<PangeaApiFactory>
         await hostHub.StartAsync();
         await hostHub.InvokeAsync("JoinLobby", lobbyId, hostParticipantId);
 
-        await Assert.ThrowsAsync<HubException>(() =>
-            hostHub.InvokeAsync("SendOffer", lobbyId, "not-a-member", "offer-sdp"));
-        await Assert.ThrowsAsync<HubException>(() =>
-            hostHub.InvokeAsync("SendAnswer", lobbyId, "not-a-member", "answer-sdp"));
-        await Assert.ThrowsAsync<HubException>(() =>
-            hostHub.InvokeAsync("SendIceCandidate", lobbyId, "not-a-member", "candidate"));
+        var offerResult = await hostHub.InvokeAsync<AppResult<bool>>("SendOffer", lobbyId, "not-a-member", "offer-sdp");
+        var answerResult = await hostHub.InvokeAsync<AppResult<bool>>("SendAnswer", lobbyId, "not-a-member", "answer-sdp");
+        var iceResult = await hostHub.InvokeAsync<AppResult<bool>>("SendIceCandidate", lobbyId, "not-a-member", "candidate");
+
+        Assert.False(offerResult.IsSuccess);
+        Assert.Equal(AppErrors.LobbyForbidden, offerResult.ErrorCode);
+        Assert.False(answerResult.IsSuccess);
+        Assert.Equal(AppErrors.LobbyForbidden, answerResult.ErrorCode);
+        Assert.False(iceResult.IsSuccess);
+        Assert.Equal(AppErrors.LobbyForbidden, iceResult.ErrorCode);
 
         await hostHub.DisposeAsync();
     }
@@ -214,8 +220,10 @@ public sealed class MultiplayerHubApiTests : IClassFixture<PangeaApiFactory>
         var hostHub = CreateHubConnection();
         await hostHub.StartAsync();
         await hostHub.InvokeAsync("JoinLobby", lobbyId, hostParticipantId);
-        await Assert.ThrowsAsync<HubException>(() =>
-            hostHub.InvokeAsync("SendOffer", lobbyId, "guest-1", "offer-after-start"));
+        var result = await hostHub.InvokeAsync<AppResult<bool>>("SendOffer", lobbyId, "guest-1", "offer-after-start");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(AppErrors.LobbyInvalidState, result.ErrorCode);
 
         await hostHub.DisposeAsync();
     }
