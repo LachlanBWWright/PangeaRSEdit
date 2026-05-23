@@ -8,6 +8,9 @@
 node_modules/
 dist/
 .env
+pangearsedit-dev.db
+pangearsedit-dev.db-shm
+pangearsedit-dev.db-wal
 
 # Rust build output
 terrain-codec-rust/target/
