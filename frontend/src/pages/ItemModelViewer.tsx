@@ -849,6 +849,10 @@ export function ItemModelViewer() {
                     <SelectItem
                       key={item.type}
                       value={String(item.type)}
+                      data-item-type={String(item.type)}
+                      data-item-name={item.name}
+                      data-item-spline={item.isSplineItem ? "1" : "0"}
+                      data-item-mapped={item.hasMapping ? "1" : "0"}
                       className={`text-white hover:bg-gray-600 ${
                         item.hasMapping ? "text-green-300" : "text-gray-400"
                       }`}
@@ -858,8 +862,9 @@ export function ItemModelViewer() {
                         kind={item.isSplineItem ? "splineItem" : "terrainItem"}
                         itemType={item.type}
                         label={formatItemDisplay(item)}
+                        badgeLabel={item.name}
                         params={itemParams}
-                        className="py-1"
+                        compact
                       />
                     </SelectItem>
                   ))}

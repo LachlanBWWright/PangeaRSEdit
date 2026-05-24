@@ -44,6 +44,14 @@ const parsedItemLabelSchema = z.object({
   hasMapping: z.boolean(),
 });
 
+interface SelectOptionEntry {
+  label: string;
+  itemType: number | null;
+  itemName: string | null;
+  isSpline: boolean | null;
+  hasMapping: boolean | null;
+}
+
 const unknownErrorSchema = z.object({
   message: z.string(),
 });
@@ -158,12 +166,48 @@ async function selectByTriggerAndLabel(
   await page.getByRole("option", { name: label, exact: true }).first().click();
 }
 
+async function selectItemByType(page: Page, itemType: number): Promise<void> {
+  const trigger = page.getByTestId("item-model-item-select-trigger");
+  await trigger.click();
+  await page
+    .locator(`[role="option"][data-item-type="${String(itemType)}"]`)
+    .first()
+    .click();
+}
+
 async function readOpenSelectOptions(page: Page): Promise<string[]> {
   const options = await page.getByRole("option").evaluateAll((elements) =>
     elements
       .map((element) => element.textContent ?? "")
       .map((label) => label.trim())
       .filter((label) => label.length > 0),
+  );
+  return options;
+}
+
+async function readOpenSelectOptionEntries(
+  page: Page,
+): Promise<SelectOptionEntry[]> {
+  const options = await page.getByRole("option").evaluateAll((elements) =>
+    elements
+      .map((element) => {
+        const el = element instanceof HTMLElement ? element : null;
+        const rawType = el?.getAttribute("data-item-type") ?? null;
+        const itemType = rawType !== null ? Number.parseInt(rawType, 10) : null;
+        const itemName = el?.getAttribute("data-item-name") ?? null;
+        const rawSpline = el?.getAttribute("data-item-spline") ?? null;
+        const isSpline = rawSpline !== null ? rawSpline === "1" : null;
+        const rawMapped = el?.getAttribute("data-item-mapped") ?? null;
+        const hasMapping = rawMapped !== null ? rawMapped === "1" : null;
+        const label = (element.textContent ?? "").trim();
+        return { label, itemType, itemName, isSpline, hasMapping };
+      })
+      .filter(
+        (entry) =>
+          entry.label.length > 0 ||
+          entry.itemType !== null ||
+          entry.itemName !== null,
+      ),
   );
   return options;
 }
@@ -335,31 +379,49 @@ async function runCapture(): Promise<number> {
             ignoreError(itemSelectVisibleResult);
 
             await page.getByTestId("item-model-item-select-trigger").click();
-            const itemLabels = await readOpenSelectOptions(page);
+            const itemOptions = await readOpenSelectOptionEntries(page);
             await page.keyboard.press("Escape");
-            console.log(`Found ${itemLabels.length} items for ${gameLabel}`);
+            console.log(`Found ${itemOptions.length} items for ${gameLabel}`);
 
-            for (const itemLabel of itemLabels) {
+            for (const [itemIndex, option] of itemOptions.entries()) {
               const itemResult = await ResultAsync.fromPromise(
                 (async () => {
-                  const parsedLabel = parseItemLabel(itemLabel);
-                  if (!parsedLabel) {
-                    return;
+                  // Prefer structured data attributes over text parsing.
+                  let itemType: number;
+                  let itemName: string;
+                  let isSpline: boolean;
+                  let hasMapping: boolean;
+
+                  if (option.itemType !== null && option.itemName !== null) {
+                    itemType =
+                      Number.isNaN(option.itemType) || option.itemType < 0
+                        ? 0
+                        : option.itemType;
+                    itemName = option.itemName;
+                    isSpline = option.isSpline ?? false;
+                    hasMapping = option.hasMapping ?? false;
+                  } else {
+                    // Fallback: parse from label text.
+                    const parsedLabel = parseItemLabel(option.label);
+                    if (!parsedLabel) {
+                      console.log(
+                        `Skipping unparseable label ${String(itemIndex + 1)}/${String(itemOptions.length)}: ${option.label}`,
+                      );
+                      return;
+                    }
+                    itemType = parsedLabel.itemType;
+                    itemName = parsedLabel.itemName;
+                    isSpline = parsedLabel.isSpline;
+                    hasMapping = parsedLabel.hasMapping;
                   }
 
-                  if (parsedLabel.isSpline) {
-                    return;
-                  }
-
-                  await selectByTriggerAndLabel(
-                    page,
-                    "item-model-item-select-trigger",
-                    itemLabel,
+                  console.log(
+                    `[${gameLabel}] ${String(itemIndex + 1)}/${String(itemOptions.length)} ${itemType}: ${itemName}${isSpline ? " (spline)" : ""}`,
                   );
 
-                  const loadButton = page.getByTestId(
-                    "item-model-load-button",
-                  );
+                  await selectItemByType(page, itemType);
+
+                  const loadButton = page.getByTestId("item-model-load-button");
                   const canLoadModel = await loadButton.isEnabled();
 
                   let statusText = "";
@@ -376,16 +438,15 @@ async function runCapture(): Promise<number> {
                   const gameDir = path.join(
                     outputDir,
                     sanitizeSegment(gameLabel),
-                    "normal-items",
+                    isSpline ? "spline-items" : "normal-items",
                   );
                   await mkdir(gameDir, { recursive: true });
 
-                  const fileName = `${String(parsedLabel.itemType).padStart(4, "0")}-${sanitizeSegment(parsedLabel.itemName)}.png`;
+                  const fileName = `${String(itemType).padStart(4, "0")}-${sanitizeSegment(itemName)}.png`;
                   const targetPath = path.join(gameDir, fileName);
 
                   if (statusText.startsWith("Loaded:")) {
-                    const pngBufferResult =
-                      await captureCanvasScreenshot(page);
+                    const pngBufferResult = await captureCanvasScreenshot(page);
                     if (pngBufferResult.isErr()) {
                       return;
                     }
@@ -394,31 +455,45 @@ async function runCapture(): Promise<number> {
 
                     manifest.push({
                       game: gameLabel,
-                      itemLabel,
-                      itemType: parsedLabel.itemType,
-                      itemName: parsedLabel.itemName,
-                      mapped: parsedLabel.hasMapping,
-                      spline: parsedLabel.isSpline,
+                      itemLabel: option.label,
+                      itemType,
+                      itemName,
+                      mapped: hasMapping,
+                      spline: isSpline,
                       status: "captured",
                       screenshot: path.relative(outputDir, targetPath),
                       modelStatus: statusText,
                     });
+                    console.log(`Captured ${itemType}: ${itemName}`);
                   } else {
                     manifest.push({
                       game: gameLabel,
-                      itemLabel,
-                      itemType: parsedLabel.itemType,
-                      itemName: parsedLabel.itemName,
-                      mapped: parsedLabel.hasMapping,
-                      spline: parsedLabel.isSpline,
+                      itemLabel: option.label,
+                      itemType,
+                      itemName,
+                      mapped: hasMapping,
+                      spline: isSpline,
                       status: "not-captured",
                       modelStatus: statusText,
                     });
+                    console.log(
+                      `Not captured ${itemType}: ${itemName} (${statusText})`,
+                    );
                   }
                 })(),
                 mapErr,
               );
               ignoreError(itemResult);
+
+              const persistItemResult = await ResultAsync.fromPromise(
+                writeFile(
+                  manifestPath,
+                  `${JSON.stringify(manifest, null, 2)}\n`,
+                  "utf8",
+                ),
+                mapErr,
+              );
+              ignoreError(persistItemResult);
             }
 
             // Persist after each game so partial runs keep progress.

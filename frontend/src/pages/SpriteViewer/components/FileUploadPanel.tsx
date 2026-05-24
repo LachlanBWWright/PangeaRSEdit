@@ -40,8 +40,10 @@ export function FileUploadPanel({
 
   return (
     <Card className="bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white text-sm">Upload Files</CardTitle>
+      <CardHeader className="text-center">
+        <CardTitle className="w-full text-center text-white text-sm">
+          Upload Files
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>

@@ -17,6 +17,7 @@ import Konva from "konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { Items } from "../subviews/Items";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
 import { Tiles } from "../subviews/Tiles";
@@ -340,6 +341,8 @@ export function Nanosaur1KonvaView({
             captureEnd={captureEnd}
           />
         )}
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
       </Stage>
     </div>
   );

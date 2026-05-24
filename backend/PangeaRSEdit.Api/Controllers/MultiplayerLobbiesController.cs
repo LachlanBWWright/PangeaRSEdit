@@ -55,6 +55,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
             x.JoinCode,
             x.State,
             x.PlayerCount,
+            x.CanJoin,
             x.CreatedAt,
             x.ExpiresAt
         )).ToList();
@@ -153,10 +154,16 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
     }
 
     [HttpPost("{id:guid}/start")]
-    public async Task<IActionResult> StartLobbyAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> StartLobbyAsync(
+        Guid id,
+        [FromBody] StartMultiplayerLobbyBody? body,
+        CancellationToken cancellationToken)
     {
         var participantId = GetOrCreateParticipantId();
-        var result = await lobbyService.StartLobbyAsync(new StartLobbyRequest(id, participantId), cancellationToken);
+        var result = await lobbyService.StartLobbyAsync(
+            new StartLobbyRequest(id, participantId, body?.Force ?? false),
+            cancellationToken
+        );
         if (!result.IsSuccess || result.Value is null)
         {
             return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyInvalidState);

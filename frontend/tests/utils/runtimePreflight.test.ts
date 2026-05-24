@@ -71,7 +71,7 @@ describe("runtime preflight", () => {
             ok: true,
             text: () =>
               Promise.resolve(
-                `PangeaGame_SetNetworkMatchConfig PangeaGame_StartNetworkMatch PangeaGame_DebugGetLocalPlayerIndex PangeaGame_DebugGetPlayerCount PangeaGame_DebugIsNetworkMatchRunning \"Test.wasm\"`,
+                `PangeaGame_SetNetworkMatchConfig PangeaGame_StartNetworkMatch PangeaGame_DebugGetLocalPlayerIndex PangeaGame_DebugGetPlayerCount PangeaGame_DebugIsNetworkMatchRunning "Test.wasm"`,
               ),
           });
         }

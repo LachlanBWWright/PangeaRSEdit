@@ -29,7 +29,8 @@ public sealed record SetLobbyReadyRequest(
 
 public sealed record StartLobbyRequest(
     Guid LobbyId,
-    string ParticipantId
+    string ParticipantId,
+    bool Force
 );
 
 public sealed record RemoveLobbyParticipantRequest(
@@ -60,6 +61,7 @@ public sealed record MultiplayerLobbySummary(
     string JoinCode,
     string State,
     int PlayerCount,
+    bool CanJoin,
     DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt
 );

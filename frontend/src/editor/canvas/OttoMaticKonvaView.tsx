@@ -13,6 +13,7 @@ import { SelectedFence } from "@/data/fences/fenceAtoms";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
@@ -34,6 +35,7 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { View } from "../viewEnum";
 
 export interface StageData {
@@ -81,7 +83,9 @@ export function OttoMaticKonvaView({
   const setSelectedItem = useSetAtom(SelectedItem);
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
+  const setPendingCreation = useSetAtom(PendingCreation);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const pendingCreation = useAtomValue(PendingCreation);
 
   const [containerRef, containerSize] = useContainerSize();
 
@@ -128,6 +132,19 @@ export function OttoMaticKonvaView({
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (pendingCreation) {
+        const stageRef = e.target.getStage();
+        const pos = stageRef?.getRelativePointerPosition();
+        if (!pos) return;
+        setPendingCreation({
+          ...pendingCreation,
+          points: [
+            ...pendingCreation.points,
+            { x: Math.round(pos.x), z: Math.round(pos.y) },
+          ],
+        });
+        return;
+      }
       if (clickToAddItem === undefined) return;
       const stageRef = e.target.getStage();
       const pos = stageRef?.getRelativePointerPosition();
@@ -145,7 +162,7 @@ export function OttoMaticKonvaView({
         });
       });
     },
-    [clickToAddItem, setItemDataNotNull],
+    [clickToAddItem, pendingCreation, setItemDataNotNull, setPendingCreation],
   );
 
   const handleStageDblClick = useCallback(() => {
@@ -153,7 +170,12 @@ export function OttoMaticKonvaView({
     setSelectedItem(undefined);
     setSelectedSpline(undefined);
     setSelectedWaterBody(null);
-  }, [setSelectedFence, setSelectedItem, setSelectedSpline, setSelectedWaterBody]);
+  }, [
+    setSelectedFence,
+    setSelectedItem,
+    setSelectedSpline,
+    setSelectedWaterBody,
+  ]);
 
   const handleStageWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -168,7 +190,8 @@ export function OttoMaticKonvaView({
         x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
         y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
       };
-      const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+      const newScale =
+        e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
       setStage({
         scale: newScale,
         x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
@@ -291,6 +314,8 @@ export function OttoMaticKonvaView({
             )}
           </>
         )}
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
       </Stage>
     </div>
   );

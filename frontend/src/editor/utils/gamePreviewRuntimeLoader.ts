@@ -1,4 +1,6 @@
 import { Result, ResultAsync, err } from "neverthrow";
+import { ZodError } from "zod";
+import { MultiplayerMatchConfigSchema } from "@/multiplayer/schemas";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
 import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
 import { resolveLocalPlayerIndex } from "@/multiplayer/participantIndex";
@@ -31,7 +33,7 @@ export interface PreviewModuleOptions {
   readonly terrainTextureBytes: Uint8Array | null;
   readonly customFiles?: readonly PreviewVfsFile[];
   readonly terrainPaths: PreviewTerrainPaths | null;
-  readonly networkMatchConfig?: MultiplayerMatchConfig | null;
+  readonly networkMatchConfig?: unknown;
   readonly localParticipantId?: string | null;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
@@ -41,9 +43,21 @@ export interface PreviewModuleOptions {
   readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
 }
 
+function formatSchemaError(error: ZodError): string {
+  return error.issues
+    .map((issue) => {
+      if (issue.path.length === 0) {
+        return issue.message;
+      }
+
+      return `${issue.path.join(".")}: ${issue.message}`;
+    })
+    .join("; ");
+}
+
 function applyNetworkMatchConfig(
   module: PreviewRuntimeModule,
-  matchConfig: MultiplayerMatchConfig,
+  rawMatchConfig: unknown,
   localParticipantId?: string | null,
 ): Result<void, string> {
   const ccall = module.ccall;
@@ -51,6 +65,14 @@ function applyNetworkMatchConfig(
     return err("Emscripten ccall is unavailable");
   }
 
+  const parsedMatchConfig = MultiplayerMatchConfigSchema.safeParse(rawMatchConfig);
+  if (!parsedMatchConfig.success) {
+    return err(
+      `Invalid multiplayer match config: ${formatSchemaError(parsedMatchConfig.error)}`,
+    );
+  }
+
+  const matchConfig: MultiplayerMatchConfig = parsedMatchConfig.data;
   const localPlayerIndexResult = resolveLocalPlayerIndex(
     matchConfig,
     localParticipantId,

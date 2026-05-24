@@ -17,6 +17,8 @@ export const PNET_PACKET_TYPE_KEYFRAME_RESEND_REQUEST = 11;
 
 const PNET_HEADER_SIZE_V1 = 24;
 const PNET_HEADER_SIZE_V2 = 28;
+const PNET_HEADER_VERSION_WITH_MATCH_ID_HIGH = 2;
+const PNET_HEADER_VERSION_CURRENT_GAMEPLAY = 4;
 
 export interface PnetHeader {
   readonly magic: number;
@@ -97,9 +99,12 @@ export function decodePnetHeader(bytes: ArrayBuffer): Result<PnetHeader, string>
   if (version === 1) {
     return ok(readV1Header(view));
   }
-  if (version === 2) {
+  if (
+    version === PNET_HEADER_VERSION_WITH_MATCH_ID_HIGH ||
+    version === PNET_HEADER_VERSION_CURRENT_GAMEPLAY
+  ) {
     if (bytes.byteLength < PNET_HEADER_SIZE_V2) {
-      return err("PNET v2 packet too small");
+      return err(`PNET v${String(version)} packet too small`);
     }
     return ok(readV2Header(view));
   }

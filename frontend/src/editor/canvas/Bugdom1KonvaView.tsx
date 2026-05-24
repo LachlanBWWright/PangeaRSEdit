@@ -18,9 +18,11 @@ import { Updater } from "use-immer";
 import { SelectedFence } from "@/data/fences/fenceAtoms";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
 import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { Tiles } from "../subviews/Tiles";
@@ -89,6 +91,8 @@ export function Bugdom1KonvaView({
   const setSelectedFence = useSetAtom(SelectedFence);
   const setSelectedItem = useSetAtom(SelectedItem);
   const setSelectedSpline = useSetAtom(SelectedSpline);
+  const pendingCreation = useAtomValue(PendingCreation);
+  const setPendingCreation = useSetAtom(PendingCreation);
   const clickToAddItem = useAtomValue(ClickToAddItem);
   const globals = useAtomValue(Globals);
 
@@ -235,6 +239,21 @@ export function Bugdom1KonvaView({
         handleStampClick(e);
         return;
       }
+
+      if (pendingCreation) {
+        const stageRef = e.target.getStage();
+        const pos = stageRef?.getRelativePointerPosition();
+        if (!pos) return;
+        setPendingCreation({
+          ...pendingCreation,
+          points: [
+            ...pendingCreation.points,
+            { x: Math.round(pos.x), z: Math.round(pos.y) },
+          ],
+        });
+        return;
+      }
+
       if (clickToAddItem === undefined) return;
       const stageRef = e.target.getStage();
 
@@ -256,7 +275,14 @@ export function Bugdom1KonvaView({
         });
       });
     },
-    [tileBrushMode, handleStampClick, clickToAddItem, setItemDataNotNull],
+    [
+      tileBrushMode,
+      handleStampClick,
+      pendingCreation,
+      clickToAddItem,
+      setPendingCreation,
+      setItemDataNotNull,
+    ],
   );
 
   const handleStageDblClick = useCallback(() => {
@@ -447,6 +473,8 @@ export function Bugdom1KonvaView({
             captureEnd={captureEnd}
           />
         )}
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
       </Stage>
     </div>
   );

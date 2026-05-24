@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "neverthrow";
 import { z } from "zod";
 import { Game } from "@/data/globals/globals";
+import { GENERATED_ITEM_SCREENSHOT_MANIFEST } from "@/data/items/itemScreenshotManifest.generated";
 
 export type ParamSlot = "p0" | "p1" | "p2" | "p3" | "flags";
 export type ItemScreenshotKind = "terrainItem" | "splineItem";
@@ -26,13 +27,15 @@ const generatedFromSchema = z.object({
     .optional(),
 });
 
-export const itemScreenshotManifestEntrySchema = itemScreenshotKeySchema.extend({
-  imageUrl: z.string().min(1),
-  width: z.number().positive(),
-  height: z.number().positive(),
-  generatedFrom: generatedFromSchema,
-  verificationStatus: z.enum(["verified", "approximate"]),
-});
+export const itemScreenshotManifestEntrySchema = itemScreenshotKeySchema.extend(
+  {
+    imageUrl: z.string().min(1),
+    width: z.number().positive(),
+    height: z.number().positive(),
+    generatedFrom: generatedFromSchema,
+    verificationStatus: z.enum(["verified", "approximate"]),
+  },
+);
 
 const itemScreenshotManifestSchema = z.array(itemScreenshotManifestEntrySchema);
 
@@ -49,7 +52,8 @@ interface ItemScreenshotQuery {
   readonly params?: Partial<Record<ParamSlot, number>>;
 }
 
-const STATIC_ITEM_SCREENSHOT_MANIFEST: readonly ItemScreenshotManifestEntry[] = [];
+const STATIC_ITEM_SCREENSHOT_MANIFEST =
+  GENERATED_ITEM_SCREENSHOT_MANIFEST as readonly ItemScreenshotManifestEntry[];
 
 function normalizeVariantParts(
   levelNum: number | undefined,

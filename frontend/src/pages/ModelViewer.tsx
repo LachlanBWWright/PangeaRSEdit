@@ -1331,8 +1331,8 @@ export function ModelViewer() {
               <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden py-1 pb-4">
                 {gltfUrl && (
                   <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader>
-                      <CardTitle className="text-white text-sm">
+                    <CardHeader className="text-center">
+                      <CardTitle className="w-full text-center text-white text-sm">
                         Undo / Redo
                       </CardTitle>
                     </CardHeader>
@@ -1447,8 +1447,8 @@ export function ModelViewer() {
                 {/* Texture Manager - Always show this section when model is loaded */}
                 {gltfUrl && (
                   <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader>
-                      <CardTitle className="text-white text-sm">
+                    <CardHeader className="text-center">
+                      <CardTitle className="w-full text-center text-white text-sm">
                         Texture Management
                       </CardTitle>
                     </CardHeader>
@@ -1491,8 +1491,8 @@ export function ModelViewer() {
 
                 {gltfUrl && skinData && (
                   <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader>
-                      <CardTitle className="text-white text-sm">
+                    <CardHeader className="text-center">
+                      <CardTitle className="w-full text-center text-white text-sm">
                         Rig & Weight Tools
                       </CardTitle>
                     </CardHeader>

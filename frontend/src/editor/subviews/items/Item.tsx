@@ -38,6 +38,7 @@ export const Item = memo(function Item({
   onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
   const item = itemData.Itms[1000].obj[itemIdx];
+  const selectedItem = useAtomValue(SelectedItem);
   const setSelectedItem = useSetAtom(SelectedItem);
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
@@ -219,6 +220,7 @@ export const Item = memo(function Item({
         itemType,
         itemBoxPosition.x,
         itemBoxPosition.z,
+        selectedItem === itemIdx,
       ),
     );
   };
@@ -228,6 +230,7 @@ export const Item = memo(function Item({
   };
 
   // Default rendering for regular items
+  const isSelected = selectedItem === itemIdx;
   return (
     <>
       <Rect
@@ -236,8 +239,8 @@ export const Item = memo(function Item({
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
         stroke="black"
-        strokeWidth={1}
-        fill="red"
+        strokeWidth={isSelected ? 2 : 1}
+        fill={isSelected ? "red" : "blue"}
         draggable
         onMouseOver={handleMouseOver}
         onMouseLeave={handleMouseLeave}
@@ -247,14 +250,12 @@ export const Item = memo(function Item({
         perfectDrawEnabled={false}
       />
 
-      {!hovering && (
-        <ItemTypeNumber
-          x={itemBoxPosition.x}
-          y={itemBoxPosition.z}
-          value={item.type.toString()}
-          fill="black"
-        />
-      )}
+      <ItemTypeNumber
+        x={itemBoxPosition.x}
+        y={itemBoxPosition.z}
+        value={item.type.toString()}
+        fill="white"
+      />
     </>
   );
 });

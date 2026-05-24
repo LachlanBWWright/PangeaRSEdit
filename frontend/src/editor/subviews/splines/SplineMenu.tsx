@@ -25,6 +25,10 @@ import {
 } from "@/components/ui/select";
 import { Globals } from "@/data/globals/globals";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
+import { initSplineItem } from "@/editor/subviews/splines/editSplineItemMenuState";
+
+const ADD_SPLINE_ITEM_VALUE = "AddSplineItem";
+const NO_SPLINE_ITEM_SELECTED_VALUE = "NoneSelected";
 
 export const SplineMenu = memo(function SplineMenu({
   splineData,
@@ -56,38 +60,49 @@ export const SplineMenu = memo(function SplineMenu({
     return <AddNewSplineMenu setSplineData={setSplineData} hasSplines={hasSplines} />;
   }
 
+  const selectedSplineItemControl = (
+    <Select
+      onValueChange={(e) => {
+        if (e === ADD_SPLINE_ITEM_VALUE) {
+          setSplineData((splineData) => {
+            const newItemIndex = initSplineItem(splineData, selectedSpline);
+            if (newItemIndex !== null) setSelectedSplineItem(newItemIndex);
+          });
+        } else if (e === NO_SPLINE_ITEM_SELECTED_VALUE) {
+          setSelectedSplineItem(undefined);
+        } else setSelectedSplineItem(parseInt(e));
+      }}
+    >
+      <SelectTrigger>
+        {selectedSplineItem !== undefined
+          ? `#${selectedSplineItem} ${getSplineItemName(
+              globals,
+              splineItemData?.[selectedSplineItem]?.type ?? 0,
+            )}`
+          : "No Item Selected"}
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NO_SPLINE_ITEM_SELECTED_VALUE}>
+          No Item Selected
+        </SelectItem>
+        <SelectItem value={ADD_SPLINE_ITEM_VALUE}>Add New Spline Item</SelectItem>
+        {splineItemData.map((item, itemIdx) => (
+          <SelectItem key={itemIdx} value={itemIdx.toString()}>
+            #{itemIdx} ({getSplineItemName(globals, item.type)})
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <div className="flex flex-col gap-2 min-h-full">
-      <Select
-        onValueChange={(e) => {
-          if (e === "NoneSelected") {
-            setSelectedSplineItem(undefined);
-          } else setSelectedSplineItem(parseInt(e));
-        }}
-      >
-        <SelectTrigger>
-          {selectedSplineItem !== undefined
-            ? `#${selectedSplineItem} ${getSplineItemName(
-                globals,
-                splineItemData?.[selectedSplineItem]?.type ?? 0,
-              )}`
-            : "No Item Selected"}
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="NoneSelected">No Item Selected</SelectItem>
-          {splineItemData.map((item, itemIdx) => (
-            <SelectItem key={itemIdx} value={itemIdx.toString()}>
-              #{itemIdx} ({getSplineItemName(globals, item.type)})
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
       <div className="flex flex-col gap-2 flex-1 min-h-0">
         {splineItemData && (
           <EditSplineItemMenu
             splineItemData={splineItemData}
             setSplineData={setSplineData}
+            selectedSplineItemControl={selectedSplineItemControl}
           />
         )}
         {splineItemData !== null && splineItemData !== undefined && (

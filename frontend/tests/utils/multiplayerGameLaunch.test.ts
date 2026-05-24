@@ -77,4 +77,31 @@ describe("multiplayer game launch adapters", () => {
 
     expect(result.isErr()).toBe(true);
   });
+
+  it("rejects Cro-Mag launch config when mode is missing", () => {
+    const { mode: omittedMode, ...invalidConfig } = validMatchConfig;
+    void omittedMode;
+
+    const result = launchCroMagNetworkMatch({
+      matchConfig: invalidConfig,
+      installBridge: () => ok(undefined),
+      startNetworkMatch: () => ok(undefined),
+    });
+
+    expect(result.isErr()).toBe(true);
+  });
+
+  it("rejects Nanosaur 2 launch config when mode is malformed", () => {
+    const result = launchNanosaur2NetworkMatch({
+      matchConfig: {
+        ...validMatchConfig,
+        gameId: "nanosaur2",
+        mode: "tagKeepAway",
+      },
+      installBridge: () => ok(undefined),
+      startNetworkMatch: () => ok(undefined),
+    });
+
+    expect(result.isErr()).toBe(true);
+  });
 });

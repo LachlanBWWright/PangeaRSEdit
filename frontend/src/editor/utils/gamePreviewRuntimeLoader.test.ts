@@ -31,26 +31,148 @@ const launchPayloadSchema = z.object({
   matchIdHigh: z.number(),
 });
 
+function buildValidMatchConfig(
+  gameId: "cromagrally" | "nanosaur2",
+  mode: string,
+  trackOrLevel: string,
+) {
+  return {
+    lobbyId: "f0985d6e-f6a8-4f55-b903-6d98ec3133ce",
+    matchId: "8f5fd112-87d8-41dd-8656-4745b3caa34e",
+    gameId,
+    mode,
+    trackOrLevel,
+    seed: 1337,
+    hostPlayerIndex: 0,
+    maxPlayers: 2,
+    requiredProtocolVersion: 1,
+    requiredRuntimeVersion: "host-authoritative-v2",
+    hostParticipantId: "host",
+    players: [
+      {
+        participantId: "host",
+        playerIndex: 0,
+        displayName: "Host",
+        connectionState: "connected",
+      },
+      {
+        participantId: "guest",
+        playerIndex: 1,
+        displayName: "Guest",
+        connectionState: "connected",
+      },
+    ],
+  };
+}
+
+function createNetworkPreviewModule(
+  game: Game,
+  networkMatchConfig: unknown,
+  onError?: (text: string) => void,
+) {
+  return createPreviewModule({
+    config: GAME_PORT_CONFIGS[game],
+    levelNumber: 0,
+    currentLevelInfo: undefined,
+    canvas: document.createElement("canvas"),
+    assetBaseUrl: "https://example.com/",
+    cacheBustToken: "test-token",
+    terrainDataBytes: null,
+    terrainRsrcBytes: null,
+    terrainTextureBytes: null,
+    terrainPaths: null,
+    networkMatchConfig,
+    localParticipantId: "host",
+    onStatus: () => undefined,
+    onError: onError ?? (() => undefined),
+  });
+}
+
 describe("game preview runtime loader", () => {
-  it("passes derived network launch payload to WASM", () => {
-    const ccall = vi.fn();
-    const module = createPreviewModule({
-      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
-      levelNumber: 0,
-      currentLevelInfo: undefined,
-      canvas: document.createElement("canvas"),
-      assetBaseUrl: "https://example.com/",
-      cacheBustToken: "test-token",
-      terrainDataBytes: null,
-      terrainRsrcBytes: null,
-      terrainTextureBytes: null,
-      terrainPaths: null,
-      networkMatchConfig: {
+  const launchCases: readonly {
+    readonly gameId: "cromagrally" | "nanosaur2";
+    readonly mode: string;
+    readonly trackOrLevel: string;
+  }[] = [
+    { gameId: "cromagrally", mode: "multiplayerRace", trackOrLevel: "1" },
+    { gameId: "cromagrally", mode: "multiplayerTag1", trackOrLevel: "10" },
+    { gameId: "cromagrally", mode: "multiplayerTag2", trackOrLevel: "10" },
+    {
+      gameId: "cromagrally",
+      mode: "multiplayerSurvival",
+      trackOrLevel: "10",
+    },
+    {
+      gameId: "cromagrally",
+      mode: "multiplayerQuestForFire",
+      trackOrLevel: "10",
+    },
+    { gameId: "nanosaur2", mode: "multiplayerRace", trackOrLevel: "3" },
+    { gameId: "nanosaur2", mode: "multiplayerBattle", trackOrLevel: "5" },
+    { gameId: "nanosaur2", mode: "multiplayerFlag", trackOrLevel: "7" },
+  ];
+
+  it.each(launchCases)(
+    "passes $gameId $mode launch payload to WASM",
+    ({ gameId, mode, trackOrLevel }) => {
+      const ccall = vi.fn();
+      const module = createNetworkPreviewModule(
+        gameId === "cromagrally" ? Game.CRO_MAG : Game.NANOSAUR_2,
+        buildValidMatchConfig(gameId, mode, trackOrLevel),
+      );
+
+      module.ccall = ccall;
+      module.onRuntimeInitialized?.();
+
+      expect(ccall).toHaveBeenNthCalledWith(
+        1,
+        "PangeaGame_SetNetworkMatchConfig",
+        null,
+        ["string", "number"],
+        expect.any(Array),
+      );
+      expect(ccall).toHaveBeenNthCalledWith(
+        2,
+        "PangeaGame_StartNetworkMatch",
+        null,
+        [],
+        [],
+      );
+
+      const callArgs = ccall.mock.calls[0]?.[3];
+      const payloadArg = Array.isArray(callArgs) ? callArgs[0] : null;
+      const parsedJson = z.string().safeParse(payloadArg);
+      expect(parsedJson.success).toBe(true);
+      if (!parsedJson.success) {
+        return;
+      }
+
+      const parsedPayload = launchPayloadSchema.safeParse(
+        JSON.parse(parsedJson.data),
+      );
+      expect(parsedPayload.success).toBe(true);
+      if (!parsedPayload.success) {
+        return;
+      }
+
+      expect(parsedPayload.data.gameId).toBe(gameId);
+      expect(parsedPayload.data.mode).toBe(mode);
+      expect(parsedPayload.data.trackOrLevel).toBe(trackOrLevel);
+      expect(parsedPayload.data.localPlayerIndex).toBe(0);
+      expect(parsedPayload.data.isHost).toBe(1);
+      expect(parsedPayload.data.playerCount).toBe(2);
+    },
+  );
+
+  it("reports an error when multiplayer mode is omitted for a Cro-Mag arena launch", () => {
+    const onError = vi.fn();
+    const module = createNetworkPreviewModule(
+      Game.CRO_MAG,
+      {
         lobbyId: "f0985d6e-f6a8-4f55-b903-6d98ec3133ce",
         matchId: "8f5fd112-87d8-41dd-8656-4745b3caa34e",
-        gameId: "cro-mag",
-        mode: "race",
-        trackOrLevel: "0",
+        gameId: "cromagrally",
+        trackOrLevel: "10",
         seed: 1337,
         hostPlayerIndex: 0,
         maxPlayers: 2,
@@ -72,94 +194,40 @@ describe("game preview runtime loader", () => {
           },
         ],
       },
-      localParticipantId: "host",
-      onStatus: () => undefined,
-      onError: () => undefined,
-    });
+      onError,
+    );
 
-    module.ccall = ccall;
+    module.ccall = vi.fn();
     module.onRuntimeInitialized?.();
 
-    expect(ccall).toHaveBeenNthCalledWith(
-      1,
-      "PangeaGame_SetNetworkMatchConfig",
-      null,
-      ["string", "number"],
-      expect.any(Array),
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid multiplayer match config"),
     );
-    expect(ccall).toHaveBeenNthCalledWith(
-      2,
-      "PangeaGame_StartNetworkMatch",
-      null,
-      [],
-      [],
+  });
+
+  it("reports an error when multiplayer mode is malformed for a Nanosaur 2 battle launch", () => {
+    const onError = vi.fn();
+    const module = createNetworkPreviewModule(
+      Game.NANOSAUR_2,
+      buildValidMatchConfig("nanosaur2", "tagKeepAway", "5"),
+      onError,
     );
 
-    const callArgs = ccall.mock.calls[0]?.[3];
-    const payloadArg = Array.isArray(callArgs) ? callArgs[0] : null;
-    const parsedJson = z.string().safeParse(payloadArg);
-    expect(parsedJson.success).toBe(true);
-    if (!parsedJson.success) {
-      return;
-    }
+    module.ccall = vi.fn();
+    module.onRuntimeInitialized?.();
 
-    const parsedPayload = launchPayloadSchema.safeParse(
-      JSON.parse(parsedJson.data),
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid multiplayer match config"),
     );
-    expect(parsedPayload.success).toBe(true);
-    if (!parsedPayload.success) {
-      return;
-    }
-
-    expect(parsedPayload.data.localPlayerIndex).toBe(0);
-    expect(parsedPayload.data.isHost).toBe(1);
-    expect(parsedPayload.data.playerCount).toBe(2);
   });
 
   it("reports an error when ccall is unavailable for network launch", () => {
     const onError = vi.fn();
-    const module = createPreviewModule({
-      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
-      levelNumber: 0,
-      currentLevelInfo: undefined,
-      canvas: document.createElement("canvas"),
-      assetBaseUrl: "https://example.com/",
-      cacheBustToken: "test-token",
-      terrainDataBytes: null,
-      terrainRsrcBytes: null,
-      terrainTextureBytes: null,
-      terrainPaths: null,
-      networkMatchConfig: {
-        lobbyId: "f0985d6e-f6a8-4f55-b903-6d98ec3133ce",
-        matchId: "8f5fd112-87d8-41dd-8656-4745b3caa34e",
-        gameId: "cro-mag",
-        mode: "race",
-        trackOrLevel: "0",
-        seed: 1337,
-        hostPlayerIndex: 0,
-        maxPlayers: 2,
-        requiredProtocolVersion: 1,
-        requiredRuntimeVersion: "host-authoritative-v2",
-        hostParticipantId: "host",
-        players: [
-          {
-            participantId: "host",
-            playerIndex: 0,
-            displayName: "Host",
-            connectionState: "connected",
-          },
-          {
-            participantId: "guest",
-            playerIndex: 1,
-            displayName: "Guest",
-            connectionState: "connected",
-          },
-        ],
-      },
-      localParticipantId: "host",
-      onStatus: () => undefined,
+    const module = createNetworkPreviewModule(
+      Game.CRO_MAG,
+      buildValidMatchConfig("cromagrally", "multiplayerRace", "1"),
       onError,
-    });
+    );
 
     module.onRuntimeInitialized?.();
     expect(onError).toHaveBeenCalledTimes(1);
@@ -179,33 +247,11 @@ describe("game preview runtime loader", () => {
       terrainRsrcBytes: null,
       terrainTextureBytes: null,
       terrainPaths: null,
-      networkMatchConfig: {
-        lobbyId: "f0985d6e-f6a8-4f55-b903-6d98ec3133ce",
-        matchId: "8f5fd112-87d8-41dd-8656-4745b3caa34e",
-        gameId: "cro-mag",
-        mode: "race",
-        trackOrLevel: "0",
-        seed: 1337,
-        hostPlayerIndex: 0,
-        maxPlayers: 2,
-        requiredProtocolVersion: 1,
-        requiredRuntimeVersion: "host-authoritative-v2",
-        hostParticipantId: "host",
-        players: [
-          {
-            participantId: "host",
-            playerIndex: 0,
-            displayName: "Host",
-            connectionState: "connected",
-          },
-          {
-            participantId: "guest",
-            playerIndex: 1,
-            displayName: "Guest",
-            connectionState: "connected",
-          },
-        ],
-      },
+      networkMatchConfig: buildValidMatchConfig(
+        "cromagrally",
+        "multiplayerRace",
+        "1",
+      ),
       localParticipantId: "missing-participant",
       onStatus: () => undefined,
       onError,

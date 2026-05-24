@@ -102,7 +102,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   if (itemData.Itms === undefined) return null;
 
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {/* Global Toggle for Item Images */}
       <Button
         size="sm"
@@ -163,7 +163,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 flex-1 min-h-0">
+      <div className="flex flex-col gap-2">
         {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select
@@ -197,11 +197,12 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               </SelectContent>
             </Select>
 
-            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
+            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-baseline">
               {/* X/Z position (editable for precision placement; drag in canvas for quick placement) */}
               <label className="text-sm font-medium">X</label>
               <Input
                 type="number"
+                className="h-7 text-xs"
                 value={selectedItemData.x.toString()}
                 onChange={(e) => {
                   const v = parseInt(e.target.value);
@@ -221,6 +222,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               <label className="text-sm font-medium">Z</label>
               <Input
                 type="number"
+                className="h-7 text-xs"
                 value={selectedItemData.z.toString()}
                 onChange={(e) => {
                   const v = parseInt(e.target.value);
@@ -278,6 +280,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   <Input
                     key={`input-${i}`}
                     type="number"
+                    className="h-7 text-xs"
                     value={value.toString()}
                     onChange={(e) => setValue(parseU8(e.target.value))}
                   />,
@@ -286,6 +289,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             </div>
 
             <Button
+              size="sm"
               variant="destructive"
               disabled={selectedItem === undefined}
               onClick={() => {
@@ -359,7 +363,6 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
       }
       buttonText={hasItems ? "Add More Items" : "Add First Item"}
       onInitialize={() => setClickToAddItem(0)}
-      fillHeight
     />
   );
 }

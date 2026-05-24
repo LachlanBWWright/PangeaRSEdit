@@ -77,19 +77,27 @@ public sealed class EfMultiplayerLobbyService(
 
         var summaries = lobbies
             .Where(x => runtimeState.IsLobbyPublic(x.Id))
-            .Select(x => new MultiplayerLobbySummary(
-                x.Id,
-                x.GameId,
-                x.Mode,
-                x.TrackOrLevel,
-                x.MaxPlayers,
-                true,
-                x.JoinCode,
-                x.State,
-                x.Players.Count,
-                x.CreatedAt,
-                x.ExpiresAt
-            ))
+            .Select(x =>
+            {
+                var canJoin =
+                    x.State == "open"
+                    && x.ExpiresAt > now
+                    && x.Players.Count < x.MaxPlayers;
+                return new MultiplayerLobbySummary(
+                    x.Id,
+                    x.GameId,
+                    x.Mode,
+                    x.TrackOrLevel,
+                    x.MaxPlayers,
+                    true,
+                    x.JoinCode,
+                    x.State,
+                    x.Players.Count,
+                    canJoin,
+                    x.CreatedAt,
+                    x.ExpiresAt
+                );
+            })
             .Cast<MultiplayerLobbySummary>()
             .ToList();
 
@@ -261,7 +269,12 @@ public sealed class EfMultiplayerLobbyService(
             return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
         }
 
-        if (lobby.Players.Count < 2 || lobby.Players.Any(x => !x.IsReady))
+        if (lobby.Players.Count < 2)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
+        }
+
+        if (!request.Force && lobby.Players.Any(x => !x.IsReady))
         {
             return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);
         }

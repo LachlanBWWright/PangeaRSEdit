@@ -34,14 +34,16 @@ export function ModelHierarchy({
 
   return (
     <Card className="bg-gray-800 border-gray-700">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white text-sm">Model Hierarchy</CardTitle>
+      <CardHeader className="relative pb-2 text-center">
+        <div className="flex items-center justify-center">
+          <CardTitle className="w-full text-center text-white text-sm">
+            Model Hierarchy
+          </CardTitle>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleToggleAll}
-            className="text-xs text-gray-300 hover:text-white"
+            className="absolute right-6 text-xs text-gray-300 hover:text-white"
           >
             {showAll ? "Hide All" : "Show All"}
           </Button>

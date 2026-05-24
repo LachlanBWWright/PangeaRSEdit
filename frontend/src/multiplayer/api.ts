@@ -301,6 +301,7 @@ export async function startLobby(
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({ force: input.force }),
     },
   );
   if (response.isErr()) {

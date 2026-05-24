@@ -13,6 +13,8 @@ public sealed record JoinMultiplayerLobbyBody(string DisplayName);
 
 public sealed record SetMultiplayerLobbyReadyBody(bool IsReady);
 
+public sealed record StartMultiplayerLobbyBody(bool Force = false);
+
 public sealed record MultiplayerLobbyReportBody(string? Detail);
 
 public sealed record MultiplayerIceServerResponse(
@@ -69,6 +71,7 @@ public sealed record MultiplayerLobbySummaryResponse(
     string JoinCode,
     string State,
     int PlayerCount,
+    bool CanJoin,
     DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt
 );

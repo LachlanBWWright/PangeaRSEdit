@@ -353,7 +353,7 @@ export function GameCard({
       )}
     >
       <CardContent className="flex h-full min-h-0 flex-col gap-2 p-3">
-        <div className="flex-none min-h-8">
+        <div className="flex-none min-h-8 text-center">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
 

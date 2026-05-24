@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  croMagMultiplayerModeSchema,
+  multiplayerGameIdSchema,
+  nanosaur2MultiplayerModeSchema,
+} from "./modes";
 
 /** Runtime schema for a multiplayer lobby player record. */
 export const MultiplayerLobbyPlayerSchema = z.object({
@@ -20,11 +25,9 @@ export const MultiplayerMatchConfigPlayerSchema = z.object({
   connectionState: z.string().min(1),
 });
 
-export const MultiplayerMatchConfigSchema = z.object({
+const multiplayerMatchConfigBaseSchema = z.object({
   lobbyId: z.string().uuid(),
   matchId: z.string().uuid(),
-  gameId: z.string().min(1),
-  mode: z.string().min(1),
   trackOrLevel: z.string().min(1),
   seed: z.number().int().positive(),
   hostPlayerIndex: z.number().int().nonnegative(),
@@ -35,11 +38,25 @@ export const MultiplayerMatchConfigSchema = z.object({
   players: z.array(MultiplayerMatchConfigPlayerSchema),
 });
 
-/** Runtime schema for a compact multiplayer lobby summary. */
-export const MultiplayerLobbySummarySchema = z.object({
+export const CroMagMultiplayerMatchConfigSchema =
+  multiplayerMatchConfigBaseSchema.extend({
+    gameId: z.literal("cromagrally"),
+    mode: croMagMultiplayerModeSchema,
+  });
+
+export const Nanosaur2MultiplayerMatchConfigSchema =
+  multiplayerMatchConfigBaseSchema.extend({
+    gameId: z.literal("nanosaur2"),
+    mode: nanosaur2MultiplayerModeSchema,
+  });
+
+export const MultiplayerMatchConfigSchema = z.union([
+  CroMagMultiplayerMatchConfigSchema,
+  Nanosaur2MultiplayerMatchConfigSchema,
+]);
+
+const multiplayerLobbySummaryBaseSchema = z.object({
   id: z.string().uuid(),
-  gameId: z.string().min(1),
-  mode: z.string().min(1),
   trackOrLevel: z.string().min(1),
   maxPlayers: z.number().int().min(2).max(6),
   isPublic: z.boolean().default(true),
@@ -48,14 +65,23 @@ export const MultiplayerLobbySummarySchema = z.object({
   playerCount: z.number().int().nonnegative(),
   createdAt: z.string().min(1),
   expiresAt: z.string().min(1),
-  canJoin: z.boolean().optional(),
+  canJoin: z.boolean(),
 });
 
-/** Runtime schema for a full multiplayer lobby detail payload. */
-export const MultiplayerLobbyDetailsSchema = z.object({
+/** Runtime schema for a compact multiplayer lobby summary. */
+export const MultiplayerLobbySummarySchema = z.union([
+  multiplayerLobbySummaryBaseSchema.extend({
+    gameId: z.literal("cromagrally"),
+    mode: croMagMultiplayerModeSchema,
+  }),
+  multiplayerLobbySummaryBaseSchema.extend({
+    gameId: z.literal("nanosaur2"),
+    mode: nanosaur2MultiplayerModeSchema,
+  }),
+]);
+
+const multiplayerLobbyDetailsBaseSchema = z.object({
   id: z.string().uuid(),
-  gameId: z.string().min(1),
-  mode: z.string().min(1),
   trackOrLevel: z.string().min(1),
   maxPlayers: z.number().int().min(2).max(6),
   isPublic: z.boolean().default(true),
@@ -69,15 +95,48 @@ export const MultiplayerLobbyDetailsSchema = z.object({
   matchConfig: MultiplayerMatchConfigSchema.nullable().optional(),
 });
 
-export const MultiplayerLobbyPreviewSchema = z.object({
-  id: z.string().uuid(),
-  gameId: z.string().min(1),
-  mode: z.string().min(1),
+/** Runtime schema for a full multiplayer lobby detail payload. */
+export const MultiplayerLobbyDetailsSchema = z.union([
+  multiplayerLobbyDetailsBaseSchema.extend({
+    gameId: z.literal("cromagrally"),
+    mode: croMagMultiplayerModeSchema,
+  }),
+  multiplayerLobbyDetailsBaseSchema.extend({
+    gameId: z.literal("nanosaur2"),
+    mode: nanosaur2MultiplayerModeSchema,
+  }),
+]);
+
+export const MultiplayerLobbyPreviewSchema = z.union([
+  z.object({
+    id: z.string().uuid(),
+    gameId: z.literal("cromagrally"),
+    mode: croMagMultiplayerModeSchema,
+    trackOrLevel: z.string().min(1),
+    maxPlayers: z.number().int().min(2).max(6),
+    state: z.string().min(1),
+    playerCount: z.number().int().nonnegative(),
+    canJoin: z.boolean(),
+  }),
+  z.object({
+    id: z.string().uuid(),
+    gameId: z.literal("nanosaur2"),
+    mode: nanosaur2MultiplayerModeSchema,
+    trackOrLevel: z.string().min(1),
+    maxPlayers: z.number().int().min(2).max(6),
+    state: z.string().min(1),
+    playerCount: z.number().int().nonnegative(),
+    canJoin: z.boolean(),
+  }),
+]);
+
+export const CreateLobbyInputSchema = z.object({
+  gameId: multiplayerGameIdSchema,
+  mode: z.union([croMagMultiplayerModeSchema, nanosaur2MultiplayerModeSchema]),
   trackOrLevel: z.string().min(1),
   maxPlayers: z.number().int().min(2).max(6),
-  state: z.string().min(1),
-  playerCount: z.number().int().nonnegative(),
-  canJoin: z.boolean(),
+  displayName: z.string().min(1),
+  isPublic: z.boolean(),
 });
 
 /** Runtime schema for the lobby list response wrapper. */

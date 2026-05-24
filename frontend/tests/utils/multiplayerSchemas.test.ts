@@ -73,4 +73,20 @@ describe("multiplayer match config schema", () => {
     });
     expect(parsed.success).toBe(false);
   });
+
+  it("rejects a Cro-Mag match with a Nanosaur 2 mode", () => {
+    const parsed = MultiplayerMatchConfigSchema.safeParse({
+      ...validConfig,
+      mode: "multiplayerBattle",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an unsupported multiplayer game id", () => {
+    const parsed = MultiplayerMatchConfigSchema.safeParse({
+      ...validConfig,
+      gameId: "cro-mag",
+    });
+    expect(parsed.success).toBe(false);
+  });
 });

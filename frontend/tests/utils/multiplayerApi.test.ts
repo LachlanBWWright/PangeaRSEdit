@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createLobby, getLobbyPreview } from "@/multiplayer/api";
+import { createLobby, getLobbyPreview, startLobby } from "@/multiplayer/api";
 
 describe("multiplayer api", () => {
   afterEach(() => {
@@ -113,5 +113,53 @@ describe("multiplayer api", () => {
     if (result.isOk()) {
       expect(result.value.canJoin).toBe(true);
     }
+  });
+
+  it("sends the force-start request body", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: () =>
+        Promise.resolve({
+          id: "9340ea45-789f-4072-abd2-5f40eac9e4e0",
+          gameId: "cromagrally",
+          mode: "multiplayerRace",
+          trackOrLevel: "ice-ramp",
+          maxPlayers: 2,
+          hostParticipantId: "host-1",
+          joinCode: "ABC123",
+          state: "started",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          expiresAt: "2026-01-01T01:00:00.000Z",
+          participantId: "host-1",
+          players: [
+            {
+              participantId: "host-1",
+              displayName: "Host",
+              playerIndex: 0,
+              isHost: true,
+              isReady: true,
+              joinedAt: "2026-01-01T00:00:00.000Z",
+              lastSeenAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await startLobby({
+      lobbyId: "9340ea45-789f-4072-abd2-5f40eac9e4e0",
+      force: true,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: JSON.stringify({ force: true }),
+        method: "POST",
+      }),
+    );
   });
 });

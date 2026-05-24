@@ -11,6 +11,8 @@ interface ItemThumbnailProps {
   readonly kind: ItemScreenshotKind;
   readonly itemType: number;
   readonly label: string;
+  /** If set, overrides which text is used for the fallback badge (keeps `label` for display). */
+  readonly badgeLabel?: string;
   readonly levelNum?: number;
   readonly className?: string;
   readonly params?: {
@@ -21,6 +23,7 @@ interface ItemThumbnailProps {
     readonly flags?: number;
   };
   readonly metadata?: ReactNode;
+  readonly compact?: boolean;
 }
 
 function buildFallbackBadge(label: string): string {
@@ -36,10 +39,12 @@ export function ItemThumbnail({
   kind,
   itemType,
   label,
+  badgeLabel,
   levelNum,
   className,
   params,
   metadata,
+  compact = false,
 }: ItemThumbnailProps) {
   const manifestResult = getItemScreenshotManifest();
   const screenshot = manifestResult.isOk()
@@ -52,10 +57,15 @@ export function ItemThumbnail({
       })
     : null;
 
+  const thumbnailSizeClass = compact ? "h-4 w-6" : "h-10 w-10";
+  const fallbackTextClass = compact ? "text-[8px]" : "text-[10px]";
+
   return (
     <div className={`flex items-center gap-2 ${className ?? ""}`.trim()}>
       {screenshot ? (
-        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border/60 bg-muted">
+        <div
+          className={`relative ${thumbnailSizeClass} shrink-0 overflow-hidden rounded border border-border/60 bg-muted`}
+        >
           <img
             src={screenshot.imageUrl}
             alt={`${label} screenshot`}
@@ -68,15 +78,19 @@ export function ItemThumbnail({
           ) : null}
         </div>
       ) : (
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-dashed border-border/60 bg-muted text-[10px] font-semibold text-muted-foreground">
-          {buildFallbackBadge(label)}
+        <div
+          className={`flex ${thumbnailSizeClass} shrink-0 items-center justify-center rounded border border-dashed border-border/60 bg-muted font-semibold text-muted-foreground ${fallbackTextClass}`}
+        >
+          {buildFallbackBadge(badgeLabel ?? label)}
         </div>
       )}
       <div className="min-w-0">
         <div className="truncate">{label}</div>
         {metadata ? (
-          <div className="truncate text-xs text-muted-foreground">{metadata}</div>
-        ) : screenshot ? null : (
+          <div className="truncate text-xs text-muted-foreground">
+            {metadata}
+          </div>
+        ) : screenshot || compact ? null : (
           <div className="truncate text-xs text-muted-foreground">
             no screenshot
           </div>

@@ -18,6 +18,7 @@ import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
 import { MightyMikeItems } from "../subviews/MightyMikeItems";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { MightyMikeSupertiles } from "../subviews/supertiles/MightyMikeSupertiles";
 import { TileBrushCaptureLayer } from "../subviews/tileBrushes/TileBrushCaptureLayer";
 import {
@@ -87,9 +88,10 @@ export function MightyMikeKonvaView({
   const mapWidth = header.mapWidth;
   const layr = terrainData.Layr?.[1000]?.obj ?? [];
   const mapHeight = Math.ceil(layr.length / mapWidth);
-  const [captureStart, setCaptureStart] = useState<{ x: number; y: number } | null>(
-    null,
-  );
+  const [captureStart, setCaptureStart] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [captureEnd, setCaptureEnd] = useState<{ x: number; y: number } | null>(
     null,
   );
@@ -208,7 +210,8 @@ export function MightyMikeKonvaView({
           if (tileBrushMode !== "capture" || !captureStart) {
             return;
           }
-          const tilePos = getMapTileFromStageEvent(e) ?? captureEnd ?? captureStart;
+          const tilePos =
+            getMapTileFromStageEvent(e) ?? captureEnd ?? captureStart;
           handleCaptureEnd(captureStart, tilePos);
           setCaptureStart(null);
           setCaptureEnd(null);
@@ -322,6 +325,8 @@ export function MightyMikeKonvaView({
             captureEnd={captureEnd}
           />
         )}
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
       </Stage>
     </div>
   );

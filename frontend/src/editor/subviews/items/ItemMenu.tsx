@@ -85,11 +85,11 @@ export const ItemMenu = memo(function ItemMenu({
   }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu hasItems={itemCount > 0} />
       ) : (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm flex-1 min-h-0">
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm">
           <span className="text-gray-400">X</span>
           <Input
             type="number"
@@ -120,35 +120,35 @@ export const ItemMenu = memo(function ItemMenu({
       )}
 
       {selectedItemData !== null && selectedItemData !== undefined && (
-        <div className="flex flex-col gap-2 flex-1 min-h-0">
+        <div className="flex flex-col gap-2">
           <Select
             value={selectedItemData.type.toString() ?? ""}
             onValueChange={handleTypeChange}
           >
-              <SelectTrigger>
-                <SelectValue>
-                  {getItemName(globals, selectedItemData.type)}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {itemValues.map((key) => (
-                  <SelectItem
+            <SelectTrigger>
+              <SelectValue>
+                {getItemName(globals, selectedItemData.type)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {itemValues.map((key) => (
+                <SelectItem
                   key={key}
-                    className="text-white"
-                    value={key.toString()}
-                  >
-                    <ItemThumbnail
-                      game={globals.GAME_TYPE}
-                      kind="terrainItem"
-                      itemType={key}
-                      label={getItemName(globals, key)}
-                      levelNum={levelNum}
-                      className="py-1"
-                    />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  className="text-white"
+                  value={key.toString()}
+                >
+                  <ItemThumbnail
+                    game={globals.GAME_TYPE}
+                    kind="terrainItem"
+                    itemType={key}
+                    label={getItemName(globals, key)}
+                    levelNum={levelNum}
+                    compact
+                  />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Safe Items Filter Toggle */}
           {safeItemTypes.size > 0 && (
@@ -168,7 +168,7 @@ export const ItemMenu = memo(function ItemMenu({
             </div>
           )}
 
-          <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
+          <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-baseline">
             {/* Param 0-3, refactored */}
             {([0, 1, 2, 3] as const).map((i) => {
               const paramKey = `p${i}` as const;
@@ -232,7 +232,7 @@ export const ItemMenu = memo(function ItemMenu({
                       <p>Value:</p>
                       <Input
                         type="number"
-                        className="w-24"
+                        className="h-7 w-24 text-xs"
                         value={value.toString()}
                         onChange={(e) => setValue(parseU8(e.target.value))}
                       />
@@ -243,6 +243,7 @@ export const ItemMenu = memo(function ItemMenu({
                     key={`input-${i}`}
                     type="number"
                     value={value.toString()}
+                    className="h-7 text-xs"
                     onChange={(e) => setValue(parseU8(e.target.value))}
                   />
                 ),
@@ -250,6 +251,7 @@ export const ItemMenu = memo(function ItemMenu({
             })}
           </div>
           <Button
+            size="sm"
             variant="destructive"
             disabled={selectedItem === undefined}
             onClick={handleDeleteItem}
@@ -277,33 +279,33 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   if (clickToAddItem !== undefined)
     return (
       <>
-          <Select
-            value={getItemName(globals, clickToAddItem)}
-            onValueChange={(e) => {
+        <Select
+          value={getItemName(globals, clickToAddItem)}
+          onValueChange={(e) => {
             const newItemType = parseInt(e);
             setClickToAddItem(newItemType);
           }}
-          >
-            <SelectTrigger>
-              <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {itemValues.map((key) => (
-                <SelectItem
+        >
+          <SelectTrigger>
+            <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {itemValues.map((key) => (
+              <SelectItem
                 key={key}
-                  className="text-white"
-                  value={key.toString()}
-                >
-                  <ItemThumbnail
-                    game={globals.GAME_TYPE}
-                    kind="terrainItem"
-                    itemType={key}
-                    label={getItemName(globals, key)}
-                    className="py-1"
-                  />
-                </SelectItem>
-              ))}
-            </SelectContent>
+                className="text-white"
+                value={key.toString()}
+              >
+                <ItemThumbnail
+                  game={globals.GAME_TYPE}
+                  kind="terrainItem"
+                  itemType={key}
+                  label={getItemName(globals, key)}
+                  compact
+                />
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
 
         <p>Click on the Canvas to add the selected item</p>
@@ -326,7 +328,6 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
       }
       buttonText={hasItems ? "Add More Items" : "Add First Item"}
       onInitialize={() => setClickToAddItem(0)}
-      fillHeight={true}
     />
   );
 }

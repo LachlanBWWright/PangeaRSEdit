@@ -87,9 +87,7 @@ export const WaterBody = memo(
         <Line
           ref={lineRef}
           points={waterNubs}
-          stroke={
-            waterBodyIdx === selectedWaterBody ? "#dce2ff" : style.strokeColor
-          }
+          stroke={waterBodyIdx === selectedWaterBody ? "red" : "blue"}
           strokeWidth={waterBodyIdx === selectedWaterBody ? 5 : 2}
           perfectDrawEnabled={false}
           hitStrokeWidth={10}
@@ -152,8 +150,8 @@ export const WaterBody = memo(
                 fill={
                   selectedWaterNub === nubIdx &&
                   selectedWaterBody === waterBodyIdx
-                    ? "#FF99FFDD"
-                    : "#9999FFDD"
+                    ? "red"
+                    : "blue"
                 }
                 stroke="black"
                 strokeWidth={2}

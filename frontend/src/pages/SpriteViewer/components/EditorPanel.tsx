@@ -17,8 +17,8 @@ export function EditorPanel({
 }: EditorPanelProps) {
   return (
     <Card className={cn("border-gray-700 bg-gray-800", className)}>
-      <CardHeader className="px-3 py-2">
-        <CardTitle className="text-sm font-medium text-gray-100">
+      <CardHeader className="px-3 py-2 text-center">
+        <CardTitle className="w-full text-center text-sm font-medium text-gray-100">
           {title}
         </CardTitle>
       </CardHeader>

@@ -2,9 +2,9 @@ import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { Spline } from "./splines/Spline";
-import { memo, useState, useCallback } from "react";
-import { HoverNameTag } from "./shared/nodeVisuals";
-import type { HoverTagInfo } from "./shared/nodeVisuals";
+import { memo, useEffect } from "react";
+import { useSetAtom } from "jotai";
+import { ActiveHoverTag } from "@/data/globals/hoverTagAtom";
 
 export const Splines = memo(function Splines({
   splineData,
@@ -13,11 +13,12 @@ export const Splines = memo(function Splines({
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
 }) {
-  const [hoveredTag, setHoveredTag] = useState<HoverTagInfo | null>(null);
+  const setActiveHoverTag = useSetAtom(ActiveHoverTag);
 
-  const handleHoverChange = useCallback((tag: HoverTagInfo | null) => {
-    setHoveredTag(tag);
-  }, []);
+  // Clear the hover tag when this layer unmounts (e.g. view switch).
+  useEffect(() => {
+    return () => setActiveHoverTag(null);
+  }, [setActiveHoverTag]);
 
   if (!splineData.Spln) return <></>;
 
@@ -29,19 +30,9 @@ export const Splines = memo(function Splines({
           splineData={splineData}
           setSplineData={setSplineData}
           splineIdx={splineIdx}
-          onHoverChange={handleHoverChange}
+          onHoverChange={setActiveHoverTag}
         />
       ))}
-      {/* Render hover tag last so it always appears above all spline items */}
-      {hoveredTag && (
-        <HoverNameTag
-          x={hoveredTag.x}
-          y={hoveredTag.y}
-          text={hoveredTag.text}
-          fill={hoveredTag.fill}
-          textColor={hoveredTag.textColor}
-        />
-      )}
     </Layer>
   );
 });

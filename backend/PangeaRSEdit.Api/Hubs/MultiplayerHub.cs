@@ -245,7 +245,7 @@ public sealed class MultiplayerHub : Hub
         var participantId = GetCallerParticipantId()!;
 
         var startResult = await _lobbyService.StartLobbyAsync(
-            new StartLobbyRequest(lobbyId, participantId),
+            new StartLobbyRequest(lobbyId, participantId, false),
             CancellationToken.None);
         if (!startResult.IsSuccess)
         {

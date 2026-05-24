@@ -174,8 +174,8 @@ export function AnimationViewerLayout({
 }: AnimationViewerLayoutProps) {
   return (
     <Card className="flex min-h-0 flex-col overflow-hidden bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white text-sm">
+      <CardHeader className="text-center">
+        <CardTitle className="w-full text-center text-white text-sm">
           Animations ({editableAnimations.length})
         </CardTitle>
       </CardHeader>

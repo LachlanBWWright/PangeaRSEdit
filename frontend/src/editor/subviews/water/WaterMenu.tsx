@@ -6,6 +6,7 @@ import {
   SelectedWaterBody,
   SelectedWaterNub,
 } from "../../../data/water/waterAtoms";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import {
   waterBodyNames,
   WaterBodyType,
@@ -28,7 +29,6 @@ import {
 } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import {
-  addDefaultWaterBody,
   addWaterBodyNub,
   canDeleteWaterBodyNub,
   deleteWaterBody,
@@ -40,6 +40,11 @@ import {
   updateWaterBodyNub,
   updateWaterBodyType,
 } from "@/editor/subviews/water/waterMenuState";
+import {
+  canFinalizeCreation,
+  finalizeWaterFromPoints,
+  popCreationPoint,
+} from "@/editor/creation/pendingCreationState";
 
 export const WaterMenu = memo(function WaterMenu({
   liquidData,
@@ -50,6 +55,7 @@ export const WaterMenu = memo(function WaterMenu({
 }) {
   const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
   const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
+  const [pendingCreation, setPendingCreation] = useAtom(PendingCreation);
   const globals = useAtomValue(Globals);
 
   const waterBodyValues = useMemo(() => getWaterBodyValues(globals), [globals]);
@@ -63,6 +69,63 @@ export const WaterMenu = memo(function WaterMenu({
 
   if (waterBodyData === null || waterBodyData === undefined) {
     const hasWaterBodies = waterBodyCount > 0;
+    const isPendingWaterCreation = pendingCreation?.kind === "water";
+    const pendingPoints = isPendingWaterCreation ? pendingCreation.points : [];
+
+    if (isPendingWaterCreation) {
+      return (
+        <div className="flex h-full min-h-full w-full flex-col gap-3 p-4">
+          <p className="text-sm text-gray-200">
+            Click on the canvas to place water body nubs.
+          </p>
+          <p className="text-sm text-gray-300">
+            Points: {pendingPoints.length}
+          </p>
+          <p className="text-xs text-gray-400">
+            Hotspot is auto-centered from your placed nubs when finalized.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={!canFinalizeCreation("water", pendingPoints, globals)}
+              onClick={() => {
+                setLiquidData((draft) => {
+                  const createdWaterBody = finalizeWaterFromPoints(
+                    draft,
+                    pendingPoints,
+                    globals,
+                  );
+                  setSelectedWaterBody(createdWaterBody);
+                  setSelectedWaterNub(null);
+                });
+                setPendingCreation(null);
+              }}
+            >
+              Finalize New Water Body
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pendingPoints.length === 0}
+              onClick={() => {
+                if (!pendingCreation) return;
+                setPendingCreation({
+                  ...pendingCreation,
+                  points: popCreationPoint(pendingCreation.points),
+                });
+              }}
+            >
+              Undo Last Point
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setPendingCreation(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <EmptyDataPrompt
         title={hasWaterBodies ? "No Water Body Selected" : "No Water Bodies"}
@@ -74,14 +137,7 @@ export const WaterMenu = memo(function WaterMenu({
         buttonText={
           hasWaterBodies ? "Add New Water Body" : "Add First Water Body"
         }
-        onInitialize={() =>
-          setLiquidData((draft) => {
-            const nextWaterBodyIndex = addDefaultWaterBody(draft, globals);
-
-            setSelectedWaterBody(nextWaterBodyIndex);
-            setSelectedWaterNub(null);
-          })
-        }
+        onInitialize={() => setPendingCreation({ kind: "water", points: [] })}
         fillHeight
       />
     );

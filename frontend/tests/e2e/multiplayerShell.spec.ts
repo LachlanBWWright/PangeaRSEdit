@@ -64,6 +64,7 @@ function withParticipant(
     mode: lobby.mode,
     trackOrLevel: lobby.trackOrLevel,
     maxPlayers: lobby.maxPlayers,
+    isPublic: true,
     hostParticipantId: lobby.hostParticipantId,
     joinCode: lobby.joinCode,
     state: lobby.state,
@@ -72,6 +73,23 @@ function withParticipant(
     players: lobby.players,
     participantId,
     matchConfig: lobby.matchConfig,
+  };
+}
+
+function toLobbySummary(lobby: MockLobbyState): Record<string, unknown> {
+  return {
+    id: lobby.id,
+    gameId: lobby.gameId,
+    mode: lobby.mode,
+    trackOrLevel: lobby.trackOrLevel,
+    maxPlayers: lobby.maxPlayers,
+    isPublic: true,
+    joinCode: lobby.joinCode,
+    state: lobby.state,
+    playerCount: lobby.players.length,
+    canJoin: lobby.state === "open" && lobby.players.length < lobby.maxPlayers,
+    createdAt: lobby.createdAt,
+    expiresAt: lobby.expiresAt,
   };
 }
 
@@ -134,6 +152,36 @@ function installMockMultiplayerApi(
         typeof body.displayName === "string" ? body.displayName : "Host";
       state.lobby = createInitialLobby(displayName);
       await json(withParticipant(state.lobby, participantId));
+      return;
+    }
+
+    if (method === "GET" && path.endsWith("/api/multiplayer/lobbies")) {
+      const lobby = state.lobby;
+      await json({
+        items: lobby ? [toLobbySummary(lobby)] : [],
+      });
+      return;
+    }
+
+    if (
+      method === "GET" &&
+      path.endsWith(`/api/multiplayer/lobbies/${lobbyId}/preview`)
+    ) {
+      const lobby = state.lobby;
+      if (!lobby) {
+        await route.fulfill({ status: 404, body: "{}" });
+        return;
+      }
+      await json({
+        id: lobby.id,
+        gameId: lobby.gameId,
+        mode: lobby.mode,
+        trackOrLevel: lobby.trackOrLevel,
+        maxPlayers: lobby.maxPlayers,
+        state: lobby.state,
+        playerCount: lobby.players.length,
+        canJoin: lobby.state === "open" && lobby.players.length < lobby.maxPlayers,
+      });
       return;
     }
 
@@ -270,6 +318,8 @@ async function gotoMultiplayer(page: Page): Promise<void> {
 }
 
 test.describe("Multiplayer shell", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test("host and guest complete create/join/ready/start flow", async ({
     browser,
   }) => {
@@ -292,19 +342,23 @@ test.describe("Multiplayer shell", () => {
       window.history.replaceState({}, "", `${window.location.pathname}?multiplayerMockHub=1`);
     });
 
-    await hostPage.locator("label:has-text('Display Name') input").fill("Host");
-    await hostPage.getByRole("button", { name: "Create Lobby" }).click();
+    await hostPage.getByRole("button", { name: "Create Lobby" }).first().click();
+    await hostPage.locator("#multiplayer-create-display-name").fill("Host");
+    await hostPage
+      .locator('[role="dialog"]')
+      .getByRole("button", { name: "Create Lobby" })
+      .click();
     await expect(hostPage.getByText(lobbyId).first()).toBeVisible();
     await expect(hostPage.getByText(/Connection:\s*connected/i).first()).toBeVisible();
 
-    await guestPage.locator("label:has-text('Display Name') input").fill("Guest");
-    await guestPage.getByPlaceholder("Lobby ID").fill(lobbyId);
+    await guestPage.locator("#multiplayer-display-name").fill("Guest");
+    await guestPage.locator("#multiplayer-join-lobby-id").fill(lobbyId);
     await guestPage.getByRole("button", { name: "Join Lobby" }).click();
     await expect(guestPage.getByText(lobbyId).first()).toBeVisible();
 
     await hostPage.getByRole("button", { name: "Set Ready" }).click();
     await guestPage.getByRole("button", { name: "Set Ready" }).click();
-    await hostPage.getByRole("button", { name: "Host Start" }).click();
+    await hostPage.getByRole("button", { name: "Start Anyway", exact: true }).click();
 
     await expect(hostPage.getByText(/State:\s*started/i).first()).toBeVisible();
     await hostContext.close();
@@ -319,11 +373,18 @@ test.describe("Multiplayer shell", () => {
     await page.evaluate(() => {
       window.history.replaceState({}, "", `${window.location.pathname}?multiplayerMockHub=1`);
     });
-    await page.getByRole("button", { name: "Create Lobby" }).click();
+    await page.getByRole("button", { name: "Create Lobby" }).first().click();
+    await page
+      .locator('[role="dialog"]')
+      .getByRole("button", { name: "Create Lobby" })
+      .click();
     await expect(page.getByText(lobbyId).first()).toBeVisible();
 
     await page.getByRole("button", { name: "Leave Lobby" }).click();
-    await expect(page.getByText(lobbyId)).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Find a Lobby" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Leave Lobby" })).toHaveCount(0);
     await expect(page.getByText(/Status:\s*Disconnected/i).first()).toBeVisible();
   });
 });

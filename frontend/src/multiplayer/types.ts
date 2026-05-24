@@ -24,7 +24,7 @@ export interface MultiplayerLobbySummary {
   readonly playerCount: number;
   readonly createdAt: string;
   readonly expiresAt: string;
-  readonly canJoin?: boolean;
+  readonly canJoin: boolean;
 }
 
 /** Full lobby details including the current participant roster. */
@@ -103,6 +103,7 @@ export interface SetReadyInput {
 /** Request body used to start a lobby. */
 export interface StartLobbyInput {
   readonly lobbyId: string;
+  readonly force: boolean;
 }
 
 /** Query input used when listing open public lobbies. */

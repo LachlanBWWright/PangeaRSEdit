@@ -225,6 +225,59 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     }
 
     [Fact]
+    public async Task StartLobby_ForceStartsWithMissingReadyParticipants()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-player");
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "Guest"
+        });
+
+        var hostReadyClient = _factory.CreateClient();
+        hostReadyClient.DefaultRequestHeaders.Add("X-Participant-Id", hostParticipantId);
+        await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+
+        var startResponse = await hostReadyClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/start",
+            new { force = true }
+        );
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+
+        using var document = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        Assert.Equal("started", document.RootElement.GetProperty("state").GetString());
+        var players = document.RootElement
+            .GetProperty("matchConfig")
+            .GetProperty("players")
+            .EnumerateArray()
+            .ToArray();
+        Assert.Equal(2, players.Length);
+    }
+
+    [Fact]
+    public async Task StartLobby_RejectsNonHostForceStart()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, _) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-player");
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "Guest"
+        });
+
+        var nonHostForceStart = await guestClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/start",
+            new { force = true }
+        );
+        Assert.Equal(HttpStatusCode.Forbidden, nonHostForceStart.StatusCode);
+    }
+
+    [Fact]
     public async Task StartLobby_ReturnsStableMatchConfigOnRepeatedReads()
     {
         var hostClient = _factory.CreateClient();
