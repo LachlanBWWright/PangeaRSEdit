@@ -2,7 +2,6 @@ import { Layer, Image, Rect } from "react-konva";
 import { memo } from "react";
 import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
-import { View } from "@/editor/viewEnum";
 import { TILE_SIZE } from "./mightyMikeSupertilesHelpers";
 import { useMightyMikeSupertilesViewModel } from "./useMightyMikeSupertilesViewModel";
 
@@ -11,20 +10,17 @@ export interface MightyMikeSupertilesProps {
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
-  showCollisionOverlay?: boolean;
-  view?: View;
 }
 const MightyMikeSupertilesComponent = ({
   headerData,
   terrainData,
   setTerrainData,
   mapImages,
-  showCollisionOverlay = false,
-  view,
 }: MightyMikeSupertilesProps) => {
   const {
     showAltMap,
     showParamsOverlay,
+    showCollisionOverlay,
     mapWidth,
     mapHeight,
     hasCanvasContent,
@@ -40,8 +36,6 @@ const MightyMikeSupertilesComponent = ({
     terrainData,
     setTerrainData,
     mapImages,
-    showCollisionOverlay,
-    view,
   });
 
   if (!hasCanvasContent) {

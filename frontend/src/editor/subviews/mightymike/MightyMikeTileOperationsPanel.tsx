@@ -1,7 +1,13 @@
 import type { ChangeEvent } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
-import { Edit, Download } from "lucide-react";
+import {
+  Download,
+  Edit,
+  FlipHorizontal,
+  FlipVertical,
+  RotateCw,
+} from "lucide-react";
 import { TileCanvas } from "../shared/TileCanvas";
 
 interface MightyMikeTileOperationsPanelProps {
@@ -74,6 +80,7 @@ export function MightyMikeTileOperationsPanel({
           onClick={handleRotateTile}
           disabled={currentImageIndex === null}
         >
+          <RotateCw className="mr-1 h-4 w-4" />
           Rotate
         </Button>
         <Button
@@ -82,6 +89,7 @@ export function MightyMikeTileOperationsPanel({
           onClick={handleFlipTileHorizontal}
           disabled={currentImageIndex === null}
         >
+          <FlipHorizontal className="mr-1 h-4 w-4" />
           Flip H
         </Button>
         <Button
@@ -90,6 +98,7 @@ export function MightyMikeTileOperationsPanel({
           onClick={handleFlipTileVertical}
           disabled={currentImageIndex === null}
         >
+          <FlipVertical className="mr-1 h-4 w-4" />
           Flip V
         </Button>
       </div>

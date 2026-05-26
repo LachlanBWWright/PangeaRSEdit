@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EditorField, EditorPanel } from "./EditorPanel";
 
 export interface DisplayOptions {
@@ -71,31 +72,27 @@ export function DisplayOptionsPanel({
       {showSpriteOptions && (
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={options.showGrid}
-              onChange={(e) =>
+              onCheckedChange={(checked) =>
                 onOptionsChange({
                   ...options,
-                  showGrid: e.target.checked,
+                  showGrid: checked === true,
                 })
               }
-              className="w-4 h-4"
             />
             <span className="text-white">Show Grid</span>
           </label>
 
           <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={options.showBounds}
-              onChange={(e) =>
+              onCheckedChange={(checked) =>
                 onOptionsChange({
                   ...options,
-                  showBounds: e.target.checked,
+                  showBounds: checked === true,
                 })
               }
-              className="w-4 h-4"
             />
             <span className="text-white">Show Bounds</span>
           </label>

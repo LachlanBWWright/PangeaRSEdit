@@ -1,6 +1,11 @@
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 import { ALT_TILE_OPTIONS } from "../mightymike/MightyMikeAltMapEditor";
-import { plainObjectSchema, unknownArraySchema } from "@/schemas/common";
+import {
+  mightyMikeTileValueSchema,
+  plainObjectSchema,
+  type MightyMikeTileValue,
+  unknownArraySchema,
+} from "@/schemas/common";
 import { z } from "zod";
 
 export const TILE_SIZE = 32;
@@ -58,6 +63,25 @@ export function getTileAttributes(
       ? tilesetRaw.tileAttributes
       : [];
   return attrs.filter(isRecord);
+}
+
+/** Returns the per-tile collision/value records stored in Mighty Mike metadata. */
+export function getTileValueEntries(
+  metadata: unknown,
+): Array<MightyMikeTileValue | null> {
+  if (!isRecord(metadata)) return [];
+  const entry = isRecord(metadata[1000]) ? metadata[1000] : null;
+  if (!entry) return [];
+  const obj = isRecord(entry.obj) ? entry.obj : null;
+  if (!obj) return [];
+  const tileValues = isArray(obj.mightyMikeTileValues)
+    ? obj.mightyMikeTileValues
+    : [];
+
+  return tileValues.map((value) => {
+    const parsed = mightyMikeTileValueSchema.safeParse(value);
+    return parsed.success ? parsed.data : null;
+  });
 }
 
 /** Flattens the nested alt-map grid into a one-dimensional list. */
@@ -128,39 +152,39 @@ export function buildBackgroundCanvas(
 
 /** Renders the collision overlay into an off-screen canvas. */
 export function buildCollisionCanvas(
-  showCollisionOverlay: boolean,
   mapWidth: number,
   mapHeight: number,
-  layr: number[],
   resolvedImageIndices: (number | null)[],
   collisionImages: HTMLCanvasElement[],
+  tileValues: ReadonlyArray<MightyMikeTileValue | null>,
 ): HTMLCanvasElement | null {
-  if (!showCollisionOverlay) return null;
   const canvas = document.createElement("canvas");
   canvas.width = mapWidth * TILE_SIZE;
   canvas.height = mapHeight * TILE_SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  layr.forEach((rawTileIndex, i) => {
-    if (
-      rawTileIndex === 0 ||
-      rawTileIndex === undefined ||
-      rawTileIndex === null
-    ) {
+  resolvedImageIndices.forEach((imgIdx, i) => {
+    const tileValue = tileValues[i];
+    if (!tileValue?.hasCollisionMask) {
       return;
     }
-    const imgIdx = resolvedImageIndices[i];
     const tx = (i % mapWidth) * TILE_SIZE;
     const ty = Math.floor(i / mapWidth) * TILE_SIZE;
     const idxResult = numberSchema.safeParse(imgIdx);
-    if (!idxResult.success || idxResult.data >= collisionImages.length) return;
-    const collisionImg = collisionImages[idxResult.data];
-    if (collisionImg) {
+    const collisionImg =
+      idxResult.success && idxResult.data < collisionImages.length
+        ? collisionImages[idxResult.data]
+        : undefined;
+
+    if (tileValue.usePixelAccurateCollision && collisionImg) {
       ctx.drawImage(collisionImg, tx, ty, TILE_SIZE, TILE_SIZE);
       return;
     }
-    ctx.fillStyle = "rgba(200, 120, 0, 0.5)";
+
+    ctx.fillStyle = tileValue.usePixelAccurateCollision
+      ? "rgba(255, 0, 140, 0.45)"
+      : "rgba(255, 150, 40, 0.45)";
     ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
   });
   return canvas;
@@ -199,34 +223,23 @@ export function buildAltMapCanvas(
 
 /** Renders param-flag overlays for the currently visible tiles. */
 export function buildParamsCanvas(
-  showParamsOverlay: boolean,
-  overlayMode: "flagsAny" | "flagBit" | "p0" | "p1",
+  overlayMode: "solidEdges" | "flagsAny" | "flagBit" | "p0" | "p1",
   overlayFlagBit: number,
   tileAttributes: Record<string, unknown>[],
   mapWidth: number,
   mapHeight: number,
   layr: number[],
-  resolvedImageIndices: (number | null)[],
 ): HTMLCanvasElement | null {
-  if (!showParamsOverlay || tileAttributes.length === 0) return null;
+  if (tileAttributes.length === 0) return null;
   const canvas = document.createElement("canvas");
   canvas.width = mapWidth * TILE_SIZE;
   canvas.height = mapHeight * TILE_SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  layr.forEach((rawTileIndex, i) => {
-    if (
-      rawTileIndex === 0 ||
-      rawTileIndex === undefined ||
-      rawTileIndex === null
-    ) {
-      return;
-    }
-    const imgIdx = resolvedImageIndices[i];
-    const idxResult = numberSchema.safeParse(imgIdx);
-    if (!idxResult.success || idxResult.data >= tileAttributes.length) return;
-    const attr = tileAttributes[idxResult.data];
+  layr.forEach((attrIndex, i) => {
+    if (attrIndex < 0 || attrIndex >= tileAttributes.length) return;
+    const attr = tileAttributes[attrIndex];
     if (!attr) return;
 
     const flagsResult = numberSchema.safeParse(attr["flags"]);
@@ -235,11 +248,19 @@ export function buildParamsCanvas(
     const p0 = p0Result.success ? p0Result.data : 0;
     const p1Result = numberSchema.safeParse(attr["p1"]);
     const p1 = p1Result.success ? p1Result.data : 0;
+    const hasSolidTop = (flags & (1 << 0)) !== 0;
+    const hasSolidBottom = (flags & (1 << 1)) !== 0;
+    const hasSolidLeft = (flags & (1 << 2)) !== 0;
+    const hasSolidRight = (flags & (1 << 3)) !== 0;
     const hasFlagBit = (flags & (1 << overlayFlagBit)) !== 0;
 
     let overlayAlpha = 0;
     let overlayColor = "rgba(220, 50, 50, 0.55)";
-    if (overlayMode === "flagsAny") {
+    if (overlayMode === "solidEdges") {
+      if (!hasSolidTop && !hasSolidBottom && !hasSolidLeft && !hasSolidRight) {
+        return;
+      }
+    } else if (overlayMode === "flagsAny") {
       if (flags === 0) {
         return;
       }
@@ -267,6 +288,23 @@ export function buildParamsCanvas(
 
     const tx = (i % mapWidth) * TILE_SIZE;
     const ty = Math.floor(i / mapWidth) * TILE_SIZE;
+
+    if (overlayMode === "solidEdges") {
+      ctx.fillStyle = "rgba(255, 186, 64, 0.9)";
+      if (hasSolidTop) {
+        ctx.fillRect(tx + 2, ty + 1, TILE_SIZE - 4, 4);
+      }
+      if (hasSolidBottom) {
+        ctx.fillRect(tx + 2, ty + TILE_SIZE - 5, TILE_SIZE - 4, 4);
+      }
+      if (hasSolidLeft) {
+        ctx.fillRect(tx + 1, ty + 2, 4, TILE_SIZE - 4);
+      }
+      if (hasSolidRight) {
+        ctx.fillRect(tx + TILE_SIZE - 5, ty + 2, 4, TILE_SIZE - 4);
+      }
+      return;
+    }
 
     ctx.fillStyle = overlayColor;
     ctx.globalAlpha = overlayAlpha;

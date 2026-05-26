@@ -1,10 +1,15 @@
 import type Konva from "konva";
-import { toggleMightyMikeCollisionMask } from "@/data/game/mightyMikeTileValueUtils";
+import {
+  setMightyMikeCollisionProperty,
+  toggleMightyMikeCollisionMask,
+} from "@/data/game/mightyMikeTileValueUtils";
 import {
   getAltMapArray,
   isArray,
   isRecord,
 } from "@/editor/subviews/supertiles/mightyMikeSupertilesHelpers";
+import { toggleFlagBit } from "../mightymike/mightyMikeTileInspectorState";
+import { updateTileAttributeForSelectedTile } from "../mightymike/mightyMikeTileMenuState";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 
 /** Converts a pointer position into a tile index within the active supertile grid. */
@@ -59,6 +64,15 @@ export function applyCollisionMaskToggle(
   toggleMightyMikeCollisionMask(data, tileIdx);
 }
 
+/** Sets the collision-mask flag for the clicked Mighty Mike tile. */
+export function applyCollisionMaskValue(
+  data: TerrainData,
+  tileIdx: number,
+  enabled: boolean,
+): void {
+  setMightyMikeCollisionProperty(data, tileIdx, "hasCollisionMask", enabled);
+}
+
 /** Applies the active param brush value to both tileset and level attribute data. */
 export function applyParamBrush(
   data: TerrainData,
@@ -66,33 +80,34 @@ export function applyParamBrush(
   paramBrushField: "flags" | "p0" | "p1",
   paramBrushValue: number,
 ): void {
-  const logicalIndex = data.Layr?.[1000]?.obj?.[tileIdx];
-  if (logicalIndex === undefined) {
-    return;
-  }
-  const xlatTable = data.Xlat?.[1000]?.obj;
-  const physicalIndex =
-    xlatTable &&
-    logicalIndex < xlatTable.length &&
-    isRecord(xlatTable[logicalIndex]) &&
-    typeof xlatTable[logicalIndex].idx === "number"
-      ? xlatTable[logicalIndex].idx
-      : logicalIndex;
+  updateTileAttributeForSelectedTile(
+    data,
+    tileIdx,
+    paramBrushField,
+    paramBrushValue,
+  );
+}
 
-  const tileset = isRecord(data.tileset) ? data.tileset : undefined;
-  const tileAttributes =
-    tileset && isArray(tileset.tileAttributes)
-      ? tileset.tileAttributes
-      : undefined;
-  const tileAttribute = tileAttributes?.[physicalIndex];
-  if (isRecord(tileAttribute)) {
-    tileAttribute[paramBrushField] = paramBrushValue;
-  }
-
-  const levelAttribute = data.Atrb?.[1000]?.obj?.[physicalIndex];
-  if (levelAttribute) {
-    levelAttribute[paramBrushField] = paramBrushValue;
-  }
+/** Enables or disables a single gameplay flag bit across tiles. */
+export function applyFlagBrush(
+  data: TerrainData,
+  tileIdx: number,
+  flagBit: number,
+  enabled: boolean,
+): void {
+  const currentLevelAttribute =
+    data.Atrb?.[1000]?.obj?.[data.Layr?.[1000]?.obj?.[tileIdx] ?? -1];
+  const currentFlags =
+    isRecord(currentLevelAttribute) &&
+    typeof currentLevelAttribute.flags === "number"
+      ? currentLevelAttribute.flags
+      : 0;
+  updateTileAttributeForSelectedTile(
+    data,
+    tileIdx,
+    "flags",
+    toggleFlagBit(currentFlags, flagBit, enabled),
+  );
 }
 
 /** Writes the current alt-map brush value into the nested alt-map grid. */

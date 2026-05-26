@@ -5,18 +5,18 @@ import type { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { toast } from "sonner";
 import {
-  CollisionBrushMode,
+  MightyMikeCanvasEditMode,
+  MightyMikeCollisionBrushModeValue,
+  MightyMikeFlagBrushBit,
+  MightyMikeFlagBrushModeValue,
+  MightyMikeOverlayMode,
+  type MightyMikeCanvasEditModeValue,
   MightyMikeParamsOverlayFlagBit,
-  MightyMikeParamsOverlayMode,
-  ShowMightyMikeCollisionOverlay,
-  ShowMightyMikeParamsOverlay,
-  ParamBrushField,
   ParamBrushValue,
 } from "@/data/game/gameAtoms";
 import {
   createCloseEditorHandler,
   createSetManualTilePaletteSelectionHandler,
-  createToggleBooleanHandler,
   createUpdateCollisionPropertyHandler,
   createUpdateTileAttributeHandler,
 } from "./MightyMikeTileMenuHandlers";
@@ -42,6 +42,7 @@ import {
   appendPaletteMapping,
   applySelectedTileLogicalIndex,
   findOrCreateLogicalIndexForImage,
+  getCurrentTileAttributeIndex,
   getCurrentTileAttributes,
   getCurrentTileCanvas,
   getEffectiveSelectedTile,
@@ -49,10 +50,61 @@ import {
   isValidPaletteTileIndex,
 } from "./mightyMikeTileMenuState";
 import { MightyMikeTileMenuEditors } from "./MightyMikeTileMenuEditors";
-import { MightyMikeTileMenuContent } from "./MightyMikeTileMenuContent";
 import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
+import { MightyMikeTileOperationsPanel } from "./MightyMikeTileOperationsPanel";
+import { MightyMikePalettePanel } from "./MightyMikePalettePanel";
+import { MightyMikeResizeMapControls } from "./MightyMikeResizeMapControls";
+import { MightyMikeTileInspectorPanel } from "./MightyMikeTileInspectorPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import {
+  getFlagLabel,
+  getTileInfoRows,
+  MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS,
+} from "./mightyMikeTileInspectorState";
+import { MightyMikeAltMapEditorPanel } from "./MightyMikeAltMapEditor";
+
+type OverlaySelectValue =
+  | "none"
+  | "collision"
+  | "solidEdges"
+  | "flagsAny"
+  | "p0"
+  | "p1"
+  | "altMap"
+  | `flagBit:${number}`;
+
+function getOverlayOptionValue(flagBit: number): OverlaySelectValue {
+  return `flagBit:${flagBit}`;
+}
+
+const overlayDropdownItems: ReadonlyArray<{
+  value: OverlaySelectValue;
+  label: string;
+}> = [
+  { value: "none", label: "No Overlay" },
+  { value: "collision", label: "Collision Mask" },
+  { value: "solidEdges", label: "Solid Sides" },
+  { value: "flagsAny", label: "Any Gameplay Flag" },
+  ...MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS.filter(([bit]) => bit >= 4).map(
+    ([bit, label]) => ({
+      value: getOverlayOptionValue(bit),
+      label,
+    }),
+  ),
+  { value: "p0", label: "Extra Setting A" },
+  { value: "p1", label: "Extra Setting B" },
+  { value: "altMap", label: "Alt Map Directions" },
+];
 
 interface MightyMikeTileMenuProps {
+  mode: "visual" | "behavior";
   headerData: HeaderData;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
@@ -65,6 +117,7 @@ interface MightyMikeTileMenuProps {
 }
 
 export function MightyMikeTileMenu({
+  mode,
   headerData,
   terrainData,
   setTerrainData,
@@ -73,19 +126,16 @@ export function MightyMikeTileMenu({
   onResize,
 }: MightyMikeTileMenuProps) {
   const [selectedTile] = useAtom(SelectedTile);
-  const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
-    ShowMightyMikeCollisionOverlay,
+  const [overlayMode, setOverlayMode] = useAtom(MightyMikeOverlayMode);
+  const [canvasEditMode, setCanvasEditMode] = useAtom(MightyMikeCanvasEditMode);
+  const [collisionBrushValue, setCollisionBrushValue] = useAtom(
+    MightyMikeCollisionBrushModeValue,
   );
-  const [collisionBrushMode, setCollisionBrushMode] =
-    useAtom(CollisionBrushMode);
-  const [showParamsOverlay, setShowParamsOverlay] = useAtom(
-    ShowMightyMikeParamsOverlay,
+  const [flagBrushBit, setFlagBrushBit] = useAtom(MightyMikeFlagBrushBit);
+  const [flagBrushModeValue, setFlagBrushModeValue] = useAtom(
+    MightyMikeFlagBrushModeValue,
   );
-  const [paramBrushField, setParamBrushField] = useAtom(ParamBrushField);
   const [paramBrushValue, setParamBrushValue] = useAtom(ParamBrushValue);
-  const [paramsOverlayMode, setParamsOverlayMode] = useAtom(
-    MightyMikeParamsOverlayMode,
-  );
   const [paramsOverlayFlagBit, setParamsOverlayFlagBit] = useAtom(
     MightyMikeParamsOverlayFlagBit,
   );
@@ -162,7 +212,11 @@ export function MightyMikeTileMenu({
 
   const currentTileAttributes = getCurrentTileAttributes(
     terrainData,
-    currentImageIndex,
+    effectiveSelectedTile,
+  );
+  const currentAttributeIndex = getCurrentTileAttributeIndex(
+    terrainData,
+    effectiveSelectedTile,
   );
 
   const paletteTileIsInUse = useMemo(
@@ -408,33 +462,8 @@ export function MightyMikeTileMenu({
   );
   const handleUpdateTileAttribute = createUpdateTileAttributeHandler(
     setTerrainData,
-    currentImageIndex,
+    effectiveSelectedTile,
   );
-  const handleShowCollisionOverlayClick = createToggleBooleanHandler(
-    setShowCollisionOverlay,
-    showCollisionOverlay,
-  );
-  const handleCollisionBrushModeClick = createToggleBooleanHandler(
-    setCollisionBrushMode,
-    collisionBrushMode,
-  );
-  const handleShowParamsOverlayClick = createToggleBooleanHandler(
-    setShowParamsOverlay,
-    showParamsOverlay,
-  );
-  const handleParamBrushFieldChange = (value: string) => {
-    if (value === "flags" || value === "p0" || value === "p1") {
-      setParamBrushField(value);
-      setShowParamsOverlay(true);
-      if (value === "flags") {
-        setParamsOverlayMode("flagBit");
-      } else {
-        setParamsOverlayMode(value);
-      }
-      return;
-    }
-    setParamBrushField(null);
-  };
   const handleCloseTileEditor = createCloseEditorHandler(
     setIsEditingTile,
     setEditingImageUrl,
@@ -448,67 +477,357 @@ export function MightyMikeTileMenu({
       effectiveSelectedTile,
     );
 
+  const overlayModeLabel = useMemo(() => {
+    switch (overlayMode) {
+      case "collision":
+        return "Collision Mask";
+      case "solidEdges":
+        return "Solid Sides";
+      case "flagsAny":
+        return "Any Gameplay Flag";
+      case "flagBit":
+        return `Gameplay Flag: ${getFlagLabel(paramsOverlayFlagBit)}`;
+      case "p0":
+        return "Extra Setting A";
+      case "p1":
+        return "Extra Setting B";
+      case "altMap":
+        return "Alt Map Directions";
+      default:
+        return "No Overlay";
+    }
+  }, [overlayMode, paramsOverlayFlagBit]);
+
+  const overlaySelectValue = useMemo<OverlaySelectValue>(() => {
+    return overlayMode === "flagBit"
+      ? getOverlayOptionValue(paramsOverlayFlagBit)
+      : overlayMode;
+  }, [overlayMode, paramsOverlayFlagBit]);
+
+  const tileInfoRows = useMemo(
+    () =>
+      getTileInfoRows({
+        mapWidth,
+        mapHeight,
+        totalTiles,
+        mapImagesLength: mapImages.length,
+        effectiveSelectedTile,
+        layr,
+        currentImageIndex,
+        hasXlatTable: Boolean(xlatTable),
+      }),
+    [
+      mapWidth,
+      mapHeight,
+      totalTiles,
+      mapImages.length,
+      effectiveSelectedTile,
+      layr,
+      currentImageIndex,
+      xlatTable,
+    ],
+  );
+
+  const handleOverlayModeChange = (value: string) => {
+    if (value.startsWith("flagBit:")) {
+      const parsed = getNumber(value.split(":")[1], 4);
+      setParamsOverlayFlagBit(Math.max(0, Math.min(15, parsed)));
+      setOverlayMode("flagBit");
+      return;
+    }
+
+    if (
+      value === "none" ||
+      value === "collision" ||
+      value === "solidEdges" ||
+      value === "flagsAny" ||
+      value === "p0" ||
+      value === "p1" ||
+      value === "altMap"
+    ) {
+      setOverlayMode(value);
+    }
+  };
+
+  const handleCanvasEditModeChange = (value: string) => {
+    if (
+      value === "select" ||
+      value === "collision" ||
+      value === "flags" ||
+      value === "p0" ||
+      value === "p1" ||
+      value === "altMap"
+    ) {
+      const nextMode: MightyMikeCanvasEditModeValue = value;
+      setCanvasEditMode(nextMode);
+      if (nextMode === "collision" && overlayMode === "none") {
+        setOverlayMode("collision");
+      }
+      if (nextMode === "flags" && overlayMode === "none") {
+        if (flagBrushBit <= 3) {
+          setOverlayMode("solidEdges");
+        } else {
+          setOverlayMode("flagBit");
+          setParamsOverlayFlagBit(flagBrushBit);
+        }
+      }
+      if ((nextMode === "p0" || nextMode === "p1") && overlayMode === "none") {
+        setOverlayMode(nextMode);
+      }
+      if (nextMode === "altMap") {
+        setOverlayMode("altMap");
+      }
+    }
+  };
+
+  const handleCollisionBrushValueChange = (value: string) => {
+    if (value === "enabled" || value === "disabled") {
+      setCollisionBrushValue(value);
+    }
+  };
+
+  const handleFlagBrushModeChange = (value: string) => {
+    if (value === "enabled" || value === "disabled") {
+      setFlagBrushModeValue(value);
+    }
+  };
+
+  const handleFlagBrushBitChange = (value: string) => {
+    const parsed = getNumber(value, 0);
+    const nextBit = Math.max(0, Math.min(15, parsed));
+    setFlagBrushBit(nextBit);
+    if (canvasEditMode === "flags") {
+      if (nextBit <= 3) {
+        setOverlayMode("solidEdges");
+      } else {
+        setParamsOverlayFlagBit(nextBit);
+        setOverlayMode("flagBit");
+      }
+    }
+  };
+
   return (
     <>
-      <MightyMikeTileMenuContent
-        currentImageIndex={currentImageIndex}
-        currentTileCanvas={currentTileCanvas}
-        effectiveSelectedTile={effectiveSelectedTile}
-        handleUploadTile={handleUploadTile}
-        handleEditTile={handleEditTile}
-        handleDownloadTile={handleDownloadTile}
-        handleRotateTile={() => handleApplyPaletteTransform("rotate")}
-        handleFlipTileHorizontal={() => handleApplyPaletteTransform("flipX")}
-        handleFlipTileVertical={() => handleApplyPaletteTransform("flipY")}
-        mapWidth={mapWidth}
-        mapHeight={mapHeight}
-        totalTiles={totalTiles}
-        mapImagesLength={mapImages.length}
-        layr={layr}
-        xlatTable={xlatTable}
-        collisionProps={collisionProps}
-        mightyMikeTileValuesArrayLength={mightyMikeTileValuesArray.length}
-        currentTileAttributes={currentTileAttributes}
-        showCollisionOverlay={showCollisionOverlay}
-        onToggleCollisionOverlay={handleShowCollisionOverlayClick}
-        collisionBrushMode={collisionBrushMode}
-        onToggleCollisionBrushMode={handleCollisionBrushModeClick}
-        paramBrushField={paramBrushField}
-        onParamBrushFieldChange={handleParamBrushFieldChange}
-        paramBrushValue={paramBrushValue}
-        setParamBrushValue={setParamBrushValue}
-        showParamsOverlay={showParamsOverlay}
-        onToggleParamsOverlay={handleShowParamsOverlayClick}
-        paramsOverlayMode={paramsOverlayMode}
-        onParamsOverlayModeChange={setParamsOverlayMode}
-        paramsOverlayFlagBit={paramsOverlayFlagBit}
-        onParamsOverlayFlagBitChange={setParamsOverlayFlagBit}
-        onResize={onResize}
-        handleUpdateCollisionProperty={handleUpdateCollisionProperty}
-        handleUpdateTileAttribute={handleUpdateTileAttribute}
-        getNumber={getNumber}
-        mapImages={mapImages}
-        selectedPaletteTile={selectedPaletteTile}
-        isPaletteTileInUse={paletteTileIsInUse}
-        paletteUploadInputRef={paletteUploadInputRef}
-        setIsEditingPaletteTile={setIsEditingPaletteTile}
-        handleUploadPaletteTile={handleUploadPaletteTile}
-        handleAddPaletteTile={handleAddPaletteTile}
-        handleRemovePaletteTile={handleRemovePaletteTile}
-        handleReplaceTile={handleReplaceTile}
-        onSelectPaletteTile={handleManualTilePaletteSelection}
-        brushPanel={
-          <TileBrushPanel
-            game="mightymike"
-            terrainData={terrainData}
-            setTerrainData={setTerrainData}
-            mapWidth={mapWidth}
-            mapHeight={mapHeight}
-            selectedTileIndex={effectiveSelectedTile}
-            activeLayer={1000}
-          />
-        }
-      />
+      {mode === "visual" ? (
+        <div className="grid h-full min-h-0 gap-3 p-3 xl:grid-cols-3">
+          <div className="min-h-0 overflow-auto pr-1 xl:border-r xl:border-gray-700 xl:pr-3">
+            <div className="space-y-3">
+              <MightyMikeTileOperationsPanel
+                currentImageIndex={currentImageIndex}
+                currentTileCanvas={currentTileCanvas}
+                effectiveSelectedTile={effectiveSelectedTile}
+                selectedPaletteTile={selectedPaletteTile}
+                handleUploadTile={handleUploadTile}
+                handleEditTile={handleEditTile}
+                handleDownloadTile={handleDownloadTile}
+                handleRotateTile={() => handleApplyPaletteTransform("rotate")}
+                handleFlipTileHorizontal={() =>
+                  handleApplyPaletteTransform("flipX")
+                }
+                handleFlipTileVertical={() =>
+                  handleApplyPaletteTransform("flipY")
+                }
+              />
+            </div>
+
+            <div className="space-y-3 border-t border-gray-700 pt-3 text-sm">
+              <div>
+                <p className="font-bold text-sm">Map Layout</p>
+                <p className="text-xs text-gray-400">
+                  Visual tile work stays here: select a tile on the canvas, swap
+                  or transform its artwork, then use brushes for larger visual
+                  passes.
+                </p>
+              </div>
+              <MightyMikeResizeMapControls onResize={onResize} />
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-300">
+                {tileInfoRows.map((row) => (
+                  <p key={row}>{row}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-0 overflow-hidden xl:border-r xl:border-gray-700 xl:px-3">
+            <MightyMikePalettePanel
+              mapImages={mapImages}
+              selectedPaletteTile={selectedPaletteTile}
+              isPaletteTileInUse={paletteTileIsInUse}
+              paletteUploadInputRef={paletteUploadInputRef}
+              setIsEditingPaletteTile={setIsEditingPaletteTile}
+              handleUploadPaletteTile={handleUploadPaletteTile}
+              handleAddPaletteTile={handleAddPaletteTile}
+              handleRemovePaletteTile={handleRemovePaletteTile}
+              handleReplaceTile={handleReplaceTile}
+              onSelectPaletteTile={handleManualTilePaletteSelection}
+            />
+          </div>
+
+          <div className="min-h-0 overflow-auto xl:pl-3">
+            <p className="mb-2 font-bold text-sm">Tile Brushes</p>
+            <p className="mb-3 text-xs text-gray-400">
+              Capture and stamp larger visual regions directly in the Konva
+              canvas.
+            </p>
+            <TileBrushPanel
+              game="mightymike"
+              terrainData={terrainData}
+              setTerrainData={setTerrainData}
+              mapWidth={mapWidth}
+              mapHeight={mapHeight}
+              selectedTileIndex={effectiveSelectedTile}
+              activeLayer={1000}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="grid h-full min-h-0 gap-3 p-3 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="flex min-h-0 flex-col gap-3 overflow-auto pr-1 text-sm">
+            <div>
+              <p className="font-bold text-sm">Canvas Tools</p>
+              <p className="text-xs text-gray-400">
+                Behavior editing stays on this tab. Use the canvas to select a
+                tile, paint collision, paint specific gameplay flags, or edit
+                alt-map directions without mixing it with visual tile work.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-[92px_1fr] gap-x-2 gap-y-2 items-center text-xs">
+              <label className="text-gray-300">Canvas Mode</label>
+              <Select
+                value={canvasEditMode}
+                onValueChange={handleCanvasEditModeChange}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="select">Select Tile</SelectItem>
+                  <SelectItem value="collision">Paint Collision</SelectItem>
+                  <SelectItem value="flags">Paint Gameplay Flags</SelectItem>
+                  <SelectItem value="p0">Paint Extra Setting A</SelectItem>
+                  <SelectItem value="p1">Paint Extra Setting B</SelectItem>
+                  <SelectItem value="altMap">Paint Alt Map</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <label className="text-gray-300">Overlay</label>
+              <Select
+                value={overlaySelectValue}
+                onValueChange={handleOverlayModeChange}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="No Overlay" />
+                </SelectTrigger>
+                <SelectContent>
+                  {overlayDropdownItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-[84px_1fr] gap-x-2 gap-y-1.5 items-center text-xs border-t border-gray-700 pt-2.5">
+              <span className="text-gray-300">Preview</span>
+              <p className="text-gray-300">{overlayModeLabel}</p>
+
+              {canvasEditMode === "collision" && (
+                <>
+                  <label className="text-gray-300">Collision</label>
+                  <Select
+                    value={collisionBrushValue}
+                    onValueChange={handleCollisionBrushValueChange}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="enabled">Paint Enabled</SelectItem>
+                      <SelectItem value="disabled">Paint Disabled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+
+              {canvasEditMode === "flags" && (
+                <>
+                  <label className="text-gray-300">Flag Brush</label>
+                  <Select
+                    value={String(flagBrushBit)}
+                    onValueChange={handleFlagBrushBitChange}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS.map(([bit, label]) => (
+                        <SelectItem key={bit} value={String(bit)}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <label className="text-gray-300">Paint</label>
+                  <Select
+                    value={flagBrushModeValue}
+                    onValueChange={handleFlagBrushModeChange}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="enabled">Set Enabled</SelectItem>
+                      <SelectItem value="disabled">Set Disabled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+
+              {(canvasEditMode === "p0" || canvasEditMode === "p1") && (
+                <>
+                  <label className="text-gray-300">Brush Value</label>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs"
+                    value={paramBrushValue}
+                    onChange={(event) =>
+                      setParamBrushValue(getNumber(event.target.value, 0))
+                    }
+                  />
+                </>
+              )}
+            </div>
+
+            {canvasEditMode === "altMap" && (
+              <div className="border-t border-gray-700 pt-2.5">
+                <MightyMikeAltMapEditorPanel />
+              </div>
+            )}
+          </div>
+
+          <div className="min-h-0 overflow-auto border-l border-gray-700 pl-3">
+            <MightyMikeTileInspectorPanel
+              mapWidth={mapWidth}
+              mapHeight={mapHeight}
+              totalTiles={totalTiles}
+              mapImagesLength={mapImages.length}
+              effectiveSelectedTile={effectiveSelectedTile}
+              layr={layr}
+              currentImageIndex={currentAttributeIndex}
+              xlatTable={xlatTable}
+              collisionProps={collisionProps}
+              mightyMikeTileValuesArrayLength={mightyMikeTileValuesArray.length}
+              currentTileAttributes={currentTileAttributes}
+              handleUpdateCollisionProperty={handleUpdateCollisionProperty}
+              handleUpdateTileAttribute={handleUpdateTileAttribute}
+              getNumber={getNumber}
+            />
+          </div>
+        </div>
+      )}
 
       <MightyMikeTileMenuEditors
         isEditingTile={isEditingTile}

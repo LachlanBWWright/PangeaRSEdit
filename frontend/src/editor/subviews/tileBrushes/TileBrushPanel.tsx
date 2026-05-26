@@ -2,6 +2,13 @@ import { useAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   selectedTileBrushIdAtom,
@@ -172,34 +179,32 @@ export function TileBrushPanel({
   };
 
   return (
-    <div className="rounded border border-gray-700 p-3 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="rounded border border-gray-700 p-2.5 space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-xs uppercase tracking-wide text-gray-400">
           Tile Pattern Brushes
         </p>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={mode === "capture" ? "default" : "outline"}
-            onClick={() => setMode("capture")}
-          >
-            Capture
-          </Button>
-          <Button
-            size="sm"
-            variant={mode === "stamp" ? "default" : "outline"}
-            onClick={() => setMode("stamp")}
-          >
-            Stamp
-          </Button>
-          <Button
-            size="sm"
-            variant={mode === "select" ? "default" : "outline"}
-            onClick={() => setMode("select")}
-          >
-            Select
-          </Button>
-        </div>
+        <Select
+          value={mode}
+          onValueChange={(value) => {
+            if (
+              value === "capture" ||
+              value === "stamp" ||
+              value === "select"
+            ) {
+              setMode(value);
+            }
+          }}
+        >
+          <SelectTrigger className="h-8 w-28 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="capture">Capture</SelectItem>
+            <SelectItem value="stamp">Stamp</SelectItem>
+            <SelectItem value="select">Select</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <p className="text-xs text-gray-400">
@@ -210,9 +215,9 @@ export function TileBrushPanel({
             : "Use Select to inspect tiles without stamping."}
       </p>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <Label className="text-xs text-gray-400">Brushes</Label>
-        <div className="max-h-32 overflow-y-auto border border-gray-700 rounded">
+        <div className="max-h-24 overflow-y-auto rounded border border-gray-700">
           {brushes.length === 0 ? (
             <p className="p-2 text-xs text-gray-500">No brushes yet</p>
           ) : (
@@ -236,6 +241,7 @@ export function TileBrushPanel({
 
       {selectedBrush && (
         <Input
+          className="h-8 text-xs"
           value={selectedBrush.name}
           onChange={(event) => {
             const nextName = event.target.value;
@@ -250,7 +256,7 @@ export function TileBrushPanel({
         />
       )}
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
         <Button
           size="sm"
           variant="outline"
@@ -274,7 +280,7 @@ export function TileBrushPanel({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         <Button size="sm" variant="outline" onClick={handleCaptureSingleTile}>
           Capture Selected Tile
         </Button>
@@ -283,25 +289,27 @@ export function TileBrushPanel({
         </Button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-[auto_1fr] items-center gap-2">
         <Label className="text-xs text-gray-400">Anchor</Label>
-        <Button
-          size="sm"
-          variant={anchor === "topLeft" ? "default" : "outline"}
-          onClick={() => setAnchor("topLeft")}
+        <Select
+          value={anchor}
+          onValueChange={(value) => {
+            if (value === "topLeft" || value === "center") {
+              setAnchor(value);
+            }
+          }}
         >
-          Top-left
-        </Button>
-        <Button
-          size="sm"
-          variant={anchor === "center" ? "default" : "outline"}
-          onClick={() => setAnchor("center")}
-        >
-          Center
-        </Button>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="topLeft">Top-left</SelectItem>
+            <SelectItem value="center">Center</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Button size="sm" variant="outline" onClick={handleExport}>
           Export JSON
         </Button>

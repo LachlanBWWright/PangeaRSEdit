@@ -13,7 +13,6 @@ import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
 import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
 import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
-import { MightyMikeAltMapEditorPanel } from "../subviews/mightymike/MightyMikeAltMapEditor";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
@@ -26,7 +25,7 @@ import {
   createZoomOutHandler,
 } from "../utils/editorViewUtils";
 import { Globals } from "@/data/globals/globals";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
@@ -69,8 +68,7 @@ export function MightyMikeEditorView({
   const globals = useAtomValue(Globals);
   const setCurrentScene = useSetAtom(CurrentScene);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
-  // Default to items view since MightyMike doesn't have fences
-  const view = useAtomValue(ActiveView);
+  const [view, setView] = useAtom(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -83,6 +81,16 @@ export function MightyMikeEditorView({
   useEffect(() => {
     setCurrentScene(getCurrentSceneFromTerrainData(terrainData));
   }, [setCurrentScene, terrainData]);
+
+  useEffect(() => {
+    if (
+      view !== View.items &&
+      view !== View.supertiles &&
+      view !== View.tiles
+    ) {
+      setView(View.supertiles);
+    }
+  }, [setView, view]);
 
   useEffect(() => {
     setEditorNavbarTabs(<MightyMikeEditorToolbar compact />);
@@ -129,10 +137,7 @@ export function MightyMikeEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection
-        className="border-b border-gray-600"
-        scrollable={true}
-      >
+      <MenuSection className="border-b border-gray-600" scrollable={true}>
         {view === View.items && itemData && (
           <MightyMikeItemMenu
             itemData={itemData}
@@ -143,6 +148,7 @@ export function MightyMikeEditorView({
         )}
         {view === View.supertiles && (
           <MightyMikeTileMenu
+            mode="visual"
             headerData={headerData}
             terrainData={terrainData}
             setTerrainData={setTerrainData}
@@ -151,7 +157,17 @@ export function MightyMikeEditorView({
             onResize={handleResize}
           />
         )}
-        {view === View.tiles && <MightyMikeAltMapEditorPanel />}
+        {view === View.tiles && (
+          <MightyMikeTileMenu
+            mode="behavior"
+            headerData={headerData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            mapImages={mapImages}
+            setMapImages={setMapImages}
+            onResize={handleResize}
+          />
+        )}
       </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
@@ -173,7 +189,6 @@ export function MightyMikeEditorView({
           terrainData={terrainData}
           setTerrainData={setTerrainData}
           mapImages={mapImages}
-          view={view}
           stage={stage}
           setStage={setStage}
         />

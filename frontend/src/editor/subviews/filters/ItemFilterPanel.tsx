@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   itemFilterStateAtom,
   DEFAULT_FILTER_STATE,
@@ -52,7 +53,9 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
     setFilter(createHideAllFilterState(filter, allItemTypes));
   };
 
-  const visibleCount = allItemTypes.filter((itemType) => isTypeVisible(itemType)).length;
+  const visibleCount = allItemTypes.filter((itemType) =>
+    isTypeVisible(itemType),
+  ).length;
 
   if (!isOpen) return null;
 
@@ -111,11 +114,10 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
                 key={itemType.key}
                 className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-800 transition-colors"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={visible}
-                  onChange={() => toggleType(itemType)}
-                  className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
+                  onCheckedChange={() => toggleType(itemType)}
+                  className="h-3.5 w-3.5 cursor-pointer"
                 />
                 <span
                   className={`text-xs truncate ${visible ? "text-white" : "text-gray-500 line-through"}`}

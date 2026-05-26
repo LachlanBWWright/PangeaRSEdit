@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -269,11 +270,10 @@ export function ToolsPanel({
             {setHighlightSelectedColorUsage && (
               <label className="flex items-center justify-between rounded bg-gray-900/50 px-2 py-1 text-xs text-gray-300">
                 <span>Highlight selected color</span>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={highlightSelectedColorUsage ?? false}
-                  onChange={(e) =>
-                    setHighlightSelectedColorUsage(e.target.checked)
+                  onCheckedChange={(checked) =>
+                    setHighlightSelectedColorUsage(checked === true)
                   }
                 />
               </label>

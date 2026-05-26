@@ -19,6 +19,39 @@ export const MIGHTY_MIKE_SCENES = [
   "bargain",
 ] as const;
 
+export type MightyMikeOverlayModeValue =
+  | "none"
+  | "collision"
+  | "solidEdges"
+  | "flagsAny"
+  | "flagBit"
+  | "p0"
+  | "p1"
+  | "altMap";
+
+export type MightyMikeCanvasEditModeValue =
+  | "select"
+  | "collision"
+  | "flags"
+  | "p0"
+  | "p1"
+  | "altMap";
+
+export type MightyMikeCollisionBrushValue = "enabled" | "disabled";
+
+export const MightyMikeOverlayMode = atom<MightyMikeOverlayModeValue>("none");
+
+export const MightyMikeCanvasEditMode =
+  atom<MightyMikeCanvasEditModeValue>("select");
+
+export const MightyMikeCollisionBrushModeValue =
+  atom<MightyMikeCollisionBrushValue>("enabled");
+
+export const MightyMikeFlagBrushBit = atom<number>(0);
+
+export const MightyMikeFlagBrushModeValue =
+  atom<MightyMikeCollisionBrushValue>("enabled");
+
 /**
  * Toggle for visualizing collision masks on Mighty Mike tiles
  * When true, tiles with collision masking enabled will show a visual overlay

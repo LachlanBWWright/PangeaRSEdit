@@ -29,11 +29,11 @@ export function MightyMikePalettePanel({
   onSelectPaletteTile,
 }: MightyMikePalettePanelProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <p className="font-bold text-sm">Tile Palette</p>
 
-      <div className="max-h-56 overflow-auto rounded border border-gray-600 p-1">
-        <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
+      <div className="min-h-0 flex-1 overflow-auto rounded border border-gray-600 p-1">
+        <div className="grid grid-cols-8 gap-1 lg:grid-cols-10 xl:grid-cols-12">
           {mapImages.map((img, idx) => (
             <div
               key={idx}
@@ -51,7 +51,7 @@ export function MightyMikePalettePanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 flex-none sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 flex-none">
         <Button
           size="sm"
           variant="outline"

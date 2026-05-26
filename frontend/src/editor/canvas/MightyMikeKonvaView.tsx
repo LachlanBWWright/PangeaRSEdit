@@ -16,7 +16,6 @@ import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
-import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
 import { MightyMikeItems } from "../subviews/MightyMikeItems";
 import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { MightyMikeSupertiles } from "../subviews/supertiles/MightyMikeSupertiles";
@@ -26,7 +25,6 @@ import {
   ItemData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
-import { View } from "../viewEnum";
 import { TileBrushPreviewLayer } from "../subviews/tileBrushes/TileBrushPreviewLayer";
 import {
   tileBrushModeAtom,
@@ -57,7 +55,6 @@ interface MightyMikeKonvaViewProps {
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
-  view: View;
   stage: StageData;
   setStage: Updater<StageData>;
 }
@@ -69,13 +66,11 @@ export function MightyMikeKonvaView({
   terrainData,
   setTerrainData,
   mapImages,
-  view,
   stage,
   setStage,
 }: MightyMikeKonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  const showCollisionOverlay = useAtomValue(ShowMightyMikeCollisionOverlay);
   const tileBrushMode = useAtomValue(tileBrushModeAtom);
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
   const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
@@ -299,8 +294,6 @@ export function MightyMikeKonvaView({
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}
-            showCollisionOverlay={showCollisionOverlay}
-            view={view}
           />
         )}
 

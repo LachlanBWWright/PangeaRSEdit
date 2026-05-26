@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -50,7 +51,7 @@ export function TilesetEditor({
               currentTilesetScene
                 ? currentTilesetScene.charAt(0).toUpperCase() +
                   currentTilesetScene.slice(1)
-              : "None"
+                : "None"
             }`}
           >
             <Select
@@ -111,11 +112,11 @@ export function TilesetEditor({
 
         <div>
           <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={highlightTransparent}
-              onChange={(e) => setHighlightTransparent(e.target.checked)}
-              className="w-4 h-4"
+              onCheckedChange={(checked) =>
+                setHighlightTransparent(checked === true)
+              }
             />
             <span className="text-white">Highlight Transparent</span>
           </label>
@@ -225,8 +226,8 @@ export function TilesetEditor({
               <span className="text-gray-400">Dimensions:</span> 32x32 pixels
             </p>
             <p>
-              <span className="text-gray-400">Color Format:</span> 8-bit
-              indexed (256 colors)
+              <span className="text-gray-400">Color Format:</span> 8-bit indexed
+              (256 colors)
             </p>
             <p>
               <span className="text-gray-400">Data Size:</span> 1024 bytes

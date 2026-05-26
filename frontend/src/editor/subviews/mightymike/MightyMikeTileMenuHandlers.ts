@@ -1,6 +1,7 @@
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 import { setMightyMikeCollisionProperty } from "@/data/game/mightyMikeTileValueUtils";
+import { updateTileAttributeForSelectedTile } from "./mightyMikeTileMenuState";
 
 type TileAttributeProperty = "flags" | "p0" | "p1" | "p2" | "p3" | "p4";
 type CollisionProperty = "hasCollisionMask" | "usePixelAccurateCollision";
@@ -39,21 +40,16 @@ function getCollisionTileValues(data: TerrainData): unknown[] | undefined {
 
 export function createUpdateTileAttributeHandler(
   setTerrainData: Updater<TerrainData>,
-  currentImageIndex: number | null,
+  effectiveSelectedTile: number,
 ) {
   return (property: TileAttributeProperty, value: number) => {
-    if (currentImageIndex === null) return;
-
     setTerrainData((data) => {
-      const tileAttribute = getTilesetAttribute(data, currentImageIndex);
-      if (isRecord(tileAttribute)) tileAttribute[property] = value;
-
-      const levelTileAttribute = data.Atrb?.[1000]?.obj?.[currentImageIndex];
-      if (
-        levelTileAttribute &&
-        (property === "flags" || property === "p0" || property === "p1")
-      )
-        levelTileAttribute[property] = value;
+      updateTileAttributeForSelectedTile(
+        data,
+        effectiveSelectedTile,
+        property,
+        value,
+      );
     });
   };
 }
@@ -72,7 +68,12 @@ export function createUpdateCollisionPropertyHandler(
       ) {
         return;
       }
-      setMightyMikeCollisionProperty(data, effectiveSelectedTile, property, value);
+      setMightyMikeCollisionProperty(
+        data,
+        effectiveSelectedTile,
+        property,
+        value,
+      );
     });
   };
 }
