@@ -11,6 +11,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { itemFilterStateAtom } from "@/data/items/itemFilterAtoms";
 import { isItemVisible } from "@/data/items/itemFilterUtils";
 import { ActiveHoverTag } from "@/data/globals/hoverTagAtom";
+import { SelectedItem } from "@/data/items/itemAtoms";
 
 export const Items = memo(
   ({
@@ -26,6 +27,7 @@ export const Items = memo(
   }) => {
     const filterState = useAtomValue(itemFilterStateAtom);
     const setActiveHoverTag = useSetAtom(ActiveHoverTag);
+    const selectedItem = useAtomValue(SelectedItem);
 
     // Clear the hover tag when this layer unmounts (e.g. view switch).
     useEffect(() => {
@@ -61,6 +63,7 @@ export const Items = memo(
             itemData={itemData}
             setItemData={setItemData}
             itemIdx={itemIdx}
+            selected={selectedItem === itemIdx}
             onHoverChange={setActiveHoverTag}
           />
         ))}

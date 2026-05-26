@@ -639,7 +639,8 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "TypeSelector",
-      description: "Post type (0=Wood Farm, 1=Metal Farm, 2=Wood Jungle, 3=Crunch Apocalypse, 4=Brass Cloud, 5=Rock FireIce, 6=Ice FireIce, 7=Neuron Brain)",
+      description:
+        "Post type (0=Wood Farm, 1=Metal Farm, 2=Wood Jungle, 3=Crunch Apocalypse, 4=Brass Cloud, 5=Rock FireIce, 6=Ice FireIce, 7=Neuron Brain)",
       options: {
         0: "Wood Farm",
         1: "Metal Farm",
@@ -760,9 +761,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Checkpoint number.",
       codeSample: {
-        code: "base->CheckPointNum = itemPtr->parm[0];",
+        code: "base->CheckpointNum = itemPtr->parm[0];",
         fileName: "Items/Triggers.c",
-        lineNumber: 692,
+        lineNumber: 705,
       },
     },
     p1: {
@@ -1030,7 +1031,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "short type = itemPtr->parm[0];\ngNewObjectDefinition.type = JUNGLE_ObjType_Hut + type;",
         fileName: "Items/Triggers2.c",
-        lineNumber: 347,
+        lineNumber: 354,
       },
     },
     p1: "Unused",
@@ -1379,7 +1380,8 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "Integer",
-      description: "Crashed ship subtype; selects the crashed-rocket model and its collision setup.",
+      description:
+        "Crashed ship subtype; selects the crashed-rocket model and its collision setup.",
       codeSample: {
         code: "int type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
@@ -1496,7 +1498,8 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       flags: [
         {
           index: 0,
-          description: "Spawn the player bumper car instead of the clown bumper car.",
+          description:
+            "Spawn the player bumper car instead of the clown bumper car.",
           codeSample: {
             code: "int playerCar = itemPtr->parm[3] & 1;",
             fileName: "Items/BumperCar.c",

@@ -33,7 +33,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // Type guard for bounding box
-function isValidBoundingBox(value: unknown): value is { min: [number, number, number]; max: [number, number, number] } {
+function isValidBoundingBox(
+  value: unknown,
+): value is { min: [number, number, number]; max: [number, number, number] } {
   return boundingBoxSchema.safeParse(value).success;
 }
 
@@ -81,6 +83,7 @@ export function bg3dMeshesToGltf(
       ? doc
           .createAccessor()
           .setType("VEC4")
+          .setNormalized(true)
           .setArray(new Uint8Array(geom.colors.flat()))
           .setBuffer(baseBuffer)
       : null;
@@ -277,7 +280,11 @@ export function gltfMeshesToBg3d(
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
       const rawArr = idxAcc.getArray();
-      if (rawArr && (uint32ArraySchema.safeParse(rawArr).success || uint16ArraySchema.safeParse(rawArr).success)) {
+      if (
+        rawArr &&
+        (uint32ArraySchema.safeParse(rawArr).success ||
+          uint16ArraySchema.safeParse(rawArr).success)
+      ) {
         const arr = Array.from(rawArr);
         triangles = [];
         for (let i = 0; i < arr.length; i += 3) {
@@ -302,7 +309,9 @@ export function gltfMeshesToBg3d(
       triangles,
       layerMaterialNum: [materialIndex, 0, 0, 0], // BG3D expects array format
       flags: getNumberField(extras, "flags", 0),
-      boundingBox: isValidBoundingBox(extras.boundingBox) ? extras.boundingBox : undefined,
+      boundingBox: isValidBoundingBox(extras.boundingBox)
+        ? extras.boundingBox
+        : undefined,
       numMaterials: 1,
       type: getNumberField(extras, "type", 0),
       numPoints: vertices ? vertices.length : 0,
@@ -318,7 +327,7 @@ export function gltfMeshesToBg3d(
 // Type guard for BG3DGroup
 function isBG3DGroup(value: unknown): value is BG3DGroup {
   if (!isRecord(value)) return false;
-  return 'children' in value || 'materialNum' in value;
+  return "children" in value || "materialNum" in value;
 }
 
 /**
@@ -351,9 +360,9 @@ export function gltfSceneToBg3dGroups(
   }
 
   // Process scene hierarchy
-  const groups: BG3DGroup[] = sceneNodes.map((node) =>
-    processNode(node),
-  ).filter(isBG3DGroup);
+  const groups: BG3DGroup[] = sceneNodes
+    .map((node) => processNode(node))
+    .filter(isBG3DGroup);
 
   return groups;
 }

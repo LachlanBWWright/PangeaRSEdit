@@ -407,11 +407,12 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "ITEM_FLAGS_USER1: Task completed (head attached)",
     p0: {
       type: "Integer",
-      description: "Scarecrow part (0 = body/shirt base, nonzero = standalone head)",
+      description:
+        "Scarecrow part (0 = body/shirt base, nonzero = standalone head)",
       codeSample: {
-        code: "if (part == 0)\n\tgNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;\nelse\n\tgNewObjectDefinition.type = GARDEN_ObjType_ScarecrowHead;",
+        code: "if (itemPtr->parm[0] == 0)\n\tgNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;\nelse\n\tgNewObjectDefinition.type = GARDEN_ObjType_ScarecrowHead;",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 817,
+        lineNumber: 812,
       },
     },
     p1: "Unknown",
@@ -658,7 +659,8 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Dog house rotation (0-3, where each unit = 90°, starting at 180°)",
+      description:
+        "Dog house rotation (0-3, where each unit = 90°, starting at 180°)",
       codeSample: {
         code: "gNewObjectDefinition.rot = PI + ((float)itemPtr->parm[0] * (PI2/4));",
         fileName: "Source/Items/Items.c",
@@ -675,9 +677,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Windmill rotation (0-3, where each unit = 90°)",
       codeSample: {
-        code: "float r = itemPtr->parm[0] * (PI2/4.0f);\ngNewObjectDefinition.rot = r;",
+        code: "float r = itemPtr->parm[0] * (PI2/4.0f);",
         fileName: "Source/Items/Traps.c",
-        lineNumber: 273,
+        lineNumber: 300,
       },
     },
     p1: "Unknown",
@@ -827,9 +829,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Car number (0 = red, 1 = blue)",
       codeSample: {
-        code: "int carNum = itemPtr->parm[0];\nGAME_ASSERT(carNum == 0 || carNum == 1);\ngNewObjectDefinition.type = PLAYROOM_ObjType_SlotCarRed + carNum;",
+        code: "carNum = itemPtr->parm[0];\ngNewObjectDefinition.type = PLAYROOM_ObjType_SlotCarRed + carNum;",
         fileName: "Source/Items/SlotCar.c",
-        lineNumber: 133,
+        lineNumber: 91,
       },
     },
     p1: "Unused",
@@ -888,7 +890,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           codeSample: {
             code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_TOYSOLDIER] >= MAX_TOYSOLDIERS)\n        return(false);\n}",
             fileName: "Source/Enemies/Enemy_ToySoldier.c",
-            lineNumber: 109,
+            lineNumber: 112,
           },
         },
       ],
@@ -933,7 +935,8 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Puzzle part (0 = full puzzle board, 1-3 = puzzle pieces 1-3)",
+      description:
+        "Puzzle part (0 = full puzzle board, 1-3 = puzzle pieces 1-3)",
       codeSample: {
         code: "int part = itemPtr->parm[0];\nif (part == 0) {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_PuzzleMain;",
         fileName: "Source/Items/Snails2.c",
@@ -951,9 +954,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       description:
         "Wall/brick type (0 = full wall, 1-5 = individual brick types)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 5) return(true);\nif (type == 0) {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall;\n} else {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall + type;\n}",
+        code: "int type = itemPtr->parm[0];\nif (type > 5)\n\treturn(true);\nif (type == 0)\n\tgNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall;\nelse if (itemPtr->parm[3] & 1)\n\tgNewObjectDefinition.type = PLAYROOM_ObjType_LegoBrick_Red + RandomRange(0, 4);\nelse\n\tgNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall + type;",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 369,
+        lineNumber: 372,
       },
     },
     p1: {
@@ -1023,7 +1026,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           codeSample: {
             code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_DRAGONFLY] >= MAX_DRAGONFLYS)\n        return(false);\n}",
             fileName: "Source/Enemies/Enemy_DragonFly.c",
-            lineNumber: 77,
+            lineNumber: 96,
           },
         },
       ],
@@ -1050,7 +1053,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           codeSample: {
             code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_FROG] >= MAX_FROGS)\n        return(false);\n}",
             fileName: "Source/Enemies/Enemy_Frog.c",
-            lineNumber: 49,
+            lineNumber: 74,
           },
         },
       ],
@@ -1141,7 +1144,8 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       flags: [
         {
           index: 0,
-          description: "Target marker only; when set, no moth model is spawned.",
+          description:
+            "Target marker only; when set, no moth model is spawned.",
           codeSample: {
             code: "if (itemPtr->parm[3] & 1) // see if target\n    return(true);",
             fileName: "Source/Enemies/Enemy_Moth.c",
@@ -1175,11 +1179,11 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Silicon part (0=Chip1, 1=Chip2, 2=Battery).",
+      description: "Silicon part (0=Chip1, 1=Chip2).",
       codeSample: {
-        code: "gNewObjectDefinition.type = CLOSET_ObjType_Chip1 + itemPtr->parm[0];",
-        fileName: "Source/Items/Items2.c",
-        lineNumber: 959,
+        code: "Boolean part = itemPtr->parm[0];\ngNewObjectDefinition.type = CLOSET_ObjType_Chip1 + part;",
+        fileName: "Source/Items/Pickups.c",
+        lineNumber: 681,
       },
     },
     p1: "Unused",
@@ -1191,7 +1195,8 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Book stack type (0=flat book, 1=book stack, 2=tall book stack)",
+      description:
+        "Book stack type (0=flat book, 1=book stack, 2=tall book stack)",
       codeSample: {
         code: "int type = itemPtr->parm[0];\nif (type > 2) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_FlatBook + type;",
         fileName: "Source/Items/Items2.c",
@@ -1232,7 +1237,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           codeSample: {
             code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_ROACH] >= MAX_ROACHS)\n        return(false);\n}",
             fileName: "Source/Enemies/Enemy_Roach.c",
-            lineNumber: 110,
+            lineNumber: 132,
           },
         },
       ],
@@ -1306,7 +1311,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           codeSample: {
             code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_ANT] >= MAX_ANTS)\n        return(false);\n}",
             fileName: "Source/Enemies/Enemy_Ant.c",
-            lineNumber: 110,
+            lineNumber: 114,
           },
         },
       ],
@@ -1336,9 +1341,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Flower height variant (0=short, 1=medium, 2=tall).",
       codeSample: {
-        code: "gNewObjectDefinition.type = PARK_ObjType_ShortFlower + itemPtr->parm[0];",
+        code: "int type = itemPtr->parm[0];\ngNewObjectDefinition.type = PARK_ObjType_ShortFlower + type;",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 1260,
+        lineNumber: 1241,
       },
     },
     p1: "Unused",

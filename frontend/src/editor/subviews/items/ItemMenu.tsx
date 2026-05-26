@@ -126,9 +126,7 @@ export const ItemMenu = memo(function ItemMenu({
             onValueChange={handleTypeChange}
           >
             <SelectTrigger>
-              <SelectValue>
-                {getItemName(globals, selectedItemData.type)}
-              </SelectValue>
+              <SelectValue placeholder="Select an item" />
             </SelectTrigger>
             <SelectContent>
               {itemValues.map((key) => (
@@ -287,7 +285,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
           }}
         >
           <SelectTrigger>
-            <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
+            <SelectValue placeholder="Select an item" />
           </SelectTrigger>
           <SelectContent>
             {itemValues.map((key) => (

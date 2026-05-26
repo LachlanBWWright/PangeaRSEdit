@@ -11,7 +11,18 @@ import React, { useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
-import { Group, Mesh, BufferGeometry, Box3, Vector3, MathUtils } from "three";
+import {
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+  DoubleSide,
+  BufferGeometry,
+  Box3,
+  Vector3,
+  MathUtils,
+} from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -372,6 +383,58 @@ function extractSubgroupByIndex(
   }
 
   return newScene;
+}
+
+function applyLightingMode(
+  cloned: Group,
+  lightingMode: "unlit" | undefined,
+): void {
+  if (lightingMode !== "unlit") {
+    return;
+  }
+
+  cloned.traverse((node) => {
+    if (!(node instanceof Mesh) || !node.material) {
+      return;
+    }
+
+    const originalMaterials = Array.isArray(node.material)
+      ? node.material
+      : [node.material];
+    const unlitMaterials = originalMaterials.map((material) => {
+      if (material instanceof MeshBasicMaterial) {
+        material.side = DoubleSide;
+        material.toneMapped = false;
+        material.needsUpdate = true;
+        return material;
+      }
+
+      if (
+        material instanceof MeshStandardMaterial ||
+        material instanceof MeshPhysicalMaterial
+      ) {
+        const unlitMaterial = new MeshBasicMaterial({
+          map: material.map,
+          color: material.color,
+          transparent: material.transparent,
+          alphaTest: material.alphaTest,
+          side: DoubleSide,
+          opacity: material.opacity,
+          vertexColors: material.vertexColors,
+        });
+        unlitMaterial.name = material.name;
+        unlitMaterial.depthWrite = material.depthWrite;
+        unlitMaterial.toneMapped = false;
+        return unlitMaterial;
+      }
+
+      return material;
+    });
+
+    node.material = Array.isArray(node.material)
+      ? unlitMaterials
+      : (unlitMaterials[0] ?? node.material);
+  });
 }
 
 export function ItemModelViewer() {
@@ -760,16 +823,20 @@ export function ItemModelViewer() {
     const sy = baseScale * (mapping.scaleY ?? 1);
     const sz = baseScale * (mapping.scaleXZ ?? 1);
     extracted.scale.set(sx, sy, sz);
+    applyLightingMode(extracted, mapping.lightingMode);
 
     if (mapping.rotationY) {
       extracted.rotateY(mapping.rotationY);
     }
+    const yOff = mapping.yOffset ?? 0;
     if (mapping.positionOffset) {
       extracted.position.set(
         mapping.positionOffset[0],
-        mapping.positionOffset[1],
+        mapping.positionOffset[1] + yOff,
         mapping.positionOffset[2],
       );
+    } else if (yOff !== 0) {
+      extracted.position.set(0, yOff, 0);
     }
 
     setGltfScene(extracted);

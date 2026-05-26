@@ -14,6 +14,7 @@
     "dev:capture:item-screenshots": "tsx scripts/dev/capture-item-screenshots.ts",
     "dev:build:item-screenshot-manifest": "tsx scripts/dev/build-item-screenshot-manifest.ts",
     "dev:prepare:item-screenshots": "npm run dev:capture:item-screenshots && npm run dev:build:item-screenshot-manifest",
+    "audit:item-citations": "tsx scripts/dev/audit-item-citations.ts",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "test:browser": "vitest --config=vitest.browser.config.ts",

@@ -5,39 +5,6 @@ function getSplineArray(arr: SplinePoint[][], index: number): SplinePoint[] {
   return arr[index] ?? [];
 }
 
-function appendClosingSegment(
-  points: SplinePoint[],
-  nubs: SplinePoint[],
-  pointsPerSpan: number[],
-  numNubs: number,
-): SplinePoint[] {
-  const firstNub = nubs[0];
-  const secondLastNub = nubs[numNubs - 2];
-  const lastNub = nubs[numNubs - 1];
-  const duplicatedSpanPoints = pointsPerSpan[numNubs - 2] ?? 0;
-  const closingSpanPoints = pointsPerSpan[numNubs - 1] ?? 0;
-
-  if (
-    !firstNub ||
-    !secondLastNub ||
-    !lastNub ||
-    duplicatedSpanPoints <= 0 ||
-    closingSpanPoints <= 0
-  ) {
-    return points;
-  }
-
-  const closingPoints = bakeSpline(
-    [secondLastNub, lastNub, firstNub],
-    [duplicatedSpanPoints, closingSpanPoints, 0],
-    false,
-    false,
-  );
-
-  if (closingPoints.length <= duplicatedSpanPoints) return points;
-  return points.concat(closingPoints.slice(duplicatedSpanPoints));
-}
-
 /** Generates sampled spline points for the given nub positions. */
 export function getPoints(nubs: SplinePoint[], circular = true) {
   const numNubs = circular ? nubs.length : nubs.length - 1;
@@ -70,8 +37,8 @@ export function spanPoints(distance: number) {
 export function bakeSpline(
   nubs: SplinePoint[],
   pointsPerSpan: number[],
-  circular = true,
-  allowClosingSegment = true,
+  _circular = true,
+  _allowClosingSegment = true,
 ) {
   const numNubs = nubs.length;
   const space: SplinePoint[][] = [];
@@ -242,9 +209,5 @@ export function bakeSpline(
   }
 
   points = points.slice(0, numPoints);
-  if (allowClosingSegment && circular && nubs.length > 2) {
-    points = appendClosingSegment(points, nubs, pointsPerSpan, numNubs);
-  }
-
   return points;
 }

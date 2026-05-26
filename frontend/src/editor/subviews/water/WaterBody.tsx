@@ -14,10 +14,7 @@ import {
 } from "../../../data/water/waterAtoms";
 import { memo, useMemo, useState, useRef } from "react";
 import { Globals } from "@/data/globals/globals";
-import {
-  buildLiquidBodyCanvas,
-  getLiquidVisualStyle,
-} from "./liquidRenderingUtils";
+import { buildLiquidBodyCanvas } from "./liquidRenderingUtils";
 import {
   applyDraggedBodyOffset,
   cloneVisibleWaterNubs,
@@ -71,8 +68,6 @@ export const WaterBody = memo(
       waterBody.numNubs,
     );
     const waterNubs = visibleNubs.flatMap((nub) => [nub[0], nub[1]]);
-    const style = getLiquidVisualStyle(globals, waterBody.type);
-
     return (
       <>
         {bodyCanvas && (

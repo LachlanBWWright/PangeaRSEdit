@@ -172,9 +172,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
           index: 0,
           description: "Capture the flag mode flag",
           codeSample: {
-            code: "if (gGameMode ==GAME_MODE_CAPTUREFLAG) {\n    if (!(itemPtr[i].parm[3] & 1))\n        continue;\n}",
+            code: "if (gGameMode ==GAME_MODE_CAPTUREFLAG)\n{\n\tif (!(itemPtr[i].parm[3] & 1))\n\t\tcontinue;\n}\nelse\n{\n\tif (itemPtr[i].parm[3] & 1)\n\t\tcontinue;\n}",
             fileName: "Source/Terrain/Terrain2.c",
-            lineNumber: 234,
+            lineNumber: 236,
           },
         },
       ],

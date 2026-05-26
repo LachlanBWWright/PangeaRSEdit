@@ -81,7 +81,11 @@ function toExactArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
   const uint8Data = uint8Result.data;
   const copy = new ArrayBuffer(uint8Data.byteLength);
   new Uint8Array(copy).set(
-    new Uint8Array(uint8Data.buffer, uint8Data.byteOffset, uint8Data.byteLength),
+    new Uint8Array(
+      uint8Data.buffer,
+      uint8Data.byteOffset,
+      uint8Data.byteLength,
+    ),
   );
   return copy;
 }
@@ -244,6 +248,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       ? doc
           .createAccessor()
           .setType("VEC4")
+          .setNormalized(true)
           .setArray(new Uint8Array(geom.colors.flat()))
       : null;
 
@@ -571,7 +576,9 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
         const imageData = uint8ArrayResult.data;
         // Check for JPEG signature (0xFF 0xD8)
         const isJPEG =
-          imageData.length >= 2 && imageData[0] === 0xff && imageData[1] === 0xd8;
+          imageData.length >= 2 &&
+          imageData[0] === 0xff &&
+          imageData[1] === 0xd8;
 
         // Check for PNG signature
         const isPNG =
@@ -846,7 +853,8 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             const posAcc = prim.getAttribute("POSITION");
             if (posAcc) {
               const posArrayRaw = posAcc.getArray();
-              const float32ArrayResult = float32ArraySchema.safeParse(posArrayRaw);
+              const float32ArrayResult =
+                float32ArraySchema.safeParse(posArrayRaw);
               if (!float32ArrayResult.success) {
                 console.warn("Position array is not Float32Array");
                 return;
@@ -921,12 +929,11 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             if (jointsAcc && weightsAcc && posAcc) {
               const jointsArrayRaw = jointsAcc.getArray();
               const weightsArrayRaw = weightsAcc.getArray();
-              const uint16ArrayResult = uint16ArraySchema.safeParse(jointsArrayRaw);
-              const float32ArrayResult = float32ArraySchema.safeParse(weightsArrayRaw);
-              if (
-                !uint16ArrayResult.success ||
-                !float32ArrayResult.success
-              ) {
+              const uint16ArrayResult =
+                uint16ArraySchema.safeParse(jointsArrayRaw);
+              const float32ArrayResult =
+                float32ArraySchema.safeParse(weightsArrayRaw);
+              if (!uint16ArrayResult.success || !float32ArrayResult.success) {
                 console.warn("Joints or weights array type mismatch");
                 return;
               }
@@ -1160,7 +1167,8 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
 
   // Process scene hierarchy - collect all meshes into a single root group
   // BG3D format: root group → one sub-group per model → geometry
-  const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
+  const scene =
+    doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
   if (!scene) {
     return {
       materials,

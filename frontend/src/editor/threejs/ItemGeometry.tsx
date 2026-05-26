@@ -39,18 +39,18 @@ interface ItemGeometryProps {
   itemData: ItemData;
   headerData: HeaderData;
   terrainData: TerrainData;
-   onItemPointerDown?: (
-     itemIdx: number,
-     pointerId: number,
-     worldX: number,
-     worldZ: number,
-   ) => void;
-   onItemPointerEnter?: (itemIdx: number | null) => void;
-   onItemPointerLeave?: () => void;
-   hoveredItemIdx?: number | null;
-   selectedItemIdx?: number | null;
-   draggingItemIdx?: number | null;
-   topologyVersion?: number;
+  onItemPointerDown?: (
+    itemIdx: number,
+    pointerId: number,
+    worldX: number,
+    worldZ: number,
+  ) => void;
+  onItemPointerEnter?: (itemIdx: number | null) => void;
+  onItemPointerLeave?: () => void;
+  hoveredItemIdx?: number | null;
+  selectedItemIdx?: number | null;
+  draggingItemIdx?: number | null;
+  topologyVersion?: number;
 }
 const ITEM_SIZE = 50; // World units for item cube size
 const DRAG_HIGHLIGHT_COLOR = 0x00aaff;
@@ -120,7 +120,10 @@ const LoadingCube: React.FC<{
   );
 };
 
-function applyLightingMode(cloned: Group, lightingMode: "unlit" | undefined): void {
+function applyLightingMode(
+  cloned: Group,
+  lightingMode: "unlit" | undefined,
+): void {
   if (lightingMode !== "unlit") {
     return;
   }
@@ -130,45 +133,42 @@ function applyLightingMode(cloned: Group, lightingMode: "unlit" | undefined): vo
       return;
     }
 
-    const materials = Array.isArray(node.material)
+    const originalMaterials = Array.isArray(node.material)
       ? node.material
       : [node.material];
-    materials.forEach((material) => {
+    const unlitMaterials = originalMaterials.map((material) => {
       if (material instanceof MeshBasicMaterial) {
         material.side = DoubleSide;
         material.toneMapped = false;
         material.needsUpdate = true;
-        return;
+        return material;
       }
 
       if (
         material instanceof MeshStandardMaterial ||
         material instanceof MeshPhysicalMaterial
       ) {
-        material.side = DoubleSide;
-        material.metalness = 0;
-        material.roughness = 1;
-        material.toneMapped = false;
-
-        if (material.map) {
-          // Textured: emit texture at full brightness, suppress diffuse so the
-          // texture is not double-counted (diffuse × lighting + emissive × map).
-          material.color.setRGB(0, 0, 0);
-          material.emissive.setRGB(1, 1, 1);
-          material.emissiveMap = material.map;
-          material.emissiveIntensity = 1;
-        } else {
-          // Untextured: emit the existing diffuse colour so the model shape is
-          // visible without lighting influencing it.
-          const { r, g, b } = material.color;
-          material.color.setRGB(0, 0, 0);
-          material.emissive.setRGB(r, g, b);
-          material.emissiveIntensity = 1;
-        }
-
-        material.needsUpdate = true;
+        const unlitMaterial = new MeshBasicMaterial({
+          map: material.map,
+          color: material.color,
+          transparent: material.transparent,
+          alphaTest: material.alphaTest,
+          side: DoubleSide,
+          opacity: material.opacity,
+          vertexColors: material.vertexColors,
+        });
+        unlitMaterial.name = material.name;
+        unlitMaterial.depthWrite = material.depthWrite;
+        unlitMaterial.toneMapped = false;
+        return unlitMaterial;
       }
+
+      return material;
     });
+
+    node.material = Array.isArray(node.material)
+      ? unlitMaterials
+      : (unlitMaterials[0] ?? node.material);
   });
 }
 
@@ -255,25 +255,32 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const show3DItemModels = useAtomValue(Show3DItemModels);
   const levelNum = useAtomValue(LevelNumber);
   const currentGame = globals.GAME_TYPE;
-  
+
   const { modelCache, loadModel } = useItemModelCache(currentGame);
   const items = itemData.Itms?.[1000]?.obj;
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
   const getItemCacheKey = useCallback(
-    (itemType: number, p0: number, p1: number, p2: number, p3: number): string =>
-      getItemModelCacheKey(
-        currentGame,
-        itemType,
-        { p0, p1, p2, p3 },
-        levelNum,
-      ),
+    (
+      itemType: number,
+      p0: number,
+      p1: number,
+      p2: number,
+      p3: number,
+    ): string =>
+      getItemModelCacheKey(currentGame, itemType, { p0, p1, p2, p3 }, levelNum),
     [currentGame, levelNum],
   );
   const itemsByCacheKey = useMemo(() => {
     if (!items) return new Map<string, typeof items>();
     const groups = new Map<string, typeof items>();
     items.forEach((item) => {
-      const cacheKey = getItemCacheKey(item.type, item.p0, item.p1, item.p2, item.p3);
+      const cacheKey = getItemCacheKey(
+        item.type,
+        item.p0,
+        item.p1,
+        item.p2,
+        item.p3,
+      );
       if (!groups.has(cacheKey)) {
         groups.set(cacheKey, []);
       }
@@ -289,11 +296,21 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
     itemsByCacheKey.forEach((itemsInGroup, cacheKey) => {
       const firstItem = itemsInGroup[0];
       if (!firstItem) return;
-      
+
       const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
-        const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
-        const mapping = mapper?.getMapping(firstItem.type, levelNum, params, firstItem.flags);
+        const params = {
+          p0: firstItem.p0,
+          p1: firstItem.p1,
+          p2: firstItem.p2,
+          p3: firstItem.p3,
+        };
+        const mapping = mapper?.getMapping(
+          firstItem.type,
+          levelNum,
+          params,
+          firstItem.flags,
+        );
         if (mapping && cachedModel.gltf) {
           const cloned = cloneGroupForItemRendering(cachedModel.gltf);
           const baseScale = mapping.scale ?? 1;
@@ -326,15 +343,23 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       itemsByCacheKey.forEach((itemsInGroup) => {
         const firstItem = itemsInGroup[0];
         if (!firstItem) return;
-        
-        const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
+
+        const params = {
+          p0: firstItem.p0,
+          p1: firstItem.p1,
+          p2: firstItem.p2,
+          p3: firstItem.p3,
+        };
         const loadItemModel = async () => {
           const loadResult = await ResultAsync.fromPromise(
             loadModel(firstItem.type, params, levelNum),
             mapErr,
           );
           if (loadResult.isErr()) {
-            console.error(`Failed to load model for item type ${firstItem.type}:`, loadResult.error);
+            console.error(
+              `Failed to load model for item type ${firstItem.type}:`,
+              loadResult.error,
+            );
           }
         };
         void loadItemModel();
@@ -403,19 +428,34 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
               {isSelected && !isDragging ? (
                 <mesh position={[0, 0, 0]}>
                   <sphereGeometry args={[ITEM_SIZE * 0.9, 10, 10]} />
-                  <meshBasicMaterial color={SELECTED_HIGHLIGHT_COLOR} wireframe />
+                  <meshBasicMaterial
+                    color={SELECTED_HIGHLIGHT_COLOR}
+                    wireframe
+                  />
                 </mesh>
               ) : null}
               {isHovered && !isDragging ? (
                 <mesh position={[0, 0, 0]}>
                   <sphereGeometry args={[ITEM_SIZE * 0.7, 8, 8]} />
-                  <meshBasicMaterial color={HOVER_HIGHLIGHT_COLOR} transparent opacity={0.5} wireframe />
+                  <meshBasicMaterial
+                    color={HOVER_HIGHLIGHT_COLOR}
+                    transparent
+                    opacity={0.5}
+                    wireframe
+                  />
                 </mesh>
               ) : null}
               {isDragging && (
                 <mesh position={[0, 0, 0]}>
-                  <sphereGeometry args={[ITEM_SIZE * DRAG_HIGHLIGHT_SCALE, 8, 8]} />
-                  <meshBasicMaterial color={DRAG_HIGHLIGHT_COLOR} transparent opacity={DRAG_HIGHLIGHT_OPACITY} wireframe />
+                  <sphereGeometry
+                    args={[ITEM_SIZE * DRAG_HIGHLIGHT_SCALE, 8, 8]}
+                  />
+                  <meshBasicMaterial
+                    color={DRAG_HIGHLIGHT_COLOR}
+                    transparent
+                    opacity={DRAG_HIGHLIGHT_OPACITY}
+                    wireframe
+                  />
                 </mesh>
               )}
             </group>
@@ -460,7 +500,13 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           );
         }
         if (show3DItemModels) {
-          const itemCacheKey = getItemCacheKey(item.type, item.p0, item.p1, item.p2, item.p3);
+          const itemCacheKey = getItemCacheKey(
+            item.type,
+            item.p0,
+            item.p1,
+            item.p2,
+            item.p3,
+          );
           const cachedModel = modelCache.get(itemCacheKey);
           const modelGltf = cachedModel?.gltf;
           const isLoading = cachedModel?.loading ?? false;
@@ -477,14 +523,27 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (modelGltf && !hasError) {
             const clonedScene = clonedScenesByCacheKey.get(itemCacheKey);
             if (clonedScene) {
-              const params = { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 };
-              const mapping = mapper?.getMapping(item.type, levelNum, params, item.flags);
+              const params = {
+                p0: item.p0,
+                p1: item.p1,
+                p2: item.p2,
+                p3: item.p3,
+              };
+              const mapping = mapper?.getMapping(
+                item.type,
+                levelNum,
+                params,
+                item.flags,
+              );
               let extraRotationY = 0;
               if (mapping?.rotationParam) {
                 const rp = mapping.rotationParam;
                 if (isRotationParam(rp.rotationType)) {
                   const paramValue = getParamByIndex(params, rp.paramIndex);
-                  extraRotationY = calculateRotation(paramValue, rp.rotationType);
+                  extraRotationY = calculateRotation(
+                    paramValue,
+                    rp.rotationType,
+                  );
                 }
               }
               return wrapWithDrag(
@@ -493,7 +552,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
                   position={position}
                   itemType={item.type}
                   clonedScene={clonedScene}
-                  extraRotationY={extraRotationY !== 0 ? extraRotationY : undefined}
+                  extraRotationY={
+                    extraRotationY !== 0 ? extraRotationY : undefined
+                  }
                 />,
               );
             }

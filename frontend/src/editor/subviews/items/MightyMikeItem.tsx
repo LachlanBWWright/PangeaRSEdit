@@ -1,6 +1,6 @@
 import { Updater } from "use-immer";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-import { Rect, Image as KonvaImage } from "react-konva";
+import { Group, Rect, Image as KonvaImage } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -31,11 +31,13 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   itemData,
   setItemData,
   itemIdx,
+  selected,
   onHoverChange,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
   itemIdx: number;
+  selected: boolean;
   onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
@@ -168,31 +170,30 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     onHoverChange(null);
   };
   return (
-    <>
+    <Group
+      x={boxPosition.x}
+      y={boxPosition.y}
+      draggable
+      onMouseOver={handleMouseOver}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
+      onDragStart={handleMouseDown}
+      onDragEnd={handleDragEnd}
+    >
       <Rect
-        x={boxPosition.x}
-        y={boxPosition.y}
+        x={0}
+        y={0}
         width={MIGHTY_MIKE_BOX_SIZE}
         height={MIGHTY_MIKE_BOX_SIZE}
-        stroke="red"
-        fill="red"
-        draggable
-        onMouseOver={handleMouseOver}
-        onMouseLeave={handleMouseLeave}
-        onMouseDown={handleMouseDown}
-        onDragStart={handleMouseDown}
-        onDragEnd={handleDragEnd}
+        stroke={selected ? "black" : "red"}
+        strokeWidth={selected ? 2 : 1}
+        fill={selected ? "red" : "#ef4444"}
         perfectDrawEnabled={false}
       />
 
       {!hovering && (
-        <ItemTypeNumber
-          x={boxPosition.x}
-          y={boxPosition.y}
-          value={item.type.toString()}
-          fill="black"
-        />
+        <ItemTypeNumber x={0} y={0} value={item.type.toString()} fill="black" />
       )}
-    </>
+    </Group>
   );
 });

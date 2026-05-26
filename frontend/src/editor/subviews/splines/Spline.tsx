@@ -4,7 +4,7 @@ import type {
   SplineNub as SplineNubType,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
-import { Line, Circle, Rect, Text } from "react-konva";
+import { Group, Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
@@ -229,61 +229,65 @@ const SplineNub = memo(
     const isSelected =
       selectedSpline === splineIdx && selectedSplineNub === nubIdx;
     return (
-      <>
+      <Group
+        x={nub.x}
+        y={nub.z}
+        draggable
+        onMouseDown={() => {
+          setSelectedSpline(splineIdx);
+          setActiveView(View.splines);
+          setSelectedSplineNub(nubIdx);
+        }}
+        onDragStart={() => {
+          setSelectedSpline(splineIdx);
+          setActiveView(View.splines);
+          setSelectedSplineNub(nubIdx);
+        }}
+        onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
+          onNubPreviewMove(
+            nubIdx,
+            Math.round(e.target.x()),
+            Math.round(e.target.y()),
+          );
+        }}
+        onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+          const newX = Math.round(e.target.x());
+          const newZ = Math.round(e.target.y());
+
+          onNubDragEnd();
+
+          setSplineData((draft) => {
+            const currentNubs =
+              draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]?.obj || [];
+            const updatedNubs = [...currentNubs];
+            updatedNubs[nubIdx] = { x: newX, z: newZ };
+
+            if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
+              updatedNubs[0] = { x: newX, z: newZ };
+            }
+
+            const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
+            if (spNbEntry) spNbEntry.obj = updatedNubs;
+            const splnEntry = draft.Spln?.[1000]?.obj?.[splineIdx];
+            if (splnEntry) splnEntry.numNubs = updatedNubs.length;
+          });
+
+          onNubChange();
+        }}
+      >
         <Circle
-          x={nub.x}
-          y={nub.z}
+          x={0}
+          y={0}
           radius={10}
-          draggable
           fill={isSelected ? "red" : "blue"}
           stroke="black"
           strokeWidth={isSelected ? 3 : 2}
           perfectDrawEnabled={false}
-          onMouseDown={() => {
-            setSelectedSpline(splineIdx);
-            setActiveView(View.splines);
-            setSelectedSplineNub(nubIdx);
-          }}
-          onDragStart={() => {
-            setSelectedSpline(splineIdx);
-            setActiveView(View.splines);
-            setSelectedSplineNub(nubIdx);
-          }}
-          onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
-            onNubPreviewMove(
-              nubIdx,
-              Math.round(e.target.x()),
-              Math.round(e.target.y()),
-            );
-          }}
-          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-            const newX = Math.round(e.target.x());
-            const newZ = Math.round(e.target.y());
-
-            onNubDragEnd();
-
-            setSplineData((draft) => {
-              const currentNubs =
-                draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]?.obj || [];
-              const updatedNubs = [...currentNubs];
-              updatedNubs[nubIdx] = { x: newX, z: newZ };
-
-              if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
-                updatedNubs[0] = { x: newX, z: newZ };
-              }
-
-              const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
-              if (spNbEntry) spNbEntry.obj = updatedNubs;
-              const splnEntry = draft.Spln?.[1000]?.obj?.[splineIdx];
-              if (splnEntry) splnEntry.numNubs = updatedNubs.length;
-            });
-
-            onNubChange();
-          }}
+          listening={false}
         />
         <Text
-          x={nub.x - 8}
-          y={nub.z - 8}
+          x={-8}
+          y={-8}
           width={16}
           height={16}
           text={nubIdx.toString()}
@@ -295,7 +299,7 @@ const SplineNub = memo(
           listening={false}
           perfectDrawEnabled={false}
         />
-      </>
+      </Group>
     );
   },
 );

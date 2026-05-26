@@ -26,6 +26,7 @@ const BUGDOM_REED_SCALE = 0.4;
 const BUGDOM_TREE_SCALE = 20;
 const BUGDOM_CHECKPOINT_SCALE = 1.5;
 const BUGDOM_BOULDER_SCALE = 3;
+const BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION = Math.PI / 4;
 
 function cite(
   file: string,
@@ -67,7 +68,10 @@ function getFlags(options: BugdomMappingOptions): number {
 }
 
 function mergePrimaryPart(
-  base: Omit<UniversalItemModelMapping, "modelFile" | "modelIndex" | "modelPath">,
+  base: Omit<
+    UniversalItemModelMapping,
+    "modelFile" | "modelIndex" | "modelPath"
+  >,
   modelParts: readonly ModelPartMapping[],
 ): UniversalItemModelMapping {
   const primaryPart = modelParts[0];
@@ -96,7 +100,9 @@ function mergePrimaryPart(
   };
 }
 
-function buildRockMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildRockMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const levelGroup = getBugdomLevelGroup(options.levelNum);
 
@@ -109,8 +115,20 @@ function buildRockMapping(options: BugdomMappingOptions): UniversalItemModelMapp
           modelIndex: 10 + params.p0,
           scale: 0.9,
           citations: [
-            cite("src/Items/Items2.c", 677, "AddRock add routine", "item-add-routine", 717),
-            cite("src/Items/Items2.c", 701, "Forest rock index uses p0", "model-index", 704),
+            cite(
+              "src/Items/Items2.c",
+              677,
+              "AddRock add routine",
+              "item-add-routine",
+              717,
+            ),
+            cite(
+              "src/Items/Items2.c",
+              701,
+              "Forest rock index uses p0",
+              "model-index",
+              704,
+            ),
           ],
         }
       : levelGroup === "night"
@@ -121,8 +139,20 @@ function buildRockMapping(options: BugdomMappingOptions): UniversalItemModelMapp
             modelIndex: 2 + params.p0,
             scale: 0.6,
             citations: [
-              cite("src/Items/Items2.c", 677, "AddRock add routine", "item-add-routine", 717),
-              cite("src/Items/Items2.c", 689, "Night rock index uses p0", "model-index", 692),
+              cite(
+                "src/Items/Items2.c",
+                677,
+                "AddRock add routine",
+                "item-add-routine",
+                717,
+              ),
+              cite(
+                "src/Items/Items2.c",
+                689,
+                "Night rock index uses p0",
+                "model-index",
+                692,
+              ),
             ],
           }
         : {
@@ -131,15 +161,40 @@ function buildRockMapping(options: BugdomMappingOptions): UniversalItemModelMapp
             modelPath: "models" as const,
             modelIndex: 8 + params.p0,
             scale: 4,
+            rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
             citations: [
-              cite("src/Items/Items2.c", 677, "AddRock add routine", "item-add-routine", 717),
-              cite("src/Items/Items2.c", 695, "Lawn rock index uses p0", "model-index", 698),
+              cite(
+                "src/Items/Items2.c",
+                677,
+                "AddRock add routine",
+                "item-add-routine",
+                717,
+              ),
+              cite(
+                "src/Items/Items2.c",
+                695,
+                "Lawn rock index uses p0",
+                "model-index",
+                698,
+              ),
+              cite(
+                "src/Items/Items2.c",
+                711,
+                "Rock rotates from sin(x) * PI2 in the original game",
+                "rotation",
+                711,
+              ),
             ],
           };
 
   const staticAnalysisIssues: StaticAnalysisIssue[] =
     options.levelNum === undefined
-      ? [{ severity: "warning", message: "Rock defaults to lawn assets without a level number." }]
+      ? [
+          {
+            severity: "warning",
+            message: "Rock defaults to lawn assets without a level number.",
+          },
+        ]
       : [];
 
   return mergePrimaryPart(
@@ -163,19 +218,45 @@ function buildRockMapping(options: BugdomMappingOptions): UniversalItemModelMapp
   );
 }
 
-function buildLawnDoorMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildLawnDoorMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const flags = getFlags(options);
   const levelGroup = getBugdomLevelGroup(options.levelNum);
   const isNight = levelGroup === "night";
   const isOpen = (flags & ITEM_FLAGS_USER1) !== 0;
-  const aim = isOpen ? (params.p1 ^ 1) : params.p1;
+  const aim = isOpen ? params.p1 ^ 1 : params.p1;
 
   const citations = [
-    cite("src/Items/Triggers.c", 754, "AddLawnDoor add routine", "item-add-routine", 795),
-    cite("src/Items/Triggers.c", 763, "Door color and rotation come from params", "param-domain", 768),
-    cite("src/Items/Triggers.c", 772, "Door file changes by level type", "level-condition", 775),
-    cite("src/Items/Triggers.c", 783, "Door rotation uses aim * PI/2", "rotation", 784),
+    cite(
+      "src/Items/Triggers.c",
+      754,
+      "AddLawnDoor add routine",
+      "item-add-routine",
+      795,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      763,
+      "Door color and rotation come from params",
+      "param-domain",
+      768,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      772,
+      "Door file changes by level type",
+      "level-condition",
+      775,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      783,
+      "Door rotation uses aim * PI/2",
+      "rotation",
+      784,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -208,7 +289,13 @@ function buildLawnDoorMapping(options: BugdomMappingOptions): UniversalItemModel
       },
       staticAnalysisIssues:
         options.levelNum === undefined
-          ? [{ severity: "warning", message: "LawnDoor defaults to the lawn model set without a level number." }]
+          ? [
+              {
+                severity: "warning",
+                message:
+                  "LawnDoor defaults to the lawn model set without a level number.",
+              },
+            ]
           : [],
     },
     [
@@ -225,7 +312,9 @@ function buildLawnDoorMapping(options: BugdomMappingOptions): UniversalItemModel
   );
 }
 
-function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildGrassMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const levelGroup = getBugdomLevelGroup(options.levelNum);
 
@@ -237,10 +326,36 @@ function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMap
           modelPath: "models" as const,
           modelIndex: 2 + params.p0,
           scale: BUGDOM_GRASS_SCALE,
+          rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
           citations: [
-            cite("src/Items/Items.c", 198, "AddGrass add routine", "item-add-routine", 251),
-            cite("src/Items/Items.c", 214, "Forest grass uses FOREST_MObjType_Grass + parm[0]", "model-index", 216),
-            cite("src/Items/Items.c", 237, "Grass scale is GRASS_SCALE", "scale", 237),
+            cite(
+              "src/Items/Items.c",
+              198,
+              "AddGrass add routine",
+              "item-add-routine",
+              251,
+            ),
+            cite(
+              "src/Items/Items.c",
+              214,
+              "Forest grass uses FOREST_MObjType_Grass + parm[0]",
+              "model-index",
+              216,
+            ),
+            cite(
+              "src/Items/Items.c",
+              237,
+              "Grass scale is GRASS_SCALE",
+              "scale",
+              237,
+            ),
+            cite(
+              "src/Items/Items.c",
+              236,
+              "Grass rotates randomly in the original game",
+              "rotation",
+              236,
+            ),
           ],
         }
       : levelGroup === "night"
@@ -250,10 +365,36 @@ function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMap
             modelPath: "models" as const,
             modelIndex: 9 + params.p0,
             scale: BUGDOM_GRASS_SCALE,
+            rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
             citations: [
-              cite("src/Items/Items.c", 198, "AddGrass add routine", "item-add-routine", 251),
-              cite("src/Items/Items.c", 219, "Night grass uses NIGHT_MObjType_Grass + parm[0]", "model-index", 221),
-              cite("src/Items/Items.c", 237, "Grass scale is GRASS_SCALE", "scale", 237),
+              cite(
+                "src/Items/Items.c",
+                198,
+                "AddGrass add routine",
+                "item-add-routine",
+                251,
+              ),
+              cite(
+                "src/Items/Items.c",
+                219,
+                "Night grass uses NIGHT_MObjType_Grass + parm[0]",
+                "model-index",
+                221,
+              ),
+              cite(
+                "src/Items/Items.c",
+                237,
+                "Grass scale is GRASS_SCALE",
+                "scale",
+                237,
+              ),
+              cite(
+                "src/Items/Items.c",
+                236,
+                "Grass rotates randomly in the original game",
+                "rotation",
+                236,
+              ),
             ],
           }
         : {
@@ -262,10 +403,36 @@ function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMap
             modelPath: "models" as const,
             modelIndex: params.p0,
             scale: BUGDOM_GRASS_SCALE,
+            rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
             citations: [
-              cite("src/Items/Items.c", 198, "AddGrass add routine", "item-add-routine", 251),
-              cite("src/Items/Items.c", 209, "Lawn grass uses LAWN2_MObjType_Grass + parm[0]", "model-index", 211),
-              cite("src/Items/Items.c", 237, "Grass scale is GRASS_SCALE", "scale", 237),
+              cite(
+                "src/Items/Items.c",
+                198,
+                "AddGrass add routine",
+                "item-add-routine",
+                251,
+              ),
+              cite(
+                "src/Items/Items.c",
+                209,
+                "Lawn grass uses LAWN2_MObjType_Grass + parm[0]",
+                "model-index",
+                211,
+              ),
+              cite(
+                "src/Items/Items.c",
+                237,
+                "Grass scale is GRASS_SCALE",
+                "scale",
+                237,
+              ),
+              cite(
+                "src/Items/Items.c",
+                236,
+                "Grass rotates randomly in the original game",
+                "rotation",
+                236,
+              ),
             ],
           };
 
@@ -288,7 +455,8 @@ function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMap
       paramDomains: {
         p0: {
           kind: "enum",
-          summary: "Selects the grass mesh variant within the active level group.",
+          summary:
+            "Selects the grass mesh variant within the active level group.",
           values: [
             { value: 0, label: "Primary grass" },
             { value: 1, label: "Secondary grass" },
@@ -301,13 +469,46 @@ function buildGrassMapping(options: BugdomMappingOptions): UniversalItemModelMap
   );
 }
 
-function buildCloverMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildCloverMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const citations = [
-    cite("src/Items/Items.c", 152, "AddClover add routine", "item-add-routine", 189),
-    cite("src/Items/Items.c", 166, "Clover uses LAWN2_MObjType_Clover + parm[0]", "model-index", 166),
-    cite("src/Items/Items.c", 172, "Clover uses STATUS_BIT_NULLSHADER", "model-group", 172),
-    cite("src/Items/Items.c", 176, "Clover scale is CLOVER_SCALE + RandomFloat()*.1f", "scale", 176),
+    cite(
+      "src/Items/Items.c",
+      152,
+      "AddClover add routine",
+      "item-add-routine",
+      189,
+    ),
+    cite(
+      "src/Items/Items.c",
+      166,
+      "Clover uses LAWN2_MObjType_Clover + parm[0]",
+      "model-index",
+      166,
+    ),
+    cite(
+      "src/Items/Items.c",
+      172,
+      "Clover uses STATUS_BIT_NULLSHADER",
+      "model-group",
+      172,
+    ),
+    cite(
+      "src/Items/Items.c",
+      176,
+      "Clover scale is CLOVER_SCALE + RandomFloat()*.1f",
+      "scale",
+      176,
+    ),
+    cite(
+      "src/Items/Items.c",
+      175,
+      "Clover rotates randomly in the original game",
+      "rotation",
+      175,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -334,18 +535,39 @@ function buildCloverMapping(options: BugdomMappingOptions): UniversalItemModelMa
         modelPath: "models",
         modelIndex: 6 + params.p0,
         scale: 0.2,
+        rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
         citations,
       },
     ],
   );
 }
 
-function buildWeedMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildWeedMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const citations = [
-    cite("src/Items/Items.c", 256, "AddWeed add routine", "item-add-routine", 285),
-    cite("src/Items/Items.c", 262, "Weed uses LAWN2_MObjType_Weed + parm[0]", "model-index", 262),
-    cite("src/Items/Items.c", 268, "Weed uses STATUS_BIT_NULLSHADER", "model-group", 268),
+    cite(
+      "src/Items/Items.c",
+      256,
+      "AddWeed add routine",
+      "item-add-routine",
+      285,
+    ),
+    cite(
+      "src/Items/Items.c",
+      262,
+      "Weed uses LAWN2_MObjType_Weed + parm[0]",
+      "model-index",
+      262,
+    ),
+    cite(
+      "src/Items/Items.c",
+      268,
+      "Weed uses STATUS_BIT_NULLSHADER",
+      "model-group",
+      268,
+    ),
     cite("src/Items/Items.c", 272, "Weed scale is WEED_SCALE", "scale", 272),
   ];
 
@@ -378,10 +600,35 @@ function buildWeedMapping(options: BugdomMappingOptions): UniversalItemModelMapp
 
 function buildSunflowerMapping(): UniversalItemModelMapping {
   const citations = [
-    cite("src/Items/Items.c", 292, "AddSunFlower add routine", "item-add-routine", 317),
-    cite("src/Items/Items.c", 298, "Sunflower uses LAWN2_MObjType_Sunflower", "model-index", 298),
-    cite("src/Items/Items.c", 302, "Sunflower uses STATUS_BIT_NULLSHADER", "model-group", 302),
+    cite(
+      "src/Items/Items.c",
+      292,
+      "AddSunFlower add routine",
+      "item-add-routine",
+      317,
+    ),
+    cite(
+      "src/Items/Items.c",
+      298,
+      "Sunflower uses LAWN2_MObjType_Sunflower",
+      "model-index",
+      298,
+    ),
+    cite(
+      "src/Items/Items.c",
+      302,
+      "Sunflower uses STATUS_BIT_NULLSHADER",
+      "model-group",
+      302,
+    ),
     cite("src/Items/Items.c", 306, "Sunflower scale is .15", "scale", 306),
+    cite(
+      "src/Items/Items.c",
+      305,
+      "Sunflower rotates randomly in the original game",
+      "rotation",
+      305,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -398,6 +645,7 @@ function buildSunflowerMapping(): UniversalItemModelMapping {
         modelPath: "models",
         modelIndex: 5,
         scale: 0.15,
+        rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
         citations,
       },
     ],
@@ -406,10 +654,41 @@ function buildSunflowerMapping(): UniversalItemModelMapping {
 
 function buildCosmoMapping(): UniversalItemModelMapping {
   const citations = [
-    cite("src/Items/Items.c", 325, "AddCosmo add routine", "item-add-routine", 352),
-    cite("src/Items/Items.c", 331, "Cosmo uses LAWN2_MObjType_Cosmo", "model-index", 331),
-    cite("src/Items/Items.c", 335, "Cosmo uses STATUS_BIT_NULLSHADER", "model-group", 335),
-    cite("src/Items/Items.c", 339, "Cosmo scale is COSMO_SCALE + RandomFloat()*.05f", "scale", 339),
+    cite(
+      "src/Items/Items.c",
+      325,
+      "AddCosmo add routine",
+      "item-add-routine",
+      352,
+    ),
+    cite(
+      "src/Items/Items.c",
+      331,
+      "Cosmo uses LAWN2_MObjType_Cosmo",
+      "model-index",
+      331,
+    ),
+    cite(
+      "src/Items/Items.c",
+      335,
+      "Cosmo uses STATUS_BIT_NULLSHADER",
+      "model-group",
+      335,
+    ),
+    cite(
+      "src/Items/Items.c",
+      339,
+      "Cosmo scale is COSMO_SCALE + RandomFloat()*.05f",
+      "scale",
+      339,
+    ),
+    cite(
+      "src/Items/Items.c",
+      338,
+      "Cosmo rotates randomly in the original game",
+      "rotation",
+      338,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -426,6 +705,7 @@ function buildCosmoMapping(): UniversalItemModelMapping {
         modelPath: "models",
         modelIndex: 3,
         scale: BUGDOM_FLOWER_SCALE,
+        rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
         citations,
       },
     ],
@@ -434,10 +714,41 @@ function buildCosmoMapping(): UniversalItemModelMapping {
 
 function buildPoppyMapping(): UniversalItemModelMapping {
   const citations = [
-    cite("src/Items/Items.c", 358, "AddPoppy add routine", "item-add-routine", 383),
-    cite("src/Items/Items.c", 363, "Poppy uses LAWN2_MObjType_Poppy", "model-index", 363),
-    cite("src/Items/Items.c", 367, "Poppy uses STATUS_BIT_NULLSHADER", "model-group", 367),
-    cite("src/Items/Items.c", 371, "Poppy scale is POPPY_SCALE + RandomFloat()*.05f", "scale", 371),
+    cite(
+      "src/Items/Items.c",
+      358,
+      "AddPoppy add routine",
+      "item-add-routine",
+      383,
+    ),
+    cite(
+      "src/Items/Items.c",
+      363,
+      "Poppy uses LAWN2_MObjType_Poppy",
+      "model-index",
+      363,
+    ),
+    cite(
+      "src/Items/Items.c",
+      367,
+      "Poppy uses STATUS_BIT_NULLSHADER",
+      "model-group",
+      367,
+    ),
+    cite(
+      "src/Items/Items.c",
+      371,
+      "Poppy scale is POPPY_SCALE + RandomFloat()*.05f",
+      "scale",
+      371,
+    ),
+    cite(
+      "src/Items/Items.c",
+      370,
+      "Poppy rotates randomly in the original game",
+      "rotation",
+      370,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -454,6 +765,7 @@ function buildPoppyMapping(): UniversalItemModelMapping {
         modelPath: "models",
         modelIndex: 4,
         scale: BUGDOM_FLOWER_SCALE,
+        rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
         citations,
       },
     ],
@@ -465,10 +777,34 @@ function buildPondGrassMapping(
 ): UniversalItemModelMapping {
   const params = getParams(options);
   const citations = [
-    cite("src/Items/Items.c", 949, "AddPondGrass add routine", "item-add-routine", 982),
-    cite("src/Items/Items.c", 956, "Pond grass validates parm[0] range 0-2", "param-domain", 957),
-    cite("src/Items/Items.c", 961, "Pond grass uses POND_MObjType_PondGrass + parm[0]", "model-index", 962),
-    cite("src/Items/Items.c", 970, "Pond grass scale is randomized around 0.25", "scale", 970),
+    cite(
+      "src/Items/Items.c",
+      949,
+      "AddPondGrass add routine",
+      "item-add-routine",
+      982,
+    ),
+    cite(
+      "src/Items/Items.c",
+      956,
+      "Pond grass validates parm[0] range 0-2",
+      "param-domain",
+      957,
+    ),
+    cite(
+      "src/Items/Items.c",
+      961,
+      "Pond grass uses POND_MObjType_PondGrass + parm[0]",
+      "model-index",
+      962,
+    ),
+    cite(
+      "src/Items/Items.c",
+      970,
+      "Pond grass scale is randomized around 0.25",
+      "scale",
+      970,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -501,12 +837,32 @@ function buildPondGrassMapping(
   );
 }
 
-function buildReedMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildReedMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const citations = [
-    cite("src/Items/Items.c", 987, "AddReed add routine", "item-add-routine", 1022),
-    cite("src/Items/Items.c", 994, "Reed validates parm[0] range 0-1", "param-domain", 995),
-    cite("src/Items/Items.c", 998, "Reed uses POND_MObjType_Reed + parm[0]", "model-index", 999),
+    cite(
+      "src/Items/Items.c",
+      987,
+      "AddReed add routine",
+      "item-add-routine",
+      1022,
+    ),
+    cite(
+      "src/Items/Items.c",
+      994,
+      "Reed validates parm[0] range 0-1",
+      "param-domain",
+      995,
+    ),
+    cite(
+      "src/Items/Items.c",
+      998,
+      "Reed uses POND_MObjType_Reed + parm[0]",
+      "model-index",
+      999,
+    ),
     cite("src/Items/Items.c", 1007, "Reed scale is 0.4", "scale", 1007),
   ];
 
@@ -547,10 +903,34 @@ function buildHoneycombPlatformMapping(
   const isMetal = (params.p0 & 1) !== 0;
   const isSmall = (flags & (1 << 1)) !== 0;
   const citations = [
-    cite("src/Items/Triggers.c", 440, "AddHoneycombPlatform add routine", "item-add-routine", 500),
-    cite("src/Items/Triggers.c", 443, "Material and size derive from parm[0] and parm[3]", "param-domain", 444),
-    cite("src/Items/Triggers.c", 451, "Platform elevation derives from parm[1]", "position", 454),
-    cite("src/Items/Triggers.c", 458, "Platform model index toggles brick vs steel", "model-index", 474),
+    cite(
+      "src/Items/Triggers.c",
+      440,
+      "AddHoneycombPlatform add routine",
+      "item-add-routine",
+      500,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      443,
+      "Material and size derive from parm[0] and parm[3]",
+      "param-domain",
+      444,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      451,
+      "Platform elevation derives from parm[1]",
+      "position",
+      454,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      458,
+      "Platform model index toggles brick vs steel",
+      "model-index",
+      474,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -585,7 +965,9 @@ function buildHoneycombPlatformMapping(
         modelFile: "BeeHive_Models.3dmf",
         modelPath: "models",
         modelIndex: isMetal ? 1 : 0,
-        scale: isSmall ? HONEYCOMB_PLATFORM_SCALE_SMALL : HONEYCOMB_PLATFORM_SCALE,
+        scale: isSmall
+          ? HONEYCOMB_PLATFORM_SCALE_SMALL
+          : HONEYCOMB_PLATFORM_SCALE,
         positionOffset: [0, -(params.p1 === 0 ? 11 : params.p1) * 50, 0],
         citations,
       },
@@ -593,15 +975,41 @@ function buildHoneycombPlatformMapping(
   );
 }
 
-function buildDetonatorMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildDetonatorMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const flags = getFlags(options);
   const isPlunged = (flags & ITEM_FLAGS_USER1) !== 0;
   const citations = [
-    cite("src/Items/Triggers.c", 603, "AddDetonator add routine", "item-add-routine", 682),
-    cite("src/Items/Triggers.c", 612, "Detonator plunger state uses ITEM_FLAGS_USER1", "param-domain", 612),
-    cite("src/Items/Triggers.c", 625, "Detonator box color uses parm[1]", "model-index", 632),
-    cite("src/Items/Triggers.c", 651, "Plunger child offset depends on plunge state", "child-object", 655),
+    cite(
+      "src/Items/Triggers.c",
+      603,
+      "AddDetonator add routine",
+      "item-add-routine",
+      682,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      612,
+      "Detonator plunger state uses ITEM_FLAGS_USER1",
+      "param-domain",
+      612,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      625,
+      "Detonator box color uses parm[1]",
+      "model-index",
+      632,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      651,
+      "Plunger child offset depends on plunge state",
+      "child-object",
+      655,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -655,15 +1063,41 @@ function buildDetonatorMapping(options: BugdomMappingOptions): UniversalItemMode
   );
 }
 
-function buildHoneyTubeMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildHoneyTubeMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const params = getParams(options);
   const remappedType = params.p0 === 1 ? 2 : params.p0;
-  const scale = 3 * (((params.p2 * 0.5) + 1));
+  const scale = 3 * (params.p2 * 0.5 + 1);
   const citations = [
-    cite("src/Items/Items2.c", 768, "AddHoneyTube add routine", "item-add-routine", 805),
-    cite("src/Items/Items2.c", 774, "Honey tube remaps parm[0] value 1 to 2", "model-index", 776),
-    cite("src/Items/Items2.c", 781, "Honey tube scale derives from parm[2]", "scale", 793),
-    cite("src/Items/Items2.c", 792, "Honey tube rotation derives from parm[1]", "rotation", 793),
+    cite(
+      "src/Items/Items2.c",
+      768,
+      "AddHoneyTube add routine",
+      "item-add-routine",
+      805,
+    ),
+    cite(
+      "src/Items/Items2.c",
+      774,
+      "Honey tube remaps parm[0] value 1 to 2",
+      "model-index",
+      776,
+    ),
+    cite(
+      "src/Items/Items2.c",
+      781,
+      "Honey tube scale derives from parm[2]",
+      "scale",
+      793,
+    ),
+    cite(
+      "src/Items/Items2.c",
+      792,
+      "Honey tube rotation derives from parm[1]",
+      "rotation",
+      793,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -709,13 +1143,39 @@ function buildHoneyTubeMapping(options: BugdomMappingOptions): UniversalItemMode
   );
 }
 
-function buildWaterValveMapping(options: BugdomMappingOptions): UniversalItemModelMapping {
+function buildWaterValveMapping(
+  options: BugdomMappingOptions,
+): UniversalItemModelMapping {
   const flags = getFlags(options);
   const citations = [
-    cite("src/Items/Triggers.c", 1321, "AddWaterValve add routine", "item-add-routine", 1390),
-    cite("src/Items/Triggers.c", 1330, "Valve openness uses ITEM_FLAGS_USER1", "param-domain", 1330),
-    cite("src/Items/Triggers.c", 1340, "Valve box model selection", "model-index", 1347),
-    cite("src/Items/Triggers.c", 1377, "Valve handle is a chained child object", "child-object", 1385),
+    cite(
+      "src/Items/Triggers.c",
+      1321,
+      "AddWaterValve add routine",
+      "item-add-routine",
+      1390,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      1330,
+      "Valve openness uses ITEM_FLAGS_USER1",
+      "param-domain",
+      1330,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      1340,
+      "Valve box model selection",
+      "model-index",
+      1347,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      1377,
+      "Valve handle is a chained child object",
+      "child-object",
+      1385,
+    ),
   ];
 
   return mergePrimaryPart(
@@ -735,10 +1195,7 @@ function buildWaterValveMapping(options: BugdomMappingOptions): UniversalItemMod
           bits: [{ index: 0, label: "Already open" }],
         },
       },
-      staticAnalysisIssues:
-        flags === 0
-          ? []
-          : [],
+      staticAnalysisIssues: flags === 0 ? [] : [],
     },
     [
       {
@@ -764,9 +1221,27 @@ function buildWaterValveMapping(options: BugdomMappingOptions): UniversalItemMod
 
 function buildTreeMapping(): UniversalItemModelMapping {
   const citations = [
-    cite("src/Items/Items.c", 432, "AddTree add routine", "item-add-routine", 538),
-    cite("src/Items/Items.c", 445, "Tree uses the forest tree model", "model-file", 446),
-    cite("src/Headers/mobjtypes.h", 115, "Forest tree enum offset", "model-index", 117),
+    cite(
+      "src/Items/Items.c",
+      432,
+      "AddTree add routine",
+      "item-add-routine",
+      538,
+    ),
+    cite(
+      "src/Items/Items.c",
+      445,
+      "Tree uses the forest tree model",
+      "model-file",
+      446,
+    ),
+    cite(
+      "src/Headers/mobjtypes.h",
+      115,
+      "Forest tree enum offset",
+      "model-index",
+      117,
+    ),
     cite("src/Items/Items.c", 454, "Tree scale is TREE_SCALE", "scale"),
   ];
 
@@ -778,7 +1253,8 @@ function buildTreeMapping(): UniversalItemModelMapping {
       staticAnalysisIssues: [
         {
           severity: "warning",
-          message: "Bugdom 1 terrain trees are forest-only; rendering them outside the forest level is source-inaccurate.",
+          message:
+            "Bugdom 1 terrain trees are forest-only; rendering them outside the forest level is source-inaccurate.",
         },
       ],
     },
@@ -797,10 +1273,33 @@ function buildTreeMapping(): UniversalItemModelMapping {
 
 function buildCheckpointMapping(): UniversalItemModelMapping {
   const citations = [
-    cite("src/Items/Triggers2.c", 60, "AddCheckpoint add routine", "item-add-routine", 139),
-    cite("src/Items/Triggers2.c", 77, "Checkpoint uses the global straw model", "model-file", 84),
-    cite("src/Headers/mobjtypes.h", 259, "Global straw enum offset", "model-index", 261),
-    cite("src/Items/Triggers2.c", 84, "Checkpoint scale is CHECKPOINT_SCALE", "scale"),
+    cite(
+      "src/Items/Triggers2.c",
+      60,
+      "AddCheckpoint add routine",
+      "item-add-routine",
+      139,
+    ),
+    cite(
+      "src/Items/Triggers2.c",
+      77,
+      "Checkpoint uses the global straw model",
+      "model-file",
+      84,
+    ),
+    cite(
+      "src/Headers/mobjtypes.h",
+      259,
+      "Global straw enum offset",
+      "model-index",
+      261,
+    ),
+    cite(
+      "src/Items/Triggers2.c",
+      84,
+      "Checkpoint scale is CHECKPOINT_SCALE",
+      "scale",
+    ),
   ];
 
   return mergePrimaryPart(
@@ -823,7 +1322,8 @@ function buildCheckpointMapping(): UniversalItemModelMapping {
       staticAnalysisIssues: [
         {
           severity: "warning",
-          message: "The droplet child only appears for unfinished checkpoints; the editor preview renders the always-present straw base.",
+          message:
+            "The droplet child only appears for unfinished checkpoints; the editor preview renders the always-present straw base.",
         },
       ],
     },
@@ -842,10 +1342,32 @@ function buildCheckpointMapping(): UniversalItemModelMapping {
 
 function buildRollingBoulderMapping(): UniversalItemModelMapping {
   const citations = [
-    cite("src/Items/Traps.c", 965, "AddRollingBoulder add routine", "item-add-routine", 996),
-    cite("src/Items/Traps.c", 968, "Rolling boulder uses the global throw-rock mesh", "model-file", 972),
-    cite("src/Headers/mobjtypes.h", 259, "Throw-rock enum offset", "model-index"),
-    cite("src/Items/Traps.c", 971, "Rolling boulder scale is BOULDER_SCALE", "scale"),
+    cite(
+      "src/Items/Traps.c",
+      965,
+      "AddRollingBoulder add routine",
+      "item-add-routine",
+      996,
+    ),
+    cite(
+      "src/Items/Traps.c",
+      968,
+      "Rolling boulder uses the global throw-rock mesh",
+      "model-file",
+      972,
+    ),
+    cite(
+      "src/Headers/mobjtypes.h",
+      259,
+      "Throw-rock enum offset",
+      "model-index",
+    ),
+    cite(
+      "src/Items/Traps.c",
+      971,
+      "Rolling boulder scale is BOULDER_SCALE",
+      "scale",
+    ),
   ];
 
   return mergePrimaryPart(

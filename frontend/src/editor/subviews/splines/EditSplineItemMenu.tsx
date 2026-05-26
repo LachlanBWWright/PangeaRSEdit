@@ -19,6 +19,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { getSplineItemTypes } from "@/data/splines/getSplineItemTypes";
 import { Globals } from "@/data/globals/globals";
@@ -106,6 +107,7 @@ export function EditSplineItemMenu({
       <div className="grid grid-cols-2 gap-2">
         {selectedSplineItemControl}
         <Select
+          value={currentSplineItemData.type.toString()}
           onValueChange={(e) => {
             const newItemType = parseInt(e);
             setSplineData((splineData) => {
@@ -119,7 +121,7 @@ export function EditSplineItemMenu({
           }}
         >
           <SelectTrigger>
-            {getSplineItemName(globals, currentSplineItemData.type)}
+            <SelectValue placeholder="Select a spline item" />
           </SelectTrigger>
           <SelectContent>
             {safeSplineItemTypes.size > 0 && (

@@ -191,7 +191,7 @@ async function readOpenSelectOptionEntries(
   const options = await page.getByRole("option").evaluateAll((elements) =>
     elements
       .map((element) => {
-        const el = element instanceof HTMLElement ? element : null;
+        const el = "getAttribute" in element ? element : null;
         const rawType = el?.getAttribute("data-item-type") ?? null;
         const itemType = rawType !== null ? Number.parseInt(rawType, 10) : null;
         const itemName = el?.getAttribute("data-item-name") ?? null;

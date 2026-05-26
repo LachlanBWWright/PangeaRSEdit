@@ -306,7 +306,8 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Rotation (0-7, where each unit = 45°) when p3 bit 0 is clear.",
+      description:
+        "Rotation (0-7, where each unit = 45°) when p3 bit 0 is clear.",
       codeSample: {
         code: ".rot = (randomRot) ? (RandomFloat()*PI2) : ((float)itemPtr->parm[1] * (PI2/8.0f)),",
         fileName: "Source/Items/Bushes.c",
@@ -321,9 +322,9 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
           index: 0,
           description: "Use random rotation instead of p1.",
           codeSample: {
-            code: "Boolean randomRot = itemPtr->parm[3] & 1;",
+            code: "Boolean randomRot = (itemPtr->parm[3] & 1);",
             fileName: "Source/Items/Bushes.c",
-            lineNumber: 190,
+            lineNumber: 193,
           },
         },
       ],
@@ -512,7 +513,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Tree variant type (different desert tree models)",
       codeSample: {
-        code: "if (itemPtr->parm[0] > 4)\n  DoFatalAlert(\"AddDesertTree: illegal subtype\");",
+        code: 'if (itemPtr->parm[0] > 4)\n  DoFatalAlert("AddDesertTree: illegal subtype");',
         fileName: "Source/Items/Trees.c",
         lineNumber: 598,
       },
@@ -727,7 +728,8 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.RamphorEnemy]: {
-    flags: "Unused on the terrain item table; terrain slot 48 is NilAdd and Ramphor is spline-only.",
+    flags:
+      "Unused on the terrain item table; terrain slot 48 is NilAdd and Ramphor is spline-only.",
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",

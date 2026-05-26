@@ -57,8 +57,8 @@ export function ItemThumbnail({
       })
     : null;
 
-  const thumbnailSizeClass = compact ? "h-4 w-6" : "h-10 w-10";
-  const fallbackTextClass = compact ? "text-[8px]" : "text-[10px]";
+  const thumbnailSizeClass = compact ? "h-6 w-10" : "h-10 w-10";
+  const fallbackTextClass = compact ? "text-[9px]" : "text-[10px]";
 
   return (
     <div className={`flex items-center gap-2 ${className ?? ""}`.trim()}>
@@ -71,11 +71,6 @@ export function ItemThumbnail({
             alt={`${label} screenshot`}
             className="h-full w-full object-cover"
           />
-          {screenshot.verificationStatus === "approximate" ? (
-            <span className="absolute right-0 top-0 rounded-bl bg-amber-600 px-1 text-[9px] font-medium text-white">
-              ~
-            </span>
-          ) : null}
         </div>
       ) : (
         <div
