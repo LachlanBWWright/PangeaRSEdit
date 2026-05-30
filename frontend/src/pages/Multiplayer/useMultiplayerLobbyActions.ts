@@ -1,12 +1,15 @@
 import type { RefObject } from "react";
 import {
   createLobby,
+  endLobbyMatch,
   getLobbyPreview,
   joinLobby,
   leaveLobby,
+  rematchLobby,
   reportParticipantDisconnected,
   setLobbyReady,
   startLobby,
+  updateLobbySelection,
 } from "@/multiplayer/api";
 import type { MultiplayerHubClient } from "@/multiplayer/hub";
 import { preflightSelection } from "@/multiplayer/preflightSelection";
@@ -55,6 +58,12 @@ interface MultiplayerLobbyActions {
   readonly handleQuickJoinLobby: (lobbyIdToJoin: string) => Promise<void>;
   readonly handleSetReady: (isReady: boolean) => Promise<void>;
   readonly handleStart: (force: boolean) => Promise<void>;
+  readonly handleUpdateSelection: (
+    mode: string,
+    trackOrLevel: string,
+    tagDurationMinutes: number,
+  ) => Promise<void>;
+  readonly handleEndMatch: () => Promise<void>;
   readonly handleLeave: () => Promise<void>;
   readonly handleRemoveParticipant: (
     targetParticipantId: string,
@@ -224,7 +233,17 @@ export function useMultiplayerLobbyActions(
     }
     input.setBusy(true);
     input.setErrorText(null);
-    const startResult = await startLobby({ lobbyId: input.lobby.id, force });
+    const startResult =
+      input.lobby.state === "match_ended"
+        ? await rematchLobby({
+            lobbyId: input.lobby.id,
+            gameId: input.lobby.gameId,
+            mode: input.lobby.mode,
+            trackOrLevel: input.lobby.trackOrLevel,
+            tagDurationMinutes: input.lobby.tagDurationMinutes,
+            force,
+          })
+        : await startLobby({ lobbyId: input.lobby.id, force });
     if (startResult.isErr()) {
       input.setErrorText(startResult.error.message);
       input.setBusy(false);
@@ -238,6 +257,49 @@ export function useMultiplayerLobbyActions(
         input.setErrorText(notifyResult.error.message);
       }
     }
+    input.setBusy(false);
+  };
+
+  const handleUpdateSelection = async (
+    mode: string,
+    trackOrLevel: string,
+    tagDurationMinutes: number,
+  ): Promise<void> => {
+    if (!input.lobby) {
+      return;
+    }
+    input.setBusy(true);
+    input.setErrorText(null);
+    const result = await updateLobbySelection({
+      lobbyId: input.lobby.id,
+      mode,
+      trackOrLevel,
+      tagDurationMinutes,
+    });
+    if (result.isErr()) {
+      input.setErrorText(result.error.message);
+      input.setBusy(false);
+      return;
+    }
+    input.setLobby(result.value);
+    input.setBusy(false);
+  };
+
+  const handleEndMatch = async (): Promise<void> => {
+    if (!input.lobby) {
+      return;
+    }
+    input.setBusy(true);
+    input.setErrorText(null);
+    const result = await endLobbyMatch(input.lobby.id);
+    if (result.isErr()) {
+      input.setErrorText(result.error.message);
+      input.setBusy(false);
+      return;
+    }
+    resetRuntimeStartState(input);
+    input.setLobby(result.value);
+    input.setStatusText("Match ended by host");
     input.setBusy(false);
   };
 
@@ -327,6 +389,8 @@ export function useMultiplayerLobbyActions(
     handleQuickJoinLobby,
     handleSetReady,
     handleStart,
+    handleUpdateSelection,
+    handleEndMatch,
     handleLeave,
     handleRemoveParticipant,
     handleSendChat,

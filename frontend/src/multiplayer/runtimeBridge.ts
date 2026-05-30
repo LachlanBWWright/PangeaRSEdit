@@ -119,6 +119,7 @@ export interface MultiplayerRuntimeTransport {
     remoteHash: number,
   ) => void;
   readonly reportMatchEnded: (reason: number) => void;
+  readonly reportMatchResult?: (resultJson: string) => void;
 }
 
 export interface MultiplayerRuntimeManagedTransport extends MultiplayerRuntimeTransport {
@@ -155,6 +156,7 @@ export interface MultiplayerRuntimeBridge {
     remoteHash: number,
   ) => void;
   readonly reportMatchEnded: (reason: number) => void;
+  readonly reportMatchResult: (resultJson: string) => void;
   readonly enqueueIncoming: (bytes: ArrayBuffer) => Result<void, string>;
 }
 
@@ -177,6 +179,7 @@ interface RuntimeBridgeWindow {
       remoteHash: number,
     ) => void;
     reportMatchEnded: (reason: number) => void;
+    reportMatchResult: (resultJson: string) => void;
   };
 }
 
@@ -424,6 +427,9 @@ export function createMultiplayerRuntimeBridge(
     reportMatchEnded: (reason) => {
       transport.reportMatchEnded(reason);
     },
+    reportMatchResult: (resultJson) => {
+      transport.reportMatchResult?.(resultJson);
+    },
     enqueueIncoming: (bytes) => {
       const parsed = packetSchema.safeParse(bytes);
       if (!parsed.success) {
@@ -516,6 +522,7 @@ export function installMultiplayerRuntimeBridge(
     nowMilliseconds: bridge.nowMilliseconds,
     reportDesync: bridge.reportDesync,
     reportMatchEnded: bridge.reportMatchEnded,
+    reportMatchResult: bridge.reportMatchResult,
   };
 
   return () => {

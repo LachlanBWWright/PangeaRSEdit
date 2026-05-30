@@ -16,10 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  CROMAG_TAG_DURATION_OPTIONS,
   buildUpdatedLobbyFormState,
   buildUpdatedLobbyModeState,
   getModeOptions,
   getTrackOptions,
+  usesCroMagTagDuration,
   type LobbyFormState,
 } from "@/multiplayer/menuOptions";
 
@@ -129,6 +131,32 @@ export function CreateLobbyDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {usesCroMagTagDuration(formState.gameId, formState.mode) ? (
+            <div className="space-y-2">
+              <Label>Tag Duration</Label>
+              <Select
+                value={String(formState.tagDurationMinutes)}
+                onValueChange={(value) => {
+                  onFormStateChange({
+                    ...formState,
+                    tagDurationMinutes: Number.parseInt(value, 10),
+                  });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tag duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CROMAG_TAG_DURATION_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label>Max Players</Label>

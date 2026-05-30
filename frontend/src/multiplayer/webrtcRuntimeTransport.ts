@@ -96,6 +96,7 @@ export interface WebRtcRuntimeTransportOptions {
     remoteHash: number,
   ) => void;
   readonly reportMatchEnded?: (reason: number) => void;
+  readonly reportMatchResult?: (resultJson: string) => void;
   readonly isHostAuthority?: boolean;
   readonly heartbeatIntervalMs?: number;
   readonly heartbeatTimeoutMs?: number;
@@ -275,6 +276,7 @@ export function createWebRtcRuntimeTransport(
     unreliableChannel,
     reportDesync,
     reportMatchEnded,
+    reportMatchResult,
     isHostAuthority = false,
     heartbeatIntervalMs = DEFAULT_HEARTBEAT_INTERVAL_MS,
     heartbeatTimeoutMs = DEFAULT_HEARTBEAT_TIMEOUT_MS,
@@ -499,6 +501,9 @@ export function createWebRtcRuntimeTransport(
     },
     reportMatchEnded: (reason) => {
       reportMatchEnded?.(reason);
+    },
+    reportMatchResult: (resultJson) => {
+      reportMatchResult?.(resultJson);
     },
     subscribeIncoming: (onPacket) => {
       listeners.add(onPacket);

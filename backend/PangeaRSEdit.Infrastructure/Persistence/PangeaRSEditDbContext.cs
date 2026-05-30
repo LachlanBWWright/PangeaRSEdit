@@ -69,6 +69,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
             entity.Property(x => x.GameId).HasMaxLength(64);
             entity.Property(x => x.Mode).HasMaxLength(64);
             entity.Property(x => x.TrackOrLevel).HasMaxLength(256);
+            entity.Property(x => x.TagDurationMinutes).HasDefaultValue(3);
             entity.Property(x => x.HostParticipantId).HasMaxLength(128);
             entity.Property(x => x.JoinCode).HasMaxLength(32);
             entity.Property(x => x.State).HasMaxLength(64);
@@ -80,6 +81,9 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
             entity.Property(x => x.LastReportDetail).HasMaxLength(512);
             entity.Property(x => x.LastReportByParticipantId).HasMaxLength(128);
             entity.Property(x => x.LastReportAt);
+            entity.Property(x => x.MatchResultJson);
+            entity.Property(x => x.MatchResultByParticipantId).HasMaxLength(128);
+            entity.Property(x => x.MatchResultAt);
             entity.HasIndex(x => x.JoinCode);
             entity.HasMany(x => x.Players)
                 .WithOne(x => x.Lobby)

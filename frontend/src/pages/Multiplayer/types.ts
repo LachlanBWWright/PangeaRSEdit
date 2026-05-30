@@ -81,6 +81,7 @@ export interface MultiplayerSessionViewProps {
   readonly hasLocalParticipant: boolean;
   readonly canStartLobby: boolean;
   readonly canForceStartLobby: boolean;
+  readonly canEndMatch: boolean;
   readonly packetCounts: Readonly<Record<string, number>>;
   readonly runtimeDebugStats: MultiplayerRuntimeDebugStats;
   readonly nativeDebugStats: NativeVisualDebugStats;
@@ -93,6 +94,12 @@ export interface MultiplayerSessionViewProps {
   readonly onToggleReady: () => void;
   readonly onStart: () => void;
   readonly onStartAnyway: () => void;
+  readonly onUpdateSelection: (
+    mode: string,
+    trackOrLevel: string,
+    tagDurationMinutes: number,
+  ) => void;
+  readonly onEndMatch: () => void;
   readonly onLeave: () => void;
   readonly onResetNetworkDebugOptions: () => void;
   readonly onUpdateNetworkDebugOption: (

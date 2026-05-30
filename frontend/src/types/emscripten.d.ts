@@ -76,6 +76,7 @@ declare global {
         remoteHash: number,
       ) => void;
       reportMatchEnded: (reason: number) => void;
+      reportMatchResult: (resultJson: string) => void;
     };
 
     PangeaGame_SetNetworkMatchConfig?: (

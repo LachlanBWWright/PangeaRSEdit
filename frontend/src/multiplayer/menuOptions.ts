@@ -15,6 +15,7 @@ export interface LobbyFormState {
   readonly mode: string;
   readonly trackOrLevel: string;
   readonly maxPlayers: number;
+  readonly tagDurationMinutes: number;
   readonly displayName: string;
   readonly isPublic: boolean;
 }
@@ -41,9 +42,16 @@ export const defaultLobbyFormState: LobbyFormState = {
   mode: "multiplayerRace",
   trackOrLevel: "1",
   maxPlayers: 2,
+  tagDurationMinutes: 3,
   displayName: "Player",
   isPublic: true,
 };
+
+export const CROMAG_TAG_DURATION_OPTIONS: readonly LevelOption[] = [
+  { value: "2", label: "2 minutes" },
+  { value: "3", label: "3 minutes" },
+  { value: "4", label: "4 minutes" },
+];
 
 export const JOIN_GAME_FILTER_OPTIONS: readonly {
   readonly value: JoinGameFilter;
@@ -137,6 +145,13 @@ export function getTrackOptions(
 
 export function defaultTrackForMode(gameId: string, mode: string): string {
   return getTrackOptions(gameId, mode)[0]?.value ?? "1";
+}
+
+export function usesCroMagTagDuration(gameId: string, mode: string): boolean {
+  return (
+    gameId === "cromagrally" &&
+    (mode === "multiplayerTag1" || mode === "multiplayerTag2")
+  );
 }
 
 export function toJoinGameFilter(value: string): JoinGameFilter {

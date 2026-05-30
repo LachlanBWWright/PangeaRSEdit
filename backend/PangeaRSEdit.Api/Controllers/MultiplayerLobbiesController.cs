@@ -21,6 +21,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
                 body.Mode,
                 body.TrackOrLevel,
                 body.MaxPlayers,
+                body.TagDurationMinutes,
                 body.DisplayName,
                 body.IsPublic,
                 participantId
@@ -50,6 +51,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
             x.GameId,
             x.Mode,
             x.TrackOrLevel,
+            x.TagDurationMinutes,
             x.MaxPlayers,
             x.IsPublic,
             x.JoinCode,
@@ -95,6 +97,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
             details.GameId,
             details.Mode,
             details.TrackOrLevel,
+            details.TagDurationMinutes,
             details.MaxPlayers,
             details.State,
             details.Players.Count,
@@ -172,6 +175,81 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
         return Ok(MapDetails(result.Value, participantId));
     }
 
+    [HttpPost("{id:guid}/selection")]
+    public async Task<IActionResult> UpdateSelectionAsync(
+        Guid id,
+        [FromBody] UpdateMultiplayerLobbySelectionBody body,
+        CancellationToken cancellationToken)
+    {
+        var participantId = GetOrCreateParticipantId();
+        var result = await lobbyService.UpdateSelectionAsync(
+            new UpdateLobbySelectionRequest(
+                id,
+                participantId,
+                body.Mode,
+                body.TrackOrLevel,
+                body.TagDurationMinutes
+            ),
+            cancellationToken
+        );
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyInvalidState);
+        }
+
+        return Ok(MapDetails(result.Value, participantId));
+    }
+
+    [HttpPost("{id:guid}/end-match")]
+    public async Task<IActionResult> EndMatchAsync(
+        Guid id,
+        [FromBody] EndMultiplayerLobbyMatchBody? body,
+        CancellationToken cancellationToken)
+    {
+        var participantId = GetOrCreateParticipantId();
+        var result = await lobbyService.EndMatchAsync(
+            new EndLobbyMatchRequest(
+                id,
+                participantId,
+                body?.Detail ?? "host-ended-match"
+            ),
+            cancellationToken
+        );
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyInvalidState);
+        }
+
+        return Ok(MapDetails(result.Value, participantId));
+    }
+
+    [HttpPost("{id:guid}/rematch")]
+    public async Task<IActionResult> RematchLobbyAsync(
+        Guid id,
+        [FromBody] RematchMultiplayerLobbyBody body,
+        CancellationToken cancellationToken)
+    {
+        var participantId = GetOrCreateParticipantId();
+        var result = await lobbyService.RematchLobbyAsync(
+            new RematchLobbyRequest(
+                id,
+                participantId,
+                body.GameId,
+                body.Mode,
+                body.TrackOrLevel,
+                body.TagDurationMinutes,
+                body.Force
+            ),
+            cancellationToken
+        );
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyInvalidState);
+        }
+
+        return Ok(MapDetails(result.Value, participantId));
+    }
+
     [HttpPost("{id:guid}/heartbeat")]
     public async Task<IActionResult> HeartbeatAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -195,6 +273,54 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
         CancellationToken cancellationToken)
     {
         return await ReportEventAsync(id, "match-ended", body.Detail, cancellationToken);
+    }
+
+    [HttpPost("{id:guid}/report/match-result")]
+    public async Task<IActionResult> ReportMatchResultAsync(
+        Guid id,
+        [FromBody] MultiplayerMatchResultBody body,
+        CancellationToken cancellationToken)
+    {
+        var participantId = GetOrCreateParticipantId();
+        var result = await lobbyService.ReportMatchResultAsync(
+            new LobbyReportMatchResultRequest(
+                id,
+                participantId,
+                new MultiplayerMatchResult(
+                    body.LobbyId,
+                    body.MatchId,
+                    body.GameId,
+                    body.Mode,
+                    body.TrackOrLevel,
+                    body.Seed,
+                    body.EndedAt,
+                    body.EndReason,
+                    body.WinnerPlayerIndex,
+                    body.WinningTeam,
+                    body.Placements,
+                    body.Players.Select(player => new MultiplayerMatchResultPlayer(
+                        player.ParticipantId,
+                        player.PlayerIndex,
+                        player.DisplayName,
+                        player.Team,
+                        player.Placement,
+                        player.Finished,
+                        player.Eliminated,
+                        player.Score,
+                        player.TimeMs,
+                        player.LapsCompleted,
+                        player.Checkpoint
+                    )).ToList()
+                )
+            ),
+            cancellationToken
+        );
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyInvalidState);
+        }
+
+        return Ok(MapDetails(result.Value, participantId));
     }
 
     [HttpPost("{id:guid}/report/participant-disconnected")]
@@ -295,6 +421,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
                 details.MatchConfig.Mode,
                 details.MatchConfig.TrackOrLevel,
                 details.MatchConfig.Seed,
+                details.MatchConfig.TagDurationMinutes,
                 details.MatchConfig.HostPlayerIndex,
                 details.MatchConfig.MaxPlayers,
                 details.MatchConfig.RequiredProtocolVersion,
@@ -308,11 +435,41 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
                 )).ToList()
             );
 
+        var matchResult = details.MatchResult is null
+            ? null
+            : new MultiplayerMatchResultBody(
+                details.MatchResult.LobbyId,
+                details.MatchResult.MatchId,
+                details.MatchResult.GameId,
+                details.MatchResult.Mode,
+                details.MatchResult.TrackOrLevel,
+                details.MatchResult.Seed,
+                details.MatchResult.EndedAt,
+                details.MatchResult.EndReason,
+                details.MatchResult.WinnerPlayerIndex,
+                details.MatchResult.WinningTeam,
+                details.MatchResult.Placements,
+                details.MatchResult.Players.Select(player => new MultiplayerMatchResultPlayerBody(
+                    player.ParticipantId,
+                    player.PlayerIndex,
+                    player.DisplayName,
+                    player.Team,
+                    player.Placement,
+                    player.Finished,
+                    player.Eliminated,
+                    player.Score,
+                    player.TimeMs,
+                    player.LapsCompleted,
+                    player.Checkpoint
+                )).ToList()
+            );
+
         return new MultiplayerLobbyDetailsResponse(
             details.Id,
             details.GameId,
             details.Mode,
             details.TrackOrLevel,
+            details.TagDurationMinutes,
             details.MaxPlayers,
             details.IsPublic,
             details.HostParticipantId,
@@ -322,7 +479,8 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
             details.ExpiresAt,
             players,
             participantId,
-            matchConfig
+            matchConfig,
+            matchResult
         );
     }
 }

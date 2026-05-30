@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { errAsync, okAsync, type Result } from "neverthrow";
+import { Result, errAsync, okAsync, type Result as NtResult } from "neverthrow";
 import {
   createAndConnectHubClient,
   type MultiplayerHubClient,
@@ -10,10 +10,12 @@ import {
   listLobbies,
   reportDesync,
   reportMatchEnded,
+  reportMatchResult,
   reportHostDisconnected,
   reportParticipantDisconnected,
   reportTimeout,
 } from "@/multiplayer/api";
+import { MultiplayerMatchResultSchema } from "@/multiplayer/schemas";
 import { createMockRuntimeTransport } from "@/multiplayer/mockRuntimeTransport";
 import type {
   MultiplayerLobbyDetails,
@@ -152,14 +154,15 @@ export function MultiplayerPage() {
   const clientSessionRef = useRef<ClientSession | null>(null);
   const runtimeTransportRef = useRef<{
     readonly transport: {
-      readonly sendReliable: (bytes: ArrayBuffer) => Result<void, string>;
-      readonly sendUnreliable: (bytes: ArrayBuffer) => Result<void, string>;
+      readonly sendReliable: (bytes: ArrayBuffer) => NtResult<void, string>;
+      readonly sendUnreliable: (bytes: ArrayBuffer) => NtResult<void, string>;
       readonly reportDesync: (
         frame: number,
         localHash: number,
         remoteHash: number,
       ) => void;
       readonly reportMatchEnded: (reason: number) => void;
+      readonly reportMatchResult?: (resultJson: string) => void;
       readonly subscribeIncoming: (
         onPacket: (bytes: ArrayBuffer) => void,
       ) => () => void;
@@ -397,6 +400,45 @@ export function MultiplayerPage() {
         void reportMatchEnded(
           activeLobby.id,
           `runtime-match-ended reason=${String(reason)}`,
+        ).then((result) => {
+          if (result.isErr()) {
+            setErrorText(result.error.message);
+            return;
+          }
+          setLobby(result.value);
+          setStatusText("Match ended");
+          setUiState("in-lobby");
+        });
+      },
+      reportMatchResult: (resultJson) => {
+        const activeLobby = lobbyRef.current;
+        const activeParticipantId = localParticipantIdRef.current;
+        if (!activeLobby) {
+          return;
+        }
+        if (activeLobby.hostParticipantId !== activeParticipantId) {
+          return;
+        }
+        const parsedJson = Result.fromThrowable(
+          () => JSON.parse(resultJson) as unknown,
+          () => "Failed to parse match result payload.",
+        )();
+        if (parsedJson.isErr()) {
+          return;
+        }
+        const parsedResult = MultiplayerMatchResultSchema.safeParse(
+          parsedJson.value,
+        );
+        if (!parsedResult.success) {
+          return;
+        }
+        void reportMatchResult(activeLobby.id, parsedResult.data).then(
+          (result) => {
+            if (result.isOk()) {
+              setLobby(result.value);
+              setStatusText("Match results received");
+            }
+          },
         );
       },
     });
@@ -845,6 +887,8 @@ export function MultiplayerPage() {
     handleQuickJoinLobby,
     handleSetReady,
     handleStart,
+    handleUpdateSelection,
+    handleEndMatch,
     handleLeave,
     handleRemoveParticipant,
     handleSendChat,
@@ -904,6 +948,7 @@ export function MultiplayerPage() {
     lobby.players.length >= 2 &&
     readyPlayerCount < lobby.players.length,
   );
+  const canEndMatch = Boolean(isHost && lobby?.state === "started");
 
   useEffect(() => {
     if (!showDebugOverlay) {
@@ -1177,6 +1222,7 @@ export function MultiplayerPage() {
           hasLocalParticipant={Boolean(localParticipant)}
           canStartLobby={canStartLobby}
           canForceStartLobby={canForceStartLobby}
+          canEndMatch={canEndMatch}
           packetCounts={packetCounts}
           runtimeDebugStats={runtimeDebugStats}
           nativeDebugStats={nativeDebugStats}
@@ -1198,6 +1244,12 @@ export function MultiplayerPage() {
           }}
           onStartAnyway={() => {
             void handleStart(true);
+          }}
+          onUpdateSelection={(mode, trackOrLevel, tagDurationMinutes) => {
+            void handleUpdateSelection(mode, trackOrLevel, tagDurationMinutes);
+          }}
+          onEndMatch={() => {
+            void handleEndMatch();
           }}
           onLeave={() => {
             void handleLeave();

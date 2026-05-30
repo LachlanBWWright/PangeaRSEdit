@@ -30,6 +30,7 @@ const multiplayerMatchConfigBaseSchema = z.object({
   matchId: z.string().uuid(),
   trackOrLevel: z.string().min(1),
   seed: z.number().int().positive(),
+  tagDurationMinutes: z.number().int().min(2).max(4),
   hostPlayerIndex: z.number().int().nonnegative(),
   maxPlayers: z.number().int().min(2).max(6),
   requiredProtocolVersion: z.number().int().positive(),
@@ -55,9 +56,48 @@ export const MultiplayerMatchConfigSchema = z.union([
   Nanosaur2MultiplayerMatchConfigSchema,
 ]);
 
+export const MultiplayerMatchResultPlayerSchema = z.object({
+  participantId: z.string().min(1),
+  playerIndex: z.number().int().nonnegative(),
+  displayName: z.string().min(1),
+  team: z.string(),
+  placement: z.number().int().nonnegative(),
+  finished: z.boolean(),
+  eliminated: z.boolean(),
+  score: z.number().int(),
+  timeMs: z.number().int().nonnegative(),
+  lapsCompleted: z.number().int().nonnegative(),
+  checkpoint: z.number().int().nonnegative(),
+});
+
+const multiplayerMatchResultBaseSchema = z.object({
+  lobbyId: z.string().uuid(),
+  matchId: z.string().uuid(),
+  trackOrLevel: z.string().min(1),
+  seed: z.number().int().positive(),
+  endedAt: z.string().min(1),
+  endReason: z.string().min(1),
+  winnerPlayerIndex: z.number().int(),
+  winningTeam: z.string(),
+  placements: z.array(z.number().int().nonnegative()),
+  players: z.array(MultiplayerMatchResultPlayerSchema).min(1),
+});
+
+export const MultiplayerMatchResultSchema = z.union([
+  multiplayerMatchResultBaseSchema.extend({
+    gameId: z.literal("cromagrally"),
+    mode: croMagMultiplayerModeSchema,
+  }),
+  multiplayerMatchResultBaseSchema.extend({
+    gameId: z.literal("nanosaur2"),
+    mode: nanosaur2MultiplayerModeSchema,
+  }),
+]);
+
 const multiplayerLobbySummaryBaseSchema = z.object({
   id: z.string().uuid(),
   trackOrLevel: z.string().min(1),
+  tagDurationMinutes: z.number().int().min(2).max(4),
   maxPlayers: z.number().int().min(2).max(6),
   isPublic: z.boolean().default(true),
   joinCode: z.string().min(1),
@@ -83,6 +123,7 @@ export const MultiplayerLobbySummarySchema = z.union([
 const multiplayerLobbyDetailsBaseSchema = z.object({
   id: z.string().uuid(),
   trackOrLevel: z.string().min(1),
+  tagDurationMinutes: z.number().int().min(2).max(4),
   maxPlayers: z.number().int().min(2).max(6),
   isPublic: z.boolean().default(true),
   hostParticipantId: z.string().min(1),
@@ -93,6 +134,7 @@ const multiplayerLobbyDetailsBaseSchema = z.object({
   players: z.array(MultiplayerLobbyPlayerSchema),
   participantId: z.string().min(1),
   matchConfig: MultiplayerMatchConfigSchema.nullable().optional(),
+  matchResult: MultiplayerMatchResultSchema.nullable().optional(),
 });
 
 /** Runtime schema for a full multiplayer lobby detail payload. */
@@ -113,6 +155,7 @@ export const MultiplayerLobbyPreviewSchema = z.union([
     gameId: z.literal("cromagrally"),
     mode: croMagMultiplayerModeSchema,
     trackOrLevel: z.string().min(1),
+    tagDurationMinutes: z.number().int().min(2).max(4),
     maxPlayers: z.number().int().min(2).max(6),
     state: z.string().min(1),
     playerCount: z.number().int().nonnegative(),
@@ -123,6 +166,7 @@ export const MultiplayerLobbyPreviewSchema = z.union([
     gameId: z.literal("nanosaur2"),
     mode: nanosaur2MultiplayerModeSchema,
     trackOrLevel: z.string().min(1),
+    tagDurationMinutes: z.number().int().min(2).max(4),
     maxPlayers: z.number().int().min(2).max(6),
     state: z.string().min(1),
     playerCount: z.number().int().nonnegative(),
@@ -132,10 +176,11 @@ export const MultiplayerLobbyPreviewSchema = z.union([
 
 export const CreateLobbyInputSchema = z.object({
   gameId: multiplayerGameIdSchema,
-  mode: z.union([croMagMultiplayerModeSchema, nanosaur2MultiplayerModeSchema]),
-  trackOrLevel: z.string().min(1),
-  maxPlayers: z.number().int().min(2).max(6),
-  displayName: z.string().min(1),
+    mode: z.union([croMagMultiplayerModeSchema, nanosaur2MultiplayerModeSchema]),
+    trackOrLevel: z.string().min(1),
+    maxPlayers: z.number().int().min(2).max(6),
+    tagDurationMinutes: z.number().int().min(2).max(4),
+    displayName: z.string().min(1),
   isPublic: z.boolean(),
 });
 

@@ -32,6 +32,18 @@ public interface IMultiplayerLobbyService
         StartLobbyRequest request,
         CancellationToken cancellationToken);
 
+    Task<AppResult<MultiplayerLobbyDetails>> UpdateSelectionAsync(
+        UpdateLobbySelectionRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> EndMatchAsync(
+        EndLobbyMatchRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> RematchLobbyAsync(
+        RematchLobbyRequest request,
+        CancellationToken cancellationToken);
+
     Task<AppResult<MultiplayerLobbyDetails>> RemoveParticipantAsync(
         RemoveLobbyParticipantRequest request,
         CancellationToken cancellationToken);
@@ -42,6 +54,10 @@ public interface IMultiplayerLobbyService
 
     Task<AppResult<MultiplayerLobbyDetails>> ReportEventAsync(
         LobbyReportEventRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> ReportMatchResultAsync(
+        LobbyReportMatchResultRequest request,
         CancellationToken cancellationToken);
 
     Task CleanupExpiredAndStaleAsync(

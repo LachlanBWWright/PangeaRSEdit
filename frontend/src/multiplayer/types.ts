@@ -17,6 +17,7 @@ export interface MultiplayerLobbySummary {
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly maxPlayers: number;
   readonly isPublic: boolean;
   readonly joinCode: string;
@@ -42,6 +43,7 @@ export interface MultiplayerMatchConfig {
   readonly mode: string;
   readonly trackOrLevel: string;
   readonly seed: number;
+  readonly tagDurationMinutes: number;
   readonly hostPlayerIndex: number;
   readonly maxPlayers: number;
   readonly requiredProtocolVersion: number;
@@ -50,11 +52,41 @@ export interface MultiplayerMatchConfig {
   readonly players: readonly MultiplayerMatchConfigPlayer[];
 }
 
+export interface MultiplayerMatchResultPlayer {
+  readonly participantId: string;
+  readonly playerIndex: number;
+  readonly displayName: string;
+  readonly team: string;
+  readonly placement: number;
+  readonly finished: boolean;
+  readonly eliminated: boolean;
+  readonly score: number;
+  readonly timeMs: number;
+  readonly lapsCompleted: number;
+  readonly checkpoint: number;
+}
+
+export interface MultiplayerMatchResult {
+  readonly lobbyId: string;
+  readonly matchId: string;
+  readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly seed: number;
+  readonly endedAt: string;
+  readonly endReason: string;
+  readonly winnerPlayerIndex: number;
+  readonly winningTeam: string;
+  readonly placements: readonly number[];
+  readonly players: readonly MultiplayerMatchResultPlayer[];
+}
+
 export interface MultiplayerLobbyDetails {
   readonly id: string;
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly maxPlayers: number;
   readonly isPublic: boolean;
   readonly hostParticipantId: string;
@@ -65,6 +97,7 @@ export interface MultiplayerLobbyDetails {
   readonly players: readonly MultiplayerLobbyPlayer[];
   readonly participantId: string;
   readonly matchConfig?: MultiplayerMatchConfig | null;
+  readonly matchResult?: MultiplayerMatchResult | null;
 }
 
 export interface MultiplayerLobbyPreview {
@@ -72,6 +105,7 @@ export interface MultiplayerLobbyPreview {
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly maxPlayers: number;
   readonly state: string;
   readonly playerCount: number;
@@ -83,6 +117,7 @@ export interface CreateLobbyInput {
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly maxPlayers: number;
   readonly displayName: string;
   readonly isPublic: boolean;
@@ -103,6 +138,22 @@ export interface SetReadyInput {
 /** Request body used to start a lobby. */
 export interface StartLobbyInput {
   readonly lobbyId: string;
+  readonly force: boolean;
+}
+
+export interface UpdateLobbySelectionInput {
+  readonly lobbyId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
+}
+
+export interface RematchLobbyInput {
+  readonly lobbyId: string;
+  readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly force: boolean;
 }
 

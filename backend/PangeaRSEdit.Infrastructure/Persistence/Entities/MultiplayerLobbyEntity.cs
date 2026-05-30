@@ -6,6 +6,7 @@ public sealed class MultiplayerLobbyEntity
     public string GameId { get; set; } = string.Empty;
     public string Mode { get; set; } = string.Empty;
     public string TrackOrLevel { get; set; } = string.Empty;
+    public int TagDurationMinutes { get; set; } = 3;
     public int MaxPlayers { get; set; }
     public string HostParticipantId { get; set; } = string.Empty;
     public string JoinCode { get; set; } = string.Empty;
@@ -18,6 +19,9 @@ public sealed class MultiplayerLobbyEntity
     public string? LastReportDetail { get; set; }
     public string? LastReportByParticipantId { get; set; }
     public DateTimeOffset? LastReportAt { get; set; }
+    public string? MatchResultJson { get; set; }
+    public string? MatchResultByParticipantId { get; set; }
+    public DateTimeOffset? MatchResultAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
 

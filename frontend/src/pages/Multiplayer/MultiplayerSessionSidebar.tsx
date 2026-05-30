@@ -6,11 +6,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   formatLobbyModeLabel,
   formatLobbyVisibility,
 } from "@/multiplayer/lobbyDisplay";
+import {
+  CROMAG_TAG_DURATION_OPTIONS,
+  defaultTrackForMode,
+  getLevelOptionLabel,
+  getModeOptions,
+  getTrackOptions,
+  usesCroMagTagDuration,
+} from "@/multiplayer/menuOptions";
 import { HostStartControls } from "./HostStartControls";
 import { LobbyRoster } from "./LobbyRoster";
 import { MultiplayerDebugOverlay } from "./MultiplayerDebugOverlay";
@@ -40,6 +56,7 @@ type MultiplayerSessionSidebarProps = Pick<
   | "hasLocalParticipant"
   | "canStartLobby"
   | "canForceStartLobby"
+  | "canEndMatch"
   | "packetCounts"
   | "runtimeDebugStats"
   | "nativeDebugStats"
@@ -51,6 +68,8 @@ type MultiplayerSessionSidebarProps = Pick<
   | "onToggleReady"
   | "onStart"
   | "onStartAnyway"
+  | "onUpdateSelection"
+  | "onEndMatch"
   | "onLeave"
   | "onResetNetworkDebugOptions"
   | "onUpdateNetworkDebugOption"
@@ -78,6 +97,7 @@ export function MultiplayerSessionSidebar({
   hasLocalParticipant,
   canStartLobby,
   canForceStartLobby,
+  canEndMatch,
   packetCounts,
   runtimeDebugStats,
   nativeDebugStats,
@@ -89,10 +109,15 @@ export function MultiplayerSessionSidebar({
   onToggleReady,
   onStart,
   onStartAnyway,
+  onUpdateSelection,
+  onEndMatch,
   onLeave,
   onResetNetworkDebugOptions,
   onUpdateNetworkDebugOption,
 }: MultiplayerSessionSidebarProps) {
+  const canEditSelection = isHost && lobby.state === "open";
+  const trackOptions = getTrackOptions(lobby.gameId, lobby.mode);
+
   return (
     <aside className="min-h-0">
       <Card className="flex max-h-full min-h-0 flex-col border-border bg-card shadow-sm">
@@ -166,10 +191,101 @@ export function MultiplayerSessionSidebar({
                 <strong>Mode:</strong> {formatLobbyModeLabel(lobby.mode)}
               </div>
               <div>
+                <strong>Map:</strong>{" "}
+                {getLevelOptionLabel(trackOptions, lobby.trackOrLevel)}
+              </div>
+              {usesCroMagTagDuration(lobby.gameId, lobby.mode) ? (
+                <div>
+                  <strong>Tag Duration:</strong>{" "}
+                  {String(lobby.tagDurationMinutes)} minutes
+                </div>
+              ) : null}
+              <div>
                 <strong>Ready:</strong> {String(readyPlayerCount)}/
                 {String(lobby.players.length)}
               </div>
             </div>
+            {canEditSelection ? (
+              <div className="grid gap-2">
+                <div className="grid gap-1">
+                  <Label>Mode</Label>
+                  <Select
+                    value={lobby.mode}
+                    disabled={busy}
+                    onValueChange={(nextMode) => {
+                      onUpdateSelection(
+                        nextMode,
+                        defaultTrackForMode(lobby.gameId, nextMode),
+                        lobby.tagDurationMinutes,
+                      );
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getModeOptions(lobby.gameId).map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label>Map</Label>
+                  <Select
+                    value={lobby.trackOrLevel}
+                    disabled={busy}
+                    onValueChange={(nextTrackOrLevel) => {
+                      onUpdateSelection(
+                        lobby.mode,
+                        nextTrackOrLevel,
+                        lobby.tagDurationMinutes,
+                      );
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select map" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trackOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {usesCroMagTagDuration(lobby.gameId, lobby.mode) ? (
+                  <div className="grid gap-1">
+                    <Label>Tag Duration</Label>
+                    <Select
+                      value={String(lobby.tagDurationMinutes)}
+                      disabled={busy}
+                      onValueChange={(value) => {
+                        onUpdateSelection(
+                          lobby.mode,
+                          lobby.trackOrLevel,
+                          Number.parseInt(value, 10),
+                        );
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select tag duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CROMAG_TAG_DURATION_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </section>
 
           <Separator />
@@ -234,9 +350,11 @@ export function MultiplayerSessionSidebar({
             isHost={isHost}
             canStart={canStartLobby}
             canForceStart={canForceStartLobby}
+            canEndMatch={canEndMatch}
             onToggleReady={onToggleReady}
             onStart={onStart}
             onStartAnyway={onStartAnyway}
+            onEndMatch={onEndMatch}
             onLeave={onLeave}
           />
 

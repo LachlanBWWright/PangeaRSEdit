@@ -26,7 +26,7 @@ export function deriveMatchKind(mode: string): MultiplayerMatchKind {
 export function deriveDisplayedMatchPhase(
   input: MatchPhaseInput,
 ): MultiplayerMatchPhase {
-  if (input.lobbyState === "ended") {
+  if (input.lobbyState === "match_ended" || input.lobbyState === "ended") {
     return "results";
   }
   if (

@@ -58,6 +58,7 @@ export function createHostRuntimeTransportMultiplexer(input: {
   } | null;
   readonly reportDesync: MultiplayerRuntimeTransport["reportDesync"];
   readonly reportMatchEnded: MultiplayerRuntimeTransport["reportMatchEnded"];
+  readonly reportMatchResult?: MultiplayerRuntimeTransport["reportMatchResult"];
 }): HostRuntimeTransportMultiplexer {
   const peers = new Map<string, WebRtcRuntimeTransportHandle>();
   const unsubscribers = new Map<string, () => void>();
@@ -168,6 +169,9 @@ export function createHostRuntimeTransportMultiplexer(input: {
         sendToPeers((transport) => transport.sendUnreliable(bytes)),
       reportDesync: input.reportDesync,
       reportMatchEnded: input.reportMatchEnded,
+      reportMatchResult: (resultJson) => {
+        input.reportMatchResult?.(resultJson);
+      },
       subscribeIncoming: (onPacket) => {
         listeners.add(onPacket);
         return () => {

@@ -7,9 +7,11 @@ interface HostStartControlsProps {
   readonly isHost: boolean;
   readonly canStart: boolean;
   readonly canForceStart: boolean;
+  readonly canEndMatch: boolean;
   readonly onToggleReady: () => void;
   readonly onStart: () => void;
   readonly onStartAnyway: () => void;
+  readonly onEndMatch: () => void;
   readonly onLeave: () => void;
 }
 
@@ -20,9 +22,11 @@ export function HostStartControls({
   isHost,
   canStart,
   canForceStart,
+  canEndMatch,
   onToggleReady,
   onStart,
   onStartAnyway,
+  onEndMatch,
   onLeave,
 }: HostStartControlsProps) {
   return (
@@ -51,6 +55,16 @@ export function HostStartControls({
               onClick={onStartAnyway}
             >
               Start Anyway
+            </Button>
+          ) : null}
+          {canEndMatch ? (
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy}
+              onClick={onEndMatch}
+            >
+              End Match
             </Button>
           ) : null}
         </>

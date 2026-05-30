@@ -14,11 +14,24 @@ export const PNET_PACKET_TYPE_DISCONNECT = 8;
 export const PNET_PACKET_TYPE_PROTOCOL_ERROR = 9;
 export const PNET_PACKET_TYPE_VEHICLE_TYPE = 10;
 export const PNET_PACKET_TYPE_KEYFRAME_RESEND_REQUEST = 11;
+export const PNET_PACKET_TYPE_TAG_HANDOFF_REQUEST = 12;
 
 const PNET_HEADER_SIZE_V1 = 24;
 const PNET_HEADER_SIZE_V2 = 28;
 const PNET_HEADER_VERSION_WITH_MATCH_ID_HIGH = 2;
-const PNET_HEADER_VERSION_CURRENT_GAMEPLAY = 4;
+const PNET_HEADER_VERSION_LEGACY_GAMEPLAY = 4;
+const PNET_HEADER_VERSION_CROMAG_PRE_TAG_HANDOFF = 5;
+const PNET_HEADER_VERSION_CROMAG_TAG_HANDOFF_V1 = 6;
+const PNET_HEADER_VERSION_CROMAG_CURRENT = 7;
+const PNET_HEADER_VERSION_NANOSAUR2_CURRENT = 6;
+const PNET_HEADER_V2_COMPATIBLE_VERSIONS = new Set<number>([
+  PNET_HEADER_VERSION_WITH_MATCH_ID_HIGH,
+  PNET_HEADER_VERSION_LEGACY_GAMEPLAY,
+  PNET_HEADER_VERSION_CROMAG_PRE_TAG_HANDOFF,
+  PNET_HEADER_VERSION_CROMAG_TAG_HANDOFF_V1,
+  PNET_HEADER_VERSION_CROMAG_CURRENT,
+  PNET_HEADER_VERSION_NANOSAUR2_CURRENT,
+]);
 
 export interface PnetHeader {
   readonly magic: number;
@@ -37,7 +50,8 @@ export function isPnetClientPacketType(packetType: number): boolean {
     packetType === PNET_PACKET_TYPE_CLIENT_INPUT ||
     packetType === PNET_PACKET_TYPE_CLIENT_ACK ||
     packetType === PNET_PACKET_TYPE_VEHICLE_TYPE ||
-    packetType === PNET_PACKET_TYPE_KEYFRAME_RESEND_REQUEST
+    packetType === PNET_PACKET_TYPE_KEYFRAME_RESEND_REQUEST ||
+    packetType === PNET_PACKET_TYPE_TAG_HANDOFF_REQUEST
   );
 }
 
@@ -99,10 +113,8 @@ export function decodePnetHeader(bytes: ArrayBuffer): Result<PnetHeader, string>
   if (version === 1) {
     return ok(readV1Header(view));
   }
-  if (
-    version === PNET_HEADER_VERSION_WITH_MATCH_ID_HIGH ||
-    version === PNET_HEADER_VERSION_CURRENT_GAMEPLAY
-  ) {
+  // When a game changes its PNET wire format, bump its C-side protocol constant and add that new version here if the 28-byte header layout is still unchanged.
+  if (PNET_HEADER_V2_COMPATIBLE_VERSIONS.has(version)) {
     if (bytes.byteLength < PNET_HEADER_SIZE_V2) {
       return err(`PNET v${String(version)} packet too small`);
     }

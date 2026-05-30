@@ -249,6 +249,7 @@ start_backend() {
       Cors__AllowedOrigins__0="$FRONTEND_ORIGIN" \
       dotnet run \
         --project backend/PangeaRSEdit.Api/PangeaRSEdit.Api.csproj \
+        --no-build \
         --no-launch-profile \
         --urls "$BACKEND_URL"
   ) >"$LOG_DIR/backend.log" 2>&1 &

@@ -204,6 +204,110 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     }
 
     [Fact]
+    public async Task UpdateSelection_AllowsHostToChangeOpenLobbyModeAndMap()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var hostReadyClient = _factory.CreateClient();
+        hostReadyClient.DefaultRequestHeaders.Add("X-Participant-Id", hostParticipantId);
+        await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+
+        var updateResponse = await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/selection", new
+        {
+            mode = "tag",
+            trackOrLevel = "10"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        using var document = JsonDocument.Parse(await updateResponse.Content.ReadAsStringAsync());
+        Assert.Equal("tag", document.RootElement.GetProperty("mode").GetString());
+        Assert.Equal("10", document.RootElement.GetProperty("trackOrLevel").GetString());
+        var players = document.RootElement.GetProperty("players").EnumerateArray().ToArray();
+        Assert.All(players, player => Assert.False(player.GetProperty("isReady").GetBoolean()));
+    }
+
+    [Fact]
+    public async Task UpdateSelection_RejectsNonHost()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, _) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-player");
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "Guest"
+        });
+
+        var updateResponse = await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/selection", new
+        {
+            mode = "tag",
+            trackOrLevel = "10"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, updateResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task EndMatch_AllowsHostToTerminateStartedMatch()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-player");
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "Guest"
+        });
+
+        var hostReadyClient = _factory.CreateClient();
+        hostReadyClient.DefaultRequestHeaders.Add("X-Participant-Id", hostParticipantId);
+        await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+        var startResponse = await hostReadyClient.PostAsync($"/api/multiplayer/lobbies/{lobbyId}/start", null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+
+        var endResponse = await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/end-match", new
+        {
+            detail = "test-ended"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, endResponse.StatusCode);
+        using var document = JsonDocument.Parse(await endResponse.Content.ReadAsStringAsync());
+        Assert.Equal("match_ended", document.RootElement.GetProperty("state").GetString());
+    }
+
+    [Fact]
+    public async Task EndMatch_RejectsNonHost()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-player");
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "Guest"
+        });
+
+        var hostReadyClient = _factory.CreateClient();
+        hostReadyClient.DefaultRequestHeaders.Add("X-Participant-Id", hostParticipantId);
+        await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+        var startResponse = await hostReadyClient.PostAsync($"/api/multiplayer/lobbies/{lobbyId}/start", null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+
+        var endResponse = await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/end-match", new
+        {
+            detail = "guest-ended"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, endResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task StartLobby_RejectsMissingReadyParticipants()
     {
         var hostClient = _factory.CreateClient();
@@ -397,6 +501,135 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
             Assert.Equal("ended", lobby.State);
             Assert.NotNull(lobby.MatchEndedAt);
         }
+    }
+
+    [Fact]
+    public async Task ReportMatchResult_HostStoresAuthoritativeResult()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-result");
+        var joinResponse = await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "Guest"
+        });
+        Assert.Equal(HttpStatusCode.OK, joinResponse.StatusCode);
+
+        var hostReadyClient = _factory.CreateClient();
+        hostReadyClient.DefaultRequestHeaders.Add("X-Participant-Id", hostParticipantId);
+        await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+
+        var startResponse = await hostReadyClient.PostAsync($"/api/multiplayer/lobbies/{lobbyId}/start", null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+        using var startDocument = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        var matchConfig = startDocument.RootElement.GetProperty("matchConfig");
+        var matchId = matchConfig.GetProperty("matchId").GetGuid();
+        var seed = matchConfig.GetProperty("seed").GetInt32();
+
+        var resultResponse = await hostReadyClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/report/match-result",
+            new
+            {
+                lobbyId,
+                matchId,
+                gameId = "cromagrally",
+                mode = "multiplayerRace",
+                trackOrLevel = "ice-ramp",
+                seed,
+                endedAt = DateTimeOffset.UtcNow,
+                endReason = "track-completed",
+                winnerPlayerIndex = 0,
+                winningTeam = "none",
+                placements = new[] { 0, 1 },
+                players = new object[]
+                {
+                    new
+                    {
+                        participantId = hostParticipantId,
+                        playerIndex = 0,
+                        displayName = "Host",
+                        team = "0",
+                        placement = 0,
+                        finished = true,
+                        eliminated = false,
+                        score = 1,
+                        timeMs = 120000,
+                        lapsCompleted = 3,
+                        checkpoint = 0
+                    },
+                    new
+                    {
+                        participantId = "guest-result",
+                        playerIndex = 1,
+                        displayName = "Guest",
+                        team = "1",
+                        placement = 1,
+                        finished = true,
+                        eliminated = false,
+                        score = 0,
+                        timeMs = 122000,
+                        lapsCompleted = 3,
+                        checkpoint = 0
+                    },
+                }
+            });
+        Assert.Equal(HttpStatusCode.OK, resultResponse.StatusCode);
+        using var resultDocument = JsonDocument.Parse(await resultResponse.Content.ReadAsStringAsync());
+        Assert.Equal("match_ended", resultDocument.RootElement.GetProperty("state").GetString());
+        Assert.True(resultDocument.RootElement.TryGetProperty("matchResult", out var matchResultNode));
+        Assert.Equal(matchId, matchResultNode.GetProperty("matchId").GetGuid());
+    }
+
+    [Fact]
+    public async Task Rematch_FromMatchEnded_IssuesFreshMatchIdentity()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-rematch");
+        var joinResponse = await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "Guest"
+        });
+        Assert.Equal(HttpStatusCode.OK, joinResponse.StatusCode);
+
+        var hostReadyClient = _factory.CreateClient();
+        hostReadyClient.DefaultRequestHeaders.Add("X-Participant-Id", hostParticipantId);
+        await hostReadyClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+        await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/ready", new { isReady = true });
+
+        var startResponse = await hostReadyClient.PostAsync($"/api/multiplayer/lobbies/{lobbyId}/start", null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+        using var firstStartDocument = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        var firstMatchId = firstStartDocument.RootElement.GetProperty("matchConfig").GetProperty("matchId").GetGuid();
+        var firstSeed = firstStartDocument.RootElement.GetProperty("matchConfig").GetProperty("seed").GetInt32();
+
+        var markEndedResponse = await hostReadyClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/report/match-ended",
+            new { detail = "race finished" });
+        Assert.Equal(HttpStatusCode.OK, markEndedResponse.StatusCode);
+
+        var rematchResponse = await hostReadyClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/rematch",
+            new
+            {
+                gameId = "cromagrally",
+                mode = "multiplayerRace",
+                trackOrLevel = "ice-ramp",
+                force = true,
+            });
+        Assert.Equal(HttpStatusCode.OK, rematchResponse.StatusCode);
+        using var rematchDocument = JsonDocument.Parse(await rematchResponse.Content.ReadAsStringAsync());
+        Assert.Equal("started", rematchDocument.RootElement.GetProperty("state").GetString());
+        var secondMatchId = rematchDocument.RootElement.GetProperty("matchConfig").GetProperty("matchId").GetGuid();
+        var secondSeed = rematchDocument.RootElement.GetProperty("matchConfig").GetProperty("seed").GetInt32();
+
+        Assert.NotEqual(firstMatchId, secondMatchId);
+        Assert.NotEqual(firstSeed, secondSeed);
     }
 
     [Fact]

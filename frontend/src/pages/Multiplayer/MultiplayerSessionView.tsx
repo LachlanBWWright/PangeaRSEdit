@@ -31,6 +31,7 @@ export function MultiplayerSessionView(props: MultiplayerSessionViewProps) {
         hasLocalParticipant={props.hasLocalParticipant}
         canStartLobby={props.canStartLobby}
         canForceStartLobby={props.canForceStartLobby}
+        canEndMatch={props.canEndMatch}
         packetCounts={props.packetCounts}
         runtimeDebugStats={props.runtimeDebugStats}
         nativeDebugStats={props.nativeDebugStats}
@@ -42,6 +43,8 @@ export function MultiplayerSessionView(props: MultiplayerSessionViewProps) {
         onToggleReady={props.onToggleReady}
         onStart={props.onStart}
         onStartAnyway={props.onStartAnyway}
+        onUpdateSelection={props.onUpdateSelection}
+        onEndMatch={props.onEndMatch}
         onLeave={props.onLeave}
         onResetNetworkDebugOptions={props.onResetNetworkDebugOptions}
         onUpdateNetworkDebugOption={props.onUpdateNetworkDebugOption}
