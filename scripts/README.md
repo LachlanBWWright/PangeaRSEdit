@@ -17,7 +17,7 @@ frontend/public/generated/pangea-ports/wasm/<game>/
 From inside `frontend/`, this is also available as:
 
 ```bash
-npm run build:games
+pnpm run build:games
 ```
 
 `build-games.sh` is a friendly alias for `build-pangea-ports.sh`, which contains the implementation and also supports building one game:

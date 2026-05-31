@@ -291,9 +291,9 @@ Manual verification:
 Suggested commands once implementation exists:
 
 ```bash
-npm test -- terrain-io
-npm test -- loadMapImages
-npm test
+pnpm test -- terrain-io
+pnpm test -- loadMapImages
+pnpm test
 ```
 
 Run the Rust package tests and WASM build command from whichever Rust package owns terrain codecs.

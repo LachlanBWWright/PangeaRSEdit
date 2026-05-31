@@ -155,7 +155,7 @@ async function run() {
 
   if (!captureDir) {
     console.error(
-      "No capture directory found. Run npm run dev:capture:item-screenshots first.",
+      "No capture directory found. Run pnpm run dev:capture:item-screenshots first.",
     );
     process.exitCode = 1;
     return;

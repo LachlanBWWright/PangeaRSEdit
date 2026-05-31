@@ -1,0 +1,5 @@
+packages:
+  - "."
+  - "frontend"
+  - "lzss-rust/pkg"
+  - "terrain-codec-rust/pkg"

@@ -182,6 +182,16 @@ export function MultiplayerPage() {
   const startNetworkMatchRef = useRef<StartNetworkMatchFn | null>(null);
   const runtimeStartRequestedRef = useRef(false);
   const runtimeStartNotifiedRef = useRef(false);
+
+  const stopActiveGame = useCallback((): void => {
+    const stopGame = stopGameRef.current;
+    if (!stopGame) {
+      return;
+    }
+    stopGame();
+    stopGameRef.current = null;
+  }, []);
+
   const resetLobbyChatState = (): void => {
     setChatMessages([]);
     setChatDraft("");
@@ -397,6 +407,7 @@ export function MultiplayerPage() {
         if (!activeLobby) {
           return;
         }
+        stopActiveGame();
         void reportMatchEnded(
           activeLobby.id,
           `runtime-match-ended reason=${String(reason)}`,
@@ -471,14 +482,9 @@ export function MultiplayerPage() {
       }
 
       closeRtcSessions();
-
-      const stopGame = stopGameRef.current;
-      if (stopGame) {
-        stopGame();
-        stopGameRef.current = null;
-      }
+      stopActiveGame();
     };
-  }, [closeRtcSessions]);
+  }, [closeRtcSessions, stopActiveGame]);
 
   const lobbyId = lobby?.id ?? null;
 
@@ -970,6 +976,18 @@ export function MultiplayerPage() {
     activeMatchConfig && localParticipantId
       ? `${activeMatchConfig.matchId}:${localParticipantId}`
       : null;
+  const lobbyState = lobby?.state ?? null;
+
+  useEffect(() => {
+    if (
+      lobbyState === "match_ended" ||
+      lobbyState === "ended" ||
+      lobbyState === "closed" ||
+      lobbyState === "expired"
+    ) {
+      stopActiveGame();
+    }
+  }, [lobbyState, stopActiveGame]);
 
   useEffect(() => {
     activeMatchConfigRef.current = activeMatchConfig;

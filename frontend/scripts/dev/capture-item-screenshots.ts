@@ -114,7 +114,7 @@ function startViteDevServer(
   port: number,
   host: string,
 ): ChildProcess {
-  const command = process.platform === "win32" ? "npm.cmd" : "npm";
+  const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
   const child = spawn(
     command,
     ["run", "dev", "--", "--host", host, "--port", String(port)],

@@ -265,7 +265,7 @@ start_frontend() {
     exec setsid env \
       VITE_API_ORIGIN="$BACKEND_URL" \
       VITE_API_BASE_PATH="" \
-      npm run dev -- --host localhost --port "$FRONTEND_PORT" --strictPort
+      pnpm run dev -- --host localhost --port "$FRONTEND_PORT" --strictPort
   ) >"$LOG_DIR/frontend.log" 2>&1 &
 
   FRONTEND_PID="$!"

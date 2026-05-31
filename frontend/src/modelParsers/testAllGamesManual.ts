@@ -1,6 +1,6 @@
 /**
  * Manual test script to verify BG3D parsing for all games
- * Run with: npx tsx src/modelParsers/testAllGamesManual.ts
+ * Run with: pnpm exec tsx src/modelParsers/testAllGamesManual.ts
  */
 
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";

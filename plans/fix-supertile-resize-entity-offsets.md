@@ -113,14 +113,14 @@ After adding or removing supertiles:
    Run the focused tests first:
 
    ```bash
-   npm test -- levelResizeHandlers
-   npm test -- levelResize
+   pnpm test -- levelResizeHandlers
+   pnpm test -- levelResize
    ```
 
    Then run the frontend test suite if the focused tests pass:
 
    ```bash
-   npm test
+   pnpm test
    ```
 
    Manually verify at least one level with fences/splines/items/liquid by placing entities on recognizable terrain features, removing a supertile from `top` and `left`, and confirming the entities remain aligned with those features.

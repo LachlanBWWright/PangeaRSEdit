@@ -1,6 +1,6 @@
 /**
  * Quick analysis script for Grasshopper.bg3d
- * Run with: npx tsx src/modelParsers/analyzeGrasshopper.ts
+ * Run with: pnpm exec tsx src/modelParsers/analyzeGrasshopper.ts
  */
 
 import { existsSync, readFileSync } from "fs";
