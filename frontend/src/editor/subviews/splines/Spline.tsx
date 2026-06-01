@@ -283,7 +283,6 @@ const SplineNub = memo(
           stroke="black"
           strokeWidth={isSelected ? 3 : 2}
           perfectDrawEnabled={false}
-          listening={false}
         />
         <Text
           x={-8}

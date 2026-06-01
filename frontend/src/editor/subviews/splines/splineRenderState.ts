@@ -43,15 +43,10 @@ export function getPreviewSplinePoints(
   previewNubs: { x: number; z: number }[],
   syncFirstAndLast: boolean,
 ): number[] {
-  const workingNubs =
-    syncFirstAndLast && previewNubs.length > 1
-      ? previewNubs.slice(0, -1)
-      : previewNubs;
-
   const points =
-    workingNubs.length === 1 && workingNubs[0]
-      ? [workingNubs[0]]
-      : getPoints(workingNubs, syncFirstAndLast);
+    previewNubs.length === 1 && previewNubs[0]
+      ? [previewNubs[0]]
+      : getPoints(previewNubs, syncFirstAndLast);
 
   return points.flatMap((point) => [point.x, point.z]);
 }

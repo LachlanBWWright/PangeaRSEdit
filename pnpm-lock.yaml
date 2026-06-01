@@ -287,6 +287,19 @@ importers:
         specifier: ^4.2.1
         version: 4.4.3
 
+  games/pangea-ports/shared/script-types:
+    dependencies:
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   lzss-rust/pkg: {}
 
   terrain-codec-rust/pkg: {}

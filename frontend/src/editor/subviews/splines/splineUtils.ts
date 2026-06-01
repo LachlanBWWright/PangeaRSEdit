@@ -14,10 +14,9 @@ export function getSplinePointGenerationInput(
 ) {
   const splineType = detectSplineType(nubs);
   const isCircular = splineType === SplineType.CIRCULAR;
-  const workingNubs = isCircular && nubs.length > 1 ? nubs.slice(0, -1) : nubs;
   return {
     isCircular,
-    workingNubs,
+    workingNubs: nubs,
   };
 }
 
