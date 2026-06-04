@@ -26,12 +26,15 @@ export const Nanosaur1EditorToolbar = memo(function Nanosaur1EditorToolbar({
   const currentValue =
     view === View.items
       ? "items"
+      : view === View.scripts
+        ? "scripts"
       : view === View.tiles
-      ? "tiles"
-      : "supertiles";
+        ? "tiles"
+        : "supertiles";
 
   const handleValueChange = (value: string) => {
     if (value === "items") setView(View.items);
+    else if (value === "scripts") setView(View.scripts);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -41,6 +44,7 @@ export const Nanosaur1EditorToolbar = memo(function Nanosaur1EditorToolbar({
       <Tabs value={currentValue} onValueChange={handleValueChange}>
         <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
           <TabsTrigger className="w-full" value="items">Items</TabsTrigger>
+          <TabsTrigger className="w-full" value="scripts">Scripts</TabsTrigger>
           <TabsTrigger className="w-full" value="tiles">Tiles</TabsTrigger>
           <TabsTrigger className="w-full" value="supertiles" disabled={!terrainHasSTgd}>
             Supertiles

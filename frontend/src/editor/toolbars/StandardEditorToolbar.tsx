@@ -32,6 +32,8 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
           ? "items"
           : view === View.splines
             ? "splines"
+            : view === View.scripts
+              ? "scripts"
             : view === View.tiles
               ? "tiles"
               : "supertiles";
@@ -41,6 +43,7 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
     else if (value === "water") setView(View.water);
     else if (value === "items") setView(View.items);
     else if (value === "splines") setView(View.splines);
+    else if (value === "scripts") setView(View.scripts);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -70,6 +73,9 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
           </TabsTrigger>
           <TabsTrigger className="w-full" value="splines">
             Splines
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="scripts">
+            Scripts
           </TabsTrigger>
           <TabsTrigger className="w-full" value="tiles">
             Tiles

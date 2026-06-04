@@ -50,6 +50,7 @@ import {
   createTileBrushFromRegion,
 } from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 
 export interface StageData {
   scale: number;
@@ -455,6 +456,7 @@ export function Bugdom1KonvaView({
                 setSplineData={setSplineDataNotNull}
               />
             )}
+            <CustomScriptPlacements />
           </>
         )}
 

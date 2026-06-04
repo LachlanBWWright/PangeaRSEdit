@@ -32,6 +32,7 @@ import {
 } from "../../../data/items/itemAtoms";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { SplineItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 import {
   clampPlacement,
   deleteSelectedSplineItem,
@@ -99,6 +100,7 @@ export function EditSplineItemMenu({
 
   const currentSplineItemData = splineItemData[selectedSplineItem];
   if (!currentSplineItemData) return null;
+  if (selectedSpline === undefined) return null;
   const currentSplineItemParams =
     TerrainItemTypeParams[currentSplineItemData.type];
 
@@ -270,6 +272,22 @@ export function EditSplineItemMenu({
                 placement,
               );
             });
+          }}
+        />
+      </div>
+      <div>
+        <SplineItemScriptSection
+          selectionLabel={getSplineItemName(globals, currentSplineItemData.type)}
+          signature={{
+            itemType: currentSplineItemData.type,
+            splineNum: selectedSpline,
+            placement: currentSplineItemData.placement,
+            params: [
+              currentSplineItemData.p0,
+              currentSplineItemData.p1,
+              currentSplineItemData.p2,
+              currentSplineItemData.p3,
+            ],
           }}
         />
       </div>

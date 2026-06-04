@@ -39,10 +39,12 @@ import {
   updateSelectedItemPosition,
   updateSelectedItemType,
 } from "@/editor/subviews/items/itemMenuState";
+import { TerrainItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
   setItemData,
+  headerData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -248,6 +250,24 @@ export const ItemMenu = memo(function ItemMenu({
               ];
             })}
           </div>
+          <TerrainItemScriptSection
+            selectionLabel={getItemName(globals, selectedItemData.type)}
+            signature={{
+              itemType: selectedItemData.type,
+              position: {
+                x: selectedItemData.x,
+                y: headerData?.Hedr[1000].obj.minY ?? 0,
+                z: selectedItemData.z,
+              },
+              flags: 0,
+              params: [
+                selectedItemData.p0,
+                selectedItemData.p1,
+                selectedItemData.p2,
+                selectedItemData.p3,
+              ],
+            }}
+          />
           <Button
             size="sm"
             variant="destructive"

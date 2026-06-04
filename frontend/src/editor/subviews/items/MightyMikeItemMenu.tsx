@@ -44,6 +44,7 @@ import {
   updateSelectedMightyMikeItemPosition,
   updateSelectedMightyMikeItemType,
 } from "@/editor/subviews/items/mightyMikeItemMenuState";
+import { MapItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -51,6 +52,7 @@ export const ShowMightyMikeItemImages = atom(true);
 export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   itemData,
   setItemData,
+  headerData: _headerData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -221,6 +223,24 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                         v,
                       );
                     });
+
+                    <MapItemScriptSection
+                      selectionLabel={getItemName(globals, selectedItemData.type)}
+                      signature={{
+                        itemType: selectedItemData.type,
+                        position: {
+                          x: selectedItemData.x,
+                          y: selectedItemData.z,
+                        },
+                        params: [
+                          selectedItemData.p0,
+                          selectedItemData.p1,
+                          selectedItemData.p2,
+                          selectedItemData.p3,
+                        ],
+                        sceneName: currentScene,
+                      }}
+                    />
                   }
                 }}
               />

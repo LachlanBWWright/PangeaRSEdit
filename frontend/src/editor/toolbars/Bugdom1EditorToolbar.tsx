@@ -34,6 +34,8 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
         ? "items"
         : view === View.splines
           ? "splines"
+          : view === View.scripts
+            ? "scripts"
           : view === View.tiles
             ? "tiles"
             : "supertiles";
@@ -42,6 +44,7 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
     if (value === "fences") setView(View.fences);
     else if (value === "items") setView(View.items);
     else if (value === "splines") setView(View.splines);
+    else if (value === "scripts") setView(View.scripts);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -68,6 +71,9 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
           </TabsTrigger>
           <TabsTrigger className="w-full" value="splines">
             Splines
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="scripts">
+            Scripts
           </TabsTrigger>
           <TabsTrigger className="w-full" value="tiles">
             Tiles

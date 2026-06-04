@@ -3,6 +3,7 @@ export enum View {
   water,
   items,
   splines,
+  scripts,
   tiles,
   supertiles,
 }

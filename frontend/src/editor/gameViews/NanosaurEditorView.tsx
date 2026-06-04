@@ -17,6 +17,7 @@ import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
+import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { Nanosaur1KonvaView } from "../canvas/Nanosaur1KonvaView";
@@ -100,6 +101,17 @@ export function NanosaurEditorView({
             setItemData={setItemDataNotNull}
             headerData={headerData}
             setHeaderData={setHeaderData}
+          />
+        )}
+        {view === View.scripts && (
+          <ScriptsMenu
+            headerData={headerData}
+            itemData={itemData}
+            liquidData={null}
+            fenceData={null}
+            splineData={null}
+            terrainData={terrainData}
+            mapImages={mapImages}
           />
         )}
         {view === View.tiles && (

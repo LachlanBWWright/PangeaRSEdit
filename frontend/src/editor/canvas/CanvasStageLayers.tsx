@@ -5,6 +5,7 @@ import { Supertiles } from "../subviews/Supertiles";
 import { Tiles } from "../subviews/Tiles";
 import { WaterBodies } from "../subviews/WaterBodies";
 import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { Updater } from "use-immer";
 import {
   FenceData,
@@ -220,6 +221,7 @@ export function CanvasStageLayers({
               setItemData={setItemData}
             />
           )}
+          <CustomScriptPlacements />
         </>
       )}
     </>

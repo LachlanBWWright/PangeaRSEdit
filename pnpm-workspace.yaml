@@ -4,3 +4,7 @@ packages:
   - "games/pangea-ports/shared/script-types"
   - "lzss-rust/pkg"
   - "terrain-codec-rust/pkg"
+allowBuilds:
+  '@swc/core': false
+  esbuild: false
+  sharp: false

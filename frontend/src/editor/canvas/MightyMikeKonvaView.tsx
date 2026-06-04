@@ -41,6 +41,7 @@ import {
 } from "@/data/tileBrushes/tileBrushApply";
 import type Konva from "konva";
 import { toast } from "sonner";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 
 export interface StageData {
   scale: number;
@@ -304,6 +305,8 @@ export function MightyMikeKonvaView({
             setItemData={setItemDataNotNull}
           />
         )}
+
+        <CustomScriptPlacements />
 
         {/* Tile brush stamp preview */}
         <TileBrushPreviewLayer

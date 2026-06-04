@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { zipSync } from "fflate";
 import { ResultAsync, okAsync } from "neverthrow";
 import {
   HeaderData,
@@ -46,6 +47,8 @@ import {
   buildPreviewTerrainBlobs,
   saveMap as saveLevelFiles,
 } from "@/data/saveMap/saveMap";
+import { serializeDownloadWithWorker } from "@/data/level-io/levelIoWorkerClient";
+import { snapshotCanvasImages } from "@/data/level-io/terrainImageSnapshots";
 import {
   editorNavbarActionsAtom,
   editorNavbarLeftAtom,
@@ -56,12 +59,40 @@ import { getMe } from "@/api/authApi";
 import { getGoogleSignInUrl } from "@/api/authApi";
 import { mapErr } from "@/utils/mapErr";
 import { currentAuthUserAtom } from "@/data/globals/authState";
+import { LevelNumber } from "@/data/globals/levelNumber";
+import type { PreviewVfsFile } from "./utils/gamePreviewRuntimeTypes";
+import {
+  buildPreviewScriptFiles,
+  buildScriptPackageFiles,
+  buildScriptPackageZip,
+  createScriptWorkspaceContext,
+  ensureScriptWorkspace,
+  getScriptWorkspaceId,
+  importScriptPackageZip,
+  replaceScriptWorkspace,
+  retargetScriptWorkspace,
+  scriptWorkspaceStoreAtom,
+} from "./subviews/scripts/scriptWorkspaceState";
+import { summarizeScriptWorkspace } from "./subviews/scripts/scriptWorkspaceSelectors";
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
   const match = MIGHTY_MIKE_LEVELS.find(
     (level) => level.terrainFile.toLowerCase() === fileName.toLowerCase(),
   );
   return match?.terrainFile ?? fileName;
+}
+
+function downloadArchive(bytes: Uint8Array, fileName: string): void {
+  const stableBytes = Uint8Array.from(bytes);
+  const blob = new Blob([stableBytes], { type: "application/zip" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export interface DataHistory {
@@ -73,9 +104,13 @@ export function IntroPrompt() {
   const globals = useAtomValue(Globals);
   const authUser = useAtomValue(currentAuthUserAtom);
   const setGlobals = useSetAtom(Globals);
+  const setLevelNumber = useSetAtom(LevelNumber);
   const setEditorNavbarOpen = useSetAtom(editorNavbarOpenAtom);
   const setEditorNavbarLeft = useSetAtom(editorNavbarLeftAtom);
   const setEditorNavbarActions = useSetAtom(editorNavbarActionsAtom);
+  const [scriptWorkspaceStore, setScriptWorkspaceStore] = useAtom(
+    scriptWorkspaceStoreAtom,
+  );
 
   // Atomic data types instead of monolithic data
   const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
@@ -123,6 +158,26 @@ export function IntroPrompt() {
   const [terrainTextureBytes, setTerrainTextureBytes] = useState<
     Uint8Array | null | undefined
   >(undefined);
+  const [previewCustomFiles, setPreviewCustomFiles] = useState<
+    readonly PreviewVfsFile[] | undefined
+  >(undefined);
+
+  const previewScriptContext = useMemo(
+    () => createScriptWorkspaceContext(globals, previewLevelNumber),
+    [globals, previewLevelNumber],
+  );
+  const currentScriptContext = useMemo(
+    () => createScriptWorkspaceContext(globals, null),
+    [globals],
+  );
+  const scriptWorkspace = useMemo(
+    () => ensureScriptWorkspace(scriptWorkspaceStore, previewScriptContext),
+    [previewScriptContext, scriptWorkspaceStore],
+  );
+  const scriptSummary = useMemo(
+    () => summarizeScriptWorkspace(scriptWorkspace),
+    [scriptWorkspace],
+  );
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -249,6 +304,38 @@ export function IntroPrompt() {
     Promise.resolve().then(() => setPreviewLevelNumber(level));
   }, [mapFile, globals.GAME_TYPE]);
 
+  useEffect(() => {
+    if (!mapFile) {
+      setLevelNumber(undefined);
+      return;
+    }
+
+    setLevelNumber(previewLevelNumber);
+    setScriptWorkspaceStore((currentStore) => {
+      const previewWorkspaceId = getScriptWorkspaceId(previewScriptContext);
+      if (currentStore[previewWorkspaceId]) {
+        return currentStore;
+      }
+
+      const currentWorkspace = currentStore[getScriptWorkspaceId(currentScriptContext)];
+      if (!currentWorkspace) {
+        return currentStore;
+      }
+
+      return replaceScriptWorkspace(
+        currentStore,
+        retargetScriptWorkspace(currentWorkspace, previewScriptContext),
+      );
+    });
+  }, [
+    currentScriptContext,
+    mapFile,
+    previewLevelNumber,
+    previewScriptContext,
+    setLevelNumber,
+    setScriptWorkspaceStore,
+  ]);
+
   // Warn before unloading the tab when a level is loaded to prevent accidental data loss.
   useEffect(() => {
     if (!mapFile) return;
@@ -366,10 +453,13 @@ export function IntroPrompt() {
     setMapImagesFile(undefined);
     setTunnelData(null);
     setTunnelFileName("");
+    setLevelNumber(undefined);
+    setPreviewCustomFiles(undefined);
+    setTestDialogOpen(false);
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
     setTerrainTextureBytes(undefined);
-  }, [setAllAtomicData]);
+  }, [setAllAtomicData, setLevelNumber]);
 
   const handleCreateBlankLevel = useCallback(
     (gameType: GlobalsInterface) => {
@@ -423,7 +513,45 @@ export function IntroPrompt() {
     ],
   );
 
-  const handleTestLevel = useCallback(() => {
+  const buildOriginalCompatibleFiles = useCallback(async () => {
+    const combinedDataResult = combineLevelData(getCurrentAtomicData());
+    if (combinedDataResult.isErr()) {
+      toast.error("Package build failed", {
+        description: combinedDataResult.error,
+      });
+      return null;
+    }
+
+    const snapshotResult = snapshotCanvasImages(mapImages ?? []);
+    if (snapshotResult.isErr()) {
+      toast.error("Package build failed", {
+        description: snapshotResult.error,
+      });
+      return null;
+    }
+
+    const serializeResult = await serializeDownloadWithWorker({
+      globals,
+      fileName: mapFile?.name ?? "current-level",
+      mapImagesFileName: mapImagesFile?.name,
+      levelData: prepareDownloadData(combinedDataResult.value, globals),
+      mapImages: snapshotResult.value,
+    });
+
+    if (serializeResult.isErr()) {
+      toast.error("Package build failed", {
+        description: serializeResult.error.message,
+      });
+      return null;
+    }
+
+    return serializeResult.value.files.map((file) => ({
+      path: file.filename,
+      bytes: file.bytes,
+    }));
+  }, [getCurrentAtomicData, globals, mapFile, mapImages, mapImagesFile]);
+
+  const prepareTestLevel = useCallback((customFiles?: readonly PreviewVfsFile[]) => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
     if (combinedDataResult.isErr()) {
       toast.error("Preview failed", {
@@ -443,6 +571,7 @@ export function IntroPrompt() {
     // the user sees the level selector without any delay.  Serialization (including
     // async LZSS compression for STANDARD games) runs in the background.  The
     // GamePreviewHost shows "Preparing level data…" until the bytes arrive.
+    setPreviewCustomFiles(customFiles);
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
     setTerrainTextureBytes(undefined);
@@ -504,6 +633,106 @@ export function IntroPrompt() {
         setTerrainTextureBytes(null);
       });
   }, [getCurrentAtomicData, globals, mapImages, previewLevelNumber]);
+
+  const handleTestLevel = useCallback(() => {
+    prepareTestLevel(undefined);
+  }, [prepareTestLevel]);
+
+  const handlePreviewWithScripts = useCallback(() => {
+    const previewFilesResult = buildPreviewScriptFiles(scriptWorkspace);
+    if (previewFilesResult.isErr()) {
+      toast.error("Preview failed", {
+        description: previewFilesResult.error,
+      });
+      return;
+    }
+
+    prepareTestLevel(previewFilesResult.value);
+  }, [prepareTestLevel, scriptWorkspace]);
+
+  const handleDownloadScriptPackage = useCallback(() => {
+    const zipResult = buildScriptPackageZip(scriptWorkspace);
+    if (zipResult.isErr()) {
+      toast.error("Script package failed", {
+        description: zipResult.error,
+      });
+      return;
+    }
+
+    downloadArchive(
+      zipResult.value,
+      `scripts-${previewScriptContext.levelKey}.zip`,
+    );
+    toast.success("Downloaded script package");
+  }, [previewScriptContext.levelKey, scriptWorkspace]);
+
+  const handleDownloadExtendedPackage = useCallback(async () => {
+    const originalFiles = await buildOriginalCompatibleFiles();
+    if (!originalFiles) {
+      return;
+    }
+
+    const scriptFilesResult = buildScriptPackageFiles(scriptWorkspace);
+    if (scriptFilesResult.isErr()) {
+      toast.error("Extended package failed", {
+        description: scriptFilesResult.error,
+      });
+      return;
+    }
+
+    const archiveEntries: Record<string, Uint8Array> = {};
+    for (const file of originalFiles) {
+      archiveEntries[`Original/${file.path}`] = file.bytes;
+    }
+    for (const file of scriptFilesResult.value) {
+      archiveEntries[file.path] = file.bytes;
+    }
+
+    downloadArchive(
+      zipSync(archiveEntries, { level: 6 }),
+      `extended-level-${previewScriptContext.levelKey}.zip`,
+    );
+    toast.success("Downloaded extended level package");
+  }, [buildOriginalCompatibleFiles, previewScriptContext.levelKey, scriptWorkspace]);
+
+  const handleUploadScriptPackage = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".zip";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      void file
+        .arrayBuffer()
+        .then((buffer) => {
+          const importResult = importScriptPackageZip(
+            new Uint8Array(buffer),
+            previewScriptContext,
+          );
+          if (importResult.isErr()) {
+            toast.error("Import failed", {
+              description: importResult.error,
+            });
+            return;
+          }
+
+          setScriptWorkspaceStore((currentStore) =>
+            replaceScriptWorkspace(currentStore, importResult.value),
+          );
+          toast.success("Imported script package");
+        })
+        .catch(() => {
+          toast.error("Import failed", {
+            description: "Could not read the selected package file.",
+          });
+        });
+    };
+
+    input.click();
+  }, [previewScriptContext, setScriptWorkspaceStore]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
@@ -604,8 +833,13 @@ export function IntroPrompt() {
           <LevelActionMenu
             canPreviewInGame={Boolean(GAME_PORT_CONFIGS[globals.GAME_TYPE])}
             canSaveToCloud={canSaveToCloud === true}
+            hasScripts={scriptSummary.hasScripts}
             onPreviewInGame={handleTestLevel}
+            onPreviewWithScripts={handlePreviewWithScripts}
             onDownload={handleDownload}
+            onDownloadExtendedPackage={handleDownloadExtendedPackage}
+            onDownloadScriptPackage={handleDownloadScriptPackage}
+            onUploadScriptPackage={handleUploadScriptPackage}
             onSaveToCloud={handleSaveToCloud}
           />
           {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
@@ -618,6 +852,7 @@ export function IntroPrompt() {
               terrainDataBytes={terrainDataBytes}
               terrainRsrcBytes={terrainRsrcBytes}
               terrainTextureBytes={terrainTextureBytes}
+              customFiles={previewCustomFiles}
             />
           )}
         </>
@@ -634,14 +869,20 @@ export function IntroPrompt() {
     mapFile,
     mapImages,
     canSaveToCloud,
+    handleDownloadExtendedPackage,
+    handleDownloadScriptPackage,
     previewLevelNumber,
+    previewCustomFiles,
+    handlePreviewWithScripts,
     setEditorNavbarActions,
     setEditorNavbarLeft,
     setEditorNavbarOpen,
+    scriptSummary.hasScripts,
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
     testDialogOpen,
+    handleUploadScriptPackage,
   ]);
 
   if (tunnelData) {

@@ -12,6 +12,7 @@ import { useImmer, Updater } from "use-immer";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
 import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
+import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
@@ -85,6 +86,7 @@ export function MightyMikeEditorView({
   useEffect(() => {
     if (
       view !== View.items &&
+      view !== View.scripts &&
       view !== View.supertiles &&
       view !== View.tiles
     ) {
@@ -144,6 +146,17 @@ export function MightyMikeEditorView({
             setItemData={setItemDataNotNull}
             headerData={headerData}
             setHeaderData={setHeaderData}
+          />
+        )}
+        {view === View.scripts && (
+          <ScriptsMenu
+            headerData={headerData}
+            itemData={itemData}
+            liquidData={null}
+            fenceData={null}
+            splineData={null}
+            terrainData={terrainData}
+            mapImages={mapImages}
           />
         )}
         {view === View.supertiles && (

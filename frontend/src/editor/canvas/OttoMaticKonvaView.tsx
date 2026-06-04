@@ -37,6 +37,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { View } from "../viewEnum";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 
 export interface StageData {
   scale: number;
@@ -312,6 +313,7 @@ export function OttoMaticKonvaView({
                 setSplineData={setSplineDataNotNull}
               />
             )}
+            <CustomScriptPlacements />
           </>
         )}
         {/* Hover tag overlay — always rendered last so name tags appear above all layers */}

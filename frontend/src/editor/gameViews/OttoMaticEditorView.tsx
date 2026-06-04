@@ -16,6 +16,7 @@ import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
+import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { WaterMenu } from "../subviews/water/WaterMenu";
 import { OttoMaticTilesMenu } from "./OttoMaticTilesMenu";
@@ -171,6 +172,17 @@ export function OttoMaticEditorView({
             setItemData={setItemDataNotNull}
             headerData={headerData}
             setHeaderData={setHeaderData}
+          />
+        )}
+        {view === View.scripts && (
+          <ScriptsMenu
+            headerData={headerData}
+            itemData={itemData}
+            liquidData={liquidData}
+            fenceData={fenceData}
+            splineData={splineData}
+            terrainData={terrainData}
+            mapImages={mapImages}
           />
         )}
         {view === View.splines &&

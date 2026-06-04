@@ -43,6 +43,7 @@ import {
   createTileBrushFromRegion,
 } from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 
 export interface StageData {
   scale: number;
@@ -325,6 +326,8 @@ export function Nanosaur1KonvaView({
             setItemData={setItemDataNotNull}
           />
         )}
+
+        {view !== View.tiles && <CustomScriptPlacements />}
 
         {/* Tile brush preview (stamp mode) */}
         <TileBrushPreviewLayer
