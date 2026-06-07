@@ -17,7 +17,7 @@ interface ScriptCodeModalProps {
   workspace: ScriptWorkspaceState;
   filePath: string;
   fileName: string;
-  language: "typescript" | "javascript";
+  language: "typescript";
   content: string;
   isReadOnly?: boolean;
   onSave?: (newContent: string) => void;

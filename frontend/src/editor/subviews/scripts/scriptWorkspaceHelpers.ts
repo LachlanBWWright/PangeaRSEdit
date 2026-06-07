@@ -152,7 +152,7 @@ export function buildGeneratedCustomObjectId(
 
 export type ScriptSourceDirectory = "root" | "globals" | "bindings" | "objects";
 
-export type ScriptSourceLanguage = "ts" | "js";
+export type ScriptSourceLanguage = "ts";
 
 export const SCRIPT_SOURCE_DIRECTORY_OPTIONS: readonly {
   readonly id: ScriptSourceDirectory;
@@ -169,7 +169,6 @@ export const SCRIPT_SOURCE_LANGUAGE_OPTIONS: readonly {
   readonly label: string;
 }[] = [
   { id: "ts", label: "TypeScript" },
-  { id: "js", label: "JavaScript" },
 ];
 
 export function parseScriptSourceDirectory(
@@ -190,19 +189,14 @@ export function parseScriptSourceDirectory(
 }
 
 export function parseScriptSourceLanguage(
-  value: string,
+  _value: string,
 ): ScriptSourceLanguage {
-  switch (value) {
-    case "js":
-      return "js";
-    case "ts":
-      return "ts";
-    default:
-      return "ts";
-  }
+  return "ts";
 }
 
-function buildScriptSourceDirectoryPath(directory: ScriptSourceDirectory): string {
+function buildScriptSourceDirectoryPath(
+  directory: ScriptSourceDirectory,
+): string {
   switch (directory) {
     case "globals":
       return "Data/Scripts/src/globals";
@@ -240,17 +234,8 @@ export function buildGeneratedScriptSourcePath(
 }
 
 export function buildDefaultScriptSourceContent(
-  language: ScriptSourceLanguage,
+  _language: ScriptSourceLanguage,
 ): string {
-  if (language === "js") {
-    return [
-      'exports.onLevelStart = function(ctx) {',
-      '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: custom JS file");',
-      '};',
-      "",
-    ].join("\n");
-  }
-
   return [
     "export function onLevelStart(ctx: LevelContext): void {",
     '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: custom TS file");',

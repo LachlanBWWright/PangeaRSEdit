@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -61,15 +67,13 @@ export function ScriptCustomObjectsPanel({
       <CardHeader>
         <CardTitle className="text-white">Custom Objects</CardTitle>
         <CardDescription>
-          Create preview-ready scripted object definitions, then place
-          them at the current selection or at the level origin.
+          Create preview-ready scripted object definitions, then place them at
+          the current selection or at the level origin.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="grid gap-2">
-          <Label htmlFor="custom-object-behavior">
-            Object script
-          </Label>
+          <Label htmlFor="custom-object-behavior">Object script</Label>
           <Select
             value={customObjectBehaviorId}
             onValueChange={onCustomObjectBehaviorIdChange}
@@ -198,7 +202,8 @@ export function ScriptCustomObjectsPanel({
                   Selected Canvas Placement
                 </p>
                 <p className="text-xs text-slate-300">
-                  {selectedCustomPlacement.label} ({selectedCustomPlacement.objectId})
+                  {selectedCustomPlacement.label} (
+                  {selectedCustomPlacement.objectId})
                 </p>
               </div>
               <Button

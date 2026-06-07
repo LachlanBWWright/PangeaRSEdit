@@ -49,9 +49,9 @@ export function ScriptNativeBindingsPanel({
       <CardHeader>
         <CardTitle className="text-white">Native Item Bindings</CardTitle>
         <CardDescription>
-          Selection-aware bindings generate predicate-guarded modules so
-          preview can target a chosen terrain item, spline item, or
-          Mighty Mike map item.
+          Selection-aware bindings generate predicate-guarded modules so preview
+          can target a chosen terrain item, spline item, or Mighty Mike map
+          item.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
@@ -75,9 +75,12 @@ export function ScriptNativeBindingsPanel({
         ) : null}
         {selectionTargetKind === null ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-            <p className="font-medium text-white">Attach to current selection</p>
+            <p className="font-medium text-white">
+              Attach to current selection
+            </p>
             <p className="mt-1 text-xs text-slate-400">
-              Select a terrain item, spline item, or Mighty Mike item to attach a script.
+              Select a terrain item, spline item, or Mighty Mike item to attach
+              a script.
             </p>
           </div>
         ) : null}

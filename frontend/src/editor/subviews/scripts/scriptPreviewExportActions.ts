@@ -45,7 +45,10 @@ export interface ScriptPreviewBundle {
   readonly dataBytes: Uint8Array | null;
   readonly rsrcBytes: Uint8Array | null;
   readonly textureBytes: Uint8Array | null;
-  readonly customFiles: readonly { readonly path: string; readonly data: Uint8Array }[];
+  readonly customFiles: readonly {
+    readonly path: string;
+    readonly data: Uint8Array;
+  }[];
   readonly nextState: ScriptWorkspaceState;
 }
 
@@ -150,7 +153,9 @@ export async function buildOriginalCompatibleArchive(
 
   return ok(
     zipSync(
-      Object.fromEntries(filesResult.value.map((file) => [file.path, file.bytes])),
+      Object.fromEntries(
+        filesResult.value.map((file) => [file.path, file.bytes]),
+      ),
       { level: 6 },
     ),
   );

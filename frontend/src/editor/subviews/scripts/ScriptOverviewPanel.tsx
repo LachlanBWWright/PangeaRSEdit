@@ -1,10 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ScriptOverviewSample {
   id: string;
@@ -46,7 +41,9 @@ export function ScriptOverviewPanel({
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                 {label}
               </p>
-              <p className="text-xl font-semibold text-white">{String(value)}</p>
+              <p className="text-xl font-semibold text-white">
+                {String(value)}
+              </p>
             </div>
           ))}
         </CardContent>

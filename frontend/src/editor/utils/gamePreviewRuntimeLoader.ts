@@ -55,6 +55,71 @@ function formatSchemaError(error: ZodError): string {
     .join("; ");
 }
 
+function normalizeScriptPath(path: string): string {
+  return path.replace(/^\/+/, "");
+}
+
+function findScriptBundlePath(
+  customFiles: readonly PreviewVfsFile[] | undefined,
+): string | null {
+  const scriptBundlePath = customFiles?.find(
+    (file) => normalizeScriptPath(file.path) === "Data/Scripts/dist/main.js",
+  )?.path;
+
+  return scriptBundlePath ? normalizeScriptPath(scriptBundlePath) : null;
+}
+
+function configureScriptingExports(
+  module: PreviewRuntimeModule,
+  customFiles: readonly PreviewVfsFile[] | undefined,
+  onError: (text: string) => void,
+): void {
+  const scriptBundlePath = findScriptBundlePath(customFiles);
+  if (!scriptBundlePath) {
+    return;
+  }
+
+  const ccall = module.ccall;
+  if (!ccall) {
+    onError("Emscripten ccall is unavailable");
+    return;
+  }
+
+  const enabledResult = Result.fromThrowable(
+    () => ccall("_PangeaScript_IsEnabled", "number", [], []),
+    (error) => mapErr(error),
+  )();
+  if (enabledResult.isErr()) {
+    onError(enabledResult.error);
+    return;
+  }
+
+  if (!enabledResult.value) {
+    onError("Preview scripting runtime is not enabled for the injected script bundle");
+    return;
+  }
+
+  const startupResult = Result.fromThrowable(
+    () =>
+      ccall("_PangeaScript_SetStartupScript", null, ["string"], [
+        scriptBundlePath,
+      ]),
+    (error) => mapErr(error),
+  )();
+  if (startupResult.isErr()) {
+    onError(startupResult.error);
+    return;
+  }
+
+  const reloadResult = Result.fromThrowable(
+    () => ccall("_PangeaScript_Reload", null, [], []),
+    (error) => mapErr(error),
+  )();
+  if (reloadResult.isErr()) {
+    onError(reloadResult.error);
+  }
+}
+
 function applyNetworkMatchConfig(
   module: PreviewRuntimeModule,
   rawMatchConfig: unknown,
@@ -227,6 +292,8 @@ export function createPreviewModule(
           onError,
         );
       }
+
+      configureScriptingExports(module, customFiles, onError);
 
       if (!normalLaunch) {
         const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);

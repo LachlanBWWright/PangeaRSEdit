@@ -56,7 +56,9 @@ export function ScriptGlobalHooksPanel({
       </CardHeader>
       <CardContent className="grid gap-3">
         {supportedHooks.map((hookId) => {
-          const existing = globalHooks.find((candidate) => candidate.hookId === hookId);
+          const existing = globalHooks.find(
+            (candidate) => candidate.hookId === hookId,
+          );
           const behaviorOptions = getBehaviorOptionsForHook(hookId);
           return (
             <div

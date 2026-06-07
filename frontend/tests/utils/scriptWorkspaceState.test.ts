@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { strToU8, zipSync } from "fflate";
 import { Bugdom2Globals, OttoGlobals } from "@/data/globals/globals";
 import {
   addBehaviorDefinition,
@@ -46,7 +47,11 @@ describe("scriptWorkspaceState", () => {
     const filePaths = previewFilesResult.value.map((file) => file.path);
     expect(filePaths).toContain("/Data/Scripts/config/levels.json");
     expect(filePaths).toContain("/Data/Scripts/dist/main.js");
-    expect(filePaths).toContain("/Data/Scripts/src/globals/otto-humans-jump.ts");
+    expect(filePaths).toContain("/Data/Scripts/types/pangea-runtime.d.ts");
+    expect(filePaths).toContain("/Data/Scripts/types/pangea-games.d.ts");
+    expect(filePaths).toContain(
+      "/Data/Scripts/src/globals/otto-humans-jump.ts",
+    );
 
     const levelsFile = previewFilesResult.value.find(
       (file) => file.path === "/Data/Scripts/config/levels.json",
@@ -80,18 +85,35 @@ describe("scriptWorkspaceState", () => {
     expect(bundleText).toContain("function onObjectFrame");
     expect(bundleText).toContain("ottomatic.human");
     expect(bundleText).toContain("levelTimeSeconds * 8");
+
+    const runtimeTypesFile = previewFilesResult.value.find(
+      (file) => file.path === "/Data/Scripts/types/pangea-runtime.d.ts",
+    );
+    expect(runtimeTypesFile).toBeDefined();
+    if (!runtimeTypesFile) {
+      return;
+    }
+
+    const runtimeTypesText = new TextDecoder().decode(runtimeTypesFile.data);
+    expect(runtimeTypesText).toContain('declare module "pangea"');
+    expect(runtimeTypesText).toContain("declare global");
   });
 
   it("exports terrain bindings into the bindings sidecar", () => {
     const context = createScriptWorkspaceContext(Bugdom2Globals, 2);
     let state = ensureScriptWorkspace({}, context);
 
-    state = applyTerrainBehavior(state, "sample.item-trigger-logger", "Health Item", {
-      itemType: 12,
-      position: { x: 100, y: 0, z: 200 },
-      flags: 0,
-      params: [1, 2, 3, 4],
-    });
+    state = applyTerrainBehavior(
+      state,
+      "sample.item-trigger-logger",
+      "Health Item",
+      {
+        itemType: 12,
+        position: { x: 100, y: 0, z: 200 },
+        flags: 0,
+        params: [1, 2, 3, 4],
+      },
+    );
 
     const packageFilesResult = buildScriptPackageFiles(state);
 
@@ -152,8 +174,29 @@ describe("scriptWorkspaceState", () => {
     }
 
     expect(importedResult.value.customObjects).toHaveLength(1);
-    expect(importedResult.value.levels[context.levelKey]?.customPlacements).toHaveLength(1);
+    expect(
+      importedResult.value.levels[context.levelKey]?.customPlacements,
+    ).toHaveLength(1);
     expect(importedResult.value.sampleId).toBe("hover-beacon");
+  });
+
+  it("rejects JavaScript source files from imported script packages", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const zipBytes = zipSync({
+      "Data/Scripts/src/bad.js": strToU8(
+        "exports.onLevelStart = function() {};",
+      ),
+    });
+
+    const importedResult = importScriptPackageZip(zipBytes, context);
+
+    expect(importedResult.isErr()).toBe(true);
+    if (importedResult.isOk()) {
+      return;
+    }
+    expect(importedResult.error).toContain(
+      "Script source files must be TypeScript",
+    );
   });
 
   it("marks custom-object workspaces as extended", () => {
@@ -206,7 +249,8 @@ describe("scriptWorkspaceState", () => {
       description: "A test behavior",
       tags: ["test"],
       sourceFilePath: "Data/Scripts/src/bindings/test-custom-behavior.ts",
-      sourceTemplate: "export function onTerrainItem(ctx: any): any { return { shouldSpawn: true }; }",
+      sourceTemplate:
+        "export function onTerrainItem(ctx: any): any { return { shouldSpawn: true }; }",
     });
 
     expect(state.behaviorCatalog.length).toBeGreaterThan(0);
@@ -240,15 +284,12 @@ describe("scriptWorkspaceState", () => {
       description: "Test global hook",
       tags: [],
       sourceFilePath: "Data/Scripts/src/globals/test-logger.ts",
-      sourceTemplate: "export function onLevelLoad(ctx: GlobalContext): void { console.log('test'); }",
+      sourceTemplate:
+        "export function onLevelLoad(ctx: GlobalContext): void { console.log('test'); }",
     });
 
     // Then apply it
-    state = applyGlobalBehavior(
-      state,
-      "onLevelLoad",
-      "test-logger",
-    );
+    state = applyGlobalBehavior(state, "onLevelLoad", "test-logger");
 
     const levelState = state.levels[context.levelKey];
     expect(levelState?.globalHooks.length).toBeGreaterThan(0);

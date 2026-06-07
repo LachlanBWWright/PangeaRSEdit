@@ -19,7 +19,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { ScriptHookId, ScriptTagDefinition } from "./scriptWorkspaceState";
 
-type BehaviorTarget = "global" | "terrainItem" | "splineItem" | "mightyMikeItem" | "customObject";
+type BehaviorTarget =
+  | "global"
+  | "terrainItem"
+  | "splineItem"
+  | "mightyMikeItem"
+  | "customObject";
 
 const TARGET_OPTIONS: readonly {
   readonly id: BehaviorTarget;
@@ -48,7 +53,10 @@ function parseBehaviorTarget(value: string): BehaviorTarget {
   return "terrainItem";
 }
 
-const HOOK_OPTIONS: Record<BehaviorTarget, ReadonlyArray<{ id: ScriptHookId; label: string }>> = {
+const HOOK_OPTIONS: Record<
+  BehaviorTarget,
+  ReadonlyArray<{ id: ScriptHookId; label: string }>
+> = {
   global: [
     { id: "onLevelLoad", label: "Level Load" },
     { id: "onLevelStart", label: "Level Start" },
@@ -165,7 +173,7 @@ function generateSourceTemplate(
   label: string,
 ): string {
   const lines: string[] = [];
-  
+
   lines.push(`/**`);
   lines.push(` * ${label}`);
   lines.push(` * Generated script for ${target}`);
@@ -194,7 +202,9 @@ function generateSourceTemplate(
   }
 
   if (hooks.includes("onTerrainItem")) {
-    lines.push(`export function onTerrainItem(ctx: TerrainItemContext): ItemSpawnResult {`);
+    lines.push(
+      `export function onTerrainItem(ctx: TerrainItemContext): ItemSpawnResult {`,
+    );
     lines.push(`  pangea.log.info("Custom terrain item hook fired");`);
     lines.push(`  return { handled: false };`);
     lines.push(`}`);
@@ -202,7 +212,9 @@ function generateSourceTemplate(
   }
 
   if (hooks.includes("onSplineItem")) {
-    lines.push(`export function onSplineItem(ctx: SplineItemContext): ItemSpawnResult {`);
+    lines.push(
+      `export function onSplineItem(ctx: SplineItemContext): ItemSpawnResult {`,
+    );
     lines.push(`  pangea.log.info("Custom spline item hook fired");`);
     lines.push(`  return { handled: false };`);
     lines.push(`}`);
@@ -210,7 +222,9 @@ function generateSourceTemplate(
   }
 
   if (hooks.includes("onMapItem")) {
-    lines.push(`export function onMapItem(ctx: MapItemContext): ItemSpawnResult {`);
+    lines.push(
+      `export function onMapItem(ctx: MapItemContext): ItemSpawnResult {`,
+    );
     lines.push(`  pangea.log.info("Custom map item hook fired");`);
     lines.push(`  return { handled: false };`);
     lines.push(`}`);
@@ -220,12 +234,16 @@ function generateSourceTemplate(
   if (hooks.includes("onObjectFrame")) {
     switch (target) {
       case "customObject":
-        lines.push(`export function onObjectFrame(ctx: ObjectFrameContext): void {`);
+        lines.push(
+          `export function onObjectFrame(ctx: ObjectFrameContext): void {`,
+        );
         lines.push(`  pangea.log.info("Custom object frame hook fired");`);
         lines.push(`}`);
         break;
       default:
-        lines.push(`export function onObjectFrame(ctx: ObjectFrameContext): void {`);
+        lines.push(
+          `export function onObjectFrame(ctx: ObjectFrameContext): void {`,
+        );
         lines.push(`  pangea.log.info("Custom object frame hook fired");`);
         lines.push(`}`);
     }
@@ -298,7 +316,8 @@ export function DefineBehaviorModal({
     setTarget(newTarget);
     const defaultHook = getDefaultHook(newTarget);
     const hookAllowed =
-      defaultHook !== null && (!hookOptions || hookOptions.includes(defaultHook));
+      defaultHook !== null &&
+      (!hookOptions || hookOptions.includes(defaultHook));
     setSelectedHooks(defaultHook === null || !hookAllowed ? [] : [defaultHook]);
   };
 
@@ -364,7 +383,9 @@ export function DefineBehaviorModal({
             <Label htmlFor="target">Target</Label>
             <Select
               value={target}
-              onValueChange={(value) => handleTargetChange(parseBehaviorTarget(value))}
+              onValueChange={(value) =>
+                handleTargetChange(parseBehaviorTarget(value))
+              }
             >
               <SelectTrigger id="target">
                 <SelectValue />
@@ -389,7 +410,10 @@ export function DefineBehaviorModal({
                     checked={selectedHooks.includes(hook.id)}
                     onCheckedChange={() => handleHookToggle(hook.id)}
                   />
-                  <label htmlFor={`hook-${hook.id}`} className="text-sm cursor-pointer">
+                  <label
+                    htmlFor={`hook-${hook.id}`}
+                    className="text-sm cursor-pointer"
+                  >
                     {hook.label}
                   </label>
                 </div>
@@ -443,9 +467,14 @@ export function DefineBehaviorModal({
                       checked={selectedTags.includes(tag.id)}
                       onCheckedChange={() => handleTagToggle(tag.id)}
                     />
-                    <label htmlFor={`tag-${tag.id}`} className="cursor-pointer text-sm">
+                    <label
+                      htmlFor={`tag-${tag.id}`}
+                      className="cursor-pointer text-sm"
+                    >
                       <span className="font-medium">{tag.label}</span>
-                      <span className="block text-xs text-slate-500">{tag.id}</span>
+                      <span className="block text-xs text-slate-500">
+                        {tag.id}
+                      </span>
                       {tag.description.length > 0 ? (
                         <span className="mt-1 block text-xs text-slate-400">
                           {tag.description}

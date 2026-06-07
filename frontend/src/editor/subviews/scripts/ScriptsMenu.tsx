@@ -50,7 +50,6 @@ import {
   getLevelState,
   getSelectedSplineItem,
   type ScriptSourceDirectory,
-  type ScriptSourceLanguage,
 } from "./scriptWorkspaceHelpers";
 import {
   addBehaviorDefinition,
@@ -179,8 +178,6 @@ export function ScriptsMenu({
   const [newFileName, setNewFileName] = useState("helpers");
   const [newFileDirectory, setNewFileDirectory] =
     useState<ScriptSourceDirectory>("root");
-  const [newFileLanguage, setNewFileLanguage] =
-    useState<ScriptSourceLanguage>("ts");
   const [customObjectLabel, setCustomObjectLabel] = useState("Hover Beacon");
   const [placementObjectId, setPlacementObjectId] = useState("");
   const [paramId, setParamId] = useState("editor.speed");
@@ -252,10 +249,10 @@ export function ScriptsMenu({
       buildGeneratedScriptSourcePath(
         newFileName,
         newFileDirectory,
-        newFileLanguage,
+        "ts",
         sourcePathOptions,
       ),
-    [newFileDirectory, newFileLanguage, newFileName, sourcePathOptions],
+    [newFileDirectory, newFileName, sourcePathOptions],
   );
 
   const activeSourceFile = workspace.sourceFiles[workspace.activeFilePath];
@@ -292,7 +289,9 @@ export function ScriptsMenu({
   useEffect(() => {
     if (
       customObjectOptions.length > 0 &&
-      !customObjectOptions.some((objectDefinition) => objectDefinition.id === placementObjectId)
+      !customObjectOptions.some(
+        (objectDefinition) => objectDefinition.id === placementObjectId,
+      )
     ) {
       setPlacementObjectId(customObjectOptions[0]?.id ?? "");
     }
@@ -438,7 +437,10 @@ export function ScriptsMenu({
       return;
     }
 
-    downloadBytes(archiveResult.value, `extended-level-${context.levelKey}.zip`);
+    downloadBytes(
+      archiveResult.value,
+      `extended-level-${context.levelKey}.zip`,
+    );
     toast.success("Downloaded extended level package");
   };
 
@@ -474,12 +476,11 @@ export function ScriptsMenu({
       upsertScriptSourceFile(
         state,
         generatedNewFilePath,
-        buildDefaultScriptSourceContent(newFileLanguage),
+        buildDefaultScriptSourceContent("ts"),
       ),
     );
     setNewFileName("helpers");
     setNewFileDirectory("root");
-    setNewFileLanguage("ts");
     toast.success("Added source file to script project");
   };
 
@@ -600,10 +601,7 @@ export function ScriptsMenu({
           <TabsTrigger value="preview">Preview and Export</TabsTrigger>
         </TabsList>
 
-        <TabsContent
-          value="overview"
-          className="grid gap-3"
-        >
+        <TabsContent value="overview" className="grid gap-3">
           <ScriptOverviewPanel
             globalHooksCount={levelState.globalHooks.length}
             itemBindingsCount={
@@ -693,7 +691,10 @@ export function ScriptsMenu({
                 selectionTargetKind === "mapItem" && selectedItemData
                   ? {
                       itemType: selectedItemData.type,
-                      position: { x: selectedItemData.x, y: selectedItemData.z },
+                      position: {
+                        x: selectedItemData.x,
+                        y: selectedItemData.z,
+                      },
                       params: [
                         selectedItemData.p0,
                         selectedItemData.p1,
@@ -771,8 +772,6 @@ export function ScriptsMenu({
             onNewFileNameChange={setNewFileName}
             newFileDirectory={newFileDirectory}
             onNewFileDirectoryChange={setNewFileDirectory}
-            newFileLanguage={newFileLanguage}
-            onNewFileLanguageChange={setNewFileLanguage}
             generatedNewFilePath={generatedNewFilePath}
             onCreateSourceFile={handleCreateSourceFile}
             orderedSourcePaths={orderedSourcePaths}
@@ -811,10 +810,7 @@ export function ScriptsMenu({
           />
         </TabsContent>
 
-        <TabsContent
-          value="preview"
-          className="grid gap-4"
-        >
+        <TabsContent value="preview" className="grid gap-4">
           <ScriptPreviewExportPanel
             isPreparingPreview={isPreparingPreview}
             onPreview={() => {
@@ -890,7 +886,7 @@ export function ScriptsMenu({
           workspace={workspace}
           filePath={activeCodeFile.path}
           fileName={activeCodeFile.path.replace("Data/Scripts/", "")}
-          language={activeSourceFile?.language ?? "javascript"}
+          language="typescript"
           content={activeCodeFile.content}
           isReadOnly={!activeSourceFile || activeSourceFile.readOnly}
           onSave={

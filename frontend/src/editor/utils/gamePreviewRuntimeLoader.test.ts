@@ -44,6 +44,7 @@ function buildValidMatchConfig(
     trackOrLevel,
     seed: 1337,
     hostPlayerIndex: 0,
+    tagDurationMinutes: 2,
     maxPlayers: 2,
     requiredProtocolVersion: 1,
     requiredRuntimeVersion: "host-authoritative-v2",
@@ -175,6 +176,7 @@ describe("game preview runtime loader", () => {
         trackOrLevel: "10",
         seed: 1337,
         hostPlayerIndex: 0,
+        tagDurationMinutes: 2,
         maxPlayers: 2,
         requiredProtocolVersion: 1,
         requiredRuntimeVersion: "host-authoritative-v2",
@@ -219,6 +221,60 @@ describe("game preview runtime loader", () => {
     expect(onError).toHaveBeenCalledWith(
       expect.stringContaining("Invalid multiplayer match config"),
     );
+  });
+
+  it("configures scripting exports when the preview bundle is injected", () => {
+    const onError = vi.fn();
+    const ccall = vi.fn((ident: string) => {
+      if (ident === "_PangeaScript_IsEnabled") {
+        return 1;
+      }
+      return undefined;
+    });
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      customFiles: [
+        {
+          path: "Data/Scripts/dist/main.js",
+          data: new Uint8Array([1, 2, 3]),
+        },
+      ],
+      onStatus: () => undefined,
+      onError,
+      normalLaunch: true,
+    });
+
+    module.ccall = ccall;
+    module.onRuntimeInitialized?.();
+
+    expect(ccall).toHaveBeenCalledWith(
+      "_PangeaScript_IsEnabled",
+      "number",
+      [],
+      [],
+    );
+    expect(ccall).toHaveBeenCalledWith(
+      "_PangeaScript_SetStartupScript",
+      null,
+      ["string"],
+      ["Data/Scripts/dist/main.js"],
+    );
+    expect(ccall).toHaveBeenCalledWith(
+      "_PangeaScript_Reload",
+      null,
+      [],
+      [],
+    );
+    expect(onError).not.toHaveBeenCalled();
   });
 
   it("reports an error when ccall is unavailable for network launch", () => {

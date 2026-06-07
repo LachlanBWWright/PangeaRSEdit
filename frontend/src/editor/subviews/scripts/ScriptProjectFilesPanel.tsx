@@ -18,11 +18,8 @@ import {
 import { StatusChip } from "./ScriptSharedComponents";
 import {
   parseScriptSourceDirectory,
-  parseScriptSourceLanguage,
   SCRIPT_SOURCE_DIRECTORY_OPTIONS,
-  SCRIPT_SOURCE_LANGUAGE_OPTIONS,
   type ScriptSourceDirectory,
-  type ScriptSourceLanguage,
 } from "./scriptWorkspaceHelpers";
 import type { ScriptSourceFile } from "./scriptWorkspaceState";
 
@@ -31,8 +28,6 @@ interface ScriptProjectFilesPanelProps {
   onNewFileNameChange: (value: string) => void;
   newFileDirectory: ScriptSourceDirectory;
   onNewFileDirectoryChange: (value: ScriptSourceDirectory) => void;
-  newFileLanguage: ScriptSourceLanguage;
-  onNewFileLanguageChange: (value: ScriptSourceLanguage) => void;
   generatedNewFilePath: string;
   onCreateSourceFile: () => void;
   orderedSourcePaths: readonly string[];
@@ -48,8 +43,6 @@ export function ScriptProjectFilesPanel({
   onNewFileNameChange,
   newFileDirectory,
   onNewFileDirectoryChange,
-  newFileLanguage,
-  onNewFileLanguageChange,
   generatedNewFilePath,
   onCreateSourceFile,
   orderedSourcePaths,
@@ -64,15 +57,14 @@ export function ScriptProjectFilesPanel({
       <CardHeader>
         <CardTitle className="text-white">Project Files</CardTitle>
         <CardDescription>
-          Edit source modules, inspect the generated entry script, and
-          compile the bundled runtime output that the browser preview
-          executes.
+          Edit source modules, inspect the generated entry script, and compile
+          the bundled runtime output that the browser preview executes.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="grid gap-2">
           <Label htmlFor="new-script-file">Add file</Label>
-          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_160px_auto]">
+          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_auto]">
             <Input
               id="new-script-file"
               value={newFileName}
@@ -90,23 +82,6 @@ export function ScriptProjectFilesPanel({
               </SelectTrigger>
               <SelectContent>
                 {SCRIPT_SOURCE_DIRECTORY_OPTIONS.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={newFileLanguage}
-              onValueChange={(value) =>
-                onNewFileLanguageChange(parseScriptSourceLanguage(value))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                {SCRIPT_SOURCE_LANGUAGE_OPTIONS.map((option) => (
                   <SelectItem key={option.id} value={option.id}>
                     {option.label}
                   </SelectItem>

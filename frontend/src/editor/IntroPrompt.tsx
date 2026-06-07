@@ -317,7 +317,8 @@ export function IntroPrompt() {
         return currentStore;
       }
 
-      const currentWorkspace = currentStore[getScriptWorkspaceId(currentScriptContext)];
+      const currentWorkspace =
+        currentStore[getScriptWorkspaceId(currentScriptContext)];
       if (!currentWorkspace) {
         return currentStore;
       }
@@ -551,88 +552,95 @@ export function IntroPrompt() {
     }));
   }, [getCurrentAtomicData, globals, mapFile, mapImages, mapImagesFile]);
 
-  const prepareTestLevel = useCallback((customFiles?: readonly PreviewVfsFile[]) => {
-    const combinedDataResult = combineLevelData(getCurrentAtomicData());
-    if (combinedDataResult.isErr()) {
-      toast.error("Preview failed", {
-        description: combinedDataResult.error,
-      });
-      return;
-    }
-    const combinedData = prepareDownloadData(combinedDataResult.value, globals);
-    console.info("[GamePreview] Preparing preview level data", {
-      game: globals.GAME_NAME,
-      dataType: globals.DATA_TYPE,
-      levelNumber: previewLevelNumber,
-      hasMapImages: Boolean(mapImages?.length),
-      mapImagesCount: mapImages?.length ?? 0,
-    });
-    // Reset bytes to undefined (loading sentinel) and open the dialog immediately so
-    // the user sees the level selector without any delay.  Serialization (including
-    // async LZSS compression for STANDARD games) runs in the background.  The
-    // GamePreviewHost shows "Preparing level data…" until the bytes arrive.
-    setPreviewCustomFiles(customFiles);
-    setTerrainDataBytes(undefined);
-    setTerrainRsrcBytes(undefined);
-    setTerrainTextureBytes(undefined);
-    setTestDialogOpen(true);
-    const previewToastId = "prepare-preview-level-data";
-    void buildPreviewTerrainBlobs(
-      combinedData,
-      globals,
-      mapImages,
-      ({ message, completed, total }) => {
-        const description =
-          completed && total ? `${message} (${completed}/${total})` : message;
-        toast.loading("Preparing level data...", {
-          id: previewToastId,
-          description,
+  const prepareTestLevel = useCallback(
+    (customFiles?: readonly PreviewVfsFile[]) => {
+      const combinedDataResult = combineLevelData(getCurrentAtomicData());
+      if (combinedDataResult.isErr()) {
+        toast.error("Preview failed", {
+          description: combinedDataResult.error,
         });
-      },
-    )
-      .then((blobs) => {
-        if (!blobs) {
-          console.error(
-            "[GamePreview] Preview serialization returned no bytes",
-            {
-              game: globals.GAME_NAME,
-              dataType: globals.DATA_TYPE,
-            },
-          );
+        return;
+      }
+      const combinedData = prepareDownloadData(
+        combinedDataResult.value,
+        globals,
+      );
+      console.info("[GamePreview] Preparing preview level data", {
+        game: globals.GAME_NAME,
+        dataType: globals.DATA_TYPE,
+        levelNumber: previewLevelNumber,
+        hasMapImages: Boolean(mapImages?.length),
+        mapImagesCount: mapImages?.length ?? 0,
+      });
+      // Reset bytes to undefined (loading sentinel) and open the dialog immediately so
+      // the user sees the level selector without any delay.  Serialization (including
+      // async LZSS compression for STANDARD games) runs in the background.  The
+      // GamePreviewHost shows "Preparing level data…" until the bytes arrive.
+      setPreviewCustomFiles(customFiles);
+      setTerrainDataBytes(undefined);
+      setTerrainRsrcBytes(undefined);
+      setTerrainTextureBytes(undefined);
+      setTestDialogOpen(true);
+      const previewToastId = "prepare-preview-level-data";
+      void buildPreviewTerrainBlobs(
+        combinedData,
+        globals,
+        mapImages,
+        ({ message, completed, total }) => {
+          const description =
+            completed && total ? `${message} (${completed}/${total})` : message;
+          toast.loading("Preparing level data...", {
+            id: previewToastId,
+            description,
+          });
+        },
+      )
+        .then((blobs) => {
+          if (!blobs) {
+            console.error(
+              "[GamePreview] Preview serialization returned no bytes",
+              {
+                game: globals.GAME_NAME,
+                dataType: globals.DATA_TYPE,
+              },
+            );
+            toast.error("Preview failed", {
+              id: previewToastId,
+              description:
+                "Could not serialize the selected level for preview.",
+            });
+            setTerrainDataBytes(null);
+            setTerrainRsrcBytes(null);
+            setTerrainTextureBytes(null);
+            return;
+          }
+          console.info("[GamePreview] Preview level data serialized", {
+            game: globals.GAME_NAME,
+            dataBytes: blobs.dataBytes?.byteLength ?? null,
+            rsrcBytes: blobs.rsrcBytes?.byteLength ?? null,
+            textureBytes: blobs.textureBytes?.byteLength ?? null,
+          });
+          setTerrainDataBytes(blobs.dataBytes);
+          setTerrainRsrcBytes(blobs.rsrcBytes);
+          setTerrainTextureBytes(blobs.textureBytes);
+          toast.dismiss(previewToastId);
+        })
+        .catch((error: unknown) => {
+          console.error("[GamePreview] Preview serialization failed", error);
+          const parseResult = errorSchema.safeParse(error);
           toast.error("Preview failed", {
             id: previewToastId,
-            description: "Could not serialize the selected level for preview.",
+            description: parseResult.success
+              ? parseResult.data
+              : "Could not serialize the selected level for preview.",
           });
           setTerrainDataBytes(null);
           setTerrainRsrcBytes(null);
           setTerrainTextureBytes(null);
-          return;
-        }
-        console.info("[GamePreview] Preview level data serialized", {
-          game: globals.GAME_NAME,
-          dataBytes: blobs.dataBytes?.byteLength ?? null,
-          rsrcBytes: blobs.rsrcBytes?.byteLength ?? null,
-          textureBytes: blobs.textureBytes?.byteLength ?? null,
         });
-        setTerrainDataBytes(blobs.dataBytes);
-        setTerrainRsrcBytes(blobs.rsrcBytes);
-        setTerrainTextureBytes(blobs.textureBytes);
-        toast.dismiss(previewToastId);
-      })
-      .catch((error: unknown) => {
-        console.error("[GamePreview] Preview serialization failed", error);
-        const parseResult = errorSchema.safeParse(error);
-        toast.error("Preview failed", {
-          id: previewToastId,
-          description: parseResult.success
-            ? parseResult.data
-            : "Could not serialize the selected level for preview.",
-        });
-        setTerrainDataBytes(null);
-        setTerrainRsrcBytes(null);
-        setTerrainTextureBytes(null);
-      });
-  }, [getCurrentAtomicData, globals, mapImages, previewLevelNumber]);
+    },
+    [getCurrentAtomicData, globals, mapImages, previewLevelNumber],
+  );
 
   const handleTestLevel = useCallback(() => {
     prepareTestLevel(undefined);
@@ -693,7 +701,11 @@ export function IntroPrompt() {
       `extended-level-${previewScriptContext.levelKey}.zip`,
     );
     toast.success("Downloaded extended level package");
-  }, [buildOriginalCompatibleFiles, previewScriptContext.levelKey, scriptWorkspace]);
+  }, [
+    buildOriginalCompatibleFiles,
+    previewScriptContext.levelKey,
+    scriptWorkspace,
+  ]);
 
   const handleUploadScriptPackage = useCallback(() => {
     const input = document.createElement("input");

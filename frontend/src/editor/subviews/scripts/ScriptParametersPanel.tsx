@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,8 +53,8 @@ export function ScriptParametersPanel({
       <CardHeader>
         <CardTitle className="text-white">Parameter Registry</CardTitle>
         <CardDescription>
-          Typed parameter metadata stays out of raw script code and
-          exports with the extended package.
+          Typed parameter metadata stays out of raw script code and exports with
+          the extended package.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
@@ -75,7 +81,9 @@ export function ScriptParametersPanel({
             <Label htmlFor="param-type">Type</Label>
             <Select
               value={paramType}
-              onValueChange={(value) => onParamTypeChange(parseParamType(value))}
+              onValueChange={(value) =>
+                onParamTypeChange(parseParamType(value))
+              }
             >
               <SelectTrigger id="param-type">
                 <SelectValue />
@@ -92,7 +100,9 @@ export function ScriptParametersPanel({
             <Input
               id="param-default"
               value={paramDefaultValue}
-              onChange={(event) => onParamDefaultValueChange(event.target.value)}
+              onChange={(event) =>
+                onParamDefaultValueChange(event.target.value)
+              }
             />
           </div>
         </div>

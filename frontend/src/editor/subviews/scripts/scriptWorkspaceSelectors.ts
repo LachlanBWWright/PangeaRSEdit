@@ -85,7 +85,9 @@ export function getScriptBehaviorOptions(
 export function getScriptSourcePathOptions(
   state: ScriptWorkspaceState,
 ): readonly string[] {
-  const orderedPaths = state.moduleOrder.filter((path) => state.sourceFiles[path]);
+  const orderedPaths = state.moduleOrder.filter(
+    (path) => state.sourceFiles[path],
+  );
   const extraPaths = Object.keys(state.sourceFiles).filter(
     (path) => !orderedPaths.includes(path),
   );

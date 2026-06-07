@@ -35,8 +35,8 @@ export function ScriptCodeWorkspacePanel({
           <div>
             <CardTitle className="text-white">Code</CardTitle>
             <CardDescription>
-              Select a file to edit it in a full modal, then compile to
-              update diagnostics and runtime output.
+              Select a file to edit it in a full modal, then compile to update
+              diagnostics and runtime output.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -86,9 +86,7 @@ export function ScriptCodeWorkspacePanel({
                   <StatusChip
                     label={String(diagnostic.code)}
                     tone={
-                      diagnostic.severity === "error"
-                        ? "danger"
-                        : "warning"
+                      diagnostic.severity === "error" ? "danger" : "warning"
                     }
                   />
                 </div>
@@ -96,7 +94,8 @@ export function ScriptCodeWorkspacePanel({
                   {diagnostic.message}
                 </p>
                 <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  Line {String(diagnostic.line)}, Column {String(diagnostic.column)}
+                  Line {String(diagnostic.line)}, Column{" "}
+                  {String(diagnostic.column)}
                 </p>
               </div>
             ))

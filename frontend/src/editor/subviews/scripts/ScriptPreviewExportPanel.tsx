@@ -40,30 +40,22 @@ export function ScriptPreviewExportPanel({
             <CardTitle className="text-white">Preview and Export</CardTitle>
             <CardDescription>
               Preview injects the generated bundle and sidecars into the
-              existing browser runtime path. Original-compatible exports
-              omit scripts conservatively; extended packages include both
-              the native level files and Data/Scripts payload.
+              existing browser runtime path. Original-compatible exports omit
+              scripts conservatively; extended packages include both the native
+              level files and Data/Scripts payload.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             <Button onClick={onPreview} disabled={isPreparingPreview}>
-              {isPreparingPreview
-                ? "Preparing Preview..."
-                : "Preview in Game"}
+              {isPreparingPreview ? "Preparing Preview..." : "Preview in Game"}
             </Button>
             <Button variant="outline" onClick={onCompile}>
               Compile Bundle
             </Button>
-            <Button
-              variant="outline"
-              onClick={onDownloadExtendedPackage}
-            >
+            <Button variant="outline" onClick={onDownloadExtendedPackage}>
               Download Extended Package
             </Button>
-            <Button
-              variant="outline"
-              onClick={onDownloadOriginalCompatible}
-            >
+            <Button variant="outline" onClick={onDownloadOriginalCompatible}>
               Download Original-Compatible Level
             </Button>
             <Button variant="outline" onClick={onDownloadScriptPackage}>
@@ -84,9 +76,7 @@ export function ScriptPreviewExportPanel({
           </CardHeader>
           <CardContent className="grid gap-2">
             {statusLog.length === 0 ? (
-              <p className="text-xs text-slate-400">
-                No recent log entries.
-              </p>
+              <p className="text-xs text-slate-400">No recent log entries.</p>
             ) : (
               statusLog.map((line, index) => (
                 <div
@@ -106,8 +96,8 @@ export function ScriptPreviewExportPanel({
           <CardHeader>
             <CardTitle className="text-white">Package Contents</CardTitle>
             <CardDescription>
-              These are the editor-owned files that the Scripts workspace
-              writes into Data/Scripts.
+              These are the editor-owned files that the Scripts workspace writes
+              into Data/Scripts.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
@@ -135,9 +125,7 @@ export function ScriptPreviewExportPanel({
 
         <Card className="border-slate-800 bg-slate-950/70">
           <CardHeader>
-            <CardTitle className="text-white">
-              Compatibility Notes
-            </CardTitle>
+            <CardTitle className="text-white">Compatibility Notes</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-xs text-slate-300">
             <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
@@ -152,8 +140,8 @@ export function ScriptPreviewExportPanel({
                 Original-Compatible Export
               </p>
               <p className="mt-1">
-                Script sidecars are omitted intentionally so the native
-                level files remain conservative and backwards-compatible.
+                Script sidecars are omitted intentionally so the native level
+                files remain conservative and backwards-compatible.
               </p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
