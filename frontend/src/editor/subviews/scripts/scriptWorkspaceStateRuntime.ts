@@ -4,6 +4,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import ts from "typescript";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntimeTypes";
+import { validateScriptPackage } from "./scriptPackageValidator";
 
 import {
   BUNDLED_RUNTIME_PATH,
@@ -224,46 +225,202 @@ function createTag(
 function getGameTags(gameId: string): readonly ScriptTagDefinition[] {
   if (gameId === "OttoMatic-Android") {
     return [
-      createTag(
-        "ottomatic.human",
-        "Otto Human",
-        "Native Otto humans and scientists.",
-        ["global", "customObject"],
-        "game",
-      ),
-      createTag(
-        "ottomatic.human.scientist",
-        "Scientist",
-        "Scientist rescue targets.",
-        ["global", "customObject"],
-        "game",
-      ),
-      createTag(
-        "ottomatic.enemy.robot",
-        "Robot",
-        "Otto combat robots.",
-        ["global"],
-        "game",
-      ),
+      createTag("ottomatic.player", "Otto Player", "Otto robot player character.", ["global", "customObject"], "game"),
+      createTag("ottomatic.human", "Otto Human", "Rescue humans.", ["global", "customObject"], "game"),
+      createTag("ottomatic.human.farmer", "Farmer", "Farmer rescue targets.", ["global", "customObject"], "game"),
+      createTag("ottomatic.human.beewoman", "Beewoman", "Beewoman rescue targets.", ["global", "customObject"], "game"),
+      createTag("ottomatic.human.scientist", "Scientist", "Scientist rescue targets.", ["global", "customObject"], "game"),
+      createTag("ottomatic.human.skirtlady", "Skirtlady", "Skirtlady rescue targets.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.brainalien", "Brain Alien", "Brain Alien enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.onion", "Onion Alien", "Onion Alien enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.corn", "Corn Alien", "Corn Alien enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.tomato", "Tomato Alien", "Tomato Alien enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.blob", "Blob", "Giant Blob enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.slimetree", "Slime Tree", "Slime Tree hazard.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.squooshy", "Squooshy", "Squooshy alien.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.flamester", "Flamester", "Fire planet Flamester.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.giantlizard", "Giant Lizard", "Giant Lizard monster.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.flytrap", "Fly Trap", "Fly Trap plant.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.mantis", "Mantis", "Giant Mantis enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.turtle", "Giant Turtle", "Turtle boss or enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.podworm", "Pod Worm", "Pod Worm alien.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.mutant", "Mutant", "Mutant humanoid.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.mutantrobot", "Mutant Robot", "Mutant Robot enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.pitcherplant", "Pitcher Plant", "Pitcher Plant boss.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.clown", "Clown", "Space Clown enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.clownfish", "Clown Fish", "Space Clown Fish.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.strongman", "Strongman", "Strongman clown enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.icecube", "Ice Cube", "Ice planet Ice Cube.", ["global", "customObject"], "game"),
+      createTag("ottomatic.enemy.elitebrainalien", "Elite Brain Alien", "Elite Brain Alien enemy.", ["global", "customObject"], "game"),
+      createTag("ottomatic.powerupPod", "Powerup Pod", "Otto health and weapon pods.", ["global", "terrainItem"], "game"),
+      createTag("ottomatic.checkpoint", "Level Checkpoint", "Otto checkpoints.", ["global", "terrainItem"], "game"),
+      createTag("ottomatic.teleporter", "Teleporter Trigger", "Level exit/remap teleporter.", ["global", "terrainItem"], "game"),
+    ];
+  }
+
+  if (gameId === "Bugdom-android") {
+    return [
+      createTag("bugdom.player", "Rollie McFly", "Rollie player character.", ["global", "customObject"], "game"),
+      createTag("bugdom.clover", "Clover Key", "Clover keys/pickups.", ["global", "terrainItem"], "game"),
+      createTag("bugdom.nut", "Nut Pickup", "Nut health/rescue pickup.", ["global", "terrainItem"], "game"),
+      createTag("bugdom.checkpoint", "Checkpoint", "Level checkpoints.", ["global", "terrainItem"], "game"),
+      createTag("bugdom.buddy.ladybug", "Ladybug Buddy", "Ladybugs in cages to rescue.", ["global", "customObject"], "game"),
+      createTag("bugdom.buddy", "Rescue Buddy", "Helper bugs or friends.", ["global", "customObject"], "game"),
+      createTag("bugdom.ride.waterbug", "Waterbug Ride", "Rideable waterbug.", ["global", "customObject"], "game"),
+      createTag("bugdom.ride.dragonfly", "Dragonfly Ride", "Rideable dragonfly.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.ant", "Ant Soldier", "Ant soldier enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.spider", "Spider", "Spider enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.bee", "Flying Bee", "Flying bee enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.workerbee", "Worker Bee", "Worker bee enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.queenbee", "Queen Bee", "Queen Bee boss.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.kingant", "King Ant", "King Ant boss.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.fireant", "Fire Ant", "Fire ant enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.roach", "Roach", "Roach enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.mosquito", "Mosquito", "Mosquito enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.skippy", "Water Skipper", "Water skipper enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.larva", "Larva", "Larva enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.slug", "Slug", "Slug enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.fish", "Pond Fish", "Pond fish hazard/enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.caterpillar", "Caterpillar", "Caterpillar enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.boxerfly", "Boxer Fly", "Boxer Fly enemies.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.bat", "Bat Enemy", "Bat hazard.", ["global", "customObject"], "game"),
+      createTag("bugdom.enemy.foot", "Giant Foot", "Giant Foot hazard.", ["global", "customObject"], "game"),
     ];
   }
 
   if (gameId === "Bugdom2-Android") {
     return [
-      createTag(
-        "bugdom2.powerup",
-        "Bugdom 2 Powerup",
-        "Native Bugdom 2 pickups.",
-        ["terrainItem", "global"],
-        "game",
-      ),
-      createTag(
-        "bugdom2.collectible",
-        "Collectible",
-        "Map collectibles and rewards.",
-        ["terrainItem", "global"],
-        "game",
-      ),
+      createTag("bugdom2.player", "Skip Player", "Skip grasshopper player.", ["global", "customObject"], "game"),
+      createTag("bugdom2.collectible", "Collectible", "Collectible items (clovers, keys, batteries).", ["global"], "game"),
+      createTag("bugdom2.dcell", "D-Cell Battery", "Energy battery pickups.", ["global", "terrainItem"], "game"),
+      createTag("bugdom2.gliderPart", "Glider Part", "Level glider components.", ["global", "terrainItem"], "game"),
+      createTag("bugdom2.powerup", "Powerup Pod", "Native Bugdom 2 pickups.", ["global", "terrainItem"], "game"),
+      createTag("bugdom2.checkpoint", "Checkpoint", "Level checkpoints.", ["global", "customObject", "terrainItem"], "game"),
+      createTag("bugdom2.hobobag", "Hobo Bag", "Hobo bag collectible.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.snail", "Snail Enemy", "Snail enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.gnome", "Gnome Enemy", "Gnome enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.housefly", "House Fly", "House Fly enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.evilplant", "Evil Plant", "Evil Plant hazard.", ["global", "customObject"], "game"),
+      createTag("bugdom2.buddy.chipmunk", "Chipmunk Buddy", "Friendly chipmunk.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.snake", "Snake Enemy", "Snake enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.buddy.buddybug", "Buddy Bug", "Buddy Bug helper.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.flea", "Flea Enemy", "Flea enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.tick", "Tick Enemy", "Tick enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.mousetrap", "Mousetrap", "Mousetrap hazard.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.toysoldier", "Toy Soldier", "Toy Soldier enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.otto", "Otto Toy", "Toy Otto robot enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.bumblebee", "Bumblebee", "Bumblebee enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.ride.dragonfly", "Dragonfly Ride", "Dragonfly ride.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.frog", "Frog Enemy", "Frog enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.moth", "Moth Enemy", "Moth enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.computerbug", "Computer Bug", "Computer bug enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.roach", "Roach Enemy", "Roach enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.ant", "Ant Enemy", "Ant enemy.", ["global", "customObject"], "game"),
+      createTag("bugdom2.enemy.fish", "Pond Fish", "Pond Fish enemy.", ["global", "customObject"], "game"),
+    ];
+  }
+
+  if (gameId === "CroMagRally-Android") {
+    return [
+      createTag("cromag.player", "Player Kart", "Racer player kart.", ["global", "customObject"], "game"),
+      createTag("cromag.pow", "Powerup Item", "Weapon/powerup trigger items.", ["global", "terrainItem"], "game"),
+      createTag("cromag.token", "Rally Token", "Scoring tokens.", ["global", "terrainItem"], "game"),
+      createTag("cromag.enemy.yeti", "Yeti Racer", "Yeti racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.beetle", "Beetle Racer", "Beetle racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.camel", "Camel Racer", "Camel racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.catapult", "Catapult Racer", "Catapult racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.shark", "Shark Racer", "Shark racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.dragon", "Dragon Racer", "Dragon racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.mummy", "Mummy Racer", "Mummy racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.troll", "Troll Racer", "Troll racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.druid", "Druid Racer", "Druid racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.polarbear", "Polar Bear Racer", "Polar bear racer kart.", ["global", "customObject"], "game"),
+      createTag("cromag.enemy.viking", "Viking Racer", "Viking racer kart.", ["global", "customObject"], "game"),
+    ];
+  }
+
+  if (gameId === "Nanosaur-android") {
+    return [
+      createTag("nanosaur.player", "Nanosaur Player", "Deinonychus player character.", ["global", "customObject"], "game"),
+      createTag("nanosaur.egg", "Nanosaur Egg", "Dinosaur rescue egg.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur.crystal", "Energy Crystal", "Crystal pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur.powerup", "Weapon Powerup", "Weapon or shield powerup.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur.enemy.pterodactyl", "Pterodactyl", "Pterodactyl enemy.", ["global", "customObject"], "game"),
+      createTag("nanosaur.enemy.trex", "T-Rex", "T-Rex boss.", ["global", "customObject"], "game"),
+      createTag("nanosaur.enemy.stegosaurus", "Stegosaurus", "Stegosaurus enemy.", ["global", "customObject"], "game"),
+      createTag("nanosaur.enemy.raptor", "Raptor", "Raptor enemy.", ["global", "customObject"], "game"),
+      createTag("nanosaur.enemy.triceratops", "Triceratops", "Triceratops enemy.", ["global", "customObject"], "game"),
+      createTag("nanosaur.enemy.spitter", "Spitter Dilophosaurus", "Spitter enemy.", ["global", "customObject"], "game"),
+    ];
+  }
+
+  if (gameId === "Nanosaur2-Android") {
+    return [
+      createTag("nanosaur2.player", "Flying Player", "Pterodactyl player character.", ["global", "customObject"], "game"),
+      createTag("nanosaur2.egg", "Nanosaur 2 Egg", "Eggs to capture/protect.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.weaponPow", "Weapon Powerup", "Laser/fire weapon powerups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.healthPow", "Health Powerup", "Dinosaur health pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.wormhole", "Wormhole", "Wormhole gate.", ["global", "customObject"], "game"),
+      createTag("nanosaur2.bonuswormhole", "Bonus Wormhole", "Bonus wormhole gate.", ["global", "customObject"], "game"),
+      createTag("nanosaur2.enemy.raptor", "Raptor Robot", "Raptor robot enemy.", ["global", "customObject"], "game"),
+      createTag("nanosaur2.enemy.brachiosaurus", "Brachiosaurus", "Brachiosaurus robot.", ["global", "customObject"], "game"),
+      createTag("nanosaur2.enemy.worm", "Giant Worm", "Giant worm enemy.", ["global", "customObject"], "game"),
+      createTag("nanosaur2.enemy.pterodactyl", "Enemy Pterodactyl", "Enemy pterodactyl robot.", ["global", "customObject"], "game"),
+    ];
+  }
+
+  if (gameId === "BillyFrontier-Android") {
+    return [
+      createTag("billy.player", "Billy Player", "Billy Frontier player.", ["global", "customObject"], "game"),
+      createTag("billy.peso", "Peso Coins", "Peso score pickup.", ["global", "terrainItem"], "game"),
+      createTag("billy.freeLifePow", "Free Life Powerup", "Extra life pickup.", ["global", "terrainItem"], "game"),
+      createTag("billy.boost", "Stampede Boost", "Stampede speed boost.", ["global", "terrainItem"], "game"),
+      createTag("billy.enemy.bandito", "Bandito Alien", "Bandito outlaw enemy.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.rygar", "Rygar Beast", "Rygar beast enemy.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.shorty", "Shorty Outlaw", "Shorty outlaw enemy.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.kangacow", "Kanga Cow", "Stampede Kanga Cow.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.kangarex", "Kanga Rex", "Stampede Kanga Rex.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.walker", "Walker Robot", "Walker robot enemy.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.tremoralien", "Tremor Alien", "Tremor Alien enemy.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.tremorghost", "Tremor Ghost", "Tremor Ghost enemy.", ["global", "customObject"], "game"),
+      createTag("billy.enemy.frogman", "Frogman Outlaw", "Frogman outlaw enemy.", ["global", "customObject"], "game"),
+    ];
+  }
+
+  if (gameId === "MightyMike-Android") {
+    return [
+      createTag("mightymike.player", "Mike Player", "Mighty Mike player character.", ["global", "customObject"], "game"),
+      createTag("mightymike.bunny", "Bunny Objective", "Bunny rescue target.", ["global", "customObject", "terrainItem"], "game"),
+      createTag("mightymike.healthPow", "Health Powerup", "Mike health box.", ["global", "customObject", "terrainItem"], "game"),
+      createTag("mightymike.key", "Level Key", "Key card box.", ["global", "customObject", "terrainItem"], "game"),
+      createTag("mightymike.enemy.8ball", "8-Ball Toy", "8-Ball enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.battery", "Bad Battery", "Bad Battery enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.robot", "Robot Toy", "Robot Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.slinky", "Slinky Toy", "Slinky Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.top", "Spinning Top", "Spinning Top enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.doggy", "Doggy Toy", "Doggy Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.caramel", "Caramel Monster", "Caramel Monster enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.chocbunny", "Chocolate Bunny", "Chocolate Bunny enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.gingerbread", "Gingerbread Man", "Gingerbread Man enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.gummybear", "Gummy Bear", "Gummy Bear enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.lemondrop", "Lemon Drop", "Lemon Drop enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.mint", "Mint Enemy", "Mint enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.clown", "Clown Toy", "Clown Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.clowncar", "Clown Car", "Clown Car enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.flowerclown", "Flower Clown", "Flower Clown enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.magichat", "Magic Hat Bunny", "Magic Hat Bunny enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.bbwolf", "Big Bad Wolf", "Big Bad Wolf enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.dragon", "Dragon Toy", "Dragon Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.giant", "Giant Toy", "Giant Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.soldier", "Toy Soldier", "Toy Soldier enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.spider", "Toy Spider", "Toy Spider enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.witch", "Witch Toy", "Witch Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.babydino", "Baby Dino", "Baby Dino enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.caveman", "Caveman Toy", "Caveman Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.rex", "T-Rex Toy", "T-Rex Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.triceratops", "Triceratops Toy", "Triceratops Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.turtle", "Turtle Toy", "Turtle Toy enemy.", ["global", "customObject"], "game"),
+      createTag("mightymike.enemy.dinoegg", "Dino Egg Toy", "Dino Egg Toy enemy.", ["global", "customObject"], "game"),
     ];
   }
 
@@ -400,6 +557,258 @@ function buildBehaviorCatalog(
           "    positionOffset: {",
           "      x: 0,",
           "      y: Math.sin(ctx.levelTimeSeconds * 8) * getBobHeight(ctx.tags),",
+          "      z: 0,",
+          "    },",
+          "  };",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
+  }
+
+  if (gameId === "Bugdom-android") {
+    return [
+      ...sharedBehaviors,
+      {
+        id: "bugdom.bouncing-friends",
+        label: "Bugdom Bouncing Friends",
+        description: "Applies a bobbing offset to Bugdom ladybugs or helper buddies.",
+        category: "Samples",
+        targetKinds: ["global"],
+        supportedHooks: ["onObjectFrame"],
+        sourceFilePath: "Data/Scripts/src/globals/bugdom-bouncing-friends.ts",
+        previewSupport: "preview-ready",
+        defaultTags: ["bugdom.buddy"],
+        contributedTags: [],
+        template: [
+          'const BUDDY_TAG = "bugdom.buddy";',
+          "",
+          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
+          "  if (!ctx.tags.includes(BUDDY_TAG)) {",
+          "    return;",
+          "  }",
+          "",
+          "  return {",
+          "    positionOffset: {",
+          "      x: 0,",
+          "      y: Math.sin(ctx.levelTimeSeconds * 6) * 20,",
+          "      z: 0,",
+          "    },",
+          "  };",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
+  }
+
+  if (gameId === "Bugdom2-Android") {
+    return [
+      ...sharedBehaviors,
+      {
+        id: "bugdom2.clover-bob",
+        label: "Bugdom 2 Clover Bob",
+        description: "Applies a bobbing offset to Bugdom 2 collectibles or clover.",
+        category: "Samples",
+        targetKinds: ["global"],
+        supportedHooks: ["onObjectFrame"],
+        sourceFilePath: "Data/Scripts/src/globals/bugdom2-clover-bob.ts",
+        previewSupport: "preview-ready",
+        defaultTags: ["bugdom2.collectible"],
+        contributedTags: [],
+        template: [
+          'const CLOVER_TAG = "bugdom2.collectible";',
+          "",
+          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
+          "  if (!ctx.tags.includes(CLOVER_TAG)) {",
+          "    return;",
+          "  }",
+          "",
+          "  return {",
+          "    positionOffset: {",
+          "      x: 0,",
+          "      y: Math.sin(ctx.levelTimeSeconds * 5) * 15,",
+          "      z: 0,",
+          "    },",
+          "  };",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
+  }
+
+  if (gameId === "CroMagRally-Android") {
+    return [
+      ...sharedBehaviors,
+      {
+        id: "cromag.bouncing-pickups",
+        label: "Cro-Mag Bouncing Pickups",
+        description: "Bobs bone pick-ups or arrow elements in Cro-Mag Rally.",
+        category: "Samples",
+        targetKinds: ["global"],
+        supportedHooks: ["onObjectFrame"],
+        sourceFilePath: "Data/Scripts/src/globals/cromag-bouncing-pickups.ts",
+        previewSupport: "preview-ready",
+        defaultTags: ["cromag.pickup"],
+        contributedTags: [],
+        template: [
+          'const PICKUP_TAG = "cromag.pickup";',
+          "",
+          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
+          "  if (!ctx.tags.includes(PICKUP_TAG)) {",
+          "    return;",
+          "  }",
+          "",
+          "  return {",
+          "    positionOffset: {",
+          "      x: 0,",
+          "      y: Math.sin(ctx.levelTimeSeconds * 7) * 25,",
+          "      z: 0,",
+          "    },",
+          "  };",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
+  }
+
+  if (gameId === "Nanosaur-android") {
+    return [
+      ...sharedBehaviors,
+      {
+        id: "nanosaur.hover-eggs",
+        label: "Nanosaur Hover Eggs",
+        description: "Causes Nanosaur eggs to bob/hover in place.",
+        category: "Samples",
+        targetKinds: ["global"],
+        supportedHooks: ["onObjectFrame"],
+        sourceFilePath: "Data/Scripts/src/globals/nanosaur-hover-eggs.ts",
+        previewSupport: "preview-ready",
+        defaultTags: ["nanosaur.egg"],
+        contributedTags: [],
+        template: [
+          'const EGG_TAG = "nanosaur.egg";',
+          "",
+          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
+          "  if (!ctx.tags.includes(EGG_TAG)) {",
+          "    return;",
+          "  }",
+          "",
+          "  return {",
+          "    positionOffset: {",
+          "      x: 0,",
+          "      y: Math.sin(ctx.levelTimeSeconds * 4) * 12,",
+          "      z: 0,",
+          "    },",
+          "  };",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
+  }
+
+  if (gameId === "Nanosaur2-Android") {
+    return [
+      ...sharedBehaviors,
+      {
+        id: "nanosaur2.powerup-spin",
+        label: "Nanosaur 2 Powerup Spin",
+        description: "Bobs or offsets powerups and egg nests in Nanosaur 2.",
+        category: "Samples",
+        targetKinds: ["global"],
+        supportedHooks: ["onObjectFrame"],
+        sourceFilePath: "Data/Scripts/src/globals/nanosaur2-powerup-spin.ts",
+        previewSupport: "preview-ready",
+        defaultTags: ["nanosaur2.powerup"],
+        contributedTags: [],
+        template: [
+          'const POWERUP_TAG = "nanosaur2.powerup";',
+          "",
+          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
+          "  if (!ctx.tags.includes(POWERUP_TAG)) {",
+          "    return;",
+          "  }",
+          "",
+          "  return {",
+          "    positionOffset: {",
+          "      x: 0,",
+          "      y: Math.sin(ctx.levelTimeSeconds * 6) * 18,",
+          "      z: 0,",
+          "    },",
+          "  };",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
+  }
+
+  if (gameId === "BillyFrontier-Android") {
+    return [
+      ...sharedBehaviors,
+      {
+        id: "billy.cacti-bounce",
+        label: "Billy Cacti Bounce",
+        description: "Bobs cacti or target elements in Billy Frontier.",
+        category: "Samples",
+        targetKinds: ["global"],
+        supportedHooks: ["onObjectFrame"],
+        sourceFilePath: "Data/Scripts/src/globals/billy-cacti-bounce.ts",
+        previewSupport: "preview-ready",
+        defaultTags: ["billy.cacti"],
+        contributedTags: [],
+        template: [
+          'const CACTI_TAG = "billy.cacti";',
+          "",
+          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
+          "  if (!ctx.tags.includes(CACTI_TAG)) {",
+          "    return;",
+          "  }",
+          "",
+          "  return {",
+          "    positionOffset: {",
+          "      x: 0,",
+          "      y: Math.sin(ctx.levelTimeSeconds * 5) * 14,",
+          "      z: 0,",
+          "    },",
+          "  };",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
+  }
+
+  if (gameId === "MightyMike-Android") {
+    return [
+      ...sharedBehaviors,
+      {
+        id: "mightymike.box-bob",
+        label: "Mighty Mike Box Bob",
+        description: "Bobs weapon/powerup boxes in Mighty Mike.",
+        category: "Samples",
+        targetKinds: ["global"],
+        supportedHooks: ["onObjectFrame"],
+        sourceFilePath: "Data/Scripts/src/globals/mightymike-box-bob.ts",
+        previewSupport: "preview-ready",
+        defaultTags: ["mightymike.box"],
+        contributedTags: [],
+        template: [
+          'const BOX_TAG = "mightymike.box";',
+          "",
+          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
+          "  if (!ctx.tags.includes(BOX_TAG)) {",
+          "    return;",
+          "  }",
+          "",
+          "  return {",
+          "    positionOffset: {",
+          "      x: 0,",
+          "      y: Math.sin(ctx.levelTimeSeconds * 5) * 16,",
           "      z: 0,",
           "    },",
           "  };",
@@ -1952,6 +2361,13 @@ export function importScriptPackageZip(
   }
 
   const files = unzipResult.value;
+
+  // Run validation
+  const validationResult = validateScriptPackage(files, context);
+  if (validationResult.isErr()) {
+    return err(validationResult.error);
+  }
+
   const workspace = createEmptyWorkspace(context);
   const projectJsonResult = decodeJsonFile(
     files,
@@ -1970,24 +2386,6 @@ export function importScriptPackageZip(
     return err(runtimeLevelsResult.error);
   }
 
-  const bindingsPath = `Data/Scripts/config/bindings/${levelLabelFromContext(context)}.json`;
-  const placementsPath = `Data/Scripts/config/placements/${levelLabelFromContext(context)}.json`;
-  const bindingsResult = decodeJsonFile(
-    files,
-    bindingsPath,
-    scriptBindingsFileSchema,
-  );
-  if (bindingsResult.isErr()) {
-    return err(bindingsResult.error);
-  }
-  const placementsResult = decodeJsonFile(
-    files,
-    placementsPath,
-    scriptPlacementsFileSchema,
-  );
-  if (placementsResult.isErr()) {
-    return err(placementsResult.error);
-  }
   const objectsResult = decodeJsonFile(
     files,
     "Data/Scripts/config/objects.json",
@@ -2030,6 +2428,58 @@ export function importScriptPackageZip(
     sourceFiles[USER_BOOTSTRAP_PATH] ??
     createSourceFile(USER_BOOTSTRAP_PATH, buildBaseRuntimeTemplate(), "user");
 
+  // Read all levels to preserve multi-level package data
+  const nextLevels: Record<string, ScriptLevelState> = {};
+  if (projectJson?.editor.levels) {
+    for (const levelKey of Object.keys(projectJson.editor.levels)) {
+      const levelLabel = levelKey === "current" ? "current" : `level-${levelKey}`;
+      const bindingsPath = `Data/Scripts/config/bindings/${levelLabel}.json`;
+      const placementsPath = `Data/Scripts/config/placements/${levelLabel}.json`;
+
+      let terrainBindings: any[] = [];
+      let splineBindings: any[] = [];
+      let mapItemBindings: any[] = [];
+      let customPlacements: any[] = [];
+
+      const bBytes = files[bindingsPath];
+      if (bBytes) {
+        const bResult = decodeJsonFile(files, bindingsPath, scriptBindingsFileSchema);
+        if (bResult.isOk()) {
+          terrainBindings = [...bResult.value.terrainBindings];
+          splineBindings = [...bResult.value.splineBindings];
+          mapItemBindings = [...bResult.value.mapItemBindings];
+        }
+      }
+
+      const pBytes = files[placementsPath];
+      if (pBytes) {
+        const pResult = decodeJsonFile(files, placementsPath, scriptPlacementsFileSchema);
+        if (pResult.isOk()) {
+          customPlacements = [...pResult.value.placements];
+        }
+      }
+
+      nextLevels[levelKey] = {
+        globalHooks: projectJson.editor.levels[levelKey]?.globalHooks ?? [],
+        terrainBindings,
+        splineBindings,
+        mapItemBindings,
+        customPlacements,
+      };
+    }
+  }
+
+  // Ensure current context level is present
+  if (!nextLevels[context.levelKey]) {
+    nextLevels[context.levelKey] = {
+      globalHooks: [],
+      terrainBindings: [],
+      splineBindings: [],
+      mapItemBindings: [],
+      customPlacements: [],
+    };
+  }
+
   const nextState: ScriptWorkspaceState = refreshGeneratedEntry(
     {
       ...workspace,
@@ -2047,16 +2497,7 @@ export function importScriptPackageZip(
       diagnostics: projectJson?.editor.diagnostics ?? [],
       statusLog: projectJson?.editor.statusLog ?? ["Imported script package"],
       sampleId: projectJson?.editor.sampleId ?? null,
-      levels: {
-        [context.levelKey]: {
-          globalHooks:
-            projectJson?.editor.levels[context.levelKey]?.globalHooks ?? [],
-          terrainBindings: bindingsResult.value?.terrainBindings ?? [],
-          splineBindings: bindingsResult.value?.splineBindings ?? [],
-          mapItemBindings: bindingsResult.value?.mapItemBindings ?? [],
-          customPlacements: placementsResult.value?.placements ?? [],
-        },
-      },
+      levels: nextLevels,
     },
     context,
   );
@@ -2083,6 +2524,62 @@ function createSampleWorkspace(
   ) {
     state = applyGlobalBehavior(state, "onObjectFrame", "otto.humans-jump");
     return addStatusLog(state, "Loaded Otto humans jump sample");
+  }
+
+  if (
+    sampleId === "bugdom-bouncing-friends" &&
+    context.gameId === "Bugdom-android"
+  ) {
+    state = applyGlobalBehavior(state, "onObjectFrame", "bugdom.bouncing-friends");
+    return addStatusLog(state, "Loaded Bugdom bouncing friends sample");
+  }
+
+  if (
+    sampleId === "bugdom2-clover-bob" &&
+    context.gameId === "Bugdom2-Android"
+  ) {
+    state = applyGlobalBehavior(state, "onObjectFrame", "bugdom2.clover-bob");
+    return addStatusLog(state, "Loaded Bugdom 2 clover bob sample");
+  }
+
+  if (
+    sampleId === "cromag-bouncing-pickups" &&
+    context.gameId === "CroMagRally-Android"
+  ) {
+    state = applyGlobalBehavior(state, "onObjectFrame", "cromag.bouncing-pickups");
+    return addStatusLog(state, "Loaded Cro-Mag bouncing pickups sample");
+  }
+
+  if (
+    sampleId === "nanosaur-hover-eggs" &&
+    context.gameId === "Nanosaur-android"
+  ) {
+    state = applyGlobalBehavior(state, "onObjectFrame", "nanosaur.hover-eggs");
+    return addStatusLog(state, "Loaded Nanosaur hover eggs sample");
+  }
+
+  if (
+    sampleId === "nanosaur2-powerup-spin" &&
+    context.gameId === "Nanosaur2-Android"
+  ) {
+    state = applyGlobalBehavior(state, "onObjectFrame", "nanosaur2.powerup-spin");
+    return addStatusLog(state, "Loaded Nanosaur 2 powerup spin sample");
+  }
+
+  if (
+    sampleId === "billy-cacti-bounce" &&
+    context.gameId === "BillyFrontier-Android"
+  ) {
+    state = applyGlobalBehavior(state, "onObjectFrame", "billy.cacti-bounce");
+    return addStatusLog(state, "Loaded Billy cacti bounce sample");
+  }
+
+  if (
+    sampleId === "mightymike-box-bob" &&
+    context.gameId === "MightyMike-Android"
+  ) {
+    state = applyGlobalBehavior(state, "onObjectFrame", "mightymike.box-bob");
+    return addStatusLog(state, "Loaded Mighty Mike box bob sample");
   }
 
   if (sampleId === "log-level-start") {
@@ -2144,6 +2641,104 @@ export function getScriptSamples(
           "Bobs Otto human rescue targets in place using object-frame tags.",
         createState: (sampleContext) =>
           createSampleWorkspace(sampleContext, "otto-humans-jump"),
+      },
+      ...shared,
+    ];
+  }
+
+  if (context.gameId === "Bugdom-android") {
+    return [
+      {
+        id: "bugdom-bouncing-friends",
+        label: "Bugdom Bouncing Friends",
+        description:
+          "Applies a bobbing offset to Bugdom ladybugs or helper buddies.",
+        createState: (sampleContext) =>
+          createSampleWorkspace(sampleContext, "bugdom-bouncing-friends"),
+      },
+      ...shared,
+    ];
+  }
+
+  if (context.gameId === "Bugdom2-Android") {
+    return [
+      {
+        id: "bugdom2-clover-bob",
+        label: "Bugdom 2 Clover Bob",
+        description:
+          "Applies a bobbing offset to Bugdom 2 collectibles or clover.",
+        createState: (sampleContext) =>
+          createSampleWorkspace(sampleContext, "bugdom2-clover-bob"),
+      },
+      ...shared,
+    ];
+  }
+
+  if (context.gameId === "CroMagRally-Android") {
+    return [
+      {
+        id: "cromag-bouncing-pickups",
+        label: "Cro-Mag Bouncing Pickups",
+        description:
+          "Bobs bone pick-ups or arrow elements in Cro-Mag Rally.",
+        createState: (sampleContext) =>
+          createSampleWorkspace(sampleContext, "cromag-bouncing-pickups"),
+      },
+      ...shared,
+    ];
+  }
+
+  if (context.gameId === "Nanosaur-android") {
+    return [
+      {
+        id: "nanosaur-hover-eggs",
+        label: "Nanosaur Hover Eggs",
+        description:
+          "Causes Nanosaur eggs to bob/hover in place.",
+        createState: (sampleContext) =>
+          createSampleWorkspace(sampleContext, "nanosaur-hover-eggs"),
+      },
+      ...shared,
+    ];
+  }
+
+  if (context.gameId === "Nanosaur2-Android") {
+    return [
+      {
+        id: "nanosaur2-powerup-spin",
+        label: "Nanosaur 2 Powerup Spin",
+        description:
+          "Bobs or offsets powerups and egg nests in Nanosaur 2.",
+        createState: (sampleContext) =>
+          createSampleWorkspace(sampleContext, "nanosaur2-powerup-spin"),
+      },
+      ...shared,
+    ];
+  }
+
+  if (context.gameId === "BillyFrontier-Android") {
+    return [
+      {
+        id: "billy-cacti-bounce",
+        label: "Billy Cacti Bounce",
+        description:
+          "Bobs cacti or target elements in Billy Frontier.",
+        createState: (sampleContext) =>
+          createSampleWorkspace(sampleContext, "billy-cacti-bounce"),
+      },
+      ...shared,
+    ];
+  }
+
+  if (context.gameId === "MightyMike-Android") {
+    return [
+      {
+        id: "mightymike-box-bob",
+        label: "Mighty Mike Box Bob",
+        description:
+          "Bobs weapon/powerup boxes in Mighty Mike.",
+        createState: (sampleContext) =>
+          createSampleWorkspace(sampleContext, "mightymike-box-bob"),
       },
       ...shared,
     ];

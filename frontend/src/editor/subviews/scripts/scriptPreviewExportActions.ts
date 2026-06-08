@@ -49,7 +49,7 @@ export interface ScriptPreviewBundle {
     readonly path: string;
     readonly data: Uint8Array;
   }[];
-  readonly nextState: ScriptWorkspaceState;
+  readonly nextState?: ScriptWorkspaceState;
 }
 
 function buildLevelData(
@@ -106,12 +106,16 @@ async function buildOriginalCompatibleFiles(
 
 export async function prepareScriptPreviewBundle(
   params: ScriptRuntimeActionParams & {
-    readonly compiledState: ScriptWorkspaceState;
+    readonly compiledState?: ScriptWorkspaceState | null;
   },
 ): Promise<Result<ScriptPreviewBundle, string>> {
-  const previewFilesResult = buildPreviewScriptFiles(params.compiledState);
-  if (previewFilesResult.isErr()) {
-    return err(previewFilesResult.error);
+  let customFiles: readonly { readonly path: string; readonly data: Uint8Array }[] = [];
+  if (params.compiledState) {
+    const previewFilesResult = buildPreviewScriptFiles(params.compiledState);
+    if (previewFilesResult.isErr()) {
+      return err(previewFilesResult.error);
+    }
+    customFiles = previewFilesResult.value;
   }
 
   const levelDataResult = buildLevelData(params);
@@ -132,14 +136,16 @@ export async function prepareScriptPreviewBundle(
     dataBytes: previewTerrain.dataBytes,
     rsrcBytes: previewTerrain.rsrcBytes,
     textureBytes: previewTerrain.textureBytes,
-    customFiles: previewFilesResult.value,
-    nextState: {
-      ...params.compiledState,
-      statusLog: [
-        ...params.compiledState.statusLog,
-        "Prepared in-browser preview bundle",
-      ].slice(-20),
-    },
+    customFiles,
+    nextState: params.compiledState
+      ? {
+          ...params.compiledState,
+          statusLog: [
+            ...params.compiledState.statusLog,
+            "Prepared in-browser preview bundle",
+          ].slice(-20),
+        }
+      : undefined,
   });
 }
 

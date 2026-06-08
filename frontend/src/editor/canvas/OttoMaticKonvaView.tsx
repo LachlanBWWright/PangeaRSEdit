@@ -36,6 +36,7 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
+import { PendingCreationOverlay } from "../subviews/shared/PendingCreationOverlay";
 import { View } from "../viewEnum";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 
@@ -316,6 +317,7 @@ export function OttoMaticKonvaView({
             <CustomScriptPlacements />
           </>
         )}
+        <PendingCreationOverlay />
         {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
         <HoverTagOverlayLayer />
       </Stage>

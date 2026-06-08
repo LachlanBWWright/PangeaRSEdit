@@ -9,7 +9,7 @@ import {
 
 interface ScriptPreviewExportPanelProps {
   isPreparingPreview: boolean;
-  onPreview: () => void;
+  onPreview: (withScripts: boolean) => void;
   onCompile: () => void;
   onDownloadExtendedPackage: () => void;
   onDownloadOriginalCompatible: () => void;
@@ -18,6 +18,8 @@ interface ScriptPreviewExportPanelProps {
   statusLog: readonly string[];
   levelKey: string;
   sourcePathOptions: readonly string[];
+  warnings: readonly string[];
+  hasScripts: boolean;
 }
 
 export function ScriptPreviewExportPanel({
@@ -31,10 +33,33 @@ export function ScriptPreviewExportPanel({
   statusLog,
   levelKey,
   sourcePathOptions,
+  warnings,
+  hasScripts,
 }: ScriptPreviewExportPanelProps) {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
       <div className="grid gap-4">
+        {warnings.length > 0 && (
+          <Card className="border-amber-900 bg-amber-950/20 text-amber-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-amber-300">
+                Scripting Capability Warnings
+              </CardTitle>
+              <CardDescription className="text-xs text-amber-400/80">
+                The current scripts use APIs or hooks that may be unsupported or stubbed in the selected game runtime.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-xs space-y-1">
+              {warnings.map((warning, index) => (
+                <div key={index} className="flex items-start gap-2">
+                  <span className="text-amber-500">•</span>
+                  <span>{warning}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="border-slate-800 bg-slate-950/70">
           <CardHeader>
             <CardTitle className="text-white">Preview and Export</CardTitle>
@@ -46,9 +71,27 @@ export function ScriptPreviewExportPanel({
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
-            <Button onClick={onPreview} disabled={isPreparingPreview}>
-              {isPreparingPreview ? "Preparing Preview..." : "Preview in Game"}
-            </Button>
+            {hasScripts ? (
+              <>
+                <Button
+                  onClick={() => onPreview(false)}
+                  disabled={isPreparingPreview}
+                  variant="secondary"
+                >
+                  Preview in Game (No Scripts)
+                </Button>
+                <Button
+                  onClick={() => onPreview(true)}
+                  disabled={isPreparingPreview}
+                >
+                  {isPreparingPreview ? "Preparing Preview..." : "Preview with Scripts"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => onPreview(false)} disabled={isPreparingPreview}>
+                {isPreparingPreview ? "Preparing Preview..." : "Preview in Game"}
+              </Button>
+            )}
             <Button variant="outline" onClick={onCompile}>
               Compile Bundle
             </Button>

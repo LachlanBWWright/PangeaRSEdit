@@ -23,6 +23,7 @@ import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
 import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
+import { PendingCreationOverlay } from "../subviews/shared/PendingCreationOverlay";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
 import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { Tiles } from "../subviews/Tiles";
@@ -475,6 +476,7 @@ export function Bugdom1KonvaView({
             captureEnd={captureEnd}
           />
         )}
+        <PendingCreationOverlay />
         {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
         <HoverTagOverlayLayer />
       </Stage>

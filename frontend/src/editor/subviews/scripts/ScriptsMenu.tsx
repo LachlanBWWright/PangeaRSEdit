@@ -60,6 +60,7 @@ import {
   createCustomObjectFromBehavior,
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
+  getWorkspaceWarnings,
   getScriptSamples,
   getScriptWorkspaceId,
   importScriptPackageZip,
@@ -345,10 +346,13 @@ export function ScriptsMenu({
     return compiledState;
   };
 
-  const handlePreview = async () => {
-    const compiledState = getCompiledRuntimeState();
-    if (!compiledState) {
-      return;
+  const handlePreview = async (withScripts = true) => {
+    let compiledState: ScriptWorkspaceState | null = null;
+    if (withScripts) {
+      compiledState = getCompiledRuntimeState();
+      if (!compiledState) {
+        return;
+      }
     }
 
     setIsPreparingPreview(true);
@@ -376,7 +380,9 @@ export function ScriptsMenu({
     setPreviewTextureBytes(previewResult.value.textureBytes);
     setPreviewCustomFiles(previewResult.value.customFiles);
     setPreviewOpen(true);
-    persistWorkspace(previewResult.value.nextState);
+    if (previewResult.value.nextState) {
+      persistWorkspace(previewResult.value.nextState);
+    }
   };
 
   const handleDownloadScriptPackage = () => {
@@ -813,8 +819,8 @@ export function ScriptsMenu({
         <TabsContent value="preview" className="grid gap-4">
           <ScriptPreviewExportPanel
             isPreparingPreview={isPreparingPreview}
-            onPreview={() => {
-              void handlePreview();
+            onPreview={(withScripts) => {
+              void handlePreview(withScripts);
             }}
             onCompile={() => {
               handleCompile();
@@ -830,6 +836,8 @@ export function ScriptsMenu({
             statusLog={workspace.statusLog}
             levelKey={context.levelKey}
             sourcePathOptions={sourcePathOptions}
+            warnings={getWorkspaceWarnings(workspace)}
+            hasScripts={summarizeScriptWorkspace(workspace).hasScripts}
           />
 
           <input

@@ -268,12 +268,7 @@ describe("game preview runtime loader", () => {
       ["string"],
       ["Data/Scripts/dist/main.js"],
     );
-    expect(ccall).toHaveBeenCalledWith(
-      "_PangeaScript_Reload",
-      null,
-      [],
-      [],
-    );
+    expect(ccall).toHaveBeenCalledWith("_PangeaScript_Reload", null, [], []);
     expect(onError).not.toHaveBeenCalled();
   });
 

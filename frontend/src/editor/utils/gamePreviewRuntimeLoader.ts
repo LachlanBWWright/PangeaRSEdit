@@ -95,15 +95,20 @@ function configureScriptingExports(
   }
 
   if (!enabledResult.value) {
-    onError("Preview scripting runtime is not enabled for the injected script bundle");
+    onError(
+      "Preview scripting runtime is not enabled for the injected script bundle",
+    );
     return;
   }
 
   const startupResult = Result.fromThrowable(
     () =>
-      ccall("_PangeaScript_SetStartupScript", null, ["string"], [
-        scriptBundlePath,
-      ]),
+      ccall(
+        "_PangeaScript_SetStartupScript",
+        null,
+        ["string"],
+        [scriptBundlePath],
+      ),
     (error) => mapErr(error),
   )();
   if (startupResult.isErr()) {
@@ -130,7 +135,8 @@ function applyNetworkMatchConfig(
     return err("Emscripten ccall is unavailable");
   }
 
-  const parsedMatchConfig = MultiplayerMatchConfigSchema.safeParse(rawMatchConfig);
+  const parsedMatchConfig =
+    MultiplayerMatchConfigSchema.safeParse(rawMatchConfig);
   if (!parsedMatchConfig.success) {
     return err(
       `Invalid multiplayer match config: ${formatSchemaError(parsedMatchConfig.error)}`,
@@ -160,7 +166,13 @@ function applyNetworkMatchConfig(
     matchIdHigh: matchIdPair.high,
   });
   return Result.fromThrowable(
-    () => ccall("PangeaGame_SetNetworkMatchConfig", null, ["string", "number"], [configJson, configJson.length]),
+    () =>
+      ccall(
+        "PangeaGame_SetNetworkMatchConfig",
+        null,
+        ["string", "number"],
+        [configJson, configJson.length],
+      ),
     (e) => mapErr(e),
   )().map(() => undefined);
 }
