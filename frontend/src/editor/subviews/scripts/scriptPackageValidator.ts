@@ -131,11 +131,22 @@ export function validateScriptPackage(
   // Track which behaviors and custom objects are actually used
   const usedBehaviorIds = new Set<string>();
   const usedObjectIds = new Set<string>();
+  const behaviorUsedHooks = new Map<string, Set<string>>();
+
+  const markHookUsed = (behaviorId: string, hookId: string) => {
+    let hooks = behaviorUsedHooks.get(behaviorId);
+    if (!hooks) {
+      hooks = new Set<string>();
+      behaviorUsedHooks.set(behaviorId, hooks);
+    }
+    hooks.add(hookId);
+  };
 
   // Collect from project levels (global hooks)
   for (const levelState of Object.values(projectData.editor.levels)) {
     for (const globalHook of levelState.globalHooks) {
       usedBehaviorIds.add(globalHook.behaviorId);
+      markHookUsed(globalHook.behaviorId, globalHook.hookId);
     }
   }
 
@@ -158,6 +169,14 @@ export function validateScriptPackage(
           ];
           for (const binding of allBindings) {
             usedBehaviorIds.add(binding.behaviorId);
+            if (binding.kind === "terrainItem") {
+              markHookUsed(binding.behaviorId, "onTerrainItem");
+            } else if (binding.kind === "splineItem") {
+              markHookUsed(binding.behaviorId, "onSplineItem");
+            } else if (binding.kind === "mapItem") {
+              markHookUsed(binding.behaviorId, "onMapItem");
+            }
+
             if (!behaviorIds.has(binding.behaviorId)) {
               errors.push(
                 `Binding '${binding.label}' references non-existent behavior: ${binding.behaviorId}`,
@@ -200,7 +219,11 @@ export function validateScriptPackage(
     const isSample = behavior.id.startsWith("sample.");
     const isUsed = usedBehaviorIds.has(behavior.id);
     if (!isSample || isUsed) {
-      for (const hook of behavior.supportedHooks) {
+      const hooksToValidate = isSample
+        ? behavior.supportedHooks.filter((hook) => behaviorUsedHooks.get(behavior.id)?.has(hook))
+        : behavior.supportedHooks;
+
+      for (const hook of hooksToValidate) {
         const capKey = getHookCapabilityKey(hook);
         if (!isCapabilitySupported(context.gameId, capKey)) {
           errors.push(

@@ -69,6 +69,7 @@ describe("scriptWorkspaceState", () => {
           script: "Data/Scripts/dist/main.js",
           extraNativeItems: [],
           itemOverrides: [],
+          levelSettings: {},
         },
       },
     });

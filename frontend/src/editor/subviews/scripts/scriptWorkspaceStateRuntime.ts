@@ -297,6 +297,7 @@ function getGameTags(gameId: string): readonly ScriptTagDefinition[] {
       createTag("bugdom2.powerup", "Powerup Pod", "Native Bugdom 2 pickups.", ["global", "terrainItem"], "game"),
       createTag("bugdom2.checkpoint", "Checkpoint", "Level checkpoints.", ["global", "customObject", "terrainItem"], "game"),
       createTag("bugdom2.hobobag", "Hobo Bag", "Hobo bag collectible.", ["global", "customObject"], "game"),
+      createTag("bugdom2.acorn", "Acorn", "Acorn pickup item.", ["global", "terrainItem"], "game"),
       createTag("bugdom2.enemy.snail", "Snail Enemy", "Snail enemy.", ["global", "customObject"], "game"),
       createTag("bugdom2.enemy.gnome", "Gnome Enemy", "Gnome enemy.", ["global", "customObject"], "game"),
       createTag("bugdom2.enemy.housefly", "House Fly", "House Fly enemy.", ["global", "customObject"], "game"),
@@ -608,8 +609,8 @@ function buildBehaviorCatalog(
       ...sharedBehaviors,
       {
         id: "bugdom2.clover-bob",
-        label: "Bugdom 2 Clover Bob",
-        description: "Applies a bobbing offset to Bugdom 2 collectibles or clover.",
+        label: "Bugdom 2 Clover & Acorn Bob",
+        description: "Applies a bobbing offset to Bugdom 2 collectibles (clovers, acorns, etc.).",
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
@@ -618,10 +619,12 @@ function buildBehaviorCatalog(
         defaultTags: ["bugdom2.collectible"],
         contributedTags: [],
         template: [
-          'const CLOVER_TAG = "bugdom2.collectible";',
+          '// Targets all collectibles. Change to "bugdom2.acorn" to target only acorns,',
+          '// or "bugdom2.dcell" to target only batteries.',
+          'const COLLECTIBLE_TAG = "bugdom2.collectible";',
           "",
           "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(CLOVER_TAG)) {",
+          "  if (!ctx.tags.includes(COLLECTIBLE_TAG)) {",
           "    return;",
           "  }",
           "",
@@ -2145,6 +2148,7 @@ function buildRuntimeLevelsJson(
         script: BUNDLED_RUNTIME_PATH,
         extraNativeItems: [],
         itemOverrides: [],
+        levelSettings: {},
       },
     },
   };
@@ -2664,9 +2668,9 @@ export function getScriptSamples(
     return [
       {
         id: "bugdom2-clover-bob",
-        label: "Bugdom 2 Clover Bob",
+        label: "Bugdom 2 Clover & Acorn Bob",
         description:
-          "Applies a bobbing offset to Bugdom 2 collectibles or clover.",
+          "Applies a bobbing offset to Bugdom 2 collectibles (clovers, acorns, etc.).",
         createState: (sampleContext) =>
           createSampleWorkspace(sampleContext, "bugdom2-clover-bob"),
       },

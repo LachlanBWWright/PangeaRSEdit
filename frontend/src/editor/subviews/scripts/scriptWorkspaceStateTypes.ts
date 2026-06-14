@@ -400,6 +400,31 @@ export const runtimeLevelConfigSchema = z.object({
       }),
     )
     .default([]),
+  levelSettings: z
+    .object({
+      assetDependencies: z
+        .array(
+          z.object({
+            kind: z.string().min(1),
+            id: z.string().min(1),
+          }),
+        )
+        .optional(),
+    })
+    .catchall(
+      z.union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.array(
+          z.object({
+            kind: z.string().min(1),
+            id: z.string().min(1),
+          }),
+        ),
+      ]),
+    )
+    .optional(),
 });
 
 export const runtimeLevelsSchema = z.object({

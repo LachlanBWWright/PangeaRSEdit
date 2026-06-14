@@ -233,22 +233,31 @@ export function getWorkspaceWarnings(
     warnings.push("Multiplayer support is untested and unsafe for scripting on this game.");
   }
 
-  const checkedHooks = new Set<string>();
-  for (const behavior of state.behaviorCatalog) {
-    for (const hook of behavior.supportedHooks) {
-      if (checkedHooks.has(hook)) {
-        continue;
-      }
-      checkedHooks.add(hook);
-      const capKey = getHookCapabilityKey(hook);
-      const capStatus = getCapability(gameId, capKey);
-      if (capStatus === "stubbed") {
-        warnings.push(`Hook '${hook}' is stubbed (not fully implemented) on this game.`);
-      } else if (capStatus === "planned") {
-        warnings.push(`Hook '${hook}' is planned but currently unimplemented on this game.`);
-      } else if (capStatus === "unsupported") {
-        warnings.push(`Hook '${hook}' is unsupported on this game.`);
-      }
+  const activeHooks = new Set<string>();
+  for (const levelState of Object.values(state.levels)) {
+    for (const globalHook of levelState.globalHooks) {
+      activeHooks.add(globalHook.hookId);
+    }
+    if (levelState.terrainBindings.length > 0) {
+      activeHooks.add("onTerrainItem");
+    }
+    if (levelState.splineBindings.length > 0) {
+      activeHooks.add("onSplineItem");
+    }
+    if (levelState.mapItemBindings.length > 0) {
+      activeHooks.add("onMapItem");
+    }
+  }
+
+  for (const hook of activeHooks) {
+    const capKey = getHookCapabilityKey(hook);
+    const capStatus = getCapability(gameId, capKey);
+    if (capStatus === "stubbed") {
+      warnings.push(`Hook '${hook}' is stubbed (not fully implemented) on this game.`);
+    } else if (capStatus === "planned") {
+      warnings.push(`Hook '${hook}' is planned but currently unimplemented on this game.`);
+    } else if (capStatus === "unsupported") {
+      warnings.push(`Hook '${hook}' is unsupported on this game.`);
     }
   }
 
