@@ -244,6 +244,7 @@ export function createPreviewModule(
       antialias: false,
       preserveDrawingBuffer: false,
     },
+    requestQuitFn: config.requestQuitFn,
     arguments: buildGameArguments(
       config,
       levelNumber,
@@ -380,8 +381,10 @@ export function createPreviewModule(
 export async function loadPreviewRuntime(
   module: PreviewRuntimeModule,
   scriptUrl: string,
+  isCancelled: () => boolean = () => false,
 ): Promise<() => void> {
   let stopped = false;
+  let stopRequested = false;
   const pendingRafIds = new Set<number>();
   const pendingTimerIds = new Set<number>();
   const realRaf = window.requestAnimationFrame.bind(window);
@@ -424,6 +427,35 @@ export async function loadPreviewRuntime(
       pendingTimerIds.delete(id);
     }
     realClearTimeout(id);
+  }
+
+  function requestRuntimeQuit(): boolean {
+    const quitFn = module.requestQuitFn;
+    const ccall = module.ccall;
+    if (!quitFn || !ccall) {
+      return false;
+    }
+    const quitResult = Result.fromThrowable(
+      () => ccall(quitFn, null, [], []),
+      (e) => mapErr(e),
+    )();
+    return quitResult.isOk();
+  }
+
+  function finishStop(restoreGlobals: boolean): void {
+    stopped = true;
+    for (const id of pendingRafIds) realCaf(id);
+    for (const id of pendingTimerIds) realClearTimeout(id);
+    pendingRafIds.clear();
+    pendingTimerIds.clear();
+    if (restoreGlobals) {
+      restoreWindowGlobals();
+    }
+    for (const ctx of trackedAudioContexts) {
+      if (ctx.state !== "closed") {
+        void ResultAsync.fromPromise(ctx.close(), (e) => mapErr(e));
+      }
+    }
   }
 
   const prevWindowRaf = window.requestAnimationFrame;
@@ -474,6 +506,11 @@ export async function loadPreviewRuntime(
   );
   realClearTimeout(fetchTimeoutId);
 
+  if (isCancelled()) {
+    restoreWindowGlobals();
+    return () => undefined;
+  }
+
   function restoreWindowGlobals(): void {
     Result.fromThrowable(
       () => {
@@ -502,6 +539,11 @@ export async function loadPreviewRuntime(
     return Promise.reject(sourceResult.error);
   }
   const source = sourceResult.value;
+
+  if (isCancelled()) {
+    restoreWindowGlobals();
+    return () => undefined;
+  }
 
   const runner = Result.fromThrowable(
     (): ((
@@ -550,6 +592,11 @@ export async function loadPreviewRuntime(
     return Promise.reject(runner.error);
   }
 
+  if (isCancelled()) {
+    restoreWindowGlobals();
+    return () => undefined;
+  }
+
   const runResult = Result.fromThrowable(
     () =>
       runner.value(
@@ -568,16 +615,18 @@ export async function loadPreviewRuntime(
   }
 
   return () => {
-    stopped = true;
-    for (const id of pendingRafIds) realCaf(id);
-    for (const id of pendingTimerIds) realClearTimeout(id);
-    pendingRafIds.clear();
-    pendingTimerIds.clear();
-    restoreWindowGlobals();
-    for (const ctx of trackedAudioContexts) {
-      if (ctx.state !== "closed") {
-        void ResultAsync.fromPromise(ctx.close(), (e) => mapErr(e));
-      }
+    if (stopRequested) {
+      return;
     }
+    stopRequested = true;
+    if (requestRuntimeQuit()) {
+      const stopTimerId = realSetTimeout(() => {
+        pendingTimerIds.delete(stopTimerId);
+        finishStop(true);
+      }, 100);
+      pendingTimerIds.add(stopTimerId);
+      return;
+    }
+    finishStop(true);
   };
 }

@@ -50,6 +50,7 @@ export interface PreviewRuntimeModule {
   monitorRunDependencies?: (left: number) => void;
   onRuntimeInitialized?: () => void;
   onAbort?: (reason: unknown) => void;
+  requestQuitFn?: string;
   FS?: {
     writeFile: (path: string, data: Uint8Array) => void;
     analyzePath?: (path: string) => { exists: boolean };

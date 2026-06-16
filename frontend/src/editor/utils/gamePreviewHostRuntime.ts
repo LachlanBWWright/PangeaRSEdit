@@ -350,7 +350,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
         onStatus("Loading runtime script...");
         const stopOrErr = await ResultAsync.fromPromise(
-          loadPreviewRuntime(activeModule, scriptUrl),
+          loadPreviewRuntime(activeModule, scriptUrl, () => cancelled),
           (e) => mapErr(e),
         );
         if (cancelled) {
