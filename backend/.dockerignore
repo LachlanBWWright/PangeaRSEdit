@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/TestResults/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+.git/
+.gitignore
+.idea/
+.vscode/
+Dockerfile*
+README.md
