@@ -32,6 +32,7 @@ import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { CurrentScene } from "@/data/game/gameAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicTiles } from "@/editor/gameViews/editorResizeState";
 
@@ -148,7 +149,7 @@ export function MightyMikeEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.scripts && (
+        {ENABLE_SCRIPTS && view === View.scripts && (
           <ScriptsMenu
             headerData={headerData}
             itemData={itemData}

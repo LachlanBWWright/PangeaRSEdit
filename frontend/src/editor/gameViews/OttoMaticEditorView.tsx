@@ -13,6 +13,7 @@ import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
@@ -174,7 +175,7 @@ export function OttoMaticEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.scripts && (
+        {ENABLE_SCRIPTS && view === View.scripts && (
           <ScriptsMenu
             headerData={headerData}
             itemData={itemData}

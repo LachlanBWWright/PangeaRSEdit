@@ -1,7 +1,6 @@
 import { atom } from "jotai";
 import { err, ok, Result } from "neverthrow";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
-import ts from "typescript";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntimeTypes";
 import { validateScriptPackage } from "./scriptPackageValidator";
@@ -64,12 +63,12 @@ function buildAssignmentId(prefix: string, value: string): string {
   return `${prefix}-${slugify(value)}`;
 }
 
-function inferLanguage(_path: string): "typescript" {
-  return "typescript";
+function inferLanguage(_path: string): "lua" {
+  return "lua";
 }
 
-function isTypeScriptSourcePath(path: string): boolean {
-  return path.endsWith(".ts") || path.endsWith(".tsx");
+function isLuaSourcePath(path: string): boolean {
+  return path.endsWith(".lua");
 }
 
 function encodeJson(value: unknown): Uint8Array {
@@ -82,10 +81,6 @@ function encodeText(value: string): Uint8Array {
 
 function toEditorRelativePath(path: string): string {
   return path.replace(/^Data\/Scripts\/src\//, "./");
-}
-
-function toBundleModuleId(path: string): string {
-  return path;
 }
 
 function addStatusLog(
@@ -123,54 +118,57 @@ function buildTerrainPredicate(
   signature: ScriptTerrainBindingSignature,
 ): string {
   return [
-    `ctx.itemType === ${String(signature.itemType)}`,
-    `ctx.position.x === ${String(signature.position.x)}`,
-    `ctx.position.y === ${String(signature.position.y)}`,
-    `ctx.position.z === ${String(signature.position.z)}`,
-    `ctx.flags === ${String(signature.flags)}`,
-    `ctx.params.length === ${String(signature.params.length)}`,
+    `ctx.itemType == ${String(signature.itemType)}`,
+    `ctx.position.x == ${String(signature.position.x)}`,
+    `ctx.position.y == ${String(signature.position.y)}`,
+    `ctx.position.z == ${String(signature.position.z)}`,
+    `ctx.flags == ${String(signature.flags)}`,
+    `#ctx.params == ${String(signature.params.length)}`,
     ...signature.params.map(
-      (param, index) => `ctx.params[${String(index)}] === ${String(param)}`,
+      (param, index) => `ctx.params[${String(index + 1)}] == ${String(param)}`,
     ),
-  ].join(" && ");
+  ].join(" and ");
 }
 
 function buildSplinePredicate(signature: ScriptSplineBindingSignature): string {
   return [
-    `ctx.itemType === ${String(signature.itemType)}`,
-    `ctx.splineNum === ${String(signature.splineNum)}`,
-    `ctx.placement === ${String(signature.placement)}`,
-    `ctx.params.length === ${String(signature.params.length)}`,
+    `ctx.itemType == ${String(signature.itemType)}`,
+    `ctx.splineNum == ${String(signature.splineNum)}`,
+    `ctx.placement == ${String(signature.placement)}`,
+    `#ctx.params == ${String(signature.params.length)}`,
     ...signature.params.map(
-      (param, index) => `ctx.params[${String(index)}] === ${String(param)}`,
+      (param, index) => `ctx.params[${String(index + 1)}] == ${String(param)}`,
     ),
-  ].join(" && ");
+  ].join(" and ");
 }
 
 function buildMapPredicate(signature: ScriptMapItemSignature): string {
   const sceneCheck = signature.sceneName
-    ? [`ctx.gameName === ctx.gameName`, `true`]
+    ? [`ctx.gameName == ctx.gameName`, `true`]
     : ["true"];
   return [
-    `ctx.itemType === ${String(signature.itemType)}`,
-    `ctx.position.x === ${String(signature.position.x)}`,
-    `ctx.position.y === ${String(signature.position.y)}`,
-    `ctx.params.length === ${String(signature.params.length)}`,
+    `ctx.itemType == ${String(signature.itemType)}`,
+    `ctx.position.x == ${String(signature.position.x)}`,
+    `ctx.position.y == ${String(signature.position.y)}`,
+    `#ctx.params == ${String(signature.params.length)}`,
     ...signature.params.map(
-      (param, index) => `ctx.params[${String(index)}] === ${String(param)}`,
+      (param, index) => `ctx.params[${String(index + 1)}] == ${String(param)}`,
     ),
     ...sceneCheck,
-  ].join(" && ");
+  ].join(" and ");
 }
 
 function buildBaseRuntimeTemplate(): string {
   return [
-    "declare const pangea: PangeaApi;",
-    "declare function require(path: string): unknown;",
+    "local pangea = require('pangea')",
     "",
-    "export function onLevelStart(ctx: LevelContext): void {",
-    "  pangea.log.info(`Scripts ready for level ${String(ctx.levelNum)}`);",
-    "}",
+    "local module = {}",
+    "",
+    "function module.onLevelStart(ctx)",
+    "  pangea.log.info('Scripts ready for level ' .. tostring(ctx.levelNum))",
+    "end",
+    "",
+    "return module",
     "",
   ].join("\n");
 }
@@ -183,6 +181,30 @@ function getAdventureHooks(): readonly ScriptHookId[] {
     "onObjectFrame",
     "onLevelComplete",
     "onLevelUnload",
+    "onTerrainItem",
+    "onSplineItem",
+  ];
+}
+
+function getNanosaurHooks(): readonly ScriptHookId[] {
+  return [
+    "onLevelLoad",
+    "onLevelStart",
+    "onFrame",
+    "onObjectFrame",
+    "onLevelComplete",
+    "onLevelUnload",
+    "onTerrainItem",
+  ];
+}
+
+function getBillyFrontierHooks(): readonly ScriptHookId[] {
+  return [
+    "onAreaLoad",
+    "onAreaStart",
+    "onAreaFrame",
+    "onObjectFrame",
+    "onAreaUnload",
     "onTerrainItem",
     "onSplineItem",
   ];
@@ -447,14 +469,18 @@ function buildBehaviorCatalog(
       category: "Samples",
       targetKinds: ["global"],
       supportedHooks: ["onLevelStart", "onAreaStart", "onRaceStart"],
-      sourceFilePath: "Data/Scripts/src/globals/log-level-start.ts",
+      sourceFilePath: "Data/Scripts/src/globals/log-level-start.lua",
       previewSupport: "preview-ready",
       defaultTags: [],
       contributedTags: [],
       template: [
-        "export function __HOOK__(ctx: LevelContext): void {",
-        '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: start hook fired");',
-        "}",
+        "local module = {}",
+        "",
+        "function module.__HOOK__(ctx)",
+        '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: start hook fired")',
+        "end",
+        "",
+        "return module",
         "",
       ].join("\n"),
     },
@@ -465,22 +491,26 @@ function buildBehaviorCatalog(
       category: "Samples",
       targetKinds: ["terrainItem", "splineItem", "mapItem"],
       supportedHooks: ["onTerrainItem", "onSplineItem", "onMapItem"],
-      sourceFilePath: "Data/Scripts/src/bindings/item-trigger.ts",
+      sourceFilePath: "Data/Scripts/src/bindings/item-trigger.lua",
       previewSupport: "preview-ready",
       defaultTags: [],
       contributedTags: [],
       template: [
-        "const matchesTarget = (ctx: __CONTEXT_TYPE__): boolean => {",
-        "  return __PREDICATE__;",
-        "};",
+        "local module = {}",
         "",
-        "export function __HOOK__(ctx: __CONTEXT_TYPE__): ItemSpawnResult {",
-        "  if (!matchesTarget(ctx)) {",
-        "    return { handled: false };",
-        "  }",
-        '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: matched native item binding");',
-        "  return { handled: false };",
-        "}",
+        "local function matchesTarget(ctx)",
+        "  return __PREDICATE__",
+        "end",
+        "",
+        "function module.__HOOK__(ctx)",
+        "  if not matchesTarget(ctx) then",
+        "    return { handled = false }",
+        "  end",
+        '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: matched native item binding")',
+        "  return { handled = false }",
+        "end",
+        "",
+        "return module",
         "",
       ].join("\n"),
     },
@@ -491,7 +521,7 @@ function buildBehaviorCatalog(
       category: "Samples",
       targetKinds: ["customObject"],
       supportedHooks: ["onLevelStart"],
-      sourceFilePath: "Data/Scripts/src/objects/hover-beacon.ts",
+      sourceFilePath: "Data/Scripts/src/objects/hover-beacon.lua",
       previewSupport: "preview-ready",
       defaultTags: ["editor.custom.hoverBeacon"],
       contributedTags: [
@@ -504,20 +534,25 @@ function buildBehaviorCatalog(
         ),
       ],
       template: [
-        "export const hoverBeacon = defineScriptedObject({",
-        "  onUpdate(self, ctx) {",
-        "    const current = pangea.object.position(self.handle);",
-        "    if (!current) {",
-        "      return;",
-        "    }",
-        "    const wave = Math.sin(ctx.levelTimeSeconds * 4) * 16;",
-        "    pangea.object.setPosition(self.handle, {",
-        "      x: current.x,",
-        "      y: current.y + wave * 0.02,",
-        "      z: current.z,",
-        "    });",
-        "  },",
-        "});",
+        "local hoverBeacon = {}",
+        "",
+        "function hoverBeacon.onUpdate(self, ctx)",
+        "  local current = pangea.object.position(self.handle)",
+        "  if not current then",
+        "    return",
+        "  end",
+        "  local wave = math.sin(ctx.levelTimeSeconds * 4) * 16",
+        "  pangea.object.setPosition(self.handle, {",
+        "    x = current.x,",
+        "    y = current.y + wave * 0.02,",
+        "    z = current.z,",
+        "  })",
+        "end",
+        "",
+        "local module = {",
+        "  sampleHoverbeacon = hoverBeacon,",
+        "}",
+        "return module",
         "",
       ].join("\n"),
     },
@@ -533,35 +568,48 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/otto-humans-jump.ts",
+        sourceFilePath: "Data/Scripts/src/globals/otto-humans-jump.lua",
         previewSupport: "preview-ready",
         defaultTags: ["ottomatic.human"],
         contributedTags: [],
         template: [
-          'const HUMAN_TAG = "ottomatic.human";',
-          'const SCIENTIST_TAG = "ottomatic.human.scientist";',
+          'local HUMAN_TAG = "ottomatic.human"',
+          'local SCIENTIST_TAG = "ottomatic.human.scientist"',
           "",
-          "function hasTag(tags: readonly string[], tag: string): boolean {",
-          "  return tags.includes(tag);",
-          "}",
+          "local function hasTag(tags, tag)",
+          "  for _, t in ipairs(tags) do",
+          "    if t == tag then",
+          "      return true",
+          "    end",
+          "  end",
+          "  return false",
+          "end",
           "",
-          "function getBobHeight(tags: readonly string[]): number {",
-          "  return hasTag(tags, SCIENTIST_TAG) ? 56 : 32;",
-          "}",
+          "local function getBobHeight(tags)",
+          "  if hasTag(tags, SCIENTIST_TAG) then",
+          "    return 56",
+          "  else",
+          "    return 32",
+          "  end",
+          "end",
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!hasTag(ctx.tags, HUMAN_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  if not hasTag(ctx.tags, HUMAN_TAG) then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 8) * getBobHeight(ctx.tags),",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 8) * getBobHeight(ctx.tags),",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -578,26 +626,37 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/bugdom-bouncing-friends.ts",
+        sourceFilePath: "Data/Scripts/src/globals/bugdom-bouncing-friends.lua",
         previewSupport: "preview-ready",
         defaultTags: ["bugdom.buddy"],
         contributedTags: [],
         template: [
-          'const BUDDY_TAG = "bugdom.buddy";',
+          'local BUDDY_TAG = "bugdom.buddy"',
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(BUDDY_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  local hasBuddy = false",
+          "  for _, tag in ipairs(ctx.tags) do",
+          "    if tag == BUDDY_TAG then",
+          "      hasBuddy = true",
+          "      break",
+          "    end",
+          "  end",
+          "  if not hasBuddy then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 6) * 20,",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 6) * 20,",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -614,28 +673,39 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/bugdom2-clover-bob.ts",
+        sourceFilePath: "Data/Scripts/src/globals/bugdom2-clover-bob.lua",
         previewSupport: "preview-ready",
         defaultTags: ["bugdom2.collectible"],
         contributedTags: [],
         template: [
-          '// Targets all collectibles. Change to "bugdom2.acorn" to target only acorns,',
-          '// or "bugdom2.dcell" to target only batteries.',
-          'const COLLECTIBLE_TAG = "bugdom2.collectible";',
+          '-- Targets all collectibles. Change to "bugdom2.acorn" to target only acorns,',
+          '-- or "bugdom2.dcell" to target only batteries.',
+          'local COLLECTIBLE_TAG = "bugdom2.collectible"',
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(COLLECTIBLE_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  local hasCollectible = false",
+          "  for _, tag in ipairs(ctx.tags) do",
+          "    if tag == COLLECTIBLE_TAG then",
+          "      hasCollectible = true",
+          "      break",
+          "    end",
+          "  end",
+          "  if not hasCollectible then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 5) * 15,",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 5) * 15,",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -652,26 +722,37 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/cromag-bouncing-pickups.ts",
+        sourceFilePath: "Data/Scripts/src/globals/cromag-bouncing-pickups.lua",
         previewSupport: "preview-ready",
         defaultTags: ["cromag.pickup"],
         contributedTags: [],
         template: [
-          'const PICKUP_TAG = "cromag.pickup";',
+          'local PICKUP_TAG = "cromag.pickup"',
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(PICKUP_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  local hasPickup = false",
+          "  for _, tag in ipairs(ctx.tags) do",
+          "    if tag == PICKUP_TAG then",
+          "      hasPickup = true",
+          "      break",
+          "    end",
+          "  end",
+          "  if not hasPickup then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 7) * 25,",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 7) * 25,",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -688,26 +769,37 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/nanosaur-hover-eggs.ts",
+        sourceFilePath: "Data/Scripts/src/globals/nanosaur-hover-eggs.lua",
         previewSupport: "preview-ready",
         defaultTags: ["nanosaur.egg"],
         contributedTags: [],
         template: [
-          'const EGG_TAG = "nanosaur.egg";',
+          'local EGG_TAG = "nanosaur.egg"',
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(EGG_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  local hasEgg = false",
+          "  for _, tag in ipairs(ctx.tags) do",
+          "    if tag == EGG_TAG then",
+          "      hasEgg = true",
+          "      break",
+          "    end",
+          "  end",
+          "  if not hasEgg then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 4) * 12,",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 4) * 12,",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -724,26 +816,37 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/nanosaur2-powerup-spin.ts",
+        sourceFilePath: "Data/Scripts/src/globals/nanosaur2-powerup-spin.lua",
         previewSupport: "preview-ready",
         defaultTags: ["nanosaur2.powerup"],
         contributedTags: [],
         template: [
-          'const POWERUP_TAG = "nanosaur2.powerup";',
+          'local POWERUP_TAG = "nanosaur2.powerup"',
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(POWERUP_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  local hasPowerup = false",
+          "  for _, tag in ipairs(ctx.tags) do",
+          "    if tag == POWERUP_TAG then",
+          "      hasPowerup = true",
+          "      break",
+          "    end",
+          "  end",
+          "  if not hasPowerup then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 6) * 18,",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 6) * 18,",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -760,26 +863,37 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/billy-cacti-bounce.ts",
+        sourceFilePath: "Data/Scripts/src/globals/billy-cacti-bounce.lua",
         previewSupport: "preview-ready",
         defaultTags: ["billy.cacti"],
         contributedTags: [],
         template: [
-          'const CACTI_TAG = "billy.cacti";',
+          'local CACTI_TAG = "billy.cacti"',
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(CACTI_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  local hasCacti = false",
+          "  for _, tag in ipairs(ctx.tags) do",
+          "    if tag == CACTI_TAG then",
+          "      hasCacti = true",
+          "      break",
+          "    end",
+          "  end",
+          "  if not hasCacti then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 5) * 14,",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 5) * 14,",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -796,26 +910,37 @@ function buildBehaviorCatalog(
         category: "Samples",
         targetKinds: ["global"],
         supportedHooks: ["onObjectFrame"],
-        sourceFilePath: "Data/Scripts/src/globals/mightymike-box-bob.ts",
+        sourceFilePath: "Data/Scripts/src/globals/mightymike-box-bob.lua",
         previewSupport: "preview-ready",
         defaultTags: ["mightymike.box"],
         contributedTags: [],
         template: [
-          'const BOX_TAG = "mightymike.box";',
+          'local BOX_TAG = "mightymike.box"',
           "",
-          "export function onObjectFrame(ctx: ObjectFrameContext): ObjectFrameResult | void {",
-          "  if (!ctx.tags.includes(BOX_TAG)) {",
-          "    return;",
-          "  }",
+          "local module = {}",
+          "",
+          "function module.onObjectFrame(ctx)",
+          "  local hasBox = false",
+          "  for _, tag in ipairs(ctx.tags) do",
+          "    if tag == BOX_TAG then",
+          "      hasBox = true",
+          "      break",
+          "    end",
+          "  end",
+          "  if not hasBox then",
+          "    return",
+          "  end",
           "",
           "  return {",
-          "    positionOffset: {",
-          "      x: 0,",
-          "      y: Math.sin(ctx.levelTimeSeconds * 5) * 16,",
-          "      z: 0,",
+          "    positionOffset = {",
+          "      x = 0,",
+          "      y = math.sin(ctx.levelTimeSeconds * 5) * 16,",
+          "      z = 0,",
           "    },",
-          "  };",
-          "}",
+          "  }",
+          "end",
+          "",
+          "return module",
           "",
         ].join("\n"),
       },
@@ -850,140 +975,183 @@ function buildGeneratedEntryModule(
   state: ScriptWorkspaceState,
   context: ScriptWorkspaceContext,
 ): string {
-  const supportedHooks = context.supportedHooks;
   const runtimeModules = state.moduleOrder.filter(
     (path) => path !== GENERATED_ENTRY_PATH,
   );
-  const customObjectExports = state.customObjects
-    .map((objectDefinition, index) => {
-      const requireVar = `__customObjectModule${String(index)}`;
-      return [
-        `const ${requireVar} = require(${JSON.stringify(toEditorRelativePath(objectDefinition.sourceFilePath))}) as Record<string, unknown>;`,
-        `if (typeof ${requireVar}[${JSON.stringify(objectDefinition.exportName)}] !== "undefined") {`,
-        `  exports[${JSON.stringify(objectDefinition.exportName)}] = ${requireVar}[${JSON.stringify(objectDefinition.exportName)}];`,
-        "}",
-      ].join("\n");
-    })
-    .join("\n");
+  const objectTypeBehaviors = state.behaviorCatalog.filter(
+    (behavior) =>
+      behavior.targetKinds.includes("objectType") &&
+      behavior.objectType !== undefined &&
+      runtimeModules.includes(behavior.sourceFilePath),
+  );
+  const objectTypeModulePaths = new Set(
+    objectTypeBehaviors.map((behavior) => behavior.sourceFilePath),
+  );
+  const globalRuntimeModules = runtimeModules.filter(
+    (path) => !objectTypeModulePaths.has(path),
+  );
+  const getModuleVariable = (path: string): string =>
+    `__module_${path.replace(/[^a-zA-Z0-9]+/g, "_")}`;
 
-  const placementBlocks =
-    state.levels[context.levelKey]?.customPlacements ?? [];
-  const placementSetup = placementBlocks
-    .map((placement, index) => {
-      const objectDefinition = state.customObjects.find(
-        (candidate) => candidate.id === placement.objectId,
-      );
-      if (!objectDefinition) {
-        return "";
-      }
-
-      return [
-        `const __placedModule${String(index)} = require(${JSON.stringify(toEditorRelativePath(objectDefinition.sourceFilePath))}) as Record<string, unknown>;`,
-        `exports[${JSON.stringify(objectDefinition.exportName)}] = __placedModule${String(index)}[${JSON.stringify(objectDefinition.exportName)}];`,
-      ].join("\n");
-    })
-    .filter((value) => value.length > 0)
-    .join("\n");
-
-  const requires = runtimeModules
+  const moduleRequires = runtimeModules
     .map(
-      (path, index) =>
-        `const __module${String(index)} = require(${JSON.stringify(toEditorRelativePath(path))}) as Record<string, unknown>;`,
+      (path) =>
+        `local ${getModuleVariable(path)} = require(${JSON.stringify(toEditorRelativePath(path))})`,
     )
     .join("\n");
 
-  const moduleArray = runtimeModules
-    .map((_, index) => `__module${String(index)}`)
+  const moduleList = globalRuntimeModules
+    .map(getModuleVariable)
     .join(", ");
+  const objectTypes = [
+    ...new Set(
+      objectTypeBehaviors.flatMap((behavior) =>
+        behavior.objectType === undefined ? [] : [behavior.objectType],
+      ),
+    ),
+  ];
+  const objectTypeRoutes = objectTypes
+    .map((objectType) => {
+      const modules = objectTypeBehaviors
+        .filter((behavior) => behavior.objectType === objectType)
+        .map((behavior) => getModuleVariable(behavior.sourceFilePath))
+        .join(", ");
+      return `  [${JSON.stringify(objectType)}] = { ${modules} },`;
+    })
+    .join("\n");
 
-  const hookDispatchers = supportedHooks
+  const customObjectRequires: string[] = [];
+  const customObjectExports: string[] = [];
+  state.customObjects.forEach((objectDefinition, index) => {
+    const varName = `__customObjectModule${index}`;
+    const relPath = toEditorRelativePath(objectDefinition.sourceFilePath);
+    customObjectRequires.push(`local ${varName} = require(${JSON.stringify(relPath)})`);
+    customObjectExports.push(
+      `if type(${varName}) == "table" and ${varName}.${objectDefinition.exportName} ~= nil then`,
+      `  entry.${objectDefinition.exportName} = ${varName}.${objectDefinition.exportName}`,
+      `end`
+    );
+  });
+
+  const placementBlocks = state.levels[context.levelKey]?.customPlacements ?? [];
+  const hasPlacements = placementBlocks.length > 0;
+
+  const preferredHook = context.supportedHooks.includes("onLevelStart")
+    ? "onLevelStart"
+    : context.supportedHooks.includes("onAreaStart")
+      ? "onAreaStart"
+      : "onRaceStart";
+
+  const hookDispatchers = context.supportedHooks
     .map((hookId) => {
-      const callResult =
+      const isStartHook = hookId === preferredHook;
+
+      const dispatchBody: string[] = [];
+
+      dispatchBody.push(
+        "  for _, candidate in ipairs(__modules) do",
+        `    local hook = candidate[${JSON.stringify(hookId)}]`,
+        "    if type(hook) == 'function' then",
+        "      hook(ctx)",
+        "    end",
+        "  end"
+      );
+
+      if (isStartHook && hasPlacements) {
+        placementBlocks.forEach((placement) => {
+          const objectDefinition = state.customObjects.find(
+            (candidate) => candidate.id === placement.objectId,
+          );
+          if (objectDefinition) {
+            dispatchBody.push(
+              `  pangea.spawn.scripted(${JSON.stringify(placement.objectId)}, { x = ${placement.position.x}, y = ${placement.position.y}, z = ${placement.position.z} })`
+            );
+          }
+        });
+      }
+
+      if (
         hookId === "onTerrainItem" ||
         hookId === "onSplineItem" ||
         hookId === "onMapItem"
-          ? [
-              "  for (const candidate of __modules) {",
-              `    const hook = candidate[${JSON.stringify(hookId)}];`,
-              '    if (typeof hook !== "function") {',
-              "      continue;",
-              "    }",
-              `    const result = hook(ctx) as ItemSpawnResult | void;`,
-              "    if (result && result.handled) {",
-              "      return result;",
-              "    }",
-              "  }",
-              "  return { handled: false };",
-            ].join("\n")
-          : hookId === "onObjectFrame"
-            ? [
-                "  for (const candidate of __modules) {",
-                `    const hook = candidate[${JSON.stringify(hookId)}];`,
-                '    if (typeof hook !== "function") {',
-                "      continue;",
-                "    }",
-                "    const result = hook(ctx) as ObjectFrameResult | void;",
-                "    if (result) {",
-                "      return result;",
-                "    }",
-                "  }",
-              ].join("\n")
-            : [
-                "  for (const candidate of __modules) {",
-                `    const hook = candidate[${JSON.stringify(hookId)}];`,
-                '    if (typeof hook !== "function") {',
-                "      continue;",
-                "    }",
-                "    hook(ctx);",
-                "  }",
-              ].join("\n");
+      ) {
+        return [
+          `function entry.${hookId}(ctx)`,
+          "  local markInUse = nil",
+          "  for _, candidate in ipairs(__modules) do",
+          `    local hook = candidate[${JSON.stringify(hookId)}]`,
+          "    if type(hook) == 'function' then",
+          "      local result = hook(ctx)",
+          "      if result then",
+          "        if result.markInUse ~= nil then",
+          "          markInUse = result.markInUse",
+          "        end",
+          "        if result.handled then",
+          "          return { handled = true, markInUse = markInUse }",
+          "        end",
+          "      end",
+          "    end",
+          "  end",
+          "  return { handled = false, markInUse = markInUse }",
+          "end",
+        ].join("\n");
+      }
+
+      if (hookId === "onObjectFrame") {
+        return [
+          `function entry.${hookId}(ctx)`,
+          "  local objectResult = nil",
+          "  local typedModules = __objectTypeModules[ctx.objectType]",
+          "  if typedModules then",
+          "    for _, typedModule in ipairs(typedModules) do",
+          `      local typedHook = typedModule[${JSON.stringify(hookId)}]`,
+          "      if type(typedHook) == 'function' then",
+          "        local typedResult = typedHook(ctx)",
+          "        if typedResult then",
+          "          objectResult = typedResult",
+          "        end",
+          "      end",
+          "    end",
+          "  end",
+          "  for _, candidate in ipairs(__modules) do",
+          `    local hook = candidate[${JSON.stringify(hookId)}]`,
+          "    if type(hook) == 'function' then",
+          "      local result = hook(ctx)",
+          "      if result then",
+          "        objectResult = result",
+          "      end",
+          "    end",
+          "  end",
+          "  return objectResult",
+          "end",
+        ].join("\n");
+      }
 
       return [
-        `export function ${hookId}(ctx: unknown): unknown {`,
-        callResult,
-        "}",
+        `function entry.${hookId}(ctx)`,
+        ...dispatchBody,
+        "end",
       ].join("\n");
     })
     .join("\n\n");
 
-  const placementSpawner =
-    placementBlocks.length === 0
-      ? ""
-      : [
-          "export function onLevelStart(ctx: LevelContext): void {",
-          "  for (const candidate of __modules) {",
-          '    const hook = candidate["onLevelStart"];',
-          '    if (typeof hook === "function") {',
-          "      hook(ctx);",
-          "    }",
-          "  }",
-          ...placementBlocks.map((placement) => {
-            const objectDefinition = state.customObjects.find(
-              (candidate) => candidate.id === placement.objectId,
-            );
-            if (!objectDefinition) {
-              return "";
-            }
-
-            return `  pangea.spawn.scripted(${JSON.stringify(placement.objectId)}, ${JSON.stringify(placement.position)});`;
-          }),
-          "}",
-        ]
-          .filter((line) => line.length > 0)
-          .join("\n");
-
   return [
-    "declare const pangea: PangeaApi;",
-    "declare function require(path: string): Record<string, unknown>;",
+    "local pangea = require('pangea')",
     "",
-    requires,
+    moduleRequires,
+    customObjectRequires.length > 0 ? "\n" + customObjectRequires.join("\n") : "",
     "",
-    `const __modules: readonly Record<string, unknown>[] = [${moduleArray}];`,
-    customObjectExports,
-    placementSetup,
+    `local __modules = { ${moduleList} }`,
+    "local __objectTypeModules = {",
+    objectTypeRoutes,
+    "}",
     "",
+    "local entry = {}",
+    "",
+    customObjectExports.length > 0 ? customObjectExports.join("\n") + "\n" : "",
     hookDispatchers,
-    placementSpawner,
+    "",
+    "return entry",
     "",
   ].join("\n");
 }
@@ -993,113 +1161,7 @@ function getCompiledModulePath(sourcePath: string): string {
     "Data/Scripts/src/",
     "Data/Scripts/dist/modules/",
   );
-  if (distPath.endsWith(".ts")) {
-    return `${distPath.slice(0, -3)}.js`;
-  }
-  return distPath.endsWith(".js") ? distPath : `${distPath}.js`;
-}
-
-function buildBundle(
-  transpiledModules: Readonly<Record<string, string>>,
-  entryId: string,
-): string {
-  const moduleFactories = Object.entries(transpiledModules)
-    .map(
-      ([path, output]) =>
-        `${JSON.stringify(path)}: function(module, exports, require, globalThis) {\n${output}\n}`,
-    )
-    .join(",\n");
-
-  return [
-    "(function() {",
-    "  const __moduleFactories = {",
-    moduleFactories,
-    "  };",
-    "  const __moduleCache = {};",
-    "",
-    "  function __resolve(request, fromId) {",
-    '    if (request.startsWith("./") || request.startsWith("../")) {',
-    `      const base = ${JSON.stringify(entryId)} === fromId ? fromId : fromId;`,
-    "      const normalized = (function(baseId, relativeId) {",
-    "        const baseParts = baseId.split('/');",
-    "        baseParts.pop();",
-    "        const requestParts = relativeId.split('/');",
-    "        const resolvedParts = baseParts.slice();",
-    "        for (const part of requestParts) {",
-    "          if (!part || part === '.') {",
-    "            continue;",
-    "          }",
-    "          if (part === '..') {",
-    "            if (resolvedParts.length > 0) {",
-    "              resolvedParts.pop();",
-    "            }",
-    "            continue;",
-    "          }",
-    "          resolvedParts.push(part);",
-    "        }",
-    "        return resolvedParts.join('/');",
-    "      })(base, request);",
-    "",
-    "      const candidates = [",
-    "        normalized,",
-    "        `${normalized}.ts`,",
-    "        `${normalized}/index.ts`,",
-    "      ];",
-    "",
-    "      for (const candidate of candidates) {",
-    "        if (__moduleFactories[candidate]) {",
-    "          return candidate;",
-    "        }",
-    "      }",
-    "    }",
-    "",
-    "    return request;",
-    "  }",
-    "",
-    "  function __load(id) {",
-    "    const existing = __moduleCache[id];",
-    "    if (existing) {",
-    "      return existing.exports;",
-    "    }",
-    "",
-    "    const factory = __moduleFactories[id];",
-    "    if (!factory) {",
-    "      if (globalThis.pangea && globalThis.pangea.log) {",
-    "        globalThis.pangea.log.error(`LEVEL_EDITOR_SCRIPTING: unresolved module ${id}`);",
-    "      }",
-    "      return {};",
-    "    }",
-    "",
-    "    const module = { exports: {} };",
-    "    __moduleCache[id] = module;",
-    "    factory(module, module.exports, function(request) {",
-    "      return __load(__resolve(request, id));",
-    "    }, globalThis);",
-    "    return module.exports;",
-    "  }",
-    "",
-    `  const __entryExports = __load(${JSON.stringify(entryId)});`,
-    "  if (typeof __entryExports === 'object' && __entryExports !== null) {",
-    "    for (const key of Object.keys(__entryExports)) {",
-    "      if (key === '__esModule') {",
-    "        continue;",
-    "      }",
-    "      const value = __entryExports[key];",
-    "      if (typeof globalThis.exports === 'object' && globalThis.exports !== null) {",
-    "        globalThis.exports[key] = value;",
-    "      }",
-    "      if (typeof globalThis.module === 'object' && globalThis.module !== null) {",
-    "        const moduleObject = globalThis.module;",
-    "        if (typeof moduleObject.exports === 'object' && moduleObject.exports !== null) {",
-    "          moduleObject.exports[key] = value;",
-    "        }",
-    "      }",
-    "      globalThis[key] = value;",
-    "    }",
-    "  }",
-    "})();",
-    "",
-  ].join("\n");
+  return distPath.endsWith(".lua") ? distPath : `${distPath}.lua`;
 }
 
 function compileModule(
@@ -1111,77 +1173,34 @@ function compileModule(
   },
   string
 > {
-  const compileResult = Result.fromThrowable(
-    () =>
-      ts.transpileModule(sourceFile.content, {
-        fileName: sourceFile.path,
-        reportDiagnostics: true,
-        compilerOptions: {
-          target: ts.ScriptTarget.ES2019,
-          module: ts.ModuleKind.CommonJS,
-          isolatedModules: true,
-          esModuleInterop: false,
-          strict: true,
-          noEmitHelpers: true,
-        },
-      }),
-    () => `Failed to compile ${sourceFile.path}`,
-  )();
-
-  if (compileResult.isErr()) {
-    return err(compileResult.error);
-  }
-
-  const diagnostics = (compileResult.value.diagnostics ?? []).map(
-    (diagnostic) => {
-      const message = ts.flattenDiagnosticMessageText(
-        diagnostic.messageText,
-        "\n",
-      );
-      const location = diagnostic.file?.getLineAndCharacterOfPosition(
-        diagnostic.start ?? 0,
-      );
-      return {
-        severity:
-          diagnostic.category === ts.DiagnosticCategory.Error
-            ? "error"
-            : "warning",
-        message,
-        code: diagnostic.code,
-        filePath: sourceFile.path,
-        line: (location?.line ?? 0) + 1,
-        column: (location?.character ?? 0) + 1,
-      } satisfies ScriptDiagnostic;
-    },
-  );
-
-  return ok({
-    output: compileResult.value.outputText,
-    diagnostics,
-  });
+  const diagnostics: ScriptDiagnostic[] = [];
+  const output = sourceFile.content;
+  return ok({ output, diagnostics });
 }
 
 function buildRequireDiagnostics(
   sourcePath: string,
   output: string,
 ): readonly ScriptDiagnostic[] {
-  const requirePattern = /require\((['"])([^'"]+)\1\)/g;
   const diagnostics: ScriptDiagnostic[] = [];
+  const requirePattern = /require\((['"][^'"]+['"])\)/g;
+
   for (const match of output.matchAll(requirePattern)) {
-    const request = match[2] ?? "";
-    if (request.startsWith("./") || request.startsWith("../")) {
+    const requireTarget = match[1]?.slice(1, -1);
+    if (!requireTarget || requireTarget.startsWith("pangea")) {
       continue;
     }
+
     diagnostics.push({
       severity: "warning",
-      message:
-        "Only relative require paths are bundled in the editor preview. Use global pangea types instead of package imports.",
+      message: `External require '${requireTarget}' may not resolve in preview runtime`,
       code: "preview.require",
       filePath: sourcePath,
       line: 1,
       column: 1,
     });
   }
+
   return diagnostics;
 }
 
@@ -1216,6 +1235,7 @@ function cloneBehaviorDefinition(
     targetKinds: [...behavior.targetKinds],
     supportedHooks: [...behavior.supportedHooks],
     sourceFilePath: behavior.sourceFilePath,
+    objectType: behavior.objectType,
     previewSupport: behavior.previewSupport,
     defaultTags: [...behavior.defaultTags],
     contributedTags: behavior.contributedTags.map(cloneTagDefinition),
@@ -1440,7 +1460,11 @@ export function createScriptWorkspaceContext(
       ? getMightyMikeHooks()
       : globals.GAME_TYPE === Game.CRO_MAG
         ? getRaceHooks()
-        : getAdventureHooks();
+        : gameId === "Nanosaur-android"
+          ? getNanosaurHooks()
+          : gameId === "BillyFrontier-Android"
+            ? getBillyFrontierHooks()
+            : getAdventureHooks();
 
   return {
     gameId,
@@ -1768,7 +1792,7 @@ export function applyTerrainBehavior(
     "terrain",
     `${behavior.id}-${signature.itemType}-${signature.position.x}-${signature.position.z}`,
   );
-  const sourcePath = `Data/Scripts/src/bindings/${assignmentId}.ts`;
+  const sourcePath = `Data/Scripts/src/bindings/${assignmentId}.lua`;
   const sourceContent = materializeBehaviorTemplate(behavior, {
     __HOOK__: "onTerrainItem",
     __CONTEXT_TYPE__: "TerrainItemContext",
@@ -1828,7 +1852,7 @@ export function applySplineBehavior(
     "spline",
     `${behavior.id}-${signature.itemType}-${signature.splineNum}-${signature.placement}`,
   );
-  const sourcePath = `Data/Scripts/src/bindings/${assignmentId}.ts`;
+  const sourcePath = `Data/Scripts/src/bindings/${assignmentId}.lua`;
   const sourceContent = materializeBehaviorTemplate(behavior, {
     __HOOK__: "onSplineItem",
     __CONTEXT_TYPE__: "SplineItemContext",
@@ -1887,7 +1911,7 @@ export function applyMapItemBehavior(
     "map-item",
     `${behavior.id}-${signature.itemType}-${signature.position.x}-${signature.position.y}`,
   );
-  const sourcePath = `Data/Scripts/src/bindings/${assignmentId}.ts`;
+  const sourcePath = `Data/Scripts/src/bindings/${assignmentId}.lua`;
   const sourceContent = materializeBehaviorTemplate(behavior, {
     __HOOK__: "onMapItem",
     __CONTEXT_TYPE__: "MikeMapItemContext",
@@ -1982,7 +2006,7 @@ export function createCustomObjectFromBehavior(
     /-([a-z])/g,
     (_, letter: string) => letter.toUpperCase(),
   );
-  const sourcePath = `Data/Scripts/src/objects/${slugify(objectId)}.ts`;
+  const sourcePath = `Data/Scripts/src/objects/${slugify(objectId)}.lua`;
   const sourceContent = behavior.template;
   const existingObject = state.customObjects.find(
     (candidate) => candidate.id === objectId,
@@ -2087,7 +2111,6 @@ export function compileScriptWorkspace(
   const refreshed = refreshGeneratedEntry(state, state.context);
   const diagnostics: ScriptDiagnostic[] = [];
   const compiledFiles: Record<string, ScriptCompiledFile> = {};
-  const transpiledModules: Record<string, string> = {};
 
   for (const sourceFile of Object.values(refreshed.sourceFiles)) {
     const compileResult = compileModule(sourceFile);
@@ -2105,13 +2128,11 @@ export function compileScriptWorkspace(
       content: compileResult.value.output,
       sourcePath: sourceFile.path,
     };
-    transpiledModules[toBundleModuleId(sourceFile.path)] =
-      compileResult.value.output;
   }
 
   compiledFiles[BUNDLED_RUNTIME_PATH] = {
     path: BUNDLED_RUNTIME_PATH,
-    content: buildBundle(transpiledModules, GENERATED_ENTRY_PATH),
+    content: refreshed.sourceFiles[GENERATED_ENTRY_PATH]?.content ?? "",
     sourcePath: GENERATED_ENTRY_PATH,
   };
 
@@ -2411,13 +2432,19 @@ export function importScriptPackageZip(
   const importedFiles = Object.entries(files)
     .filter(([path]) => path.startsWith("Data/Scripts/src/"))
     .filter(([path]) => path !== GENERATED_ENTRY_PATH);
-  const javaScriptSourcePath = importedFiles.find(
-    ([path]) => !isTypeScriptSourcePath(path),
+
+  const legacyTsPath = importedFiles.find(
+    ([path]) => path.endsWith(".ts") || path.endsWith(".tsx") || path.endsWith(".js")
   );
-  if (javaScriptSourcePath) {
-    return err(
-      `Script source files must be TypeScript: ${javaScriptSourcePath[0]}`,
-    );
+  if (legacyTsPath) {
+    return err("Legacy TypeScript/JavaScript package detected. This editor only supports Lua 5.4 scripting. Please convert your scripts to Lua before importing.");
+  }
+
+  const nonLuaSourcePath = importedFiles.find(
+    ([path]) => !isLuaSourcePath(path),
+  );
+  if (nonLuaSourcePath) {
+    return err(`Script source files must be Lua: ${nonLuaSourcePath[0]}`);
   }
 
   const importedSourceFiles = importedFiles
@@ -2804,6 +2831,7 @@ export function addBehaviorDefinition(
     label: string;
     description: string;
     tags: string[];
+    objectType?: string;
     sourceFilePath: string;
     sourceTemplate: string;
   },
@@ -2818,6 +2846,8 @@ export function addBehaviorDefinition(
         return ["splineItem"];
       case "mightyMikeItem":
         return ["mapItem"];
+      case "objectType":
+        return ["objectType"];
       case "customObject":
         return ["customObject"];
       default:
@@ -2835,6 +2865,7 @@ export function addBehaviorDefinition(
     targetKinds,
     supportedHooks: definition.hooks,
     sourceFilePath,
+    objectType: definition.objectType,
     previewSupport: "preview-ready",
     defaultTags: definition.tags,
     contributedTags: [],

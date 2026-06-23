@@ -1,6 +1,14 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Game, Globals } from "@/data/globals/globals";
 import { LevelNumber } from "@/data/globals/levelNumber";
@@ -22,6 +30,7 @@ import { ScriptCodeWorkspacePanel } from "./ScriptCodeWorkspacePanel";
 import { ScriptCustomObjectsPanel } from "./ScriptCustomObjectsPanel";
 import { ScriptGlobalHooksPanel } from "./ScriptGlobalHooksPanel";
 import { ScriptNativeBindingsPanel } from "./ScriptNativeBindingsPanel";
+import { ScriptObjectTypeBehaviorsPanel } from "./ScriptObjectTypeBehaviorsPanel";
 import { ScriptOverviewPanel } from "./ScriptOverviewPanel";
 import { ScriptParametersPanel } from "./ScriptParametersPanel";
 import {
@@ -171,9 +180,12 @@ export function ScriptsMenu({
   );
 
   const [activeTab, setActiveTab] = useState<ScriptsTab>("overview");
+  const [scriptsOpen, setScriptsOpen] = useState(false);
   const [defineBehaviorOpen, setDefineBehaviorOpen] = useState(false);
   const [globalHookForNewBehavior, setGlobalHookForNewBehavior] =
     useState<ScriptHookId | null>(null);
+  const [creatingObjectTypeBehavior, setCreatingObjectTypeBehavior] =
+    useState(false);
   const [codeEditorOpen, setCodeEditorOpen] = useState(false);
   const [customObjectBehaviorId, setCustomObjectBehaviorId] = useState("");
   const [newFileName, setNewFileName] = useState("helpers");
@@ -236,6 +248,10 @@ export function ScriptsMenu({
     () => getScriptAllowedTags(workspace),
     [workspace],
   );
+  const objectTypeBehaviors = useMemo(
+    () => getScriptBehaviorOptions(workspace, "objectType", "onObjectFrame"),
+    [workspace],
+  );
 
   const generatedCustomObjectId = useMemo(
     () =>
@@ -250,7 +266,7 @@ export function ScriptsMenu({
       buildGeneratedScriptSourcePath(
         newFileName,
         newFileDirectory,
-        "ts",
+        "lua",
         sourcePathOptions,
       ),
     [newFileDirectory, newFileName, sourcePathOptions],
@@ -482,7 +498,7 @@ export function ScriptsMenu({
       upsertScriptSourceFile(
         state,
         generatedNewFilePath,
-        buildDefaultScriptSourceContent("ts"),
+        buildDefaultScriptSourceContent("lua"),
       ),
     );
     setNewFileName("helpers");
@@ -595,11 +611,27 @@ export function ScriptsMenu({
   };
 
   return (
-    <div className="flex flex-col gap-4 p-3 text-sm">
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(parseScriptsTab(value))}
-      >
+    <>
+      <div className="p-3">
+        <Button className="w-full" onClick={() => setScriptsOpen(true)}>
+          Open Scripts
+        </Button>
+      </div>
+
+      <Dialog open={scriptsOpen} onOpenChange={setScriptsOpen}>
+        <DialogContent className="h-[90vh] w-[90vw] max-w-none grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
+          <DialogHeader className="border-b px-6 py-4 pr-12">
+            <DialogTitle>Scripts</DialogTitle>
+            <DialogDescription>
+              Create, assign, preview, and export scripts for this level.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-y-auto p-6 text-sm">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(parseScriptsTab(value))}
+            >
         <TabsList className="grid grid-cols-4 gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
@@ -651,6 +683,14 @@ export function ScriptsMenu({
                 updateWorkspace((state) =>
                   applyGlobalBehavior(state, hookId, behaviorId),
                 );
+              }}
+            />
+
+            <ScriptObjectTypeBehaviorsPanel
+              behaviors={objectTypeBehaviors}
+              onCreate={() => {
+                setCreatingObjectTypeBehavior(true);
+                setDefineBehaviorOpen(true);
               }}
             />
 
@@ -848,7 +888,10 @@ export function ScriptsMenu({
             onChange={(event) => void handleUploadPackage(event)}
           />
         </TabsContent>
-      </Tabs>
+            </Tabs>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <DefineBehaviorModal
         open={defineBehaviorOpen}
@@ -856,9 +899,16 @@ export function ScriptsMenu({
           setDefineBehaviorOpen(open);
           if (!open) {
             setGlobalHookForNewBehavior(null);
+            setCreatingObjectTypeBehavior(false);
           }
         }}
-        initialTarget={globalHookForNewBehavior === null ? undefined : "global"}
+        initialTarget={
+          creatingObjectTypeBehavior
+            ? "objectType"
+            : globalHookForNewBehavior === null
+              ? undefined
+              : "global"
+        }
         initialHooks={
           globalHookForNewBehavior === null
             ? undefined
@@ -894,7 +944,7 @@ export function ScriptsMenu({
           workspace={workspace}
           filePath={activeCodeFile.path}
           fileName={activeCodeFile.path.replace("Data/Scripts/", "")}
-          language="typescript"
+          language="lua"
           content={activeCodeFile.content}
           isReadOnly={!activeSourceFile || activeSourceFile.readOnly}
           onSave={
@@ -917,7 +967,7 @@ export function ScriptsMenu({
           onDelete={
             activeSourceFile &&
             !activeSourceFile.readOnly &&
-            activeSourceFile.path !== "Data/Scripts/src/user.ts"
+            activeSourceFile.path !== "Data/Scripts/src/user.lua"
               ? () => {
                   updateWorkspace((state) =>
                     removeScriptSourceFile(state, activeSourceFile.path),
@@ -942,6 +992,6 @@ export function ScriptsMenu({
         terrainTextureBytes={previewTextureBytes}
         customFiles={previewCustomFiles}
       />
-    </div>
+    </>
   );
 }

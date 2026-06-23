@@ -10,6 +10,7 @@ import {
   Upload,
   Package,
 } from "lucide-react";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 interface LevelActionMenuProps {
   canPreviewInGame: boolean;
@@ -65,10 +66,15 @@ export function LevelActionMenu({
             onClick={() => closeAndRun(onPreviewInGame)}
           >
             <Gamepad2 className="h-4 w-4" />
-            {hasScripts ? "Preview in Game (no scripts)" : "Preview in Game"}
+            {ENABLE_SCRIPTS && hasScripts
+              ? "Preview in Game (no scripts)"
+              : "Preview in Game"}
           </button>
         )}
-        {canPreviewInGame && hasScripts && onPreviewWithScripts && (
+        {ENABLE_SCRIPTS &&
+          canPreviewInGame &&
+          hasScripts &&
+          onPreviewWithScripts && (
           <button
             type="button"
             className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
@@ -86,7 +92,7 @@ export function LevelActionMenu({
           <Download className="h-4 w-4" />
           Download Level
         </button>
-        {hasScripts && onDownloadExtendedPackage && (
+        {ENABLE_SCRIPTS && hasScripts && onDownloadExtendedPackage && (
           <button
             type="button"
             className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
@@ -96,7 +102,7 @@ export function LevelActionMenu({
             Download Extended Package
           </button>
         )}
-        {hasScripts && onDownloadScriptPackage && (
+        {ENABLE_SCRIPTS && hasScripts && onDownloadScriptPackage && (
           <button
             type="button"
             className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
@@ -106,7 +112,7 @@ export function LevelActionMenu({
             Download Script Package
           </button>
         )}
-        {hasScripts && onUploadScriptPackage && (
+        {ENABLE_SCRIPTS && hasScripts && onUploadScriptPackage && (
           <button
             type="button"
             className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"

@@ -1,0 +1,896 @@
+
+ RUN  v4.1.7 /home/lachl/documents/pangearsedit/frontend
+      Coverage enabled with v8
+
+ ✓ tests/utils/scriptWorkspaceState.test.ts (14 tests) 39ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  16:56:53
+   Duration  4.01s (transform 331ms, setup 74ms, import 384ms, tests 39ms, environment 551ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    3.83 |     1.68 |    2.49 |    3.97 |                   
+ src               |       0 |        0 |       0 |       0 |                   
+  App.tsx          |       0 |      100 |       0 |       0 | 15                
+  main.tsx         |       0 |        0 |     100 |       0 | 8-19              
+  vite-env.d.ts    |       0 |        0 |       0 |       0 |                   
+ src/api           |       0 |        0 |       0 |       0 |                   
+  apiBase.ts       |       0 |        0 |       0 |       0 | 4-41              
+  apiSchemas.ts    |       0 |      100 |     100 |       0 | 4-35              
+  authApi.ts       |       0 |        0 |       0 |       0 | 17-86             
+  ...ailability.ts |       0 |        0 |       0 |       0 | 5-61              
+  ...dLevelsApi.ts |       0 |        0 |       0 |       0 | 34-199            
+ src/components    |       0 |        0 |       0 |       0 |                   
+  Button.tsx       |       0 |        0 |       0 |       0 |                   
+  ...sionPanel.tsx |       0 |        0 |       0 |       0 | 29-86             
+  ...ModelMesh.tsx |       0 |        0 |       0 |       0 | 34-521            
+  ...rBoundary.tsx |       0 |        0 |       0 |       0 | 17-42             
+  FileUpload.tsx   |       0 |      100 |       0 |       0 | 17-24             
+  ...lSelector.tsx |       0 |        0 |       0 |       0 | 43-250            
+  ImageEditor.tsx  |       0 |        0 |       0 |       0 | 50-335            
+  ...Hierarchy.tsx |       0 |        0 |       0 |       0 | 19-61             
+  ...lRigPanel.tsx |       0 |        0 |       0 |       0 | 46-159            
+  Navigation.tsx   |       0 |        0 |       0 |       0 | 25-51             
+  ...anel.test.tsx |       0 |        0 |       0 |       0 | 2-343             
+  ...sionPanel.tsx |       0 |        0 |       0 |       0 | 36-390            
+  ...reManager.tsx |       0 |        0 |       0 |       0 | 46-220            
+  UserMenu.tsx     |       0 |        0 |       0 |       0 | 16-126            
+  ...nelActions.ts |       0 |        0 |       0 |       0 | 21-102            
+ ...nimationViewer |       0 |        0 |       0 |       0 |                   
+  ...nControls.tsx |       0 |        0 |       0 |       0 | 30                
+  ...onCreator.tsx |       0 |      100 |       0 |       0 | 48-126            
+  ...ionEditor.tsx |       0 |        0 |       0 |       0 | 52-163            
+  ...entEditor.tsx |       0 |        0 |       0 |       0 | 62-285            
+  ...taDisplay.tsx |       0 |        0 |       0 |       0 | 20-36             
+  ...nSelector.tsx |       0 |        0 |       0 |       0 | 26-40             
+  ...ionViewer.tsx |       0 |        0 |       0 |       0 | 40-415            
+  ...werLayout.tsx |       0 |      100 |       0 |       0 | 175               
+  ...ameEditor.tsx |       0 |        0 |       0 |       0 | 149-785           
+  ...oolsPanel.tsx |       0 |        0 |       0 |       0 | 33-82             
+  ...rushPanel.tsx |       0 |        0 |       0 |       0 | 36-204            
+  ...eatorState.ts |       0 |        0 |       0 |       0 | 13-42             
+  ...ditorState.ts |       0 |        0 |       0 |       0 | 5-44              
+  ...ditorState.ts |       0 |        0 |       0 |       0 | 12-67             
+  ...EventUtils.ts |       0 |        0 |       0 |       0 | 1-262             
+  ...oundPlayer.ts |       0 |        0 |       0 |       0 | 9-202             
+  ...rSections.tsx |       0 |      100 |       0 |       0 | 14                
+  constants.ts     |       0 |      100 |     100 |       0 | 5-11              
+  hooks.test.ts    |       0 |      100 |       0 |       0 | 10-26             
+  hooks.ts         |       0 |        0 |       0 |       0 | 12-150            
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  rigToolsState.ts |       0 |        0 |       0 |       0 | 13-129            
+  types.ts         |       0 |        0 |       0 |       0 |                   
+  ...mationCrud.ts |       0 |        0 |       0 |       0 | 83-368            
+  ...erivedData.ts |       0 |        0 |       0 |       0 | 23-97             
+  ...tionEvents.ts |       0 |        0 |       0 |       0 | 33-124            
+  ...meControls.ts |       0 |        0 |       0 |       0 | 107-462           
+  ...ndPlayback.ts |       0 |        0 |       0 |       0 | 10-126            
+  ...ronization.ts |       0 |        0 |       0 |       0 | 23-66             
+  ...eAutoApply.ts |       0 |        0 |       0 |       0 | 84-231            
+  ...ameHistory.ts |       0 |        0 |       0 |       0 | 56-187            
+  utils.ts         |       0 |        0 |       0 |       0 | 34-147            
+ ...eModelSelector |       0 |        0 |       0 |       0 |                   
+  ModelDetails.tsx |       0 |        0 |       0 |       0 | 13-15             
+ ...ts/ImageEditor |       0 |        0 |       0 |       0 |                   
+  ...torCanvas.tsx |       0 |        0 |       0 |       0 | 54-144            
+  ...torFooter.tsx |       0 |        0 |       0 |       0 | 22-45             
+  ...torDialog.tsx |       0 |        0 |       0 |       0 | 17-21             
+  ToolsPanel.tsx   |       0 |        0 |       0 |       0 | 64-377            
+  colorPalette.ts  |       0 |      100 |     100 |       0 | 1                 
+  ...anvasState.ts |       0 |        0 |       0 |       0 | 14-27             
+  ...PanelState.ts |       0 |        0 |       0 |       0 | 16-83             
+  ...rHighlight.ts |       0 |        0 |       0 |       0 | 10-45             
+  types.ts         |       0 |        0 |       0 |       0 |                   
+ ...onversionPanel |       0 |        0 |       0 |       0 |                   
+  DropArea.tsx     |       0 |        0 |       0 |       0 | 19-24             
+  ...tionPanel.tsx |       0 |        0 |       0 |       0 | 24-34             
+  ...epContent.tsx |       0 |        0 |       0 |       0 | 33-74             
+  ...ctionUtils.ts |       0 |        0 |       0 |       0 | 27-106            
+ ...TextureManager |       0 |        0 |       0 |       0 |                   
+  ...ailDialog.tsx |       0 |        0 |       0 |       0 | 51-59             
+  TextureItem.tsx  |       0 |        0 |       0 |       0 | 53-114            
+  ...mentPanel.tsx |       0 |        0 |       0 |       0 | 21-58             
+  UvMapEditor.tsx  |       0 |        0 |       0 |       0 | 34-863            
+  ...eItemState.ts |       0 |        0 |       0 |       0 | 12-37             
+  ...nagerState.ts |       0 |        0 |       0 |       0 | 14-79             
+ ...mponents/items |       0 |        0 |       0 |       0 |                   
+  ...Thumbnail.tsx |       0 |        0 |       0 |       0 | 30-63             
+ ...s/model-viewer |       0 |        0 |       0 |       0 |                   
+  ...onUpdater.tsx |       0 |        0 |       0 |       0 | 19-91             
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...archyTree.tsx |       0 |        0 |       0 |       0 | 20-100            
+  types.ts         |       0 |        0 |       0 |       0 |                   
+  ...Animations.ts |       0 |        0 |       0 |       0 | 17-54             
+  ...lHierarchy.ts |       0 |        0 |       0 |       0 | 10-65             
+  utils.ts         |       0 |        0 |       0 |       0 | 9-43              
+ src/components/ui |       0 |        0 |       0 |       0 |                   
+  alert.tsx        |       0 |      100 |       0 |       0 | 6-57              
+  badge.tsx        |       0 |      100 |       0 |       0 | 6-31              
+  button.tsx       |       0 |        0 |       0 |       0 | 14-44             
+  ...onVariants.ts |       0 |      100 |     100 |       0 | 4-30              
+  card.tsx         |       0 |      100 |       0 |       0 | 4-72              
+  carousel.tsx     |       0 |        0 |       0 |       0 | 31-261            
+  checkbox.tsx     |       0 |      100 |       0 |       0 | 7-26              
+  dialog.tsx       |       0 |      100 |       0 |       0 | 7-107             
+  input.tsx        |       0 |      100 |       0 |       0 | 5-20              
+  label.tsx        |       0 |      100 |       0 |       0 | 7-22              
+  popover.tsx      |       0 |      100 |       0 |       0 | 9-18              
+  progress.tsx     |       0 |        0 |       0 |       0 | 6-24              
+  resizable.tsx    |       0 |        0 |       0 |       0 | 7-33              
+  select.tsx       |       0 |        0 |       0 |       0 | 23-159            
+  separator.tsx    |       0 |        0 |       0 |       0 | 10-31             
+  slider.tsx       |       0 |      100 |       0 |       0 | 6-24              
+  sonner.tsx       |       0 |      100 |       0 |       0 | 7-10              
+  switch.tsx       |       0 |      100 |       0 |       0 | 6-25              
+  tabs.tsx         |       0 |      100 |       0 |       0 | 5-47              
+  textarea.tsx     |       0 |      100 |       0 |       0 | 8-22              
+  toast.tsx        |       0 |      100 |       0 |       0 | 20-123            
+  toaster.tsx      |       0 |        0 |       0 |       0 | 12-17             
+  tooltip.tsx      |       0 |        0 |       0 |       0 | 6-28              
+ src/data          |       0 |        0 |       0 |       0 |                   
+  levels.ts        |       0 |        0 |       0 |       0 | 21-71             
+  selectors.ts     |       0 |        0 |       0 |       0 |                   
+ ...ata/canvasView |       0 |        0 |       0 |       0 |                   
+  ...sViewAtoms.ts |       0 |        0 |       0 |       0 | 4-30              
+ src/data/creation |       0 |      100 |     100 |       0 |                   
+  ...eationAtom.ts |       0 |      100 |     100 |       0 | 16                
+ src/data/fences   |   46.84 |    14.28 |   21.42 |   46.88 |                   
+  ...rFenceType.ts |     100 |      100 |     100 |     100 |                   
+  ...enceImages.ts |       0 |        0 |       0 |       0 | 9-135             
+  ...2FenceType.ts |     100 |      100 |     100 |     100 |                   
+  ...mFenceType.ts |     100 |      100 |     100 |     100 |                   
+  ...gFenceType.ts |     100 |      100 |     100 |     100 |                   
+  fenceAtoms.ts    |       0 |      100 |     100 |       0 | 4-6               
+  getFenceColor.ts |       0 |        0 |       0 |       0 | 3-118             
+  ...enceHeight.ts |       0 |        0 |       0 |       0 | 4-65              
+  ...eImagePath.ts |       0 |        0 |       0 |       0 | 6-87              
+  getFenceNames.ts |       0 |        0 |       0 |       0 | 9-18              
+  getFenceTypes.ts |       0 |        0 |       0 |       0 | 7-10              
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...2FenceType.ts |     100 |      100 |     100 |     100 |                   
+  ottoFenceType.ts |     100 |      100 |     100 |     100 |                   
+  ...mageSource.ts |       0 |        0 |       0 |       0 | 5-98              
+ src/data/game     |       0 |        0 |       0 |       0 |                   
+  gameAtoms.ts     |       0 |      100 |     100 |       0 | 13-88             
+  ...ValueUtils.ts |       0 |        0 |       0 |       0 | 9-158             
+ src/data/games    |       0 |      100 |     100 |       0 |                   
+  billyfrontier.ts |       0 |      100 |     100 |       0 | 3                 
+  bugdom1.ts       |       0 |      100 |     100 |       0 | 3                 
+  bugdom2.ts       |       0 |      100 |     100 |       0 | 3                 
+  cromagrally.ts   |       0 |      100 |     100 |       0 | 3                 
+  index.ts         |       0 |      100 |     100 |       0 | 9                 
+  nanosaur1.ts     |       0 |      100 |     100 |       0 | 3                 
+  nanosaur2.ts     |       0 |      100 |     100 |       0 | 3                 
+  ottomatic.ts     |       0 |      100 |     100 |       0 | 3                 
+ src/data/globals  |   54.71 |    27.27 |      60 |      52 |                   
+  ...veViewAtom.ts |       0 |        0 |       0 |       0 | 12-47             
+  authState.ts     |       0 |      100 |     100 |       0 | 4                 
+  ...avbarAtoms.ts |       0 |      100 |     100 |       0 | 5-11              
+  globals.ts       |     100 |      100 |     100 |     100 |                   
+  history.ts       |       0 |      100 |     100 |       0 | 4                 
+  hoverTagAtom.ts  |       0 |      100 |     100 |       0 | 9                 
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  levelNumber.ts   |       0 |      100 |     100 |       0 | 4                 
+ src/data/items    |   40.84 |     6.48 |   12.21 |   41.49 |                   
+  ...delMapping.ts |       0 |      100 |       0 |       0 | 16-21             
+  ...erItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...delMapping.ts |       0 |      100 |     100 |       0 | 50                
+  ...m2ItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...efinitions.ts |       0 |        0 |       0 |       0 | 17-1432           
+  ...delMapping.ts |       0 |      100 |     100 |       0 | 29                
+  ...omItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...agItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...delMapping.ts |       0 |      100 |       0 |       0 | 16-21             
+  ...eItemTypes.ts |       0 |        0 |       0 |       0 | 10-51             
+  getItemNames.ts  |       0 |        0 |       0 |       0 | 8-13              
+  getItemTypes.ts  |       0 |      100 |       0 |       0 | 9                 
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  itemAtoms.ts     |       0 |      100 |     100 |       0 | 4-30              
+  ...Categories.ts |       0 |        0 |       0 |       0 | 4-144             
+  ...ilterAtoms.ts |       0 |        0 |       0 |       0 | 15-144            
+  ...FilterKeys.ts |       0 |        0 |       0 |       0 | 3-45              
+  ...ilterUtils.ts |       0 |        0 |       0 |       0 | 31-160            
+  itemFilters.ts   |       0 |        0 |       0 |       0 |                   
+  ...AuditRules.ts |       0 |        0 |       0 |       0 | 10-64             
+  ...ModelTypes.ts |       0 |        0 |       0 |       0 | 108-461           
+  ...ModelUtils.ts |       0 |        0 |       0 |       0 | 24-361            
+  itemParams.ts    |    86.2 |    79.16 |   88.88 |   88.88 | 138,211,244       
+  ....generated.ts |       0 |      100 |     100 |       0 | 5                 
+  ...otManifest.ts |       0 |        0 |       0 |       0 | 9-132             
+  ...PatchItems.ts |       0 |        0 |       0 |       0 | 64-504            
+  ...ItemParams.ts |       0 |        0 |       0 |       0 | 3-124             
+  ...mSpriteMap.ts |       0 |        0 |       0 |       0 | 37-533            
+  ...keItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...delMapping.ts |       0 |      100 |       0 |       0 | 16-21             
+  ...r2ItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...delMapping.ts |       0 |      100 |     100 |       0 | 21                
+  ...urItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...delMapping.ts |       0 |      100 |     100 |       0 | 32                
+  ottoItemType.ts  |   50.88 |      1.8 |      50 |   50.66 | 1996-2217         
+  ...ParamTypes.ts |       0 |        0 |       0 |       0 | 200-564           
+ .../items/mappers |       0 |        0 |       0 |       0 |                   
+  ...ItemMapper.ts |       0 |        0 |       0 |       0 | 27-475            
+  ...ItemMapper.ts |       0 |        0 |       0 |       0 | 17-412            
+  ...ItemMapper.ts |       0 |        0 |       0 |       0 | 24-244            
+  ...ItemMapper.ts |       0 |        0 |       0 |       0 | 36-820            
+  index.ts         |       0 |        0 |       0 |       0 | 20-111            
+  ...ItemMapper.ts |       0 |        0 |       0 |       0 | 24-78             
+  ...ItemMapper.ts |       0 |        0 |       0 |       0 | 26-778            
+  ...ItemMapper.ts |       0 |        0 |       0 |       0 | 43-244            
+ src/data/level-io |       0 |        0 |       0 |       0 |                   
+  levelIoErrors.ts |       0 |      100 |       0 |       0 | 20                
+  ...lIoSchemas.ts |       0 |      100 |     100 |       0 | 8-125             
+  levelIoTypes.ts  |       0 |        0 |       0 |       0 |                   
+  ...rkerClient.ts |       0 |        0 |       0 |       0 | 23-294            
+  ...lCodecWasm.ts |       0 |        0 |       0 |       0 | 12-308            
+  ...LevelBytes.ts |       0 |        0 |       0 |       0 | 41-514            
+  ...LevelBytes.ts |       0 |        0 |       0 |       0 | 35-441            
+  ...eSnapshots.ts |       0 |        0 |       0 |       0 | 5-65              
+ ...data/levelEdit |       0 |        0 |       0 |       0 |                   
+  applyEdit.ts     |       0 |        0 |       0 |       0 | 31-377            
+  ...ationTypes.ts |       0 |        0 |       0 |       0 |                   
+  ...Operations.ts |       0 |        0 |       0 |       0 | 28-366            
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...torService.ts |       0 |        0 |       0 |       0 | 59-277            
+ ...levelTemplates |       0 |        0 |       0 |       0 |                   
+  ...taBuilders.ts |       0 |      100 |       0 |       0 | 17-95             
+  ...lGenerator.ts |       0 |        0 |       0 |       0 | 48-325            
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...quirements.ts |       0 |        0 |       0 |       0 | 48-303            
+ ...a/mapRoundtrip |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  parseLevel.ts    |       0 |        0 |       0 |       0 | 21-348            
+  types.ts         |       0 |        0 |       0 |       0 |                   
+ .../preprocessors |       0 |        0 |       0 |       0 |                   
+  ...tprocessor.ts |       0 |        0 |       0 |       0 | 15-48             
+  ...eprocessor.ts |       0 |        0 |       0 |       0 |                   
+ ...ata/processors |       0 |        0 |       0 |       0 |                   
+  ...oprocessor.ts |       0 |        0 |       0 |       0 | 12-343            
+  ...rLevelData.ts |       0 |        0 |       0 |       0 | 8-191             
+  ...essorTypes.ts |       0 |        0 |       0 |       0 |                   
+  ...oZeroFixer.ts |       0 |        0 |       0 |       0 | 19-85             
+  ...eprocessor.ts |       0 |        0 |       0 |       0 | 11-293            
+ src/data/saveMap  |       0 |        0 |       0 |       0 |                   
+  saveMap.ts       |       0 |        0 |       0 |       0 | 11-117            
+  ...MapHelpers.ts |       0 |        0 |       0 |       0 | 16-194            
+ ...data/selectors |       0 |        0 |       0 |       0 |                   
+  ...aSelectors.ts |       0 |        0 |       0 |       0 | 9-141             
+  ...aSelectors.ts |       0 |        0 |       0 |       0 | 9-55              
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...aSelectors.ts |       0 |        0 |       0 |       0 | 12-119            
+  ...aSelectors.ts |       0 |        0 |       0 |       0 | 13-119            
+  ...aSelectors.ts |       0 |        0 |       0 |       0 | 15-246            
+ src/data/splines  |   79.36 |    46.66 |   53.84 |   79.48 |                   
+  ...neItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...neItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...neItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...neItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...eItemNames.ts |       0 |        0 |       0 |       0 | 8-17              
+  ...eItemTypes.ts |       0 |        0 |       0 |       0 | 9-12              
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...neItemType.ts |     100 |      100 |     100 |     100 |                   
+  ...neItemType.ts |     100 |      100 |     100 |     100 |                   
+  splineAtoms.ts   |       0 |      100 |     100 |       0 | 4-8               
+  ...eDetection.ts |   26.31 |    16.66 |      20 |      25 | 25-54             
+ ...ata/supertiles |       0 |      100 |     100 |       0 |                   
+  ...rtileAtoms.ts |       0 |      100 |     100 |       0 | 3                 
+ ...ata/terrain-io |       0 |        0 |       0 |       0 |                   
+  terrainCodec.ts  |       0 |        0 |       0 |       0 | 13-97             
+  ...decSchemas.ts |       0 |      100 |     100 |       0 | 3-78              
+  ...CodecTypes.ts |       0 |        0 |       0 |       0 |                   
+  ...nCodecWasm.ts |       0 |        0 |       0 |       0 | 31-513            
+  ...rkerClient.ts |       0 |        0 |       0 |       0 | 22-462            
+  ...geAssembly.ts |       0 |        0 |       0 |       0 | 11-41             
+  ...rientation.ts |       0 |        0 |       0 |       0 | 9-32              
+  ...ialization.ts |       0 |        0 |       0 |       0 | 8-139             
+  ...inIoErrors.ts |       0 |      100 |       0 |       0 | 20                
+ ...ta/tileBrushes |       0 |        0 |       0 |       0 |                   
+  ...BrushApply.ts |       0 |        0 |       0 |       0 | 44-169            
+  ...BrushAtoms.ts |       0 |      100 |     100 |       0 | 8-13              
+  ...portExport.ts |       0 |        0 |       0 |       0 | 9-26              
+  ...ushSchemas.ts |       0 |        0 |       0 |       0 | 3-31              
+  ...Transforms.ts |       0 |        0 |       0 |       0 | 13-151            
+  ...BrushTypes.ts |       0 |        0 |       0 |       0 |                   
+ src/data/tiles    |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  tileAtoms.ts     |       0 |        0 |       0 |       0 | 3-71              
+  ...aExtractor.ts |       0 |        0 |       0 |       0 | 42-207            
+  tileExport.ts    |       0 |        0 |       0 |       0 | 30-308            
+  tileHandlers.ts  |       0 |        0 |       0 |       0 | 23-105            
+  tileImport.ts    |       0 |        0 |       0 |       0 | 38-326            
+  ...timization.ts |       0 |        0 |       0 |       0 | 31-196            
+  ...intHandler.ts |       0 |        0 |       0 |       0 | 33-263            
+  ...ctionAtoms.ts |       0 |        0 |       0 |       0 | 13-80             
+  ...Structures.ts |       0 |        0 |       0 |       0 | 25-128            
+ ...a/tunnelParser |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...TunnelFile.ts |       0 |        0 |       0 |       0 | 33-633            
+  ...TunnelFile.ts |       0 |        0 |       0 |       0 | 32-420            
+  textureUtils.ts  |       0 |        0 |       0 |       0 | 19-129            
+  types.ts         |       0 |        0 |       0 |       0 | 175-227           
+ src/data/utils    |       0 |        0 |       0 |       0 |                   
+  ...lDataUtils.ts |       0 |        0 |       0 |       0 | 15-348            
+  ...esizeUtils.ts |       0 |        0 |       0 |       0 | 12-158            
+  ...esizeUtils.ts |       0 |        0 |       0 |       0 | 35-380            
+ src/data/water    |      70 |    55.55 |    62.5 |   68.51 |                   
+  ...erBodyType.ts |     100 |      100 |     100 |     100 |                   
+  ...erBodyType.ts |     100 |      100 |     100 |     100 |                   
+  ...erBodyType.ts |       0 |        0 |       0 |       0 | 1-8               
+  ...erBodyType.ts |     100 |      100 |     100 |     100 |                   
+  ...dyTypeName.ts |       0 |        0 |       0 |       0 | 9-18              
+  ...rBodyTypes.ts |       0 |        0 |       0 |       0 | 10-13             
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...erBodyType.ts |     100 |      100 |     100 |     100 |                   
+  ...erBodyType.ts |     100 |      100 |     100 |     100 |                   
+  waterAtoms.ts    |       0 |      100 |     100 |       0 | 4-6               
+ src/editor        |       0 |        0 |       0 |       0 |                   
+  ...orToolbar.tsx |       0 |        0 |       0 |       0 | 23-55             
+  EditorView.tsx   |       0 |      100 |       0 |       0 | 15                
+  ...eviewHost.tsx |       0 |        0 |       0 |       0 | 57-123            
+  IntroPrompt.tsx  |       0 |        0 |       0 |       0 | 79-926            
+  IntroText.tsx    |       0 |      100 |       0 |       0 | 2                 
+  ...ctionMenu.tsx |       0 |        0 |       0 |       0 | 39-123            
+  LevelGrid.tsx    |       0 |        0 |       0 |       0 | 14-24             
+  ...ameDialog.tsx |       0 |        0 |       0 |       0 | 39-339            
+  UploadPrompt.tsx |       0 |        0 |       0 |       0 | 32-69             
+  saveMap.ts       |       0 |        0 |       0 |       0 |                   
+  viewEnum.ts      |       0 |        0 |       0 |       0 | 1-8               
+ ...or/IntroPrompt |       0 |        0 |       0 |       0 |                   
+  ...irmDialog.tsx |       0 |      100 |       0 |       0 | 64-90             
+  canvasUtils.ts   |       0 |        0 |       0 |       0 | 10-48             
+  historyHooks.ts  |       0 |        0 |       0 |       0 | 17-83             
+ src/editor/canvas |       0 |        0 |       0 |       0 |                   
+  ...KonvaView.tsx |       0 |        0 |       0 |       0 | 93-375            
+  ...ageLayers.tsx |       0 |        0 |       0 |       0 | 29-69             
+  CanvasView.tsx   |       0 |        0 |       0 |       0 | 66-156            
+  ...KonvaView.tsx |       0 |        0 |       0 |       0 | 73-284            
+  ...KonvaView.tsx |       0 |        0 |       0 |       0 | 77-288            
+  ...KonvaView.tsx |       0 |        0 |       0 |       0 | 84-206            
+  ...KonvaView.tsx |       0 |        0 |       0 |       0 |                   
+  ...LayerState.ts |       0 |        0 |       0 |       0 | 8-68              
+  ...aViewState.ts |       0 |        0 |       0 |       0 | 19-128            
+ ...ditor/creation |       0 |        0 |       0 |       0 |                   
+  ...ationState.ts |       0 |        0 |       0 |       0 | 14-181            
+ ...itor/gameCards |       0 |        0 |       0 |       0 |                   
+  GameCard.tsx     |       0 |        0 |       0 |       0 | 33-390            
+  ...usel.test.tsx |       0 |        0 |       0 |       0 |                   
+  GameCarousel.tsx |       0 |        0 |       0 |       0 | 44-126            
+  ...kePreview.tsx |       0 |        0 |       0 |       0 | 10-101            
+  ...ThreeView.tsx |       0 |        0 |       0 |       0 | 23-77             
+  ...splayState.ts |       0 |        0 |       0 |       0 | 4-64              
+  ...selConfig.tsx |       0 |        0 |       0 |       0 | 33-90             
+  ...eViewState.ts |       0 |        0 |       0 |       0 | 5-48              
+  ...agingUtils.ts |       0 |        0 |       0 |       0 | 10-62             
+ ...LevelSelectors |       0 |        0 |       0 |       0 |                   
+  ...ierLevels.tsx |       0 |      100 |       0 |       0 | 13-67             
+  ...om2Levels.tsx |       0 |      100 |       0 |       0 | 21-52             
+  BugdomLevels.tsx |       0 |      100 |       0 |       0 | 10-77             
+  CroMagLevels.tsx |       0 |      100 |       0 |       0 | 14-17             
+  ...ikeLevels.tsx |       0 |      100 |       0 |       0 | 13                
+  ...ur2Levels.tsx |       0 |      100 |       0 |       0 | 13-73             
+  ...aurLevels.tsx |       0 |      100 |       0 |       0 | 10-21             
+  OttoLevels.tsx   |       0 |      100 |       0 |       0 | 10-77             
+  ...nnelLoader.ts |       0 |        0 |       0 |       0 | 17-58             
+  ...lectorData.ts |       0 |      100 |     100 |       0 | 17-117            
+  ...torRender.tsx |       0 |      100 |       0 |       0 | 16-17             
+ ...itor/gameViews |       0 |        0 |       0 |       0 |                   
+  ...ditorView.tsx |       0 |        0 |       0 |       0 | 72-179            
+  ...ditorView.tsx |       0 |        0 |       0 |       0 | 22-157            
+  ...TilesMenu.tsx |       0 |        0 |       0 |       0 | 63-370            
+  MenuSection.tsx  |       0 |        0 |       0 |       0 | 13                
+  ...ditorView.tsx |       0 |        0 |       0 |       0 | 41-140            
+  ...ditorView.tsx |       0 |        0 |       0 |       0 | 55-94             
+  ...ditorView.tsx |       0 |        0 |       0 |       0 | 79-198            
+  ...TilesMenu.tsx |       0 |        0 |       0 |       0 | 55-233            
+  ...ditorView.tsx |       0 |        0 |       0 |       0 | 77-196            
+  ...TilesMenu.tsx |       0 |        0 |       0 |       0 | 62-264            
+  ...esizeState.ts |       0 |        0 |       0 |       0 | 53-122            
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...ditorState.ts |       0 |        0 |       0 |       0 | 33                
+  ...sMenuState.ts |       0 |        0 |       0 |       0 | 10-68             
+ ...itor/loadLogic |       0 |        0 |       0 |       0 |                   
+  ...saur1Level.ts |       0 |        0 |       0 |       0 | 19-217            
+  loadMapImages.ts |       0 |        0 |       0 |       0 | 15-79             
+  ...rseHelpers.ts |       0 |        0 |       0 |       0 | 11-46             
+  ...Interfaces.ts |       0 |        0 |       0 |       0 |                   
+  openFile.ts      |       0 |        0 |       0 |       0 | 26-239            
+  ...elDataFile.ts |       0 |        0 |       0 |       0 | 54-252            
+  ...tyMikeFile.ts |       0 |        0 |       0 |       0 | 41-382            
+  ...rLevelFile.ts |       0 |        0 |       0 |       0 | 18-59             
+  ...cLevelFile.ts |       0 |        0 |       0 |       0 | 23-104            
+  typeGuards.ts    |       0 |        0 |       0 |       0 | 8-83              
+ ...ditor/subviews |       0 |        0 |       0 |       0 |                   
+  ...skOverlay.tsx |       0 |        0 |       0 |       0 | 18-88             
+  ...lacements.tsx |       0 |        0 |       0 |       0 | 21-193            
+  ...sControls.tsx |       0 |      100 |       0 |       0 | 13-23             
+  ...taPrompts.tsx |       0 |        0 |       0 |       0 | 23-65             
+  Fences.tsx       |       0 |        0 |       0 |       0 | 9-24              
+  Items.tsx        |       0 |        0 |       0 |       0 | 16-59             
+  ...MikeItems.tsx |       0 |        0 |       0 |       0 | 11-34             
+  Splines.tsx      |       0 |        0 |       0 |       0 | 9-28              
+  Supertiles.tsx   |       0 |        0 |       0 |       0 | 14-58             
+  Tiles.tsx        |       0 |        0 |       0 |       0 | 30-58             
+  WaterBodies.tsx  |       0 |        0 |       0 |       0 | 10-28             
+  tileViewState.ts |       0 |        0 |       0 |       0 | 8-37              
+ ...ubviews/bugdom |       0 |        0 |       0 |       0 |                   
+  ...mTileMenu.tsx |       0 |        0 |       0 |       0 | 57-310            
+  ...nuContent.tsx |       0 |        0 |       0 |       0 | 91-327            
+  ...eMenuUtils.ts |       0 |        0 |       0 |       0 | 15-369            
+  ...derer.test.ts |       0 |      100 |       0 |       0 | 26-397            
+  ...eRenderer.tsx |       0 |        0 |       0 |       0 | 43-230            
+  ...erer.utils.ts |       0 |        0 |       0 |       0 | 5-264             
+  ...CacheState.ts |       0 |        0 |       0 |       0 | 4-47              
+  ...eMenuState.ts |       0 |        0 |       0 |       0 | 11-51             
+ ...ubviews/fences |       0 |        0 |       0 |       0 |                   
+  Fence.tsx        |       0 |        0 |       0 |       0 | 14-378            
+  FenceMenu.tsx    |       0 |        0 |       0 |       0 | 40-385            
+  FenceNub.tsx     |       0 |        0 |       0 |       0 | 15-90             
+  ...teractions.ts |       0 |        0 |       0 |       0 | 20-69             
+ ...bviews/filters |       0 |        0 |       0 |       0 |                   
+  ...StatusBar.tsx |       0 |        0 |       0 |       0 | 15-26             
+  ...lterPanel.tsx |       0 |        0 |       0 |       0 | 26-119            
+  ...terToggle.tsx |       0 |        0 |       0 |       0 | 11-33             
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...PanelState.ts |       0 |        0 |       0 |       0 | 24-128            
+ ...subviews/items |       0 |        0 |       0 |       0 |                   
+  Item.tsx         |       0 |        0 |       0 |       0 | 25-230            
+  ItemMenu.tsx     |       0 |        0 |       0 |       0 | 44-348            
+  ...yMikeItem.tsx |       0 |        0 |       0 |       0 | 30-172            
+  ...eItemMenu.tsx |       0 |        0 |       0 |       0 | 50-442            
+  ParamTooltip.tsx |       0 |        0 |       0 |       0 | 25-62             
+  ...eterField.tsx |       0 |        0 |       0 |       0 | 26-75             
+  ...ramTooltip.ts |       0 |        0 |       0 |       0 | 4-17              
+  itemMenuState.ts |       0 |        0 |       0 |       0 | 11-141            
+  ...enderState.ts |       0 |        0 |       0 |       0 | 18-81             
+  itemUtils.ts     |       0 |        0 |       0 |       0 | 2-13              
+  ...mMenuState.ts |       0 |        0 |       0 |       0 | 6-74              
+  ...eItemState.ts |       0 |      100 |       0 |       0 | 14-66             
+ ...ews/mightymike |       0 |        0 |       0 |       0 |                   
+  ...MapEditor.tsx |       0 |        0 |       0 |       0 | 20-103            
+  ...ettePanel.tsx |       0 |        0 |       0 |       0 | 31-67             
+  ...pControls.tsx |       0 |      100 |       0 |       0 | 14-40             
+  ...ctorPanel.tsx |       0 |        0 |       0 |       0 | 70-250            
+  ...eTileMenu.tsx |       0 |        0 |       0 |       0 | 84-797            
+  ...nuEditors.tsx |       0 |        0 |       0 |       0 | 28                
+  ...nuHandlers.ts |       0 |        0 |       0 |       0 | 11-128            
+  ...eMenuUtils.ts |       0 |        0 |       0 |       0 | 13-333            
+  ...ionsPanel.tsx |       0 |        0 |       0 |       0 | 38                
+  ...ectorState.ts |       0 |        0 |       0 |       0 | 2-81              
+  ...enuLayout.tsx |       0 |      100 |       0 |       0 | 12-21             
+  ...eMenuState.ts |       0 |        0 |       0 |       0 | 14-293            
+ ...bviews/scripts |   32.17 |    23.81 |   26.44 |   32.62 |                   
+  ...viorModal.tsx |       0 |        0 |       0 |       0 | 32-491            
+  ...ngSection.tsx |       0 |        0 |       0 |       0 | 42-324            
+  ...CodeModal.tsx |       0 |        0 |       0 |       0 | 39-108            
+  ...pacePanel.tsx |       0 |        0 |       0 |       0 | 31-78             
+  ...ectsPanel.tsx |       0 |        0 |       0 |       0 | 65-247            
+  ...ooksPanel.tsx |       0 |        0 |       0 |       0 | 49-97             
+  ...ingsPanel.tsx |       0 |        0 |       0 |       0 | 47-118            
+  ...viewPanel.tsx |       0 |      100 |       0 |       0 | 27-72             
+  ...tersPanel.tsx |       0 |      100 |       0 |       0 | 51-120            
+  ...portPanel.tsx |       0 |        0 |       0 |       0 | 39-159            
+  ...ilesPanel.tsx |       0 |        0 |       0 |       0 | 55-141            
+  ...omponents.tsx |       0 |        0 |       0 |       0 | 11-65             
+  ScriptsMenu.tsx  |       0 |        0 |       0 |       0 | 98-925            
+  ...lityMatrix.ts |      16 |     7.89 |      75 |      16 | 212-216,221-310   
+  scriptMonaco.ts  |       0 |        0 |       0 |       0 | 14-144            
+  ...eValidator.ts |   70.27 |    55.81 |      50 |   70.27 | ...68,371-376,381 
+  ...ctionState.ts |       0 |      100 |     100 |       0 | 3                 
+  ...ortActions.ts |       0 |        0 |       0 |       0 | 58-193            
+  ...decarState.ts |       0 |        0 |       0 |       0 | 214-952           
+  ...clarations.ts |    67.3 |    71.79 |     100 |   66.66 | ...5-67,71-72,103 
+  ...aceHelpers.ts |    3.84 |     2.12 |    6.25 |    3.84 | ...47-150,177-239 
+  ...eSelectors.ts |   87.09 |    57.89 |   83.33 |   87.09 | 26,79,113-114     
+  ...spaceState.ts |       0 |        0 |       0 |       0 |                   
+  ...ateRuntime.ts |    63.1 |    44.51 |   63.92 |   63.13 | ...2918,2944-2950 
+  ...StateTypes.ts |     100 |      100 |     100 |     100 |                   
+ ...ubviews/shared |       0 |        0 |       0 |       0 |                   
+  ...rlayLayer.tsx |       0 |        0 |       0 |       0 | 12-13             
+  ...onOverlay.tsx |       0 |        0 |       0 |       0 | 12-136            
+  TileCanvas.tsx   |       0 |        0 |       0 |       0 | 8-26              
+  nodeVisuals.tsx  |       0 |      100 |       0 |       0 | 5-71              
+ ...bviews/splines |    0.22 |        0 |       0 |    0.24 |                   
+  ...plineMenu.tsx |       0 |        0 |       0 |       0 | 26-93             
+  ...eItemMenu.tsx |       0 |        0 |       0 |       0 | 55-305            
+  ...plineMenu.tsx |       0 |        0 |       0 |       0 | 30-310            
+  Spline.tsx       |       0 |        0 |       0 |       0 | 51-346            
+  SplineMenu.tsx   |       0 |        0 |       0 |       0 | 30-98             
+  ...eSubmenus.tsx |       0 |        0 |       0 |       0 |                   
+  ...mMenuState.ts |       0 |        0 |       0 |       0 | 8-132             
+  ...eMenuState.ts |       0 |        0 |       0 |       0 | 8-47              
+  ...enderState.ts |       0 |        0 |       0 |       0 | 8-98              
+  splineUtils.ts   |    6.66 |        0 |       0 |    7.14 | 15-42             
+ ...ews/supertiles |       0 |        0 |       0 |       0 |                   
+  ...upertiles.tsx |       0 |        0 |       0 |       0 | 27-51             
+  ...upertiles.tsx |       0 |        0 |       0 |       0 | 14-108            
+  ...upertiles.tsx |       0 |        0 |       0 |       0 | 22-124            
+  ...enuHelpers.ts |       0 |        0 |       0 |       0 | 18-167            
+  ...MenuParts.tsx |       0 |        0 |       0 |       0 | 6-67              
+  ...tilesMenu.tsx |       0 |        0 |       0 |       0 | 58-374            
+  ...lesHelpers.ts |       0 |        0 |       0 |       0 | 11-324            
+  ...tilesState.ts |       0 |        0 |       0 |       0 | 24-151            
+  ...eMenuState.ts |       0 |        0 |       0 |       0 | 19-100            
+  ...uards.test.ts |       0 |      100 |       0 |       0 | 8-18              
+  ...sizeGuards.ts |       0 |      100 |       0 |       0 | 6-17              
+  ...rtileUtils.ts |       0 |        0 |       0 |       0 | 3-62              
+  ...sViewModel.ts |       0 |        0 |       0 |       0 | 64-310            
+ ...ws/tileBrushes |       0 |        0 |       0 |       0 |                   
+  ...tureLayer.tsx |       0 |      100 |       0 |       0 | 14-19             
+  ...rushPanel.tsx |       0 |        0 |       0 |       0 | 51-324            
+  ...viewLayer.tsx |       0 |        0 |       0 |       0 | 23-49             
+ ...subviews/tiles |       0 |        0 |       0 |       0 |                   
+  ...ileEditor.tsx |       0 |        0 |       0 |       0 | 35-112            
+  TilesMenu.tsx    |       0 |        0 |       0 |       0 | 54-282            
+  ...logyTiles.tsx |       0 |        0 |       0 |       0 | 60-260            
+  ...ckHandlers.ts |       0 |        0 |       0 |       0 | 25-75             
+  tileTypes.ts     |       0 |        0 |       0 |       0 |                   
+  ...sMenuState.ts |       0 |        0 |       0 |       0 | 10-66             
+  tilesUtils.ts    |       0 |        0 |       0 |       0 | 10-46             
+  ...TilesState.ts |       0 |        0 |       0 |       0 | 13-45             
+  useHeightImg.tsx |       0 |        0 |       0 |       0 | 7-92              
+ ...subviews/water |       0 |        0 |       0 |       0 |                   
+  WaterBody.tsx    |       0 |        0 |       0 |       0 | 29-209            
+  WaterMenu.tsx    |       0 |        0 |       0 |       0 | 49-340            
+  ...Utils.test.ts |       0 |      100 |       0 |       0 | 4-14              
+  ...eringUtils.ts |       0 |        0 |       0 |       0 | 17-197            
+  ...ureHelpers.ts |       0 |        0 |       0 |       0 | 22-392            
+  ...teractions.ts |       0 |        0 |       0 |       0 | 17-125            
+  ...rMenuState.ts |       0 |        0 |       0 |       0 | 6-173             
+ ...editor/threejs |       0 |        0 |       0 |       0 |                   
+  ...eGeometry.tsx |       0 |        0 |       0 |       0 | 41-303            
+  ItemGeometry.tsx |       0 |        0 |       0 |       0 | 55-563            
+  ...dGeometry.tsx |       0 |        0 |       0 |       0 | 20-127            
+  RoofGeometry.tsx |       0 |        0 |       0 |       0 | 21-106            
+  ...eGeometry.tsx |       0 |        0 |       0 |       0 | 19-172            
+  ...mGeometry.tsx |       0 |        0 |       0 |       0 | 27-208            
+  Terrain.tsx      |       0 |        0 |       0 |       0 | 13-107            
+  ...tyOverlay.tsx |       0 |        0 |       0 |       0 | 16-144            
+  TestGeometry.tsx |       0 |      100 |       0 |       0 | 10-16             
+  Three.tsx        |       0 |        0 |       0 |       0 | 66-138            
+  ...gyBrush3D.tsx |       0 |        0 |       0 |       0 | 26-125            
+  ...shPreview.tsx |       0 |        0 |       0 |       0 | 22-49             
+  ...Preview3D.tsx |       0 |      100 |       0 |       0 | 11                
+  terrainUtils.ts  |       0 |        0 |       0 |       0 | 12-160            
+  ...rtHelpers.tsx |       0 |        0 |       0 |       0 | 20-90             
+  ...nteraction.ts |       0 |        0 |       0 |       0 | 39-92             
+  ...ush3dState.ts |       0 |        0 |       0 |       0 | 1-56              
+  ...ogyEditing.ts |       0 |        0 |       0 |       0 | 71-412            
+ ...ejs/fenceUtils |       0 |        0 |       0 |       0 |                   
+  flattenCoords.ts |       0 |      100 |       0 |       0 | 5-12              
+  ...ightAtTile.ts |       0 |        0 |       0 |       0 | 5-26              
+  ...ghtAtPoint.ts |       0 |        0 |       0 |       0 | 8-80              
+ .../threejs/hooks |       0 |        0 |       0 |       0 |                   
+  ...elCacheKey.ts |       0 |        0 |       0 |       0 | 18-32             
+  ...oaderUtils.ts |       0 |        0 |       0 |       0 | 12-272            
+  ...ModelCache.ts |       0 |        0 |       0 |       0 | 61-243            
+ ...ditor/toolbars |       0 |        0 |       0 |       0 |                   
+  ...orToolbar.tsx |       0 |        0 |       0 |       0 | 25-52             
+  ...orToolbar.tsx |       0 |        0 |       0 |       0 | 22-44             
+  ...orToolbar.tsx |       0 |        0 |       0 |       0 | 22-42             
+  ...orToolbar.tsx |       0 |        0 |       0 |       0 | 21-51             
+ src/editor/tunnel |       0 |        0 |       0 |       0 |                   
+  ...Inspector.tsx |       0 |        0 |       0 |       0 | 47-638            
+  SplineEditor.tsx |       0 |        0 |       0 |       0 | 43-312            
+  TunnelEditor.tsx |       0 |        0 |       0 |       0 | 34-82             
+  ...ditorView.tsx |       0 |        0 |       0 |       0 | 37-497            
+  ...temEditor.tsx |       0 |        0 |       0 |       0 | 52-288            
+  ...uresPanel.tsx |       0 |        0 |       0 |       0 | 31-170            
+  ...oadPrompt.tsx |       0 |        0 |       0 |       0 | 16-50             
+  TunnelViewer.tsx |       0 |        0 |       0 |       0 | 61-391            
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...ectorState.ts |       0 |        0 |       0 |       0 | 18-62             
+  ...ditorState.ts |       0 |        0 |       0 |       0 | 7-63              
+  ...ditorState.ts |       0 |        0 |       0 |       0 | 10-148            
+  ...ditorState.ts |       0 |        0 |       0 |       0 | 7-79              
+  ...Validation.ts |       0 |        0 |       0 |       0 | 14-110            
+  ...erGeometry.ts |       0 |        0 |       0 |       0 | 12-138            
+  ...ItemModels.ts |       0 |        0 |       0 |       0 | 20-139            
+ src/editor/utils  |       0 |        0 |       0 |       0 |                   
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 16-41             
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 16-39             
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 16-39             
+  ...neCanvases.ts |       0 |        0 |       0 |       0 | 4-36              
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 25-157            
+  ...itializers.ts |       0 |      100 |       0 |       0 | 17-50             
+  ...rViewTypes.ts |       0 |        0 |       0 |       0 |                   
+  ...rViewUtils.ts |       0 |        0 |       0 |       0 | 21-112            
+  gameFeatures.ts  |       0 |        0 |       0 |       0 | 14-129            
+  ...PortConfig.ts |       0 |        0 |       0 |       0 | 63-358            
+  ...ostRuntime.ts |       0 |        0 |       0 |       0 | 47-406            
+  ...wHostState.ts |       0 |        0 |       0 |       0 | 49-121            
+  ...iewRuntime.ts |       0 |        0 |       0 |       0 |                   
+  ...imeGlobals.ts |       0 |        0 |       0 |       0 | 18-88             
+  ...timeLoader.ts |       0 |        0 |       0 |       0 | 22-630            
+  ...ntimeTypes.ts |       0 |        0 |       0 |       0 | 5-220             
+  ...RuntimeVfs.ts |       0 |        0 |       0 |       0 | 13-349            
+  ...romptUtils.ts |       0 |        0 |       0 |       0 | 38-207            
+  ...zeHandlers.ts |       0 |        0 |       0 |       0 | 37-190            
+  levelType.ts     |       0 |        0 |       0 |       0 | 8-123             
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 21-110            
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 17-39             
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 14-28             
+  ...velNumbers.ts |       0 |        0 |       0 |       0 | 18-41             
+  ...ssionState.ts |       0 |        0 |       0 |       0 | 13                
+  ...essibility.ts |       0 |        0 |       0 |       0 | 4-84              
+  ...ainCeiling.ts |       0 |        0 |       0 |       0 | 8-10              
+  ...hTargeting.ts |       0 |        0 |       0 |       0 | 9-263             
+  ...BrushUtils.ts |       0 |        0 |       0 |       0 | 5-232             
+ src/hooks         |       0 |        0 |       0 |       0 |                   
+  use-toast.ts     |       0 |        0 |       0 |       0 | 8-177             
+  ...tainerSize.ts |       0 |        0 |       0 |       0 | 11-44             
+  ...dowKeyDown.ts |       0 |      100 |       0 |       0 | 10-12             
+ src/lib           |       0 |      100 |       0 |       0 |                   
+  utils.ts         |       0 |      100 |       0 |       0 | 6                 
+ ...odelEditing/uv |       0 |        0 |       0 |       0 |                   
+  ...EditToBg3d.ts |       0 |        0 |       0 |       0 | 13-55             
+  ...ditToScene.ts |       0 |        0 |       0 |       0 | 5-60              
+  ...ctUvLayout.ts |       0 |        0 |       0 |       0 | 11-121            
+  uvTransforms.ts  |       0 |        0 |       0 |       0 | 15-149            
+  uvTypes.ts       |       0 |      100 |       0 |       0 | 49                
+ ...diting/weights |       0 |        0 |       0 |       0 |                   
+  ...ditToScene.ts |       0 |        0 |       0 |       0 | 13-61             
+  ...kinWeights.ts |       0 |        0 |       0 |       0 | 13-64             
+  weightBrush.ts   |       0 |        0 |       0 |       0 | 18-107            
+  ...rushStroke.ts |       0 |        0 |       0 |       0 | 20-84             
+  ...malization.ts |       0 |        0 |       0 |       0 | 7-77              
+  weightTypes.ts   |       0 |      100 |       0 |       0 | 58-70             
+  ...ualization.ts |       0 |        0 |       0 |       0 | 13-94             
+ src/modelParsers  |       0 |        0 |       0 |       0 |                   
+  aliasResource.ts |       0 |        0 |       0 |       0 | 7-101             
+  ...rasshopper.ts |       0 |        0 |       0 |       0 | 6-122             
+  ...ortTargets.ts |       0 |        0 |       0 |       0 | 21-123            
+  ...GltfWorker.ts |       0 |        0 |       0 |       0 | 15-370            
+  ...onTestData.ts |       0 |      100 |     100 |       0 | 3                 
+  ...thSkeleton.ts |       0 |        0 |       0 |       0 | 22-238            
+  ...tionEvents.ts |       0 |        0 |       0 |       0 | 5-123             
+  ...patibility.ts |       0 |        0 |       0 |       0 | 17-696            
+  ...Conversion.ts |       0 |        0 |       0 |       0 | 32-201            
+  matrix4Utils.ts  |       0 |        0 |       0 |       0 | 9-257             
+  parse3dmf.ts     |       0 |      100 |       0 |       0 | 20-55             
+  parseBG3D.ts     |       0 |        0 |       0 |       0 | 10-1188           
+  ...MightyMike.ts |       0 |        0 |       0 |       0 | 22-397            
+  ...ikeHelpers.ts |       0 |        0 |       0 |       0 | 13-206            
+  ...fConverter.ts |       0 |      100 |       0 |       0 | 12-24             
+  ...fConverter.ts |       0 |        0 |       0 |       0 | 52-1199           
+  ...moSkeleton.ts |       0 |      100 |     100 |       0 | 3                 
+  rotationUtils.ts |       0 |        0 |       0 |       0 | 9-219             
+  ...tripHelper.ts |       0 |        0 |       0 |       0 | 2-222             
+  ...dtripCheck.ts |       0 |        0 |       0 |       0 | 6-202             
+  ...naryExport.ts |       0 |        0 |       0 |       0 | 11-194            
+  ...etonExport.ts |       0 |        0 |       0 |       0 | 23-358            
+  ...nSystemNew.ts |       0 |        0 |       0 |       0 | 30-877            
+  ...ionHelpers.ts |       0 |        0 |       0 |       0 | 1-321             
+  ...amesManual.ts |       0 |        0 |       0 |       0 | 8-138             
+ ...rsers/bg3dGltf |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  skeleton.ts      |       0 |        0 |       0 |       0 | 34-138            
+ .../bg3dGltf/bg3d |       0 |        0 |       0 |       0 |                   
+  materials.ts     |       0 |        0 |       0 |       0 | 25-280            
+  meshes.ts        |       0 |        0 |       0 |       0 | 32-367            
+  scene.ts         |       0 |        0 |       0 |       0 | 10-163            
+ ...dGltf/skeleton |       0 |        0 |       0 |       0 |                   
+  bones.test.ts    |       0 |        0 |       0 |       0 | 7-54              
+  bones.ts         |       0 |        0 |       0 |       0 | 20-279            
+  skinning.test.ts |       0 |      100 |       0 |       0 | 8-95              
+  skinning.ts      |       0 |        0 |       0 |       0 | 19-223            
+  utils.ts         |       0 |        0 |       0 |       0 | 15-287            
+ ...lParsers/image |       0 |        0 |       0 |       0 |                   
+  pngArgb.test.ts  |       0 |        0 |       0 |       0 | 9-63              
+  pngArgb.ts       |       0 |        0 |       0 |       0 | 11-221            
+ ...s/skeletonRsrc |       0 |        0 |       0 |       0 |                   
+  parseHelpers.ts  |       0 |        0 |       0 |       0 | 7-294             
+  ...srcTS.test.ts |       0 |        0 |       0 |       0 | 2-50              
+  ...etonRsrcTS.ts |       0 |        0 |       0 |       0 | 114-266           
+  validators.ts    |       0 |        0 |       0 |       0 |                   
+ ...nRsrc/handlers |       0 |        0 |       0 |       0 |                   
+  anhd.ts          |       0 |        0 |       0 |       0 | 11-39             
+  bone.ts          |       0 |        0 |       0 |       0 | 8-71              
+  bonn.ts          |       0 |        0 |       0 |       0 | 7-32              
+  bonp.ts          |       0 |        0 |       0 |       0 | 7-31              
+  evnt.ts          |       0 |        0 |       0 |       0 | 7-58              
+  keyf.ts          |       0 |        0 |       0 |       0 | 7-51              
+  numk.ts          |       0 |        0 |       0 |       0 | 7-39              
+  relp.ts          |       0 |        0 |       0 |       0 | 7-74              
+ ...rsers/threeDMF |       0 |        0 |       0 |       0 |                   
+  binaryUtils.ts   |       0 |        0 |       0 |       0 | 14-309            
+  convert.ts       |       0 |        0 |       0 |       0 | 25-211            
+  ...ertHelpers.ts |       0 |        0 |       0 |       0 | 25-321            
+  ...dtrip.test.ts |       0 |        0 |       0 |       0 | 13-451            
+  ...estHelpers.ts |       0 |        0 |       0 |       0 | 2-179             
+  ...dtrip.test.ts |       0 |        0 |       0 |       0 | 12-356            
+  ...estHelpers.ts |       0 |        0 |       0 |       0 | 2-158             
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...e3DMF.test.ts |       0 |        0 |       0 |       0 | 11-264            
+  parse3DMF.ts     |       0 |        0 |       0 |       0 | 43-968            
+  ...dtrip.test.ts |       0 |        0 |       0 |       0 | 10-337            
+  types.ts         |       0 |        0 |       0 |       0 | 8-216             
+  write3DMF.ts     |       0 |        0 |       0 |       0 | 10-51             
+  ...DMFHelpers.ts |       0 |        0 |       0 |       0 | 24-331            
+ src/multiplayer   |       0 |        0 |       0 |       0 |                   
+  api.ts           |       0 |        0 |       0 |       0 | 24-566            
+  browserFlags.ts  |       0 |        0 |       0 |       0 | 2-19              
+  determinism.ts   |       0 |        0 |       0 |       0 | 44-259            
+  hub.ts           |       0 |        0 |       0 |       0 | 60-411            
+  launchSpec.ts    |       0 |        0 |       0 |       0 | 25-129            
+  lobbyDisplay.ts  |       0 |        0 |       0 |       0 | 9-53              
+  lobbyState.ts    |       0 |        0 |       0 |       0 | 9-28              
+  matchState.ts    |       0 |        0 |       0 |       0 | 23-59             
+  menuOptions.ts   |       0 |        0 |       0 |       0 | 40-224            
+  ...eTransport.ts |       0 |        0 |       0 |       0 | 5-120             
+  modes.ts         |       0 |        0 |       0 |       0 | 4-187             
+  ...DebugStats.ts |       0 |        0 |       0 |       0 | 11-26             
+  ...ipantIndex.ts |       0 |        0 |       0 |       0 | 5-31              
+  pnetPacket.ts    |       0 |        0 |       0 |       0 | 3-147             
+  ...tSelection.ts |       0 |        0 |       0 |       0 | 10-54             
+  protocol.ts      |       0 |        0 |       0 |       0 | 51-198            
+  ...setPreload.ts |       0 |        0 |       0 |       0 | 6-55              
+  runtimeBridge.ts |       0 |        0 |       0 |       0 | 12-545            
+  ...ultiplexer.ts |       0 |        0 |       0 |       0 | 17-245            
+  schemas.ts       |       0 |      100 |     100 |       0 | 9-197             
+  ...ceTracking.ts |       0 |        0 |       0 |       0 | 16-279            
+  types.ts         |       0 |        0 |       0 |       0 |                   
+  ...eTransport.ts |       0 |        0 |       0 |       0 | 112-528           
+ ...yer/gameLaunch |       0 |        0 |       0 |       0 |                   
+  cromagLaunch.ts  |       0 |        0 |       0 |       0 | 16-31             
+  ...aur2Launch.ts |       0 |        0 |       0 |       0 | 16-33             
+ ...ntimePreflight |       0 |        0 |       0 |       0 |                   
+  ...ePreflight.ts |       0 |        0 |       0 |       0 | 6-190             
+ ...iplayer/webrtc |       0 |        0 |       0 |       0 |                   
+  clientSession.ts |       0 |        0 |       0 |       0 | 35-198            
+  ...Connection.ts |       0 |        0 |       0 |       0 | 8-148             
+  hostSession.ts   |       0 |        0 |       0 |       0 | 98-277            
+  iceServers.ts    |       0 |        0 |       0 |       0 | 5-38              
+ src/pages         |       0 |        0 |       0 |       0 |                   
+  ...oadLevels.tsx |       0 |        0 |       0 |       0 | 16-117            
+  ...AuditPage.tsx |       0 |        0 |       0 |       0 | 39-474            
+  ...delViewer.tsx |       0 |        0 |       0 |       0 | 66-1150           
+  LevelEditor.tsx  |       0 |      100 |       0 |       0 | 5                 
+  ModelCanvas.tsx  |       0 |        0 |       0 |       0 | 18-178            
+  ...ewer.test.tsx |       0 |        0 |       0 |       0 | 4-280             
+  ModelViewer.tsx  |       0 |        0 |       0 |       0 | 101-1509          
+  Multiplayer.tsx  |       0 |        0 |       0 |       0 | 96-1273           
+  SpriteViewer.tsx |       0 |        0 |       0 |       0 | 61-1385           
+  ...delViewer.tsx |       0 |        0 |       0 |       0 | 55-772            
+  ...ageHelpers.ts |       0 |        0 |       0 |       0 | 16-244            
+  ...tusSelect.tsx |       0 |        0 |       0 |       0 | 10-22             
+  ...AuditUtils.ts |       0 |        0 |       0 |       0 | 114-354           
+  ...anvasState.ts |       0 |        0 |       0 |       0 | 13-84             
+ ...DownloadLevels |       0 |        0 |       0 |       0 |                   
+  ...aunchCard.tsx |       0 |      100 |       0 |       0 | 14-24             
+  GameSection.tsx  |       0 |      100 |       0 |       0 | 21-29             
+  LevelCard.tsx    |       0 |        0 |       0 |       0 | 31-94             
+  dialogState.ts   |       0 |        0 |       0 |       0 | 13-56             
+  ...LevelUtils.ts |       0 |        0 |       0 |       0 | 13-166            
+  ...ardActions.ts |       0 |        0 |       0 |       0 | 23-79             
+ ...es/ModelViewer |       0 |        0 |       0 |       0 |                   
+  ...loadPanel.tsx |       0 |        0 |       0 |       0 | 74-245            
+  ...onOptions.tsx |       0 |        0 |       0 |       0 | 25                
+  ...PanelState.ts |       0 |        0 |       0 |       0 | 5-69              
+  types.ts         |       0 |        0 |       0 |       0 |                   
+ ...elViewer/hooks |       0 |        0 |       0 |       0 |                   
+  useFileUpload.ts |       0 |        0 |       0 |       0 | 62-322            
+  ...oadHelpers.ts |       0 |        0 |       0 |       0 | 33-141            
+  ...Management.ts |       0 |        0 |       0 |       0 | 55-322            
+ ...elViewer/utils |       0 |        0 |       0 |       0 |                   
+  ...rResponses.ts |       0 |        0 |       0 |       0 | 28-81             
+  downloadUtils.ts |       0 |        0 |       0 |       0 | 24-356            
+  ...xport.test.ts |       0 |        0 |       0 |       0 | 16-166            
+  ...tionExport.ts |       0 |        0 |       0 |       0 | 5-80              
+  ...delLoaders.ts |       0 |        0 |       0 |       0 | 21-101            
+  textureUtils.ts  |       0 |        0 |       0 |       0 | 28-166            
+ ...es/Multiplayer |       0 |        0 |       0 |       0 |                   
+  ...bbyDialog.tsx |       0 |        0 |       0 |       0 | 45-190            
+  ...tControls.tsx |       0 |        0 |       0 |       0 | 32                
+  LobbyBrowser.tsx |       0 |        0 |       0 |       0 | 37-123            
+  LobbyRoster.tsx  |       0 |        0 |       0 |       0 | 20-72             
+  ...ugOverlay.tsx |       0 |        0 |       0 |       0 | 9-41              
+  ...GameStage.tsx |       0 |        0 |       0 |       0 | 14                
+  ...byFilters.tsx |       0 |      100 |       0 |       0 | 37-73             
+  ...LobbyList.tsx |       0 |        0 |       0 |       0 | 26-95             
+  ...onSidebar.tsx |       0 |        0 |       0 |       0 | 118-330           
+  ...ssionView.tsx |       0 |      100 |       0 |       0 | 6                 
+  ...gControls.tsx |       0 |        0 |       0 |       0 | 20-109            
+  types.ts         |       0 |        0 |       0 |       0 |                   
+  ...bbyActions.ts |       0 |        0 |       0 |       0 | 75-386            
+ ...wer/components |       0 |        0 |       0 |       0 |                   
+  ...ionsPanel.tsx |       0 |        0 |       0 |       0 | 23-114            
+  EditorPanel.tsx  |       0 |        0 |       0 |       0 | 18-61             
+  ...loadPanel.tsx |       0 |        0 |       0 |       0 | 27-91             
+  ...etBrowser.tsx |       0 |        0 |       0 |       0 | 13-138            
+  ...tteEditor.tsx |       0 |        0 |       0 |       0 | 27-237            
+  ...eSelector.tsx |       0 |        0 |       0 |       0 | 31-79             
+  ...eControls.tsx |       0 |        0 |       0 |       0 | 28-112            
+  ...setEditor.tsx |       0 |        0 |       0 |       0 | 32-293            
+  ...ditorState.ts |       0 |        0 |       0 |       0 | 16-71             
+ ...teViewer/utils |       0 |        0 |       0 |       0 |                   
+  paletteUtils.ts  |       0 |        0 |       0 |       0 | 33-203            
+ src/parsers       |       0 |        0 |       0 |       0 |                   
+  ...arser.test.ts |       0 |        0 |       0 |       0 | 4-105             
+  ...apesParser.ts |       0 |        0 |       0 |       0 | 92-476            
+  ...serHelpers.ts |       0 |        0 |       0 |       0 | 10-84             
+  ...esetParser.ts |       0 |        0 |       0 |       0 | 40-211            
+ ...on/structSpecs |   31.81 |        0 |       0 |   31.81 |                   
+  LevelTypes.ts    |       0 |        0 |       0 |       0 | 125-375           
+  billyFrontier.ts |     100 |      100 |     100 |     100 |                   
+  bugdom.ts        |     100 |      100 |     100 |     100 |                   
+  bugdom2.ts       |     100 |      100 |     100 |     100 |                   
+  ...2Interface.ts |       0 |        0 |       0 |       0 |                   
+  ...mInterface.ts |       0 |        0 |       0 |       0 |                   
+  croMag.ts        |     100 |      100 |     100 |     100 |                   
+  ...LevelTypes.ts |       0 |        0 |       0 |       0 | 372-385           
+  ...cInterface.ts |       0 |      100 |     100 |       0 | 188               
+  mightyMike.ts    |     100 |      100 |     100 |     100 |                   
+  ...eInterface.ts |       0 |        0 |       0 |       0 |                   
+  nanosaur2.ts     |     100 |      100 |     100 |     100 |                   
+  ...2Interface.ts |       0 |        0 |       0 |       0 |                   
+  ottoMatic.ts     |     100 |      100 |     100 |     100 |                   
+ ...Specs/skeleton |       0 |      100 |     100 |       0 |                   
+  skeleton.ts      |       0 |      100 |     100 |       0 | 26                
+  ...nInterface.ts |       0 |        0 |       0 |       0 |                   
+ src/schemas       |       0 |        0 |       0 |       0 |                   
+  common.ts        |       0 |        0 |       0 |       0 | 23-760            
+ src/toasts        |       0 |        0 |       0 |       0 |                   
+  ...ressToast.tsx |       0 |        0 |       0 |       0 | 5-146             
+ src/types         |       0 |        0 |       0 |       0 |                   
+  emscripten.d.ts  |       0 |        0 |       0 |       0 |                   
+  global.d.ts      |       0 |        0 |       0 |       0 |                   
+  ...alidator.d.ts |       0 |        0 |       0 |       0 |                   
+ src/utils         |       0 |        0 |       0 |       0 |                   
+  ...Operations.ts |       0 |        0 |       0 |       0 | 10-200            
+  colorUtils.ts    |       0 |        0 |       0 |       0 | 3-21              
+  ...cTGAParser.ts |       0 |        0 |       0 |       0 | 16-82             
+  distanceCalc.ts  |       0 |        0 |       0 |       0 | 10-17             
+  ...lyzer.test.ts |       0 |        0 |       0 |       0 | 2-107             
+  gltfAnalyzer.ts  |       0 |        0 |       0 |       0 | 31-165            
+  googleDrive.ts   |       0 |        0 |       0 |       0 | 9-95              
+  ...erter.test.ts |       0 |        0 |       0 |       0 | 4-32              
+  ...eConverter.ts |       0 |        0 |       0 |       0 | 9-53              
+  jpegCompress.ts  |       0 |        0 |       0 |       0 | 16-49             
+  ...ressWorker.ts |       0 |        0 |       0 |       0 | 18-33             
+  ...Decompress.ts |       0 |        0 |       0 |       0 | 18-114            
+  ...ressWorker.ts |       0 |        0 |       0 |       0 | 15-18             
+  lzss.test.ts     |       0 |        0 |       0 |       0 | 4-1046            
+  lzss.ts          |       0 |        0 |       0 |       0 | 1-200             
+  lzssWorker.ts    |       0 |        0 |       0 |       0 | 31-73             
+  mapErr.ts        |       0 |        0 |       0 |       0 | 4-7               
+  ...ikePalette.ts |       0 |        0 |       0 |       0 | 16-382            
+  ...ntegration.ts |       0 |        0 |       0 |       0 | 42-221            
+  ...mageLoader.ts |       0 |        0 |       0 |       0 | 23-350            
+  numberParsers.ts |       0 |        0 |       0 |       0 | 3-22              
+  rlwDecompress.ts |       0 |        0 |       0 |       0 | 22-251            
+  spline.ts        |       0 |        0 |       0 |       0 | 5-212             
+  ...actor.test.ts |       0 |        0 |       0 |       0 | 71-360            
+  tgaCommon.ts     |       0 |      100 |       0 |       0 | 20                
+  ...mageParser.ts |       0 |        0 |       0 |       0 | 8-378             
+  tgaParser.ts     |       0 |        0 |       0 |       0 | 10-263            
+ src/validation    |    1.29 |     0.98 |     1.3 |    1.36 |                   
+  ...actor.test.ts |       0 |      100 |       0 |       0 | 16-148            
+  ...nExtractor.ts |       0 |        0 |       0 |       0 | 34-220            
+  ...onVerifier.ts |       0 |        0 |       0 |       0 | 23-299            
+  ...ifierUtils.ts |       0 |        0 |       0 |       0 | 3-118             
+  ...positories.ts |   45.45 |     37.5 |   28.57 |      50 | 82-98,117-122     
+  githubFetcher.ts |       0 |        0 |       0 |       0 | 30-211            
+  ...bFileCache.ts |       0 |        0 |       0 |       0 | 16-229            
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  ...hemas.test.ts |       0 |        0 |       0 |       0 | 17-334            
+  ...ataSchemas.ts |       0 |        0 |       0 |       0 | 17-383            
+  ...tGenerator.ts |       0 |        0 |       0 |       0 | 31-377            
+  ...velForGame.ts |       0 |        0 |       0 |       0 | 59-165            
+ ...lidation/games |       0 |      100 |       0 |       0 |                   
+  billyFrontier.ts |       0 |      100 |       0 |       0 | 5-10              
+  bugdom.ts        |       0 |      100 |       0 |       0 | 23-68             
+  bugdom2.ts       |       0 |      100 |       0 |       0 | 5-10              
+  croMag.ts        |       0 |      100 |       0 |       0 | 14-34             
+  mightyMike.ts    |       0 |      100 |       0 |       0 | 6-77              
+  nanosaur.ts      |       0 |      100 |       0 |       0 | 13-42             
+  nanosaur2.ts     |       0 |      100 |       0 |       0 | 5-10              
+  ottoMatic.ts     |       0 |      100 |       0 |       0 | 22-84             
+  sharedSchemas.ts |       0 |      100 |       0 |       0 | 31                
+ src/workers       |       0 |        0 |       0 |       0 |                   
+  ...lIo.worker.ts |       0 |        0 |       0 |       0 | 13-199            
+  ...dec.worker.ts |       0 |        0 |       0 |       0 | 18-158            
+-------------------|---------|----------|---------|---------|-------------------

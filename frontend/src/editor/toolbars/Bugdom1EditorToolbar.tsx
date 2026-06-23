@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
 import { useAtom } from "jotai";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 interface Props {
   terrainHasSTgd?: boolean;
@@ -72,9 +73,11 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
           <TabsTrigger className="w-full" value="splines">
             Splines
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="scripts">
-            Scripts
-          </TabsTrigger>
+          {ENABLE_SCRIPTS ? (
+            <TabsTrigger className="w-full" value="scripts">
+              Scripts
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger className="w-full" value="tiles">
             Tiles
           </TabsTrigger>

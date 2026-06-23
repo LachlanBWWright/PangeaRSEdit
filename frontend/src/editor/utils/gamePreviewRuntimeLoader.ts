@@ -63,7 +63,7 @@ function findScriptBundlePath(
   customFiles: readonly PreviewVfsFile[] | undefined,
 ): string | null {
   const scriptBundlePath = customFiles?.find(
-    (file) => normalizeScriptPath(file.path) === "Data/Scripts/dist/main.js",
+    (file) => normalizeScriptPath(file.path) === "Data/Scripts/dist/main.lua",
   )?.path;
 
   return scriptBundlePath ? normalizeScriptPath(scriptBundlePath) : null;

@@ -30,6 +30,7 @@ const scriptTargetKindSchema = z.enum([
   "terrainItem",
   "splineItem",
   "mapItem",
+  "objectType",
   "customObject",
 ]);
 
@@ -61,6 +62,7 @@ export interface ScriptBehaviorDefinition {
   readonly targetKinds: readonly ScriptTargetKind[];
   readonly supportedHooks: readonly ScriptHookId[];
   readonly sourceFilePath: string;
+  readonly objectType?: string;
   readonly previewSupport: "preview-ready" | "extended-only";
   readonly defaultTags: readonly string[];
   readonly contributedTags: readonly ScriptTagDefinition[];
@@ -75,6 +77,7 @@ const scriptBehaviorDefinitionSchema = z.object({
   targetKinds: z.array(scriptTargetKindSchema).min(1),
   supportedHooks: z.array(scriptHookIdSchema),
   sourceFilePath: z.string().min(1),
+  objectType: z.string().min(1).optional(),
   previewSupport: z.enum(["preview-ready", "extended-only"]),
   defaultTags: z.array(z.string()),
   contributedTags: z.array(scriptTagDefinitionSchema),
@@ -274,7 +277,7 @@ export interface ScriptSourceFile {
   readonly path: string;
   readonly content: string;
   readonly savedContent: string;
-  readonly language: "typescript";
+  readonly language: "lua";
   readonly readOnly: boolean;
   readonly role: "generated-entry" | "generated-assignment" | "user";
   readonly ownerId?: string;
@@ -432,6 +435,6 @@ export const runtimeLevelsSchema = z.object({
   levels: z.record(z.string(), runtimeLevelConfigSchema),
 });
 
-export const GENERATED_ENTRY_PATH = "Data/Scripts/src/main.ts";
-export const USER_BOOTSTRAP_PATH = "Data/Scripts/src/user.ts";
-export const BUNDLED_RUNTIME_PATH = "Data/Scripts/dist/main.js";
+export const GENERATED_ENTRY_PATH = "Data/Scripts/src/main.lua";
+export const USER_BOOTSTRAP_PATH = "Data/Scripts/src/user.lua";
+export const BUNDLED_RUNTIME_PATH = "Data/Scripts/dist/main.lua";

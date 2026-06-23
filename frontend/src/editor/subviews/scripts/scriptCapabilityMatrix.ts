@@ -1,3 +1,5 @@
+import type { ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
+
 export type ScriptCapabilityStatus =
   | "supported"
   | "previewOnly"
@@ -289,7 +291,7 @@ export function getWorkspaceWarnings(
   ];
 
   for (const file of Object.values(state.sourceFiles)) {
-    if (file.path.startsWith("Data/Scripts/src/") && file.path !== "Data/Scripts/src/main.ts") {
+    if (file.path.startsWith("Data/Scripts/src/") && file.path !== "Data/Scripts/src/main.lua") {
       for (const api of checkApis) {
         if (file.content.includes(api.key)) {
           const capStatus = getCapability(gameId, api.capability);

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
-import { Bugdom2Globals, OttoGlobals } from "@/data/globals/globals";
+import {
+  BillyFrontierGlobals,
+  BugdomGlobals,
+  Bugdom2Globals,
+  CroMagGlobals,
+  MightyMikeGlobals,
+  NanosaurGlobals,
+  Nanosaur2Globals,
+  OttoGlobals,
+} from "@/data/globals/globals";
 import {
   addBehaviorDefinition,
   addScriptParam,
@@ -27,6 +36,8 @@ import {
   getScriptSourcePathOptions,
   summarizeScriptWorkspace,
 } from "@/editor/subviews/scripts/scriptWorkspaceSelectors";
+import { buildScriptTypeDeclarationFiles } from "@/editor/subviews/scripts/scriptTypeDeclarations";
+import { validateScriptPackage } from "@/editor/subviews/scripts/scriptPackageValidator";
 
 function decodeJson(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder().decode(bytes));
@@ -46,11 +57,11 @@ describe("scriptWorkspaceState", () => {
 
     const filePaths = previewFilesResult.value.map((file) => file.path);
     expect(filePaths).toContain("/Data/Scripts/config/levels.json");
-    expect(filePaths).toContain("/Data/Scripts/dist/main.js");
-    expect(filePaths).toContain("/Data/Scripts/types/pangea-runtime.d.ts");
-    expect(filePaths).toContain("/Data/Scripts/types/pangea-games.d.ts");
+    expect(filePaths).toContain("/Data/Scripts/dist/main.lua");
+    expect(filePaths).toContain("/Data/Scripts/types/pangea-runtime.lua");
+    expect(filePaths).toContain("/Data/Scripts/types/pangea-games.lua");
     expect(filePaths).toContain(
-      "/Data/Scripts/src/globals/otto-humans-jump.ts",
+      "/Data/Scripts/src/globals/otto-humans-jump.lua",
     );
 
     const levelsFile = previewFilesResult.value.find(
@@ -66,7 +77,7 @@ describe("scriptWorkspaceState", () => {
       version: 1,
       levels: {
         "3": {
-          script: "Data/Scripts/dist/main.js",
+          script: "Data/Scripts/dist/main.lua",
           extraNativeItems: [],
           itemOverrides: [],
           levelSettings: {},
@@ -75,7 +86,7 @@ describe("scriptWorkspaceState", () => {
     });
 
     const bundleFile = previewFilesResult.value.find(
-      (file) => file.path === "/Data/Scripts/dist/main.js",
+      (file) => file.path === "/Data/Scripts/dist/main.lua",
     );
     expect(bundleFile).toBeDefined();
     if (!bundleFile) {
@@ -83,12 +94,27 @@ describe("scriptWorkspaceState", () => {
     }
 
     const bundleText = new TextDecoder().decode(bundleFile.data);
-    expect(bundleText).toContain("function onObjectFrame");
-    expect(bundleText).toContain("ottomatic.human");
-    expect(bundleText).toContain("levelTimeSeconds * 8");
+    expect(bundleText).toContain("local entry = {}");
+    expect(bundleText).toContain("otto_humans_jump");
+    expect(bundleText).toContain(
+      'require("./globals/otto-humans-jump.lua")',
+    );
+    expect(bundleText).not.toContain("local bundled =");
+
+    const humansJumpFile = previewFilesResult.value.find(
+      (file) =>
+        file.path === "/Data/Scripts/src/globals/otto-humans-jump.lua",
+    );
+    expect(humansJumpFile).toBeDefined();
+    if (!humansJumpFile) {
+      return;
+    }
+    expect(new TextDecoder().decode(humansJumpFile.data)).toContain(
+      "ctx.levelTimeSeconds",
+    );
 
     const runtimeTypesFile = previewFilesResult.value.find(
-      (file) => file.path === "/Data/Scripts/types/pangea-runtime.d.ts",
+      (file) => file.path === "/Data/Scripts/types/pangea-runtime.lua",
     );
     expect(runtimeTypesFile).toBeDefined();
     if (!runtimeTypesFile) {
@@ -96,8 +122,40 @@ describe("scriptWorkspaceState", () => {
     }
 
     const runtimeTypesText = new TextDecoder().decode(runtimeTypesFile.data);
-    expect(runtimeTypesText).toContain('declare module "pangea"');
-    expect(runtimeTypesText).toContain("declare global");
+    expect(runtimeTypesText).toContain("---@class PangeaApi");
+    expect(runtimeTypesText).toContain("pangea =");
+  });
+
+  it("emits game-aware Lua annotations for the active scripting context", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 3);
+    const state = loadScriptSample(context, "otto-humans-jump");
+
+    const declarationFiles = buildScriptTypeDeclarationFiles(state);
+    const runtimeDeclaration = declarationFiles.find(
+      (file) => file.path === "Data/Scripts/types/pangea-runtime.lua",
+    );
+
+    expect(runtimeDeclaration).toBeDefined();
+    if (!runtimeDeclaration) {
+      return;
+    }
+
+    expect(runtimeDeclaration.content).toContain("---@class LevelContext");
+    expect(runtimeDeclaration.content).toContain("---@field levelNum number");
+    expect(runtimeDeclaration.content).toContain("---@field playerMode string|nil");
+    expect(runtimeDeclaration.content).toContain("---@field info fun(message: string)");
+    expect(runtimeDeclaration.content).toContain("---@field position fun(handle: ObjectHandle): Vector3|nil");
+  });
+
+  it("uses game-specific hook sets for adventure and area-based games", () => {
+    const nanosaurContext = createScriptWorkspaceContext(NanosaurGlobals, 3);
+    expect(nanosaurContext.supportedHooks).toContain("onTerrainItem");
+    expect(nanosaurContext.supportedHooks).not.toContain("onSplineItem");
+
+    const billyContext = createScriptWorkspaceContext(BillyFrontierGlobals, 1);
+    expect(billyContext.supportedHooks).toContain("onAreaStart");
+    expect(billyContext.supportedHooks).toContain("onAreaFrame");
+    expect(billyContext.supportedHooks).not.toContain("onLevelStart");
   });
 
   it("exports terrain bindings into the bindings sidecar", () => {
@@ -140,7 +198,7 @@ describe("scriptWorkspaceState", () => {
           behaviorId: "sample.item-trigger-logger",
           label: "Health Item",
           sourceFilePath:
-            "Data/Scripts/src/bindings/terrain-sample-item-trigger-logger-12-100-200.ts",
+            "Data/Scripts/src/bindings/terrain-sample-item-trigger-logger-12-100-200.lua",
           tags: [],
           paramRefs: [],
           compatibility: "preview-ready",
@@ -181,7 +239,7 @@ describe("scriptWorkspaceState", () => {
     expect(importedResult.value.sampleId).toBe("hover-beacon");
   });
 
-  it("rejects JavaScript source files from imported script packages", () => {
+  it("rejects non-Lua source files from imported script packages", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const zipBytes = zipSync({
       "Data/Scripts/src/bad.js": strToU8(
@@ -196,7 +254,7 @@ describe("scriptWorkspaceState", () => {
       return;
     }
     expect(importedResult.error).toContain(
-      "Script source files must be TypeScript",
+      "Script source files must be Lua",
     );
   });
 
@@ -216,12 +274,14 @@ describe("scriptWorkspaceState", () => {
 
     state = upsertScriptSourceFile(
       state,
-      "Data/Scripts/src/external.ts",
+      "Data/Scripts/src/external.lua",
       [
-        "const helper = require('unsupported-package');",
-        "export function onLevelStart(ctx: LevelContext): void {",
-        "  pangea.log.info(String(Boolean(helper)));",
-        "}",
+        "local helper = require('unsupported-package')",
+        "local module = {}",
+        "function module.onLevelStart(ctx)",
+        "  pangea.log.info(tostring(helper))",
+        "end",
+        "return module",
       ].join("\n"),
     );
 
@@ -249,9 +309,9 @@ describe("scriptWorkspaceState", () => {
       label: "Custom Test Behavior",
       description: "A test behavior",
       tags: ["test"],
-      sourceFilePath: "Data/Scripts/src/bindings/test-custom-behavior.ts",
+      sourceFilePath: "Data/Scripts/src/bindings/test-custom-behavior.lua",
       sourceTemplate:
-        "export function onTerrainItem(ctx: any): any { return { shouldSpawn: true }; }",
+        "local module = {}\nfunction module.onTerrainItem(ctx)\n  return { shouldSpawn = true }\nend\nreturn module",
     });
 
     expect(state.behaviorCatalog.length).toBeGreaterThan(0);
@@ -272,6 +332,41 @@ describe("scriptWorkspaceState", () => {
     }
   });
 
+  it("generates object-type dispatch without adding type checks to user modules", () => {
+    const context = createScriptWorkspaceContext(BugdomGlobals, 1);
+    let state = ensureScriptWorkspace({}, context);
+
+    state = addBehaviorDefinition(state, {
+      target: "objectType",
+      hooks: ["onObjectFrame"],
+      id: "test.player-frame",
+      label: "Player Frame",
+      description: "Runs only for the player object type",
+      tags: [],
+      objectType: "bugdom.player",
+      sourceFilePath: "Data/Scripts/src/objects/player-frame.lua",
+      sourceTemplate:
+        "local module = {}\nfunction module.onObjectFrame(ctx)\n  return { positionOffset = { x = 0, y = 1, z = 0 } }\nend\nreturn module",
+    });
+
+    const compileResult = compileScriptWorkspace(state);
+    expect(compileResult.isOk()).toBe(true);
+    if (compileResult.isErr()) {
+      return;
+    }
+
+    const bundle =
+      compileResult.value.compiledFiles["Data/Scripts/dist/main.lua"]?.content;
+    expect(bundle).toContain('["bugdom.player"]');
+    expect(bundle).toContain("__objectTypeModules[ctx.objectType]");
+    expect(bundle).toContain("__module_Data_Scripts_src_objects_player_frame_lua");
+    expect(
+      compileResult.value.sourceFiles[
+        "Data/Scripts/src/objects/player-frame.lua"
+      ]?.content,
+    ).not.toContain("bugdom.player");
+  });
+
   it("applies global hooks and includes them in sidecars", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 1);
     let state = ensureScriptWorkspace({}, context);
@@ -284,9 +379,9 @@ describe("scriptWorkspaceState", () => {
       label: "Test Logger",
       description: "Test global hook",
       tags: [],
-      sourceFilePath: "Data/Scripts/src/globals/test-logger.ts",
+      sourceFilePath: "Data/Scripts/src/globals/test-logger.lua",
       sourceTemplate:
-        "export function onLevelLoad(ctx: GlobalContext): void { console.log('test'); }",
+        "local module = {}\nfunction module.onLevelLoad(ctx)\n  pangea.log.info('test')\nend\nreturn module",
     });
 
     // Then apply it
@@ -368,8 +463,8 @@ describe("scriptWorkspaceState", () => {
       label: "Test Global",
       description: "Global option builder test",
       tags: [],
-      sourceFilePath: "Data/Scripts/src/globals/test-global.ts",
-      sourceTemplate: "export function onLevelLoad(ctx: LevelContext): void {}",
+      sourceFilePath: "Data/Scripts/src/globals/test-global.lua",
+      sourceTemplate: "local module = {}\nfunction module.onLevelLoad(ctx)\nend\nreturn module",
     });
     state = addScriptParam(state, {
       id: "editor.speed",
@@ -391,7 +486,7 @@ describe("scriptWorkspaceState", () => {
       ),
     ).toContain("test-global");
     expect(getScriptSourcePathOptions(state)).toContain(
-      "Data/Scripts/src/globals/test-global.ts",
+      "Data/Scripts/src/globals/test-global.lua",
     );
     expect(getScriptParamOptions(state).map((param) => param.id)).toContain(
       "editor.speed",
@@ -412,5 +507,47 @@ describe("scriptWorkspaceState", () => {
         (tag) => tag.id === "editor.custom.hoverBeacon",
       ),
     ).toBe(true);
+  });
+
+  it("compiles and validates Lua script templates for all 8 games", () => {
+    const gameCases = [
+      { globals: OttoGlobals, sample: "otto-humans-jump", level: 3 },
+      { globals: BugdomGlobals, sample: "bugdom-bouncing-friends", level: 2 },
+      { globals: Bugdom2Globals, sample: "bugdom2-clover-bob", level: 2 },
+      { globals: CroMagGlobals, sample: "cromag-bouncing-pickups", level: 1 },
+      { globals: NanosaurGlobals, sample: "nanosaur-hover-eggs", level: 1 },
+      { globals: Nanosaur2Globals, sample: "nanosaur2-powerup-spin", level: 3 },
+      { globals: BillyFrontierGlobals, sample: "billy-cacti-bounce", level: 1 },
+      { globals: MightyMikeGlobals, sample: "mightymike-box-bob", level: 1 },
+    ];
+
+    for (const { globals, sample, level } of gameCases) {
+      const context = createScriptWorkspaceContext(globals, level);
+      const state = loadScriptSample(context, sample);
+
+      const compileResult = compileScriptWorkspace(state);
+      expect(compileResult.isOk()).toBe(true);
+      if (compileResult.isErr()) {
+        continue;
+      }
+
+      const diagnostics = compileResult.value.diagnostics;
+      const errors = diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+
+      const packageFilesResult = buildScriptPackageFiles(compileResult.value);
+      expect(packageFilesResult.isOk()).toBe(true);
+      if (packageFilesResult.isErr()) {
+        continue;
+      }
+
+      const filesMap: Record<string, Uint8Array> = {};
+      for (const file of packageFilesResult.value) {
+        filesMap[file.path] = file.bytes;
+      }
+
+      const validationResult = validateScriptPackage(filesMap, context);
+      expect(validationResult.isOk()).toBe(true);
+    }
   });
 });

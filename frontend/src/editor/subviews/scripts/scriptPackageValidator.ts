@@ -22,7 +22,7 @@ export function validateScriptPackage(
   const errors: string[] = [];
   const textDecoder = new TextDecoder();
 
-  // 1. Path traversal & absolute paths & typescript check
+  // 1. Path traversal & absolute paths & Lua source check
   for (const path of Object.keys(files)) {
     if (path.includes("..") || path.includes("\\")) {
       errors.push(`Path traversal detected: ${path}`);
@@ -34,8 +34,8 @@ export function validateScriptPackage(
       errors.push(`File outside Data/Scripts/ directory: ${path}`);
     }
     if (path.startsWith("Data/Scripts/src/")) {
-      if (!path.endsWith(".ts") && !path.endsWith(".d.ts")) {
-        errors.push(`Script source files must be TypeScript: ${path}`);
+      if (!path.endsWith(".lua")) {
+        errors.push(`Script source files must be Lua: ${path}`);
       }
     }
   }
@@ -74,9 +74,9 @@ export function validateScriptPackage(
   }
 
   // 5. Missing compiled bundle check
-  const bundleBytes = files["Data/Scripts/dist/main.js"];
+  const bundleBytes = files["Data/Scripts/dist/main.lua"];
   if (!bundleBytes) {
-    errors.push("Missing compiled bundle (Data/Scripts/dist/main.js)");
+    errors.push("Missing compiled bundle (Data/Scripts/dist/main.lua)");
   }
 
   // 6. Duplicate IDs check
@@ -237,7 +237,7 @@ export function validateScriptPackage(
   // 8. Missing source files check
   // Check that all files in moduleOrder exist
   for (const modulePath of projectData.editor.moduleOrder) {
-    if (!files[modulePath] && modulePath !== "Data/Scripts/src/main.ts") {
+    if (!files[modulePath] && modulePath !== "Data/Scripts/src/main.lua") {
       errors.push(`Missing source file: ${modulePath}`);
     }
   }
@@ -289,7 +289,7 @@ export function validateScriptPackage(
   for (const [filePath, contentBytes] of Object.entries(files)) {
     if (
       filePath.startsWith("Data/Scripts/src/") ||
-      filePath === "Data/Scripts/dist/main.js"
+      filePath === "Data/Scripts/dist/main.lua"
     ) {
       const content = textDecoder.decode(contentBytes);
       for (const api of checkApis) {
@@ -303,6 +303,12 @@ export function validateScriptPackage(
           }
         }
       }
+
+      // Add lightweight syntax validation for source files
+      if (filePath.endsWith(".lua")) {
+        const syntaxErrors = validateLuaSyntax(content, filePath);
+        errors.push(...syntaxErrors);
+      }
     }
   }
 
@@ -311,4 +317,69 @@ export function validateScriptPackage(
   }
 
   return ok(true);
+}
+
+function validateLuaSyntax(content: string, filePath: string): string[] {
+  const errors: string[] = [];
+
+  // Remove multi-line comments
+  let clean = content.replace(/--\[\[[\s\S]*?\]\]/g, "");
+  // Remove single-line comments
+  clean = clean.replace(/--.*$/gm, "");
+
+  // Remove string literals
+  clean = clean.replace(/"(\\.|[^"\\])*"/g, '""');
+  clean = clean.replace(/'(\\.|[^'\\])*'/g, "''");
+  clean = clean.replace(/\[\[[\s\S]*?\]\]/g, "[]");
+
+  // Tokenize block-related keywords that don't follow a dot
+  const pattern = /(?:\.([a-zA-Z0-9_]+))|\b(do|then|function|repeat|end|until|elseif|else)\b/g;
+  let match;
+  const words: string[] = [];
+  while ((match = pattern.exec(clean)) !== null) {
+    if (match[2]) {
+      words.push(match[2]);
+    }
+  }
+
+  const stack: string[] = [];
+
+  for (const word of words) {
+    if (word === "do" || word === "then" || word === "function") {
+      stack.push("end");
+    } else if (word === "repeat") {
+      stack.push("until");
+    } else if (word === "elseif") {
+      if (stack.length === 0 || stack[stack.length - 1] !== "end") {
+        errors.push(`Mismatched 'elseif' keyword in ${filePath}`);
+        return errors;
+      }
+      stack.pop();
+    } else if (word === "else") {
+      if (stack.length === 0 || stack[stack.length - 1] !== "end") {
+        errors.push(`Mismatched 'else' keyword in ${filePath}`);
+        return errors;
+      }
+      stack.pop();
+      stack.push("end");
+    } else if (word === "end") {
+      if (stack.length === 0 || stack[stack.length - 1] !== "end") {
+        errors.push(`Mismatched 'end' keyword in ${filePath}`);
+        return errors;
+      }
+      stack.pop();
+    } else if (word === "until") {
+      if (stack.length === 0 || stack[stack.length - 1] !== "until") {
+        errors.push(`Mismatched 'until' keyword in ${filePath}`);
+        return errors;
+      }
+      stack.pop();
+    }
+  }
+
+  if (stack.length > 0) {
+    errors.push(`Unclosed block: missing '${stack[stack.length - 1]}' in ${filePath}`);
+  }
+
+  return errors;
 }

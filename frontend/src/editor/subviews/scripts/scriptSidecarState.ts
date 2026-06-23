@@ -29,7 +29,7 @@ export interface ScriptContext {
 export interface ScriptProjectManifest {
   schemaVersion: number;
   game: string;
-  runtime: "duktape";
+  runtime: "lua";
   configRoot: string;
   sourceRoot: string;
   distRoot: string;
@@ -286,8 +286,8 @@ function createLevelEntry(context: ScriptContext): ScriptLevelEntry {
       scene: context.scene,
     },
     enabled: true,
-    sourceScript: `Data/Scripts/src/${context.sourceNamespace}.ts`,
-    compiledScript: `Data/Scripts/dist/${context.sourceNamespace}.js`,
+    sourceScript: `Data/Scripts/src/${context.sourceNamespace}.lua`,
+    compiledScript: `Data/Scripts/dist/${context.sourceNamespace}.lua`,
     hooks: ["level.onLoad", "level.onTick"],
   };
 }
@@ -469,7 +469,7 @@ export function createDefaultScriptDraft(context: ScriptContext): ScriptDraft {
     project: {
       schemaVersion: 1,
       game: context.gameName,
-      runtime: "duktape",
+      runtime: "lua",
       configRoot: "Data/Scripts/config",
       sourceRoot: "Data/Scripts/src",
       distRoot: "Data/Scripts/dist",
@@ -521,12 +521,12 @@ export function createReferenceSampleDraft(context: ScriptContext): ScriptDraft 
       levels: replaceLevelEntry(sampleDraft.levels.levels, context.levelId, {
         sourceScript:
           context.gameKey === "ottomatic"
-            ? "Data/Scripts/src/ottomatic/humans.ts"
-            : `Data/Scripts/src/${context.gameKey}/starter.ts`,
+            ? "Data/Scripts/src/ottomatic/humans.lua"
+            : `Data/Scripts/src/${context.gameKey}/starter.lua`,
         compiledScript:
           context.gameKey === "ottomatic"
-            ? "Data/Scripts/dist/ottomatic/humans.js"
-            : `Data/Scripts/dist/${context.gameKey}/starter.js`,
+            ? "Data/Scripts/dist/ottomatic/humans.lua"
+            : `Data/Scripts/dist/${context.gameKey}/starter.lua`,
       }),
     },
     bindingsByLevel: {

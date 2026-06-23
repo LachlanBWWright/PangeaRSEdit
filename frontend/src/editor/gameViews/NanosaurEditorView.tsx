@@ -15,6 +15,7 @@ import { useAtomValue } from "jotai";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
@@ -103,7 +104,7 @@ export function NanosaurEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.scripts && (
+        {ENABLE_SCRIPTS && view === View.scripts && (
           <ScriptsMenu
             headerData={headerData}
             itemData={itemData}

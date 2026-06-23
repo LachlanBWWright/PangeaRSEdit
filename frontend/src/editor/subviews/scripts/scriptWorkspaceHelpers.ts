@@ -152,7 +152,7 @@ export function buildGeneratedCustomObjectId(
 
 export type ScriptSourceDirectory = "root" | "globals" | "bindings" | "objects";
 
-export type ScriptSourceLanguage = "ts";
+export type ScriptSourceLanguage = "lua";
 
 export const SCRIPT_SOURCE_DIRECTORY_OPTIONS: readonly {
   readonly id: ScriptSourceDirectory;
@@ -168,7 +168,7 @@ export const SCRIPT_SOURCE_LANGUAGE_OPTIONS: readonly {
   readonly id: ScriptSourceLanguage;
   readonly label: string;
 }[] = [
-  { id: "ts", label: "TypeScript" },
+  { id: "lua", label: "Lua" },
 ];
 
 export function parseScriptSourceDirectory(
@@ -191,7 +191,7 @@ export function parseScriptSourceDirectory(
 export function parseScriptSourceLanguage(
   _value: string,
 ): ScriptSourceLanguage {
-  return "ts";
+  return "lua";
 }
 
 function buildScriptSourceDirectoryPath(
@@ -237,9 +237,15 @@ export function buildDefaultScriptSourceContent(
   _language: ScriptSourceLanguage,
 ): string {
   return [
-    "export function onLevelStart(ctx: LevelContext): void {",
-    '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: custom TS file");',
-    "}",
+    "local pangea = require('pangea')",
+    "",
+    "local module = {}",
+    "",
+    "function module.onLevelStart(ctx)",
+    "  pangea.log.info('LEVEL_EDITOR_SCRIPTING: custom Lua file')",
+    "end",
+    "",
+    "return module",
     "",
   ].join("\n");
 }

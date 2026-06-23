@@ -244,7 +244,7 @@ describe("game preview runtime loader", () => {
       terrainPaths: null,
       customFiles: [
         {
-          path: "Data/Scripts/dist/main.js",
+          path: "Data/Scripts/dist/main.lua",
           data: new Uint8Array([1, 2, 3]),
         },
       ],
@@ -266,7 +266,7 @@ describe("game preview runtime loader", () => {
       "_PangeaScript_SetStartupScript",
       null,
       ["string"],
-      ["Data/Scripts/dist/main.js"],
+      ["Data/Scripts/dist/main.lua"],
     );
     expect(ccall).toHaveBeenCalledWith("_PangeaScript_Reload", null, [], []);
     expect(onError).not.toHaveBeenCalled();

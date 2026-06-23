@@ -24,6 +24,7 @@ type BehaviorTarget =
   | "terrainItem"
   | "splineItem"
   | "mightyMikeItem"
+  | "objectType"
   | "customObject";
 
 const TARGET_OPTIONS: readonly {
@@ -34,6 +35,7 @@ const TARGET_OPTIONS: readonly {
   { id: "terrainItem", label: "Terrain Item" },
   { id: "splineItem", label: "Spline Item" },
   { id: "mightyMikeItem", label: "Mighty Mike Map Item" },
+  { id: "objectType", label: "Native Object Type" },
   { id: "customObject", label: "Custom Object" },
 ];
 
@@ -46,6 +48,9 @@ function parseBehaviorTarget(value: string): BehaviorTarget {
   }
   if (value === "mightyMikeItem") {
     return "mightyMikeItem";
+  }
+  if (value === "objectType") {
+    return "objectType";
   }
   if (value === "customObject") {
     return "customObject";
@@ -77,6 +82,7 @@ const HOOK_OPTIONS: Record<
   terrainItem: [{ id: "onTerrainItem", label: "Terrain Item" }],
   splineItem: [{ id: "onSplineItem", label: "Spline Item" }],
   mightyMikeItem: [{ id: "onMapItem", label: "Map Item" }],
+  objectType: [{ id: "onObjectFrame", label: "Object Frame" }],
   customObject: [{ id: "onObjectFrame", label: "Object Frame" }],
 };
 
@@ -99,6 +105,7 @@ interface DefineBehaviorModalProps {
     label: string;
     description: string;
     tags: string[];
+    objectType?: string;
     sourceFilePath: string;
     sourceTemplate: string;
   }) => void;
@@ -116,10 +123,10 @@ function slugifyScriptName(value: string): string {
 function normalizeSourceFilePath(value: string): string {
   const trimmed = value.trim();
   if (trimmed.startsWith("Data/Scripts/src/")) {
-    return trimmed.endsWith(".ts") ? trimmed : `${trimmed}.ts`;
+    return trimmed.endsWith(".lua") ? trimmed : `${trimmed}.lua`;
   }
   const path = trimmed.length === 0 ? "hooks/custom-script" : trimmed;
-  return `Data/Scripts/src/${path.endsWith(".ts") ? path : `${path}.ts`}`;
+  return `Data/Scripts/src/${path.endsWith(".lua") ? path : `${path}.lua`}`;
 }
 
 function buildScriptId(sourceFilePath: string): string {
@@ -131,6 +138,7 @@ function buildBehaviorSourceDirectory(target: BehaviorTarget): string {
     case "global":
       return "globals";
     case "customObject":
+    case "objectType":
       return "objects";
     case "terrainItem":
     case "splineItem":
@@ -172,101 +180,27 @@ function generateSourceTemplate(
   hooks: ScriptHookId[],
   label: string,
 ): string {
-  const lines: string[] = [];
+  const lines = [
+    `-- ${label}`,
+    `-- Generated script for ${target}`,
+    "local module = {}",
+    "",
+  ];
 
-  lines.push(`/**`);
-  lines.push(` * ${label}`);
-  lines.push(` * Generated script for ${target}`);
-  lines.push(` */`);
-  lines.push(``);
-
-  if (hooks.includes("onLevelLoad")) {
-    lines.push(`export function onLevelLoad(ctx: LevelContext): void {`);
-    lines.push(`  pangea.log.info("Custom level load hook fired");`);
-    lines.push(`}`);
-    lines.push(``);
-  }
-
-  if (hooks.includes("onLevelStart")) {
-    lines.push(`export function onLevelStart(ctx: LevelContext): void {`);
-    lines.push(`  pangea.log.info("Custom level start hook fired");`);
-    lines.push(`}`);
-    lines.push(``);
-  }
-
-  if (hooks.includes("onFrame")) {
-    lines.push(`export function onFrame(ctx: LevelFrameContext): void {`);
-    lines.push(`  pangea.log.info("Custom frame hook fired");`);
-    lines.push(`}`);
-    lines.push(``);
-  }
-
-  if (hooks.includes("onTerrainItem")) {
-    lines.push(
-      `export function onTerrainItem(ctx: TerrainItemContext): ItemSpawnResult {`,
-    );
-    lines.push(`  pangea.log.info("Custom terrain item hook fired");`);
-    lines.push(`  return { handled: false };`);
-    lines.push(`}`);
-    lines.push(``);
-  }
-
-  if (hooks.includes("onSplineItem")) {
-    lines.push(
-      `export function onSplineItem(ctx: SplineItemContext): ItemSpawnResult {`,
-    );
-    lines.push(`  pangea.log.info("Custom spline item hook fired");`);
-    lines.push(`  return { handled: false };`);
-    lines.push(`}`);
-    lines.push(``);
-  }
-
-  if (hooks.includes("onMapItem")) {
-    lines.push(
-      `export function onMapItem(ctx: MapItemContext): ItemSpawnResult {`,
-    );
-    lines.push(`  pangea.log.info("Custom map item hook fired");`);
-    lines.push(`  return { handled: false };`);
-    lines.push(`}`);
-    lines.push(``);
-  }
-
-  if (hooks.includes("onObjectFrame")) {
-    switch (target) {
-      case "customObject":
-        lines.push(
-          `export function onObjectFrame(ctx: ObjectFrameContext): void {`,
-        );
-        lines.push(`  pangea.log.info("Custom object frame hook fired");`);
-        lines.push(`}`);
-        break;
-      default:
-        lines.push(
-          `export function onObjectFrame(ctx: ObjectFrameContext): void {`,
-        );
-        lines.push(`  pangea.log.info("Custom object frame hook fired");`);
-        lines.push(`}`);
+  hooks.forEach((hook) => {
+    lines.push(`function module.${hook}(ctx)`);
+    lines.push(`  pangea.log.info(${JSON.stringify(`${label}: ${hook}`)})`);
+    if (
+      hook === "onTerrainItem" ||
+      hook === "onSplineItem" ||
+      hook === "onMapItem"
+    ) {
+      lines.push("  return { handled = false }");
     }
-  }
+    lines.push("end", "");
+  });
 
-  for (const hook of hooks) {
-    const alreadyHandled = [
-      "onLevelLoad",
-      "onLevelStart",
-      "onFrame",
-      "onTerrainItem",
-      "onSplineItem",
-      "onMapItem",
-      "onObjectFrame",
-    ].includes(hook);
-    if (!alreadyHandled) {
-      lines.push(`export function ${hook}(ctx: LevelContext): void {`);
-      lines.push(`  pangea.log.info("Custom ${hook} hook fired");`);
-      lines.push(`}`);
-      lines.push(``);
-    }
-  }
-
+  lines.push("return module", "");
   return lines.join("\n");
 }
 
@@ -286,6 +220,7 @@ export function DefineBehaviorModal({
   );
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
+  const [objectType, setObjectType] = useState("");
   const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
 
   const availableHooks = HOOK_OPTIONS[target].filter((hook) =>
@@ -303,6 +238,7 @@ export function DefineBehaviorModal({
     setTarget(initialTarget);
     setLabel("");
     setDescription("");
+    setObjectType("");
     setSelectedTags([]);
     if (initialHooks && initialHooks.length > 0) {
       setSelectedHooks(initialHooks);
@@ -345,6 +281,10 @@ export function DefineBehaviorModal({
     if (trimmedLabel.length === 0 || selectedHooks.length === 0) {
       return;
     }
+    const trimmedObjectType = objectType.trim();
+    if (target === "objectType" && trimmedObjectType.length === 0) {
+      return;
+    }
 
     const sourceTemplate = generateSourceTemplate(
       target,
@@ -359,12 +299,14 @@ export function DefineBehaviorModal({
       label: trimmedLabel,
       description: trimmedDescription,
       tags: [...selectedTags],
+      objectType: target === "objectType" ? trimmedObjectType : undefined,
       sourceFilePath: normalizedSourcePath,
       sourceTemplate,
     });
 
     setLabel("");
     setDescription("");
+    setObjectType("");
     setSelectedTags([]);
     const defaultHook = getDefaultHook(target);
     setSelectedHooks(defaultHook === null ? [] : [defaultHook]);
@@ -431,6 +373,21 @@ export function DefineBehaviorModal({
             />
           </div>
 
+          {target === "objectType" ? (
+            <div>
+              <Label htmlFor="object-type">Object type</Label>
+              <Input
+                id="object-type"
+                value={objectType}
+                onChange={(event) => setObjectType(event.target.value)}
+                placeholder="e.g., bugdom.player"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use the native ID registered by the game runtime.
+              </p>
+            </div>
+          ) : null}
+
           <div>
             <Label htmlFor="source-file">Source file</Label>
             <Input
@@ -493,7 +450,11 @@ export function DefineBehaviorModal({
             </Button>
             <Button
               onClick={handleDefine}
-              disabled={!label || selectedHooks.length === 0}
+              disabled={
+                !label ||
+                selectedHooks.length === 0 ||
+                (target === "objectType" && objectType.trim().length === 0)
+              }
             >
               Create Script
             </Button>

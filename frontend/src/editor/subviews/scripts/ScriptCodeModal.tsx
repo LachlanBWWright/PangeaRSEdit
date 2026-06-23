@@ -17,7 +17,7 @@ interface ScriptCodeModalProps {
   workspace: ScriptWorkspaceState;
   filePath: string;
   fileName: string;
-  language: "typescript";
+  language: "lua";
   content: string;
   isReadOnly?: boolean;
   onSave?: (newContent: string) => void;
@@ -152,6 +152,7 @@ export function ScriptCodeModal({
           <Editor
             height="100%"
             language={language}
+            path={`file:///workspace/${filePath}`}
             value={editorContent}
             onChange={handleContentChange}
             onMount={handleEditorMount}

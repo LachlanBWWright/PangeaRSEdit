@@ -127,6 +127,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<MultiplayerHub>("/api/multiplayer/signaling");
+app.MapHub<LspHub>("/api/lsp");
 
 app.Run();
 

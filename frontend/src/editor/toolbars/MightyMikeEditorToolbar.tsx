@@ -13,6 +13,7 @@ import { useAtom } from "jotai";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { View } from "../viewEnum";
 
 interface Props {
@@ -58,9 +59,11 @@ export const MightyMikeEditorToolbar = memo(function MightyMikeEditorToolbar({
           <TabsTrigger className="w-full" value="items">
             Items
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="scripts">
-            Scripts
-          </TabsTrigger>
+          {ENABLE_SCRIPTS ? (
+            <TabsTrigger className="w-full" value="scripts">
+              Scripts
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger className="w-full" value="supertiles">
             Visual Tiles
           </TabsTrigger>

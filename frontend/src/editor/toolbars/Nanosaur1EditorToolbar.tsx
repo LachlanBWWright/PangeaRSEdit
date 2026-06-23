@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
 import { useAtom } from "jotai";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 interface Props {
   terrainHasSTgd?: boolean;
@@ -44,7 +45,11 @@ export const Nanosaur1EditorToolbar = memo(function Nanosaur1EditorToolbar({
       <Tabs value={currentValue} onValueChange={handleValueChange}>
         <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
           <TabsTrigger className="w-full" value="items">Items</TabsTrigger>
-          <TabsTrigger className="w-full" value="scripts">Scripts</TabsTrigger>
+          {ENABLE_SCRIPTS ? (
+            <TabsTrigger className="w-full" value="scripts">
+              Scripts
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger className="w-full" value="tiles">Tiles</TabsTrigger>
           <TabsTrigger className="w-full" value="supertiles" disabled={!terrainHasSTgd}>
             Supertiles
