@@ -120,6 +120,84 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       contextType: "ObjectFrameContext",
       returnType: "ObjectFrameResult|nil",
     },
+    {
+      name: "onPickupCollected",
+      description: "Triggered when a registered pickup is collected.",
+      contextType: "PickupContext",
+      returnType: "PickupResult|nil",
+    },
+    {
+      name: "onWeaponHit",
+      description: "Triggered when a weapon or projectile hits a target.",
+      contextType: "WeaponHitContext",
+      returnType: "WeaponHitResult|nil",
+    },
+    {
+      name: "onTriggerEnter",
+      description: "Triggered when an object or player enters a scripted trigger.",
+      contextType: "TriggerContext",
+      returnType: "TriggerResult|nil",
+    },
+    {
+      name: "onAreaLoad",
+      description: "Triggered when an area is being loaded.",
+      contextType: "LevelContext",
+      returnType: "nil",
+    },
+    {
+      name: "onAreaStart",
+      description: "Triggered when gameplay starts in an area.",
+      contextType: "LevelContext",
+      returnType: "nil",
+    },
+    {
+      name: "onAreaFrame",
+      description: "Triggered every frame during an area.",
+      contextType: "FrameContext",
+      returnType: "nil",
+    },
+    {
+      name: "onAreaComplete",
+      description: "Triggered when an area is successfully completed.",
+      contextType: "LevelContext",
+      returnType: "nil",
+    },
+    {
+      name: "onAreaUnload",
+      description: "Triggered when an area is unloaded.",
+      contextType: "LevelContext",
+      returnType: "nil",
+    },
+    {
+      name: "onRaceLoad",
+      description: "Triggered when a race is being loaded.",
+      contextType: "RaceContext",
+      returnType: "nil",
+    },
+    {
+      name: "onRaceStart",
+      description: "Triggered when a race starts.",
+      contextType: "RaceContext",
+      returnType: "nil",
+    },
+    {
+      name: "onRaceFrame",
+      description: "Triggered every frame during a race.",
+      contextType: "RaceContext",
+      returnType: "nil",
+    },
+    {
+      name: "onRaceComplete",
+      description: "Triggered when a race completes.",
+      contextType: "RaceContext",
+      returnType: "nil",
+    },
+    {
+      name: "onRaceUnload",
+      description: "Triggered when a race is unloaded.",
+      contextType: "RaceContext",
+      returnType: "nil",
+    },
   ],
   apis: [
     {
@@ -201,7 +279,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "OttoMatic-Android",
       gameName: "Otto Matic",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame"],
+      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "playerMode", type: "string", optional: true },
       ],
@@ -209,25 +287,25 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "Bugdom-android",
       gameName: "Bugdom",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame"],
+      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
     },
     {
       gameId: "Bugdom2-Android",
       gameName: "Bugdom 2",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame"],
+      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
     },
     {
       gameId: "Nanosaur-android",
       gameName: "Nanosaur",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onObjectFrame"],
+      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
     },
     {
       gameId: "Nanosaur2-Android",
       gameName: "Nanosaur 2",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame"],
+      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["adventure", "race", "battle", "capture"] },
         { name: "networked", type: "boolean" },
@@ -236,7 +314,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "CroMagRally-Android",
       gameName: "Cro-Mag Rally",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onObjectFrame"],
+      supportedHooks: ["onRaceLoad", "onRaceStart", "onRaceFrame", "onRaceComplete", "onRaceUnload", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["local", "practice", "network"] },
         { name: "trackName", type: "string", optional: true },
@@ -246,7 +324,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "BillyFrontier-Android",
       gameName: "Billy Frontier",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame"],
+      supportedHooks: ["onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"] },
       ],
@@ -254,7 +332,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "MightyMike-Android",
       gameName: "Mighty Mike",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onMapItem", "onObjectFrame"],
+      supportedHooks: ["onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onMapItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "sceneName", type: "string", optional: true },
         { name: "areaName", type: "string", optional: true },

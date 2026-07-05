@@ -68,16 +68,19 @@ const HOOK_OPTIONS: Record<
     { id: "onFrame", label: "Frame" },
     { id: "onLevelComplete", label: "Level Complete" },
     { id: "onLevelUnload", label: "Level Unload" },
+    { id: "onPickupCollected", label: "Pickup Collected" },
+    { id: "onWeaponHit", label: "Weapon Hit" },
+    { id: "onTriggerEnter", label: "Trigger Enter" },
     { id: "onAreaLoad", label: "Area Load" },
     { id: "onAreaStart", label: "Area Start" },
     { id: "onAreaFrame", label: "Area Frame" },
+    { id: "onAreaComplete", label: "Area Complete" },
     { id: "onAreaUnload", label: "Area Unload" },
-    { id: "onRaceConfig", label: "Race Config" },
+    { id: "onRaceLoad", label: "Race Load" },
     { id: "onRaceStart", label: "Race Start" },
-    { id: "onCheckpoint", label: "Checkpoint" },
-    { id: "onLapComplete", label: "Lap Complete" },
-    { id: "onPowerupCollected", label: "Powerup Collected" },
-    { id: "onRaceFinish", label: "Race Finish" },
+    { id: "onRaceFrame", label: "Race Frame" },
+    { id: "onRaceComplete", label: "Race Complete" },
+    { id: "onRaceUnload", label: "Race Unload" },
   ],
   terrainItem: [{ id: "onTerrainItem", label: "Terrain Item" }],
   splineItem: [{ id: "onSplineItem", label: "Spline Item" }],
@@ -193,7 +196,10 @@ function generateSourceTemplate(
     if (
       hook === "onTerrainItem" ||
       hook === "onSplineItem" ||
-      hook === "onMapItem"
+      hook === "onMapItem" ||
+      hook === "onPickupCollected" ||
+      hook === "onWeaponHit" ||
+      hook === "onTriggerEnter"
     ) {
       lines.push("  return { handled = false }");
     }

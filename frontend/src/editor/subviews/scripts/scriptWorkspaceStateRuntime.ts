@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import { err, ok, Result } from "neverthrow";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { z } from "zod";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntimeTypes";
 import { validateScriptPackage } from "./scriptPackageValidator";
@@ -11,10 +12,20 @@ import {
   USER_BOOTSTRAP_PATH,
   runtimeLevelsSchema,
   scriptBindingsFileSchema,
+  scriptBehaviorDefinitionSchema,
+  scriptCustomObjectDefinitionSchema,
+  scriptCustomObjectPlacementSchema,
+  scriptGlobalAssignmentSchema,
+  scriptLevelStateSchema,
+  scriptMapItemBindingSchema,
+  scriptParameterDefinitionSchema,
   scriptObjectsFileSchema,
   scriptParamsFileSchema,
   scriptPlacementsFileSchema,
   scriptProjectSchema,
+  scriptSplineBindingSchema,
+  scriptTagDefinitionSchema,
+  scriptTerrainBindingSchema,
 } from "./scriptWorkspaceStateTypes";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
 import type {
@@ -183,6 +194,9 @@ function getAdventureHooks(): readonly ScriptHookId[] {
     "onLevelUnload",
     "onTerrainItem",
     "onSplineItem",
+    "onPickupCollected",
+    "onWeaponHit",
+    "onTriggerEnter",
   ];
 }
 
@@ -195,6 +209,9 @@ function getNanosaurHooks(): readonly ScriptHookId[] {
     "onLevelComplete",
     "onLevelUnload",
     "onTerrainItem",
+    "onPickupCollected",
+    "onWeaponHit",
+    "onTriggerEnter",
   ];
 }
 
@@ -204,33 +221,43 @@ function getBillyFrontierHooks(): readonly ScriptHookId[] {
     "onAreaStart",
     "onAreaFrame",
     "onObjectFrame",
+    "onAreaComplete",
     "onAreaUnload",
     "onTerrainItem",
     "onSplineItem",
+    "onPickupCollected",
+    "onWeaponHit",
+    "onTriggerEnter",
   ];
 }
 
 function getMightyMikeHooks(): readonly ScriptHookId[] {
   return [
-    "onSceneLoad",
     "onAreaLoad",
     "onAreaStart",
     "onAreaFrame",
     "onObjectFrame",
     "onMapItem",
+    "onPickupCollected",
+    "onWeaponHit",
+    "onTriggerEnter",
+    "onAreaComplete",
     "onAreaUnload",
   ];
 }
 
 function getRaceHooks(): readonly ScriptHookId[] {
   return [
-    "onRaceConfig",
+    "onRaceLoad",
     "onRaceStart",
+    "onRaceFrame",
     "onObjectFrame",
-    "onCheckpoint",
-    "onLapComplete",
-    "onPowerupCollected",
-    "onRaceFinish",
+    "onRaceComplete",
+    "onRaceUnload",
+    "onTerrainItem",
+    "onPickupCollected",
+    "onWeaponHit",
+    "onTriggerEnter",
   ];
 }
 
@@ -1093,6 +1120,115 @@ function buildGeneratedEntryModule(
           "    end",
           "  end",
           "  return { handled = false, markInUse = markInUse }",
+          "end",
+        ].join("\n");
+      }
+
+      if (hookId === "onPickupCollected") {
+        return [
+          `function entry.${hookId}(ctx)`,
+          "  local scoreDelta = 0",
+          "  local healthDelta = 0",
+          "  local consumePickup = nil",
+          "  for _, candidate in ipairs(__modules) do",
+          `    local hook = candidate[${JSON.stringify(hookId)}]`,
+          "    if type(hook) == 'function' then",
+          "      local result = hook(ctx)",
+          "      if result then",
+          "        if result.scoreDelta then",
+          "          scoreDelta = scoreDelta + result.scoreDelta",
+          "        end",
+          "        if result.healthDelta then",
+          "          healthDelta = healthDelta + result.healthDelta",
+          "        end",
+          "        if result.consumePickup ~= nil then",
+          "          consumePickup = result.consumePickup",
+          "        end",
+          "        if result.handled then",
+          "          return { handled = true, consumePickup = consumePickup, scoreDelta = scoreDelta, healthDelta = healthDelta }",
+          "        end",
+          "      end",
+          "    end",
+          "  end",
+          "  return { handled = false, consumePickup = consumePickup, scoreDelta = scoreDelta, healthDelta = healthDelta }",
+          "end",
+        ].join("\n");
+      }
+
+      if (hookId === "onWeaponHit") {
+        return [
+          `function entry.${hookId}(ctx)`,
+          "  local damage = ctx.damage",
+          "  local scoreDelta = 0",
+          "  local applyDamage = nil",
+          "  local destroyTarget = nil",
+          "  for _, candidate in ipairs(__modules) do",
+          `    local hook = candidate[${JSON.stringify(hookId)}]`,
+          "    if type(hook) == 'function' then",
+          "      local result = hook(ctx)",
+          "      if result then",
+          "        if result.damage then",
+          "          damage = result.damage",
+          "        end",
+          "        if result.scoreDelta then",
+          "          scoreDelta = scoreDelta + result.scoreDelta",
+          "        end",
+          "        if result.applyDamage ~= nil then",
+          "          applyDamage = result.applyDamage",
+          "        end",
+          "        if result.destroyTarget ~= nil then",
+          "          destroyTarget = result.destroyTarget",
+          "        end",
+          "        if result.handled then",
+          "          return { handled = true, applyDamage = applyDamage, damage = damage, destroyTarget = destroyTarget, scoreDelta = scoreDelta }",
+          "        end",
+          "      end",
+          "    end",
+          "  end",
+          "  return { handled = false, applyDamage = applyDamage, damage = damage, destroyTarget = destroyTarget, scoreDelta = scoreDelta }",
+          "end",
+        ].join("\n");
+      }
+
+      if (hookId === "onTriggerEnter") {
+        return [
+          `function entry.${hookId}(ctx)`,
+          "  local scoreDelta = 0",
+          "  local healthDelta = 0",
+          "  local damagePlayer = 0",
+          "  local solid = nil",
+          "  local deleteSelf = nil",
+          "  local deleteOther = nil",
+          "  for _, candidate in ipairs(__modules) do",
+          `    local hook = candidate[${JSON.stringify(hookId)}]`,
+          "    if type(hook) == 'function' then",
+          "      local result = hook(ctx)",
+          "      if result then",
+          "        if result.scoreDelta then",
+          "          scoreDelta = scoreDelta + result.scoreDelta",
+          "        end",
+          "        if result.healthDelta then",
+          "          healthDelta = healthDelta + result.healthDelta",
+          "        end",
+          "        if result.damagePlayer then",
+          "          damagePlayer = damagePlayer + result.damagePlayer",
+          "        end",
+          "        if result.solid ~= nil then",
+          "          solid = result.solid",
+          "        end",
+          "        if result.deleteSelf ~= nil then",
+          "          deleteSelf = result.deleteSelf",
+          "        end",
+          "        if result.deleteOther ~= nil then",
+          "          deleteOther = result.deleteOther",
+          "        end",
+          "        if result.handled then",
+          "          return { handled = true, solid = solid, deleteSelf = deleteSelf, deleteOther = deleteOther, damagePlayer = damagePlayer, healthDelta = healthDelta, scoreDelta = scoreDelta }",
+          "        end",
+          "      end",
+          "    end",
+          "  end",
+          "  return { handled = false, solid = solid, deleteSelf = deleteSelf, deleteOther = deleteOther, damagePlayer = damagePlayer, healthDelta = healthDelta, scoreDelta = scoreDelta }",
           "end",
         ].join("\n");
       }
@@ -2467,15 +2603,15 @@ export function importScriptPackageZip(
       const bindingsPath = `Data/Scripts/config/bindings/${levelLabel}.json`;
       const placementsPath = `Data/Scripts/config/placements/${levelLabel}.json`;
 
-      let terrainBindings: any[] = [];
-      let splineBindings: any[] = [];
-      let mapItemBindings: any[] = [];
-      let customPlacements: any[] = [];
+      let terrainBindings: ScriptTerrainBinding[] = [];
+      let splineBindings: ScriptSplineBinding[] = [];
+      let mapItemBindings: ScriptMapItemBinding[] = [];
+      let customPlacements: ScriptCustomObjectPlacement[] = [];
 
       const bBytes = files[bindingsPath];
       if (bBytes) {
         const bResult = decodeJsonFile(files, bindingsPath, scriptBindingsFileSchema);
-        if (bResult.isOk()) {
+        if (bResult.isOk() && bResult.value) {
           terrainBindings = [...bResult.value.terrainBindings];
           splineBindings = [...bResult.value.splineBindings];
           mapItemBindings = [...bResult.value.mapItemBindings];
@@ -2485,7 +2621,7 @@ export function importScriptPackageZip(
       const pBytes = files[placementsPath];
       if (pBytes) {
         const pResult = decodeJsonFile(files, placementsPath, scriptPlacementsFileSchema);
-        if (pResult.isOk()) {
+        if (pResult.isOk() && pResult.value) {
           customPlacements = [...pResult.value.placements];
         }
       }

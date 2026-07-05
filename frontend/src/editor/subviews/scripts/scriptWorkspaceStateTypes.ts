@@ -9,18 +9,20 @@ export const scriptHookIdSchema = z.enum([
   "onLevelUnload",
   "onTerrainItem",
   "onSplineItem",
-  "onSceneLoad",
+  "onPickupCollected",
+  "onWeaponHit",
+  "onTriggerEnter",
   "onAreaLoad",
   "onAreaStart",
   "onAreaFrame",
+  "onAreaComplete",
   "onAreaUnload",
   "onMapItem",
-  "onRaceConfig",
+  "onRaceLoad",
   "onRaceStart",
-  "onCheckpoint",
-  "onLapComplete",
-  "onPowerupCollected",
-  "onRaceFinish",
+  "onRaceFrame",
+  "onRaceComplete",
+  "onRaceUnload",
 ]);
 
 export type ScriptHookId = z.infer<typeof scriptHookIdSchema>;
@@ -46,7 +48,7 @@ export interface ScriptTagDefinition {
   readonly source: "game" | "behavior";
 }
 
-const scriptTagDefinitionSchema = z.object({
+export const scriptTagDefinitionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   description: z.string().min(1),
@@ -69,7 +71,7 @@ export interface ScriptBehaviorDefinition {
   readonly template: string;
 }
 
-const scriptBehaviorDefinitionSchema = z.object({
+export const scriptBehaviorDefinitionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   description: z.string().min(1),
@@ -155,7 +157,7 @@ export interface ScriptGlobalAssignment extends ScriptAssignmentBase {
   readonly hookId: ScriptHookId;
 }
 
-const scriptGlobalAssignmentSchema = z.object({
+export const scriptGlobalAssignmentSchema = z.object({
   id: z.string().min(1),
   behaviorId: z.string().min(1),
   label: z.string().min(1),
@@ -171,7 +173,7 @@ export interface ScriptTerrainBinding extends ScriptAssignmentBase {
   readonly signature: ScriptTerrainBindingSignature;
 }
 
-const scriptTerrainBindingSchema = z.object({
+export const scriptTerrainBindingSchema = z.object({
   id: z.string().min(1),
   behaviorId: z.string().min(1),
   label: z.string().min(1),
@@ -188,7 +190,7 @@ export interface ScriptSplineBinding extends ScriptAssignmentBase {
   readonly signature: ScriptSplineBindingSignature;
 }
 
-const scriptSplineBindingSchema = z.object({
+export const scriptSplineBindingSchema = z.object({
   id: z.string().min(1),
   behaviorId: z.string().min(1),
   label: z.string().min(1),
@@ -205,7 +207,7 @@ export interface ScriptMapItemBinding extends ScriptAssignmentBase {
   readonly signature: ScriptMapItemSignature;
 }
 
-const scriptMapItemBindingSchema = z.object({
+export const scriptMapItemBindingSchema = z.object({
   id: z.string().min(1),
   behaviorId: z.string().min(1),
   label: z.string().min(1),
@@ -225,7 +227,7 @@ export interface ScriptParameterDefinition {
   readonly defaultValue: string;
 }
 
-const scriptParameterDefinitionSchema = z.object({
+export const scriptParameterDefinitionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   type: z.enum(["number", "boolean", "string"]),
@@ -243,7 +245,7 @@ export interface ScriptCustomObjectDefinition {
   readonly description: string;
 }
 
-const scriptCustomObjectDefinitionSchema = z.object({
+export const scriptCustomObjectDefinitionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   sourceFilePath: z.string().min(1),
@@ -265,7 +267,7 @@ export interface ScriptCustomObjectPlacement {
   readonly levelKey: string;
 }
 
-const scriptCustomObjectPlacementSchema = z.object({
+export const scriptCustomObjectPlacementSchema = z.object({
   id: z.string().min(1),
   objectId: z.string().min(1),
   label: z.string().min(1),
@@ -321,7 +323,7 @@ export interface ScriptLevelState {
   readonly customPlacements: readonly ScriptCustomObjectPlacement[];
 }
 
-const scriptLevelStateSchema = z.object({
+export const scriptLevelStateSchema = z.object({
   globalHooks: z.array(scriptGlobalAssignmentSchema),
   terrainBindings: z.array(scriptTerrainBindingSchema),
   splineBindings: z.array(scriptSplineBindingSchema),

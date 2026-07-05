@@ -1,6 +1,5 @@
 import { Result, ok, err } from "neverthrow";
-import { z } from "zod";
-import type { ScriptWorkspaceContext, ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
+import type { ScriptWorkspaceContext } from "./scriptWorkspaceStateTypes";
 import {
   scriptProjectSchema,
   scriptBindingsFileSchema,

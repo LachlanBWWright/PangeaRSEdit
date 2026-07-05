@@ -215,6 +215,9 @@ export function getHookCapabilityKey(hookId: string): ScriptCapabilityKey {
     case "onMapItem":
       return "mapItemHooks";
     case "onObjectFrame":
+    case "onPickupCollected":
+    case "onWeaponHit":
+    case "onTriggerEnter":
       return "objectFrameHooks";
     case "onFrame":
     case "onAreaFrame":
@@ -309,4 +312,3 @@ export function getWorkspaceWarnings(
 
   return [...new Set(warnings)];
 }
-
