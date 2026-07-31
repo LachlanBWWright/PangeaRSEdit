@@ -183,6 +183,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
           logBonePositions={logBonePositions}
         />
         <OrbitControls
+          makeDefault
           enablePan={false}
           enableZoom={!isTransforming}
           enableRotate={interactionMode === "navigate" && !isTransforming}

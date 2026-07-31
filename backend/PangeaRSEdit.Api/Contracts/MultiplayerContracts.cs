@@ -1,38 +1,59 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PangeaRSEdit.Api.Contracts;
 
 public sealed record CreateMultiplayerLobbyBody(
+    [Required, StringLength(64, MinimumLength = 1)]
     string GameId,
+    [Required, StringLength(64, MinimumLength = 1)]
     string Mode,
+    [Required, StringLength(256, MinimumLength = 1)]
     string TrackOrLevel,
+    [Range(2, 6)]
     int MaxPlayers,
+    [Required, StringLength(48, MinimumLength = 1)]
     string DisplayName,
+    [Range(2, 4)]
     int TagDurationMinutes = 3,
     bool IsPublic = true
 );
 
-public sealed record JoinMultiplayerLobbyBody(string DisplayName);
+public sealed record JoinMultiplayerLobbyBody(
+    [Required, StringLength(48, MinimumLength = 1)] string DisplayName
+);
 
 public sealed record SetMultiplayerLobbyReadyBody(bool IsReady);
 
 public sealed record StartMultiplayerLobbyBody(bool Force = false);
 
 public sealed record UpdateMultiplayerLobbySelectionBody(
+    [Required, StringLength(64, MinimumLength = 1)]
     string Mode,
+    [Required, StringLength(256, MinimumLength = 1)]
     string TrackOrLevel,
+    [Range(2, 4)]
     int TagDurationMinutes = 3
 );
 
-public sealed record EndMultiplayerLobbyMatchBody(string? Detail);
+public sealed record EndMultiplayerLobbyMatchBody(
+    [StringLength(512)] string? Detail
+);
 
 public sealed record RematchMultiplayerLobbyBody(
+    [Required, StringLength(64, MinimumLength = 1)]
     string GameId,
+    [Required, StringLength(64, MinimumLength = 1)]
     string Mode,
+    [Required, StringLength(256, MinimumLength = 1)]
     string TrackOrLevel,
+    [Range(2, 4)]
     int TagDurationMinutes = 3,
     bool Force = false
 );
 
-public sealed record MultiplayerLobbyReportBody(string? Detail);
+public sealed record MultiplayerLobbyReportBody(
+    [StringLength(512)] string? Detail
+);
 
 public sealed record MultiplayerMatchResultPlayerBody(
     string ParticipantId,

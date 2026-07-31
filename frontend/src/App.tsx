@@ -8,10 +8,14 @@ import { TestModelViewer } from "./pages/TestModelViewer";
 import { ItemModelViewer } from "./pages/ItemModelViewer";
 import { ItemAuditPage } from "./pages/ItemAuditPage";
 import { MultiplayerPage } from "./pages/Multiplayer";
+import { FeatureFlagsPage } from "./pages/FeatureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
 export function App() {
+  const featureFlags = useFeatureFlags();
+
   return (
     <TooltipProvider>
       <HashRouter>
@@ -26,7 +30,17 @@ export function App() {
               <Route path="/test-models" element={<TestModelViewer />} />
               <Route path="/item-models" element={<ItemModelViewer />} />
               <Route path="/item-audit" element={<ItemAuditPage />} />
-              <Route path="/multiplayer" element={<MultiplayerPage />} />
+              <Route
+                path="/multiplayer"
+                element={
+                  featureFlags.multiplayer ? (
+                    <MultiplayerPage />
+                  ) : (
+                    <FeatureFlagsPage />
+                  )
+                }
+              />
+              <Route path="/feature-flags" element={<FeatureFlagsPage />} />
               <Route path="*" element={<LevelEditor />} />
             </Routes>
           </div>

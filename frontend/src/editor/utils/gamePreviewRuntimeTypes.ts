@@ -32,6 +32,7 @@ export interface PreviewVfsFile {
 
 export interface PreviewRuntimeModule {
   canvas: HTMLCanvasElement;
+  keyboardListeningElement?: HTMLCanvasElement;
   preinitializedWebGLContext?:
     | WebGLRenderingContext
     | WebGL2RenderingContext

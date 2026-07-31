@@ -5,6 +5,7 @@ import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { buildApiUrl } from "@/api/apiBase";
 import { buildScriptTypeDeclarationFiles } from "./scriptTypeDeclarations";
+import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
 
 declare global {
   interface Window {
@@ -88,11 +89,13 @@ class LspClient {
   }
 
   public async connect(state: ScriptWorkspaceState): Promise<void> {
+    this.state = state;
+
     if (this.status === "connected" && this.gameId === state.context.gameId) {
+      await this.syncWorkspaceFiles();
       return;
     }
 
-    this.state = state;
     this.gameId = state.context.gameId;
     this.status = "connecting";
 
@@ -287,6 +290,18 @@ function buildCompletionItems(
   state: ScriptWorkspaceState,
   range: monaco.IRange,
 ): readonly monaco.languages.CompletionItem[] {
+  const getHookContextType = (hookId: string): string => {
+    const hook = AUTHORITATIVE_API_SCHEMA.hooks.find(
+      (candidate) => candidate.name === hookId,
+    );
+    return hook?.contextType ?? "LevelContext";
+  };
+  const buildHookSnippet = (
+    hookId: string,
+    body: string,
+  ): string =>
+    `---@param ctx ${getHookContextType(hookId)}\nfunction ${hookId}(ctx)\n  ${body}\nend\n`;
+
   const hookItems = state.context.supportedHooks.map((hookId) => ({
     label: hookId,
     kind: monaco.languages.CompletionItemKind.Snippet,
@@ -296,14 +311,14 @@ function buildCompletionItems(
     documentation: `Insert a ${hookId} hook using the current scripting runtime shape.`,
     insertText:
       hookId === "onObjectFrame"
-        ? `function ${hookId}(ctx)\n  $0\nend\n`
+        ? buildHookSnippet(hookId, "$0")
         : hookId === "onTerrainItem"
-          ? `function ${hookId}(ctx)\n  return { handled = false }\nend\n`
+          ? buildHookSnippet(hookId, "return { handled = false }")
           : hookId === "onSplineItem"
-            ? `function ${hookId}(ctx)\n  return { handled = false }\nend\n`
+            ? buildHookSnippet(hookId, "return { handled = false }")
             : hookId === "onMapItem"
-              ? `function ${hookId}(ctx)\n  return { handled = false }\nend\n`
-              : `function ${hookId}(ctx)\n  $0\nend\n`,
+              ? buildHookSnippet(hookId, "return { handled = false }")
+              : buildHookSnippet(hookId, "$0"),
   }));
 
   const apiItems = [

@@ -20,6 +20,7 @@ import {
 import { mapErr } from "../../utils/mapErr";
 
 const RUNTIME_SCRIPT_FETCH_TIMEOUT_MS = 20_000;
+const GAME_KEYBOARD_EVENT_TYPES = new Set(["keydown", "keyup", "keypress"]);
 
 export interface PreviewModuleOptions {
   readonly config: GamePortConfig;
@@ -239,6 +240,7 @@ export function createPreviewModule(
 
   const result: PreviewRuntimeModule = {
     canvas,
+    keyboardListeningElement: canvas,
     webglContextAttributes: {
       powerPreference: "high-performance",
       antialias: false,
@@ -391,6 +393,177 @@ export async function loadPreviewRuntime(
   const realCaf = window.cancelAnimationFrame.bind(window);
   const realSetTimeout = window.setTimeout.bind(window);
   const realClearTimeout = window.clearTimeout.bind(window);
+  const realAddEventListener = EventTarget.prototype.addEventListener;
+  const realRemoveEventListener = EventTarget.prototype.removeEventListener;
+  const prevWindowAddEventListener = window.addEventListener;
+  const prevWindowRemoveEventListener = window.removeEventListener;
+  const prevDocumentAddEventListener = document.addEventListener;
+  const prevDocumentRemoveEventListener = document.removeEventListener;
+
+  interface WrappedKeyboardListener {
+    readonly target: EventTarget;
+    readonly type: string;
+    readonly original: EventListenerOrEventListenerObject;
+    readonly wrapped: EventListener;
+    readonly options?: boolean | AddEventListenerOptions;
+  }
+
+  const wrappedKeyboardListeners: WrappedKeyboardListener[] = [];
+
+  function previewOwnsKeyboardEvent(event: Event): boolean {
+    return (
+      document.activeElement === module.canvas ||
+      event.target === module.canvas
+    );
+  }
+
+  function shouldWrapKeyboardListener(
+    target: EventTarget,
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+  ): boolean {
+    return (
+      listener !== null &&
+      GAME_KEYBOARD_EVENT_TYPES.has(type) &&
+      (target === window || target === document)
+    );
+  }
+
+  function createKeyboardListenerWrapper(
+    target: EventTarget,
+    listener: EventListenerOrEventListenerObject,
+  ): EventListener {
+    return function wrappedGameKeyboardListener(event: Event): void {
+      if (!previewOwnsKeyboardEvent(event)) {
+        return;
+      }
+      if (typeof listener === "function") {
+        listener.call(target, event);
+        return;
+      }
+      listener.handleEvent(event);
+    };
+  }
+
+  function findWrappedKeyboardListener(
+    target: EventTarget,
+    type: string,
+    original: EventListenerOrEventListenerObject,
+  ): WrappedKeyboardListener | undefined {
+    return wrappedKeyboardListeners.find(
+      (listener) =>
+        listener.target === target &&
+        listener.type === type &&
+        listener.original === original,
+    );
+  }
+
+  function removeTrackedKeyboardListeners(): void {
+    for (const listener of wrappedKeyboardListeners) {
+      callRemoveEventListener(
+        listener.target,
+        listener.type,
+        listener.wrapped,
+        listener.options,
+      );
+    }
+    wrappedKeyboardListeners.length = 0;
+  }
+
+  function callAddEventListener(
+    target: EventTarget,
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | AddEventListenerOptions,
+  ): void {
+    if (target === window) {
+      prevWindowAddEventListener.call(window, type, listener, options);
+      return;
+    }
+    if (target === document) {
+      prevDocumentAddEventListener.call(document, type, listener, options);
+      return;
+    }
+    realAddEventListener.call(target, type, listener, options);
+  }
+
+  function callRemoveEventListener(
+    target: EventTarget,
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | EventListenerOptions,
+  ): void {
+    if (target === window) {
+      prevWindowRemoveEventListener.call(window, type, listener, options);
+      return;
+    }
+    if (target === document) {
+      prevDocumentRemoveEventListener.call(document, type, listener, options);
+      return;
+    }
+    realRemoveEventListener.call(target, type, listener, options);
+  }
+
+  function patchKeyboardListeners(): void {
+    function addPreviewEventListener(
+      this: EventTarget,
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | AddEventListenerOptions,
+    ): void {
+      if (!shouldWrapKeyboardListener(this, type, listener)) {
+        callAddEventListener(this, type, listener, options);
+        return;
+      }
+
+      const existing = findWrappedKeyboardListener(this, type, listener);
+      if (existing) {
+        callAddEventListener(this, type, existing.wrapped, options);
+        return;
+      }
+
+      const wrapped = createKeyboardListenerWrapper(this, listener);
+      wrappedKeyboardListeners.push({
+        target: this,
+        type,
+        original: listener,
+        wrapped,
+        options,
+      });
+      callAddEventListener(this, type, wrapped, options);
+    }
+
+    function removePreviewEventListener(
+      this: EventTarget,
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | EventListenerOptions,
+    ): void {
+      if (listener === null) {
+        callRemoveEventListener(this, type, listener, options);
+        return;
+      }
+
+      const existing = findWrappedKeyboardListener(this, type, listener);
+      if (!existing) {
+        callRemoveEventListener(this, type, listener, options);
+        return;
+      }
+
+      callRemoveEventListener(this, type, existing.wrapped, options);
+      const index = wrappedKeyboardListeners.indexOf(existing);
+      if (index >= 0) {
+        wrappedKeyboardListeners.splice(index, 1);
+      }
+    }
+
+    EventTarget.prototype.addEventListener = addPreviewEventListener;
+    EventTarget.prototype.removeEventListener = removePreviewEventListener;
+    window.addEventListener = addPreviewEventListener;
+    window.removeEventListener = removePreviewEventListener;
+    document.addEventListener = addPreviewEventListener;
+    document.removeEventListener = removePreviewEventListener;
+  }
 
   function gameRaf(callback: FrameRequestCallback): number {
     const id = realRaf((time: number) => {
@@ -451,6 +624,7 @@ export async function loadPreviewRuntime(
     if (restoreGlobals) {
       restoreWindowGlobals();
     }
+    removeTrackedKeyboardListeners();
     for (const ctx of trackedAudioContexts) {
       if (ctx.state !== "closed") {
         void ResultAsync.fromPromise(ctx.close(), (e) => mapErr(e));
@@ -473,24 +647,27 @@ export async function loadPreviewRuntime(
       window.cancelAnimationFrame = gameCaf;
       window.setTimeout = patchedWindowSetTimeout;
       window.clearTimeout = patchedWindowClearTimeout;
+      patchKeyboardListeners();
     },
     (e) => mapErr(e),
   )();
 
   const trackedAudioContexts = new Set<AudioContext>();
-  const savedAudioContext = AudioContext;
-  class TrackedAudioContext extends savedAudioContext {
-    constructor(opts?: AudioContextOptions) {
-      super(opts);
-      trackedAudioContexts.add(this);
+  const savedAudioContext = window.AudioContext;
+  if (savedAudioContext) {
+    class TrackedAudioContext extends savedAudioContext {
+      constructor(opts?: AudioContextOptions) {
+        super(opts);
+        trackedAudioContexts.add(this);
+      }
     }
+    Result.fromThrowable(
+      () => {
+        window.AudioContext = TrackedAudioContext;
+      },
+      (e) => mapErr(e),
+    )();
   }
-  Result.fromThrowable(
-    () => {
-      window.AudioContext = TrackedAudioContext;
-    },
-    (e) => mapErr(e),
-  )();
 
   const abortController = new AbortController();
   const fetchTimeoutId = realSetTimeout(() => {
@@ -514,11 +691,20 @@ export async function loadPreviewRuntime(
   function restoreWindowGlobals(): void {
     Result.fromThrowable(
       () => {
+        removeTrackedKeyboardListeners();
+        EventTarget.prototype.addEventListener = realAddEventListener;
+        EventTarget.prototype.removeEventListener = realRemoveEventListener;
+        window.addEventListener = prevWindowAddEventListener;
+        window.removeEventListener = prevWindowRemoveEventListener;
+        document.addEventListener = prevDocumentAddEventListener;
+        document.removeEventListener = prevDocumentRemoveEventListener;
         window.requestAnimationFrame = prevWindowRaf;
         window.cancelAnimationFrame = prevWindowCaf;
         window.setTimeout = prevWindowSt;
         window.clearTimeout = prevWindowCt;
-        window.AudioContext = savedAudioContext;
+        if (savedAudioContext) {
+          window.AudioContext = savedAudioContext;
+        }
       },
       (e) => mapErr(e),
     )();

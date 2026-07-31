@@ -23,13 +23,18 @@ import type {
 
 const BASE_PATH = buildApiUrl("/api/multiplayer/lobbies");
 const PARTICIPANT_HEADER_NAME = "X-Participant-Id";
+const PARTICIPANT_TOKEN_HEADER_NAME = "X-Participant-Token";
 
 let currentParticipantId: string | null = null;
+let currentParticipantToken: string | null = null;
 
 function withParticipantHeader(headers: RequestInit["headers"]): Headers {
   const resolvedHeaders = new Headers(headers);
   if (currentParticipantId !== null) {
     resolvedHeaders.set(PARTICIPANT_HEADER_NAME, currentParticipantId);
+  }
+  if (currentParticipantToken !== null) {
+    resolvedHeaders.set(PARTICIPANT_TOKEN_HEADER_NAME, currentParticipantToken);
   }
   return resolvedHeaders;
 }
@@ -42,6 +47,18 @@ function updateParticipantIdFromResponse(response: Response): void {
   if (parsedParticipantId.success) {
     currentParticipantId = parsedParticipantId.data;
   }
+
+  const parsedParticipantToken = z
+    .string()
+    .min(1)
+    .safeParse(response.headers.get(PARTICIPANT_TOKEN_HEADER_NAME));
+  if (parsedParticipantToken.success) {
+    currentParticipantToken = parsedParticipantToken.data;
+  }
+}
+
+export function getParticipantToken(): string {
+  return currentParticipantToken ?? "";
 }
 
 function updateParticipantIdFromPayload(payload: unknown): void {
@@ -84,6 +101,7 @@ async function fetchJson(
 > {
   return fetch(input, {
     ...init,
+    credentials: "include",
     headers: withParticipantHeader(init.headers),
   })
     .then(async (response) => {

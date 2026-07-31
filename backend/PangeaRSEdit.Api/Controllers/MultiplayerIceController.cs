@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PangeaRSEdit.Api.Contracts;
 using System.Security.Cryptography;
 using System.Text;
@@ -7,6 +8,7 @@ namespace PangeaRSEdit.Api.Controllers;
 
 [ApiController]
 [Route("api/multiplayer/ice-servers")]
+[EnableRateLimiting("multiplayer-read")]
 public sealed class MultiplayerIceController(IConfiguration configuration) : ControllerBase
 {
     private static string BuildTurnCredential(string sharedSecret, string username)

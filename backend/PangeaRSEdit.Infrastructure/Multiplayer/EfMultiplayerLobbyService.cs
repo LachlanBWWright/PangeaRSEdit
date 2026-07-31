@@ -28,6 +28,7 @@ public sealed class EfMultiplayerLobbyService(
             TrackOrLevel = request.TrackOrLevel,
             TagDurationMinutes = Math.Clamp(request.TagDurationMinutes, 2, 4),
             MaxPlayers = Math.Clamp(request.MaxPlayers, 2, 6),
+            IsPublic = request.IsPublic,
             HostParticipantId = request.ParticipantId,
             JoinCode = BuildJoinCode(),
             State = "open",
@@ -47,8 +48,6 @@ public sealed class EfMultiplayerLobbyService(
             JoinedAt = now,
             LastSeenAt = now
         });
-
-        runtimeState.SetLobbyVisibility(lobby.Id, request.IsPublic);
 
         dbContext.MultiplayerLobbies.Add(lobby);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -78,7 +77,7 @@ public sealed class EfMultiplayerLobbyService(
             .ToList();
 
         var summaries = lobbies
-            .Where(x => runtimeState.IsLobbyPublic(x.Id))
+            .Where(x => x.IsPublic)
             .Select(x =>
             {
                 var canJoin =
@@ -692,7 +691,7 @@ public sealed class EfMultiplayerLobbyService(
             lobby.TrackOrLevel,
             lobby.TagDurationMinutes,
             lobby.MaxPlayers,
-            runtimeState.IsLobbyPublic(lobby.Id),
+            lobby.IsPublic,
             lobby.HostParticipantId,
             lobby.JoinCode,
             lobby.State,

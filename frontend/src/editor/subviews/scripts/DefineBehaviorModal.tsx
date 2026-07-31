@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScriptFieldHelpTooltip } from "./ScriptFieldHelpTooltip";
+import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
 import type { ScriptHookId, ScriptTagDefinition } from "./scriptWorkspaceState";
 
 type BehaviorTarget =
@@ -35,7 +37,7 @@ const TARGET_OPTIONS: readonly {
   { id: "terrainItem", label: "Terrain Item" },
   { id: "splineItem", label: "Spline Item" },
   { id: "mightyMikeItem", label: "Mighty Mike Map Item" },
-  { id: "objectType", label: "Native Object Type" },
+  { id: "objectType", label: "Existing Game Object" },
   { id: "customObject", label: "Custom Object" },
 ];
 
@@ -91,6 +93,23 @@ const HOOK_OPTIONS: Record<
 
 function getDefaultHook(target: BehaviorTarget): ScriptHookId | null {
   return HOOK_OPTIONS[target][0]?.id ?? null;
+}
+
+function getObjectTypeOptions(
+  tagOptions: readonly ScriptTagDefinition[],
+): readonly ScriptTagDefinition[] {
+  return tagOptions.filter((tag) => tag.targetKinds.includes("customObject"));
+}
+
+function formatObjectOptionDescription(option: ScriptTagDefinition): string {
+  return `${option.label} (${option.id})`;
+}
+
+function getHookContextType(hookId: ScriptHookId): string {
+  const hook = AUTHORITATIVE_API_SCHEMA.hooks.find(
+    (candidate) => candidate.name === hookId,
+  );
+  return hook?.contextType ?? "LevelContext";
 }
 
 interface DefineBehaviorModalProps {
@@ -186,11 +205,13 @@ function generateSourceTemplate(
   const lines = [
     `-- ${label}`,
     `-- Generated script for ${target}`,
+    "---@type ScriptModule",
     "local module = {}",
     "",
   ];
 
   hooks.forEach((hook) => {
+    lines.push(`---@param ctx ${getHookContextType(hook)}`);
     lines.push(`function module.${hook}(ctx)`);
     lines.push(`  pangea.log.info(${JSON.stringify(`${label}: ${hook}`)})`);
     if (
@@ -226,11 +247,18 @@ export function DefineBehaviorModal({
   );
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
-  const [objectType, setObjectType] = useState("");
+  const [selectedObjectTypeId, setSelectedObjectTypeId] = useState("");
   const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
 
   const availableHooks = HOOK_OPTIONS[target].filter((hook) =>
     hookOptions ? hookOptions.includes(hook.id) : true,
+  );
+  const objectTypeOptions = useMemo(
+    () => getObjectTypeOptions(tagOptions),
+    [tagOptions],
+  );
+  const selectedObjectType = objectTypeOptions.find(
+    (option) => option.id === selectedObjectTypeId,
   );
   const generatedSourceFilePath = useMemo(
     () => buildGeneratedSourceFilePath(target, label, existingSourcePaths),
@@ -244,7 +272,7 @@ export function DefineBehaviorModal({
     setTarget(initialTarget);
     setLabel("");
     setDescription("");
-    setObjectType("");
+    setSelectedObjectTypeId("");
     setSelectedTags([]);
     if (initialHooks && initialHooks.length > 0) {
       setSelectedHooks(initialHooks);
@@ -283,12 +311,13 @@ export function DefineBehaviorModal({
     const trimmedLabel = label.trim();
     const trimmedDescription = description.trim();
     const normalizedSourcePath = generatedSourceFilePath;
+    const selectedTagsForTarget =
+      target === "objectType" ? [selectedObjectTypeId] : [...selectedTags];
 
     if (trimmedLabel.length === 0 || selectedHooks.length === 0) {
       return;
     }
-    const trimmedObjectType = objectType.trim();
-    if (target === "objectType" && trimmedObjectType.length === 0) {
+    if (target === "objectType" && selectedObjectTypeId.length === 0) {
       return;
     }
 
@@ -304,15 +333,15 @@ export function DefineBehaviorModal({
       id: buildScriptId(normalizedSourcePath),
       label: trimmedLabel,
       description: trimmedDescription,
-      tags: [...selectedTags],
-      objectType: target === "objectType" ? trimmedObjectType : undefined,
+      tags: selectedTagsForTarget,
+      objectType: target === "objectType" ? selectedObjectTypeId : undefined,
       sourceFilePath: normalizedSourcePath,
       sourceTemplate,
     });
 
     setLabel("");
     setDescription("");
-    setObjectType("");
+    setSelectedObjectTypeId("");
     setSelectedTags([]);
     const defaultHook = getDefaultHook(target);
     setSelectedHooks(defaultHook === null ? [] : [defaultHook]);
@@ -321,14 +350,22 @@ export function DefineBehaviorModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Create Script</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-h-0 space-y-4 overflow-y-auto pr-2">
           <div>
-            <Label htmlFor="target">Target</Label>
+            <div className="mb-1 flex items-center gap-1.5">
+              <Label htmlFor="target">Script applies to</Label>
+              <ScriptFieldHelpTooltip label="Explain script target">
+                Choose the kind of thing this script should attach to. Terrain
+                item and spline item scripts run for placed level data. Existing
+                game object scripts run for built-in characters, enemies,
+                pickups, and hazards.
+              </ScriptFieldHelpTooltip>
+            </div>
             <Select
               value={target}
               onValueChange={(value) =>
@@ -349,7 +386,13 @@ export function DefineBehaviorModal({
           </div>
 
           <div>
-            <Label>Hooks</Label>
+            <div className="flex items-center gap-1.5">
+              <Label>Runs when</Label>
+              <ScriptFieldHelpTooltip label="Explain script events">
+                These are the game events that call the script. Pick the event
+                that matches what the script needs to react to.
+              </ScriptFieldHelpTooltip>
+            </div>
             <div className="space-y-2 mt-2">
               {availableHooks.map((hook) => (
                 <div key={hook.id} className="flex items-center gap-2">
@@ -381,21 +424,53 @@ export function DefineBehaviorModal({
 
           {target === "objectType" ? (
             <div>
-              <Label htmlFor="object-type">Object type</Label>
-              <Input
-                id="object-type"
-                value={objectType}
-                onChange={(event) => setObjectType(event.target.value)}
-                placeholder="e.g., bugdom.player"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use the native ID registered by the game runtime.
-              </p>
+              <div className="mb-1 flex items-center gap-1.5">
+                <Label htmlFor="object-type">Object</Label>
+                <ScriptFieldHelpTooltip label="Explain object selection">
+                  Pick the existing game object this script should affect. This
+                  list only includes objects known for the selected game, so you
+                  do not need to enter an internal type name.
+                </ScriptFieldHelpTooltip>
+              </div>
+              <Select
+                value={selectedObjectTypeId}
+                onValueChange={setSelectedObjectTypeId}
+                disabled={objectTypeOptions.length === 0}
+              >
+                <SelectTrigger id="object-type">
+                  <SelectValue placeholder="Select an object" />
+                </SelectTrigger>
+                <SelectContent>
+                  {objectTypeOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedObjectType ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatObjectOptionDescription(selectedObjectType)}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {objectTypeOptions.length === 0
+                    ? "No existing game objects are available for this game yet."
+                    : "The script will run only for the selected object."}
+                </p>
+              )}
             </div>
           ) : null}
 
           <div>
-            <Label htmlFor="source-file">Source file</Label>
+            <div className="mb-1 flex items-center gap-1.5">
+              <Label htmlFor="source-file">Source file</Label>
+              <ScriptFieldHelpTooltip label="Explain source file">
+                This is the Lua file that will be created for the script. The
+                path is generated from the script kind and name to keep project
+                files organized.
+              </ScriptFieldHelpTooltip>
+            </div>
             <Input
               id="source-file"
               value={generatedSourceFilePath}
@@ -415,40 +490,49 @@ export function DefineBehaviorModal({
             />
           </div>
 
-          <div>
-            <Label>Tags</Label>
-            <div className="mt-2 space-y-2 rounded-md border border-slate-800 p-3">
-              {tagOptions.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  No workspace tags are available for this game yet.
-                </p>
-              ) : (
-                tagOptions.map((tag) => (
-                  <div key={tag.id} className="flex items-start gap-2">
-                    <Checkbox
-                      id={`tag-${tag.id}`}
-                      checked={selectedTags.includes(tag.id)}
-                      onCheckedChange={() => handleTagToggle(tag.id)}
-                    />
-                    <label
-                      htmlFor={`tag-${tag.id}`}
-                      className="cursor-pointer text-sm"
-                    >
-                      <span className="font-medium">{tag.label}</span>
-                      <span className="block text-xs text-slate-500">
-                        {tag.id}
-                      </span>
-                      {tag.description.length > 0 ? (
-                        <span className="mt-1 block text-xs text-slate-400">
-                          {tag.description}
+          {target === "objectType" ? null : (
+            <div>
+              <div className="flex items-center gap-1.5">
+                <Label>Tags</Label>
+                <ScriptFieldHelpTooltip label="Explain script tags">
+                  Tags describe what this script is meant for. They help group
+                  scripts and can be passed into the script context when the
+                  script is assigned elsewhere.
+                </ScriptFieldHelpTooltip>
+              </div>
+              <div className="mt-2 space-y-2 rounded-md border border-slate-800 p-3">
+                {tagOptions.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No workspace tags are available for this game yet.
+                  </p>
+                ) : (
+                  tagOptions.map((tag) => (
+                    <div key={tag.id} className="flex items-start gap-2">
+                      <Checkbox
+                        id={`tag-${tag.id}`}
+                        checked={selectedTags.includes(tag.id)}
+                        onCheckedChange={() => handleTagToggle(tag.id)}
+                      />
+                      <label
+                        htmlFor={`tag-${tag.id}`}
+                        className="cursor-pointer text-sm"
+                      >
+                        <span className="font-medium">{tag.label}</span>
+                        <span className="block text-xs text-slate-500">
+                          {tag.id}
                         </span>
-                      ) : null}
-                    </label>
-                  </div>
-                ))
-              )}
+                        {tag.description.length > 0 ? (
+                          <span className="mt-1 block text-xs text-slate-400">
+                            {tag.description}
+                          </span>
+                        ) : null}
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -459,7 +543,9 @@ export function DefineBehaviorModal({
               disabled={
                 !label ||
                 selectedHooks.length === 0 ||
-                (target === "objectType" && objectType.trim().length === 0)
+                (target === "objectType" &&
+                  (selectedObjectTypeId.length === 0 ||
+                    objectTypeOptions.length === 0))
               }
             >
               Create Script

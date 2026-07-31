@@ -16,6 +16,7 @@ public sealed class PangeaApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<PangeaRSEditDbContext>>();

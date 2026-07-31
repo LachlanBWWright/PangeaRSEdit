@@ -6,6 +6,7 @@
 .DS_Store
 .tmp/
 node_modules/
+plans/
 dist/
 .env
 pangearsedit-dev.db

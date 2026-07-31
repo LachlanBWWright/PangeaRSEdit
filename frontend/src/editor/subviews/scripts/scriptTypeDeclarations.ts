@@ -70,6 +70,17 @@ function buildTagDeclarations(state: ScriptWorkspaceState): string {
   return tags.length > 0 ? tags.join(" | ") : "string";
 }
 
+function buildPangeaModuleDeclaration(): readonly string[] {
+  return [
+    "---@type PangeaApi",
+    "pangea = {}",
+    "",
+    "---@type PangeaApi",
+    "local pangeaModule = pangea",
+    "return pangeaModule",
+  ];
+}
+
 function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
   const gameFields = buildContextFields(state.context.gameId);
   const frameFields = buildFrameFields(state.context.gameId);
@@ -101,7 +112,7 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "",
     "---@class ObjectFrameContext : FrameContext",
     "---@field object ObjectHandle",
-    "---@field objectType string",
+    `---@field objectType ${tagType}`,
     "---@field position Vector3",
     `---@field tags ${tagType}[]`,
     "",
@@ -206,8 +217,8 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field position fun(handle: ObjectHandle): Vector3|nil",
     "---@field setPosition fun(handle: ObjectHandle, position: Vector3): boolean",
     "---@field setVelocity fun(handle: ObjectHandle, velocity: Vector3): boolean",
-    "---@field tags fun(handle: ObjectHandle): string[]",
-    "---@field hasTag fun(handle: ObjectHandle, tag: string): boolean",
+    `---@field tags fun(handle: ObjectHandle): ${tagType}[]`,
+    `---@field hasTag fun(handle: ObjectHandle, tag: ${tagType}): boolean`,
     "---@field state fun(handle: ObjectHandle): table|nil",
     "---@field delete fun(handle: ObjectHandle): boolean",
     "",
@@ -227,8 +238,7 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@class ScriptModule",
     buildHookSignatures(state),
     "",
-    "local pangea = {}",
-    "return pangea",
+    ...buildPangeaModuleDeclaration(),
   ].join("\n");
 }
 

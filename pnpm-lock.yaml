@@ -315,6 +315,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  terrain-codec-rust/pkg: {}
+
 packages:
 
   '@acemir/cssom@0.9.31':

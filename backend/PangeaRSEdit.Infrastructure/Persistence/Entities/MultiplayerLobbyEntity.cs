@@ -8,6 +8,7 @@ public sealed class MultiplayerLobbyEntity
     public string TrackOrLevel { get; set; } = string.Empty;
     public int TagDurationMinutes { get; set; } = 3;
     public int MaxPlayers { get; set; }
+    public bool IsPublic { get; set; }
     public string HostParticipantId { get; set; } = string.Empty;
     public string JoinCode { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;

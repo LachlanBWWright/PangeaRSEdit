@@ -70,6 +70,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
             entity.Property(x => x.Mode).HasMaxLength(64);
             entity.Property(x => x.TrackOrLevel).HasMaxLength(256);
             entity.Property(x => x.TagDurationMinutes).HasDefaultValue(3);
+            entity.Property(x => x.IsPublic).HasDefaultValue(true);
             entity.Property(x => x.HostParticipantId).HasMaxLength(128);
             entity.Property(x => x.JoinCode).HasMaxLength(32);
             entity.Property(x => x.State).HasMaxLength(64);

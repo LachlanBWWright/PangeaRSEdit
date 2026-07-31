@@ -4,23 +4,11 @@ namespace PangeaRSEdit.Infrastructure.Multiplayer;
 
 public sealed class MultiplayerRuntimeState
 {
-    private readonly ConcurrentDictionary<Guid, bool> _lobbyVisibility = new();
     private readonly ConcurrentDictionary<string, ParticipantTelemetry> _participantTelemetry = new();
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, byte>> _runtimeReadyByLobby = new();
 
-    public void SetLobbyVisibility(Guid lobbyId, bool isPublic)
-    {
-        _lobbyVisibility[lobbyId] = isPublic;
-    }
-
-    public bool IsLobbyPublic(Guid lobbyId)
-    {
-        return _lobbyVisibility.TryGetValue(lobbyId, out var isPublic) ? isPublic : true;
-    }
-
     public void RemoveLobby(Guid lobbyId)
     {
-        _lobbyVisibility.TryRemove(lobbyId, out _);
         _runtimeReadyByLobby.TryRemove(lobbyId, out _);
     }
 

@@ -11,6 +11,7 @@ import {
   Boxes,
   ClipboardList,
   Network,
+  Flag,
 } from "lucide-react";
 import {
   editorNavbarLeftAtom,
@@ -20,9 +21,11 @@ import {
 } from "@/data/globals/editorNavbarAtoms";
 import { UserMenu } from "@/components/UserMenu";
 import { checkBackendApiAvailable } from "@/api/backendAvailability";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 export function Navigation() {
   const location = useLocation();
+  const featureFlags = useFeatureFlags();
   const editorNavbarOpen = useAtomValue(editorNavbarOpenAtom);
   const editorNavbarLeft = useAtomValue(editorNavbarLeftAtom);
   const editorNavbarActions = useAtomValue(editorNavbarActionsAtom);
@@ -99,7 +102,7 @@ export function Navigation() {
                 <span>Sprite Editor</span>
               </Link>
             </Button>
-            {showMultiplayerLink && (
+            {featureFlags.multiplayer && showMultiplayerLink && (
               <Button
                 asChild
                 variant={
@@ -113,6 +116,18 @@ export function Navigation() {
                 </Link>
               </Button>
             )}
+            <Button
+              asChild
+              variant={
+                location.pathname === "/feature-flags" ? "default" : "ghost"
+              }
+              className="flex items-center gap-2"
+            >
+              <Link to="/feature-flags" className="text-white">
+                <Flag className="w-4 h-4" />
+                <span>Feature Flags</span>
+              </Link>
+            </Button>
             <Button
               asChild
               variant={

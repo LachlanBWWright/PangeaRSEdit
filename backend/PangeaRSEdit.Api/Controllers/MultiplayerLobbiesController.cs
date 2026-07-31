@@ -1,13 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PangeaRSEdit.Api.Contracts;
 using PangeaRSEdit.Application.Common;
 using PangeaRSEdit.Application.Multiplayer;
+using PangeaRSEdit.Api.Security;
 
 namespace PangeaRSEdit.Api.Controllers;
 
 [ApiController]
 [Route("api/multiplayer/lobbies")]
-public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyService) : ControllerBase
+[EnableRateLimiting("multiplayer-write")]
+public sealed class MultiplayerLobbiesController(
+    IMultiplayerLobbyService lobbyService,
+    ParticipantTokenService participantTokens,
+    IWebHostEnvironment environment) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> CreateLobbyAsync(
@@ -38,6 +44,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
     }
 
     [HttpGet]
+    [EnableRateLimiting("multiplayer-read")]
     public async Task<IActionResult> ListLobbiesAsync([FromQuery] string? gameId, CancellationToken cancellationToken)
     {
         var result = await lobbyService.ListLobbiesAsync(gameId, cancellationToken);
@@ -66,6 +73,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
     }
 
     [HttpGet("{id:guid}")]
+    [EnableRateLimiting("multiplayer-read")]
     public async Task<IActionResult> GetLobbyAsync(Guid id, CancellationToken cancellationToken)
     {
         var participantId = GetOrCreateParticipantId();
@@ -79,6 +87,7 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
     }
 
     [HttpGet("{id:guid}/preview")]
+    [EnableRateLimiting("multiplayer-read")]
     public async Task<IActionResult> GetLobbyPreviewAsync(Guid id, CancellationToken cancellationToken)
     {
         var result = await lobbyService.GetLobbyAsync(id, cancellationToken);
@@ -361,9 +370,17 @@ public sealed class MultiplayerLobbiesController(IMultiplayerLobbyService lobbyS
 
     private string GetOrCreateParticipantId()
     {
+        var token = Request.Headers["X-Participant-Token"].ToString();
+        var tokenParticipantId = string.IsNullOrWhiteSpace(token)
+            ? null
+            : participantTokens.Validate(token);
         var headerValue = Request.Headers["X-Participant-Id"].ToString();
-        var participantId = string.IsNullOrWhiteSpace(headerValue) ? Guid.NewGuid().ToString("N") : headerValue;
+        var participantId = tokenParticipantId
+            ?? (!environment.IsProduction() && !string.IsNullOrWhiteSpace(headerValue)
+                ? headerValue
+                : Guid.NewGuid().ToString("N"));
         Response.Headers["X-Participant-Id"] = participantId;
+        Response.Headers["X-Participant-Token"] = participantTokens.Create(participantId);
         return participantId;
     }
 

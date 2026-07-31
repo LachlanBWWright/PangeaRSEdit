@@ -34,22 +34,22 @@ export function ModelHierarchy({
 
   return (
     <Card className="bg-gray-800 border-gray-700">
-      <CardHeader className="relative pb-2 text-center">
-        <div className="flex items-center justify-center">
-          <CardTitle className="w-full text-center text-white text-sm">
-            Model Hierarchy
+      <CardHeader className="relative p-3 pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white text-sm">
+            Scene
           </CardTitle>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleToggleAll}
-            className="absolute right-6 text-xs text-gray-300 hover:text-white"
+            className="h-7 text-xs text-gray-300 hover:text-white"
           >
             {showAll ? "Hide All" : "Show All"}
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="min-h-0 pt-0 space-y-1 max-h-60 overflow-y-auto">
+      <CardContent className="min-h-0 space-y-1 max-h-48 overflow-y-auto p-3 pt-0">
         {nodes.map((node) => {
           // Use the stored THREE object reference for proper matching
           // This avoids index mismatch issues when bones/joints are filtered out

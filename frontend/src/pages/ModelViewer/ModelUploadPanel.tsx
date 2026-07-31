@@ -80,12 +80,12 @@ export function ModelUploadPanel({
 
   return (
     <Card className="bg-gray-800 border-gray-700">
-      <CardHeader className="text-center">
-        <CardTitle className="w-full truncate text-center text-white">
+      <CardHeader className="p-3 pb-2">
+        <CardTitle className="truncate text-sm text-white">
           {gltfUrl ? "Model Actions" : "Model Upload"}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 p-3 pt-0">
         {!gltfUrl ? (
           <div className="space-y-5">
             <section className="space-y-2">
@@ -163,7 +163,7 @@ export function ModelUploadPanel({
             </section>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-wide text-gray-400">
                 Export basename

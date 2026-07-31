@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using PangeaRSEdit.Application.Common;
 using PangeaRSEdit.Application.Multiplayer;
 using PangeaRSEdit.Infrastructure.Multiplayer;
+using PangeaRSEdit.Api.Security;
 
 namespace PangeaRSEdit.Api.Hubs;
 
@@ -17,11 +18,19 @@ public sealed class MultiplayerHub : Hub
     private static readonly ConcurrentDictionary<string, string> ParticipantConnectionIds = new();
     private readonly IMultiplayerLobbyService _lobbyService;
     private readonly MultiplayerRuntimeState _runtimeState;
+    private readonly ParticipantTokenService _participantTokens;
+    private readonly IWebHostEnvironment _environment;
 
-    public MultiplayerHub(IMultiplayerLobbyService lobbyService, MultiplayerRuntimeState runtimeState)
+    public MultiplayerHub(
+        IMultiplayerLobbyService lobbyService,
+        MultiplayerRuntimeState runtimeState,
+        ParticipantTokenService participantTokens,
+        IWebHostEnvironment environment)
     {
         _lobbyService = lobbyService;
         _runtimeState = runtimeState;
+        _participantTokens = participantTokens;
+        _environment = environment;
     }
 
     /// <summary>
@@ -30,6 +39,12 @@ public sealed class MultiplayerHub : Hub
     /// </summary>
     public async Task<AppResult<bool>> JoinLobby(Guid lobbyId, string participantId)
     {
+        var authenticatedParticipantId = ResolveAuthenticatedParticipantId(participantId);
+        if (authenticatedParticipantId is null)
+        {
+            return AppResult<bool>.Failure(AppErrors.LobbyForbidden);
+        }
+        participantId = authenticatedParticipantId;
         var result = await _lobbyService.GetLobbyAsync(lobbyId, CancellationToken.None);
         if (!result.IsSuccess)
         {
@@ -406,10 +421,6 @@ public sealed class MultiplayerHub : Hub
 
             ParticipantConnectionIds.TryRemove(participantId, out _);
             _runtimeState.RemoveParticipant(participantId);
-            await _lobbyService.LeaveLobbyAsync(
-                new LeaveLobbyRequest(lobbyId.Value, participantId),
-                CancellationToken.None);
-
             await Clients.OthersInGroup(LobbyGroupName(lobbyId.Value))
                 .SendAsync("PeerDisconnected", participantId);
             if (disconnectedWasHost)
@@ -430,6 +441,25 @@ public sealed class MultiplayerHub : Hub
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static string LobbyGroupName(Guid lobbyId) => $"lobby:{lobbyId}";
+
+    private string? ResolveAuthenticatedParticipantId(string requestedParticipantId)
+    {
+        if (!_environment.IsProduction())
+        {
+            return requestedParticipantId;
+        }
+
+        var token = Context.GetHttpContext()?.Request.Query["access_token"].ToString();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        var tokenParticipantId = _participantTokens.Validate(token);
+        return string.Equals(tokenParticipantId, requestedParticipantId, StringComparison.Ordinal)
+            ? tokenParticipantId
+            : null;
+    }
 
     private string? GetCallerParticipantId() =>
         Context.Items.TryGetValue("participantId", out var p) ? p as string : null;

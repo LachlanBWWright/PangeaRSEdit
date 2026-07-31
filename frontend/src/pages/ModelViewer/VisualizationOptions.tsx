@@ -24,12 +24,12 @@ export function VisualizationOptions({
 }: Props) {
   return (
     <Card className="bg-gray-800 border-gray-700">
-      <CardHeader className="text-center">
-        <CardTitle className="w-full text-center text-white text-sm">
-          Visualization Options
+      <CardHeader className="p-3 pb-2">
+        <CardTitle className="text-white text-sm">
+          View
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2 p-3 pt-0">
         <div className="flex items-center justify-between">
           <label
             htmlFor="wireframe-mode"
@@ -49,7 +49,7 @@ export function VisualizationOptions({
               htmlFor="show-skeleton"
               className="text-sm text-gray-300 cursor-pointer"
             >
-              Show Skeleton Overlay
+              Skeleton
             </label>
             <Switch
               id="show-skeleton"
@@ -64,7 +64,7 @@ export function VisualizationOptions({
               htmlFor="log-bone-positions"
               className="text-sm text-gray-300 cursor-pointer"
             >
-              Log Bone Positions
+              Log bones
             </label>
             <Switch
               id="log-bone-positions"

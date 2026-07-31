@@ -49,8 +49,8 @@ export function ModelRigPanel({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-3">
+    <div className="space-y-2">
+      <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-2">
         <Label className="text-xs text-gray-400">Viewport Mode</Label>
         <div className="grid grid-cols-3 gap-1">
           <Button
@@ -80,13 +80,9 @@ export function ModelRigPanel({
             Bone Gizmo
           </Button>
         </div>
-        <p className="text-xs text-gray-500">
-          Navigate rotates the model, Paint applies weight strokes, and Bone
-          Gizmo enables the transform handles.
-        </p>
       </div>
 
-      <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-3">
+      <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-2">
         <Label className="text-xs text-gray-400">Selected Bone</Label>
         <Input
           value={boneRenameInput}
@@ -104,7 +100,7 @@ export function ModelRigPanel({
         </Button>
       </div>
 
-      <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-3">
+      <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-gray-400">Bone Tracks</Label>
           <span className="text-xs text-gray-500">
@@ -153,7 +149,7 @@ export function ModelRigPanel({
         </div>
       </div>
 
-      <div className="rounded border border-gray-700 bg-gray-900/60 p-3">
+      <div className="rounded border border-gray-700 bg-gray-900/60 p-2">
         <WeightBrushPanel
           boneNames={
             skinData?.boneNames ?? boneInfluenceRows.map((row) => row.boneName)
@@ -166,12 +162,6 @@ export function ModelRigPanel({
           onRepairWeights={onRepairWeights}
         />
       </div>
-
-      <p className="text-xs text-gray-500">
-        Select a bone, switch to Paint, then drag across the model to paint that
-        bone onto nearby vertices. The viewport updates immediately so you can
-        inspect the result before exporting.
-      </p>
     </div>
   );
 }

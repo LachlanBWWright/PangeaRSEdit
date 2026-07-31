@@ -6,8 +6,10 @@
   "homepage": "https://lachlanbwwright.github.io/PangeaRSEdit/",
   "packageManager": "pnpm@10.28.1",
   "scripts": {
+    "predev": "wasm-pack build ../terrain-codec-rust --target web --out-dir pkg --no-opt",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "prebuild": "wasm-pack build ../terrain-codec-rust --target web --out-dir pkg --no-opt",
+    "build": "tsc -b && NODE_OPTIONS=--max-old-space-size=8192 vite build",
     "build:games": "../scripts/build-games.sh",
     "lint": "eslint .",
     "test": "vitest",

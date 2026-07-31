@@ -872,6 +872,9 @@ export function ModelViewer() {
     setSelectedBoneName(boneName);
     setBoneRenameInput(boneName ?? "");
     if (boneName) {
+      setInteractionMode((current) =>
+        current === "paint-weights" ? current : "bone-edit",
+      );
       setWeightBrushSettings((current) => ({
         ...current,
         targetBone: boneName,
@@ -1208,18 +1211,41 @@ export function ModelViewer() {
     return replaceTexture(texture, newFile);
   };
 
-  const handleDownloadBG3D = async (exportTargetId: string) => {
-    if (!gltfUrl) {
-      toast.error("No GLB model available for BG3D download");
-      return;
+  const getCurrentExportBuffer = useCallback(async () => {
+    const exportedResult = await exportSceneWithAnimations(
+      latestAnimationsRef.current,
+    );
+    if (exportedResult.isErr()) {
+      return err(`Failed to prepare the edited model: ${exportedResult.error}`);
     }
-    if (!gltfBuffer) {
-      toast.error("No GLB buffer available for BG3D download");
+
+    const exportedBuffer = exportedResult.value ?? gltfBuffer;
+    if (!exportedBuffer) {
+      return err("No model data is available for export");
+    }
+
+    const bufferWithEventsResult = await buildUpdatedGlbBuffer(
+      exportedBuffer,
+      latestAnimationsRef.current,
+    );
+    if (bufferWithEventsResult.isErr()) {
+      return err(
+        `Failed to preserve animation metadata: ${bufferWithEventsResult.error}`,
+      );
+    }
+
+    return ok(bufferWithEventsResult.value);
+  }, [buildUpdatedGlbBuffer, exportSceneWithAnimations, gltfBuffer]);
+
+  const handleDownloadBG3D = async (exportTargetId: string) => {
+    const bufferResult = await getCurrentExportBuffer();
+    if (bufferResult.isErr()) {
+      toast.error(bufferResult.error);
       return;
     }
 
     const result = await downloadBG3DModel(
-      gltfBuffer,
+      bufferResult.value,
       effectiveModelBaseName,
       `${effectiveModelBaseName}.skeleton`,
       getBG3DExportTarget(exportTargetId),
@@ -1232,28 +1258,26 @@ export function ModelViewer() {
     toast.success("BG3D model downloaded");
   };
 
-  const handleDownloadGLB = () => {
-    if (!gltfUrl) {
-      toast.error("No GLB model available for download");
+  const handleDownloadGLB = async () => {
+    const bufferResult = await getCurrentExportBuffer();
+    if (bufferResult.isErr()) {
+      toast.error(bufferResult.error);
       return;
     }
 
-    downloadGLBModel(gltfUrl, effectiveModelBaseName);
+    downloadGLBModel(bufferResult.value, effectiveModelBaseName);
     toast.success("GLB model downloaded");
   };
 
   const handleDownload3DMF = async (exportTargetId: string) => {
-    if (!gltfUrl) {
-      toast.error("No GLB model available for 3DMF download");
-      return;
-    }
-    if (!gltfBuffer) {
-      toast.error("No GLB buffer available for 3DMF download");
+    const bufferResult = await getCurrentExportBuffer();
+    if (bufferResult.isErr()) {
+      toast.error(bufferResult.error);
       return;
     }
 
     const result = await download3DMFModel(
-      gltfBuffer,
+      bufferResult.value,
       effectiveModelBaseName,
       getBG3DExportTarget(exportTargetId),
     );
@@ -1273,7 +1297,7 @@ export function ModelViewer() {
 
     const target = getBG3DExportTarget(targetId);
     if (targetId === "glb") {
-      handleDownloadGLB();
+      await handleDownloadGLB();
       return;
     }
 
@@ -1320,51 +1344,42 @@ export function ModelViewer() {
 
   return (
     <>
-      <div className="h-full overflow-hidden p-4 bg-gray-900 text-white">
+      <div className="h-full overflow-hidden p-2 bg-gray-900 text-white">
         <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
           <ResizablePanel
-            defaultSize={28}
+            defaultSize={30}
             minSize={20}
-            className="min-h-0 min-w-0 pr-3"
+            className="min-h-0 min-w-0 pr-2"
           >
-            <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden px-2">
-              <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden py-1 pb-4">
+            <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+              <div className="flex-1 min-h-0 space-y-2 overflow-y-auto overflow-x-hidden pb-2">
                 {gltfUrl && (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader className="text-center">
-                      <CardTitle className="w-full text-center text-white text-sm">
-                        Undo / Redo
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={handleUndoViewerChange}
-                          disabled={viewerHistory.past.length === 0}
-                        >
-                          <Undo2 className="mr-2 h-4 w-4" />
-                          Undo
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={handleRedoViewerChange}
-                          disabled={viewerHistory.future.length === 0}
-                        >
-                          <Redo2 className="mr-2 h-4 w-4" />
-                          Redo
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Tracks committed UV edits, weight changes, and bone
-                        renames for the current model session. Shortcuts:
-                        Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z.
-                      </p>
-                    </CardContent>
+                  <Card className="bg-gray-800 border-gray-700 p-2">
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 px-1 text-xs font-medium text-gray-400">
+                        History
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handleUndoViewerChange}
+                        disabled={viewerHistory.past.length === 0}
+                      >
+                        <Undo2 className="mr-1 h-4 w-4" />
+                        Undo
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handleRedoViewerChange}
+                        disabled={viewerHistory.future.length === 0}
+                      >
+                        <Redo2 className="mr-1 h-4 w-4" />
+                        Redo
+                      </Button>
+                    </div>
                   </Card>
                 )}
 
@@ -1447,12 +1462,12 @@ export function ModelViewer() {
                 {/* Texture Manager - Always show this section when model is loaded */}
                 {gltfUrl && (
                   <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader className="text-center">
-                      <CardTitle className="w-full text-center text-white text-sm">
+                    <CardHeader className="p-3 pb-2">
+                      <CardTitle className="text-white text-sm">
                         Texture Management
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-3 pt-0">
                       {textures.length > 0 ? (
                         <TextureManager
                           textures={textures}
@@ -1465,25 +1480,9 @@ export function ModelViewer() {
                           onApplyUvEdit={handleApplyUvEdit}
                         />
                       ) : (
-                        <div className="space-y-3">
-                          <p className="text-sm text-gray-400">
-                            No textures found in this model
-                          </p>
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <p>
-                              • Some BG3D models may not contain extractable
-                              textures
-                            </p>
-                            <p>
-                              • Textures may be embedded differently or
-                              compressed
-                            </p>
-                            <p>
-                              • Try a different model format if texture editing
-                              is needed
-                            </p>
-                          </div>
-                        </div>
+                        <p className="text-sm text-gray-400">
+                          No textures found in this model
+                        </p>
                       )}
                     </CardContent>
                   </Card>
@@ -1491,12 +1490,12 @@ export function ModelViewer() {
 
                 {gltfUrl && skinData && (
                   <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader className="text-center">
-                      <CardTitle className="w-full text-center text-white text-sm">
+                    <CardHeader className="p-3 pb-2">
+                      <CardTitle className="text-white text-sm">
                         Rig & Weight Tools
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-3 pt-0">
                       <ModelRigPanel
                         selectedBoneName={selectedBoneName}
                         boneRenameInput={boneRenameInput}
@@ -1523,9 +1522,9 @@ export function ModelViewer() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel
-            defaultSize={72}
+            defaultSize={70}
             minSize={35}
-            className="min-h-0 pl-3"
+            className="min-h-0 pl-2"
           >
             <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">
               {/* Main viewport - 3D Scene */}

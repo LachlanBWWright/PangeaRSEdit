@@ -62,6 +62,15 @@ export function GamePreviewHost({
   });
 
   useEffect(() => {
+    return () => {
+      const canvas = canvasRef.current;
+      if (canvas && document.activeElement === canvas) {
+        canvas.blur();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     return startPreparedGamePreview({
       canvas: canvasRef.current,
       config,
@@ -119,6 +128,9 @@ export function GamePreviewHost({
         ref={canvasRef}
         className="h-full w-full block bg-black outline-none"
         tabIndex={-1}
+        onPointerDown={(event) => {
+          event.currentTarget.focus();
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
         }}

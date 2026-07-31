@@ -3,6 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using PangeaRSEdit.Application.Common;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using PangeaRSEdit.Infrastructure.Persistence;
 
 namespace PangeaRSEdit.Tests;
 
@@ -259,6 +262,14 @@ public sealed class MultiplayerHubApiTests : IClassFixture<PangeaApiFactory>
         var completed = await Task.WhenAny(participantDisconnectedTcs.Task, Task.Delay(TimeSpan.FromSeconds(5)));
         Assert.True(completed == participantDisconnectedTcs.Task, "ParticipantDisconnected not received.");
         Assert.Equal("guest-1", await participantDisconnectedTcs.Task);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<PangeaRSEditDbContext>();
+            var participantStillPresent = await dbContext.MultiplayerLobbyPlayers
+                .AnyAsync(player => player.LobbyId == lobbyId && player.ParticipantId == "guest-1");
+            Assert.True(participantStillPresent);
+        }
 
         await hostHub.DisposeAsync();
     }

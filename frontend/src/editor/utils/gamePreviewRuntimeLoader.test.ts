@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
-import { createPreviewModule } from "./gamePreviewRuntimeLoader";
+import {
+  createPreviewModule,
+  loadPreviewRuntime,
+} from "./gamePreviewRuntimeLoader";
 
 const launchPayloadSchema = z.object({
   lobbyId: z.string(),
@@ -315,6 +318,66 @@ describe("game preview runtime loader", () => {
     expect(onError).toHaveBeenCalledWith(
       "Local participant missing-participant was not found in match player list",
     );
+  });
+
+  it("routes game keyboard listeners only when the preview canvas owns focus", async () => {
+    const onStatus = vi.fn();
+    const canvas = document.createElement("canvas");
+    canvas.tabIndex = -1;
+    document.body.append(canvas);
+    const editorInput = document.createElement("textarea");
+    document.body.append(editorInput);
+    const source = [
+      'window.addEventListener("keydown", function () {',
+      '  Module.setStatus("game-key");',
+      "});",
+    ].join("\n");
+    const fetchMock = vi.fn(async () => new Response(source));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas,
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      onStatus,
+      onError: () => undefined,
+      normalLaunch: true,
+    });
+
+    const stopRuntime = await loadPreviewRuntime(
+      module,
+      "https://example.com/runtime.js",
+    );
+
+    editorInput.focus();
+    editorInput.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+    );
+    expect(onStatus).not.toHaveBeenCalledWith("game-key");
+
+    canvas.focus();
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+    );
+    expect(onStatus).toHaveBeenCalledWith("game-key");
+
+    stopRuntime();
+    onStatus.mockClear();
+    canvas.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+    );
+    expect(onStatus).not.toHaveBeenCalledWith("game-key");
+
+    editorInput.remove();
+    canvas.remove();
+    vi.unstubAllGlobals();
   });
 
 });

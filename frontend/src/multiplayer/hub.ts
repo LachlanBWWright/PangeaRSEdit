@@ -13,6 +13,8 @@ import {
   MultiplayerMatchConfigSchema,
 } from "./schemas";
 import type { MultiplayerLobbyDetails, MultiplayerMatchConfig } from "./types";
+import { getParticipantToken } from "./api";
+import { MultiplayerReconnectPolicy } from "./reconnectPolicy";
 
 export interface MultiplayerHubEvents {
   onPeerJoined: (participantId: string) => void;
@@ -58,8 +60,6 @@ export interface MultiplayerHubError {
 }
 
 const HUB_URL = buildApiUrl("/api/multiplayer/signaling");
-const RECONNECT_DELAYS_MS = [0, 2000, 5000, 10000];
-
 function toHubError(error: unknown, fallbackMessage: string): MultiplayerHubError {
   const parsed = HubThrownErrorSchema.safeParse(error);
 
@@ -94,14 +94,30 @@ function parseHubBooleanResult(
 export class MultiplayerHubClient {
   private connection: HubConnection;
   private events: Partial<MultiplayerHubEvents>;
+  private activeLobby: {
+    readonly lobbyId: string;
+    readonly participantId: string;
+  } | null = null;
 
   constructor(events: Partial<MultiplayerHubEvents> = {}) {
     this.events = events;
     this.connection = new HubConnectionBuilder()
-      .withUrl(HUB_URL, { withCredentials: true })
-      .withAutomaticReconnect(RECONNECT_DELAYS_MS)
+      .withUrl(HUB_URL, {
+        withCredentials: true,
+        accessTokenFactory: getParticipantToken,
+      })
+      .withAutomaticReconnect(new MultiplayerReconnectPolicy())
       .configureLogging(LogLevel.Warning)
       .build();
+
+    this.connection.onreconnected(() => {
+      const activeLobby = this.activeLobby;
+      if (activeLobby === null) {
+        return;
+      }
+
+      void this.joinLobby(activeLobby.lobbyId, activeLobby.participantId);
+    });
 
     this.registerHandlers();
   }
@@ -247,18 +263,26 @@ export class MultiplayerHubClient {
     return ResultAsync.fromPromise(
       this.connection.invoke<unknown>("JoinLobby", lobbyId, participantId),
       (e) => toHubError(e, "Failed to join lobby signaling group."),
-    ).andThen((value) =>
-      parseHubBooleanResult(value, "Failed to join lobby signaling group."),
-    );
+    )
+      .andThen((value) =>
+        parseHubBooleanResult(value, "Failed to join lobby signaling group."),
+      )
+      .map(() => {
+        this.activeLobby = { lobbyId, participantId };
+      });
   }
 
   leaveLobby(lobbyId: string): ResultAsync<void, MultiplayerHubError> {
     return ResultAsync.fromPromise(
       this.connection.invoke<unknown>("LeaveLobby", lobbyId),
       (e) => toHubError(e, "Failed to leave lobby signaling group."),
-    ).andThen((value) =>
-      parseHubBooleanResult(value, "Failed to leave lobby signaling group."),
-    );
+    )
+      .andThen((value) =>
+        parseHubBooleanResult(value, "Failed to leave lobby signaling group."),
+      )
+      .map(() => {
+        this.activeLobby = null;
+      });
   }
 
   sendOffer(

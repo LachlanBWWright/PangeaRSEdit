@@ -297,15 +297,19 @@ export async function downloadBG3DModel(
  * @throws Error if download fails
  */
 export function downloadGLBModel(
-  gltfUrl: string,
+  gltfBuffer: ArrayBuffer,
   fileName = "model",
 ): void {
+  const gltfUrl = URL.createObjectURL(
+    new Blob([gltfBuffer], { type: "model/gltf-binary" }),
+  );
   const a = document.createElement("a");
   a.href = gltfUrl;
   a.download = `${fileName}.glb`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(gltfUrl);
 }
 
 /**
