@@ -1,24 +1,25 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Upload, X, Info } from "lucide-react";
+import { Download, Upload, X, Info } from "lucide-react";
 import { GameModelSelector } from "@/components/GameModelSelector";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { UploadStep } from "./types";
 import {
   getUploadDropzoneText,
   processUploadSelection,
 } from "@/pages/ModelViewer/modelUploadPanelState";
+import { SidebarSection } from "@/components/model-viewer/SidebarSection";
 
 /* interface Texture {
   name: string;
@@ -79,13 +80,8 @@ export function ModelUploadPanel({
     getUploadDropzoneText(awaitingSkeleton);
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader className="p-3 pb-2">
-        <CardTitle className="truncate text-sm text-white">
-          {gltfUrl ? "Model Actions" : "Model Upload"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 p-3 pt-0">
+    <SidebarSection title={gltfUrl ? "Model Actions" : "Model Upload"}>
+      <div className="space-y-3">
         {!gltfUrl ? (
           <div className="space-y-5">
             <section className="space-y-2">
@@ -204,22 +200,23 @@ export function ModelUploadPanel({
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
-                    variant="secondary"
-                    className="w-full justify-between bg-gray-700 text-white hover:bg-gray-600"
+                    className="w-full justify-center bg-blue-600 font-medium text-white shadow-sm hover:bg-blue-500"
                   >
-                    <span>Export</span>
-                    <span className="text-xs text-gray-300">Choose game</span>
+                    <span className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Export model
+                    </span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80 border-gray-700 bg-gray-900 text-white">
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm font-medium">
+                      <DialogTitle className="text-sm font-medium">
                         Select export target
-                      </p>
-                      <p className="text-xs text-gray-400">
+                      </DialogTitle>
+                      <DialogDescription className="text-xs text-gray-400">
                         Download starts as soon as you choose a target.
-                      </p>
+                      </DialogDescription>
                     </div>
                     <div className="grid gap-2">
                       {exportTargets.map((target) => (
@@ -251,7 +248,7 @@ export function ModelUploadPanel({
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </SidebarSection>
   );
 }

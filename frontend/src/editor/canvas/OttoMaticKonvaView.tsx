@@ -39,6 +39,12 @@ import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { PendingCreationOverlay } from "../subviews/shared/PendingCreationOverlay";
 import { View } from "../viewEnum";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { Globals } from "@/data/globals/globals";
+import {
+  MapResizeEdgeControls,
+  type MapResizeDirection,
+} from "./MapResizeEdgeControls";
+import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 
 export interface StageData {
   scale: number;
@@ -62,6 +68,7 @@ interface OttoMaticKonvaViewProps {
   view: View;
   stage: StageData;
   setStage: Updater<StageData>;
+  onResize: (direction: MapResizeDirection, amount: number) => Promise<void>;
 }
 
 export function OttoMaticKonvaView({
@@ -80,6 +87,7 @@ export function OttoMaticKonvaView({
   view,
   stage,
   setStage,
+  onResize,
 }: OttoMaticKonvaViewProps) {
   const setSelectedFence = useSetAtom(SelectedFence);
   const setSelectedItem = useSetAtom(SelectedItem);
@@ -87,7 +95,9 @@ export function OttoMaticKonvaView({
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
   const setPendingCreation = useSetAtom(PendingCreation);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const customObjectPlacement = useCustomObjectPlacement();
   const pendingCreation = useAtomValue(PendingCreation);
+  const globals = useAtomValue(Globals);
 
   const [containerRef, containerSize] = useContainerSize();
 
@@ -147,9 +157,19 @@ export function OttoMaticKonvaView({
         });
         return;
       }
-      if (clickToAddItem === undefined) return;
       const stageRef = e.target.getStage();
-      const pos = stageRef?.getRelativePointerPosition();
+      const customPos = stageRef?.getRelativePointerPosition();
+      if (customPos && customObjectPlacement.objectId !== null) {
+        customObjectPlacement.placeAt(
+          Math.round(customPos.x),
+          headerData.Hedr[1000].obj.minY ?? 0,
+          Math.round(customPos.y),
+        );
+        return;
+      }
+      if (clickToAddItem === undefined) return;
+      const nativeStageRef = e.target.getStage();
+      const pos = nativeStageRef?.getRelativePointerPosition();
       if (!pos) return;
       setItemDataNotNull((itemData) => {
         itemData.Itms[1000].obj.push({
@@ -164,7 +184,14 @@ export function OttoMaticKonvaView({
         });
       });
     },
-    [clickToAddItem, pendingCreation, setItemDataNotNull, setPendingCreation],
+    [
+      clickToAddItem,
+      customObjectPlacement,
+      headerData,
+      pendingCreation,
+      setItemDataNotNull,
+      setPendingCreation,
+    ],
   );
 
   const handleStageDblClick = useCallback(() => {
@@ -320,6 +347,13 @@ export function OttoMaticKonvaView({
         <PendingCreationOverlay />
         {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
         <HoverTagOverlayLayer />
+        <MapResizeEdgeControls
+          mapWidth={headerData.Hedr[1000].obj.mapWidth}
+          mapHeight={headerData.Hedr[1000].obj.mapHeight}
+          tileSize={globals.TILE_SIZE}
+          tilesPerUnit={globals.TILES_PER_SUPERTILE}
+          onResize={onResize}
+        />
       </Stage>
     </div>
   );

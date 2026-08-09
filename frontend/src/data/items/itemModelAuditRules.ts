@@ -7,7 +7,9 @@ function partHasProof(
   part: ModelPartMapping,
   proof: "model-index" | "scale" | "rotation" | "position",
 ): boolean {
-  return part.citations.some((citation) => citation.proves === proof);
+  return part.citations.some(
+    (citation) => citation.partId === part.partId && citation.proves === proof,
+  );
 }
 
 function validateModelPart(part: ModelPartMapping): string[] {

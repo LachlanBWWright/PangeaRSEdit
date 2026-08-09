@@ -112,7 +112,7 @@ export function MightyMikeEditorView({
     direction: "top" | "bottom" | "left" | "right",
     tileCount: number,
   ) => {
-    resizeEditorAtomicTiles({
+    return resizeEditorAtomicTiles({
       headerData,
       itemData,
       liquidData: null,
@@ -168,7 +168,6 @@ export function MightyMikeEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
-            onResize={handleResize}
           />
         )}
         {view === View.tiles && (
@@ -179,7 +178,6 @@ export function MightyMikeEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
-            onResize={handleResize}
           />
         )}
       </MenuSection>
@@ -205,6 +203,7 @@ export function MightyMikeEditorView({
           mapImages={mapImages}
           stage={stage}
           setStage={setStage}
+          onResize={handleResize}
         />
       </div>
     </div>

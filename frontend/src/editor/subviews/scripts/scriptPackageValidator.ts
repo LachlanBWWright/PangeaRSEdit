@@ -1,5 +1,9 @@
 import { Result, ok, err } from "neverthrow";
-import type { ScriptWorkspaceContext } from "./scriptWorkspaceStateTypes";
+import type {
+  ScriptBehaviorDefinition,
+  ScriptCustomObjectDefinition,
+  ScriptWorkspaceContext,
+} from "./scriptWorkspaceStateTypes";
 import {
   scriptProjectSchema,
   scriptBindingsFileSchema,
@@ -7,11 +11,23 @@ import {
   scriptObjectsFileSchema,
   scriptParamsFileSchema,
 } from "./scriptWorkspaceStateTypes";
-import { getCapability, isCapabilitySupported, getHookCapabilityKey } from "./scriptCapabilityMatrix";
+import {
+  getCapability,
+  isCapabilitySupported,
+  getHookCapabilityKey,
+  type ScriptCapabilityKey,
+} from "./scriptCapabilityMatrix";
 
 export interface PackageValidationError {
   readonly path?: string;
   readonly message: string;
+}
+
+function parseJsonBytes(bytes: Uint8Array): Result<unknown, string> {
+  return Result.fromThrowable(
+    () => JSON.parse(new TextDecoder().decode(bytes)),
+    () => "Invalid JSON",
+  )();
 }
 
 export function validateScriptPackage(
@@ -20,6 +36,7 @@ export function validateScriptPackage(
 ): Result<true, string> {
   const errors: string[] = [];
   const textDecoder = new TextDecoder();
+  let totalAssetBytes = 0;
 
   // 1. Path traversal & absolute paths & Lua source check
   for (const path of Object.keys(files)) {
@@ -37,6 +54,16 @@ export function validateScriptPackage(
         errors.push(`Script source files must be Lua: ${path}`);
       }
     }
+    if (path.startsWith("Data/Scripts/assets/")) {
+      const size = files[path]?.byteLength ?? 0;
+      totalAssetBytes += size;
+      if (size > 16 * 1024 * 1024) {
+        errors.push(`Script asset exceeds 16 MiB limit: ${path}`);
+      }
+    }
+  }
+  if (totalAssetBytes > 64 * 1024 * 1024) {
+    errors.push("Script assets exceed the 64 MiB package budget");
   }
 
   // 2. Schema check for project.json
@@ -46,14 +73,12 @@ export function validateScriptPackage(
     return err(errors.join("; "));
   }
 
-  let projectJson: any;
-  try {
-    projectJson = JSON.parse(textDecoder.decode(projectJsonBytes));
-  } catch (e) {
+  const projectJsonResult = parseJsonBytes(projectJsonBytes);
+  if (projectJsonResult.isErr()) {
     return err("Failed to parse project.json: invalid JSON");
   }
 
-  const projectParse = scriptProjectSchema.safeParse(projectJson);
+  const projectParse = scriptProjectSchema.safeParse(projectJsonResult.value);
   if (!projectParse.success) {
     return err(`Invalid project.json: ${projectParse.error.message}`);
   }
@@ -80,7 +105,7 @@ export function validateScriptPackage(
 
   // 6. Duplicate IDs check
   const behaviorIds = new Set<string>();
-  const behaviorById = new Map<string, any>();
+  const behaviorById = new Map<string, ScriptBehaviorDefinition>();
   for (const behavior of projectData.editor.behaviorCatalog) {
     if (behaviorIds.has(behavior.id)) {
       errors.push(`Duplicate behavior ID: ${behavior.id}`);
@@ -92,11 +117,11 @@ export function validateScriptPackage(
   // Objects
   const objectsBytes = files["Data/Scripts/config/objects.json"];
   const objectIds = new Set<string>();
-  const objectById = new Map<string, any>();
+  const objectById = new Map<string, ScriptCustomObjectDefinition>();
   if (objectsBytes) {
-    try {
-      const objectsJson = JSON.parse(textDecoder.decode(objectsBytes));
-      const parsedObjects = scriptObjectsFileSchema.safeParse(objectsJson);
+    const objectsJson = parseJsonBytes(objectsBytes);
+    if (objectsJson.isOk()) {
+      const parsedObjects = scriptObjectsFileSchema.safeParse(objectsJson.value);
       if (parsedObjects.success) {
         for (const obj of parsedObjects.data.objects) {
           if (objectIds.has(obj.id)) {
@@ -104,18 +129,35 @@ export function validateScriptPackage(
           }
           objectIds.add(obj.id);
           objectById.set(obj.id, obj);
+          if (
+            (obj.visual.kind === "customDisplayGroup" ||
+              obj.visual.kind === "customSkeleton") &&
+            !files[obj.visual.modelPath]
+          ) {
+            errors.push(
+              `Custom object '${obj.id}' references missing model asset: ${obj.visual.modelPath}`,
+            );
+          }
+          if (
+            obj.visual.kind === "customSkeleton" &&
+            !files[`${obj.visual.skeletonPath}.rsrc`]
+          ) {
+            errors.push(
+              `Custom object '${obj.id}' references missing skeleton asset: ${obj.visual.skeletonPath}`,
+            );
+          }
         }
       }
-    } catch (_) {}
+    }
   }
 
   // Params
   const paramsBytes = files["Data/Scripts/config/params.json"];
   const paramIds = new Set<string>();
   if (paramsBytes) {
-    try {
-      const paramsJson = JSON.parse(textDecoder.decode(paramsBytes));
-      const parsedParams = scriptParamsFileSchema.safeParse(paramsJson);
+    const paramsJson = parseJsonBytes(paramsBytes);
+    if (paramsJson.isOk()) {
+      const parsedParams = scriptParamsFileSchema.safeParse(paramsJson.value);
       if (parsedParams.success) {
         for (const param of parsedParams.data.params) {
           if (paramIds.has(param.id)) {
@@ -124,7 +166,7 @@ export function validateScriptPackage(
           paramIds.add(param.id);
         }
       }
-    } catch (_) {}
+    }
   }
 
   // Track which behaviors and custom objects are actually used
@@ -157,9 +199,9 @@ export function validateScriptPackage(
 
     const bBytes = files[bindingsPath];
     if (bBytes) {
-      try {
-        const bindingsJson = JSON.parse(textDecoder.decode(bBytes));
-        const parsedBindings = scriptBindingsFileSchema.safeParse(bindingsJson);
+      const bindingsJson = parseJsonBytes(bBytes);
+      if (bindingsJson.isOk()) {
+        const parsedBindings = scriptBindingsFileSchema.safeParse(bindingsJson.value);
         if (parsedBindings.success) {
           const allBindings = [
             ...parsedBindings.data.terrainBindings,
@@ -190,14 +232,14 @@ export function validateScriptPackage(
             }
           }
         }
-      } catch (_) {}
+      }
     }
 
     const pBytes = files[placementsPath];
     if (pBytes) {
-      try {
-        const placementsJson = JSON.parse(textDecoder.decode(pBytes));
-        const parsedPlacements = scriptPlacementsFileSchema.safeParse(placementsJson);
+      const placementsJson = parseJsonBytes(pBytes);
+      if (placementsJson.isOk()) {
+        const parsedPlacements = scriptPlacementsFileSchema.safeParse(placementsJson.value);
         if (parsedPlacements.success) {
           for (const placement of parsedPlacements.data.placements) {
             usedObjectIds.add(placement.objectId);
@@ -208,7 +250,7 @@ export function validateScriptPackage(
             }
           }
         }
-      } catch (_) {}
+      }
     }
   }
 
@@ -260,7 +302,7 @@ export function validateScriptPackage(
   // 10. Unsupported API usage validation
   const checkApis: {
     key: string;
-    capability: any;
+    capability: ScriptCapabilityKey;
     name: string;
   }[] = [
     {

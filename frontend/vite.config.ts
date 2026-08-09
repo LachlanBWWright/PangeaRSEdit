@@ -4,6 +4,7 @@ import wasm from "vite-plugin-wasm";
 import fs from "node:fs";
 import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
+import { listAnimationSoundAssets } from "./src/components/AnimationViewer/animationSoundAssets";
 
 // https://vitejs.dev/config/
 const repoRoot = path.resolve(__dirname, "..");
@@ -11,6 +12,27 @@ const pangeaPortsSrcDir = path.resolve(repoRoot, "games/pangea-ports");
 const pangeaPortsMount = "/games/pangea-ports";
 const generatedAssetsDir = path.resolve(__dirname, "public/generated");
 const generatedAssetsMount = "/PangeaRSEdit/generated";
+
+function emitAnimationSoundAssets(): Plugin {
+  return {
+    name: "emit-animation-sound-assets",
+    apply: "build",
+    buildStart() {
+      for (const relativePath of listAnimationSoundAssets()) {
+        const sourcePath = path.join(pangeaPortsSrcDir, relativePath);
+        if (!fs.existsSync(sourcePath)) {
+          this.error(`Animation sound asset is missing: ${sourcePath}`);
+          continue;
+        }
+        this.emitFile({
+          type: "asset",
+          fileName: `generated/pangea-ports/audio/${relativePath}`,
+          source: fs.readFileSync(sourcePath),
+        });
+      }
+    },
+  };
+}
 
 function mimeTypeFor(filePath: string): string {
   switch (path.extname(filePath).toLowerCase()) {
@@ -153,6 +175,7 @@ export default defineConfig({
       },
     }),
     wasm(),
+    emitAnimationSoundAssets(),
     serveStaticDirectory(generatedAssetsMount, generatedAssetsDir),
     serveStaticDirectory(pangeaPortsMount, pangeaPortsSrcDir),
   ],

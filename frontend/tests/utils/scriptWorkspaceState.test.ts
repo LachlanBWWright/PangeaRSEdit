@@ -12,6 +12,7 @@ import {
 } from "@/data/globals/globals";
 import {
   addBehaviorDefinition,
+  addScriptAsset,
   addScriptParam,
   applyGlobalBehavior,
   applyTerrainBehavior,
@@ -27,6 +28,7 @@ import {
   placeCustomObject,
   removeCustomPlacement,
   upsertScriptSourceFile,
+  updateCustomObjectDefinition,
 } from "@/editor/subviews/scripts/scriptWorkspaceState";
 import {
   getScriptAllowedTags,
@@ -80,6 +82,9 @@ describe("scriptWorkspaceState", () => {
           script: "Data/Scripts/dist/main.lua",
           extraNativeItems: [],
           itemOverrides: [],
+          customObjects: [],
+          terrainReplacements: [],
+          splineReplacements: [],
           levelSettings: {},
         },
       },
@@ -239,6 +244,42 @@ describe("scriptWorkspaceState", () => {
     expect(importedResult.value.sampleId).toBe("hover-beacon");
   });
 
+  it("round-trips binary BG3D assets referenced by custom objects", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const sample = loadScriptSample(context, "hover-beacon");
+    const definition = sample.customObjects[0];
+    expect(definition).toBeDefined();
+    if (!definition) return;
+
+    const modelPath = "Data/Scripts/assets/models/beacon.bg3d";
+    const withDefinition = updateCustomObjectDefinition(sample, {
+      ...definition,
+      visual: {
+        kind: "customDisplayGroup",
+        modelPath,
+        modelObject: 0,
+        scale: 1,
+        slot: 450,
+      },
+    });
+    const state = addScriptAsset(
+      withDefinition,
+      modelPath,
+      new Uint8Array([0x42, 0x47, 0x33, 0x44]),
+      "beacon.bg3d",
+    );
+    const zipResult = buildScriptPackageZip(state);
+    expect(zipResult.isOk()).toBe(true);
+    if (zipResult.isErr()) return;
+
+    const importedResult = importScriptPackageZip(zipResult.value, context);
+    expect(importedResult.isOk()).toBe(true);
+    if (importedResult.isErr()) return;
+    expect(importedResult.value.assets[modelPath]?.bytes).toEqual(
+      new Uint8Array([0x42, 0x47, 0x33, 0x44]),
+    );
+  });
+
   it("rejects non-Lua source files from imported script packages", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const zipBytes = zipSync({
@@ -265,6 +306,90 @@ describe("scriptWorkspaceState", () => {
     expect(summarizeScriptWorkspace(state)).toMatchObject({
       hasScripts: true,
       hasExtendedFeatures: true,
+    });
+  });
+
+  it("routes custom object frames to the definition behavior", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const state = loadScriptSample(context, "hover-beacon");
+    const compileResult = compileScriptWorkspace(state);
+
+    expect(compileResult.isOk()).toBe(true);
+    if (compileResult.isErr()) {
+      return;
+    }
+
+    const bundle =
+      compileResult.value.compiledFiles["Data/Scripts/dist/main.lua"]?.content;
+    expect(state.customObjects[0]).toMatchObject({
+      id: "sample.hoverBeacon",
+      visual: {
+        kind: "nativeDisplayGroup",
+        group: "global",
+        modelObject: 1,
+        scale: 1,
+        slot: 450,
+      },
+    });
+    expect(state.levels[context.levelKey]?.customPlacements[0]).toMatchObject({
+      objectId: "sample.hoverBeacon",
+      position: { x: 0, y: 160, z: 0 },
+    });
+    expect(bundle).toContain('pangea.spawn.scripted("sample.hoverBeacon"');
+    expect(bundle).toContain('__hasTag(ctx.tags, "sample.hoverBeacon")');
+    expect(bundle).toContain(
+      '__hasTag(ctx.tags, "editor.custom.hoverBeacon")',
+    );
+    expect(
+      state.sourceFiles["Data/Scripts/src/objects/sample-hoverbeacon.lua"]
+        ?.content,
+    ).toContain("math.sin(ctx.levelTimeSeconds * 4) * 16");
+    expect(bundle).toContain("handler({ handle = ctx.object }, ctx)");
+    expect(bundle).toContain("triggerEnter = 'onTriggerEnter'");
+  });
+
+  it("uses a visible Bugdom native model for the hover beacon", () => {
+    const context = createScriptWorkspaceContext(BugdomGlobals, 1);
+    const state = loadScriptSample(context, "hover-beacon");
+
+    expect(state.customObjects[0]?.visual).toEqual({
+      kind: "nativeDisplayGroup",
+      group: "global",
+      modelObject: 2,
+      scale: 1,
+      slot: 450,
+    });
+  });
+
+  it("uses a visible Nanosaur native model for the hover beacon", () => {
+    const context = createScriptWorkspaceContext(NanosaurGlobals, 1);
+    const state = loadScriptSample(context, "hover-beacon");
+
+    expect(state.customObjects[0]?.visual).toEqual({
+      kind: "nativeDisplayGroup",
+      group: "global",
+      modelObject: 15,
+      scale: 1,
+      slot: 450,
+    });
+  });
+
+  it.each([
+    [Bugdom2Globals, 13],
+    [Nanosaur2Globals, 10],
+    [CroMagGlobals, 0],
+    [BillyFrontierGlobals, 10],
+    [MightyMikeGlobals, 4],
+  ])("uses a visible native hover beacon for another 3D game", (globals, modelObject) => {
+    const context = createScriptWorkspaceContext(globals, 1);
+    const state = loadScriptSample(context, "hover-beacon");
+
+    expect(state.customObjects[0]?.visual).toEqual({
+      kind: "nativeDisplayGroup",
+      group: "global",
+      modelObject,
+      scale: 1,
+      slot: 450,
     });
   });
 

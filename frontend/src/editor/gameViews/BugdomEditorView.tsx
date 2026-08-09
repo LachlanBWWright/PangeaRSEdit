@@ -112,7 +112,7 @@ export function BugdomEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    resizeEditorAtomicSupertiles({
+    return resizeEditorAtomicSupertiles({
       headerData,
       itemData,
       liquidData: null,
@@ -196,7 +196,6 @@ export function BugdomEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
-            onResizeSupertiles={handleSupertileResize}
           />
         )}
       </MenuSection>
@@ -238,6 +237,7 @@ export function BugdomEditorView({
             view={view}
             stage={stage}
             setStage={setStage}
+            onResize={handleSupertileResize}
           />
         )}
       </div>

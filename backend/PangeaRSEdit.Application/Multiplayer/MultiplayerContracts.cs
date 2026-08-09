@@ -158,6 +158,7 @@ public sealed record MultiplayerMatchConfig(
     int MaxPlayers,
     int RequiredProtocolVersion,
     string RequiredRuntimeVersion,
+    string RequiredContentHash,
     string HostParticipantId,
     IReadOnlyList<MultiplayerMatchConfigPlayer> Players
 );

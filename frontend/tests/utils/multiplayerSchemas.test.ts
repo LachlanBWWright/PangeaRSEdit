@@ -9,10 +9,12 @@ describe("multiplayer match config schema", () => {
     mode: "multiplayerRace",
     trackOrLevel: "ice-ramp",
     seed: 12345,
+    tagDurationMinutes: 3,
     hostPlayerIndex: 0,
     maxPlayers: 2,
     requiredProtocolVersion: 1,
     requiredRuntimeVersion: "host-authoritative-v2",
+    requiredContentHash: "development-unpinned",
     hostParticipantId: "host-1",
     players: [
       {

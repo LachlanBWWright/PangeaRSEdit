@@ -189,6 +189,9 @@ namespace PangeaRSEdit.Infrastructure.Persistence.Migrations
                     b.HasIndex("LobbyId", "ParticipantId")
                         .IsUnique();
 
+                    b.HasIndex("LobbyId", "PlayerIndex")
+                        .IsUnique();
+
                     b.ToTable("multiplayer_lobby_players", (string)null);
                 });
 

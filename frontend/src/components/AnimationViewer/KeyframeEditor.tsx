@@ -373,8 +373,11 @@ export function KeyframeEditor({
           <Button
             key={`${keyframe.time}-${index}`}
             size="sm"
-            className={`w-full justify-between ${
-              isSelected ? "bg-blue-700 hover:bg-blue-700" : ""
+            variant="ghost"
+            className={`h-8 justify-between rounded-md border px-2 text-xs ${
+              isSelected
+                ? "border-blue-400/70 bg-blue-500/15 text-blue-100 hover:bg-blue-500/20"
+                : "border-transparent bg-gray-800/60 text-gray-300 hover:border-gray-600 hover:bg-gray-800"
             }`}
             onClick={() => onSelectKeyframe(index)}
           >
@@ -408,7 +411,7 @@ export function KeyframeEditor({
 
   return (
     <div className="space-y-4 min-w-0">
-      <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900/50 p-3 shadow-sm min-w-0">
+      <div className="min-w-0 space-y-3">
         <AnimationControls
           hasActiveAction={hasActiveAction}
           isPlaying={isPlaying}
@@ -517,12 +520,17 @@ export function KeyframeEditor({
 
       <div
         ref={editKeyframesSectionRef}
-        className="space-y-3 border-t border-gray-700 pt-3"
+        className="space-y-3 border-t border-gray-700 pt-4"
       >
-        <div className="text-xs font-semibold text-gray-300">
-          Edit Keyframes
+        <div>
+          <div className="text-sm font-semibold text-gray-100">
+            Edit Keyframes
+          </div>
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            Choose a bone and track, then select a point to edit.
+          </p>
         </div>
-        <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900/30 p-3">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-xs text-gray-300">Bone</label>
@@ -592,9 +600,14 @@ export function KeyframeEditor({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-gray-300">
-              <span>Keyframes</span>
+          <div className="space-y-2 border-t border-gray-700/70 pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-300">
+                Keyframes
+                <span className="ml-1.5 font-normal text-gray-500">
+                  {selectedKeyframes.length}
+                </span>
+              </span>
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
@@ -616,7 +629,7 @@ export function KeyframeEditor({
             </div>
             {selectedKeyframes.length > 0 ? (
               <div
-                className={`space-y-2 ${KEYFRAME_LIST_MAX_HEIGHT_CLASS} overflow-y-auto rounded-md border border-gray-700 p-2`}
+                className={`grid grid-cols-2 gap-1.5 ${KEYFRAME_LIST_MAX_HEIGHT_CLASS} overflow-y-auto pr-1`}
               >
                 {keyframeButtons}
               </div>
@@ -627,10 +640,11 @@ export function KeyframeEditor({
             )}
             <Button
               size="sm"
-              className={`w-full ${
+              variant="outline"
+              className={`w-full border-dashed ${
                 isCreatingKeyframe
-                  ? "border-blue-300 bg-blue-700 text-white hover:bg-blue-700"
-                  : ""
+                  ? "border-blue-400 bg-blue-500/15 text-blue-100 hover:bg-blue-500/20"
+                  : "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800"
               }`}
               onClick={onNewKeyframe}
             >
@@ -640,10 +654,10 @@ export function KeyframeEditor({
 
           {showKeyframeDetails && (
             <div
-              className={`space-y-4 rounded-md border p-3 ${
+              className={`space-y-4 border-t pt-4 ${
                 isCreatingKeyframe
-                  ? "border-blue-500/70 bg-blue-950/30"
-                  : "border-gray-700 bg-gray-900/20"
+                  ? "border-blue-500/50"
+                  : "border-gray-700/70"
               }`}
             >
               <div className="flex items-center justify-between">

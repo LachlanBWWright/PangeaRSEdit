@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      VITE_MULTIPLAYER_CONTENT_HASH: ${{ github.sha }}
     defaults:
       run:
         working-directory: ./frontend
@@ -34,12 +36,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
       - name: Run tests
         run: pnpm test -- --run
+
+      - name: Audit item parameter citations
+        run: pnpm run audit:item-citations
 
       - name: Build project
         if: success()
         run: pnpm run build
+
+      - name: Install Chromium for multiplayer smoke tests
+        if: success()
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run real-WASM multiplayer browser smoke tests
+        if: success()
+        run: pnpm exec playwright test tests/e2e/multiplayerGameLaunch.spec.ts tests/e2e/multiplayerShell.spec.ts --project=chromium --workers=1
 
       - name: Report test results
         if: always()

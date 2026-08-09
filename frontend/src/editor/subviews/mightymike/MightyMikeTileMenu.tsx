@@ -53,7 +53,6 @@ import { MightyMikeTileMenuEditors } from "./MightyMikeTileMenuEditors";
 import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
 import { MightyMikeTileOperationsPanel } from "./MightyMikeTileOperationsPanel";
 import { MightyMikePalettePanel } from "./MightyMikePalettePanel";
-import { MightyMikeResizeMapControls } from "./MightyMikeResizeMapControls";
 import { MightyMikeTileInspectorPanel } from "./MightyMikeTileInspectorPanel";
 import {
   Select,
@@ -110,10 +109,6 @@ interface MightyMikeTileMenuProps {
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
-  onResize: (
-    direction: "top" | "bottom" | "left" | "right",
-    tileCount: number,
-  ) => void;
 }
 
 export function MightyMikeTileMenu({
@@ -123,7 +118,6 @@ export function MightyMikeTileMenu({
   setTerrainData,
   mapImages,
   setMapImages,
-  onResize,
 }: MightyMikeTileMenuProps) {
   const [selectedTile] = useAtom(SelectedTile);
   const [overlayMode, setOverlayMode] = useAtom(MightyMikeOverlayMode);
@@ -639,7 +633,6 @@ export function MightyMikeTileMenu({
                   passes.
                 </p>
               </div>
-              <MightyMikeResizeMapControls onResize={onResize} />
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-300">
                 {tileInfoRows.map((row) => (
                   <p key={row}>{row}</p>

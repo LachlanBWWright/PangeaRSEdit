@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue } from "jotai";
-import { Layer, Circle, Text } from "react-konva";
+import { Group, Layer, Rect } from "react-konva";
 import { memo, useCallback, useEffect } from "react";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Globals } from "@/data/globals/globals";
@@ -16,6 +16,15 @@ import {
 import { SelectedCustomPlacementAtom } from "./scripts/scriptPlacementSelectionState";
 import { toast } from "sonner";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { SelectedItem } from "@/data/items/itemAtoms";
+import { ActiveHoverTag } from "@/data/globals/hoverTagAtom";
+import type { HoverTagInfo } from "./shared/nodeVisuals";
+import {
+  ITEM_BOX_OFFSET,
+  ITEM_BOX_SIZE,
+  ItemTypeNumber,
+} from "./shared/nodeVisuals";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -35,6 +44,7 @@ interface CustomScriptPlacementNodeProps {
   isSelected: boolean;
   onSelect: () => void;
   onDragEnd: (x: number, z: number) => void;
+  onHoverChange: (tag: HoverTagInfo | null) => void;
 }
 
 const CustomScriptPlacementNode = memo(function CustomScriptPlacementNode({
@@ -42,6 +52,7 @@ const CustomScriptPlacementNode = memo(function CustomScriptPlacementNode({
   isSelected,
   onSelect,
   onDragEnd,
+  onHoverChange,
 }: CustomScriptPlacementNodeProps) {
   const handleSelect = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -55,41 +66,41 @@ const CustomScriptPlacementNode = memo(function CustomScriptPlacementNode({
     (e: KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
       const node = e.target;
-      onDragEnd(node.x(), node.y());
+      onDragEnd(node.x() + ITEM_BOX_OFFSET, node.y() + ITEM_BOX_OFFSET);
     },
     [onDragEnd],
   );
 
   return (
-    <>
-      <Circle
-        x={placement.position.x}
-        y={placement.position.z} // Note: z maps to y in 2D
-        radius={8}
-        fill={isSelected ? "#00ff00" : "#22c55e"}
-        stroke={isSelected ? "#ffffff" : "#166534"}
+    <Group
+      x={placement.position.x - ITEM_BOX_OFFSET}
+      y={placement.position.z - ITEM_BOX_OFFSET}
+      draggable
+      onMouseDown={handleSelect}
+      onTap={handleSelect}
+      onDragStart={handleSelect}
+      onDragEnd={handleDragEnd}
+      onMouseOver={() =>
+        onHoverChange({
+          x: placement.position.x + ITEM_BOX_OFFSET + 4,
+          y: placement.position.z - ITEM_BOX_OFFSET,
+          text: placement.label,
+          fill: isSelected ? "#16a34a" : "#22c55e",
+          textColor: "white",
+        })
+      }
+      onMouseLeave={() => onHoverChange(null)}
+    >
+      <Rect
+        width={ITEM_BOX_SIZE}
+        height={ITEM_BOX_SIZE}
+        fill={isSelected ? "#16a34a" : "#22c55e"}
+        stroke="black"
         strokeWidth={isSelected ? 2 : 1}
-        draggable
-        onClick={handleSelect}
-        onTap={handleSelect}
-        onDragEnd={handleDragEnd}
-        shadowColor="black"
-        shadowBlur={4}
-        shadowOpacity={0.5}
-        shadowOffsetX={2}
-        shadowOffsetY={2}
+        perfectDrawEnabled={false}
       />
-      <Text
-        x={placement.position.x + 12}
-        y={placement.position.z - 6}
-        text={placement.label}
-        fontSize={11}
-        fill="#ffffff"
-        stroke="#000000"
-        strokeWidth={0.5}
-        listening={false}
-      />
-    </>
+      <ItemTypeNumber x={0} y={0} value="S" fill="white" />
+    </Group>
   );
 });
 
@@ -103,6 +114,8 @@ export const CustomScriptPlacements = memo(
     const [selectedPlacementId, setSelectedPlacementId] = useAtom(
       SelectedCustomPlacementAtom,
     );
+    const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+    const [, setActiveHoverTag] = useAtom(ActiveHoverTag);
 
     const context = createScriptWorkspaceContext(globals, levelNumber ?? null);
     const workspace = ensureScriptWorkspace(workspaceStore, context);
@@ -111,9 +124,10 @@ export const CustomScriptPlacements = memo(
 
     const handleSelect = useCallback(
       (placementId: string) => {
+        setSelectedItem(undefined);
         setSelectedPlacementId(placementId);
       },
-      [setSelectedPlacementId],
+      [setSelectedItem, setSelectedPlacementId],
     );
 
     const handleDragEnd = useCallback(
@@ -129,7 +143,6 @@ export const CustomScriptPlacements = memo(
           });
           return replaceScriptWorkspace(store, updatedWorkspace);
         });
-        toast.success("Placement moved");
       },
       [workspace, currentLevel, setWorkspaceStore],
     );
@@ -160,6 +173,14 @@ export const CustomScriptPlacements = memo(
       }
     }, [placements, selectedPlacementId, setSelectedPlacementId]);
 
+    useEffect(() => {
+      if (selectedItem !== undefined && selectedPlacementId !== null) {
+        setSelectedPlacementId(null);
+      }
+    }, [selectedItem, selectedPlacementId, setSelectedPlacementId]);
+
+    useEffect(() => () => setActiveHoverTag(null), [setActiveHoverTag]);
+
     useWindowKeyDown(
       useCallback(
         (event) => {
@@ -178,7 +199,7 @@ export const CustomScriptPlacements = memo(
       ),
     );
 
-    if (placements.length === 0) {
+    if (!ENABLE_SCRIPTS || placements.length === 0) {
       return null;
     }
 
@@ -191,6 +212,7 @@ export const CustomScriptPlacements = memo(
             isSelected={selectedPlacementId === placement.id}
             onSelect={() => handleSelect(placement.id)}
             onDragEnd={(x, z) => handleDragEnd(placement.id, x, z)}
+            onHoverChange={setActiveHoverTag}
           />
         ))}
       </Layer>

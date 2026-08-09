@@ -177,9 +177,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Content-specific parameter - for keys: specifies which key ID (0-3), for other content types: unused",
       codeSample: {
-        code: "newObj->KeyNum = theNut->NutParm1;\t\t\t// key ID# is in here",
+        code: "newObj->NutParm1 = itemPtr->parm[1];",
         fileName: "src/Items/Triggers.c",
-        lineNumber: 1099,
+        lineNumber: 278,
       },
     },
     p2: {
@@ -274,7 +274,15 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.Weed]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Weed model variant",
+      codeSample: {
+        code: "gNewObjectDefinition.type = LAWN2_MObjType_Weed + itemPtr->parm[0];",
+        fileName: "src/Items/Items.c",
+        lineNumber: 262,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -369,7 +377,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;\t\t// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 333,
+            lineNumber: 328,
       },
     },
     p3: {
@@ -381,7 +389,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           codeSample: {
             code: "tesselateFlag = itemPtr->parm[3] & 1; // get tesselate flag",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 280,
+              lineNumber: 284,
           },
         },
         {
@@ -390,7 +398,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           codeSample: {
             code: "putUnderGround = itemPtr->parm[3] & (1<<1); // get underground flag",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 281,
+              lineNumber: 285,
           },
         },
         {
@@ -400,7 +408,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           codeSample: {
             code: "y = yTable[itemPtr->parm[2]];\t\t\t\t\t// get y from table\t\t",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 321,
+              lineNumber: 319,
           },
         },
       ],
@@ -596,7 +604,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;\t\t// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 836,
+            lineNumber: 832,
       },
     },
     p3: {
@@ -609,7 +617,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           codeSample: {
             code: "y = gLiquidYTable[kind][itemPtr->parm[2]];\t\t\t// get y from table",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 828,
+              lineNumber: 825,
           },
         },
       ],
@@ -649,7 +657,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = HIVE_MObjType_DetonatorGreen + itemPtr->parm[1];",
         fileName: "src/Items/Triggers.c",
-        lineNumber: 641,
+        lineNumber: 626,
       },
     },
     p2: "Unused",
@@ -734,7 +742,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "Byte aim = itemPtr->parm[1];",
         fileName: "src/Items/Triggers.c",
-        lineNumber: 762,
+        lineNumber: 764,
       },
     },
     p2: "Unused",
@@ -742,7 +750,17 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.Dock]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Dock rotation in quarter turns",
+      divisions: 4,
+      multiplier: "PI/2",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0]*(PI/2);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 469,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -824,17 +842,49 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.scale = 1.4f + (scaleFactor * .3f);",
         fileName: "src/Items/Items2.c",
-        lineNumber: 551,
+        lineNumber: 536,
       },
     },
     p3: "Unused",
   },
   [ItemType.Thorn]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: {
+      type: "TypeSelector",
+      description: "Thorn model variant",
+      options: { 0: "Thorn 1", 1: "Thorn 2" },
+      codeSample: {
+        code: "gNewObjectDefinition.type = FOREST_MObjType_Thorn1 + itemPtr->parm[0];",
+        fileName: "src/Items/Traps.c",
+        lineNumber: 538,
+      },
+    },
+    p1: {
+      type: "Rotation",
+      description: "Thorn rotation in quarter turns when random rotation is disabled",
+      divisions: 4,
+      multiplier: "PI2/4",
+      codeSample: {
+        code: "rot = itemPtr->parm[1];",
+        fileName: "src/Items/Traps.c",
+        lineNumber: 534,
+      },
+    },
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Use a random rotation",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1)",
+            fileName: "src/Items/Traps.c",
+            lineNumber: 531,
+          },
+        },
+      ],
+    },
   },
   [ItemType.FireFlyTargetLocation]: {
     flags: "Unknown",
@@ -851,7 +901,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "newObj->ValveID = itemPtr->parm[0];",
         fileName: "src/Items/Traps.c",
-        lineNumber: 757,
+        lineNumber: 767,
       },
     },
     p1: {
@@ -876,7 +926,15 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.WaterValve]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Valve identifier used by linked water objects",
+      codeSample: {
+        code: "newObj->ValveID = itemPtr->parm[0];",
+        fileName: "src/Items/Triggers.c",
+        lineNumber: 1355,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -1075,7 +1133,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;		// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 836,
+            lineNumber: 832,
       },
     },
     p3: {
@@ -1088,7 +1146,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           codeSample: {
             code: "y = gLiquidYTable[kind][itemPtr->parm[2]];			// get y from table",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 828,
+              lineNumber: 825,
           },
         },
       ],
@@ -1121,7 +1179,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;		// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 836,
+            lineNumber: 832,
       },
     },
     p3: {
@@ -1134,7 +1192,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           codeSample: {
             code: "y = gLiquidYTable[kind][itemPtr->parm[2]];			// get y from table",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 828,
+              lineNumber: 825,
           },
         },
       ],
@@ -1148,7 +1206,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "src/Items/Items.c",
-        lineNumber: 1049,
+        lineNumber: 1052,
       },
     },
     p1: {
@@ -1157,7 +1215,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "newObj->ValveID = itemPtr->parm[1];",
         fileName: "src/Items/Items.c",
-        lineNumber: 1068,
+        lineNumber: 1069,
       },
     },
     p2: "Unused",
@@ -1170,7 +1228,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           codeSample: {
             code: "newObj->SpewWater = itemPtr->parm[3] & (1<<0);",
             fileName: "src/Items/Items.c",
-            lineNumber: 1069,
+              lineNumber: 1070,
           },
         },
         {
@@ -1193,7 +1251,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "src/Items/Items.c",
-        lineNumber: 1107,
+        lineNumber: 1111,
       },
     },
     p1: {
@@ -1211,7 +1269,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       codeSample: {
         code: "newObj->ValveID = itemPtr->parm[2];",
         fileName: "src/Items/Items.c",
-        lineNumber: 1130,
+        lineNumber: 1133,
       },
     },
     p3: {
@@ -1256,7 +1314,17 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.Faucet]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Faucet rotation in quarter turns",
+      divisions: 4,
+      multiplier: "PI/2",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0]*(PI/2);",
+        fileName: "src/Items/Items2.c",
+        lineNumber: 1012,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",

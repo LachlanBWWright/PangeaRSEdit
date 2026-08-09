@@ -12,7 +12,11 @@ import type { WeightBrushHit } from "@/modelEditing/weights/weightBrushStroke";
 /** Gizmo modes supported by the model viewer. */
 export type GizmoMode = "translate" | "rotate" | "scale";
 /** High-level interaction modes supported by the model viewer. */
-export type ViewerInteractionMode = "navigate" | "paint-weights" | "bone-edit";
+export type ViewerInteractionMode =
+  | "navigate"
+  | "animate"
+  | "paint-weights"
+  | "bone-edit";
 
 /** Flattened representation of a node in the model hierarchy tree. */
 export interface ModelNode {

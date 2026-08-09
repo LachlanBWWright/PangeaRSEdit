@@ -14,7 +14,6 @@ import type {
   WeightBrushSettings,
   WeightBrushMode,
   WeightFalloff,
-  WeightVisualizationMode,
   SkinWeightsData,
 } from "@/modelEditing/weights/weightTypes";
 import {
@@ -27,9 +26,7 @@ interface WeightBrushPanelProps {
   boneNames: string[];
   skinData: SkinWeightsData | null;
   brushSettings: WeightBrushSettings;
-  visualizationMode: WeightVisualizationMode;
   onBrushSettingsChange: (settings: WeightBrushSettings) => void;
-  onVisualizationModeChange: (mode: WeightVisualizationMode) => void;
   onRepairWeights?: (repaired: SkinWeightsData) => void;
 }
 
@@ -47,20 +44,11 @@ const FALLOFF_OPTIONS: { value: WeightFalloff; label: string }[] = [
   { value: "sharp", label: "Sharp" },
 ];
 
-const VIZ_MODES: { value: WeightVisualizationMode; label: string }[] = [
-  { value: "none", label: "None" },
-  { value: "heatmap", label: "Heatmap" },
-  { value: "dominant", label: "Dominant Bone" },
-  { value: "unweighted", label: "Unweighted" },
-];
-
 export function WeightBrushPanel({
   boneNames,
   skinData,
   brushSettings,
-  visualizationMode,
   onBrushSettingsChange,
-  onVisualizationModeChange,
   onRepairWeights,
 }: WeightBrushPanelProps) {
   const update = useCallback(
@@ -84,24 +72,6 @@ export function WeightBrushPanel({
 
   return (
     <div className="space-y-4">
-      {/* Visualization mode */}
-      <div className="space-y-1">
-        <Label className="text-xs text-gray-400">Visualization</Label>
-        <div className="grid grid-cols-2 gap-1">
-          {VIZ_MODES.map((m) => (
-            <Button
-              key={m.value}
-              size="sm"
-              variant={visualizationMode === m.value ? "default" : "outline"}
-              className="text-xs h-7"
-              onClick={() => onVisualizationModeChange(m.value)}
-            >
-              {m.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       {/* Target bone */}
       <div className="space-y-1">
         <Label className="text-xs text-gray-400">Target Bone</Label>
@@ -109,12 +79,16 @@ export function WeightBrushPanel({
           value={brushSettings.targetBone ?? ""}
           onValueChange={(v) => update({ targetBone: v || null })}
         >
-          <SelectTrigger className="h-8 text-xs">
+          <SelectTrigger className="h-8 border-gray-600 bg-gray-800 text-xs text-white">
             <SelectValue placeholder="Select bone..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-60 border-gray-600 bg-gray-800 text-white">
             {boneNames.map((name) => (
-              <SelectItem key={name} value={name} className="text-xs">
+              <SelectItem
+                key={name}
+                value={name}
+                className="text-xs text-white focus:bg-gray-700 focus:text-white"
+              >
                 {name}
               </SelectItem>
             ))}

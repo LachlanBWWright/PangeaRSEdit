@@ -55,11 +55,6 @@ interface BugdomTileMenuContentProps {
   onUploadTileImage: (event: ChangeEvent<HTMLInputElement>) => void;
   onAddTileImage: () => void;
   onRemoveTileImage: () => void;
-  onResizeSupertiles: (
-    direction: "top" | "bottom" | "left" | "right",
-    supertileCount: number,
-  ) => void;
-  onRemoveSupertile: (direction: "top" | "bottom" | "left" | "right") => void;
 }
 
 export function BugdomTileMenuContent({
@@ -85,8 +80,6 @@ export function BugdomTileMenuContent({
   onUploadTileImage,
   onAddTileImage,
   onRemoveTileImage,
-  onResizeSupertiles,
-  onRemoveSupertile,
 }: BugdomTileMenuContentProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-2">
@@ -291,44 +284,6 @@ export function BugdomTileMenuContent({
         <div className="flex min-h-0 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto rounded border border-gray-600 p-3">
             <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={() => onResizeSupertiles("top", 1)}>
-                  Add Supertile Row Top
-                </Button>
-                <Button onClick={() => onResizeSupertiles("bottom", 1)}>
-                  Add Supertile Row Bottom
-                </Button>
-                <Button onClick={() => onResizeSupertiles("left", 1)}>
-                  Add Supertile Column Left
-                </Button>
-                <Button onClick={() => onResizeSupertiles("right", 1)}>
-                  Add Supertile Column Right
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => onRemoveSupertile("top")}
-                >
-                  Remove Supertile Row Top
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => onRemoveSupertile("bottom")}
-                >
-                  Remove Supertile Row Bottom
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => onRemoveSupertile("left")}
-                >
-                  Remove Supertile Column Left
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => onRemoveSupertile("right")}
-                >
-                  Remove Supertile Column Right
-                </Button>
-              </div>
               <div className="flex flex-col gap-1 text-sm">
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   <p>Supertiles Wide: {supertileCounts.width}</p>

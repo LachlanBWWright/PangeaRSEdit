@@ -17,7 +17,14 @@ public sealed class MultiplayerLobbyCleanupHostedService(
         {
             using var scope = scopeFactory.CreateScope();
             var lobbyService = scope.ServiceProvider.GetRequiredService<IMultiplayerLobbyService>();
-            await lobbyService.CleanupExpiredAndStaleAsync(stoppingToken);
+            try
+            {
+                await lobbyService.CleanupExpiredAndStaleAsync(stoppingToken);
+            }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+            {
+                logger.LogError(exception, "Multiplayer lobby cleanup failed; retrying after the cleanup interval");
+            }
 
             try
             {

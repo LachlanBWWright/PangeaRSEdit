@@ -86,26 +86,10 @@ function configureScriptingExports(
     return;
   }
 
-  const enabledResult = Result.fromThrowable(
-    () => ccall("_PangeaScript_IsEnabled", "number", [], []),
-    (error) => mapErr(error),
-  )();
-  if (enabledResult.isErr()) {
-    onError(enabledResult.error);
-    return;
-  }
-
-  if (!enabledResult.value) {
-    onError(
-      "Preview scripting runtime is not enabled for the injected script bundle",
-    );
-    return;
-  }
-
   const startupResult = Result.fromThrowable(
     () =>
       ccall(
-        "_PangeaScript_SetStartupScript",
+        "PangeaScript_SetStartupScript",
         null,
         ["string"],
         [scriptBundlePath],
@@ -114,15 +98,6 @@ function configureScriptingExports(
   )();
   if (startupResult.isErr()) {
     onError(startupResult.error);
-    return;
-  }
-
-  const reloadResult = Result.fromThrowable(
-    () => ccall("_PangeaScript_Reload", null, [], []),
-    (error) => mapErr(error),
-  )();
-  if (reloadResult.isErr()) {
-    onError(reloadResult.error);
   }
 }
 

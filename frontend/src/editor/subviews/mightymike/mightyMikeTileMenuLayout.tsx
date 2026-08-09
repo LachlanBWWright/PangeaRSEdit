@@ -1,7 +1,6 @@
 import { MightyMikeTileOperationsPanel } from "@/editor/subviews/mightymike/MightyMikeTileOperationsPanel";
 import { MightyMikeTileInspectorPanel } from "@/editor/subviews/mightymike/MightyMikeTileInspectorPanel";
 import { MightyMikePalettePanel } from "@/editor/subviews/mightymike/MightyMikePalettePanel";
-import { MightyMikeResizeMapControls } from "@/editor/subviews/mightymike/MightyMikeResizeMapControls";
 import type { ReactNode } from "react";
 
 interface TileMenuShellProps {
@@ -22,5 +21,4 @@ export const MightyMikePanels = {
   Operations: MightyMikeTileOperationsPanel,
   Inspector: MightyMikeTileInspectorPanel,
   Palette: MightyMikePalettePanel,
-  Resize: MightyMikeResizeMapControls,
 };

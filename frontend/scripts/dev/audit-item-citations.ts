@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
-import { access, readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { ResultAsync } from "neverthrow";
 import { Game } from "../../src/data/globals/globals";
 import { bugdom2ItemTypeParams } from "../../src/data/items/bugdom2ItemType";
 import { bugdomItemTypeParams } from "../../src/data/items/bugdomItemType";
@@ -20,6 +22,7 @@ import { nanosaurItemTypeParams } from "../../src/data/items/nanosaurItemType";
 import { TerrainItemTypeParams } from "../../src/data/items/ottoItemType";
 import {
   GAME_REPOSITORIES,
+  getGitHubPermalink,
   type GameRepository,
 } from "../../src/validation/gameRepositories";
 
@@ -42,6 +45,22 @@ interface AuditFailure {
   readonly label: string;
   readonly itemType: number;
   readonly detail: string;
+}
+
+interface SourceFunction {
+  readonly fileName: string;
+  readonly name: string;
+  readonly startLine: number;
+  readonly endLine: number;
+  readonly paramIndexes: readonly number[];
+  readonly calledFunctions: readonly string[];
+}
+
+const PARAM_NAMES = ["p0", "p1", "p2", "p3"] as const;
+const C_CONTROL_KEYWORDS = new Set(["if", "for", "while", "switch", "sizeof"]);
+
+function getParamName(paramIndex: number): (typeof PARAM_NAMES)[number] | null {
+  return PARAM_NAMES[paramIndex] ?? null;
 }
 
 const PARAM_DATASETS: readonly ParamAuditDataset[] = [
@@ -107,12 +126,15 @@ function resolveCitationPath(
     ? trimmedFileName.slice(sourcePrefix.length)
     : trimmedFileName;
 
-  return path.join(
+  const sourceDirectory = path.join(
     SOURCE_ROOT,
     normalizeRepoFolderName(repository),
     repository.sourcePath,
-    relativeFileName,
   );
+  const resolvedPath = path.resolve(sourceDirectory, relativeFileName);
+  return resolvedPath.startsWith(`${sourceDirectory}${path.sep}`)
+    ? resolvedPath
+    : null;
 }
 
 async function readCachedFile(filePath: string): Promise<string | null> {
@@ -121,15 +143,17 @@ async function readCachedFile(filePath: string): Promise<string | null> {
     return cached;
   }
 
-  try {
-    await access(filePath);
-    const fileText = await readFile(filePath, "utf8");
+  const fileResult = await ResultAsync.fromPromise(
+    readFile(filePath, "utf8"),
+    () => null,
+  );
+  return fileResult.match((fileText) => {
     fileCache.set(filePath, fileText);
     return fileText;
-  } catch {
+  }, () => {
     fileCache.set(filePath, "");
     return null;
-  }
+  });
 }
 
 function collectParamCitations(param: ParamDescription): readonly Citation[] {
@@ -147,25 +171,26 @@ function collectParamCitations(param: ParamDescription): readonly Citation[] {
   return [param.defaultCitation, ...(param.additionalCitations ?? [])];
 }
 
-function citationMatchesSource(citation: Citation, fileText: string): boolean {
-  const snippet = normalizeCitationSnippet(citation.code);
-  if (snippet.length === 0) {
-    return true;
-  }
-
-  return normalizeCitationSnippet(fileText).includes(snippet);
-}
-
-function citationMentionsParamNearLine(
+export function citationMatchesSourceLine(
   citation: Citation,
   fileText: string,
   paramIndex: number,
 ): boolean {
+  const snippet = normalizeCitationSnippet(citation.code);
+  if (snippet.length === 0 || citation.lineNumber < 1) {
+    return false;
+  }
+
   const lines = fileText.split(/\r?\n/);
-  const startIndex = Math.max(0, citation.lineNumber - 3);
-  const endIndex = Math.min(lines.length, citation.lineNumber + 2);
-  const windowText = lines.slice(startIndex, endIndex).join("\n");
-  return windowText.includes(`parm[${String(paramIndex)}]`);
+  const codeLineCount = citation.code.split(/\r?\n/).length;
+  const endLine = citation.endLineNumber ?? citation.lineNumber + codeLineCount - 1;
+  if (endLine > lines.length || endLine < citation.lineNumber) {
+    return false;
+  }
+
+  const citedText = lines.slice(citation.lineNumber - 1, endLine).join("\n");
+  const paramPattern = new RegExp(`parm\\s*\\[\\s*${String(paramIndex)}\\s*\\]`);
+  return paramPattern.test(citedText);
 }
 
 async function auditParamDataset(
@@ -203,6 +228,19 @@ async function auditParamDataset(
       }
 
       for (const citation of citations) {
+        const expectedUrl = getGitHubPermalink(
+          dataset.gameKey,
+          citation.fileName,
+          citation.lineNumber,
+        );
+        if (expectedUrl === null || citation.url !== expectedUrl) {
+          failures.push({
+            category: "param",
+            label: dataset.label,
+            itemType,
+            detail: `${paramName} citation "${citation.label}" does not link to the relevant game and source line.`,
+          });
+        }
         const citationPath = resolveCitationPath(
           dataset.gameKey,
           citation.fileName,
@@ -229,12 +267,11 @@ async function auditParamDataset(
         }
 
         const paramIndex = Number.parseInt(paramName.slice(1), 10);
-        const matchesSource = citationMatchesSource(citation, fileText);
-        const matchesParamWindow = Number.isNaN(paramIndex)
+        const matchesSource = Number.isNaN(paramIndex)
           ? false
-          : citationMentionsParamNearLine(citation, fileText, paramIndex);
+          : citationMatchesSourceLine(citation, fileText, paramIndex);
 
-        if (!matchesSource && !matchesParamWindow) {
+        if (!matchesSource) {
           failures.push({
             category: "param",
             label: dataset.label,
@@ -246,6 +283,209 @@ async function auditParamDataset(
     }
   }
 
+  return failures;
+}
+
+function findClosingBrace(fileText: string, openingBrace: number): number | null {
+  let depth = 0;
+  for (let index = openingBrace; index < fileText.length; index += 1) {
+    const character = fileText[index];
+    if (character === "{") depth += 1;
+    if (character === "}") depth -= 1;
+    if (depth === 0) return index;
+  }
+  return null;
+}
+
+function lineNumberAt(fileText: string, offset: number): number {
+  return fileText.slice(0, offset).split("\n").length;
+}
+
+function maskCComments(fileText: string): string {
+  return fileText.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (comment) =>
+    comment.replace(/[^\n]/g, " "),
+  );
+}
+
+function sourceFunctionKey(sourceFunction: SourceFunction): string {
+  return `${sourceFunction.fileName}\0${sourceFunction.name}`;
+}
+
+export function extractTerrainItemFunctions(
+  fileName: string,
+  fileText: string,
+): readonly SourceFunction[] {
+  const functions: SourceFunction[] = [];
+  const searchableText = maskCComments(fileText);
+  const signaturePattern = /\b([A-Za-z_]\w*)\s*\([^;{}]*(?:TerrainItemEntryType|ObjectEntryType)\s*\*\s*itemPtr[^;{}]*\)\s*\{/g;
+  for (const match of searchableText.matchAll(signaturePattern)) {
+    if (match.index === undefined) continue;
+    const name = match[1];
+    if (!name) continue;
+    const openingBrace = searchableText.indexOf("{", match.index);
+    const closingBrace = findClosingBrace(searchableText, openingBrace);
+    if (closingBrace === null) continue;
+    const body = searchableText.slice(openingBrace, closingBrace + 1);
+    const paramIndexes = new Set<number>();
+    for (const paramMatch of body.matchAll(/itemPtr\s*->\s*parm\s*\[\s*([0-3])\s*\]/g)) {
+      const rawIndex = paramMatch[1];
+      if (rawIndex) paramIndexes.add(Number.parseInt(rawIndex, 10));
+    }
+    const calledFunctions = new Set<string>();
+    for (const callMatch of body.matchAll(/\b([A-Za-z_]\w*)\s*\([^;{}]*\bitemPtr\b[^;{}]*\)/g)) {
+      const calledFunction = callMatch[1];
+      if (
+        calledFunction
+        && calledFunction !== name
+        && !C_CONTROL_KEYWORDS.has(calledFunction)
+      ) {
+        calledFunctions.add(calledFunction);
+      }
+    }
+    if (paramIndexes.size === 0 && calledFunctions.size === 0) continue;
+    functions.push({
+      fileName,
+      name,
+      startLine: lineNumberAt(fileText, match.index),
+      endLine: lineNumberAt(fileText, closingBrace),
+      paramIndexes: [...paramIndexes],
+      calledFunctions: [...calledFunctions],
+    });
+  }
+  return functions;
+}
+
+export function extractTerrainDispatch(
+  fileText: string,
+  tableName = "gTerrainItemAddRoutines",
+): ReadonlyMap<string, readonly number[]> {
+  const dispatch = new Map<string, number[]>();
+  const tableStart = fileText.indexOf(tableName);
+  if (tableStart < 0) return dispatch;
+  const openingBrace = fileText.indexOf("{", tableStart);
+  const closingBrace = findClosingBrace(fileText, openingBrace);
+  if (openingBrace < 0 || closingBrace === null) return dispatch;
+  const entries = fileText.slice(openingBrace + 1, closingBrace).split("\n");
+  let itemType = 0;
+  for (const entry of entries) {
+    const routine = entry.match(/^\s*([A-Za-z_]\w*)\s*,/)?.[1];
+    if (!routine) continue;
+    const itemTypes = dispatch.get(routine) ?? [];
+    itemTypes.push(itemType);
+    dispatch.set(routine, itemTypes);
+    itemType += 1;
+  }
+  return dispatch;
+}
+
+async function listCFiles(directory: string): Promise<readonly string[]> {
+  const entriesResult = await ResultAsync.fromPromise(
+    readdir(directory, { withFileTypes: true }),
+    () => null,
+  );
+  if (entriesResult.isErr()) return [];
+  const files: string[] = [];
+  for (const entry of entriesResult.value) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...(await listCFiles(entryPath)));
+    if (entry.isFile() && entry.name.endsWith(".c")) files.push(entryPath);
+  }
+  return files;
+}
+
+function hasCitationInFunction(
+  param: ParamDescription,
+  sourceFunction: SourceFunction,
+): boolean {
+  return collectParamCitations(param).some((citation) => {
+    const normalizedCitationFile = citation.fileName.replace(/^.*?(?:src|Source)\//, "");
+    const normalizedSourceFile = sourceFunction.fileName.replace(/^.*?(?:src|Source)\//, "");
+    return normalizedCitationFile === normalizedSourceFile
+      && citation.lineNumber >= sourceFunction.startLine
+      && citation.lineNumber <= sourceFunction.endLine;
+  });
+}
+
+async function auditSourceCoverage(dataset: ParamAuditDataset): Promise<AuditFailure[]> {
+  const repository = GAME_REPOSITORIES[dataset.gameKey];
+  if (!repository) {
+    return [{ category: "param", label: dataset.label, itemType: -1, detail: "Game repository metadata is missing." }];
+  }
+  const sourceDirectory = path.join(
+    SOURCE_ROOT,
+    normalizeRepoFolderName(repository),
+    repository.sourcePath,
+  );
+  const isMightyMike = dataset.gameKey === "mightymike";
+  const terrainFile = isMightyMike
+    ? path.join(sourceDirectory, "Playfield", "Playfield.c")
+    : path.join(sourceDirectory, "Terrain", "Terrain2.c");
+  const terrainText = await readCachedFile(terrainFile);
+  if (terrainText === null) {
+    return [{ category: "param", label: dataset.label, itemType: -1, detail: "Terrain dispatch source is missing." }];
+  }
+  const dispatch = extractTerrainDispatch(
+    terrainText,
+    isMightyMike ? "gItemAddPtrs" : "gTerrainItemAddRoutines",
+  );
+  const failures: AuditFailure[] = [];
+  const sourceFunctions: SourceFunction[] = [];
+  for (const filePath of await listCFiles(sourceDirectory)) {
+    const fileText = await readCachedFile(filePath);
+    if (fileText === null) continue;
+    const relativeFile = path.relative(sourceDirectory, filePath);
+    sourceFunctions.push(...extractTerrainItemFunctions(relativeFile, fileText));
+  }
+  const functionsByName = new Map<string, SourceFunction[]>();
+  for (const sourceFunction of sourceFunctions) {
+    const namedFunctions = functionsByName.get(sourceFunction.name) ?? [];
+    namedFunctions.push(sourceFunction);
+    functionsByName.set(sourceFunction.name, namedFunctions);
+  }
+  for (const [routineName, itemTypes] of dispatch) {
+    const pending = sourceFunctions.filter(
+      (sourceFunction) => sourceFunction.name === routineName,
+    );
+    const visited = new Set<string>();
+    while (pending.length > 0) {
+      const sourceFunction = pending.pop();
+      if (!sourceFunction) continue;
+      const functionKey = sourceFunctionKey(sourceFunction);
+      if (visited.has(functionKey)) continue;
+      visited.add(functionKey);
+      for (const calledFunction of sourceFunction.calledFunctions) {
+        const localMatches = functionsByName.get(calledFunction) ?? [];
+        pending.push(
+          ...localMatches.filter((candidate) =>
+            candidate.fileName === sourceFunction.fileName,
+          ),
+        );
+      }
+      for (const itemType of itemTypes) {
+        const params = dataset.params[itemType];
+        for (const paramIndex of sourceFunction.paramIndexes) {
+          const paramName = getParamName(paramIndex);
+          if (paramName === null) continue;
+          const param = params?.[paramName];
+          if (!param || param === "Unused" || param === "Unknown") {
+            failures.push({
+              category: "param",
+              label: dataset.label,
+              itemType,
+              detail: `${paramName} is read by ${sourceFunction.name} in ${sourceFunction.fileName}:${sourceFunction.startLine} but is not documented.`,
+            });
+          } else if (!hasCitationInFunction(param, sourceFunction)) {
+            failures.push({
+              category: "param",
+              label: dataset.label,
+              itemType,
+              detail: `${paramName} is read by ${sourceFunction.name} in ${sourceFunction.fileName}:${sourceFunction.startLine}-${sourceFunction.endLine} but has no citation in that routine.`,
+            });
+          }
+        }
+      }
+    }
+  }
   return failures;
 }
 
@@ -293,11 +533,12 @@ async function auditModelDataset(
   return failures;
 }
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   const failures: AuditFailure[] = [];
 
   for (const dataset of PARAM_DATASETS) {
     failures.push(...(await auditParamDataset(dataset)));
+    failures.push(...(await auditSourceCoverage(dataset)));
   }
 
   for (const dataset of MODEL_DATASETS) {
@@ -318,4 +559,7 @@ async function run(): Promise<void> {
   process.exitCode = 1;
 }
 
-void run();
+const entryPoint = process.argv[1];
+if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
+  void run();
+}

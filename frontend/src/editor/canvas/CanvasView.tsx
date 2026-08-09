@@ -1,5 +1,6 @@
 import { SelectedFence } from "@/data/fences/fenceAtoms";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
+import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { Globals } from "@/data/globals/globals";
@@ -68,6 +69,7 @@ export function KonvaView({
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const customObjectPlacement = useCustomObjectPlacement();
   const globals = useAtomValue(Globals);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -111,16 +113,25 @@ export function KonvaView({
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (clickToAddItem === undefined) return;
       const position = getPointerTilePosition(e);
       if (!position) return;
+
+      if (customObjectPlacement.objectId !== null) {
+        customObjectPlacement.placeAt(
+          position.x,
+          headerData.Hedr[1000].obj.minY ?? 0,
+          position.z,
+        );
+        return;
+      }
+      if (clickToAddItem === undefined) return;
 
       // Updater<T | null> can be safely cast to Updater<T> when component only renders when data is non-null
       (setItemData as Updater<ItemData>)((itemData) => { // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
         addPlacedItem(itemData, position.x, position.z, clickToAddItem);
       });
     },
-    [clickToAddItem, setItemData],
+    [clickToAddItem, customObjectPlacement, headerData, setItemData],
   );
 
   const handleStageDblClick = useCallback(() => {

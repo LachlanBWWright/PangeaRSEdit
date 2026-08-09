@@ -155,6 +155,8 @@ jobs:
             Cors__AllowedOrigins__0=${{ vars.PRODUCTION_FRONTEND_ORIGIN }}
             Multiplayer__StunUrl=${{ vars.MULTIPLAYER_STUN_URL }}
             Multiplayer__TurnUrl=${{ vars.MULTIPLAYER_TURN_URL }}
+            Multiplayer__Topology=single-instance
+            Multiplayer__RequiredContentHash=${{ github.sha }}
           secrets: |-
             ConnectionStrings__Default=${{ vars.GCP_DATABASE_CONNECTION_STRING_SECRET }}:latest
             Multiplayer__TurnSharedSecret=${{ vars.GCP_TURN_SHARED_SECRET }}:latest

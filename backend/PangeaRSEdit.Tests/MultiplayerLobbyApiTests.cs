@@ -87,6 +87,38 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     }
 
     [Fact]
+    public async Task JoinLobby_ReusesVacatedPlayerIndex()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, _) = await CreateLobbyAsync(hostClient, maxPlayers: 3);
+
+        var firstGuestClient = _factory.CreateClient();
+        firstGuestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-vacating");
+        var firstJoinResponse = await firstGuestClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/join",
+            new { displayName = "First guest" });
+        Assert.Equal(HttpStatusCode.OK, firstJoinResponse.StatusCode);
+
+        var leaveResponse = await firstGuestClient.PostAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/leave",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, leaveResponse.StatusCode);
+
+        var replacementClient = _factory.CreateClient();
+        replacementClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-replacement");
+        var replacementResponse = await replacementClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/join",
+            new { displayName = "Replacement" });
+        Assert.Equal(HttpStatusCode.OK, replacementResponse.StatusCode);
+
+        using var document = JsonDocument.Parse(await replacementResponse.Content.ReadAsStringAsync());
+        var replacement = document.RootElement.GetProperty("players")
+            .EnumerateArray()
+            .Single(player => player.GetProperty("participantId").GetString() == "guest-replacement");
+        Assert.Equal(1, replacement.GetProperty("playerIndex").GetInt32());
+    }
+
+    [Fact]
     public async Task LobbyPreview_ReturnsJoinMetadataWithoutJoining()
     {
         var hostClient = _factory.CreateClient();
@@ -475,7 +507,7 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     }
 
     [Fact]
-    public async Task ReportEndpoints_PersistEventAndEndLobby()
+    public async Task DesyncReport_PersistsTelemetryWithoutEndingLobby()
     {
         var hostClient = _factory.CreateClient();
         var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
@@ -488,7 +520,7 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
         Assert.Equal(HttpStatusCode.OK, desyncResponse.StatusCode);
 
         using var responseDocument = JsonDocument.Parse(await desyncResponse.Content.ReadAsStringAsync());
-        Assert.Equal("ended", responseDocument.RootElement.GetProperty("state").GetString());
+        Assert.Equal("open", responseDocument.RootElement.GetProperty("state").GetString());
 
         using (var scope = _factory.Services.CreateScope())
         {
@@ -498,8 +530,8 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
             Assert.Equal("desync-reported", lobby!.LastReportType);
             Assert.Equal("hash mismatch frame 120", lobby.LastReportDetail);
             Assert.Equal(hostParticipantId, lobby.LastReportByParticipantId);
-            Assert.Equal("ended", lobby.State);
-            Assert.NotNull(lobby.MatchEndedAt);
+            Assert.Equal("open", lobby.State);
+            Assert.Null(lobby.MatchEndedAt);
         }
     }
 
@@ -528,6 +560,29 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
         var matchConfig = startDocument.RootElement.GetProperty("matchConfig");
         var matchId = matchConfig.GetProperty("matchId").GetGuid();
         var seed = matchConfig.GetProperty("seed").GetInt32();
+
+        var invalidSeedResponse = await hostReadyClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/report/match-result",
+            new
+            {
+                lobbyId,
+                matchId,
+                gameId = "cromagrally",
+                mode = "multiplayerRace",
+                trackOrLevel = "ice-ramp",
+                seed = seed + 1,
+                endedAt = DateTimeOffset.UtcNow,
+                endReason = "track-completed",
+                winnerPlayerIndex = 0,
+                winningTeam = "none",
+                placements = new[] { 0, 1 },
+                players = new object[]
+                {
+                    new { participantId = hostParticipantId, playerIndex = 0, displayName = "Host", team = "0", placement = 0, finished = true, eliminated = false, score = 1, timeMs = 120000, lapsCompleted = 3, checkpoint = 0 },
+                    new { participantId = "guest-result", playerIndex = 1, displayName = "Guest", team = "1", placement = 1, finished = true, eliminated = false, score = 0, timeMs = 122000, lapsCompleted = 3, checkpoint = 0 },
+                }
+            });
+        Assert.Equal(HttpStatusCode.BadRequest, invalidSeedResponse.StatusCode);
 
         var resultResponse = await hostReadyClient.PostAsJsonAsync(
             $"/api/multiplayer/lobbies/{lobbyId}/report/match-result",
@@ -608,6 +663,15 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
         var firstMatchId = firstStartDocument.RootElement.GetProperty("matchConfig").GetProperty("matchId").GetGuid();
         var firstSeed = firstStartDocument.RootElement.GetProperty("matchConfig").GetProperty("seed").GetInt32();
 
+        var guestEndResponse = await guestClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/report/match-ended",
+            new { detail = "guest attempted to end match" });
+        Assert.Equal(HttpStatusCode.OK, guestEndResponse.StatusCode);
+        using (var guestEndDocument = JsonDocument.Parse(await guestEndResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("started", guestEndDocument.RootElement.GetProperty("state").GetString());
+        }
+
         var markEndedResponse = await hostReadyClient.PostAsJsonAsync(
             $"/api/multiplayer/lobbies/{lobbyId}/report/match-ended",
             new { detail = "race finished" });
@@ -636,13 +700,42 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     public async Task IceServersEndpoint_ReturnsConfiguredOrDefaultStun()
     {
         var client = _factory.CreateClient();
-        var response = await client.GetAsync("/api/multiplayer/ice-servers");
+        var (lobbyId, _) = await CreateLobbyAsync(client);
+        var token = client.DefaultRequestHeaders.Contains("X-Participant-Token")
+            ? client.DefaultRequestHeaders.GetValues("X-Participant-Token").Single()
+            : null;
+        if (token is null)
+        {
+            var createResponse = await client.PostAsJsonAsync("/api/multiplayer/lobbies", new
+            {
+                gameId = "cromagrally",
+                mode = "multiplayerRace",
+                trackOrLevel = "ice-ramp",
+                maxPlayers = 2,
+                displayName = "ICE host"
+            });
+            token = createResponse.Headers.GetValues("X-Participant-Token").Single();
+            using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+            lobbyId = created.RootElement.GetProperty("id").GetGuid();
+        }
+        client.DefaultRequestHeaders.Add("X-Participant-Token", token);
+        var response = await client.GetAsync($"/api/multiplayer/ice-servers?lobbyId={lobbyId}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var servers = document.RootElement.GetProperty("iceServers").EnumerateArray().ToArray();
         Assert.NotEmpty(servers);
         var urls = servers[0].GetProperty("urls").EnumerateArray().Select(x => x.GetString()).ToArray();
         Assert.Contains("stun:stun.l.google.com:19302", urls);
+    }
+
+    [Fact]
+    public async Task IceServersEndpoint_RejectsUnsignedCallers()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync(
+            $"/api/multiplayer/ice-servers?lobbyId={Guid.CreateVersion7()}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -685,6 +778,60 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
             Assert.Equal("expired", lobby.State);
             var players = await db.MultiplayerLobbyPlayers.Where(x => x.LobbyId == lobbyId).ToListAsync();
             Assert.Empty(players);
+        }
+    }
+
+    [Fact]
+    public async Task CleanupService_EndsStartedMatchInsteadOfMigratingStaleHost()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, hostParticipantId) = await CreateLobbyAsync(hostClient, maxPlayers: 2);
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-host-timeout");
+        await guestClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/join",
+            new { displayName = "Guest" });
+
+        var hostReadyClient = _factory.CreateClient();
+        hostReadyClient.DefaultRequestHeaders.Add("X-Participant-Id", hostParticipantId);
+        await hostReadyClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/ready",
+            new { isReady = true });
+        await guestClient.PostAsJsonAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/ready",
+            new { isReady = true });
+        var startResponse = await hostReadyClient.PostAsync(
+            $"/api/multiplayer/lobbies/{lobbyId}/start",
+            null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PangeaRSEditDbContext>();
+            var players = await db.MultiplayerLobbyPlayers
+                .Where(player => player.LobbyId == lobbyId)
+                .ToListAsync();
+            var host = players.Single(player => player.ParticipantId == hostParticipantId);
+            var guest = players.Single(player => player.ParticipantId == "guest-host-timeout");
+            host.LastSeenAt = DateTimeOffset.UtcNow.AddMinutes(-10);
+            guest.LastSeenAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<IMultiplayerLobbyService>();
+            await service.CleanupExpiredAndStaleAsync(CancellationToken.None);
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PangeaRSEditDbContext>();
+            var lobby = await db.MultiplayerLobbies.SingleAsync(candidate => candidate.Id == lobbyId);
+            Assert.Equal("ended", lobby.State);
+            Assert.Equal(hostParticipantId, lobby.HostParticipantId);
+            Assert.Equal("host-timeout", lobby.LastReportType);
+            Assert.NotNull(lobby.MatchEndedAt);
         }
     }
 

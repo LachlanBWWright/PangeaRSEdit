@@ -40,6 +40,8 @@ import {
   updateSelectedItemType,
 } from "@/editor/subviews/items/itemMenuState";
 import { TerrainItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -250,24 +252,26 @@ export const ItemMenu = memo(function ItemMenu({
               ];
             })}
           </div>
-          <TerrainItemScriptSection
-            selectionLabel={getItemName(globals, selectedItemData.type)}
-            signature={{
-              itemType: selectedItemData.type,
-              position: {
-                x: selectedItemData.x,
-                y: headerData?.Hedr[1000].obj.minY ?? 0,
-                z: selectedItemData.z,
-              },
-              flags: 0,
-              params: [
-                selectedItemData.p0,
-                selectedItemData.p1,
-                selectedItemData.p2,
-                selectedItemData.p3,
-              ],
-            }}
-          />
+          {ENABLE_SCRIPTS && (
+            <TerrainItemScriptSection
+              selectionLabel={getItemName(globals, selectedItemData.type)}
+              signature={{
+                itemType: selectedItemData.type,
+                position: {
+                  x: selectedItemData.x,
+                  y: headerData?.Hedr[1000].obj.minY ?? 0,
+                  z: selectedItemData.z,
+                },
+                flags: 0,
+                params: [
+                  selectedItemData.p0,
+                  selectedItemData.p1,
+                  selectedItemData.p2,
+                  selectedItemData.p3,
+                ],
+              }}
+            />
+          )}
           <Button
             size="sm"
             variant="destructive"
@@ -337,15 +341,18 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     );
 
   return (
-    <EmptyDataPrompt
-      title={hasItems ? "No Item Selected" : "No Items"}
-      description={
-        hasItems
-          ? "Select an item on the canvas or add another one."
-          : "This level doesn't have any items yet. Add your first item to get started."
-      }
-      buttonText={hasItems ? "Add More Items" : "Add First Item"}
-      onInitialize={() => setClickToAddItem(0)}
-    />
+    <>
+      <EmptyDataPrompt
+        title={hasItems ? "No Item Selected" : "No Items"}
+        description={
+          hasItems
+            ? "Select an item on the canvas or add another one."
+            : "This level doesn't have any items yet. Add your first item to get started."
+        }
+        buttonText={hasItems ? "Add More Items" : "Add First Item"}
+        onInitialize={() => setClickToAddItem(0)}
+      />
+      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
+    </>
   );
 }

@@ -56,9 +56,12 @@ public sealed record MultiplayerLobbyReportBody(
 );
 
 public sealed record MultiplayerMatchResultPlayerBody(
+    [Required, StringLength(128, MinimumLength = 1)]
     string ParticipantId,
     int PlayerIndex,
+    [Required, StringLength(48, MinimumLength = 1)]
     string DisplayName,
+    [StringLength(64)]
     string Team,
     int Placement,
     bool Finished,
@@ -72,13 +75,18 @@ public sealed record MultiplayerMatchResultPlayerBody(
 public sealed record MultiplayerMatchResultBody(
     Guid LobbyId,
     Guid MatchId,
+    [Required, StringLength(64, MinimumLength = 1)]
     string GameId,
+    [Required, StringLength(64, MinimumLength = 1)]
     string Mode,
+    [Required, StringLength(256, MinimumLength = 1)]
     string TrackOrLevel,
     int Seed,
     DateTimeOffset EndedAt,
+    [Required, StringLength(64, MinimumLength = 1)]
     string EndReason,
     int WinnerPlayerIndex,
+    [StringLength(64)]
     string WinningTeam,
     IReadOnlyList<int> Placements,
     IReadOnlyList<MultiplayerMatchResultPlayerBody> Players
@@ -125,6 +133,7 @@ public sealed record MultiplayerMatchConfigResponse(
     int MaxPlayers,
     int RequiredProtocolVersion,
     string RequiredRuntimeVersion,
+    string RequiredContentHash,
     string HostParticipantId,
     IReadOnlyList<MultiplayerMatchConfigPlayerResponse> Players
 );

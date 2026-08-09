@@ -15,60 +15,143 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScriptAssignmentCard, StatusChip } from "./ScriptSharedComponents";
+import { StatusChip } from "./ScriptSharedComponents";
 import type {
   ScriptBehaviorDefinition,
   ScriptCustomObjectDefinition,
-  ScriptCustomObjectPlacement,
 } from "./scriptWorkspaceState";
 
 interface ScriptCustomObjectsPanelProps {
+  gameId: string;
   customObjectBehaviorId: string;
   onCustomObjectBehaviorIdChange: (value: string) => void;
   customObjectBehaviors: readonly ScriptBehaviorDefinition[];
   customObjectLabel: string;
   onCustomObjectLabelChange: (value: string) => void;
   generatedCustomObjectId: string;
-  placementObjectId: string;
-  onPlacementObjectIdChange: (value: string) => void;
   customObjectOptions: readonly ScriptCustomObjectDefinition[];
-  customPlacements: readonly ScriptCustomObjectPlacement[];
-  selectedCustomPlacement: ScriptCustomObjectPlacement | null;
   onCreateObject: () => void;
-  onPlaceObject: () => void;
-  onRemovePlacement: (placementId: string) => void;
-  onDeleteSelectedPlacement: () => void;
-  onSelectedPlacementPositionChange: (
-    axis: "x" | "y" | "z",
-    value: string,
+  onUpdateObject: (definition: ScriptCustomObjectDefinition) => void;
+  onUploadAsset: (
+    definition: ScriptCustomObjectDefinition,
+    file: File,
+    role: "model" | "skeleton",
   ) => void;
+  selectedTerrainItem: {
+    readonly index: number;
+    readonly type: number;
+    readonly x: number;
+    readonly z: number;
+  } | null;
+  replacementObjectId: string | null;
+  onReplaceSelectedItem: (customObjectId: string) => void;
+  onRestoreSelectedItem: () => void;
+  selectedSplineItem: {
+    readonly splineNum: number;
+    readonly itemIndex: number;
+  } | null;
+  splineReplacementObjectId: string | null;
+  onReplaceSelectedSplineItem: (customObjectId: string) => void;
+  onRestoreSelectedSplineItem: () => void;
+}
+
+function updateVisualKind(
+  definition: ScriptCustomObjectDefinition,
+  kind: string,
+  gameId: string,
+): ScriptCustomObjectDefinition {
+  if (kind === "customDisplayGroup") {
+    return {
+      ...definition,
+      visual: {
+        kind,
+        modelPath:
+          gameId === "MightyMike-Android"
+            ? "Data/Scripts/assets/models/custom.shapes"
+            : "Data/Scripts/assets/models/custom.bg3d",
+        modelObject: 0,
+        scale: 1,
+        slot: 450,
+      },
+    };
+  }
+  if (kind === "nativeSkeleton") {
+    return {
+      ...definition,
+      visual: {
+        kind,
+        skeletonType: 0,
+        initialAnimation: 0,
+        animationSpeed: 1,
+        scale: 1,
+        slot: 450,
+      },
+    };
+  }
+  if (kind === "customSkeleton") {
+    return {
+      ...definition,
+      visual: {
+        kind,
+        modelPath: "Data/Scripts/assets/skeletons/custom.bg3d",
+        skeletonPath: "Data/Scripts/assets/skeletons/custom.skeleton",
+        animations: { idle: 0 },
+        initialAnimation: "idle",
+        animationSpeed: 1,
+        scale: 1,
+        slot: 450,
+      },
+    };
+  }
+  if (kind === "nativeDisplayGroup") {
+    return {
+      ...definition,
+      visual: {
+        kind,
+        group: "global",
+        modelObject: 0,
+        scale: 1,
+        slot: 450,
+      },
+    };
+  }
+  return { ...definition, visual: { kind: "none" } };
+}
+
+function parseFiniteNumber(value: string, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 export function ScriptCustomObjectsPanel({
+  gameId,
   customObjectBehaviorId,
   onCustomObjectBehaviorIdChange,
   customObjectBehaviors,
   customObjectLabel,
   onCustomObjectLabelChange,
   generatedCustomObjectId,
-  placementObjectId,
-  onPlacementObjectIdChange,
   customObjectOptions,
-  customPlacements,
-  selectedCustomPlacement,
   onCreateObject,
-  onPlaceObject,
-  onRemovePlacement,
-  onDeleteSelectedPlacement,
-  onSelectedPlacementPositionChange,
+  onUpdateObject,
+  onUploadAsset,
+  selectedTerrainItem,
+  replacementObjectId,
+  onReplaceSelectedItem,
+  onRestoreSelectedItem,
+  selectedSplineItem,
+  splineReplacementObjectId,
+  onReplaceSelectedSplineItem,
+  onRestoreSelectedSplineItem,
 }: ScriptCustomObjectsPanelProps) {
+  const usesShapeAssets = gameId === "MightyMike-Android";
   return (
     <Card className="border-slate-800 bg-slate-950/70">
       <CardHeader>
         <CardTitle className="text-white">Custom Objects</CardTitle>
         <CardDescription>
-          Create preview-ready scripted object definitions, then place them at
-          the current selection or at the level origin.
+          Create scripted item definitions. Add saved scripted items from the
+          Items menu.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
@@ -115,28 +198,7 @@ export function ScriptCustomObjectsPanel({
             />
           </div>
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="placement-object-id">Saved object</Label>
-          <Select
-            value={placementObjectId}
-            onValueChange={onPlacementObjectIdChange}
-          >
-            <SelectTrigger id="placement-object-id">
-              <SelectValue placeholder="Select a saved scripted object" />
-            </SelectTrigger>
-            <SelectContent>
-              {customObjectOptions.map((objectDefinition) => (
-                <SelectItem
-                  key={objectDefinition.id}
-                  value={objectDefinition.id}
-                >
-                  {objectDefinition.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-wrap gap-2">
+        <div>
           <Button
             onClick={onCreateObject}
             disabled={
@@ -145,13 +207,6 @@ export function ScriptCustomObjectsPanel({
             }
           >
             Save Object
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onPlaceObject}
-            disabled={customObjectOptions.length === 0}
-          >
-            Place Object
           </Button>
         </div>
         {customObjectOptions.map((objectDefinition) => (
@@ -181,80 +236,199 @@ export function ScriptCustomObjectsPanel({
                 }
               />
             </div>
-          </div>
-        ))}
-        {customPlacements.map((placement) => (
-          <ScriptAssignmentCard
-            key={placement.id}
-            title={placement.label}
-            subtitle={`Placement for ${placement.objectId} at (${String(placement.position.x)}, ${String(placement.position.y)}, ${String(placement.position.z)})`}
-            sourceFilePath={placement.objectId}
-            tags={[]}
-            compatibility="preview-ready"
-            onRemove={() => onRemovePlacement(placement.id)}
-          />
-        ))}
-        {selectedCustomPlacement ? (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-medium text-white">
-                  Selected Canvas Placement
-                </p>
-                <p className="text-xs text-slate-300">
-                  {selectedCustomPlacement.label} (
-                  {selectedCustomPlacement.objectId})
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onDeleteSelectedPlacement}
+            <div className="mt-3 grid gap-2 md:grid-cols-4">
+              <Select
+                value={objectDefinition.visual.kind}
+                onValueChange={(kind) =>
+                  onUpdateObject(updateVisualKind(objectDefinition, kind, gameId))
+                }
               >
-                Delete Selected Placement
-              </Button>
+                <SelectTrigger aria-label={`${objectDefinition.label} visual type`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No visual</SelectItem>
+                  <SelectItem value="nativeDisplayGroup">Game model</SelectItem>
+                  <SelectItem value="customDisplayGroup">
+                    {usesShapeAssets ? "Custom shapes" : "Custom BG3D"}
+                  </SelectItem>
+                  {!usesShapeAssets ? (
+                    <SelectItem value="nativeSkeleton">Game skeleton</SelectItem>
+                  ) : null}
+                  {!usesShapeAssets ? (
+                    <SelectItem value="customSkeleton">Custom skeleton</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
+              {objectDefinition.visual.kind === "customDisplayGroup" ? (
+                <Input
+                  type="file"
+                  accept={usesShapeAssets ? ".shapes" : ".bg3d"}
+                  aria-label={`${objectDefinition.label} ${usesShapeAssets ? "shapes" : "BG3D"} model`}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) onUploadAsset(objectDefinition, file, "model");
+                  }}
+                />
+              ) : null}
+              {objectDefinition.visual.kind === "customSkeleton" ? (
+                <>
+                  <Input
+                    type="file"
+                    accept=".bg3d"
+                    aria-label={`${objectDefinition.label} skeleton model`}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) onUploadAsset(objectDefinition, file, "model");
+                    }}
+                  />
+                  <Input
+                    type="file"
+                    accept=".rsrc"
+                    aria-label={`${objectDefinition.label} skeleton resource`}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) onUploadAsset(objectDefinition, file, "skeleton");
+                    }}
+                  />
+                </>
+              ) : null}
+              {objectDefinition.visual.kind === "nativeDisplayGroup" ? (
+                <Select
+                  value={objectDefinition.visual.group}
+                  onValueChange={(group) =>
+                    onUpdateObject({
+                      ...objectDefinition,
+                      visual: {
+                        ...objectDefinition.visual,
+                        group: group === "levelSpecific" ? group : "global",
+                      },
+                    })
+                  }
+                >
+                  <SelectTrigger aria-label={`${objectDefinition.label} model group`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global">Global models</SelectItem>
+                    <SelectItem value="levelSpecific">Level models</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
+              {objectDefinition.visual.kind === "nativeDisplayGroup" ||
+              objectDefinition.visual.kind === "customDisplayGroup" ||
+              objectDefinition.visual.kind === "nativeSkeleton" ? (
+                <>
+                  <Input
+                    type="number"
+                    aria-label={`${objectDefinition.label} model or skeleton index`}
+                    value={
+                      objectDefinition.visual.kind === "nativeSkeleton"
+                        ? objectDefinition.visual.skeletonType
+                        : objectDefinition.visual.modelObject
+                    }
+                    onChange={(event) => {
+                      const value = Math.trunc(parseFiniteNumber(event.target.value, 0));
+                      const visual = objectDefinition.visual;
+                      onUpdateObject({
+                        ...objectDefinition,
+                        visual:
+                          visual.kind === "nativeSkeleton"
+                            ? { ...visual, skeletonType: value }
+                            : { ...visual, modelObject: value },
+                      });
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    step="0.05"
+                    min="0.01"
+                    aria-label={`${objectDefinition.label} scale`}
+                    value={objectDefinition.visual.scale}
+                    onChange={(event) =>
+                      onUpdateObject({
+                        ...objectDefinition,
+                        visual: {
+                          ...objectDefinition.visual,
+                          scale: parseFiniteNumber(event.target.value, 1),
+                        },
+                      })
+                    }
+                  />
+                </>
+              ) : null}
+              <Select
+                value={
+                  objectDefinition.collision.kind === "none"
+                    ? "none"
+                    : objectDefinition.collision.preset
+                }
+                onValueChange={(preset) =>
+                  onUpdateObject({
+                    ...objectDefinition,
+                    collision:
+                      preset === "none"
+                        ? { kind: "none" }
+                        : {
+                            kind: "preset",
+                            preset:
+                              preset === "triggerBox" ||
+                              preset === "pickup" ||
+                              preset === "enemy" ||
+                              preset === "platform"
+                                ? preset
+                                : "solidBox",
+                          },
+                  })
+                }
+              >
+                <SelectTrigger aria-label={`${objectDefinition.label} collision`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No collision</SelectItem>
+                  <SelectItem value="solidBox">Solid box</SelectItem>
+                  <SelectItem value="triggerBox">Trigger box</SelectItem>
+                  <SelectItem value="pickup">Pickup</SelectItem>
+                  <SelectItem value="enemy">Enemy</SelectItem>
+                  <SelectItem value="platform">Platform</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <div className="grid gap-2">
-                <Label htmlFor="selected-placement-x">X</Label>
-                <Input
-                  id="selected-placement-x"
-                  type="number"
-                  value={selectedCustomPlacement.position.x}
-                  onChange={(event) =>
-                    onSelectedPlacementPositionChange("x", event.target.value)
-                  }
-                />
+            {selectedTerrainItem ? (
+              <div className="mt-3 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onReplaceSelectedItem(objectDefinition.id)}
+                >
+                  Replace selected native item
+                </Button>
+                {replacementObjectId === objectDefinition.id ? (
+                  <Button size="sm" variant="outline" onClick={onRestoreSelectedItem}>
+                    Restore native item
+                  </Button>
+                ) : null}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="selected-placement-y">Y</Label>
-                <Input
-                  id="selected-placement-y"
-                  type="number"
-                  value={selectedCustomPlacement.position.y}
-                  onChange={(event) =>
-                    onSelectedPlacementPositionChange("y", event.target.value)
-                  }
-                />
+            ) : null}
+            {selectedSplineItem ? (
+              <div className="mt-3 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onReplaceSelectedSplineItem(objectDefinition.id)}
+                >
+                  Replace selected spline item
+                </Button>
+                {splineReplacementObjectId === objectDefinition.id ? (
+                  <Button size="sm" variant="outline" onClick={onRestoreSelectedSplineItem}>
+                    Restore spline item
+                  </Button>
+                ) : null}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="selected-placement-z">Z</Label>
-                <Input
-                  id="selected-placement-z"
-                  type="number"
-                  value={selectedCustomPlacement.position.z}
-                  onChange={(event) =>
-                    onSelectedPlacementPositionChange("z", event.target.value)
-                  }
-                />
-              </div>
-            </div>
+            ) : null}
           </div>
-        ) : customPlacements.length > 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/60 p-3 text-xs text-slate-400">
-            Select a scripted placement on the canvas to edit or delete it here.
-          </div>
-        ) : null}
+        ))}
       </CardContent>
     </Card>
   );

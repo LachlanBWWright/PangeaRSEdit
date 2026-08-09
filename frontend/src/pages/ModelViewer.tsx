@@ -14,12 +14,12 @@ import {
 } from "@/components/AnimationViewer/rigToolsState";
 import { ModelRigPanel } from "@/components/ModelRigPanel";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Redo2, Undo2, Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
 import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
+import { SidebarSection } from "@/components/model-viewer/SidebarSection";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -182,6 +182,36 @@ export function ModelViewer() {
     useState<ViewerInteractionMode>("navigate");
   const [weightVisualizationMode, setWeightVisualizationMode] =
     useState<WeightVisualizationMode>("none");
+  const handleInteractionModeChange = useCallback(
+    (mode: ViewerInteractionMode) => {
+      setInteractionMode(mode);
+      if (mode === "bone-edit" || mode === "animate") {
+        setShowSkeletonOverlay(true);
+      }
+      if (mode === "paint-weights" && weightVisualizationMode === "none") {
+        setWeightVisualizationMode("heatmap");
+      }
+      if (mode === "paint-weights" && !weightBrushSettings.targetBone) {
+        const targetBone =
+          selectedBoneName ?? skinDataWithScene?.data.boneNames[0] ?? null;
+        if (targetBone) {
+          setWeightBrushSettings((current) => ({
+            ...current,
+            targetBone,
+          }));
+        }
+      }
+      if (mode !== "paint-weights") {
+        setWeightVisualizationMode("none");
+      }
+    },
+    [
+      selectedBoneName,
+      skinDataWithScene,
+      weightBrushSettings.targetBone,
+      weightVisualizationMode,
+    ],
+  );
   const [viewerHistory, setViewerHistory] = useState<{
     past: ViewerHistoryAction[];
     future: ViewerHistoryAction[];
@@ -863,7 +893,6 @@ export function ModelViewer() {
   const handleGizmoModeChange = useCallback(
     (mode: import("@/components/model-viewer/types").GizmoMode) => {
       setGizmoMode(mode);
-      setInteractionMode("bone-edit");
     },
     [],
   );
@@ -873,7 +902,7 @@ export function ModelViewer() {
     setBoneRenameInput(boneName ?? "");
     if (boneName) {
       setInteractionMode((current) =>
-        current === "paint-weights" ? current : "bone-edit",
+        current === "navigate" ? "bone-edit" : current,
       );
       setWeightBrushSettings((current) => ({
         ...current,
@@ -1352,37 +1381,7 @@ export function ModelViewer() {
             className="min-h-0 min-w-0 pr-2"
           >
             <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 space-y-2 overflow-y-auto overflow-x-hidden pb-2">
-                {gltfUrl && (
-                  <Card className="bg-gray-800 border-gray-700 p-2">
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 px-1 text-xs font-medium text-gray-400">
-                        History
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={handleUndoViewerChange}
-                        disabled={viewerHistory.past.length === 0}
-                      >
-                        <Undo2 className="mr-1 h-4 w-4" />
-                        Undo
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={handleRedoViewerChange}
-                        disabled={viewerHistory.future.length === 0}
-                      >
-                        <Redo2 className="mr-1 h-4 w-4" />
-                        Redo
-                      </Button>
-                    </div>
-                  </Card>
-                )}
-
+              <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950/80 px-3 pb-4 pt-2">
                 <ModelUploadPanel
                   gltfUrl={gltfUrl}
                   loading={loading}
@@ -1420,11 +1419,51 @@ export function ModelViewer() {
                     setLogBonePositions={setLogBonePositions}
                     hasSkeleton={hasAnimations || skinData !== null}
                     canLogBonePositions={hasAnimations}
+                    interactionMode={interactionMode}
+                    setInteractionMode={handleInteractionModeChange}
+                    weightVisualizationMode={
+                      interactionMode === "paint-weights"
+                        ? weightVisualizationMode
+                        : "none"
+                    }
+                    setWeightVisualizationMode={setWeightVisualizationMode}
+                    hasSkinWeights={skinData !== null}
                   />
                 )}
 
+                {gltfUrl &&
+                  (interactionMode === "bone-edit" ||
+                    interactionMode === "paint-weights") &&
+                  (interactionMode === "bone-edit"
+                    ? hasAnimations || skinData !== null
+                    : skinData !== null) && (
+                  <SidebarSection
+                    title={
+                      interactionMode === "bone-edit"
+                        ? "Bone Editor"
+                        : "Weight Painting"
+                    }
+                  >
+                    <ModelRigPanel
+                      selectedBoneName={selectedBoneName}
+                      boneRenameInput={boneRenameInput}
+                      boneInfluenceRows={displayedBoneInfluenceRows}
+                      skinData={skinData}
+                      interactionMode={interactionMode}
+                      brushSettings={weightBrushSettings}
+                      onSelectBone={handleBoneSelectionChange}
+                      onBoneRenameInputChange={setBoneRenameInput}
+                      onRenameSelectedBone={handleRenameSelectedBone}
+                      onBrushSettingsChange={handleWeightBrushSettingsChange}
+                      onRepairWeights={handleRepairWeights}
+                    />
+                  </SidebarSection>
+                )}
+
                 {/* Model Hierarchy — visibility toggles + poly counts */}
-                {gltfUrl && modelNodes.length > 0 && (
+                {gltfUrl &&
+                  interactionMode === "navigate" &&
+                  modelNodes.length > 0 && (
                   <ModelHierarchy
                     nodes={modelNodes}
                     clonedScene={scene}
@@ -1435,7 +1474,7 @@ export function ModelViewer() {
                 )}
 
                 {/* Animation Viewer - Show when animations are available */}
-                {gltfUrl && hasAnimations && (
+                {gltfUrl && hasAnimations && interactionMode === "animate" && (
                   <AnimationViewer
                     key={modelSessionId}
                     animations={animations}
@@ -1460,14 +1499,8 @@ export function ModelViewer() {
                 )}
 
                 {/* Texture Manager - Always show this section when model is loaded */}
-                {gltfUrl && (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader className="p-3 pb-2">
-                      <CardTitle className="text-white text-sm">
-                        Texture Management
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
+                {gltfUrl && interactionMode === "navigate" && (
+                  <SidebarSection title="Texture Management">
                       {textures.length > 0 ? (
                         <TextureManager
                           textures={textures}
@@ -1484,39 +1517,9 @@ export function ModelViewer() {
                           No textures found in this model
                         </p>
                       )}
-                    </CardContent>
-                  </Card>
+                  </SidebarSection>
                 )}
 
-                {gltfUrl && skinData && (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader className="p-3 pb-2">
-                      <CardTitle className="text-white text-sm">
-                        Rig & Weight Tools
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      <ModelRigPanel
-                        selectedBoneName={selectedBoneName}
-                        boneRenameInput={boneRenameInput}
-                        boneInfluenceRows={displayedBoneInfluenceRows}
-                        skinData={skinData}
-                        interactionMode={interactionMode}
-                        brushSettings={weightBrushSettings}
-                        visualizationMode={weightVisualizationMode}
-                        onSelectBone={(boneName) =>
-                          handleBoneSelectionChange(boneName)
-                        }
-                        onInteractionModeChange={setInteractionMode}
-                        onBoneRenameInputChange={setBoneRenameInput}
-                        onRenameSelectedBone={handleRenameSelectedBone}
-                        onBrushSettingsChange={handleWeightBrushSettingsChange}
-                        onVisualizationModeChange={setWeightVisualizationMode}
-                        onRepairWeights={handleRepairWeights}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
               </div>
             </div>
           </ResizablePanel>
@@ -1526,7 +1529,33 @@ export function ModelViewer() {
             minSize={35}
             className="min-h-0 pl-2"
           >
-            <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">
+            <div className="relative h-full min-h-0 overflow-hidden rounded-lg bg-gray-800">
+              {gltfUrl && (
+                <div className="absolute left-3 top-3 z-20 flex gap-1 rounded-md border border-gray-600/80 bg-gray-900/80 p-1 shadow-lg backdrop-blur-sm">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-gray-200"
+                    onClick={handleUndoViewerChange}
+                    disabled={viewerHistory.past.length === 0}
+                    aria-label="Undo model change"
+                    title="Undo"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-gray-200"
+                    onClick={handleRedoViewerChange}
+                    disabled={viewerHistory.future.length === 0}
+                    aria-label="Redo model change"
+                    title="Redo"
+                  >
+                    <Redo2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               {/* Main viewport - 3D Scene */}
               {gltfUrl ? (
                 <ErrorBoundary>
@@ -1549,7 +1578,11 @@ export function ModelViewer() {
                     interactionMode={interactionMode}
                     skinData={skinData}
                     weightBrushSettings={weightBrushSettings}
-                    weightVisualizationMode={weightVisualizationMode}
+                    weightVisualizationMode={
+                      interactionMode === "paint-weights"
+                        ? weightVisualizationMode
+                        : "none"
+                    }
                     onWeightBrushStroke={handleWeightBrushStroke}
                     sceneUpdateRevision={sceneUpdateRevision}
                   />

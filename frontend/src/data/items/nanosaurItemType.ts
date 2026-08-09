@@ -58,7 +58,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
       codeSample: {
         code: "gMyStartAim = gMasterItemList[i].parm[0]; // get aim 0..7",
         fileName: "src/Terrain/Terrain2.c",
-        lineNumber: 174,
+        lineNumber: 178,
       },
     },
     p1: "Unknown",
@@ -205,11 +205,11 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
       flags: [
         {
           index: 0,
-          description: "Auto Y positioning (follow terrain height)",
+          description: "Vent has a finite steam limit",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1)",
+            code: "newObj->VentHasLimit = itemPtr->parm[3] & 1;",
             fileName: "src/Items/Items.c",
-            lineNumber: 316,
+            lineNumber: 649,
           },
         },
       ],
@@ -306,14 +306,40 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
     p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Spawn a triceratops inside the bush",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1)",
+            fileName: "src/Items/Items.c",
+            lineNumber: 591,
+          },
+        },
+      ],
+    },
   },
   [ItemType.WaterPatch]: {
     flags: "Unknown",
     p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Position water relative to terrain instead of at the fixed water height",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1)",
+            fileName: "src/Items/Items.c",
+            lineNumber: 316,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Crystal]: {
     flags: "Unknown",

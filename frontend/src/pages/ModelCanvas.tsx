@@ -6,7 +6,7 @@ import { ModelCanvasProps } from "@/components/model-viewer/types";
 import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
-import { Object3D } from "three";
+import { MOUSE, Object3D } from "three";
 import {
   buildModelCanvasCameraConfig,
   findSceneObjectByName,
@@ -168,7 +168,8 @@ export function ModelCanvas(props: ModelCanvasProps) {
             position={modelPosition}
           />
         )}
-        {selectedBoneObject && interactionMode === "bone-edit" && (
+        {selectedBoneObject &&
+          (interactionMode === "bone-edit" || interactionMode === "animate") && (
           <TransformControls
             object={selectedBoneObject}
             mode={gizmoMode}
@@ -186,7 +187,16 @@ export function ModelCanvas(props: ModelCanvasProps) {
           makeDefault
           enablePan={false}
           enableZoom={!isTransforming}
-          enableRotate={interactionMode === "navigate" && !isTransforming}
+          enableRotate={!isTransforming}
+          mouseButtons={
+            interactionMode === "paint-weights"
+              ? {
+                  LEFT: MOUSE.PAN,
+                  MIDDLE: MOUSE.DOLLY,
+                  RIGHT: MOUSE.ROTATE,
+                }
+              : undefined
+          }
           autoRotate={autoRotate}
           autoRotateSpeed={autoRotateSpeed}
         />

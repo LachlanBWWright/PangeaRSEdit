@@ -7,11 +7,9 @@ import type {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import type { GlobalsInterface } from "@/data/globals/globals";
-import {
-  applyResizeToAtomicData,
-  applySupertileResizeToAtomicData,
-} from "@/editor/utils/levelResizeHandlers";
 import type { Updater } from "use-immer";
+import { combineLevelData, splitLevelData } from "@/data/utils/levelDataUtils";
+import { runLevelResizeWorker } from "@/workers/runLevelResizeWorker";
 
 interface BaseResizeArgs {
   readonly headerData: HeaderData;
@@ -66,58 +64,75 @@ function applyResizeResults(
     args.setSplineData(resized.splineData);
   }
   if (resized.terrainData) {
-    args.setTerrainData(resized.terrainData);
+    args.setTerrainData(
+      args.terrainData.tileset
+        ? { ...resized.terrainData, tileset: args.terrainData.tileset }
+        : resized.terrainData,
+    );
   }
 }
 
-export function resizeEditorAtomicTiles(args: TileResizeArgs): void {
-  const result = applyResizeToAtomicData(
-    {
-      headerData: args.headerData,
-      itemData: args.itemData,
-      liquidData: args.liquidData,
-      fenceData: args.fenceData,
-      splineData: args.splineData,
-      terrainData: args.terrainData,
+async function resizeEditorAtomicData(
+  args: BaseResizeArgs,
+  mode: "tiles" | "supertiles",
+  tileCount: number,
+): Promise<void> {
+  const workerTerrainData = args.terrainData.tileset
+    ? {
+        ...args.terrainData,
+        tileset: {
+          ...args.terrainData.tileset,
+          tileImages: undefined,
+          collisionImages: undefined,
+        },
+      }
+    : args.terrainData;
+  const combined = combineLevelData({
+    headerData: args.headerData,
+    itemData: args.itemData,
+    liquidData: args.liquidData,
+    fenceData: args.fenceData,
+    splineData: args.splineData,
+    terrainData: workerTerrainData,
+  });
+  if (combined.isErr()) {
+    console.error("Failed to prepare level resize:", combined.error);
+    return;
+  }
+
+  const result = await runLevelResizeWorker({
+    mode,
+    levelData: combined.value,
+    globals: {
+      TILES_PER_SUPERTILE: args.globals.TILES_PER_SUPERTILE,
+      TILE_INGAME_SIZE: args.globals.TILE_INGAME_SIZE,
+      EMPTY_TILE_IDX: args.globals.EMPTY_TILE_IDX,
     },
-    args.globals,
-    {
+    options: {
       direction: args.direction,
-      tileCount: args.tileCount,
+      tileCount,
       defaultHeight: args.defaultHeight,
     },
-  );
+  });
 
   if (result.isErr()) {
     console.error("Failed to resize level:", result.error);
     return;
   }
 
-  applyResizeResults(args, result.value.data);
+  applyResizeResults(args, splitLevelData(result.value));
 }
 
-export function resizeEditorAtomicSupertiles(args: SupertileResizeArgs): void {
-  const result = applySupertileResizeToAtomicData(
-    {
-      headerData: args.headerData,
-      itemData: args.itemData,
-      liquidData: args.liquidData,
-      fenceData: args.fenceData,
-      splineData: args.splineData,
-      terrainData: args.terrainData,
-    },
-    args.globals,
-    {
-      direction: args.direction,
-      tileCount: args.supertileCount * args.globals.TILES_PER_SUPERTILE,
-      defaultHeight: args.defaultHeight,
-    },
+export function resizeEditorAtomicTiles(args: TileResizeArgs): Promise<void> {
+  return resizeEditorAtomicData(args, "tiles", args.tileCount);
+}
+
+export function resizeEditorAtomicSupertiles(
+  args: SupertileResizeArgs,
+): Promise<void> {
+  return resizeEditorAtomicData(
+    args,
+    "supertiles",
+    args.supertileCount * args.globals.TILES_PER_SUPERTILE,
   );
-
-  if (result.isErr()) {
-    console.error("Failed to resize level:", result.error);
-    return;
-  }
-
-  applyResizeResults(args, result.value.data);
 }

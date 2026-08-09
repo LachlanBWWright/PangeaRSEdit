@@ -18,6 +18,7 @@ const launchPayloadSchema = z.object({
   maxPlayers: z.number(),
   requiredProtocolVersion: z.number(),
   requiredRuntimeVersion: z.string(),
+  requiredContentHash: z.string(),
   hostParticipantId: z.string(),
   players: z.array(
     z.object({
@@ -33,6 +34,17 @@ const launchPayloadSchema = z.object({
   matchIdLow: z.number(),
   matchIdHigh: z.number(),
 });
+
+const SCRIPT_PREVIEW_GAMES = [
+  Game.OTTO_MATIC,
+  Game.BUGDOM,
+  Game.BUGDOM_2,
+  Game.NANOSAUR,
+  Game.NANOSAUR_2,
+  Game.CRO_MAG,
+  Game.BILLY_FRONTIER,
+  Game.MIGHTY_MIKE,
+] as const;
 
 function buildValidMatchConfig(
   gameId: "cromagrally" | "nanosaur2",
@@ -51,6 +63,7 @@ function buildValidMatchConfig(
     maxPlayers: 2,
     requiredProtocolVersion: 1,
     requiredRuntimeVersion: "host-authoritative-v2",
+    requiredContentHash: "development-unpinned",
     hostParticipantId: "host",
     players: [
       {
@@ -183,6 +196,7 @@ describe("game preview runtime loader", () => {
         maxPlayers: 2,
         requiredProtocolVersion: 1,
         requiredRuntimeVersion: "host-authoritative-v2",
+        requiredContentHash: "development-unpinned",
         hostParticipantId: "host",
         players: [
           {
@@ -226,54 +240,46 @@ describe("game preview runtime loader", () => {
     );
   });
 
-  it("configures scripting exports when the preview bundle is injected", () => {
-    const onError = vi.fn();
-    const ccall = vi.fn((ident: string) => {
-      if (ident === "_PangeaScript_IsEnabled") {
-        return 1;
-      }
-      return undefined;
-    });
-    const module = createPreviewModule({
-      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
-      levelNumber: 0,
-      currentLevelInfo: undefined,
-      canvas: document.createElement("canvas"),
-      assetBaseUrl: "https://example.com/",
-      cacheBustToken: "test-token",
-      terrainDataBytes: null,
-      terrainRsrcBytes: null,
-      terrainTextureBytes: null,
-      terrainPaths: null,
-      customFiles: [
-        {
-          path: "Data/Scripts/dist/main.lua",
-          data: new Uint8Array([1, 2, 3]),
-        },
-      ],
-      onStatus: () => undefined,
-      onError,
-      normalLaunch: true,
-    });
+  it.each(SCRIPT_PREVIEW_GAMES)(
+    "configures scripting before game startup for port %s",
+    (game) => {
+      const onError = vi.fn();
+      const ccall = vi.fn();
+      const module = createPreviewModule({
+        config: GAME_PORT_CONFIGS[game],
+        levelNumber: 0,
+        currentLevelInfo: undefined,
+        canvas: document.createElement("canvas"),
+        assetBaseUrl: "https://example.com/",
+        cacheBustToken: "test-token",
+        terrainDataBytes: null,
+        terrainRsrcBytes: null,
+        terrainTextureBytes: null,
+        terrainPaths: null,
+        customFiles: [
+          {
+            path: "Data/Scripts/dist/main.lua",
+            data: new Uint8Array([1, 2, 3]),
+          },
+        ],
+        onStatus: () => undefined,
+        onError,
+        normalLaunch: true,
+      });
 
-    module.ccall = ccall;
-    module.onRuntimeInitialized?.();
+      module.ccall = ccall;
+      module.onRuntimeInitialized?.();
 
-    expect(ccall).toHaveBeenCalledWith(
-      "_PangeaScript_IsEnabled",
-      "number",
-      [],
-      [],
-    );
-    expect(ccall).toHaveBeenCalledWith(
-      "_PangeaScript_SetStartupScript",
-      null,
-      ["string"],
-      ["Data/Scripts/dist/main.lua"],
-    );
-    expect(ccall).toHaveBeenCalledWith("_PangeaScript_Reload", null, [], []);
-    expect(onError).not.toHaveBeenCalled();
-  });
+      expect(ccall).toHaveBeenCalledWith(
+        "PangeaScript_SetStartupScript",
+        null,
+        ["string"],
+        ["Data/Scripts/dist/main.lua"],
+      );
+      expect(ccall).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
+    },
+  );
 
   it("reports an error when ccall is unavailable for network launch", () => {
     const onError = vi.fn();

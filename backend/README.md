@@ -23,7 +23,7 @@ The production topology is:
 - An external TURN service with short-lived credentials issued by the API.
 - Secret Manager for the database connection string and TURN shared secret.
 
-Production startup fails closed unless PostgreSQL, CORS, and TURN are configured. The application never creates or upgrades a production schema during normal startup.
+Production startup fails closed unless PostgreSQL, CORS, TURN, `Multiplayer__Topology=single-instance`, and a deployment-specific `Multiplayer__RequiredContentHash` are configured. The topology declaration prevents accidentally deploying process-local signaling state across multiple replicas. The content hash must match `VITE_MULTIPLAYER_CONTENT_HASH` in the frontend build, preventing stale clients from joining a newer runtime. The application never creates or upgrades a production schema during normal startup.
 
 ## Database migrations
 

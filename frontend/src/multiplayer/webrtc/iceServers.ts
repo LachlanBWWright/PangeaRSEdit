@@ -1,6 +1,7 @@
 import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import { z } from "zod";
 import { buildApiUrl } from "@/api/apiBase";
+import { getParticipantToken } from "@/multiplayer/api";
 
 const iceServerSchema = z.object({
   urls: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
@@ -20,9 +21,17 @@ function mapIceServer(server: z.infer<typeof iceServerSchema>): RTCIceServer {
   };
 }
 
-export function fetchIceServers(): ResultAsync<readonly RTCIceServer[], string> {
-  const url = buildApiUrl("/api/multiplayer/ice-servers");
-  return ResultAsync.fromPromise(fetch(url, { method: "GET" }), () => {
+export function fetchIceServers(
+  lobbyId: string,
+): ResultAsync<readonly RTCIceServer[], string> {
+  const query = new URLSearchParams({ lobbyId });
+  const url = `${buildApiUrl("/api/multiplayer/ice-servers")}?${query.toString()}`;
+  return ResultAsync.fromPromise(fetch(url, {
+    method: "GET",
+    headers: {
+      "X-Participant-Token": getParticipantToken(),
+    },
+  }), () => {
     return "Unable to fetch ICE servers";
   }).andThen((response) => {
     if (!response.ok) {

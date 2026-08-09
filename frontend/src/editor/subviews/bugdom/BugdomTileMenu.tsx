@@ -11,7 +11,6 @@ import { getSupertileCounts } from "../supertiles/supertileResizeGuards";
 import { BugdomTileMenuContent } from "./BugdomTileMenuContent";
 import {
   appendBugdomTileImageMapping,
-  canRemoveBugdomSupertile,
   getEditingTileIndex,
   isValidTileImageSelection,
   normalizeSelectedSupertile,
@@ -40,10 +39,6 @@ interface BugdomTileMenuProps {
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
-  onResizeSupertiles: (
-    direction: "top" | "bottom" | "left" | "right",
-    supertileCount: number,
-  ) => void;
 }
 
 export function BugdomTileMenu({
@@ -52,7 +47,6 @@ export function BugdomTileMenu({
   setTerrainData,
   mapImages,
   setMapImages,
-  onResizeSupertiles,
 }: BugdomTileMenuProps) {
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
@@ -81,25 +75,6 @@ export function BugdomTileMenu({
       setSelectedTile(normalized);
     }
   }, [selectedTile, setSelectedTile, totalSupertiles]);
-
-  const handleRemoveSupertile = (
-    direction: "top" | "bottom" | "left" | "right",
-  ) => {
-    if (
-      !canRemoveBugdomSupertile(
-        direction,
-        supertileCounts.width,
-        supertileCounts.height,
-      )
-    ) {
-      toast.error("Cannot remove supertile", {
-        description:
-          "At least one supertile row and one supertile column must remain.",
-      });
-      return;
-    }
-    onResizeSupertiles(direction, -1);
-  };
 
   const layerData = terrainData.Layr?.[1000]?.obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
@@ -286,8 +261,6 @@ export function BugdomTileMenu({
         onUploadTileImage={handleUploadTileImage}
         onAddTileImage={handleAddTileImage}
         onRemoveTileImage={handleRemoveTileImage}
-        onResizeSupertiles={onResizeSupertiles}
-        onRemoveSupertile={handleRemoveSupertile}
       />
       <TileBrushPanel
         game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}

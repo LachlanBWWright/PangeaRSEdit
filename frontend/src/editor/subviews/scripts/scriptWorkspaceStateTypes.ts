@@ -235,15 +235,57 @@ export const scriptParameterDefinitionSchema = z.object({
   defaultValue: z.string(),
 });
 
-export interface ScriptCustomObjectDefinition {
-  readonly id: string;
-  readonly label: string;
-  readonly sourceFilePath: string;
-  readonly exportName: string;
-  readonly tags: readonly string[];
-  readonly compatibility: "preview-ready" | "extended-only";
-  readonly description: string;
-}
+const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("none") }),
+  z.object({
+    kind: z.literal("nativeDisplayGroup"),
+    group: z.enum(["global", "levelSpecific"]),
+    modelObject: z.number().int().nonnegative(),
+    scale: z.number().positive().max(100),
+    slot: z.number().int().min(0).max(32767),
+  }),
+  z.object({
+    kind: z.literal("customDisplayGroup"),
+    modelPath: z
+      .string()
+      .regex(/^Data\/Scripts\/assets\/models\/[a-zA-Z0-9._/-]+\.bg3d$/),
+    modelObject: z.number().int().nonnegative(),
+    scale: z.number().positive().max(100),
+    slot: z.number().int().min(0).max(32767),
+  }),
+  z.object({
+    kind: z.literal("nativeSkeleton"),
+    skeletonType: z.number().int().nonnegative(),
+    initialAnimation: z.number().int().nonnegative(),
+    animationSpeed: z.number().positive().max(100),
+    scale: z.number().positive().max(100),
+    slot: z.number().int().min(0).max(32767),
+  }),
+  z.object({
+    kind: z.literal("customSkeleton"),
+    modelPath: z
+      .string()
+      .regex(/^Data\/Scripts\/assets\/skeletons\/[a-zA-Z0-9._/-]+\.bg3d$/),
+    skeletonPath: z
+      .string()
+      .regex(
+        /^Data\/Scripts\/assets\/skeletons\/[a-zA-Z0-9._/-]+\.skeleton$/,
+      ),
+    animations: z.record(z.string().min(1), z.number().int().nonnegative()),
+    initialAnimation: z.string().min(1),
+    animationSpeed: z.number().positive().max(100),
+    scale: z.number().positive().max(100),
+    slot: z.number().int().min(0).max(32767),
+  }),
+]);
+
+const scriptCustomObjectCollisionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("none") }),
+  z.object({
+    kind: z.literal("preset"),
+    preset: z.enum(["solidBox", "triggerBox", "pickup", "enemy", "platform"]),
+  }),
+]);
 
 export const scriptCustomObjectDefinitionSchema = z.object({
   id: z.string().min(1),
@@ -253,7 +295,13 @@ export const scriptCustomObjectDefinitionSchema = z.object({
   tags: z.array(z.string()),
   compatibility: z.enum(["preview-ready", "extended-only"]),
   description: z.string().min(1),
+  visual: scriptCustomObjectVisualSchema.default({ kind: "none" }),
+  collision: scriptCustomObjectCollisionSchema.default({ kind: "none" }),
 });
+
+export type ScriptCustomObjectDefinition = z.infer<
+  typeof scriptCustomObjectDefinitionSchema
+>;
 
 export interface ScriptCustomObjectPlacement {
   readonly id: string;
@@ -274,6 +322,34 @@ export const scriptCustomObjectPlacementSchema = z.object({
   position: vector3Schema,
   levelKey: z.string().min(1),
 });
+
+export const scriptTerrainReplacementSchema = z.object({
+  id: z.string().min(1),
+  itemIndex: z.number().int().nonnegative(),
+  nativeType: z.number().int().nonnegative(),
+  x: z.number().finite(),
+  z: z.number().finite(),
+  customObjectId: z.string().min(1),
+  strict: z.boolean().default(false),
+});
+
+export type ScriptTerrainReplacement = z.infer<
+  typeof scriptTerrainReplacementSchema
+>;
+
+export const scriptSplineReplacementSchema = z.object({
+  id: z.string().min(1),
+  splineNum: z.number().int().nonnegative(),
+  itemIndex: z.number().int().nonnegative(),
+  nativeType: z.number().int().nonnegative(),
+  placement: z.number().finite().min(0).max(1),
+  customObjectId: z.string().min(1),
+  strict: z.boolean().default(false),
+});
+
+export type ScriptSplineReplacement = z.infer<
+  typeof scriptSplineReplacementSchema
+>;
 
 export interface ScriptSourceFile {
   readonly path: string;
@@ -321,6 +397,8 @@ export interface ScriptLevelState {
   readonly splineBindings: readonly ScriptSplineBinding[];
   readonly mapItemBindings: readonly ScriptMapItemBinding[];
   readonly customPlacements: readonly ScriptCustomObjectPlacement[];
+  readonly terrainReplacements: readonly ScriptTerrainReplacement[];
+  readonly splineReplacements: readonly ScriptSplineReplacement[];
 }
 
 export const scriptLevelStateSchema = z.object({
@@ -329,6 +407,8 @@ export const scriptLevelStateSchema = z.object({
   splineBindings: z.array(scriptSplineBindingSchema),
   mapItemBindings: z.array(scriptMapItemBindingSchema),
   customPlacements: z.array(scriptCustomObjectPlacementSchema),
+  terrainReplacements: z.array(scriptTerrainReplacementSchema).default([]),
+  splineReplacements: z.array(scriptSplineReplacementSchema).default([]),
 });
 
 export interface ScriptWorkspaceContext {
@@ -405,6 +485,9 @@ export const runtimeLevelConfigSchema = z.object({
       }),
     )
     .default([]),
+  customObjects: z.array(scriptCustomObjectDefinitionSchema).default([]),
+  terrainReplacements: z.array(scriptTerrainReplacementSchema).default([]),
+  splineReplacements: z.array(scriptSplineReplacementSchema).default([]),
   levelSettings: z
     .object({
       assetDependencies: z

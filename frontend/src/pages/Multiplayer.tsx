@@ -34,6 +34,7 @@ import {
   createClientSession,
   type ClientSession,
 } from "@/multiplayer/webrtc/clientSession";
+import { observeRtcResult } from "@/multiplayer/webrtc/observeRtcResult";
 import {
   createWebRtcRuntimeTransport,
   type WebRtcRuntimeDisruptionEvent,
@@ -42,14 +43,8 @@ import {
   createClientRuntimeTransportGuard,
   createHostRuntimeTransportMultiplexer,
 } from "@/multiplayer/runtimeTransportMultiplexer";
-import {
-  getMultiplayerNetworkDebugOptions,
-  getMultiplayerRuntimeDebugStats,
-  setMultiplayerNetworkDebugOptions,
-  type MultiplayerNetworkDebugOptions,
-  type MultiplayerRuntimeDebugStats,
-} from "@/multiplayer/runtimeBridge";
 import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
+import { validateRuntimeCompatibility } from "@/multiplayer/runtimeCompatibility";
 import type { StartNetworkMatchFn } from "@/editor/utils/gamePreviewRuntime";
 import { LobbyBrowser } from "./Multiplayer/LobbyBrowser";
 import { MultiplayerSessionView } from "./Multiplayer/MultiplayerSessionView";
@@ -85,16 +80,13 @@ import {
   shouldShowDebugOverlay,
   shouldUseMockHub,
 } from "@/multiplayer/browserFlags";
-import {
-  readNativeVisualDebugStats,
-  type NativeVisualDebugStats,
-} from "@/multiplayer/nativeVisualDebugStats";
-
-type NetworkDebugOptionKey = keyof MultiplayerNetworkDebugOptions;
+import { useMultiplayerDebugTelemetry } from "./Multiplayer/useMultiplayerDebugTelemetry";
 
 export function MultiplayerPage() {
   const RUNTIME_PROTOCOL_VERSION = 1;
   const RUNTIME_COMPAT_VERSION = "host-authoritative-v2";
+  const RUNTIME_CONTENT_HASH =
+    import.meta.env.VITE_MULTIPLAYER_CONTENT_HASH ?? "development-unpinned";
   const [isCreateLobbyOpen, setIsCreateLobbyOpen] = useState(false);
   const [formState, setFormState] = useState<LobbyFormState>(
     defaultLobbyFormState,
@@ -136,16 +128,6 @@ export function MultiplayerPage() {
     null,
   );
   const [runtimeTransportRevision, setRuntimeTransportRevision] = useState(0);
-  const [runtimeDebugStats, setRuntimeDebugStats] =
-    useState<MultiplayerRuntimeDebugStats>(() =>
-      getMultiplayerRuntimeDebugStats(),
-    );
-  const [nativeDebugStats, setNativeDebugStats] =
-    useState<NativeVisualDebugStats>(() => readNativeVisualDebugStats());
-  const [networkDebugOptions, setNetworkDebugOptions] =
-    useState<MultiplayerNetworkDebugOptions>(() =>
-      getMultiplayerNetworkDebugOptions(),
-    );
   const [rtcStatusText, setRtcStatusText] = useState("idle");
   const [forceLocalRuntimeTransport, setForceLocalRuntimeTransport] =
     useState(false);
@@ -195,30 +177,6 @@ export function MultiplayerPage() {
   const resetLobbyChatState = (): void => {
     setChatMessages([]);
     setChatDraft("");
-  };
-
-  const updateNetworkDebugOption = (
-    key: NetworkDebugOptionKey,
-    value: number,
-  ): void => {
-    setNetworkDebugOptions((previous) => {
-      const next = {
-        ...previous,
-        [key]: value,
-      };
-      setMultiplayerNetworkDebugOptions(next);
-      return getMultiplayerNetworkDebugOptions();
-    });
-  };
-
-  const resetNetworkDebugOptions = (): void => {
-    setMultiplayerNetworkDebugOptions({
-      latencyMs: 0,
-      packetLossPercent: 0,
-      packetBurstPercent: 0,
-      packetBurstSize: 1,
-    });
-    setNetworkDebugOptions(getMultiplayerNetworkDebugOptions());
   };
 
   useEffect(() => {
@@ -596,7 +554,7 @@ export function MultiplayerPage() {
 
     setRtcStatusText("connecting");
 
-    const iceServersResult = await fetchIceServers();
+    const iceServersResult = await fetchIceServers(nextLobby.id);
     const defaultIceServers: readonly RTCIceServer[] = [
       { urls: "stun:stun.l.google.com:19302" },
     ];
@@ -620,7 +578,11 @@ export function MultiplayerPage() {
         setStatusText(`Peer joined: ${peerParticipantId}`);
         const hostSession = hostSessionRef.current;
         if (hostSession) {
-          void hostSession.startPeer(peerParticipantId);
+          observeRtcResult(
+            hostSession.startPeer(peerParticipantId),
+            "Unable to reconnect peer",
+            setErrorText,
+          );
         }
       },
       onPeerDisconnected: (peerParticipantId) => {
@@ -647,7 +609,11 @@ export function MultiplayerPage() {
         if (!clientSession) {
           return;
         }
-        void clientSession.receiveOffer(fromId, sdp);
+        observeRtcResult(
+          clientSession.receiveOffer(fromId, sdp),
+          "Unable to accept WebRTC offer",
+          setErrorText,
+        );
       },
       onReceiveAnswer: (fromId, targetId, sdp) => {
         if (targetId !== participantId) {
@@ -657,7 +623,11 @@ export function MultiplayerPage() {
         if (!hostSession) {
           return;
         }
-        void hostSession.applyAnswer(fromId, sdp);
+        observeRtcResult(
+          hostSession.applyAnswer(fromId, sdp),
+          "Unable to apply WebRTC answer",
+          setErrorText,
+        );
       },
       onReceiveIceCandidate: (fromId, targetId, candidate) => {
         if (targetId !== participantId) {
@@ -665,14 +635,22 @@ export function MultiplayerPage() {
         }
         const hostSession = hostSessionRef.current;
         if (hostSession) {
-          void hostSession.applyIceCandidate(fromId, candidate);
+          observeRtcResult(
+            hostSession.applyIceCandidate(fromId, candidate),
+            "Unable to apply host ICE candidate",
+            setErrorText,
+          );
           return;
         }
         const clientSession = clientSessionRef.current;
         if (!clientSession) {
           return;
         }
-        void clientSession.applyIceCandidate(candidate);
+        observeRtcResult(
+          clientSession.applyIceCandidate(candidate),
+          "Unable to apply client ICE candidate",
+          setErrorText,
+        );
       },
       onPlayerReadyChanged: (peerParticipantId, isReady, updatedLobby) => {
         setLobby(
@@ -847,6 +825,7 @@ export function MultiplayerPage() {
             );
           }
         },
+        onError: setErrorText,
         onDataChannelOpened: (peerParticipantId, channels) => {
           bindHostRuntimeDataChannels(peerParticipantId, channels);
           setRtcStatusText("connected");
@@ -857,7 +836,11 @@ export function MultiplayerPage() {
         if (player.participantId === participantId) {
           continue;
         }
-        void hostSessionRef.current.startPeer(player.participantId);
+        observeRtcResult(
+          hostSessionRef.current.startPeer(player.participantId),
+          "Unable to connect peer",
+          setErrorText,
+        );
       }
     } else {
       clientSessionRef.current = createClientSession({
@@ -879,6 +862,7 @@ export function MultiplayerPage() {
             );
           }
         },
+        onError: setErrorText,
         onDataChannelOpened: (channels) => {
           bindClientRuntimeDataChannels(channels);
           setRtcStatusText("connected");
@@ -956,18 +940,13 @@ export function MultiplayerPage() {
   );
   const canEndMatch = Boolean(isHost && lobby?.state === "started");
 
-  useEffect(() => {
-    if (!showDebugOverlay) {
-      return;
-    }
-    const intervalId = window.setInterval(() => {
-      setRuntimeDebugStats(getMultiplayerRuntimeDebugStats());
-      setNativeDebugStats(readNativeVisualDebugStats());
-    }, 500);
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [showDebugOverlay]);
+  const {
+    runtimeDebugStats,
+    nativeDebugStats,
+    networkDebugOptions,
+    updateNetworkDebugOption,
+    resetNetworkDebugOptions,
+  } = useMultiplayerDebugTelemetry(showDebugOverlay);
 
   const activeMatchConfig =
     lobby?.state === "started" && lobby.matchConfig ? lobby.matchConfig : null;
@@ -1005,20 +984,14 @@ export function MultiplayerPage() {
     if (!matchConfig || !participantId) {
       return;
     }
-    if (matchConfig.requiredProtocolVersion !== RUNTIME_PROTOCOL_VERSION) {
+    const compatibilityResult = validateRuntimeCompatibility(matchConfig, {
+      protocolVersion: RUNTIME_PROTOCOL_VERSION,
+      runtimeVersion: RUNTIME_COMPAT_VERSION,
+      contentHash: RUNTIME_CONTENT_HASH,
+    });
+    if (compatibilityResult.isErr()) {
       queueMicrotask(() => {
-        setErrorText(
-          `Unsupported multiplayer protocol version ${String(matchConfig.requiredProtocolVersion)} (expected ${String(RUNTIME_PROTOCOL_VERSION)})`,
-        );
-        setUiState("disconnected");
-      });
-      return;
-    }
-    if (matchConfig.requiredRuntimeVersion !== RUNTIME_COMPAT_VERSION) {
-      queueMicrotask(() => {
-        setErrorText(
-          `Unsupported multiplayer runtime version ${matchConfig.requiredRuntimeVersion}`,
-        );
+        setErrorText(compatibilityResult.error);
         setUiState("disconnected");
       });
       return;

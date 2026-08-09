@@ -315,6 +315,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  lzss-rust/pkg: {}
+
   terrain-codec-rust/pkg: {}
 
 packages:

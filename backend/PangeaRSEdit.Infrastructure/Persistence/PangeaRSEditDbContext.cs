@@ -100,6 +100,7 @@ public sealed class PangeaRSEditDbContext(DbContextOptions<PangeaRSEditDbContext
             entity.Property(x => x.ParticipantId).HasMaxLength(128);
             entity.Property(x => x.DisplayName).HasMaxLength(256);
             entity.HasIndex(x => new { x.LobbyId, x.ParticipantId }).IsUnique();
+            entity.HasIndex(x => new { x.LobbyId, x.PlayerIndex }).IsUnique();
         });
     }
 }

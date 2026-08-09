@@ -16,6 +16,7 @@ interface MockLobbyState {
   gameId: string;
   mode: string;
   trackOrLevel: string;
+  tagDurationMinutes: number;
   maxPlayers: number;
   hostParticipantId: string;
   joinCode: string;
@@ -30,10 +31,12 @@ interface MockLobbyState {
     mode: string;
     trackOrLevel: string;
     seed: number;
+    tagDurationMinutes: number;
     hostPlayerIndex: number;
     maxPlayers: number;
     requiredProtocolVersion: number;
     requiredRuntimeVersion: string;
+    requiredContentHash: string;
     hostParticipantId: string;
     players: {
       participantId: string;
@@ -53,6 +56,8 @@ const laterIso = "2026-05-16T01:00:00.000Z";
 const lobbyId = "00000000-0000-4000-8000-000000000111";
 const hostParticipantId = "00000000-0000-4000-8000-000000000211";
 const guestParticipantId = "00000000-0000-4000-8000-000000000311";
+const runtimeContentHash =
+  process.env.VITE_MULTIPLAYER_CONTENT_HASH ?? "development-unpinned";
 
 function withParticipant(
   lobby: MockLobbyState,
@@ -63,6 +68,7 @@ function withParticipant(
     gameId: lobby.gameId,
     mode: lobby.mode,
     trackOrLevel: lobby.trackOrLevel,
+    tagDurationMinutes: lobby.tagDurationMinutes,
     maxPlayers: lobby.maxPlayers,
     isPublic: true,
     hostParticipantId: lobby.hostParticipantId,
@@ -82,6 +88,7 @@ function toLobbySummary(lobby: MockLobbyState): Record<string, unknown> {
     gameId: lobby.gameId,
     mode: lobby.mode,
     trackOrLevel: lobby.trackOrLevel,
+    tagDurationMinutes: lobby.tagDurationMinutes,
     maxPlayers: lobby.maxPlayers,
     isPublic: true,
     joinCode: lobby.joinCode,
@@ -99,6 +106,7 @@ function createInitialLobby(displayName: string): MockLobbyState {
     gameId: "cromagrally",
     mode: "multiplayerRace",
     trackOrLevel: "ice-ramp",
+    tagDurationMinutes: 3,
     maxPlayers: 2,
     hostParticipantId,
     joinCode: "ABCD12",
@@ -119,7 +127,7 @@ function createInitialLobby(displayName: string): MockLobbyState {
   };
 }
 
-function installMockMultiplayerApi(
+async function installMockMultiplayerApi(
   page: Page,
   state: MockBackendState,
   participantId: string,
@@ -131,7 +139,7 @@ function installMockMultiplayerApi(
     })
     .passthrough();
 
-  return page.route("**/api/multiplayer/lobbies**", async (route) => {
+  await page.route("**/api/multiplayer/lobbies**", async (route) => {
     const request = route.request();
     const method = request.method();
     const url = new URL(request.url());
@@ -250,10 +258,12 @@ function installMockMultiplayerApi(
         mode: lobby.mode,
         trackOrLevel: lobby.trackOrLevel,
         seed: 12345,
+        tagDurationMinutes: lobby.tagDurationMinutes,
         hostPlayerIndex: 0,
         maxPlayers: lobby.maxPlayers,
         requiredProtocolVersion: 1,
         requiredRuntimeVersion: "host-authoritative-v2",
+        requiredContentHash: runtimeContentHash,
         hostParticipantId: lobby.hostParticipantId,
         players: lobby.players.map((player) => ({
           participantId: player.participantId,
@@ -310,7 +320,7 @@ function installMockMultiplayerApi(
 }
 
 async function gotoMultiplayer(page: Page): Promise<void> {
-  await page.goto("/");
+  await page.goto("/PangeaRSEdit/");
   await page.getByRole("link", { name: "Multiplayer" }).click();
   await expect(
     page.getByRole("heading", { name: "Multiplayer", exact: true }),

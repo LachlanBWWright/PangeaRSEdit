@@ -443,6 +443,7 @@ public sealed class MultiplayerLobbiesController(
                 details.MatchConfig.MaxPlayers,
                 details.MatchConfig.RequiredProtocolVersion,
                 details.MatchConfig.RequiredRuntimeVersion,
+                details.MatchConfig.RequiredContentHash,
                 details.MatchConfig.HostParticipantId,
                 details.MatchConfig.Players.Select(x => new MultiplayerMatchConfigPlayerResponse(
                     x.ParticipantId,

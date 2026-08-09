@@ -1,12 +1,12 @@
 import { useAtom, useAtomValue } from "jotai";
+import { Code2 } from "lucide-react";
+import { ResultAsync } from "neverthrow";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +40,6 @@ import {
 } from "./scriptPreviewExportActions";
 import { ScriptProjectFilesPanel } from "./ScriptProjectFilesPanel";
 import { ScriptPreviewExportPanel } from "./ScriptPreviewExportPanel";
-import { SelectedCustomPlacementAtom } from "./scriptPlacementSelectionState";
 import {
   getScriptAllowedTags,
   getScriptBehaviorOptions,
@@ -62,11 +61,13 @@ import {
 } from "./scriptWorkspaceHelpers";
 import {
   addBehaviorDefinition,
+  addScriptAsset,
   addScriptParam,
   applyGlobalBehavior,
   buildScriptPackageZip,
   compileScriptWorkspace,
   createCustomObjectFromBehavior,
+  updateCustomObjectDefinition,
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
   getWorkspaceWarnings,
@@ -74,24 +75,65 @@ import {
   getScriptWorkspaceId,
   importScriptPackageZip,
   loadScriptSample,
-  moveCustomPlacement,
-  placeCustomObject,
   removeBindingById,
-  removeCustomPlacement,
+  removeTerrainItemReplacement,
+  removeSplineItemReplacement,
   removeGlobalBehavior,
   removeScriptSourceFile,
   replaceScriptWorkspace,
+  replaceTerrainItemWithCustomObject,
+  replaceSplineItemWithCustomObject,
   saveScriptSourceFile,
   scriptWorkspaceStoreAtom,
   setScriptActiveFile,
   updateScriptSourceContent,
   upsertScriptSourceFile,
   type ScriptHookId,
+  type ScriptCustomObjectDefinition,
   type ScriptTargetKind,
   type ScriptWorkspaceState,
 } from "./scriptWorkspaceState";
 
 type ScriptsTab = "overview" | "assignments" | "code" | "preview";
+
+function sanitizeAssetFileName(fileName: string): string {
+  return fileName.replace(/[^a-zA-Z0-9._-]+/g, "-");
+}
+
+function buildAssetPath(
+  definition: ScriptCustomObjectDefinition,
+  fileName: string,
+  role: "model" | "skeleton",
+): { readonly assetPath: string; readonly manifestPath: string } | null {
+  const sanitized = sanitizeAssetFileName(fileName);
+  if (role === "model") {
+    if (!sanitized.toLowerCase().endsWith(".bg3d")) return null;
+    const directory =
+      definition.visual.kind === "customSkeleton" ? "skeletons" : "models";
+    const path = `Data/Scripts/assets/${directory}/${sanitized}`;
+    return { assetPath: path, manifestPath: path };
+  }
+  if (!sanitized.toLowerCase().endsWith(".rsrc")) return null;
+  const baseName = sanitized.replace(/(?:\.skeleton)?\.rsrc$/i, "");
+  const manifestPath = `Data/Scripts/assets/skeletons/${baseName}.skeleton`;
+  return { assetPath: `${manifestPath}.rsrc`, manifestPath };
+}
+
+function applyUploadedAssetPath(
+  definition: ScriptCustomObjectDefinition,
+  path: string,
+  role: "model" | "skeleton",
+): ScriptCustomObjectDefinition {
+  if (definition.visual.kind === "customDisplayGroup" && role === "model") {
+    return { ...definition, visual: { ...definition.visual, modelPath: path } };
+  }
+  if (definition.visual.kind !== "customSkeleton") {
+    return definition;
+  }
+  return role === "model"
+    ? { ...definition, visual: { ...definition.visual, modelPath: path } }
+    : { ...definition, visual: { ...definition.visual, skeletonPath: path } };
+}
 
 interface ScriptsMenuProps {
   headerData: HeaderData;
@@ -143,7 +185,6 @@ export function ScriptsMenu({
   const selectedItem = useAtomValue(SelectedItem);
   const selectedSpline = useAtomValue(SelectedSpline);
   const selectedSplineItem = useAtomValue(SelectedSplineItem);
-  const selectedCustomPlacementId = useAtomValue(SelectedCustomPlacementAtom);
   const [workspaceStore, setWorkspaceStore] = useAtom(scriptWorkspaceStoreAtom);
 
   const context = useMemo(
@@ -157,13 +198,6 @@ export function ScriptsMenu({
   );
 
   const levelState = getLevelState(workspace);
-  const selectedCustomPlacement = useMemo(
-    () =>
-      levelState.customPlacements.find(
-        (placement) => placement.id === selectedCustomPlacementId,
-      ) ?? null,
-    [levelState.customPlacements, selectedCustomPlacementId],
-  );
   const summary = summarizeScriptWorkspace(workspace);
   const selectedItemData = itemData
     ? getSelectedItem(itemData, selectedItem)
@@ -192,7 +226,6 @@ export function ScriptsMenu({
   const [newFileDirectory, setNewFileDirectory] =
     useState<ScriptSourceDirectory>("root");
   const [customObjectLabel, setCustomObjectLabel] = useState("Hover Beacon");
-  const [placementObjectId, setPlacementObjectId] = useState("");
   const [paramId, setParamId] = useState("editor.speed");
   const [paramLabel, setParamLabel] = useState("Speed");
   const [paramType, setParamType] = useState<"number" | "boolean" | "string">(
@@ -235,6 +268,26 @@ export function ScriptsMenu({
   const customObjectOptions = useMemo(
     () => getScriptCustomObjectOptions(workspace),
     [workspace],
+  );
+  const selectedTerrainReplacement = useMemo(
+    () =>
+      selectedItem === undefined
+        ? null
+        : (workspace.levels[workspace.context.levelKey]?.terrainReplacements.find(
+            (replacement) => replacement.itemIndex === selectedItem,
+          ) ?? null),
+    [selectedItem, workspace],
+  );
+  const selectedSplineReplacement = useMemo(
+    () =>
+      selectedSpline === undefined || selectedSplineItem === undefined
+        ? null
+        : (workspace.levels[workspace.context.levelKey]?.splineReplacements.find(
+            (replacement) =>
+              replacement.splineNum === selectedSpline &&
+              replacement.itemIndex === selectedSplineItem,
+          ) ?? null),
+    [selectedSpline, selectedSplineItem, workspace],
   );
   const sourcePathOptions = useMemo(
     () => getScriptSourcePathOptions(workspace),
@@ -302,17 +355,6 @@ export function ScriptsMenu({
       setCustomObjectBehaviorId(customObjectBehaviors[0]?.id ?? "");
     }
   }, [customObjectBehaviorId, customObjectBehaviors]);
-
-  useEffect(() => {
-    if (
-      customObjectOptions.length > 0 &&
-      !customObjectOptions.some(
-        (objectDefinition) => objectDefinition.id === placementObjectId,
-      )
-    ) {
-      setPlacementObjectId(customObjectOptions[0]?.id ?? "");
-    }
-  }, [customObjectOptions, placementObjectId]);
 
   const persistWorkspace = (nextState: ScriptWorkspaceState) => {
     setWorkspaceStore((currentStore) =>
@@ -539,95 +581,81 @@ export function ScriptsMenu({
         customObjectLabel.trim(),
       ),
     );
-    setPlacementObjectId(generatedCustomObjectId);
     toast.success("Created scripted object definition");
   };
 
-  const handlePlaceCustomObject = () => {
-    const selectedObjectDefinition = workspace.customObjects.find(
-      (objectDefinition) => objectDefinition.id === placementObjectId,
-    );
-
-    if (!selectedObjectDefinition) {
-      toast.error("Save a scripted object before placing it");
-      return;
-    }
-
-    const position = selectedItemData
-      ? {
-          x: selectedItemData.x,
-          y: headerData.Hedr[1000].obj.minY ?? 0,
-          z: selectedItemData.z,
-        }
-      : { x: 0, y: headerData.Hedr[1000].obj.minY ?? 0, z: 0 };
-
-    updateWorkspace((state) =>
-      placeCustomObject(
-        state,
-        selectedObjectDefinition.id,
-        selectedObjectDefinition.label,
-        position,
-      ),
-    );
-    toast.success("Placed scripted object");
-  };
-
-  const handleSelectedPlacementPositionChange = (
-    axis: "x" | "y" | "z",
-    value: string,
+  const handleUploadCustomObjectAsset = async (
+    definition: ScriptCustomObjectDefinition,
+    file: File,
+    role: "model" | "skeleton",
   ) => {
-    if (!selectedCustomPlacement) {
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error("Custom item assets are limited to 16 MiB each");
+      return;
+    }
+    const currentAssetBytes = Object.values(workspace.assets).reduce(
+      (total, asset) => total + asset.bytes.byteLength,
+      0,
+    );
+    if (currentAssetBytes + file.size > 64 * 1024 * 1024) {
+      toast.error("This script package has reached its 64 MiB asset budget");
+      return;
+    }
+    const bytesResult = await ResultAsync.fromPromise(
+      file.arrayBuffer(),
+      () => `Could not read ${file.name}`,
+    );
+    if (bytesResult.isErr()) {
+      toast.error(bytesResult.error);
       return;
     }
 
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
+    const paths = buildAssetPath(definition, file.name, role);
+    if (!paths) {
+      toast.error(role === "model" ? "Select a .bg3d model" : "Select a .rsrc skeleton resource");
       return;
     }
-
+    const nextDefinition = applyUploadedAssetPath(
+      definition,
+      paths.manifestPath,
+      role,
+    );
     updateWorkspace((state) =>
-      moveCustomPlacement(
-        state,
-        selectedCustomPlacement.id,
-        axis === "x"
-          ? {
-              x: parsed,
-              y: selectedCustomPlacement.position.y,
-              z: selectedCustomPlacement.position.z,
-            }
-          : axis === "y"
-            ? {
-                x: selectedCustomPlacement.position.x,
-                y: parsed,
-                z: selectedCustomPlacement.position.z,
-              }
-            : {
-                x: selectedCustomPlacement.position.x,
-                y: selectedCustomPlacement.position.y,
-                z: parsed,
-              },
+      updateCustomObjectDefinition(
+        addScriptAsset(
+          state,
+          paths.assetPath,
+          new Uint8Array(bytesResult.value),
+          file.name,
+        ),
+        nextDefinition,
       ),
     );
+    toast.success(`Added ${file.name} to the scripted item package`);
   };
 
   return (
     <>
-      <div className="p-3">
-        <Button className="w-full" onClick={() => setScriptsOpen(true)}>
-          Open Scripts
-        </Button>
+      <div className="flex justify-center p-4">
+        <div className="flex w-full max-w-sm flex-col items-center gap-3 px-5 py-6 text-center">
+          <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Code2 className="size-5" aria-hidden="true" />
+          </div>
+          <div className="space-y-1">
+            <p className="font-medium">Scripts workspace</p>
+            <p className="text-xs text-muted-foreground">
+              Create behaviors and customize this level with Lua.
+            </p>
+          </div>
+          <Button onClick={() => setScriptsOpen(true)}>Open Scripts</Button>
+        </div>
       </div>
 
       <Dialog open={scriptsOpen} onOpenChange={setScriptsOpen}>
-        <DialogContent className="h-[90vh] w-[90vw] max-w-none grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
-          <DialogHeader className="border-b px-6 py-4 pr-12">
-            <DialogTitle>Scripts</DialogTitle>
-            <DialogDescription>
-              Create, assign, preview, and export scripts for this level.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="h-[90vh] w-[90vw] max-w-none grid-rows-[minmax(0,1fr)] overflow-hidden p-0">
+          <DialogTitle className="sr-only">Scripts</DialogTitle>
 
-          <div className="overflow-y-auto p-6 text-sm">
+          <div className="overflow-y-auto p-6 pr-12 text-sm">
             <Tabs
               value={activeTab}
               onValueChange={(value) => setActiveTab(parseScriptsTab(value))}
@@ -761,35 +789,92 @@ export function ScriptsMenu({
 
           <div className="grid gap-4">
             <ScriptCustomObjectsPanel
+              gameId={context.gameId}
               customObjectBehaviorId={customObjectBehaviorId}
               onCustomObjectBehaviorIdChange={setCustomObjectBehaviorId}
               customObjectBehaviors={customObjectBehaviors}
               customObjectLabel={customObjectLabel}
               onCustomObjectLabelChange={setCustomObjectLabel}
               generatedCustomObjectId={generatedCustomObjectId}
-              placementObjectId={placementObjectId}
-              onPlacementObjectIdChange={setPlacementObjectId}
               customObjectOptions={customObjectOptions}
-              customPlacements={levelState.customPlacements}
-              selectedCustomPlacement={selectedCustomPlacement}
               onCreateObject={handleCreateCustomObject}
-              onPlaceObject={handlePlaceCustomObject}
-              onRemovePlacement={(placementId) =>
+              onUpdateObject={(definition) => {
                 updateWorkspace((state) =>
-                  removeCustomPlacement(state, placementId),
-                )
-              }
-              onDeleteSelectedPlacement={() => {
-                if (!selectedCustomPlacement) {
-                  return;
-                }
-                updateWorkspace((state) =>
-                  removeCustomPlacement(state, selectedCustomPlacement.id),
+                  updateCustomObjectDefinition(state, definition),
                 );
               }}
-              onSelectedPlacementPositionChange={
-                handleSelectedPlacementPositionChange
+              onUploadAsset={(definition, file, role) => {
+                void handleUploadCustomObjectAsset(definition, file, role);
+              }}
+              selectedTerrainItem={
+                selectedItem !== undefined && selectedItemData
+                  ? {
+                      index: selectedItem,
+                      type: selectedItemData.type,
+                      x: selectedItemData.x,
+                      z: selectedItemData.z,
+                    }
+                  : null
               }
+              replacementObjectId={
+                selectedTerrainReplacement?.customObjectId ?? null
+              }
+              onReplaceSelectedItem={(customObjectId) => {
+                if (selectedItem === undefined || !selectedItemData) return;
+                updateWorkspace((state) =>
+                  replaceTerrainItemWithCustomObject(state, {
+                    id: `terrain-${String(selectedItem)}`,
+                    itemIndex: selectedItem,
+                    nativeType: selectedItemData.type,
+                    x: selectedItemData.x,
+                    z: selectedItemData.z,
+                    customObjectId,
+                    strict: false,
+                  }),
+                );
+              }}
+              onRestoreSelectedItem={() => {
+                if (selectedItem === undefined) return;
+                updateWorkspace((state) =>
+                  removeTerrainItemReplacement(state, selectedItem),
+                );
+              }}
+              selectedSplineItem={
+                selectedSpline !== undefined && selectedSplineItem !== undefined
+                  ? { splineNum: selectedSpline, itemIndex: selectedSplineItem }
+                  : null
+              }
+              splineReplacementObjectId={
+                selectedSplineReplacement?.customObjectId ?? null
+              }
+              onReplaceSelectedSplineItem={(customObjectId) => {
+                if (
+                  selectedSpline === undefined ||
+                  selectedSplineItem === undefined ||
+                  !selectedSplineItemData
+                ) return;
+                updateWorkspace((state) =>
+                  replaceSplineItemWithCustomObject(state, {
+                    id: `spline-${String(selectedSpline)}-${String(selectedSplineItem)}`,
+                    splineNum: selectedSpline,
+                    itemIndex: selectedSplineItem,
+                    nativeType: selectedSplineItemData.type,
+                    placement: selectedSplineItemData.placement,
+                    customObjectId,
+                    strict: false,
+                  }),
+                );
+              }}
+              onRestoreSelectedSplineItem={() => {
+                if (selectedSpline === undefined || selectedSplineItem === undefined) return;
+                updateWorkspace((state) =>
+                  removeSplineItemReplacement(
+                    state,
+                    selectedSpline,
+                    selectedSplineItem,
+                  ),
+                );
+              }}
             />
 
             <ScriptParametersPanel

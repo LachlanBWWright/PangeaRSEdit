@@ -13,6 +13,10 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
+import {
+  MapResizeEdgeControls,
+  type MapResizeDirection,
+} from "./MapResizeEdgeControls";
 import Konva from "konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
@@ -44,6 +48,7 @@ import {
 } from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 
 export interface StageData {
   scale: number;
@@ -61,6 +66,7 @@ interface Nanosaur1KonvaViewProps {
   view: View;
   stage: StageData;
   setStage: Updater<StageData>;
+  onResize: (direction: MapResizeDirection, amount: number) => Promise<void>;
 }
 
 export function Nanosaur1KonvaView({
@@ -73,9 +79,11 @@ export function Nanosaur1KonvaView({
   view,
   stage,
   setStage,
+  onResize,
 }: Nanosaur1KonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const customObjectPlacement = useCustomObjectPlacement();
   const globals = useAtomValue(Globals);
 
   const tileBrushMode = useAtomValue(tileBrushModeAtom);
@@ -202,13 +210,22 @@ export function Nanosaur1KonvaView({
             handleStampClick(e);
             return;
           }
-          if (clickToAddItem === undefined) return;
           const stageRef = e.target.getStage();
 
           const pos = stageRef?.getRelativePointerPosition();
           if (!pos) return;
           const x = Math.round(pos.x);
           const z = Math.round(pos.y);
+
+          if (customObjectPlacement.objectId !== null) {
+            customObjectPlacement.placeAt(
+              x,
+              headerData.Hedr[1000].obj.minY ?? 0,
+              z,
+            );
+            return;
+          }
+          if (clickToAddItem === undefined) return;
 
           setItemDataNotNull((itemData) => {
             itemData.Itms[1000].obj.push({
@@ -346,6 +363,13 @@ export function Nanosaur1KonvaView({
         )}
         {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
         <HoverTagOverlayLayer />
+        <MapResizeEdgeControls
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+          tileSize={tileSize}
+          tilesPerUnit={globals.TILES_PER_SUPERTILE}
+          onResize={onResize}
+        />
       </Stage>
     </div>
   );

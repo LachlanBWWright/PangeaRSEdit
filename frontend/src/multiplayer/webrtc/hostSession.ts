@@ -1,4 +1,5 @@
-import { ResultAsync, errAsync } from "neverthrow";
+import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { ignoreRtcError, observeRtcResult } from "./observeRtcResult";
 
 export type WebRtcSessionState =
   | "connecting"
@@ -53,6 +54,9 @@ interface HostPeerHandle {
     control: boolean;
     state: boolean;
   };
+  remoteDescriptionApplied: boolean;
+  readonly pendingIceCandidates: RTCIceCandidateInit[];
+  reconnectTimeoutId: number | null;
 }
 
 export interface HostSessionDeps {
@@ -71,6 +75,7 @@ export interface HostSessionDeps {
     participantId: string,
     state: WebRtcSessionState,
   ) => void;
+  readonly onError?: (message: string) => void;
   readonly onDataChannelOpened?: (
     participantId: string,
     channels: {
@@ -98,6 +103,7 @@ export interface HostSession {
 const OFFER_TIMEOUT_MS = 15_000;
 const ANSWER_APPLY_TIMEOUT_MS = 15_000;
 const DATA_CHANNEL_OPEN_TIMEOUT_MS = 15_000;
+const DISCONNECT_GRACE_MS = 5_000;
 
 function withTimeout<T>(
   promise: Promise<T>,
@@ -125,7 +131,7 @@ function mapConnectionState(state: string): WebRtcSessionState | null {
   if (state === "connected") {
     return "connected";
   }
-  if (state === "failed" || state === "disconnected") {
+  if (state === "failed") {
     return "failed";
   }
   if (state === "closed") {
@@ -136,6 +142,7 @@ function mapConnectionState(state: string): WebRtcSessionState | null {
 
 export function createHostSession(deps: HostSessionDeps): HostSession {
   const peers = new Map<string, HostPeerHandle>();
+  const pendingIceCandidates = new Map<string, RTCIceCandidateInit[]>();
   const dataChannelOpenTimeoutMs =
     deps.dataChannelOpenTimeoutMs ?? DATA_CHANNEL_OPEN_TIMEOUT_MS;
 
@@ -145,6 +152,9 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
       return;
     }
     window.clearTimeout(peer.openTimeoutId);
+    if (peer.reconnectTimeoutId !== null) {
+      window.clearTimeout(peer.reconnectTimeoutId);
+    }
     peer.connection.close();
     peers.delete(participantId);
     deps.onStateChanged(participantId, "closed");
@@ -152,6 +162,9 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
 
   return {
     startPeer: (participantId) => {
+      if (peers.has(participantId)) {
+        closePeer(participantId);
+      }
       deps.onStateChanged(participantId, "connecting");
       return deps.createPeerConnection(participantId).andThen((connection) => {
         const controlChannel = connection.createDataChannel("pangea-control", {
@@ -196,6 +209,21 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
         stateChannel.onclose = onChannelClose;
 
         connection.onconnectionstatechange = () => {
+          const peer = peers.get(participantId);
+          if (connection.connectionState === "disconnected") {
+            deps.onStateChanged(participantId, "connecting");
+            if (peer && peer.reconnectTimeoutId === null) {
+              peer.reconnectTimeoutId = window.setTimeout(() => {
+                peer.reconnectTimeoutId = null;
+                deps.onStateChanged(participantId, "failed");
+              }, DISCONNECT_GRACE_MS);
+            }
+            return;
+          }
+          if (peer?.reconnectTimeoutId !== null && peer?.reconnectTimeoutId !== undefined) {
+            window.clearTimeout(peer.reconnectTimeoutId);
+            peer.reconnectTimeoutId = null;
+          }
           const mappedState = mapConnectionState(connection.connectionState);
           if (mappedState) {
             deps.onStateChanged(participantId, mappedState);
@@ -205,15 +233,24 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
           if (!event.candidate || !event.candidate.candidate) {
             return;
           }
-          void deps.sendIceCandidate(participantId, event.candidate.candidate);
+          observeRtcResult(
+            deps.sendIceCandidate(participantId, event.candidate.candidate),
+            "Unable to send ICE candidate",
+            deps.onError ?? ignoreRtcError,
+          );
         };
 
+        const queuedCandidates = pendingIceCandidates.get(participantId) ?? [];
+        pendingIceCandidates.delete(participantId);
         peers.set(participantId, {
           connection,
           controlChannel,
           stateChannel,
           openTimeoutId,
           opened,
+          remoteDescriptionApplied: false,
+          pendingIceCandidates: queuedCandidates,
+          reconnectTimeoutId: null,
         });
 
         return ResultAsync.fromPromise(
@@ -256,13 +293,31 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
           "Timed out applying remote WebRTC answer",
         ),
         () => "Failed to apply remote WebRTC answer",
-      );
+      ).andThen(() => {
+        peer.remoteDescriptionApplied = true;
+        const candidates = peer.pendingIceCandidates.splice(0);
+        return ResultAsync.combine(
+          candidates.map((candidate) =>
+            ResultAsync.fromPromise(
+              peer.connection.addIceCandidate(candidate),
+              () => "Failed to apply queued remote ICE candidate",
+            ),
+          ),
+        ).map(() => undefined);
+      });
     },
 
     applyIceCandidate: (participantId, candidate) => {
       const peer = peers.get(participantId);
       if (!peer) {
-        return errAsync("Peer is not active");
+        const queued = pendingIceCandidates.get(participantId) ?? [];
+        queued.push({ candidate });
+        pendingIceCandidates.set(participantId, queued);
+        return okAsync(undefined);
+      }
+      if (!peer.remoteDescriptionApplied) {
+        peer.pendingIceCandidates.push({ candidate });
+        return okAsync(undefined);
       }
       return ResultAsync.fromPromise(
         peer.connection.addIceCandidate({ candidate }),

@@ -12,6 +12,10 @@ interface BugdomMappingOptions {
   readonly flags?: number;
 }
 
+type ModelPartDefinition = Omit<ModelPartMapping, "citations"> & {
+  readonly citations: readonly SemanticCitation[];
+};
+
 type BugdomLevelGroup = "lawn" | "forest" | "hive" | "night" | "anthill";
 
 const ITEM_FLAGS_USER1 = 1;
@@ -72,8 +76,15 @@ function mergePrimaryPart(
     UniversalItemModelMapping,
     "modelFile" | "modelIndex" | "modelPath"
   >,
-  modelParts: readonly ModelPartMapping[],
+  partDefinitions: readonly ModelPartDefinition[],
 ): UniversalItemModelMapping {
+  const modelParts: readonly ModelPartMapping[] = partDefinitions.map((part) => ({
+    ...part,
+    citations: part.citations.map((citation) => ({
+      ...citation,
+      partId: part.partId,
+    })),
+  }));
   const primaryPart = modelParts[0];
   if (!primaryPart) {
     return {
@@ -981,7 +992,7 @@ function buildDetonatorMapping(
   const params = getParams(options);
   const flags = getFlags(options);
   const isPlunged = (flags & ITEM_FLAGS_USER1) !== 0;
-  const citations = [
+  const itemCitations = [
     cite(
       "src/Items/Triggers.c",
       603,
@@ -996,21 +1007,56 @@ function buildDetonatorMapping(
       "param-domain",
       612,
     ),
+  ];
+
+  const boxCitations = [
     cite(
       "src/Items/Triggers.c",
       625,
-      "Detonator box color uses parm[1]",
+      "Detonator box model uses the color parameter",
       "model-index",
+      626,
+    ),
+    cite(
+      "src/Items/Triggers.c",
       632,
+      "Detonator box uses DETONATOR_SCALE",
+      "scale",
+      632,
+    ),
+  ];
+
+  const plungerCitations = [
+    cite(
+      "src/Items/Triggers.c",
+      632,
+      "Plunger inherits DETONATOR_SCALE from the object definition",
+      "scale",
+      658,
     ),
     cite(
       "src/Items/Triggers.c",
       651,
-      "Plunger child offset depends on plunge state",
-      "child-object",
+      "Plunger height depends on its plunged state",
+      "position",
+      654,
+    ),
+    cite(
+      "src/Items/Triggers.c",
       655,
+      "Plunger model type is assigned before creation",
+      "model-index",
+      658,
+    ),
+    cite(
+      "src/Items/Triggers.c",
+      680,
+      "Plunger is chained to the detonator box",
+      "child-object",
+      680,
     ),
   ];
+  const citations = [...itemCitations, ...boxCitations, ...plungerCitations];
 
   return mergePrimaryPart(
     {
@@ -1048,7 +1094,7 @@ function buildDetonatorMapping(
         modelPath: "models",
         modelIndex: 4 + params.p1,
         scale: DETONATOR_SCALE,
-        citations,
+        citations: boxCitations,
       },
       {
         partId: "plunger",
@@ -1057,7 +1103,7 @@ function buildDetonatorMapping(
         modelIndex: 9,
         scale: DETONATOR_SCALE,
         positionOffset: [0, isPlunged ? -PLUNGER_DOWN_Y_OFFSET : -10, 0],
-        citations,
+        citations: plungerCitations,
       },
     ],
   );

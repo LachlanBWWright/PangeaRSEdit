@@ -175,20 +175,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     },
     p1: "Unused",
     p2: "Unused",
-    p3: {
-      type: "Bit Flags",
-      flags: [
-        {
-          index: 0,
-          description: "Egg already taken; only the nest remains.",
-          codeSample: {
-            code: "if (!(itemPtr->flags & ITEM_FLAGS_USER1))",
-            fileName: "Source/Items/Eggs.c",
-            lineNumber: 122,
-          },
-        },
-      ],
-    },
+    p3: "Unused",
   },
   [ItemType.EggWormhole]: {
     flags: "Unknown",
@@ -198,7 +185,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
         fileName: "Source/Items/Wormhole.c",
-        lineNumber: 150,
+        lineNumber: 151,
       },
     },
     p1: {
@@ -266,14 +253,30 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.Grass]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Grass model variant for the current level",
+      codeSample: {
+        code: "def.type = LEVEL1_ObjType_Grass + itemPtr->parm[0];",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 62,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Fern]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Fern model variant",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_LowFern + itemPtr->parm[0],",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 127,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -286,7 +289,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       codeSample: {
         code: ".type = LEVEL1_ObjType_LowBerryBush + itemPtr->parm[0],",
         fileName: "Source/Items/Bushes.c",
-        lineNumber: 189,
+        lineNumber: 160,
       },
     },
     p1: "Unused",
@@ -301,7 +304,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       codeSample: {
         code: ".type = LEVEL1_ObjType_SmallCattail + itemPtr->parm[0],",
         fileName: "Source/Items/Bushes.c",
-        lineNumber: 192,
+        lineNumber: 198,
       },
     },
     p1: {
@@ -348,7 +351,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       codeSample: {
         code: ".rot		= (rot == 0) ? (RandomFloat()*PI2) : ((float)(rot-1) * (PI2/8.0f)),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 233,
+        lineNumber: 202,
       },
     },
     p2: "Unknown",
@@ -359,7 +362,18 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{
+        index: 0,
+        description: "Always add, bypassing the enemy-count limit",
+        codeSample: {
+          code: "if (!(itemPtr->parm[3] & 1))",
+          fileName: "Source/Enemies/Enemy_Raptor.c",
+          lineNumber: 116,
+        },
+      }],
+    },
   },
   [ItemType.DustDevil]: {
     flags: "Unknown",
@@ -370,7 +384,15 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.AirMine]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Air mine height above terrain",
+      codeSample: {
+        code: "long h = itemPtr->parm[0];",
+        fileName: "Source/Items/Mines.c",
+        lineNumber: 48,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -444,14 +466,30 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.RiverRock]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "River rock model variant",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_RiverRock1 + itemPtr->parm[0],",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 260,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.GasMound]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Gas mound model variant",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_GasMound1 + itemPtr->parm[0],",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 299,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -536,22 +574,25 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Bush variant type",
       codeSample: {
-        code: "short type = itemPtr->parm[0];",
-        fileName: "Source/Items/Trees.c",
-        lineNumber: 661,
+        code: ".type = LEVEL2_ObjType_Bush1 + itemPtr->parm[0],",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 239,
       },
     },
-    p1: {
-      type: "Integer",
-      description: "Rotation (0-7, where each unit = 45°)",
-      codeSample: {
-        code: "long rot = itemPtr->parm[1];",
-        fileName: "Source/Items/Trees.c",
-        lineNumber: 662,
-      },
-    },
+    p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{
+        index: 0,
+        description: "Render the bush at half size",
+        codeSample: {
+          code: "Boolean halfSizeFlag = (itemPtr->parm[3] & 1);",
+          fileName: "Source/Items/Bushes.c",
+          lineNumber: 234,
+        },
+      }],
+    },
   },
   [ItemType.Cactus]: {
     flags: "Unknown",
@@ -559,9 +600,9 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Cactus variant type",
       codeSample: {
-        code: "short type = itemPtr->parm[0];",
-        fileName: "Source/Items/Trees.c",
-        lineNumber: 725,
+        code: ".type = LEVEL2_ObjType_Cactus_Low + itemPtr->parm[0],",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 310,
       },
     },
     p1: "Unknown",
@@ -570,7 +611,15 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.Crystal]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Crystal model variant (0-2)",
+      codeSample: {
+        code: ".type = LEVEL2_ObjType_Crystal1Base + itemPtr->parm[0],",
+        fileName: "Source/Items/Crystals.c",
+        lineNumber: 53,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -583,10 +632,18 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       codeSample: {
         code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Trees.c",
-        lineNumber: 763,
+        lineNumber: 661,
       },
     },
-    p1: "Unknown",
+    p1: {
+      type: "Integer",
+      description: "Palm tree rotation selector",
+      codeSample: {
+        code: "long rot = itemPtr->parm[1];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 662,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -606,7 +663,15 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.Smoker]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Smoker effect type",
+      codeSample: {
+        code: "newObj = MakeSmoker(x,z, itemPtr->parm[0]);",
+        fileName: "Source/Effects/Particles.c",
+        lineNumber: 1535,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -624,6 +689,51 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Palm bush variant type",
       codeSample: {
+        code: ".type = LEVEL2_ObjType_PalmBush1 + itemPtr->parm[0],",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 355,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BurntDesertTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Burnt desert tree model variant",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 725,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.HydraTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Hydra tree model variant",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 763,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.OddTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Odd tree model variant",
+      codeSample: {
         code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Trees.c",
         lineNumber: 800,
@@ -633,30 +743,17 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p2: "Unknown",
     p3: "Unknown",
   },
-  [ItemType.BurntDesertTree]: {
-    flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
-  },
-  [ItemType.HydraTree]: {
-    flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
-  },
-  [ItemType.OddTree]: {
-    flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
-  },
   [ItemType.GeckoPlant]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Gecko plant model variant (0-2)",
+      codeSample: {
+        code: ".type = LEVEL3_ObjType_GeckoPlant_Small + itemPtr->parm[0],",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 397,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -670,14 +767,38 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.Ivy]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Ivy model type",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 474,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Ivy color variant",
+      codeSample: {
+        code: "short color = itemPtr->parm[1];",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 475,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Asteroid]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Asteroid model variant",
+      codeSample: {
+        code: ".type = LEVEL3_ObjType_Asteroid_Cracked + itemPtr->parm[0],",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 478,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -708,14 +829,30 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
   },
   [ItemType.SwampStump]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Swamp stump model variant",
+      codeSample: {
+        code: ".type = LEVEL3_ObjType_Stump1 + itemPtr->parm[0],",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 912,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Hole]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Hole group identifier",
+      codeSample: {
+        code: "newObj->Kind = itemPtr->parm[0];",
+        fileName: "Source/Items/Holes.c",
+        lineNumber: 72,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",

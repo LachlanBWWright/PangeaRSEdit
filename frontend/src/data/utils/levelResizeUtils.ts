@@ -1,4 +1,3 @@
-import type { GlobalsInterface } from "@/data/globals/globals";
 import type {
   LevelData,
   TerrainData,
@@ -18,6 +17,12 @@ import {
 } from "./levelEntityResizeUtils";
 
 export type ResizeDirection = "top" | "bottom" | "left" | "right";
+
+export interface LevelResizeGlobals {
+  readonly TILES_PER_SUPERTILE: number;
+  readonly TILE_INGAME_SIZE: number;
+  readonly EMPTY_TILE_IDX: number;
+}
 
 export interface ResizeOptions {
   direction: ResizeDirection;
@@ -147,7 +152,7 @@ function resizeYCrdArray(
 function resizeTerrainData(
   terrainData: TerrainData,
   header: { mapWidth: number; mapHeight: number },
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
   options: ResizeOptions,
 ): TerrainData {
   const { newWidth, newHeight, offsetX, offsetZ } = getResizeDimensions(
@@ -231,7 +236,7 @@ function resizeItems(
   itemData: ItemData | null,
   options: ResizeOptions,
   header: { mapWidth: number; mapHeight: number },
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
 ): { data: ItemData | null; outOfBounds: TerrainItem[] } {
   if (!itemData?.Itms?.[1000]?.obj) return { data: itemData, outOfBounds: [] };
   const { offsetX, offsetZ, newWidth, newHeight } = getResizeDimensions(
@@ -304,7 +309,7 @@ function updateHeader(
 
 export function resizeLevel(
   levelData: LevelData,
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
   options: ResizeOptions,
 ): ResizeResult {
   const headerData: HeaderData = { Hedr: levelData.Hedr };

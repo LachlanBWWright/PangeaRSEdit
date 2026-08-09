@@ -40,6 +40,11 @@ export interface SemanticCitation extends SourceCitation {
   proves: SemanticCitationProof;
 }
 
+export interface ModelPartCitation extends SemanticCitation {
+  /** The model part whose property this citation proves. */
+  partId: string;
+}
+
 export type VerificationStatus = "verified" | "approximate";
 
 export type ItemParamDomain =
@@ -82,7 +87,7 @@ export interface ModelPartMapping {
   scaleY?: number;
   rotationY?: number;
   positionOffset?: [number, number, number];
-  citations: readonly SemanticCitation[];
+  citations: readonly ModelPartCitation[];
 }
 
 export interface StaticAnalysisIssue {

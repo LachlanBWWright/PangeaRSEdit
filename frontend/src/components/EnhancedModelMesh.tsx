@@ -477,6 +477,9 @@ function EnhancedModelMeshComponent({
 
   const handleWeightPointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
+      if (event.button !== 0) {
+        return;
+      }
       activePaintPointerIdRef.current = event.pointerId;
       applyBrushStroke(event);
     },

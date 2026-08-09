@@ -48,6 +48,7 @@ export interface MultiplayerMatchConfig {
   readonly maxPlayers: number;
   readonly requiredProtocolVersion: number;
   readonly requiredRuntimeVersion: string;
+  readonly requiredContentHash: string;
   readonly hostParticipantId: string;
   readonly players: readonly MultiplayerMatchConfigPlayer[];
 }

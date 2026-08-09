@@ -120,7 +120,7 @@ export function StandardEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    resizeEditorAtomicSupertiles({
+    return resizeEditorAtomicSupertiles({
       headerData,
       itemData,
       liquidData,
@@ -212,7 +212,6 @@ export function StandardEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
-            onResizeSupertiles={handleSupertileResize}
           />
         )}
       </MenuSection>
@@ -257,6 +256,7 @@ export function StandardEditorView({
             view={view}
             stage={stage}
             setStage={setStage}
+            onResize={handleSupertileResize}
           />
         )}
       </div>

@@ -252,6 +252,16 @@ static IReadOnlyList<string> ValidateProductionConfiguration(
         errors.Add("Production multiplayer requires a participant signing key.");
     }
 
+    if (!string.Equals(configuration["Multiplayer:Topology"], "single-instance", StringComparison.OrdinalIgnoreCase))
+    {
+        errors.Add("Production multiplayer currently requires Multiplayer__Topology=single-instance because signaling state is process-local.");
+    }
+
+    if (string.IsNullOrWhiteSpace(configuration["Multiplayer:RequiredContentHash"]))
+    {
+        errors.Add("Production multiplayer requires Multiplayer__RequiredContentHash to identify the deployed runtime and content bundle.");
+    }
+
     return errors;
 }
 

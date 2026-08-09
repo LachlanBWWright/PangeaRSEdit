@@ -122,7 +122,7 @@ export function OttoMaticEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    resizeEditorAtomicSupertiles({
+    return resizeEditorAtomicSupertiles({
       headerData,
       itemData,
       liquidData,
@@ -213,7 +213,6 @@ export function OttoMaticEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
-            onResizeSupertiles={handleSupertileResize}
           />
         )}
       </MenuSection>
@@ -257,6 +256,7 @@ export function OttoMaticEditorView({
             view={view}
             stage={stage}
             setStage={setStage}
+            onResize={handleSupertileResize}
           />
         )}
       </div>

@@ -1,4 +1,68 @@
-import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
+import {
+  ItemParams,
+  ItemParamsSource,
+  ParamDescriptionSource,
+  defineItemParams,
+} from "./itemParams";
+
+function sourceInteger(
+  description: string,
+  fileName: string,
+  lineNumber: number,
+  code: string,
+): ParamDescriptionSource {
+  return {
+    type: "Integer",
+    description,
+    codeSample: { code, fileName, lineNumber },
+  };
+}
+
+function sourceFlag(
+  description: string,
+  fileName: string,
+  lineNumber: number,
+  code: string,
+): ParamDescriptionSource {
+  return {
+    type: "Bit Flags",
+    flags: [{
+      index: 0,
+      description,
+      codeSample: { code, fileName, lineNumber },
+    }],
+  };
+}
+
+function enemyControlFlags(
+  fileName: string,
+  alwaysAddLine: number,
+  regenerateLine: number,
+): ParamDescriptionSource {
+  return {
+    type: "Bit Flags",
+    flags: [
+      {
+        index: 0,
+        description: "Always add, bypassing the enemy-count limit",
+        codeSample: {
+          code: "if (!(itemPtr->parm[3] & 1))",
+          fileName,
+          lineNumber: alwaysAddLine,
+        },
+      },
+      {
+        index: 1,
+        description: "Regenerate after defeat",
+        codeSample: {
+          code: "EnemyRegenerate = itemPtr->parm[3] & (1<<1)",
+          fileName,
+          lineNumber: regenerateLine,
+        },
+      },
+    ],
+  };
+}
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -310,9 +374,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       description:
         "Human type (0=Farmer, 1=Beewoman, 2=Scientist, 3=Skirtlady)",
       codeSample: {
-        code: "int type = itemPtr->parm[0]; // get human type",
-        fileName: "Items/Items.c",
-        lineNumber: 1139,
+        code: "Byte humanType = itemPtr->parm[0];",
+        fileName: "Items/Humans.c",
+        lineNumber: 224,
       },
     },
     p1: "Unused",
@@ -340,7 +404,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "newObj = MakeAtom(x,ty + yoff,z, itemPtr->parm[0]);",
         fileName: "Items/Powerups.c",
-        lineNumber: 131,
+        lineNumber: 133,
       },
     },
     p1: "Unused",
@@ -387,7 +451,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "newObj->AtomQuantity = itemPtr->parm[1];",
         fileName: "Items/Powerups.c",
-        lineNumber: 627,
+        lineNumber: 628,
       },
     },
     p2: {
@@ -396,7 +460,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "newObj->PowerupParm2 = itemPtr->parm[2];",
         fileName: "Items/Powerups.c",
-        lineNumber: 631,
+        lineNumber: 632,
       },
     },
     p3: {
@@ -437,7 +501,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: sourceFlag("Always add, bypassing the enemy-count limit", "Enemies/Enemy_BrainAlien.c", 108, "if (!(itemPtr->parm[3] & 1))"),
   },
   [ItemType.Enemy_Onion]: {
     flags: "Auto-fade status bits",
@@ -709,7 +773,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get rock type",
         fileName: "Items/Items.c",
-        lineNumber: 565,
+        lineNumber: 566,
       },
     },
     p1: "Unused",
@@ -725,7 +789,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get hay type",
         fileName: "Items/Items.c",
-        lineNumber: 595,
+        lineNumber: 596,
       },
     },
     p1: {
@@ -748,7 +812,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
         fileName: "Player/Player.c",
-        lineNumber: 527,
+        lineNumber: 529,
       },
     },
     p1: "Unused",
@@ -817,21 +881,21 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       description: "Rotation (0-7, multiplied by PI2/8)",
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
-        fileName: "Items/Items.c",
-        lineNumber: 1344,
+        fileName: "Items/Traps.c",
+        lineNumber: 124,
       },
     },
     p1: {
       type: "Integer",
       description: "Crystal color (0=Blue, 1=Green, 2=Red)",
       codeSample: {
-        code: "switch(itemPtr->parm[0])",
-        fileName: "Items/Items.c",
-        lineNumber: 1386,
+        code: "gNewObjectDefinition.type = SLIME_ObjType_FallingCrystal_Blue + itemPtr->parm[1];",
+        fileName: "Items/Traps.c",
+        lineNumber: 117,
       },
     },
     p2: "Unused",
-    p3: "Unused",
+    p3: sourceFlag("Aim at the player when the crystal grows", "Items/Traps.c", 130, "newObj->Flag[0] = itemPtr->parm[3] & 1;"),
   },
   [ItemType.MachineBoss]: {
     flags: "Auto-fade status bits",
@@ -910,8 +974,8 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       multiplier: "PI/2",
       codeSample: {
         code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
-        fileName: "Items/Items.c",
-        lineNumber: 545,
+        fileName: "Items/Triggers2.c",
+        lineNumber: 72,
       },
     },
     p1: "Unused",
@@ -926,14 +990,14 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       divisions: 4,
       multiplier: "PI/2",
       codeSample: {
-        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
-        fileName: "Items/Items.c",
-        lineNumber: 545,
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/4.0f);",
+        fileName: "Items/Traps.c",
+        lineNumber: 1203,
       },
     },
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: sourceFlag("Make the crunch door one-way", "Items/Traps.c", 1213, "bottom->OneWay = (itemPtr->parm[3] & 1);"),
   },
   [ItemType.Manhole]: {
     flags: "Auto-fade status bits | Rot Z,X,Y",
@@ -973,7 +1037,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
-        lineNumber: 545,
+        lineNumber: 1777,
       },
     },
     p1: "Unused",
@@ -985,28 +1049,28 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: enemyControlFlags("Enemies/FireIce/Enemy_Flamester.c", 90, 99),
   },
   [ItemType.Enemy_GiantLizard]: {
     flags: "Auto-fade status bits",
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: enemyControlFlags("Enemies/Jungle/Enemy_GiantLizard.c", 120, 135),
   },
   [ItemType.Enemy_FlyTrap]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
+    p0: sourceInteger("Initial flytrap rotation", "Enemies/Jungle/Enemy_Flytrap.c", 91, "(float)itemPtr->parm[0] * PI2/8"),
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: sourceFlag("Always add, bypassing the enemy-count limit", "Enemies/Jungle/Enemy_Flytrap.c", 78, "if (!(itemPtr->parm[3] & 1))"),
   },
   [ItemType.Enemy_Mantis]: {
     flags: "Auto-fade status bits",
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: enemyControlFlags("Enemies/Jungle/Enemy_Mantis.c", 96, 110),
   },
   [ItemType.TurtlePlatform]: {
     flags: "Auto-fade status bits",
@@ -1034,7 +1098,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
         lineNumber: 354,
       },
     },
-    p1: "Unused",
+    p1: sourceInteger("Smashable rotation", "Items/Triggers2.c", 364, "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8.0f);"),
     p2: "Unused",
     p3: "Unused",
   },
@@ -1063,7 +1127,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.HelpBeacon]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
+    p0: sourceInteger("Help-message number", "Screens/Infobar.c", 1204, "newObj->MessageNum = itemPtr->parm[0];"),
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -1127,14 +1191,14 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: enemyControlFlags("Enemies/Apocalypse/Enemy_Mutant.c", 104, 112),
   },
   [ItemType.Enemy_Blob]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
+    p0: sourceInteger("Blob color type", "Enemies/Slime/Enemy_Blob.c", 94, "newObj->BlobColorType = itemPtr->parm[0];"),
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: enemyControlFlags("Enemies/Slime/Enemy_Blob.c", 83, 92),
   },
   [ItemType.BumperBubble]: {
     flags: "Auto-fade status bits",
@@ -1174,7 +1238,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "switch(itemPtr->parm[0])",
         fileName: "Items/Items.c",
-        lineNumber: 1385,
+        lineNumber: 1386,
       },
     },
     p1: "Unused",
@@ -1222,11 +1286,11 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "Integer",
-      description: "Rotation (0-3, multiplied by PI/2)",
+      description: "Slime-mech model type",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        code: "int type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
-        lineNumber: 545,
+        lineNumber: 1139,
       },
     },
     p1: "Unused",
@@ -1241,7 +1305,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type 		= BLOBBOSS_ObjType_BarPlatform_Blue + type;",
         fileName: "Items/Triggers.c",
-        lineNumber: 1349,
+        lineNumber: 1321,
       },
     },
     p1: {
@@ -1254,8 +1318,8 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       },
     },
 
-    p2: "Unused",
-    p3: "Unused",
+    p2: sourceInteger("Platform height offset", "Items/Triggers.c", 1351, "((float)itemPtr->parm[2] * 10.0f)"),
+    p3: sourceFlag("Reverse the platform spin direction", "Items/Triggers.c", 1378, "if (itemPtr->parm[3] & 1)"),
   },
   [ItemType.MovingPlatform]: {
     flags: "Auto-fade status bits | On spline",
@@ -1265,7 +1329,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "int type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
-        lineNumber: 1582,
+        lineNumber: 1581,
       },
     },
     p1: "Unused",
@@ -1277,7 +1341,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: enemyControlFlags("Enemies/Apocalypse/Enemy_MutantRobot.c", 112, 126),
   },
   [ItemType.HumanScientist]: {
     flags: "Auto-fade status bits",
@@ -1290,6 +1354,11 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
         fileName: "Items/Humans.c",
         lineNumber: 1170,
       },
+      additionalCodeSamples: [{
+        code: "Byte humanType = itemPtr->parm[0];",
+        fileName: "Items/Humans.c",
+        lineNumber: 224,
+      }],
     },
     p1: "Unused",
     p2: "Unused",
@@ -1323,7 +1392,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "int type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
-        lineNumber: 1819,
+        lineNumber: 1818,
       },
     },
     p1: "Unused",
@@ -1388,15 +1457,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
         lineNumber: 1858,
       },
     },
-    p1: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4.0f);",
-        fileName: "Items/Items.c",
-        lineNumber: 1871,
-      },
-    },
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
@@ -1415,10 +1476,20 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "int type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
-        lineNumber: 1941,
+        lineNumber: 1940,
       },
     },
-    p1: "Unused",
+    p1: {
+      type: "Rotation",
+      description: "Teleporter-map rotation in quarter turns",
+      divisions: 4,
+      multiplier: "PI2/4",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4.0f);",
+        fileName: "Items/Items.c",
+        lineNumber: 1954,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
@@ -1540,7 +1611,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "id = itemPtr->parm[0];",
         fileName: "Items/BumperCar.c",
-        lineNumber: 918,
+        lineNumber: 920,
       },
     },
     p1: {
@@ -1549,7 +1620,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "area = itemPtr->parm[1];",
         fileName: "Items/BumperCar.c",
-        lineNumber: 917,
+        lineNumber: 919,
       },
     },
     p2: "Unused",
@@ -1597,7 +1668,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: enemyControlFlags("Enemies/Cloud/Enemy_StrongMan.c", 110, 118),
   },
   [ItemType.BumperCarGate]: {
     flags: "Auto-fade status bits",
@@ -1608,7 +1679,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "short area = itemPtr->parm[1];",
         fileName: "Items/BumperCar.c",
-        lineNumber: 1209,
+        lineNumber: 1210,
       },
     },
     p2: "Unused",
@@ -1644,7 +1715,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = CLOUD_ObjType_ZigZag_Blue + itemPtr->parm[0];",
         fileName: "Items/items2.c",
-        lineNumber: 66,
+        lineNumber: 67,
       },
     },
     p1: {
@@ -1684,18 +1755,32 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.JawsBot]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Bot type",
-      codeSample: {
-        code: "if (!(itemPtr->parm[3] & 1))",
-        fileName: "Enemies/FireIce/Enemy_JawsBot.c",
-        lineNumber: 76,
-      },
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add, bypassing the enemy-count limit",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1))",
+            fileName: "Enemies/FireIce/Enemy_JawsBot.c",
+            lineNumber: 77,
+          },
+        },
+        {
+          index: 1,
+          description: "Regenerate after defeat",
+          codeSample: {
+            code: "body->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/FireIce/Enemy_JawsBot.c",
+            lineNumber: 87,
+          },
+        },
+      ],
+    },
   },
   [ItemType.IceSaucer]: {
     flags: "Auto-fade status bits",
@@ -1712,27 +1797,65 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "r = (float)itemPtr->parm[0] * (PI/8);",
         fileName: "Effects/Sparkle.c",
-        lineNumber: 469,
+        lineNumber: 490,
       },
     },
     p1: {
       type: "Integer",
-      description: "Rotation (0-3, multiplied by PI/2)",
+      description: "Number of runway-light sparkles",
       codeSample: {
         code: "numSparkles = itemPtr->parm[1];",
         fileName: "Effects/Sparkle.c",
-        lineNumber: 466,
+        lineNumber: 464,
       },
     },
-    p2: "Unused",
-    p3: "Unused",
+    p2: {
+      type: "Integer",
+      description: "Runway-light sparkle texture selector",
+      codeSample: {
+        code: "t = itemPtr->parm[2];",
+        fileName: "Effects/Sparkle.c",
+        lineNumber: 461,
+      },
+    },
+    p3: {
+      type: "Bit Flags",
+      flags: [{
+        index: 0,
+        description: "Flicker the runway lights",
+        codeSample: {
+          code: "uint8_t flicker = itemPtr->parm[3] & 1;",
+          fileName: "Effects/Sparkle.c",
+          lineNumber: 444,
+        },
+      }],
+    },
   },
   [ItemType.Enemy_IceCube]: {
     flags: "Auto-fade status bits",
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [{
+        index: 0,
+        description: "Always add, bypassing the enemy-count limit",
+        codeSample: {
+          code: "if (!(itemPtr->parm[3] & 1))",
+          fileName: "Enemies/FireIce/Enemy_IceCube.c",
+          lineNumber: 124,
+        },
+      }, {
+        index: 1,
+        description: "Regenerate after defeat",
+        codeSample: {
+          code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+          fileName: "Enemies/FireIce/Enemy_IceCube.c",
+          lineNumber: 132,
+        },
+      }],
+    },
   },
   [ItemType.HammerBot]: {
     flags: "Auto-fade status bits",
@@ -1757,7 +1880,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           codeSample: {
             code: "body->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
             fileName: "Enemies/FireIce/Enemy_HammerBot.c",
-            lineNumber: 99,
+              lineNumber: 90,
           },
         },
       ],
@@ -1846,15 +1969,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.Snowball]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Unused in current source (snowball type is fixed)",
-      codeSample: {
-        code: "gNewObjectDefinition.type = FIREICE_ObjType_SnowBall;",
-        fileName: "Items/Traps.c",
-        lineNumber: 2083,
-      },
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -1874,7 +1989,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "newObj->Kind = itemPtr->parm[0]; // save smoke kind",
         fileName: "Effects/Effects.c",
-        lineNumber: 1685,
+        lineNumber: 1686,
       },
     },
     p1: "Unused",
@@ -1883,15 +1998,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   },
   [ItemType.RadarDish]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Dish type (0=Tower, 1=Radar)",
-      codeSample: {
-        code: "gNewObjectDefinition.type = SAUCER_ObjType_DishBase;",
-        fileName: "Items/items2.c",
-        lineNumber: 372,
-      },
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -1904,7 +2011,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "short numHumans = itemPtr->parm[0];",
         fileName: "Items/Humans.c",
-        lineNumber: 1064,
+        lineNumber: 1065,
       },
     },
     p1: {
@@ -1913,7 +2020,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "short humanType = itemPtr->parm[1];",
         fileName: "Items/Humans.c",
-        lineNumber: 1063,
+        lineNumber: 1064,
       },
     },
     p2: "Unused",
@@ -1955,7 +2062,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
         fileName: "Items/items2.c",
-        lineNumber: 441,
+        lineNumber: 443,
       },
     },
     p1: "Unused",
@@ -1977,7 +2084,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "id = itemPtr->parm[0];",
         fileName: "Enemies/Enemy_BrainBoss.c",
-        lineNumber: 979,
+        lineNumber: 982,
       },
     },
     p1: "Unused",

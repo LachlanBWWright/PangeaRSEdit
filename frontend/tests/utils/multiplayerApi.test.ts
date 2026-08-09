@@ -130,6 +130,7 @@ describe("multiplayer api", () => {
           gameId: "cromagrally",
           mode: "multiplayerRace",
           trackOrLevel: "ice-ramp",
+          tagDurationMinutes: 3,
           maxPlayers: 2,
           hostParticipantId: "host-1",
           joinCode: "ABC123",

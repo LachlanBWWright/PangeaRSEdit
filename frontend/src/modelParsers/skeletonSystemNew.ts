@@ -26,8 +26,10 @@ import {
   calculateLocalTransform,
 } from "./rotationUtils";
 import { plainObjectSchema, getNumberField } from "@/schemas/common";
+import { z } from "zod";
 
 const ANIMATION_EXTRA_NAMESPACE = "pangears";
+const accelerationModesSchema = z.record(z.string(), z.array(z.number().int()));
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return plainObjectSchema.safeParse(value).success;
@@ -73,6 +75,7 @@ interface ProcessedAnimation {
   duration: number;
   channels: AnimationChannelData[];
   events: BG3DAnimationEvent[];
+  accelerationModes: Record<string, number[]>;
 }
 
 interface AnimationChannelData {
@@ -331,6 +334,12 @@ function processSkeletonAnimations(
       type: event.type,
       value: event.value,
     }));
+    const accelerationModes = Object.fromEntries(
+      Object.entries(anim.keyframes).map(([boneIndex, keyframes]) => [
+        boneIndex,
+        keyframes.map((keyframe) => keyframe.accelerationMode),
+      ]),
+    );
 
     console.log(`  Processing animation "${anim.name}"`);
 
@@ -416,6 +425,7 @@ function processSkeletonAnimations(
       duration: maxTime,
       channels,
       events,
+      accelerationModes,
     };
   });
 }
@@ -609,6 +619,7 @@ function createGltfAnimations(
           type: event.type,
           value: event.value,
         })),
+        accelerationModes: anim.accelerationModes,
       },
     });
 
@@ -738,6 +749,13 @@ export function extractAnimationsFromGLTF(
     console.log(`Extracting animation "${anim.getName()}" from glTF`);
 
     const keyframes: Record<string, BG3DKeyframe[]> = {};
+    const extras = plainObjectSchema.safeParse(anim.getExtras());
+    const namespace = extras.success
+      ? plainObjectSchema.safeParse(extras.data[ANIMATION_EXTRA_NAMESPACE])
+      : undefined;
+    const accelerationModes = namespace?.success
+      ? accelerationModesSchema.safeParse(namespace.data.accelerationModes)
+      : undefined;
 
     // Process each channel in the animation
     const channels = anim.listChannels();
@@ -865,6 +883,15 @@ export function extractAnimationsFromGLTF(
     Object.values(keyframes).forEach((boneKeyframes) => {
       boneKeyframes.sort((a, b) => a.tick - b.tick);
     });
+    if (accelerationModes?.success) {
+      for (const [boneIndex, modes] of Object.entries(accelerationModes.data)) {
+        const boneKeyframes = keyframes[boneIndex] ?? [];
+        for (const [index, mode] of modes.entries()) {
+          const keyframe = boneKeyframes[index];
+          if (keyframe) keyframe.accelerationMode = mode;
+        }
+      }
+    }
 
     console.log(
       `Extracted animation "${anim.getName()}" with ${

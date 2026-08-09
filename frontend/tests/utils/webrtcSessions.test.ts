@@ -64,6 +64,7 @@ class FakePeerConnection implements HostPeerConnection {
 
   public readonly dataChannel = new FakeDataChannel();
   public readonly stateDataChannel = new FakeDataChannel("pangea-state");
+  public readonly iceCandidates: RTCIceCandidateInit[] = [];
 
   createDataChannel(
     label: string,
@@ -101,7 +102,7 @@ class FakePeerConnection implements HostPeerConnection {
   }
 
   addIceCandidate(_candidate: RTCIceCandidateInit): Promise<void> {
-    void _candidate;
+    this.iceCandidates.push(_candidate);
     return Promise.resolve();
   }
 
@@ -227,5 +228,47 @@ describe("webrtc host/client sessions", () => {
 
     expect(states).toEqual(["connecting", "failed", "closed", "closed"]);
     vi.useRealTimers();
+  });
+
+  it("queues host ICE candidates until the answer is applied", async () => {
+    const fakeConnection = new FakePeerConnection();
+    const hostSession = createHostSession({
+      createPeerConnection: () => okAsync(fakeConnection),
+      sendOffer: () => okAsync(undefined),
+      sendIceCandidate: () => okAsync(undefined),
+      onStateChanged: () => undefined,
+    });
+
+    await hostSession.applyIceCandidate("guest-queued", "candidate-before-peer");
+    await hostSession.startPeer("guest-queued");
+    expect(fakeConnection.iceCandidates).toHaveLength(0);
+
+    const answerResult = await hostSession.applyAnswer(
+      "guest-queued",
+      "answer-sdp",
+    );
+    expect(answerResult.isOk()).toBe(true);
+    expect(fakeConnection.iceCandidates).toEqual([
+      { candidate: "candidate-before-peer" },
+    ]);
+  });
+
+  it("queues client ICE candidates until the offer is applied", async () => {
+    const fakeConnection = new FakePeerConnection();
+    const session = createClientSession({
+      createPeerConnection: () => okAsync(fakeConnection),
+      sendAnswer: () => okAsync(undefined),
+      sendIceCandidate: () => okAsync(undefined),
+      onStateChanged: () => undefined,
+      onDataChannelOpened: () => undefined,
+    });
+
+    await session.applyIceCandidate("candidate-before-offer");
+    const offerResult = await session.receiveOffer("host-queued", "offer-sdp");
+
+    expect(offerResult.isOk()).toBe(true);
+    expect(fakeConnection.iceCandidates).toEqual([
+      { candidate: "candidate-before-offer" },
+    ]);
   });
 });

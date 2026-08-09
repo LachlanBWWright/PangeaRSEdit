@@ -1,4 +1,5 @@
-import { ResultAsync, errAsync } from "neverthrow";
+import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { ignoreRtcError, observeRtcResult } from "./observeRtcResult";
 import type {
   HostPeerConnection,
   HostSessionDataChannel,
@@ -16,6 +17,7 @@ export interface ClientSessionDeps {
     candidate: string,
   ) => ResultAsync<void, string>;
   readonly onStateChanged: (state: WebRtcSessionState) => void;
+  readonly onError?: (message: string) => void;
   readonly onDataChannelOpened: (channels: {
     readonly controlChannel: HostSessionDataChannel;
     readonly stateChannel: HostSessionDataChannel;
@@ -35,6 +37,7 @@ export interface ClientSession {
 const OFFER_APPLY_TIMEOUT_MS = 15_000;
 const ANSWER_CREATE_TIMEOUT_MS = 15_000;
 const DATA_CHANNEL_OPEN_TIMEOUT_MS = 15_000;
+const DISCONNECT_GRACE_MS = 5_000;
 
 function withTimeout<T>(
   promise: Promise<T>,
@@ -76,6 +79,9 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
   let openTimeoutId: number | null = null;
   let pendingControlChannel: HostSessionDataChannel | null = null;
   let pendingStateChannel: HostSessionDataChannel | null = null;
+  let remoteDescriptionApplied = false;
+  let reconnectTimeoutId: number | null = null;
+  const pendingIceCandidates: RTCIceCandidateInit[] = [];
   const dataChannelOpenTimeoutMs =
     deps.dataChannelOpenTimeoutMs ?? DATA_CHANNEL_OPEN_TIMEOUT_MS;
 
@@ -83,6 +89,10 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
     if (openTimeoutId !== null) {
       window.clearTimeout(openTimeoutId);
       openTimeoutId = null;
+    }
+    if (reconnectTimeoutId !== null) {
+      window.clearTimeout(reconnectTimeoutId);
+      reconnectTimeoutId = null;
     }
     if (!peerConnection) {
       return;
@@ -94,7 +104,12 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
 
   const applyIceCandidate = (candidate: string): ResultAsync<void, string> => {
     if (!peerConnection) {
-      return errAsync("Peer connection is not active");
+      pendingIceCandidates.push({ candidate });
+      return okAsync(undefined);
+    }
+    if (!remoteDescriptionApplied) {
+      pendingIceCandidates.push({ candidate });
+      return okAsync(undefined);
     }
     return ResultAsync.fromPromise(
       peerConnection.addIceCandidate({ candidate }),
@@ -104,6 +119,12 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
 
   return {
     receiveOffer: (sourceParticipantId, sdp) => {
+      if (peerConnection) {
+        close();
+      }
+      pendingControlChannel = null;
+      pendingStateChannel = null;
+      remoteDescriptionApplied = false;
       deps.onStateChanged("connecting");
       return deps.createPeerConnection().andThen((connection) => {
         peerConnection = connection;
@@ -112,6 +133,20 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
           close();
         }, dataChannelOpenTimeoutMs);
         connection.onconnectionstatechange = () => {
+          if (connection.connectionState === "disconnected") {
+            deps.onStateChanged("connecting");
+            if (reconnectTimeoutId === null) {
+              reconnectTimeoutId = window.setTimeout(() => {
+                reconnectTimeoutId = null;
+                deps.onStateChanged("failed");
+              }, DISCONNECT_GRACE_MS);
+            }
+            return;
+          }
+          if (reconnectTimeoutId !== null) {
+            window.clearTimeout(reconnectTimeoutId);
+            reconnectTimeoutId = null;
+          }
           const mappedState = mapConnectionState(connection.connectionState);
           if (mappedState) {
             deps.onStateChanged(mappedState);
@@ -121,9 +156,13 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
           if (!event.candidate || !event.candidate.candidate) {
             return;
           }
-          void deps.sendIceCandidate(
-            sourceParticipantId,
-            event.candidate.candidate,
+          observeRtcResult(
+            deps.sendIceCandidate(
+              sourceParticipantId,
+              event.candidate.candidate,
+            ),
+            "Unable to send ICE candidate",
+            deps.onError ?? ignoreRtcError,
           );
         };
         const maybeNotifyChannelsReady = (): void => {
@@ -175,6 +214,18 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
           ),
           () => "Failed to apply remote WebRTC offer",
         )
+          .andThen(() => {
+            remoteDescriptionApplied = true;
+            const candidates = pendingIceCandidates.splice(0);
+            return ResultAsync.combine(
+              candidates.map((candidate) =>
+                ResultAsync.fromPromise(
+                  connection.addIceCandidate(candidate),
+                  () => "Failed to apply queued remote ICE candidate",
+                ),
+              ),
+            ).map(() => undefined);
+          })
           .andThen(() => {
             return ResultAsync.fromPromise(
               withTimeout(

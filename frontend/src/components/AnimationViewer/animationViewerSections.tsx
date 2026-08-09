@@ -12,9 +12,11 @@ export function ViewerSection({
   containerRef,
 }: ViewerSectionProps) {
   return (
-    <div ref={containerRef} className="space-y-3 border-t border-gray-700 pt-3">
-      <div className="text-xs font-semibold text-gray-300">{title}</div>
+    <section ref={containerRef} className="border-t border-gray-700/70 pt-3">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        {title}
+      </h3>
       {children}
-    </div>
+    </section>
   );
 }

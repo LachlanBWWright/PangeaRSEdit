@@ -79,7 +79,7 @@ export function NanosaurEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    resizeNanosaurSupertiles({
+    return resizeNanosaurSupertiles({
       headerData,
       itemData,
       terrainData,
@@ -131,7 +131,6 @@ export function NanosaurEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
-            onResizeSupertiles={handleSupertileResize}
           />
         )}
       </MenuSection>
@@ -169,6 +168,7 @@ export function NanosaurEditorView({
             view={view}
             stage={stage}
             setStage={setStage}
+            onResize={handleSupertileResize}
           />
         )}
       </div>

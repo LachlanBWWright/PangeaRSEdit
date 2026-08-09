@@ -26,10 +26,13 @@ import {
   scriptSplineBindingSchema,
   scriptTagDefinitionSchema,
   scriptTerrainBindingSchema,
+  scriptTerrainReplacementSchema,
 } from "./scriptWorkspaceStateTypes";
+import { getDefaultHoverBeaconVisual } from "./scriptDefaultCustomVisuals";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
 import type {
   ScriptBehaviorDefinition,
+  ScriptAssetFile,
   ScriptCompiledFile,
   ScriptCustomObjectDefinition,
   ScriptCustomObjectPlacement,
@@ -43,10 +46,12 @@ import type {
   ScriptSourceFile,
   ScriptSplineBinding,
   ScriptSplineBindingSignature,
+  ScriptSplineReplacement,
   ScriptTagDefinition,
   ScriptTargetKind,
   ScriptTerrainBinding,
   ScriptTerrainBindingSignature,
+  ScriptTerrainReplacement,
   ScriptWorkspaceContext,
   ScriptWorkspaceState,
 } from "./scriptWorkspaceStateTypes";
@@ -58,6 +63,8 @@ function defaultLevelState(): ScriptLevelState {
     splineBindings: [],
     mapItemBindings: [],
     customPlacements: [],
+    terrainReplacements: [],
+    splineReplacements: [],
   };
 }
 
@@ -562,17 +569,23 @@ function buildBehaviorCatalog(
       ],
       template: [
         "local hoverBeacon = {}",
+        "local origins = {}",
         "",
         "function hoverBeacon.onUpdate(self, ctx)",
         "  local current = pangea.object.position(self.handle)",
         "  if not current then",
         "    return",
         "  end",
+        "  local origin = origins[self.handle.id]",
+        "  if not origin then",
+        "    origin = current",
+        "    origins[self.handle.id] = origin",
+        "  end",
         "  local wave = math.sin(ctx.levelTimeSeconds * 4) * 16",
         "  pangea.object.setPosition(self.handle, {",
-        "    x = current.x,",
-        "    y = current.y + wave * 0.02,",
-        "    z = current.z,",
+        "    x = origin.x,",
+        "    y = origin.y + wave,",
+        "    z = origin.z,",
         "  })",
         "end",
         "",
@@ -1049,6 +1062,7 @@ function buildGeneratedEntryModule(
 
   const customObjectRequires: string[] = [];
   const customObjectExports: string[] = [];
+  const customObjectFrameDispatch: string[] = [];
   state.customObjects.forEach((objectDefinition, index) => {
     const varName = `__customObjectModule${index}`;
     const relPath = toEditorRelativePath(objectDefinition.sourceFilePath);
@@ -1057,6 +1071,17 @@ function buildGeneratedEntryModule(
       `if type(${varName}) == "table" and ${varName}.${objectDefinition.exportName} ~= nil then`,
       `  entry.${objectDefinition.exportName} = ${varName}.${objectDefinition.exportName}`,
       `end`
+    );
+    customObjectFrameDispatch.push(
+      `  if __hasTag(ctx.tags, ${JSON.stringify(objectDefinition.id)}) or __hasTag(ctx.tags, ${JSON.stringify(objectDefinition.tags[0] ?? objectDefinition.id)}) then`,
+      `    local behavior = ${varName}.${objectDefinition.exportName}`,
+      "    local handlerNames = { spawn = 'onSpawn', update = 'onUpdate', triggerEnter = 'onTriggerEnter', animationEvent = 'onAnimationEvent', animationComplete = 'onAnimationComplete', destroy = 'onDestroy' }",
+      "    local handlerName = handlerNames[ctx.event or 'update']",
+      "    local handler = type(behavior) == 'table' and behavior[handlerName] or nil",
+      "    if type(handler) == 'function' then",
+      "      handler({ handle = ctx.object }, ctx)",
+      "    end",
+      "  end",
     );
   });
 
@@ -1237,6 +1262,7 @@ function buildGeneratedEntryModule(
         return [
           `function entry.${hookId}(ctx)`,
           "  local objectResult = nil",
+          ...customObjectFrameDispatch,
           "  local typedModules = __objectTypeModules[ctx.objectType]",
           "  if typedModules then",
           "    for _, typedModule in ipairs(typedModules) do",
@@ -1283,6 +1309,14 @@ function buildGeneratedEntryModule(
     "}",
     "",
     "local entry = {}",
+    "local function __hasTag(tags, expected)",
+    "  for _, tag in ipairs(tags or {}) do",
+    "    if tag == expected then",
+    "      return true",
+    "    end",
+    "  end",
+    "  return false",
+    "end",
     "",
     customObjectExports.length > 0 ? customObjectExports.join("\n") + "\n" : "",
     hookDispatchers,
@@ -1478,6 +1512,12 @@ function cloneLevelState(
     splineBindings: levelState.splineBindings.map(cloneSplineBinding),
     mapItemBindings: levelState.mapItemBindings.map(cloneMapItemBinding),
     customPlacements: levelState.customPlacements.map(cloneCustomPlacement),
+    terrainReplacements: levelState.terrainReplacements.map((replacement) => ({
+      ...replacement,
+    })),
+    splineReplacements: levelState.splineReplacements.map((replacement) => ({
+      ...replacement,
+    })),
   };
 }
 
@@ -1492,6 +1532,14 @@ function cloneCustomObjectDefinition(
     tags: [...objectDefinition.tags],
     compatibility: objectDefinition.compatibility,
     description: objectDefinition.description,
+    visual:
+      objectDefinition.visual.kind === "customSkeleton"
+        ? {
+            ...objectDefinition.visual,
+            animations: { ...objectDefinition.visual.animations },
+          }
+        : { ...objectDefinition.visual },
+    collision: { ...objectDefinition.collision },
   };
 }
 
@@ -2154,6 +2202,13 @@ export function createCustomObjectFromBehavior(
     "generated-assignment",
     objectId,
   );
+  const visual: ScriptCustomObjectDefinition["visual"] =
+    behavior.id === "sample.hover-beacon"
+      ? getDefaultHoverBeaconVisual(state.context.gameId)
+      : { kind: "none" };
+  const collision: ScriptCustomObjectDefinition["collision"] = {
+    kind: "none",
+  };
 
   return refreshGeneratedEntry(
     {
@@ -2169,6 +2224,8 @@ export function createCustomObjectFromBehavior(
                   tags: [...behavior.defaultTags],
                   compatibility: behavior.previewSupport,
                   description: behavior.description,
+                  visual,
+                  collision,
                 }
               : candidate,
           )
@@ -2182,11 +2239,91 @@ export function createCustomObjectFromBehavior(
               tags: [...behavior.defaultTags],
               compatibility: behavior.previewSupport,
               description: behavior.description,
+              visual,
+              collision,
             },
           ],
     },
     state.context,
   );
+}
+
+export function updateCustomObjectDefinition(
+  state: ScriptWorkspaceState,
+  definition: ScriptCustomObjectDefinition,
+): ScriptWorkspaceState {
+  if (!state.customObjects.some((candidate) => candidate.id === definition.id)) {
+    return state;
+  }
+  return refreshGeneratedEntry(
+    {
+      ...state,
+      customObjects: state.customObjects.map((candidate) =>
+        candidate.id === definition.id
+          ? cloneCustomObjectDefinition(definition)
+          : candidate,
+      ),
+    },
+    state.context,
+  );
+}
+
+export function replaceTerrainItemWithCustomObject(
+  state: ScriptWorkspaceState,
+  replacement: ScriptTerrainReplacement,
+): ScriptWorkspaceState {
+  return updateWorkspaceLevel(state, state.context.levelKey, (levelState) => ({
+    ...levelState,
+    terrainReplacements: [
+      ...levelState.terrainReplacements.filter(
+        (candidate) => candidate.itemIndex !== replacement.itemIndex,
+      ),
+      replacement,
+    ],
+  }));
+}
+
+export function removeTerrainItemReplacement(
+  state: ScriptWorkspaceState,
+  itemIndex: number,
+): ScriptWorkspaceState {
+  return updateWorkspaceLevel(state, state.context.levelKey, (levelState) => ({
+    ...levelState,
+    terrainReplacements: levelState.terrainReplacements.filter(
+      (candidate) => candidate.itemIndex !== itemIndex,
+    ),
+  }));
+}
+
+export function replaceSplineItemWithCustomObject(
+  state: ScriptWorkspaceState,
+  replacement: ScriptSplineReplacement,
+): ScriptWorkspaceState {
+  return updateWorkspaceLevel(state, state.context.levelKey, (levelState) => ({
+    ...levelState,
+    splineReplacements: [
+      ...levelState.splineReplacements.filter(
+        (candidate) =>
+          candidate.splineNum !== replacement.splineNum ||
+          candidate.itemIndex !== replacement.itemIndex,
+      ),
+      replacement,
+    ],
+  }));
+}
+
+export function removeSplineItemReplacement(
+  state: ScriptWorkspaceState,
+  splineNum: number,
+  itemIndex: number,
+): ScriptWorkspaceState {
+  return updateWorkspaceLevel(state, state.context.levelKey, (levelState) => ({
+    ...levelState,
+    splineReplacements: levelState.splineReplacements.filter(
+      (candidate) =>
+        candidate.splineNum !== splineNum || candidate.itemIndex !== itemIndex,
+    ),
+  }));
 }
 
 export function placeCustomObject(
@@ -2289,8 +2426,9 @@ export function compileScriptWorkspace(
 }
 
 function buildRuntimeLevelsJson(
-  context: ScriptWorkspaceContext,
+  state: ScriptWorkspaceState,
 ): z.infer<typeof runtimeLevelsSchema> {
+  const context = state.context;
   if (context.levelNumber === null) {
     return {
       version: 1,
@@ -2305,6 +2443,13 @@ function buildRuntimeLevelsJson(
         script: BUNDLED_RUNTIME_PATH,
         extraNativeItems: [],
         itemOverrides: [],
+        customObjects: state.customObjects.map(cloneCustomObjectDefinition),
+        terrainReplacements: (
+          state.levels[context.levelKey]?.terrainReplacements ?? []
+        ).map((replacement) => ({ ...replacement })),
+        splineReplacements: (
+          state.levels[context.levelKey]?.splineReplacements ?? []
+        ).map((replacement) => ({ ...replacement })),
         levelSettings: {},
       },
     },
@@ -2395,7 +2540,7 @@ export function buildScriptPackageFiles(
     },
     {
       path: "Data/Scripts/config/levels.json",
-      bytes: encodeJson(buildRuntimeLevelsJson(compiled.context)),
+      bytes: encodeJson(buildRuntimeLevelsJson(compiled)),
     },
     {
       path: `Data/Scripts/config/bindings/${levelLabelFromContext(compiled.context)}.json`,
@@ -2595,6 +2740,22 @@ export function importScriptPackageZip(
     sourceFiles[USER_BOOTSTRAP_PATH] ??
     createSourceFile(USER_BOOTSTRAP_PATH, buildBaseRuntimeTemplate(), "user");
 
+  const importedAssets = Object.entries(files).filter(
+    ([path]) =>
+      path.startsWith("Data/Scripts/assets/models/") ||
+      path.startsWith("Data/Scripts/assets/skeletons/"),
+  );
+  const assets: Record<string, ScriptAssetFile> = Object.fromEntries(
+    importedAssets.map(([path, assetBytes]) => [
+      path,
+      {
+        path,
+        bytes: assetBytes,
+        sourceName: path.split("/").at(-1) ?? path,
+      },
+    ]),
+  );
+
   // Read all levels to preserve multi-level package data
   const nextLevels: Record<string, ScriptLevelState> = {};
   if (projectJson?.editor.levels) {
@@ -2659,6 +2820,7 @@ export function importScriptPackageZip(
             (path) => path !== GENERATED_ENTRY_PATH,
           ),
       sourceFiles,
+      assets,
       customObjects: objectsResult.value?.objects ?? [],
       params: paramsResult.value?.params ?? [],
       diagnostics: projectJson?.editor.diagnostics ?? [],

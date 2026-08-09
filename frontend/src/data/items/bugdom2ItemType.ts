@@ -222,7 +222,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot \t\t= (float)rot * (PI2/8);",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 121,
+        lineNumber: 95,
       },
     },
     p2: {
@@ -231,7 +231,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "snail->KeyColor \t= keyColor;\t\t\t\t\t\t\t\t\t// remember key color",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 127,
+        lineNumber: 95,
       },
     },
     p3: "Unknown",
@@ -259,7 +259,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "pow = MakePOW(itemPtr->parm[0], &where);",
         fileName: "Source/Items/Powerups.c",
-        lineNumber: 585,
+        lineNumber: 55,
       },
     },
     p1: "Unknown",
@@ -316,7 +316,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Daisy1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 181,
+        lineNumber: 182,
       },
     },
     p1: "Unused",
@@ -331,7 +331,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Grass1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 299,
+        lineNumber: 301,
       },
     },
     p1: "Unused",
@@ -340,15 +340,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.SnailShell]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused in current source (shell rotation is randomized)",
-      codeSample: {
-        code: "gNewObjectDefinition.rot = RandomFloat() * PI2;",
-        fileName: "Source/Items/Snails.c",
-        lineNumber: 682,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -361,7 +353,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Tulip1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 234,
+        lineNumber: 236,
       },
     },
     p1: "Unused",
@@ -480,7 +472,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "OGLMatrix3x3_SetRotate(&m, (float)itemPtr->parm[0] * (PI2/8));",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 1333,
+        lineNumber: 1337,
       },
     },
     p1: "Unknown",
@@ -498,15 +490,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
         lineNumber: 539,
       },
     },
-    p1: {
-      type: "Integer",
-      description: "Brick type (varies by level)",
-      codeSample: {
-        code: "gNewObjectDefinition.type = GARDEN_ObjType_Brick; // or SIDEWALK_ObjType_Brick depending on level",
-        fileName: "Source/Items/Items.c",
-        lineNumber: 517,
-      },
-    },
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -542,7 +526,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "newObj->Kind = kind;\t\t\t\t\t\t\t\t\t// which kind of chipmunk",
         fileName: "Source/Items/Chipmunk.c",
-        lineNumber: 133,
+        lineNumber: 80,
       },
     },
     p2: {
@@ -580,15 +564,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.SnakeGenerator]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddSnakeGenerator(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_Snake.c",
-        lineNumber: 161,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -664,7 +640,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = PI + ((float)itemPtr->parm[0] * (PI2/4));",
         fileName: "Source/Items/Items.c",
-        lineNumber: 872,
+        lineNumber: 898,
       },
     },
     p1: "Unused",
@@ -745,7 +721,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "pow = MakePOW(itemPtr->parm[0], &where);",
         fileName: "Source/Items/Powerups.c",
-        lineNumber: 585,
+        lineNumber: 586,
       },
     },
     p1: "Unused",
@@ -810,15 +786,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.Enemy_Tick]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_Tick(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_Tick.c",
-        lineNumber: 108,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -846,7 +814,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = PLAYROOM_ObjType_LetterBlock1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 27,
+        lineNumber: 55,
       },
     },
     p1: "Unknown",
@@ -861,24 +829,38 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI / 2);",
         fileName: "Source/Items/Traps.c",
-        lineNumber: 749,
+        lineNumber: 743,
       },
     },
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Mouse trap starts primed",
+          codeSample: {
+            code: "Boolean primed = itemPtr->parm[3] & 0x1;",
+            fileName: "Source/Items/Traps.c",
+            lineNumber: 723,
+          },
+        },
+        {
+          index: 1,
+          description: "Mouse trap contains a drowning mouse",
+          codeSample: {
+            code: "Boolean drowning = itemPtr->parm[3] & (1<<1);",
+            fileName: "Source/Items/Traps.c",
+            lineNumber: 724,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Enemy_ToySoldier]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_ToySoldier(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_ToySoldier.c",
-        lineNumber: 105,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: {
@@ -956,7 +938,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "int type = itemPtr->parm[0];\nif (type > 5)\n\treturn(true);\nif (type == 0)\n\tgNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall;\nelse if (itemPtr->parm[3] & 1)\n\tgNewObjectDefinition.type = PLAYROOM_ObjType_LegoBrick_Red + RandomRange(0, 4);\nelse\n\tgNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall + type;",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 372,
+        lineNumber: 371,
       },
     },
     p1: {
@@ -965,7 +947,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "int r = itemPtr->parm[1];\ngNewObjectDefinition.rot = (float)r * (PI/2);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 372,
+        lineNumber: 371,
       },
     },
     p2: "Unknown",
@@ -1111,7 +1093,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 796,
+        lineNumber: 793,
       },
     },
     p1: {
@@ -1134,7 +1116,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "newObj->MothTargetID = itemPtr->parm[0]; // get target ID #",
         fileName: "Source/Enemies/Enemy_Moth.c",
-        lineNumber: 126,
+        lineNumber: 124,
       },
     },
     p1: "Unknown",
@@ -1149,7 +1131,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           codeSample: {
             code: "if (itemPtr->parm[3] & 1) // see if target\n    return(true);",
             fileName: "Source/Enemies/Enemy_Moth.c",
-            lineNumber: 117,
+              lineNumber: 92,
           },
         },
       ],
@@ -1217,15 +1199,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.Enemy_Roach]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_Roach(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_Roach.c",
-        lineNumber: 125,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: {
@@ -1251,7 +1225,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 753,
+        lineNumber: 754,
       },
     },
     p1: {
@@ -1260,7 +1234,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "int stackLevel = itemPtr->parm[1];\nif (stackLevel > 0)\n    y += (float)stackLevel * (gNewObjectDefinition.scale * .44f);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 739,
+        lineNumber: 737,
       },
     },
     p2: "Unknown",
@@ -1283,7 +1257,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 1127,
+        lineNumber: 1131,
       },
     },
     p2: "Unknown",
@@ -1297,7 +1271,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "int foodType = itemPtr->parm[0];",
         fileName: "Source/Enemies/Enemy_Ant.c",
-        lineNumber: 104,
+        lineNumber: 108,
       },
     },
     p1: "Unknown",
@@ -1319,15 +1293,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.Enemy_PondFish]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_PondFish(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_PondFish.c",
-        lineNumber: 101,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -1374,7 +1340,23 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     p2: "Unknown",
     p3: "Unknown",
   },
-  [ItemType.PicnicBasket]: bugdom2DefaultParams,
+  [ItemType.PicnicBasket]: {
+    flags: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Picnic basket rotation in quarter turns",
+      divisions: 4,
+      multiplier: "PI2/4",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
+        fileName: "Source/Items/Snails2.c",
+        lineNumber: 519,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
   [ItemType.Kindling]: {
     flags: "Unknown",
     p0: {
@@ -1383,7 +1365,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = PARK_ObjType_Leaf + part;",
         fileName: "Source/Items/BeeHive.c",
-        lineNumber: 239,
+        lineNumber: 237,
       },
     },
     p1: "Unknown",
@@ -1392,30 +1374,14 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.BeeHive]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Bee hive part (0 or 1)",
-      codeSample: {
-        code: "gNewObjectDefinition.type = PARK_ObjType_Hive;",
-        fileName: "Source/Items/BeeHive.c",
-        lineNumber: 58,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.SodaCan]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unknown",
-      codeSample: {
-        code: "gNewObjectDefinition.type = GARBAGE_ObjType_Can;",
-        fileName: "Source/Items/Items3.c",
-        lineNumber: 67,
-      },
-    },
+    p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -1467,7 +1433,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4);",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 470,
+        lineNumber: 475,
       },
     },
     p2: "Unused",
@@ -1481,7 +1447,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 528,
+        lineNumber: 527,
       },
     },
     p1: "Unknown",
@@ -1496,7 +1462,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 571,
+        lineNumber: 570,
       },
     },
     p1: "Unknown",
