@@ -19,6 +19,7 @@ import {
 } from "@/data/globals/editorNavbarAtoms";
 import { UserMenu } from "@/components/UserMenu";
 import { useFeatureFlags } from "@/config/useFeatureFlags";
+import { SettingsMenu } from "@/components/SettingsMenu";
 
 export function Navigation() {
   const location = useLocation();
@@ -150,7 +151,12 @@ export function Navigation() {
           </div>
         </div>
       )}
-      <div className={showEditorNavbar ? "hidden" : "ml-auto shrink-0"}>
+      <div
+        className={
+          showEditorNavbar ? "hidden" : "ml-auto flex shrink-0 items-center gap-1"
+        }
+      >
+        <SettingsMenu />
         <UserMenu />
       </div>
     </nav>

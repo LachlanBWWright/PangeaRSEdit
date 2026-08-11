@@ -15,6 +15,8 @@ import { ItemType as NanosaurItemType } from "@/data/items/nanosaurItemType";
 import { ItemType as Nanosaur2ItemType } from "@/data/items/nanosaur2ItemType";
 import { ItemType as OttoItemType } from "@/data/items/ottoItemType";
 import { ItemType as BillyItemType } from "@/data/items/billyFrontierItemType";
+import { getGameMapper } from "@/data/items/mappers";
+import { getVisibleSplineItemTypes } from "@/data/items/splineItemModelVisibility";
 
 describe("item model mappings", () => {
   it("includes both level and param state in the Bugdom 2 door cache key", () => {
@@ -25,7 +27,97 @@ describe("item model mappings", () => {
         { p0: 0, p1: 2, p2: 0, p3: 0 },
         4,
       ),
-    ).toBe(`g${Game.BUGDOM_2}_${Bugdom2ItemType.Door}_lv4_p1_2`);
+    ).toBe(
+      `g${Game.BUGDOM_2}_terrainItem_${Bugdom2ItemType.Door}_lv4_p1_2`,
+    );
+  });
+
+  it("keeps terrain and spline models in distinct cache entries", () => {
+    const terrainKey = getItemModelCacheKey(
+      Game.BUGDOM,
+      BugdomItemType.HoneycombPlatform,
+    );
+    const splineKey = getItemModelCacheKey(
+      Game.BUGDOM,
+      BugdomItemType.HoneycombPlatform,
+      undefined,
+      undefined,
+      "splineItem",
+    );
+
+    expect(terrainKey).not.toBe(splineKey);
+  });
+
+  it("maps Bugdom spline honeycomb platforms to the wood model", () => {
+    const terrainMapping = bugdomItemMapper.getMapping(
+      BugdomItemType.HoneycombPlatform,
+      5,
+      undefined,
+      undefined,
+      "terrainItem",
+    );
+    const splineMapping = bugdomItemMapper.getMapping(
+      BugdomItemType.HoneycombPlatform,
+      5,
+      undefined,
+      undefined,
+      "splineItem",
+    );
+
+    expect(terrainMapping?.modelIndex).toBe(0);
+    expect(splineMapping).toMatchObject({
+      modelFile: "BeeHive_Models.3dmf",
+      modelIndex: 2,
+      verificationStatus: "verified",
+    });
+  });
+
+  it.each([
+    Game.OTTO_MATIC,
+    Game.BUGDOM,
+    Game.BUGDOM_2,
+    Game.NANOSAUR_2,
+    Game.CRO_MAG,
+    Game.BILLY_FRONTIER,
+  ])("maps every visible spline item for game %s", (game) => {
+    const mapper = getGameMapper(game);
+    const visibleTypes = getVisibleSplineItemTypes(game);
+
+    expect(mapper).toBeDefined();
+    expect(visibleTypes.length).toBeGreaterThan(0);
+    visibleTypes.forEach((itemType) => {
+      expect(
+        mapper?.getMapping(
+          itemType,
+          undefined,
+          { p0: 0, p1: 0, p2: 0, p3: 0 },
+          0,
+          "splineItem",
+        ),
+        `game ${String(game)} spline item ${String(itemType)}`,
+      ).toBeDefined();
+    });
+  });
+
+  it.each([
+    [Game.OTTO_MATIC, 1],
+    [Game.BUGDOM, 1],
+    [Game.BUGDOM_2, 60],
+    [Game.NANOSAUR_2, 16],
+    [Game.CRO_MAG, 1],
+    [Game.BILLY_FRONTIER, 22],
+  ])("does not map non-rendering spline item %s:%s", (game, itemType) => {
+    const mapper = getGameMapper(game);
+
+    expect(
+      mapper?.getMapping(
+        itemType,
+        undefined,
+        { p0: 0, p1: 0, p2: 0, p3: 0 },
+        0,
+        "splineItem",
+      ),
+    ).toBeUndefined();
   });
 
   it("maps Bugdom 2 closet doors to silicon and diary meshes with source scales", () => {

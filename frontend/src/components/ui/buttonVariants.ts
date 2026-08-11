@@ -12,6 +12,12 @@ const VARIANT_CLASSES = {
   secondary:
     "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
   ghost: "hover:bg-accent hover:text-accent-foreground",
+  icon: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+  selectable:
+    "border border-input bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground aria-pressed:bg-blue-600 aria-pressed:text-white",
+  swatch:
+    "border-2 border-transparent p-0 shadow-sm hover:border-muted-foreground focus-visible:ring-2 aria-pressed:border-green-400",
+  menu: "w-full justify-start rounded-none px-3 text-foreground shadow-none hover:bg-accent hover:text-accent-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground",
   link: "text-primary underline-offset-4 hover:underline",
 } as const;
 

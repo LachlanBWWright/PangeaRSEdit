@@ -1,4 +1,13 @@
 import { z } from "zod";
+import { billyFrontierItemTypeParams as billyItemParams, itemTypeNames as billyItemTypeNames } from "@/data/items/billyFrontierItemType";
+import { bugdomItemTypeParams as bugdomItemParams, itemTypeNames as bugdomItemTypeNames } from "@/data/items/bugdomItemType";
+import { bugdom2ItemTypeParams as bugdom2ItemParams, itemTypeNames as bugdom2ItemTypeNames } from "@/data/items/bugdom2ItemType";
+import { croMagItemTypeParams as croMagItemParams, itemTypeNames as croMagItemTypeNames } from "@/data/items/croMagItemType";
+import { itemTypeNames as mightyMikeItemTypeNames } from "@/data/items/mightyMikeItemType";
+import { itemTypeNames as nanosaurItemTypeNames, nanosaurItemTypeParams as nanosaurItemParams } from "@/data/items/nanosaurItemType";
+import { itemTypeNames as nanosaur2ItemTypeNames, nanosaur2ItemTypeParams as nanosaur2ItemParams } from "@/data/items/nanosaur2ItemType";
+import { itemTypeNames as ottoItemTypeNames, TerrainItemTypeParams as ottoItemParams } from "@/data/items/ottoItemType";
+import type { ItemParams, ParamDescription } from "@/data/items/itemParams";
 
 export const FieldTypeSchema = z.enum([
   "string",
@@ -45,9 +54,39 @@ export const NativeSpawnSchema = z.object({
   label: z.string(),
   category: z.string(),
   description: z.string(),
+  params: z.array(z.object({ name: z.string(), description: z.string(), values: z.array(z.string()).optional() })).default([]),
 });
 
 export type NativeSpawn = z.infer<typeof NativeSpawnSchema>;
+
+function describeParam(param: ParamDescription): { readonly description: string; readonly values?: readonly string[] } | undefined {
+  if (param === "Unused") return undefined;
+  if (param === "Unknown") return { description: "Game-specific parameter; behavior is not yet documented." };
+  if (param.type === "Bit Flags") return { description: "Bit flags: " + param.flags.map((flag) => `${flag.index}=${flag.description}`).join(", ") };
+  if (param.type === "TypeSelector") return { description: param.description, values: Object.entries(param.options).map(([value, label]) => `${value} (${label})`) };
+  if (param.type === "Rotation") return { description: `${param.description} (${param.divisions} steps, ${param.multiplier}).` };
+  return { description: param.description };
+}
+
+function nativeParams(params: ItemParams | undefined): NativeSpawn["params"] {
+  if (params === undefined) return [];
+  return [describeParam(params.p0), describeParam(params.p1), describeParam(params.p2), describeParam(params.p3)]
+    .flatMap((description, index) => description === undefined ? [] : [{ name: `param${index}`, ...description, values: description.values === undefined ? undefined : [...description.values] }]);
+}
+
+function nativeTerrainItems(itemNames: Readonly<Record<number, string>>, firstItemId: number, itemParams?: Readonly<Record<number, ItemParams>>): NativeSpawn[] {
+  return Object.entries(itemNames)
+    .map(([id, label]) => ({ id: Number(id), label }))
+    .filter(({ id }) => Number.isInteger(id) && id >= firstItemId)
+    .sort((left, right) => left.id - right.id)
+    .map(({ id, label }) => ({
+      id: String(id),
+      label: `${id}: ${label}`,
+      category: "Terrain item",
+      description: "Dispatches through the game's native item initializer. Availability and required assets depend on the current level.",
+      params: nativeParams(itemParams?.[id]),
+    }));
+}
 
 export const GameSchema = z.object({
   gameId: z.string(),
@@ -294,6 +333,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { name: "playerMode", type: "string", optional: true },
       ],
       nativeSpawns: [
+        ...nativeTerrainItems(ottoItemTypeNames, 1, ottoItemParams),
         { id: "ottomatic.human", label: "Human", category: "NPC", description: "Spawn a rescue human using the loaded level's human assets." },
         { id: "ottomatic.powerupPod", label: "Powerup Pod", category: "Pickup", description: "Spawn an Otto Matic health or weapon powerup pod." },
         { id: "ottomatic.checkpoint", label: "Checkpoint", category: "Trigger", description: "Spawn a level checkpoint trigger." },
@@ -306,6 +346,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
       nativeSpawns: [
+        ...nativeTerrainItems(bugdomItemTypeNames, 1, bugdomItemParams),
         { id: "bugdom.nut", label: "Nut", category: "Pickup", description: "Spawn a health nut pickup." },
         { id: "bugdom.clover", label: "Clover", category: "Pickup", description: "Spawn a clover key pickup." },
         { id: "bugdom.checkpoint", label: "Checkpoint", category: "Trigger", description: "Spawn a Bugdom checkpoint trigger." },
@@ -317,6 +358,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
       nativeSpawns: [
+        ...nativeTerrainItems(bugdom2ItemTypeNames, 1, bugdom2ItemParams),
         { id: "bugdom2.powerup", label: "Powerup", category: "Powerup", description: "Spawn a powerup; options.subtype selects the powerup kind." },
         { id: "bugdom2.dcell", label: "D-Cell", category: "Pickup", description: "Spawn a D-Cell using the current level's pickup assets." },
         { id: "bugdom2.gliderPart", label: "Glider Part", category: "Pickup", description: "Spawn a collectible glider part when its level assets are loaded." },
@@ -328,6 +370,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
       nativeSpawns: [
+        ...nativeTerrainItems(nanosaurItemTypeNames, 1, nanosaurItemParams),
         { id: "nanosaur.powerup", label: "Powerup", category: "Powerup", description: "Spawn a Nanosaur powerup." },
         { id: "nanosaur.egg", label: "Egg", category: "Pickup", description: "Spawn a collectible dinosaur egg." },
         { id: "nanosaur.crystal", label: "Crystal", category: "Pickup", description: "Spawn a collectible crystal." },
@@ -342,6 +385,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { name: "networked", type: "boolean" },
       ],
       nativeSpawns: [
+        ...nativeTerrainItems(nanosaur2ItemTypeNames, 1, nanosaur2ItemParams),
         { id: "nanosaur2.egg", label: "Egg", category: "Pickup", description: "Spawn a Nanosaur 2 objective egg." },
         { id: "nanosaur2.weaponPow", label: "Weapon Powerup", category: "Pickup", description: "Spawn a weapon powerup." },
         { id: "nanosaur2.healthPow", label: "Health Powerup", category: "Pickup", description: "Spawn a health powerup." },
@@ -357,6 +401,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { name: "networked", type: "boolean" },
       ],
       nativeSpawns: [
+        ...nativeTerrainItems(croMagItemTypeNames, 1, croMagItemParams),
         { id: "cromag.pow", label: "Powerup", category: "Pickup", description: "Spawn a general race powerup." },
         { id: "cromag.token", label: "Token", category: "Pickup", description: "Spawn a scoring token." },
         { id: "cromag.stickyTiresPow", label: "Sticky Tires", category: "Pickup", description: "Spawn a sticky-tires vehicle powerup." },
@@ -372,6 +417,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"] },
       ],
       nativeSpawns: [
+        ...nativeTerrainItems(billyItemTypeNames, 1, billyItemParams),
         { id: "billy.peso", label: "Peso", category: "Pickup", description: "Spawn a peso score pickup." },
         { id: "billy.freeLifePow", label: "Free Life", category: "Pickup", description: "Spawn a free-life powerup." },
         { id: "billy.boost", label: "Stampede Boost", category: "Pickup", description: "Spawn a speed boost for Stampede mode." },
@@ -386,6 +432,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { name: "areaName", type: "string", optional: true },
       ],
       nativeSpawns: [
+        ...nativeTerrainItems(mightyMikeItemTypeNames, 0),
         { id: "mightymike.bunny", label: "Bunny", category: "Pickup", description: "Spawn a bunny objective pickup." },
         { id: "mightymike.healthPow", label: "Health Powerup", category: "Pickup", description: "Spawn a Mighty Mike health powerup." },
         { id: "mightymike.key", label: "Key", category: "Pickup", description: "Spawn an inventory key pickup." },

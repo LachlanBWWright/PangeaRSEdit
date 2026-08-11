@@ -19,7 +19,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm run storybook --ci --no-open",
+    command: "./scripts/start-storybook-server.sh",
     url: "http://127.0.0.1:6006",
     reuseExistingServer: true,
     timeout: 120_000,

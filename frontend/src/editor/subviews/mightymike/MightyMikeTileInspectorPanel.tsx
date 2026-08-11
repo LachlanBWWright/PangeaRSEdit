@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   getFlagChecked,
   getTileInfoRows,
@@ -84,10 +85,10 @@ export function MightyMikeTileInspectorPanel({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white cursor-pointer w-fit">
+            <Button type="button" variant="ghost" size="sm" className="h-7 px-1 text-gray-400">
               <Info className="w-3 h-3" />
               Tile Info
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent side="right" className="text-xs space-y-0.5 max-w-48">
             {getTileInfoRows({

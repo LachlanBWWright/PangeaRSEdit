@@ -9,6 +9,7 @@ import { scriptLspClient } from "./scriptLspClient";
 import {
   buildNativeIdSnippet,
   getContextualApiName,
+  nativeIdInsertText,
 } from "./scriptCompletionText";
 import type {
   LspCompletionItem,
@@ -204,7 +205,7 @@ function buildCompletionItems(
       kind: monaco.languages.CompletionItemKind.Function,
       range,
       documentation: "Spawn a native game object at a position.",
-      insertText: `${contextualApiName("pangea.spawn.native")}("${nativeIdSnippet}", { x = \${2:0}, y = \${3:0}, z = \${4:0} })`,
+      insertText: `${contextualApiName("pangea.spawn.native")}(${nativeIdSnippet}, { x = \${2:0}, y = \${3:0}, z = \${4:0} })`,
       insertTextRules:
         monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
     },
@@ -219,8 +220,8 @@ function buildCompletionItems(
     kind: monaco.languages.CompletionItemKind.EnumMember,
     range,
     detail: `${nativeSpawn.category} — ${nativeSpawn.label}`,
-    documentation: nativeSpawn.description,
-    insertText: JSON.stringify(nativeSpawn.id),
+    documentation: [nativeSpawn.description, ...nativeSpawn.params.map((param) => `${param.name}: ${param.description}`)].join("\n\n"),
+    insertText: nativeIdInsertText(nativeSpawn.id),
   }));
 
   const tagItems = state.context.allowedTags.map((tag) => ({

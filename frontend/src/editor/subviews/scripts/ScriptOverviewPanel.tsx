@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScriptFieldHelpTooltip } from "./ScriptFieldHelpTooltip";
 
 interface ScriptOverviewSample {
   id: string;
@@ -25,9 +25,8 @@ export function ScriptOverviewPanel({
   onLoadSample,
 }: ScriptOverviewPanelProps) {
   return (
-    <div className="grid gap-3">
-      <Card className="border-slate-800 bg-slate-950/70">
-        <CardContent className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-8 py-2">
+      <dl className="grid divide-y divide-slate-800 border-y border-slate-800 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
           {[
             ["Global Hooks", globalHooksCount],
             ["Item Bindings", itemBindingsCount],
@@ -36,48 +35,39 @@ export function ScriptOverviewPanel({
           ].map(([label, value]) => (
             <div
               key={label}
-              className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2"
+              className="flex items-center justify-between gap-3 px-4 py-3"
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+              <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                 {label}
-              </p>
-              <p className="text-xl font-semibold text-white">
+              </dt>
+              <dd className="text-xl font-semibold text-white">
                 {String(value)}
-              </p>
+              </dd>
             </div>
           ))}
-        </CardContent>
-      </Card>
+      </dl>
 
-      <Card className="border-slate-800 bg-slate-950/70">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-white">Samples</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <section>
+        <div className="mb-2 flex items-center gap-2">
+          <h3 className="font-semibold text-white">Samples</h3>
+          <ScriptFieldHelpTooltip label="About script samples">
+            Loading a sample replaces the current scripting workspace.
+          </ScriptFieldHelpTooltip>
+        </div>
+        <div className="divide-y divide-slate-800 border-y border-slate-800">
           {samples.map((sample) => (
             <div
               key={sample.id}
-              className="rounded-lg border border-slate-800 bg-slate-900/80 p-3"
+              className="flex items-center justify-between gap-4 px-1 py-3"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium text-white">{sample.label}</p>
-                  <p className="mt-1 text-xs text-slate-300">
-                    {sample.description}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onLoadSample(sample.id, sample.label)}
-                >
-                  Load
-                </Button>
-              </div>
+              <p className="font-medium text-white" title={sample.description}>{sample.label}</p>
+              <Button size="sm" variant="ghost" onClick={() => onLoadSample(sample.id, sample.label)}>
+                Load
+              </Button>
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "@/components/ui/button";
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -37,12 +38,12 @@ export class ErrorBoundary extends React.Component<
             {this.state.error?.message ||
               "An error occurred while loading the model"}
           </p>
-          <button
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          <Button
+            variant="destructive"
             onClick={() => this.setState({ hasError: false, error: null })}
           >
             Try Again
-          </button>
+          </Button>
         </div>
       </div>
     );

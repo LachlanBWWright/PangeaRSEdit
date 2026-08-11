@@ -246,6 +246,7 @@ function buildMightyMikeLevelData(
   mightyMikeSceneName?: string,
   tilesetPreservedData?: MightyMikeTilesetPreservedData,
   paletteRgbaBytes?: readonly number[],
+  tilePaletteIndices?: readonly (readonly number[])[],
 ): unknown {
   const ottoCompatible = {
     Hedr: {
@@ -334,7 +335,14 @@ function buildMightyMikeLevelData(
       },
     },
     Vcol: {},
-    ...(tilesetResult ? { tileset: tilesetResult } : {}),
+    ...(tilesetResult
+      ? {
+          tileset: {
+            ...tilesetResult,
+            paletteIndices: tilePaletteIndices?.map((indices) => [...indices]),
+          },
+        }
+      : {}),
     ...(tilesetResult?.xlateTable
       ? {
           Xlat: {
@@ -357,6 +365,7 @@ function buildMightyMikeLevelData(
           mightyMikeTileValues: mapResult.mapImage.flat(),
           mightyMikeTilesetPreservedData: tilesetPreservedData,
           mightyMikePaletteRgbaBytes: paletteRgbaBytes,
+          mightyMikeTilePaletteIndices: tilePaletteIndices,
         },
         order: 100,
       },
@@ -424,7 +433,7 @@ function parseMightyMikeLevelBytes(
           ? new Uint8Array(mightyMikePaletteBytes)
           : undefined,
       )
-    : { tileImages: [], collisionImages: [] };
+    : { tileImages: [], collisionImages: [], paletteIndices: [] };
 
   const preservedDataResult = mightyMikeTilesetBytes
     ? extractMightyMikeTilesetPreservedData(mightyMikeTilesetBytes)
@@ -446,6 +455,7 @@ function parseMightyMikeLevelBytes(
     mightyMikePaletteBytes
       ? Array.from(new Uint8Array(mightyMikePaletteBytes))
       : undefined,
+    tileImages.paletteIndices,
   );
   if (!isLevelDataLike(levelData)) {
     return err(levelIoError("parse.failed", "Final data is not LevelData"));

@@ -166,11 +166,17 @@ async function selectByTriggerAndLabel(
   await page.getByRole("option", { name: label, exact: true }).first().click();
 }
 
-async function selectItemByType(page: Page, itemType: number): Promise<void> {
+async function selectItemByType(
+  page: Page,
+  itemType: number,
+  isSpline: boolean,
+): Promise<void> {
   const trigger = page.getByTestId("item-model-item-select-trigger");
   await trigger.click();
   await page
-    .locator(`[role="option"][data-item-type="${String(itemType)}"]`)
+    .locator(
+      `[role="option"][data-item-type="${String(itemType)}"][data-item-spline="${isSpline ? "1" : "0"}"]`,
+    )
     .first()
     .click();
 }
@@ -419,7 +425,7 @@ async function runCapture(): Promise<number> {
                     `[${gameLabel}] ${String(itemIndex + 1)}/${String(itemOptions.length)} ${itemType}: ${itemName}${isSpline ? " (spline)" : ""}`,
                   );
 
-                  await selectItemByType(page, itemType);
+                  await selectItemByType(page, itemType, isSpline);
 
                   const loadButton = page.getByTestId("item-model-load-button");
                   const canLoadModel = await loadButton.isEnabled();

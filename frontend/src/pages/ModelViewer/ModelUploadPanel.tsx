@@ -173,13 +173,15 @@ export function ModelUploadPanel({
                 />
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
+                    <Button
                       type="button"
+                      variant="icon"
+                      size="icon"
                       aria-label="Export basename help"
-                      className="flex h-7 w-7 min-h-7 min-w-7 aspect-square items-center justify-center rounded-full border border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      className="h-7 w-7 min-h-7 min-w-7 rounded-full"
                     >
                       <Info className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-xs text-left">
                     Used for download filenames, and for the generated Alias
@@ -193,9 +195,6 @@ export function ModelUploadPanel({
               </div>
             </div>
             <div className="space-y-3">
-              <div className="text-xs uppercase tracking-wide text-gray-400">
-                Export target
-              </div>
               <Popover open={exportOpen} onOpenChange={setExportOpen}>
                 <PopoverTrigger asChild>
                   <Button

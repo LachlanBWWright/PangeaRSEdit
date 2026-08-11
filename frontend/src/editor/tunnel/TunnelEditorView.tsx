@@ -13,7 +13,8 @@ import { SplineEditor } from "./SplineEditor";
 import { TunnelTexturesPanel } from "./TunnelTexturesPanel";
 import { getTunnelValidationIssues } from "./tunnelValidation";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { TestGameDialog } from "@/editor/TestGameDialog";
 import { Game } from "@/data/globals/globals";
@@ -286,7 +287,7 @@ export function TunnelEditorView({
         <div className="flex-1 text-white font-medium">{fileName}</div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Checkbox
+            <Switch
               id="showWater"
               checked={showWater}
               onCheckedChange={(checked) => setShowWater(checked === true)}
@@ -296,7 +297,7 @@ export function TunnelEditorView({
             </Label>
           </div>
           <div className="flex items-center gap-2">
-            <Checkbox
+            <Switch
               id="showSpline"
               checked={showSpline}
               onCheckedChange={(checked) => setShowSpline(checked === true)}
@@ -306,7 +307,7 @@ export function TunnelEditorView({
             </Label>
           </div>
           <div className="flex items-center gap-2">
-            <Checkbox
+            <Switch
               id="showItems"
               checked={showItems}
               onCheckedChange={(checked) => setShowItems(checked === true)}
@@ -316,7 +317,7 @@ export function TunnelEditorView({
             </Label>
           </div>
           <div className="flex items-center gap-2">
-            <Checkbox
+            <Switch
               id="ghostTunnel"
               checked={ghostTunnel}
               onCheckedChange={(checked) => setGhostTunnel(checked === true)}
@@ -330,24 +331,22 @@ export function TunnelEditorView({
               <Label htmlFor="ghostOpacity" className="text-white text-xs">
                 Opacity
               </Label>
-              <input
+              <Slider
                 id="ghostOpacity"
-                type="range"
                 min={0.15}
                 max={0.95}
                 step={0.05}
-                value={ghostOpacity}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  if (Number.isFinite(next)) {
-                    setGhostOpacity(next);
-                  }
+                value={[ghostOpacity]}
+                onValueChange={([next]) => {
+                  if (next !== undefined) setGhostOpacity(next);
                 }}
+                aria-label="Ghost tunnel opacity"
+                className="w-28"
               />
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Checkbox
+            <Switch
               id="autoSnapToSelection"
               checked={autoSnapToSelection}
               onCheckedChange={(checked) =>
@@ -370,19 +369,17 @@ export function TunnelEditorView({
             <Label htmlFor="dragSensitivity" className="text-white text-xs">
               Drag Speed
             </Label>
-            <input
+            <Slider
               id="dragSensitivity"
-              type="range"
               min={0.3}
               max={5}
               step={0.1}
-              value={dragSensitivity}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isFinite(next)) {
-                  setDragSensitivity(next);
-                }
+              value={[dragSensitivity]}
+              onValueChange={([next]) => {
+                if (next !== undefined) setDragSensitivity(next);
               }}
+              aria-label="Tunnel drag speed"
+              className="w-28"
             />
           </div>
         </div>
@@ -412,36 +409,41 @@ export function TunnelEditorView({
         </div>
         <div className="w-80 bg-gray-900 border-l border-gray-700 flex flex-col">
           <div className="flex border-b border-gray-700">
-            <button
-              className={`flex-1 px-4 py-2 text-sm ${activeTab === "items" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-white"}`}
+            <Button
+              type="button" variant="menu" aria-pressed={activeTab === "items"}
+              className="flex-1"
               onClick={() => setActiveTab("items")}
             >
               Items
-            </button>
-            <button
-              className={`flex-1 px-4 py-2 text-sm ${activeTab === "spline" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-white"}`}
+            </Button>
+            <Button
+              type="button" variant="menu" aria-pressed={activeTab === "spline"}
+              className="flex-1"
               onClick={() => setActiveTab("spline")}
             >
               Spline
-            </button>
-            <button
-              className={`flex-1 px-4 py-2 text-sm ${activeTab === "sections" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-white"}`}
+            </Button>
+            <Button
+              type="button" variant="menu" aria-pressed={activeTab === "sections"}
+              className="flex-1"
               onClick={() => setActiveTab("sections")}
             >
               Sections
-            </button>
-            <button
-              className={`flex-1 px-4 py-2 text-sm ${activeTab === "textures" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-white"}`}
+            </Button>
+            <Button
+              type="button" variant="menu" aria-pressed={activeTab === "textures"}
+              className="flex-1"
               onClick={() => setActiveTab("textures")}
             >
               Textures
-            </button>
-            <button
-              className={`flex-1 px-4 py-2 text-sm ${activeTab === "validation" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-white"}`}
+            </Button>
+            <Button
+              type="button" variant="menu" aria-pressed={activeTab === "validation"}
+              className="flex-1"
               onClick={() => setActiveTab("validation")}
             >
               Validation
-            </button>
+            </Button>
           </div>
           <div className="flex-1 min-h-0 overflow-hidden">
             {activeTab === "items" && (

@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { itemFilterStateAtom, FilterMode } from "@/data/items/itemFilterAtoms";
 import { ItemFilterPanel } from "./ItemFilterPanel";
 import { Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Toggle button that opens/closes the item filter panel.
@@ -16,11 +17,12 @@ export const ItemFilterToggle: React.FC = () => {
 
   return (
     <div className="relative">
-      <button
+      <Button
+        type="button"
+        size="icon"
+        variant="selectable"
+        aria-pressed={isFiltering}
         onClick={() => setIsOpen(!isOpen)}
-        className={`p-2 rounded transition-colors ${
-          isFiltering ? "bg-blue-600 hover:bg-blue-500" : "bg-gray-700 hover:bg-gray-600"
-        }`}
         title="Item Visibility Filters"
         aria-label="Toggle item filters"
       >
@@ -28,7 +30,7 @@ export const ItemFilterToggle: React.FC = () => {
         {isFiltering && (
           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
         )}
-      </button>
+      </Button>
 
       <ItemFilterPanel isOpen={isOpen} onClose={() => setIsOpen(false)} />
     </div>

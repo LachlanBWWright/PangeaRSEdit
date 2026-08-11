@@ -1,24 +1,30 @@
 import { err, ok, Result } from "neverthrow";
 import { z } from "zod";
 
-export const ENABLE_SCRIPTS = true;
-
 const FEATURE_FLAGS_STORAGE_KEY = "pangea-feature-flags";
 
+const multiplayerDefault = import.meta.env.VITE_MULTIPLAYER_ENABLED === "true";
+const scriptingDefault = import.meta.env.VITE_SCRIPTING_ENABLED === "true";
+
 const featureFlagsSchema = z.object({
-  multiplayer: z.boolean(),
+  multiplayer: z.boolean().default(multiplayerDefault),
+  scripting: z.boolean().default(scriptingDefault),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
-  multiplayer: import.meta.env.VITE_MULTIPLAYER_ENABLED !== "false",
+  multiplayer: multiplayerDefault,
+  scripting: scriptingDefault,
 };
+
+export let ENABLE_SCRIPTS = false;
 
 type FeatureFlagListener = () => void;
 
 const listeners = new Set<FeatureFlagListener>();
 let currentFlags = readStoredFeatureFlags();
+ENABLE_SCRIPTS = currentFlags.scripting;
 
 function readStoredFeatureFlags(): FeatureFlags {
   const storedValueResult = Result.fromThrowable(
@@ -41,9 +47,7 @@ function readStoredFeatureFlags(): FeatureFlags {
   const parsedFlags = featureFlagsSchema.safeParse(jsonResult.value);
   if (!parsedFlags.success) return DEFAULT_FEATURE_FLAGS;
 
-  return DEFAULT_FEATURE_FLAGS.multiplayer
-    ? { ...parsedFlags.data, multiplayer: true }
-    : parsedFlags.data;
+  return parsedFlags.data;
 }
 
 function notifyFeatureFlagListeners(): void {
@@ -79,6 +83,7 @@ export function setFeatureFlags(flags: FeatureFlags): Result<void, Error> {
   if (saveResult.isErr()) return saveResult;
 
   currentFlags = validatedFlags.data;
+  ENABLE_SCRIPTS = currentFlags.scripting;
   notifyFeatureFlagListeners();
   return ok(undefined);
 }

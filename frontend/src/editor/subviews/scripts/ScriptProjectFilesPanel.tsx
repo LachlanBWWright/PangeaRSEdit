@@ -1,11 +1,4 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,15 +46,9 @@ export function ScriptProjectFilesPanel({
   isSourceFileDirty,
 }: ScriptProjectFilesPanelProps) {
   return (
-    <Card className="border-slate-800 bg-slate-950/70">
-      <CardHeader>
-        <CardTitle className="text-white">Project Files</CardTitle>
-        <CardDescription>
-          Edit source modules, inspect the generated entry script, and compile
-          the bundled runtime output that the browser preview executes.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <section>
+      <h3 className="mb-4 font-semibold text-white">Project Files</h3>
+      <div className="grid gap-6">
         <div className="grid gap-2">
           <Label htmlFor="new-script-file">Add file</Label>
           <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_auto]">
@@ -102,9 +89,11 @@ export function ScriptProjectFilesPanel({
           {orderedSourcePaths.map((path) => {
             const sourceFile = sourceFiles[path];
             return (
-              <button
+              <Button
                 key={path}
-                className={`rounded-xl border px-3 py-2 text-left ${activeFilePath === path ? "border-orange-400 bg-orange-500/10" : "border-slate-800 bg-slate-900/80"}`}
+                variant="menu"
+                aria-pressed={activeFilePath === path}
+                className={`h-auto border-l-2 py-2 ${activeFilePath === path ? "border-orange-400 bg-orange-500/10" : "border-transparent"}`}
                 onClick={() => onOpenFile(path)}
                 type="button"
               >
@@ -120,7 +109,7 @@ export function ScriptProjectFilesPanel({
                     <StatusChip label="Saved" tone="good" />
                   )}
                 </div>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -130,25 +119,27 @@ export function ScriptProjectFilesPanel({
             Build Output
           </p>
           {compiledFilePaths.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-3 text-xs text-slate-400">
+            <p className="py-2 text-xs text-slate-400">
               Compile the project to inspect bundled output.
-            </div>
+            </p>
           ) : (
             compiledFilePaths.map((path) => (
-              <button
+              <Button
                 key={path}
-                className={`rounded-xl border px-3 py-2 text-left ${activeFilePath === path ? "border-orange-400 bg-orange-500/10" : "border-slate-800 bg-slate-900/80"}`}
+                variant="menu"
+                aria-pressed={activeFilePath === path}
+                className={`h-auto border-l-2 py-2 ${activeFilePath === path ? "border-orange-400 bg-orange-500/10" : "border-transparent"}`}
                 onClick={() => onOpenFile(path)}
                 type="button"
               >
                 <span className="truncate font-medium text-white">
                   {path.replace("Data/Scripts/dist/", "")}
                 </span>
-              </button>
+              </Button>
             ))
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { selectedPathAtom } from "@/data/paths/pathAtoms";
 import type { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Globals } from "@/data/globals/globals";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const PRIMARY_PATH = 1;
 const Y_CLOSE_PATH = 1 << 1;
@@ -132,19 +133,20 @@ export function CroMagPathPanel({
     <div className="flex flex-col gap-2 rounded border border-gray-600 p-2 text-sm">
       <strong>Racing Paths</strong>
       <div className="flex gap-2">
-        <select
-          className="min-w-0 flex-1 rounded bg-gray-800 px-2 py-1"
-          value={selectedPath ?? ""}
-          onChange={(event) => {
-            const value = Number.parseInt(event.currentTarget.value, 10);
+        <Select
+          value={selectedPath === null ? undefined : String(selectedPath)}
+          onValueChange={(nextValue) => {
+            const value = Number.parseInt(nextValue, 10);
             setSelectedPath(Number.isNaN(value) ? null : value);
           }}
         >
-          <option value="">Select path</option>
-          {paths.map((_path, index) => (
-            <option key={index} value={index}>Path {index}</option>
-          ))}
-        </select>
+          <SelectTrigger className="min-w-0 flex-1"><SelectValue placeholder="Select path" /></SelectTrigger>
+          <SelectContent>
+            {paths.map((_path, index) => (
+              <SelectItem key={index} value={String(index)}>Path {index}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button size="sm" onClick={addPath}>Add</Button>
         <Button size="sm" variant="destructive" disabled={!selected} onClick={deletePath}>Delete</Button>
       </div>

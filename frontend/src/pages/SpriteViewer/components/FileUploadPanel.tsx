@@ -69,13 +69,16 @@ export function FileUploadPanel({
       </EditorField>
 
       <div
-        className="cursor-pointer rounded-lg border-2 border-dashed border-gray-600 p-6 text-center transition-colors hover:border-gray-500"
+        className="cursor-pointer rounded-lg border-2 border-dashed border-gray-600 p-8 text-center transition-colors hover:border-gray-500"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onClick={() => fileInputRef.current?.click()}
       >
-          <Upload className="w-6 h-6 mx-auto mb-1 text-gray-400" />
-          <p className="text-xs text-gray-400">Drag & drop or click to upload</p>
+          <Upload className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+          <p className="mb-2 text-gray-400">Choose a sprite file</p>
+          <p className="text-sm text-gray-500">
+            Drag and drop or click to browse
+          </p>
           <input
             ref={fileInputRef}
             type="file"

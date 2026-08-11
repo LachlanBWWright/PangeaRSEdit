@@ -89,6 +89,9 @@ export function computeWheelZoomStage(
   event: Konva.KonvaEventObject<WheelEvent>,
 ): StageData | null {
   event.evt.preventDefault();
+  if (event.evt.deltaY === 0) {
+    return null;
+  }
 
   const scaleBy = 1.05;
   const stage = event.target.getStage();
@@ -127,6 +130,5 @@ export function getStickyStageOffset(
   }
   return { x: stage.x, y: stage.y };
 }
-
 
 

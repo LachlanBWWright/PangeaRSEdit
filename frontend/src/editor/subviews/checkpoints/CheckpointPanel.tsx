@@ -5,6 +5,7 @@ import { selectedCheckpointAtom } from "@/data/checkpoints/checkpointAtoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Globals } from "@/data/globals/globals";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CheckpointPanelProps {
   readonly headerData: HeaderData;
@@ -73,21 +74,20 @@ export function CheckpointPanel({
     <div className="flex flex-col gap-2 rounded border border-gray-600 p-2 text-sm">
       <strong>Checkpoints</strong>
       <div className="flex items-center gap-2">
-        <select
-          className="min-w-0 flex-1 rounded bg-gray-800 px-2 py-1"
-          value={selected ?? ""}
-          onChange={(event) => {
-            const value = Number.parseInt(event.currentTarget.value, 10);
+        <Select
+          value={selected === null ? undefined : String(selected)}
+          onValueChange={(nextValue) => {
+            const value = Number.parseInt(nextValue, 10);
             setSelected(Number.isNaN(value) ? null : value);
           }}
         >
-          <option value="">Select checkpoint</option>
-          {checkpoints.map((_entry, index) => (
-            <option key={index} value={index}>
-              Checkpoint {index}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="min-w-0 flex-1"><SelectValue placeholder="Select checkpoint" /></SelectTrigger>
+          <SelectContent>
+            {checkpoints.map((_entry, index) => (
+              <SelectItem key={index} value={String(index)}>Checkpoint {index}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button size="sm" onClick={addCheckpoint}>
           Add
         </Button>

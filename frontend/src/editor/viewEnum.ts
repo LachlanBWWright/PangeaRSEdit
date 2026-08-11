@@ -7,4 +7,6 @@ export enum View {
   tiles,
   supertiles,
   animations,
+  vertexColors,
+  collisionPath,
 }

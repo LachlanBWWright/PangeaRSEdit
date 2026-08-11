@@ -281,13 +281,11 @@ export function ToolsPanel({
             <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-900/50 rounded-lg">
               {paletteColors.map((color, idx) => (
                 <div key={idx} className="relative aspect-square">
-                  <button
+                  <Button
                     type="button"
-                    className={`w-full h-full rounded shadow-sm border transition ${
-                      brushColor === color
-                        ? "border-white ring-2 ring-blue-500/50"
-                        : "border-gray-700 hover:border-gray-500"
-                    }`}
+                    variant="swatch"
+                    aria-pressed={brushColor === color}
+                    className="h-full w-full min-w-0 px-0 py-0"
                     style={{ backgroundColor: color }}
                     onClick={() => handlePaletteSwatchClick(idx)}
                     title={`Color ${idx}: ${color}`}
@@ -303,14 +301,12 @@ export function ToolsPanel({
             </p>
             <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-900/50 rounded-lg">
               {colorPalette.map((color) => (
-                <button
+                <Button
                   key={color}
                   type="button"
-                  className={`aspect-square rounded shadow-sm border ${
-                    brushColor === color
-                      ? "border-white ring-2 ring-blue-500/50"
-                      : "border-gray-700 hover:border-gray-500"
-                  }`}
+                  variant="swatch"
+                  aria-pressed={brushColor === color}
+                  className="aspect-square h-auto w-full min-w-0 px-0 py-0"
                   style={{ backgroundColor: color }}
                   onClick={() => setBrushColor(color)}
                   title={color}

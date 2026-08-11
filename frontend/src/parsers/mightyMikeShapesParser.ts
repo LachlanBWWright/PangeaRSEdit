@@ -34,7 +34,7 @@
  *
  * - Pixel/Mask Data:
  *   - 8-bit indexed color pixels
- *   - 1-bit mask (1 = opaque, 0 = transparent)
+ *   - Byte-per-pixel mask (0x00 = opaque, non-zero = transparent)
  */
 
 import { ok, err, type Result } from "neverthrow";

@@ -464,6 +464,9 @@ export const mightyMikeTileSetSchema = z.object({
   tileAttributes: z.array(mightyMikeTileAttributeSchema),
   tileAnimations: z.array(mightyMikeTileAnimationSchema),
   transparencyColors: z.array(z.number()),
+  paletteIndices: z
+    .array(z.array(z.number().int().min(0).max(255)).length(32 * 32))
+    .optional(),
   tileImages: z.array(z.unknown()).optional(),
   collisionImages: z.array(z.unknown()).optional(),
 });
@@ -762,4 +765,3 @@ export const paletteSchema = z.object({
   colors: z.array(paletteColorSchema),
 });
 export type Palette = z.infer<typeof paletteSchema>;
-

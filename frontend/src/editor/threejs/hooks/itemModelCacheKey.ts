@@ -1,6 +1,7 @@
 import { Game } from "@/data/globals/globals";
 import { getGameMapper } from "@/data/items/mappers";
 import { getParamByIndex } from "@/data/items/standardParamTypes";
+import type { ItemModelKind } from "@/data/items/itemModelTypes";
 
 export interface ItemModelParams {
   readonly p0: number;
@@ -14,9 +15,10 @@ export function getItemModelCacheKey(
   itemType: number,
   params?: ItemModelParams,
   levelNum?: number,
+  kind: ItemModelKind = "terrainItem",
 ): string {
   const mapper = getGameMapper(game);
-  const keyParts = [`g${game}_${itemType}`];
+  const keyParts = [`g${game}_${kind}_${itemType}`];
 
   if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
     keyParts.push(`lv${levelNum}`);

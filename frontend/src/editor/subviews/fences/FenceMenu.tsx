@@ -331,8 +331,9 @@ export const FenceMenu = memo(function FenceMenu({
                     </>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex w-full gap-2">
                     <Button
+                      className="flex-1"
                       onClick={() => {
                         setFenceData((data) => {
                           if (selectedFence === undefined) return;
@@ -350,6 +351,7 @@ export const FenceMenu = memo(function FenceMenu({
                       Add Nub
                     </Button>
                     <Button
+                      className="flex-1"
                       variant="destructive"
                       disabled={
                         selectedFenceNub === null || numNubs <= MIN_NUBS
@@ -382,7 +384,7 @@ export const FenceMenu = memo(function FenceMenu({
 
         {/* Right column: fence type preview image */}
         {fencePreviewPath && (
-          <div className="border border-gray-600 rounded bg-gray-800 p-2 flex items-center justify-center w-40 self-stretch">
+          <div className="flex w-48 self-stretch items-center justify-center rounded border border-gray-600 bg-gray-800 p-2">
             {fencePreviewImageSrc ? (
               <img
                 src={fencePreviewImageSrc}

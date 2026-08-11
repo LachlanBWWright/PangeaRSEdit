@@ -1,4 +1,5 @@
 import { useAtom } from "jotai";
+import type { FormEvent } from "react";
 import { z } from "zod";
 import {
   bugdomVertexColorBrushAtom,
@@ -7,8 +8,21 @@ import {
   editBugdomVertexColorsAtom,
 } from "@/data/terrain/bugdomVertexColorAtoms";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const displayModeSchema = z.enum(["none", "in-game", "half", "colors-only"]);
+const colorInputSchema = z.string().regex(/^#[0-9a-f]{6}$/i);
+
+function readColorInput(event: FormEvent<HTMLInputElement>): string | null {
+  const result = colorInputSchema.safeParse(event.currentTarget.value);
+  return result.success ? result.data.toLowerCase() : null;
+}
 
 export function BugdomVertexColorControls() {
   const [displayMode, setDisplayMode] = useAtom(
@@ -19,26 +33,30 @@ export function BugdomVertexColorControls() {
   const [radius, setRadius] = useAtom(bugdomVertexColorBrushRadiusAtom);
 
   return (
-    <div className="rounded border border-gray-600 p-3 text-sm">
+    <div className="p-3 text-sm">
       <h3 className="mb-2 font-bold text-white">Terrain vertex colors</h3>
-      <label className="flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <span>Display</span>
-        <select
-          className="min-w-0 flex-1 rounded bg-gray-800 px-2 py-1"
+        <Select
           value={displayMode}
-          onChange={(event) => {
-            const result = displayModeSchema.safeParse(event.currentTarget.value);
+          onValueChange={(value) => {
+            const result = displayModeSchema.safeParse(value);
             if (!result.success) return;
             setDisplayMode(result.data);
             if (result.data === "none") setEditing(false);
           }}
         >
-          <option value="none">No color</option>
-          <option value="in-game">In-game</option>
-          <option value="half">50% opacity</option>
-          <option value="colors-only">Colors only</option>
-        </select>
-      </label>
+          <SelectTrigger className="min-w-0 flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No color</SelectItem>
+            <SelectItem value="in-game">In-game</SelectItem>
+            <SelectItem value="half">50% opacity</SelectItem>
+            <SelectItem value="colors-only">Colors only</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <label className="mt-2 flex items-center justify-between gap-3">
         <span>Paint colors</span>
         <Switch
@@ -54,7 +72,10 @@ export function BugdomVertexColorControls() {
           type="color"
           value={color}
           disabled={!editing}
-          onChange={(event) => setColor(event.currentTarget.value)}
+          onInput={(event) => {
+            const nextColor = readColorInput(event);
+            if (nextColor) setColor(nextColor);
+          }}
         />
         <label htmlFor="bugdom-vcol-radius">Radius</label>
         <input
@@ -68,9 +89,6 @@ export function BugdomVertexColorControls() {
           onChange={(event) => setRadius(Math.max(0, Number(event.currentTarget.value)))}
         />
       </div>
-      <p className="mt-2 text-xs text-gray-400">
-        Paints the RGB565 colors stored at terrain vertices.
-      </p>
     </div>
   );
 }

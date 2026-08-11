@@ -29,18 +29,17 @@ export function AnimationSelector({
     <div className="space-y-2">
       <label className="text-sm text-gray-300">Animation</label>
       <Select value={selectedAnimationValue} onValueChange={onSelectionChange}>
-        <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+        <SelectTrigger>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className="bg-gray-700 border-gray-600 text-white">
-          <SelectItem value="none" className="text-white focus:bg-gray-600">
+        <SelectContent>
+          <SelectItem value="none">
             None
           </SelectItem>
           {editableAnimations.map((anim) => (
             <SelectItem
               key={anim.index}
               value={String(anim.index)}
-              className="text-white focus:bg-gray-600"
             >
               {anim.name}
             </SelectItem>

@@ -1,5 +1,4 @@
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
-import type { DragEvent } from "react";
 import type {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
@@ -94,7 +93,7 @@ export function triggerConversionDownload(
 }
 
 export function getDroppedFile(
-  e: DragEvent,
+  e: { dataTransfer: { files: ArrayLike<File> } },
   extension: string,
 ): File | undefined {
   const files = Array.from(e.dataTransfer.files);

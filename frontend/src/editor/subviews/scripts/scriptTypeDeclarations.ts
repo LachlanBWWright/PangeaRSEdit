@@ -1,5 +1,6 @@
 import { strToU8 } from "fflate";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
+import { buildNativeSpawnDeclarations, buildNativeSpawnOverloads } from "./scriptNativeDeclarations";
 import { AUTHORITATIVE_API_SCHEMA, Field } from "./scriptApiSchema";
 
 export interface ScriptTypeDeclarationFile {
@@ -91,10 +92,11 @@ function buildNativeSpawnIdDeclarations(state: ScriptWorkspaceState): string {
     (candidate) => candidate.gameId === state.context.gameId,
   );
   if (game === undefined || game.nativeSpawns.length === 0) {
-    return "---@alias NativeSpawnId string";
+    return "---@alias NativeSpawnId integer Numeric terrain item type ID.";
   }
   return [
     "---@alias NativeSpawnId",
+    "---| integer # Numeric terrain item type ID from the game's item dispatch table.",
     ...game.nativeSpawns.map(
       (nativeSpawn) =>
         `---| ${JSON.stringify(nativeSpawn.id)} # ${nativeSpawn.label}: ${nativeSpawn.description}`,
@@ -114,11 +116,15 @@ function buildPangeaModuleDeclaration(): readonly string[] {
 }
 
 function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
+  const game = AUTHORITATIVE_API_SCHEMA.games.find((candidate) => candidate.gameId === state.context.gameId);
   const gameFields = buildContextFields(state.context.gameId);
   const frameFields = buildFrameFields(state.context.gameId);
   const tagType = buildTagDeclarations(state);
   const objectType = buildObjectTypeDeclarations(state);
   const nativeSpawnIdDeclaration = buildNativeSpawnIdDeclarations(state);
+  const nativeItems = game?.nativeSpawns ?? [];
+  const nativeOptionDeclarations = buildNativeSpawnDeclarations(nativeItems);
+  const nativeOverloads = buildNativeSpawnOverloads(nativeItems);
 
   return [
     "---@class Vector2",
@@ -266,11 +272,27 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@class NativeSpawnOptions",
     "---@field subtype integer|nil Game-specific subtype, such as a powerup kind.",
     "---@field amount integer|nil Game-specific quantity when supported.",
+    "---@field param0 integer|nil Terrain item parameter 0; overrides subtype.",
+    "---@field param1 integer|nil Terrain item parameter 1; overrides amount.",
+    "---@field param2 integer|nil Terrain item parameter 2.",
+    "---@field param3 integer|nil Terrain item parameter 3.",
+    "",
+    "---@class NativeSpawnResult",
+    "---@field ok boolean",
+    "---@field code integer",
+    "---@field message string",
+    "---@field primary ObjectHandle|nil",
+    "",
+    "---@class PangeaNativeSpawn",
+    ...nativeOverloads,
+    "---@overload fun(id: NativeSpawnId, position: Vector3, options: NativeSpawnOptions|nil): ObjectHandle|nil",
     "",
     "---@class PangeaSpawnApi",
-    "---@field native fun(id: NativeSpawnId, position: Vector3, options: NativeSpawnOptions|nil): ObjectHandle|nil",
+    "---@field native PangeaNativeSpawn",
+    "---@field nativeResult fun(id: NativeSpawnId, position: Vector3, options: NativeSpawnOptions|nil): NativeSpawnResult",
     "---@field scripted fun(id: string, position: Vector3, options: table|nil): ObjectHandle|nil",
     "",
+    nativeOptionDeclarations,
     "---@class PangeaApi",
     "---@field api table",
     "---@field game table",

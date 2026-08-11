@@ -157,7 +157,7 @@ describe("scriptWorkspaceState", () => {
       '---| "ottomatic.teleporter" # Teleporter:',
     );
     expect(runtimeDeclaration.content).toContain(
-      "---@field native fun(id: NativeSpawnId",
+      "---@overload fun(id: NativeSpawnId",
     );
   });
 

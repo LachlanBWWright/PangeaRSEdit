@@ -4,6 +4,7 @@ import {
   mightyMikeTileSetToBinary,
   parseMightyMikeTileSet,
 } from "./parseMightyMike";
+import { parseMightyMikeTileImagePayloads } from "./parseMightyMikeHelpers";
 
 function createPalette(): number[] {
   return Array.from({ length: 256 }, (_, index) => [index, index, index, 255]).flat();
@@ -22,6 +23,36 @@ function createTile(colorIndex: number) {
 }
 
 describe("Mighty Mike tileset serialization", () => {
+  it("preserves authoritative palette indices when palette colors are ambiguous", () => {
+    const palette = createPalette();
+    palette.splice(42 * 4, 4, 12, 12, 12, 255);
+    const indices = new Array<number>(32 * 32).fill(42);
+    const result = mightyMikeTileSetToBinary({
+      tileset: {
+        numTileDefinitions: 1,
+        numXlateEntries: 1,
+        numTileAttributeEntries: 1,
+        numTileAnims: 0,
+        numTileXparentColors: 0,
+        xlateTable: [0],
+        tileAttributes: [{ flags: 0, p0: 0, p1: 0, p2: 0, p3: 0, p4: 0 }],
+        tileAnimations: [],
+        transparencyColors: [],
+      },
+      tileImages: [createTile(12)],
+      tilePaletteIndices: [indices],
+      paletteRgbaBytes: palette,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) return;
+    const parsed = parseMightyMikeTileImagePayloads(
+      result.value,
+      Uint8Array.from(palette),
+    );
+    expect(parsed.paletteIndices[0]).toEqual(indices);
+  });
+
   it("round-trips every tileset section and edited tile pixels", () => {
     const result = mightyMikeTileSetToBinary({
       tileset: {

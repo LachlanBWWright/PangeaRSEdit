@@ -5,6 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 interface ScriptFieldHelpTooltipProps {
   label: string;
@@ -18,13 +19,15 @@ export function ScriptFieldHelpTooltip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
+        <Button
           type="button"
+          variant="icon"
+          size="icon"
           aria-label={label}
-          className="inline-flex text-slate-500 transition-colors hover:text-slate-300"
+          className="h-5 w-5"
         >
           <CircleHelp className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </TooltipTrigger>
       <TooltipContent side="right" className="max-w-xs text-left">
         {children}

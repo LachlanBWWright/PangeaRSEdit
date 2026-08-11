@@ -1,6 +1,5 @@
 import { useAtom } from "jotai";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -11,121 +10,44 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  selectedTileBrushIdAtom,
-  tileBrushAnchorAtom,
+  getSelectedTileBrushIdAtom,
+  getTileBrushAnchorAtom,
   tileBrushesAtom,
-  tileBrushModeAtom,
+  getTileBrushModeAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
 import type { TileBrushGame } from "@/data/tileBrushes/tileBrushTypes";
 import {
-  applyTileBrush,
-  createTileBrushFromRegion,
-} from "@/data/tileBrushes/tileBrushApply";
-import {
   flipTileBrushHorizontal,
   flipTileBrushVertical,
-  renameTileBrush,
   rotateTileBrushClockwise,
 } from "@/data/tileBrushes/tileBrushTransforms";
-import type { TerrainData } from "@/python/structSpecs/LevelTypes";
-import type { Updater } from "use-immer";
-import {
-  exportTileBrushesToJson,
-  parseTileBrushesFromJson,
-} from "@/data/tileBrushes/tileBrushImportExport";
+import { TileBrushSelect } from "./TileBrushSelect";
+import { TileTransformActions } from "../shared/TileTransformActions";
 
 interface TileBrushPanelProps {
   game: TileBrushGame;
-  terrainData: TerrainData;
-  setTerrainData: Updater<TerrainData>;
-  mapWidth: number;
-  mapHeight: number;
-  selectedTileIndex: number;
-  activeLayer: 1000 | 1001;
-}
-
-function getTileCoordinates(
-  tileIndex: number,
-  mapWidth: number,
-): { x: number; y: number } {
-  return {
-    x: tileIndex % mapWidth,
-    y: Math.floor(tileIndex / mapWidth),
-  };
+  mapImages: readonly HTMLCanvasElement[];
+  xlatTable: readonly unknown[] | undefined;
 }
 
 export function TileBrushPanel({
   game,
-  terrainData,
-  setTerrainData,
-  mapWidth,
-  mapHeight,
-  selectedTileIndex,
-  activeLayer,
+  mapImages,
+  xlatTable,
 }: TileBrushPanelProps) {
-  const [brushes, setBrushes] = useAtom(tileBrushesAtom);
+  const [allBrushes, setBrushes] = useAtom(tileBrushesAtom);
   const [selectedBrushId, setSelectedBrushId] = useAtom(
-    selectedTileBrushIdAtom,
+    getSelectedTileBrushIdAtom(game),
   );
-  const [mode, setMode] = useAtom(tileBrushModeAtom);
-  const [anchor, setAnchor] = useAtom(tileBrushAnchorAtom);
+  const [mode, setMode] = useAtom(getTileBrushModeAtom(game));
+  const [anchor, setAnchor] = useAtom(getTileBrushAnchorAtom(game));
 
-  const selectedBrush =
-    brushes.find((brush) => brush.id === selectedBrushId) ?? null;
-
-  const handleCaptureSingleTile = () => {
-    const tileCoords = getTileCoordinates(selectedTileIndex, mapWidth);
-    const result = createTileBrushFromRegion({
-      id: globalThis.crypto.randomUUID(),
-      name: `Brush ${brushes.length + 1}`,
-      game,
-      terrainData,
-      layer: activeLayer,
-      mapWidth,
-      mapHeight,
-      startX: tileCoords.x,
-      startY: tileCoords.y,
-      width: 1,
-      height: 1,
-    });
-
-    if (result.isErr()) {
-      toast.error("Failed to capture tile brush", {
-        description: result.error,
-      });
-      return;
-    }
-
-    setBrushes([...brushes, result.value]);
-    setSelectedBrushId(result.value.id);
-    toast.success(`Captured brush '${result.value.name}'`);
-  };
-
-  const handleStamp = () => {
-    if (!selectedBrush) {
-      toast.error("Select a tile brush before stamping");
-      return;
-    }
-
-    const tileCoords = getTileCoordinates(selectedTileIndex, mapWidth);
-    setTerrainData((draft) => {
-      applyTileBrush({
-        draft,
-        layer: activeLayer,
-        mapWidth,
-        mapHeight,
-        targetX: tileCoords.x,
-        targetY: tileCoords.y,
-        brush: selectedBrush,
-        anchor,
-      });
-    });
-    toast.success(`Stamped '${selectedBrush.name}'`);
-  };
+  const brushes = allBrushes.filter((brush) => brush.game === game);
+  const selectedBrush = brushes.find((brush) => brush.id === selectedBrushId) ?? null;
 
   const handleTransform = (transform: "rotate" | "flipX" | "flipY") => {
     if (!selectedBrush) {
-      toast.error("Select a tile brush first");
+      toast.error("Select a stamp first");
       return;
     }
 
@@ -145,149 +67,40 @@ export function TileBrushPanel({
     );
   };
 
-  const handleExport = () => {
-    const blob = new Blob([exportTileBrushesToJson(brushes)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const anchorElement = document.createElement("a");
-    anchorElement.href = url;
-    anchorElement.download = "tile-brushes.json";
-    anchorElement.click();
-    URL.revokeObjectURL(url);
-    toast.success("Exported tile brushes");
-  };
-
-  const handleImport = async (file: File | null) => {
-    if (!file) {
-      return;
-    }
-
-    const content = await file.text();
-    const result = parseTileBrushesFromJson(content);
-    if (result.isErr()) {
-      toast.error("Failed to import tile brushes", {
-        description: result.error,
-      });
-      return;
-    }
-
-    const compatible = result.value.filter((brush) => brush.game === game);
-    setBrushes(compatible);
-    setSelectedBrushId(compatible[0]?.id ?? null);
-    toast.success(`Imported ${compatible.length} brush(es)`);
-  };
-
   return (
-    <div className="rounded border border-gray-700 p-2.5 space-y-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs uppercase tracking-wide text-gray-400">
-          Tile Pattern Brushes
-        </p>
-        <Select
-          value={mode}
-          onValueChange={(value) => {
-            if (
-              value === "capture" ||
-              value === "stamp" ||
-              value === "select"
-            ) {
-              setMode(value);
-            }
-          }}
-        >
-          <SelectTrigger className="h-8 w-28 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="capture">Capture</SelectItem>
-            <SelectItem value="stamp">Stamp</SelectItem>
-            <SelectItem value="select">Select</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <p className="text-xs text-gray-400">
-        {mode === "capture"
-          ? "Drag on the map to capture a multi-tile stamp."
-          : mode === "stamp"
-            ? "Click the map to stamp the selected brush."
-            : "Use Select to inspect tiles without stamping."}
-      </p>
-
-      <div className="space-y-1.5">
-        <Label className="text-xs text-gray-400">Brushes</Label>
-        <div className="max-h-24 overflow-y-auto rounded border border-gray-700">
-          {brushes.length === 0 ? (
-            <p className="p-2 text-xs text-gray-500">No brushes yet</p>
-          ) : (
-            brushes.map((brush) => (
-              <button
-                key={brush.id}
-                type="button"
-                className={`w-full px-2 py-1 text-left text-xs ${
-                  brush.id === selectedBrushId
-                    ? "bg-blue-900/40 text-white"
-                    : "text-gray-300"
-                }`}
-                onClick={() => setSelectedBrushId(brush.id)}
-              >
-                {brush.name} ({brush.width}x{brush.height})
-              </button>
-            ))
-          )}
+    <div className="space-y-2.5 p-1">
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Label className="text-xs text-gray-400">Stamp</Label>
+          <TileBrushSelect
+            brushes={brushes}
+            selectedBrush={selectedBrush}
+            game={game}
+            mapImages={mapImages}
+            xlatTable={xlatTable}
+            onSelect={(brushId) => {
+              setSelectedBrushId(brushId);
+              setMode("stamp");
+            }}
+          />
         </div>
-      </div>
-
-      {selectedBrush && (
-        <Input
-          className="h-8 text-xs"
-          value={selectedBrush.name}
-          onChange={(event) => {
-            const nextName = event.target.value;
-            setBrushes((current) =>
-              current.map((brush) =>
-                brush.id === selectedBrush.id
-                  ? renameTileBrush(brush, nextName)
-                  : brush,
-              ),
-            );
-          }}
-        />
-      )}
-
-      <div className="grid grid-cols-3 gap-1.5">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handleTransform("rotate")}
-        >
-          Rotate
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handleTransform("flipX")}
-        >
-          Flip H
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handleTransform("flipY")}
-        >
-          Flip V
+        <Button size="sm" variant="outline" onClick={() => setMode("capture")}>
+          Add
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-1.5">
-        <Button size="sm" variant="outline" onClick={handleCaptureSingleTile}>
-          Capture Selected Tile
-        </Button>
-        <Button size="sm" onClick={handleStamp}>
-          Stamp at Selection
-        </Button>
-      </div>
+      {mode === "capture" ? (
+        <p className="text-xs text-gray-400">
+          Drag on the map to capture a reusable stamp.
+        </p>
+      ) : null}
+
+      <TileTransformActions
+        onRotate={() => handleTransform("rotate")}
+        onFlipHorizontal={() => handleTransform("flipX")}
+        onFlipVertical={() => handleTransform("flipY")}
+        disabled={!selectedBrush}
+      />
 
       <div className="grid grid-cols-[auto_1fr] items-center gap-2">
         <Label className="text-xs text-gray-400">Anchor</Label>
@@ -309,23 +122,6 @@ export function TileBrushPanel({
         </Select>
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <Button size="sm" variant="outline" onClick={handleExport}>
-          Export JSON
-        </Button>
-        <label className="text-xs text-gray-300 border border-gray-700 rounded px-2 py-1 cursor-pointer">
-          Import JSON
-          <input
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={(event) => {
-              void handleImport(event.target.files?.[0] ?? null);
-              event.target.value = "";
-            }}
-          />
-        </label>
-      </div>
     </div>
   );
 }

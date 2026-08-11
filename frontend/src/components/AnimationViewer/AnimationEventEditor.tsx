@@ -233,16 +233,15 @@ export function AnimationEventEditor({
                         value={type.toString()}
                         onValueChange={handleTypeChange}
                       >
-                        <SelectTrigger className="h-8 w-full min-w-0 border-gray-600 bg-gray-700 text-white">
+                        <SelectTrigger className="h-8 w-full min-w-0">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="max-h-60 border-gray-600 bg-gray-700 text-white">
+                        <SelectContent className="max-h-60">
                           {Object.entries(ANIMEVENT_TYPE_CONFIG).map(
                             ([value, config]) => (
                               <SelectItem
                                 key={value}
                                 value={value}
-                                className="text-white focus:bg-gray-600"
                                 title={`${config.label}: ${config.description} Supported in: ${config.supportedGames.join(", ")}`}
                               >
                                 {value}: {config.label}
@@ -262,15 +261,14 @@ export function AnimationEventEditor({
                           value={event.value.toString()}
                           onValueChange={handleValueChange}
                         >
-                          <SelectTrigger className="h-8 w-full min-w-0 border-gray-600 bg-gray-700 text-white">
+                          <SelectTrigger className="h-8 w-full min-w-0">
                             <SelectValue placeholder="Select value" />
                           </SelectTrigger>
-                          <SelectContent className="max-h-60 border-gray-600 bg-gray-700 text-white">
+                          <SelectContent className="max-h-60">
                             {valueOptions.map((option) => (
                               <SelectItem
                                 key={option.value}
                                 value={option.value}
-                                className="text-white focus:bg-gray-600"
                               >
                                 {option.label}
                               </SelectItem>

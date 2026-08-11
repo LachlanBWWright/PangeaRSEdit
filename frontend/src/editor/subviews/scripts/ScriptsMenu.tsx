@@ -638,7 +638,6 @@ export function ScriptsMenu({
     <>
       <MenuEmptyState
         title="Scripts Workspace"
-        description="Create behaviors and customize this level with Lua."
         actionLabel="Open Scripts"
         onAction={() => setScriptsOpen(true)}
         fillHeight

@@ -19,6 +19,7 @@ import {
   CROMAG_TAG_DURATION_OPTIONS,
   buildUpdatedLobbyFormState,
   buildUpdatedLobbyModeState,
+  getMaxPlayerOptions,
   getModeOptions,
   getTrackOptions,
   usesCroMagTagDuration,
@@ -173,9 +174,9 @@ export function CreateLobbyDialog({
                 <SelectValue placeholder="Select max players" />
               </SelectTrigger>
               <SelectContent>
-                {["2", "3", "4", "5", "6"].map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value} players
+                {getMaxPlayerOptions(formState.gameId).map((value) => (
+                  <SelectItem key={value} value={String(value)}>
+                    {String(value)} players
                   </SelectItem>
                 ))}
               </SelectContent>

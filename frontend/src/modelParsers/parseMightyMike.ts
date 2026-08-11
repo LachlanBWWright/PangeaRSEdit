@@ -26,6 +26,7 @@ export interface MightyMikeTilesetWriteInput {
   readonly tileset: MightyMikeTileSet;
   readonly tileImages: readonly LevelIoImagePayload[];
   readonly paletteRgbaBytes: readonly number[];
+  readonly tilePaletteIndices?: readonly (readonly number[])[];
   readonly preservedData?: MightyMikeTilesetPreservedData;
 }
 
@@ -595,10 +596,14 @@ export function mightyMikeTileSetToBinary(
 
   view.setUint16(tileDefinitionOffset, tileImages.length, false);
   let offset = tileDefinitionOffset + 2;
-  for (const image of tileImages) {
+  for (const [tileIndex, image] of tileImages.entries()) {
+    const preservedIndices = input.tilePaletteIndices?.[tileIndex];
     const rgba = new Uint8Array(image.rgbaBytes);
     for (let pixel = 0; pixel < 32 * 32; pixel += 1) {
-      bytes[offset] = getPaletteIndex(rgba, pixel * 4, palette);
+      bytes[offset] =
+        preservedIndices?.length === 32 * 32
+          ? (preservedIndices[pixel] ?? 0)
+          : getPaletteIndex(rgba, pixel * 4, palette);
       offset += 1;
     }
   }

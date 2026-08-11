@@ -1,11 +1,4 @@
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   MapItemScriptSection,
   SplineItemScriptSection,
   TerrainItemScriptSection,
@@ -21,6 +14,7 @@ import type {
   ScriptTerrainBindingSignature,
 } from "./scriptWorkspaceState";
 import { MenuEmptyState } from "../MenuEmptyState";
+import { ScriptFieldHelpTooltip } from "./ScriptFieldHelpTooltip";
 
 interface ScriptNativeBindingsPanelProps {
   selectionTargetKind: ScriptTargetKind | null;
@@ -46,16 +40,14 @@ export function ScriptNativeBindingsPanel({
   onRemoveBinding,
 }: ScriptNativeBindingsPanelProps) {
   return (
-    <Card className="border-slate-800 bg-slate-950/70">
-      <CardHeader>
-        <CardTitle className="text-white">Native Item Bindings</CardTitle>
-        <CardDescription>
-          Selection-aware bindings generate predicate-guarded modules so preview
-          can target a chosen terrain item, spline item, or Mighty Mike map
-          item.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+    <section>
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="font-semibold text-white">Native Item Bindings</h3>
+        <ScriptFieldHelpTooltip label="About native item bindings">
+          Bindings target the selected native item using generated predicate guards.
+        </ScriptFieldHelpTooltip>
+      </div>
+      <div className="grid gap-3">
         {selectionTargetKind === "terrainItem" && terrainSelectionSignature ? (
           <TerrainItemScriptSection
             selectionLabel={selectionLabel}
@@ -115,7 +107,7 @@ export function ScriptNativeBindingsPanel({
             onRemove={() => onRemoveBinding(binding.id)}
           />
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

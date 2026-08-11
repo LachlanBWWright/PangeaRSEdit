@@ -101,8 +101,12 @@ export function GameCard({
   const stagedBadge = (name: string, kind: "level" | "texture") => (
     <span className="inline-flex items-center gap-0.5">
       {name}
-      <button
+      <Button
         type="button"
+        variant="icon"
+        size="icon"
+        className="h-5 w-5 rounded-full p-0.5"
+        aria-label={`Remove ${name}`}
         onClick={(e) => {
           e.stopPropagation();
           if (kind === "level") {
@@ -113,10 +117,9 @@ export function GameCard({
             setStagedTextureFile(null);
           }
         }}
-        className="inline-flex items-center justify-center rounded-full hover:bg-gray-600 p-0.5"
       >
         <X className="w-3 h-3" />
-      </button>
+      </Button>
     </span>
   );
   const uploadDropzoneClassName = cn(

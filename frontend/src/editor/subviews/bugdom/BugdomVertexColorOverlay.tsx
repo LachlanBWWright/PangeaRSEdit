@@ -128,6 +128,7 @@ export function BugdomVertexColorOverlay({
 
   const paintAtPointer = (event: Konva.KonvaEventObject<MouseEvent>) => {
     if (!editing) return;
+    event.cancelBubble = true;
     const position = event.target.getStage()?.getRelativePointerPosition();
     const rgb = hexToRgb(brushHex);
     if (!position || !rgb) return;
@@ -188,7 +189,10 @@ export function BugdomVertexColorOverlay({
           onMouseMove={(event) => {
             if (event.evt.buttons === 1) paintAtPointer(event);
           }}
-          onMouseUp={commitStroke}
+          onMouseUp={(event) => {
+            event.cancelBubble = true;
+            commitStroke();
+          }}
           onMouseLeave={commitStroke}
         />
       )}

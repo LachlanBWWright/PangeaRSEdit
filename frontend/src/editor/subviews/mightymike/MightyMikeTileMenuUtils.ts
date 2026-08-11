@@ -9,6 +9,7 @@ import {
   booleanSchema,
   numberSchema,
 } from "@/schemas/common";
+import { removeMightyMikePaletteTileIndices } from "./mightyMikePaletteTileState";
 
 export const TILE_SIZE = 32;
 export type TileImageTransform = "rotate" | "flipX" | "flipY";
@@ -254,6 +255,7 @@ export function removePaletteTile(
         return idx > selectedPaletteTile ? idx - 1 : idx;
       });
     }
+    removeMightyMikePaletteTileIndices(data, selectedPaletteTile);
     syncMightyMikeTileValuesFromLayer(data);
   });
 }

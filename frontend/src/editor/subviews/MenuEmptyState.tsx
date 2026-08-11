@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 
 interface MenuEmptyStateProps {
   title: string;
-  description: string;
+  description?: string;
   actionLabel?: string;
   onAction?: () => void;
   fillHeight?: boolean;
@@ -31,9 +31,11 @@ export function MenuEmptyState({
         >
           {title}
         </h3>
-        <p className={compact ? "text-sm text-gray-300" : "text-gray-300"}>
-          {description}
-        </p>
+        {description ? (
+          <p className={compact ? "text-sm text-gray-300" : "text-gray-300"}>
+            {description}
+          </p>
+        ) : null}
       </div>
       {hasAction && (
         <Button onClick={onAction} className="w-auto self-center px-6">

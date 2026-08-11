@@ -8,6 +8,7 @@ export interface MightyMikeTileSet {
   tileAttributes: MightyMikeTileAttribute[];
   tileAnimations: MightyMikeTileAnimation[];
   transparencyColors: number[];
+  paletteIndices?: number[][];
   tileImages?: HTMLCanvasElement[]; // Optional tile images extracted from tileset
   /** Per-tile collision overlay canvases (orange for solid pixels, transparent for transparent).
    *  Generated at parse time from transparencyColors + raw pixel palette indices. */

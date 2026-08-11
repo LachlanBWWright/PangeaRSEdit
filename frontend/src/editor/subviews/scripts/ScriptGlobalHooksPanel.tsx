@@ -1,11 +1,4 @@
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -47,14 +40,9 @@ export function ScriptGlobalHooksPanel({
   onAssignHook,
 }: ScriptGlobalHooksPanelProps) {
   return (
-    <Card className="border-slate-800 bg-slate-950/70">
-      <CardHeader>
-        <CardTitle className="text-white">Global Hooks</CardTitle>
-        <CardDescription>
-          Pick which script runs when each supported event fires.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+    <section>
+      <h3 className="mb-2 font-semibold text-white">Global Hooks</h3>
+      <div className="divide-y divide-slate-800 border-y border-slate-800">
         {supportedHooks.map((hookId) => {
           const existing = globalHooks.find(
             (candidate) => candidate.hookId === hookId,
@@ -63,7 +51,7 @@ export function ScriptGlobalHooksPanel({
           return (
             <div
               key={hookId}
-              className="grid gap-2 rounded-xl border border-slate-800 bg-slate-900/80 p-3 md:grid-cols-[1fr_320px_auto] md:items-center"
+              className="grid gap-2 px-1 py-3 md:grid-cols-[1fr_320px_auto] md:items-center"
             >
               <div>
                 <p className="font-medium text-white">{hookId}</p>
@@ -113,7 +101,7 @@ export function ScriptGlobalHooksPanel({
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

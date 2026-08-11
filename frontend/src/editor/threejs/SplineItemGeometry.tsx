@@ -99,7 +99,10 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
     if (!show3DItemModels) return;
     uniqueSplineItemTypes.forEach((itemType) => {
       const triggerLoad = async () => {
-        const result = await ResultAsync.fromPromise(loadModel(itemType, undefined, levelNum), mapErr);
+        const result = await ResultAsync.fromPromise(
+          loadModel(itemType, undefined, levelNum, "splineItem"),
+          mapErr,
+        );
         if (result.isErr()) {
           console.error(`[SplineItemGeometry] Failed to load model for spline item type ${itemType}:`, result.error);
         }
@@ -118,10 +121,17 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
         itemType,
         undefined,
         isLevelDep ? levelNum : undefined,
+        "splineItem",
       );
       const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
-        const mapping = mapper?.getMapping(itemType, levelNum);
+        const mapping = mapper?.getMapping(
+          itemType,
+          levelNum,
+          undefined,
+          undefined,
+          "splineItem",
+        );
         if (mapping && cachedModel.gltf) {
           const cloned = cachedModel.gltf.clone(true);
           const baseScale = mapping.scale ?? 1;
@@ -185,6 +195,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
               item.type,
               undefined,
               isLevelDep ? levelNum : undefined,
+              "splineItem",
             );
             const cachedModel = modelCache.get(cacheKey);
 

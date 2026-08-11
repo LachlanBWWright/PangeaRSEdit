@@ -19,6 +19,7 @@ import { useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Layer, Stage } from "react-konva";
 import Konva from "konva";
+import { computeWheelZoomStage } from "./konvaViewState";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
@@ -212,24 +213,8 @@ export function OttoMaticKonvaView({
 
   const handleStageWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
-      e.evt.preventDefault();
-      const scaleBy = 1.05;
-      const stageRef = e.target.getStage();
-      if (!stageRef) return;
-      const oldScale = stageRef.scaleX();
-      const pointerPosition = stageRef.getPointerPosition();
-      if (!pointerPosition) return;
-      const mousePointTo = {
-        x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
-        y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
-      };
-      const newScale =
-        e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-      setStage({
-        scale: newScale,
-        x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-        y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-      });
+      const nextStage = computeWheelZoomStage(e);
+      if (nextStage) setStage(nextStage);
     },
     [setStage],
   );

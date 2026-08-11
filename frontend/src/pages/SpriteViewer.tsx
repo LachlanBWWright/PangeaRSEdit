@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   Download,
   Maximize2,
-  ZoomIn,
-  ZoomOut,
   Paintbrush,
   Eraser,
   Pipette,
@@ -54,6 +53,12 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { mapErr } from "@/utils/mapErr";
+import { editShapeFramePixel } from "./SpriteViewer/utils/spritePixelEditing";
+import { EditorZoomControls } from "@/components/editor/EditorZoomControls";
+import {
+  getSteppedZoom,
+  getWheelZoom,
+} from "@/components/editor/editorZoomState";
 
 type FileType = "sprites" | "tga" | "tileset";
 type EditMode = "view" | "paint" | "erase" | "eyedropper";
@@ -74,12 +79,14 @@ interface SpriteData {
   type: "sprites";
   data: ShapesFile;
   filename: string;
+  sourceBytes: ArrayBuffer;
 }
 
 interface TGAData {
   type: "tga";
   data: HTMLCanvasElement;
   filename: string;
+  sourceBytes: ArrayBuffer;
 }
 
 interface TilesetData {
@@ -87,6 +94,7 @@ interface TilesetData {
   data: MightyMikeTileset;
   gridCanvas: HTMLCanvasElement;
   filename: string;
+  sourceBytes: ArrayBuffer;
 }
 
 type LoadedData = SpriteData | TGAData | TilesetData | null;
@@ -229,6 +237,7 @@ export function SpriteViewer() {
         type: "sprites",
         data: result.value,
         filename: file.name,
+        sourceBytes: buffer,
       });
       setSelectedShapeIndex(0);
       setSelectedFrameIndex(0);
@@ -261,6 +270,7 @@ export function SpriteViewer() {
         type: "tga",
         data: result.value,
         filename: file.name,
+        sourceBytes: buffer,
       });
       toast.success("Loaded TGA image");
     } else if (fileType === "tileset") {
@@ -316,6 +326,7 @@ export function SpriteViewer() {
       type: "sprites",
       data: result.value,
       filename,
+      sourceBytes: buffer,
     });
     setSelectedShapeIndex(0);
     setSelectedFrameIndex(0);
@@ -383,6 +394,7 @@ export function SpriteViewer() {
       type: "tga",
       data: result.value,
       filename,
+      sourceBytes: buffer,
     });
     toast.success(`Loaded TGA: ${filename}`);
     setLoading(false);
@@ -565,6 +577,7 @@ export function SpriteViewer() {
       data: tileset,
       gridCanvas,
       filename,
+      sourceBytes: tilesetBuffer,
     });
     setSelectedTileIndex(undefined);
     setCurrentTilesetScene(filename);
@@ -810,11 +823,13 @@ export function SpriteViewer() {
         return;
       }
 
-      const newColor = editMode === "erase" ? 0 : selectedPaletteColorIndex;
-      const newPixels = new Uint8Array(frame.pixels);
-      newPixels[pixelIndex] = newColor;
-
-      const newFrame: ShapeFrame = { ...frame, pixels: newPixels };
+      const newFrame: ShapeFrame = editShapeFramePixel(
+        frame,
+        pixelIndex,
+        editMode === "erase"
+          ? { mode: "erase" }
+          : { mode: "paint", paletteIndex: selectedPaletteColorIndex },
+      );
       const newFrames = [...shape.frames];
       newFrames[selectedFrameIndex] = newFrame;
       const newShape = { ...shape, frames: newFrames };
@@ -885,40 +900,101 @@ export function SpriteViewer() {
     panStartRef.current = null;
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.cancelable) {
-      e.preventDefault();
-    }
-    const factor = e.deltaY < 0 ? 1.25 : 0.8;
+  const handleWheel = useCallback((event: WheelEvent) => {
+    event.preventDefault();
+    if (event.deltaY === 0) return;
+
     setDisplayOptions((prev) => ({
       ...prev,
-      zoomLevel: Math.min(16, Math.max(0.25, prev.zoomLevel * factor)),
+      zoomLevel: getWheelZoom(prev.zoomLevel, event.deltaY, 1.25, {
+        min: 0.25,
+        max: 16,
+      }),
     }));
-  };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.addEventListener("wheel", handleWheel, {
+      passive: false,
+      capture: true,
+    });
+    return () =>
+      canvas.removeEventListener("wheel", handleWheel, { capture: true });
+  }, [handleWheel, loadedData]);
 
   const handleZoomIn = () => {
     setDisplayOptions((prev) => ({
       ...prev,
-      zoomLevel: Math.min(16, prev.zoomLevel * 1.25),
+      zoomLevel: getSteppedZoom(prev.zoomLevel, 1, 1.25, {
+        min: 0.25,
+        max: 16,
+      }),
     }));
   };
 
   const handleZoomOut = () => {
     setDisplayOptions((prev) => ({
       ...prev,
-      zoomLevel: Math.max(0.25, prev.zoomLevel * 0.8),
+      zoomLevel: getSteppedZoom(prev.zoomLevel, -1, 1.25, {
+        min: 0.25,
+        max: 16,
+      }),
     }));
   };
 
   // ===== Export =====
 
+  const handleDownloadOriginal = () => {
+    if (!loadedData) {
+      toast.error("No asset to download");
+      return;
+    }
+
+    const extension =
+      loadedData.type === "sprites"
+        ? ".shapes"
+        : loadedData.type === "tileset"
+          ? ".tileset"
+          : ".tga";
+    const filename = loadedData.filename.toLowerCase().endsWith(extension)
+      ? loadedData.filename
+      : `${loadedData.filename}${extension}`;
+    const blob = new Blob([loadedData.sourceBytes], {
+      type: "application/octet-stream",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded ${filename}`);
+  };
+
   const handleDownloadFrame = () => {
-    if (!canvasRef.current) {
+    if (loadedData?.type !== "sprites") {
       toast.error("No frame to download");
       return;
     }
+
+    const shape = loadedData.data.shapes[selectedShapeIndex];
+    const frame = shape?.frames[selectedFrameIndex];
+    if (!frame) {
+      toast.error("No frame to download");
+      return;
+    }
+
+    const frameCanvasResult = shapeFrameToCanvas(frame, currentPalette.colors);
+    if (frameCanvasResult.isErr()) {
+      toast.error("Failed to render frame");
+      return;
+    }
+
     const link = document.createElement("a");
-    link.href = canvasRef.current.toDataURL("image/png");
+    link.href = frameCanvasResult.value.toDataURL("image/png");
     link.download = `shape_${selectedShapeIndex}_frame_${selectedFrameIndex}.png`;
     link.click();
     toast.success("Frame downloaded");
@@ -1246,13 +1322,6 @@ export function SpriteViewer() {
         >
           <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
             <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950/80 px-3 pb-4 pt-2">
-              <FileUploadPanel
-                selectedType={uploadFileType}
-                onTypeChange={setUploadFileType}
-                onFileSelected={handleCustomFileUpload}
-                loading={loading}
-              />
-
               <MightyMikeAssetBrowser
                 selectedType={assetFileType}
                 onTypeChange={setAssetFileType}
@@ -1267,6 +1336,13 @@ export function SpriteViewer() {
                 }}
                 loading={loading}
                 loadedFilename={loadedData?.filename}
+              />
+
+              <FileUploadPanel
+                selectedType={uploadFileType}
+                onTypeChange={setUploadFileType}
+                onFileSelected={handleCustomFileUpload}
+                loading={loading}
               />
 
               {loadedData?.type === "sprites" && (
@@ -1329,11 +1405,12 @@ export function SpriteViewer() {
               {loadedData?.type === "sprites" && (
                 <EditorPanel title="Sprite Tools">
                   <EditorField label="Mode">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Sprite editing mode">
                       <Button
                         size="sm"
                         variant={editMode === "view" ? "default" : "outline"}
                         className="text-white"
+                        aria-pressed={editMode === "view"}
                         onClick={() => setEditMode("view")}
                       >
                         <Eye className="w-3 h-3 mr-1" /> View
@@ -1342,6 +1419,7 @@ export function SpriteViewer() {
                         size="sm"
                         variant={editMode === "paint" ? "default" : "outline"}
                         className="text-white"
+                        aria-pressed={editMode === "paint"}
                         onClick={() => setEditMode("paint")}
                       >
                         <Paintbrush className="w-3 h-3 mr-1" /> Paint
@@ -1350,6 +1428,7 @@ export function SpriteViewer() {
                         size="sm"
                         variant={editMode === "erase" ? "default" : "outline"}
                         className="text-white"
+                        aria-pressed={editMode === "erase"}
                         onClick={() => setEditMode("erase")}
                       >
                         <Eraser className="w-3 h-3 mr-1" /> Erase
@@ -1360,9 +1439,10 @@ export function SpriteViewer() {
                           editMode === "eyedropper" ? "default" : "outline"
                         }
                         className="text-white"
+                        aria-pressed={editMode === "eyedropper"}
                         onClick={() => setEditMode("eyedropper")}
                       >
-                        <Pipette className="w-3 h-3 mr-1" /> Pick
+                        <Pipette className="w-3 h-3 mr-1" /> Eyedropper
                       </Button>
                     </div>
                   </EditorField>
@@ -1376,16 +1456,16 @@ export function SpriteViewer() {
                         <span className="text-xs text-gray-300 w-16">
                           Index: {selectedPaletteColorIndex}
                         </span>
-                        <input
-                          type="range"
+                        <Slider
                           min={0}
                           max={255}
-                          value={selectedPaletteColorIndex}
-                          onChange={(e) =>
-                            setSelectedPaletteColorIndex(
-                              parseInt(e.target.value, 10),
-                            )
-                          }
+                          value={[selectedPaletteColorIndex]}
+                          onValueChange={([nextIndex]) => {
+                            if (nextIndex !== undefined) {
+                              setSelectedPaletteColorIndex(nextIndex);
+                            }
+                          }}
+                          aria-label="Palette index"
                           className="flex-1"
                         />
                       </div>
@@ -1421,7 +1501,7 @@ export function SpriteViewer() {
                     onClick={handleDownloadFrame}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download Frame
+                    Download Frame as PNG
                   </Button>
                   <Button
                     variant="outline"
@@ -1429,7 +1509,14 @@ export function SpriteViewer() {
                     onClick={handleDownloadAllFrames}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download All Frames
+                    Download All Frames as PNG
+                  </Button>
+                  <Button
+                    className="w-full"
+                    onClick={handleDownloadOriginal}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Unmodified Source .shapes
                   </Button>
                 </EditorPanel>
               )}
@@ -1443,7 +1530,7 @@ export function SpriteViewer() {
                     disabled={selectedTileIndex === undefined}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download Tile
+                    Download Tile as PNG
                   </Button>
                   <Button
                     variant="outline"
@@ -1451,7 +1538,7 @@ export function SpriteViewer() {
                     onClick={handleDownloadTileset}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download Tileset
+                    Download Preview as PNG
                   </Button>
                   <Button
                     variant="outline"
@@ -1459,7 +1546,23 @@ export function SpriteViewer() {
                     onClick={handleDownloadAllTiles}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download All Tiles
+                    Download All Tiles as PNG
+                  </Button>
+                  <Button
+                    className="w-full"
+                    onClick={handleDownloadOriginal}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Original .tileset
+                  </Button>
+                </EditorPanel>
+              )}
+
+              {loadedData?.type === "tga" && (
+                <EditorPanel title="Export">
+                  <Button className="w-full" onClick={handleDownloadOriginal}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Original .tga
                   </Button>
                 </EditorPanel>
               )}
@@ -1484,31 +1587,23 @@ export function SpriteViewer() {
                   {loadedTypeLabel} | {displayOptions.zoomLevel.toFixed(1)}x
                 </p>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleZoomOut}
-                  title="Zoom out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleZoomIn}
-                  title="Zoom in"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </Button>
-              </div>
+              <EditorZoomControls
+                zoomLabel={`${displayOptions.zoomLevel.toFixed(1)}x`}
+                onZoomOut={handleZoomOut}
+                onResetZoom={() =>
+                  setDisplayOptions((previous) => ({
+                    ...previous,
+                    zoomLevel: 1,
+                  }))
+                }
+                onZoomIn={handleZoomIn}
+              />
             </div>
 
             {loadedData ? (
               <div
                 className="flex-1 overflow-auto"
                 style={{ cursor: viewportCursor }}
-                onWheel={handleWheel}
                 onMouseDown={handleViewportMouseDown}
                 onMouseMove={handleViewportMouseMove}
                 onMouseUp={handleViewportMouseUp}

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   itemFilterStateAtom,
   DEFAULT_FILTER_STATE,
@@ -66,13 +67,16 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
         <span className="text-sm font-semibold text-white">
           Item Visibility ({visibleCount}/{allItemTypes.length})
         </span>
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors text-lg leading-none"
+          className="h-7 w-7 text-gray-400"
           aria-label="Close filter panel"
         >
           ✕
-        </button>
+        </Button>
       </div>
 
       {/* Search + Toggle-all row */}
@@ -85,18 +89,23 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
           className="w-full bg-gray-800 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none"
         />
         <div className="flex gap-2">
-          <button
+          <Button
+            type="button"
+            size="sm"
             onClick={showAll}
-            className="flex-1 py-1 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"
+            className="flex-1"
           >
             Show All
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
             onClick={hideAll}
-            className="flex-1 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+            className="flex-1"
           >
             Hide All
-          </button>
+          </Button>
         </div>
       </div>
 

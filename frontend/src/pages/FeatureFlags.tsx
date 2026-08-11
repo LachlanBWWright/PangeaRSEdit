@@ -23,6 +23,18 @@ export function FeatureFlagsPage() {
     );
   };
 
+  const handleScriptingChange = (enabled: boolean) => {
+    const result = setFeatureFlags({
+      ...featureFlags,
+      scripting: enabled,
+    });
+
+    result.match(
+      () => toast.success(enabled ? "Scripting enabled" : "Scripting disabled"),
+      (error) => toast.error(error.message),
+    );
+  };
+
   return (
     <main className="w-full max-w-4xl mx-auto px-4 py-8 text-slate-100">
       <div className="mb-8 flex items-start gap-3">
@@ -64,6 +76,22 @@ export function FeatureFlagsPage() {
               checked={featureFlags.multiplayer}
               onCheckedChange={handleMultiplayerChange}
               aria-label="Toggle multiplayer experience"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <div>
+              <label htmlFor="scripting-feature-flag-page" className="font-medium text-slate-100">
+                Scripting tools
+              </label>
+              <p className="mt-1 text-sm leading-5 text-slate-400">
+                Show incomplete, in-development scripting tools in the level editor.
+              </p>
+            </div>
+            <Switch
+              id="scripting-feature-flag-page"
+              checked={featureFlags.scripting}
+              onCheckedChange={handleScriptingChange}
+              aria-label="Toggle scripting tools"
             />
           </div>
         </CardContent>

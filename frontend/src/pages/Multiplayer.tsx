@@ -16,6 +16,7 @@ import {
   reportTimeout,
 } from "@/multiplayer/api";
 import { MultiplayerMatchResultSchema } from "@/multiplayer/schemas";
+import { normalizeRuntimeMatchResult } from "@/multiplayer/normalizeRuntimeMatchResult";
 import { createMockRuntimeTransport } from "@/multiplayer/mockRuntimeTransport";
 import type {
   MultiplayerLobbyDetails,
@@ -401,7 +402,20 @@ export function MultiplayerPage() {
         if (!parsedResult.success) {
           return;
         }
-        void reportMatchResult(activeLobby.id, parsedResult.data).then(
+        const matchConfig = activeLobby.matchConfig;
+        if (!matchConfig) {
+          return;
+        }
+        const normalizedResult = normalizeRuntimeMatchResult(
+          parsedResult.data,
+          matchConfig,
+          new Date().toISOString(),
+        );
+        if (normalizedResult.isErr()) {
+          setErrorText(normalizedResult.error);
+          return;
+        }
+        void reportMatchResult(activeLobby.id, normalizedResult.value).then(
           (result) => {
             if (result.isOk()) {
               setLobby(result.value);

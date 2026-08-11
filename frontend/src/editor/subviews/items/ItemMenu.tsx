@@ -93,7 +93,7 @@ export const ItemMenu = memo(function ItemMenu({
   }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
-    <div className="flex min-h-full flex-col gap-2">
+    <div className="flex h-full min-h-full flex-col gap-2">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu hasItems={itemCount > 0} />
       ) : (
@@ -186,8 +186,7 @@ export const ItemMenu = memo(function ItemMenu({
             </div>
           )}
 
-          <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-baseline">
-            {/* Param 0-3, refactored */}
+          <div className="grid grid-cols-2 gap-2">
             {([0, 1, 2, 3] as const).map((i) => {
               const paramKey = `p${i}` as const;
               const param = selectedItemParams?.[paramKey] ?? "Unknown";
@@ -197,29 +196,41 @@ export const ItemMenu = memo(function ItemMenu({
                   updateSelectedItemParam(draft, selectedItem, paramKey, v);
                 });
               };
-              return [
-                <ParamTooltip
-                  key={`tooltip-${i}`}
-                  label={<span>{`Parameter ${i}`}</span>}
-                  tooltip={getParamTooltip(param)}
-                  defaultCitation={
-                    typeof param === "string" || !param
-                      ? undefined
-                      : param.defaultCitation
-                  }
-                  additionalCitations={
-                    typeof param === "string" || !param
-                      ? undefined
-                      : param.additionalCitations
-                  }
-                />,
+              const flags =
                 param &&
                 typeof param !== "string" &&
                 param.type === "Bit Flags" &&
-                Array.isArray(param.flags) ? (
-                  <div key={`flags-${i}`} className="flex flex-col gap-1">
-                    <div className="flex flex-wrap gap-2">
-                      {param.flags.map((flag: FlagDescription) => {
+                Array.isArray(param.flags)
+                  ? param.flags
+                  : [];
+              return (
+                <div
+                  key={paramKey}
+                  className="flex flex-col gap-2 rounded border border-gray-700 bg-gray-900/30 p-2"
+                >
+                  <ParamTooltip
+                    label={<span>{`Parameter ${i}`}</span>}
+                    tooltip={getParamTooltip(param)}
+                    defaultCitation={
+                      typeof param === "string" || !param
+                        ? undefined
+                        : param.defaultCitation
+                    }
+                    additionalCitations={
+                      typeof param === "string" || !param
+                        ? undefined
+                        : param.additionalCitations
+                    }
+                  />
+                  <Input
+                    type="number"
+                    value={value.toString()}
+                    className="h-7 text-xs"
+                    onChange={(e) => setValue(parseU8(e.target.value))}
+                  />
+                  {flags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 border-t border-gray-700 pt-2">
+                      {flags.map((flag: FlagDescription) => {
                         const checked = (value & (1 << flag.index)) !== 0;
                         return (
                           <label
@@ -246,26 +257,9 @@ export const ItemMenu = memo(function ItemMenu({
                         );
                       })}
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p>Value:</p>
-                      <Input
-                        type="number"
-                        className="h-7 w-24 text-xs"
-                        value={value.toString()}
-                        onChange={(e) => setValue(parseU8(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <Input
-                    key={`input-${i}`}
-                    type="number"
-                    value={value.toString()}
-                    className="h-7 text-xs"
-                    onChange={(e) => setValue(parseU8(e.target.value))}
-                  />
-                ),
-              ];
+                  )}
+                </div>
+              );
             })}
           </div>
           {ENABLE_SCRIPTS && (

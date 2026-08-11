@@ -99,9 +99,11 @@ function buildTileImagePayloads(
 ): {
   tileImages: LevelIoImagePayload[];
   collisionImages: LevelIoImagePayload[];
+  paletteIndices: number[][];
 } {
   const tileImages: LevelIoImagePayload[] = [];
   const collisionImages: LevelIoImagePayload[] = [];
+  const paletteIndices: number[][] = [];
   const TILE_SIZE = 32;
   const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE;
 
@@ -120,6 +122,7 @@ function buildTileImagePayloads(
     const imageData = new Uint8ClampedArray(TILE_SIZE * TILE_SIZE * 4);
     const collisionData = new Uint8ClampedArray(TILE_SIZE * TILE_SIZE * 4);
     const offset = tileIndex * BYTES_PER_TILE;
+    const tilePaletteIndices: number[] = [];
 
     for (let pixelIndex = 0; pixelIndex < BYTES_PER_TILE; pixelIndex += 1) {
       if (offset + pixelIndex >= tileData.length) {
@@ -127,6 +130,7 @@ function buildTileImagePayloads(
       }
 
       const colorIndex = tileData[offset + pixelIndex] ?? 0;
+      tilePaletteIndices.push(colorIndex);
       const pixelOffset = pixelIndex * 4;
       const paletteOffset = (colorIndex & 0xff) * 4;
 
@@ -134,7 +138,9 @@ function buildTileImagePayloads(
         imageData[pixelOffset + 0] = colorPalette[paletteOffset] ?? 0;
         imageData[pixelOffset + 1] = colorPalette[paletteOffset + 1] ?? 0;
         imageData[pixelOffset + 2] = colorPalette[paletteOffset + 2] ?? 0;
-        imageData[pixelOffset + 3] = colorPalette[paletteOffset + 3] ?? 255;
+        imageData[pixelOffset + 3] = transparentSet.has(colorIndex)
+          ? 0
+          : (colorPalette[paletteOffset + 3] ?? 255);
       }
 
       if (!transparentSet.has(colorIndex)) {
@@ -149,9 +155,10 @@ function buildTileImagePayloads(
     collisionImages.push(
       createImagePayload(TILE_SIZE, TILE_SIZE, collisionData),
     );
+    paletteIndices.push(tilePaletteIndices);
   }
 
-  return { tileImages, collisionImages };
+  return { tileImages, collisionImages, paletteIndices };
 }
 
 export function parseMightyMikeTileImagePayloads(
@@ -160,6 +167,7 @@ export function parseMightyMikeTileImagePayloads(
 ): {
   tileImages: LevelIoImagePayload[];
   collisionImages: LevelIoImagePayload[];
+  paletteIndices: number[][];
 } {
   const layout = readTileSetImageLayout(buffer);
   return buildTileImagePayloads(

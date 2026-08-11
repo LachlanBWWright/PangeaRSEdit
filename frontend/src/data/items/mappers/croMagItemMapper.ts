@@ -25,8 +25,13 @@
 import { Game } from "../../globals/globals";
 import {
   type GameItemModelMapper,
+  type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
+import {
+  hasVisibleSplineItemModel,
+  isSplineOnlyItemType,
+} from "../splineItemModelVisibility";
 import { ItemType } from "../croMagItemType";
 import { ROTATION_8_WAY } from "../standardParamTypes";
 
@@ -744,7 +749,19 @@ export class CroMagItemMapper implements GameItemModelMapper {
     itemType: number,
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
+    _flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
+    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
+      return undefined;
+    }
+    if (
+      kind === "splineItem" &&
+      !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+
     if (itemType === ItemType.FinishLine) {
       return getTrackSpecificFinishLine(levelNum);
     }

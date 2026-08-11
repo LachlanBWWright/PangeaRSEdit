@@ -15,8 +15,13 @@
 import { Game } from "../../globals/globals";
 import {
   type GameItemModelMapper,
+  type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
+import {
+  hasVisibleSplineItemModel,
+  isSplineOnlyItemType,
+} from "../splineItemModelVisibility";
 import { ItemType } from "../nanosaur2ItemType";
 import { ROTATION_4_WAY, ROTATION_8_WAY } from "../standardParamTypes";
 
@@ -540,6 +545,24 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
   },
 
+  [ItemType.RamphorEnemy]: {
+    modelFile: "ramphor.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "ramphor.skeleton.rsrc",
+    scale: 2.2,
+    verificationStatus: "verified",
+    citations: [
+      {
+        file: "Source/Enemies/Enemy_Ramphor.c",
+        line: 81,
+        endLine: 170,
+        description: "Spline Ramphor uses the Ramphor skeleton at scale 2.2.",
+      },
+    ],
+  },
+
 };
 
 /**
@@ -707,7 +730,19 @@ export class Nanosaur2ItemMapper implements GameItemModelMapper {
     itemType: number,
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
+    _flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
+    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
+      return undefined;
+    }
+    if (
+      kind === "splineItem" &&
+      !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+
     // Ivy uses parm[1] (color) to switch between PurpleIvy (0) and RedIvy (1) families
     if (itemType === ItemType.Ivy && params) {
       const isRed = params.p1 !== 0;

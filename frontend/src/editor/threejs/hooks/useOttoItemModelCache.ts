@@ -19,6 +19,7 @@ import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
+import type { ItemModelKind } from "@/data/items/itemModelTypes";
 import { Group } from "three";
 import {
   cloneGroupForItemRendering,
@@ -42,6 +43,7 @@ interface UseItemModelCacheReturn {
     itemType: number,
     params?: ItemModelParams,
     levelNum?: number,
+    kind?: ItemModelKind,
   ) => Promise<Group | null>;
   isLoading: (
     itemType: number,
@@ -106,8 +108,15 @@ export const useItemModelCache = (
       itemType: number,
       params?: ItemModelParams,
       levelNum?: number,
+      kind: ItemModelKind = "terrainItem",
     ): Promise<Group | null> => {
-      const cacheKey = getItemModelCacheKey(game, itemType, params, levelNum);
+      const cacheKey = getItemModelCacheKey(
+        game,
+        itemType,
+        params,
+        levelNum,
+        kind,
+      );
 
       // Skip if already in-flight (avoids stale closure issues)
       if (inFlightRef.current.has(cacheKey)) {
@@ -123,7 +132,13 @@ export const useItemModelCache = (
 
       // Get mapping
       const mapper = getGameMapper(game);
-      const mapping = mapper?.getMapping(itemType, levelNum, params);
+      const mapping = mapper?.getMapping(
+        itemType,
+        levelNum,
+        params,
+        undefined,
+        kind,
+      );
       if (!mapping) {
         return null;
       }

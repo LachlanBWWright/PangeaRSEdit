@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { EditorField, EditorPanel } from "./EditorPanel";
 
 export interface DisplayOptions {
@@ -72,7 +72,7 @@ export function DisplayOptionsPanel({
       {showSpriteOptions && (
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
-            <Checkbox
+            <Switch
               checked={options.showGrid}
               onCheckedChange={(checked) =>
                 onOptionsChange({
@@ -85,7 +85,7 @@ export function DisplayOptionsPanel({
           </label>
 
           <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
-            <Checkbox
+            <Switch
               checked={options.showBounds}
               onCheckedChange={(checked) =>
                 onOptionsChange({
@@ -102,13 +102,15 @@ export function DisplayOptionsPanel({
       <EditorField label="Background">
         <div className="flex gap-2 w-full">
           {["#1a1a2e", "#000000", "#ffffff", "#ff00ff"].map((color) => (
-            <button
+            <Button
               key={color}
-              className="flex-1 h-8 rounded border-2"
+              variant="swatch"
+              size="sm"
+              aria-label={`Use ${color} background`}
+              aria-pressed={options.backgroundColor === color}
+              className="h-8 flex-1"
               style={{
                 backgroundColor: color,
-                borderColor:
-                  options.backgroundColor === color ? "#00ff00" : "transparent",
               }}
               onClick={() =>
                 onOptionsChange({

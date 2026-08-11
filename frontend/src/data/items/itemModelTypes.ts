@@ -46,6 +46,7 @@ export interface ModelPartCitation extends SemanticCitation {
 }
 
 export type VerificationStatus = "verified" | "approximate";
+export type ItemModelKind = "terrainItem" | "splineItem";
 
 export type ItemParamDomain =
   | {
@@ -246,6 +247,7 @@ export interface GameItemModelMapper {
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
     flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined;
   
   /**

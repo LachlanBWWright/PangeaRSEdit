@@ -31,10 +31,10 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { TileBrushPreviewLayer } from "../subviews/tileBrushes/TileBrushPreviewLayer";
 import {
-  tileBrushModeAtom,
+  getTileBrushModeAtom,
   tileBrushPreviewAtom,
-  selectedTileBrushIdAtom,
-  tileBrushAnchorAtom,
+  mightyMikeSelectedTileBrushIdAtom,
+  getTileBrushAnchorAtom,
   tileBrushesAtom,
   tileBrushActiveLayerAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
@@ -47,6 +47,7 @@ import type Konva from "konva";
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { computeWheelZoomStage } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -80,10 +81,12 @@ export function MightyMikeKonvaView({
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
   const customObjectPlacement = useCustomObjectPlacement();
-  const tileBrushMode = useAtomValue(tileBrushModeAtom);
+  const tileBrushMode = useAtomValue(getTileBrushModeAtom("mightymike"));
+  const setTileBrushMode = useSetAtom(getTileBrushModeAtom("mightymike"));
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
-  const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
-  const tileBrushAnchor = useAtomValue(tileBrushAnchorAtom);
+  const selectedBrushId = useAtomValue(mightyMikeSelectedTileBrushIdAtom);
+  const setSelectedBrushId = useSetAtom(mightyMikeSelectedTileBrushIdAtom);
+  const tileBrushAnchor = useAtomValue(getTileBrushAnchorAtom("mightymike"));
   const tileBrushes = useAtomValue(tileBrushesAtom);
   const activeLayer = useAtomValue(tileBrushActiveLayerAtom);
   const setTileBrushes = useSetAtom(tileBrushesAtom);
@@ -154,7 +157,7 @@ export function MightyMikeKonvaView({
       const height = Math.abs(end.y - start.y) + 1;
       const result = createTileBrushFromRegion({
         id: crypto.randomUUID(),
-        name: `Brush ${new Date().toLocaleTimeString()}`,
+        name: `Stamp ${new Date().toLocaleTimeString()}`,
         game: "mightymike",
         terrainData,
         layer: activeLayer,
@@ -168,12 +171,22 @@ export function MightyMikeKonvaView({
       result.match(
         (brush) => {
           setTileBrushes((prev) => [...prev, brush]);
-          toast.success(`Captured brush "${brush.name}" (${width}×${height})`);
+          setSelectedBrushId(brush.id);
+          setTileBrushMode("stamp");
+          toast.success(`Captured stamp (${width}×${height})`);
         },
         (error) => toast.error(`Capture failed: ${error}`),
       );
     },
-    [terrainData, activeLayer, mapWidth, mapHeight, setTileBrushes],
+    [
+      terrainData,
+      activeLayer,
+      mapWidth,
+      mapHeight,
+      setTileBrushes,
+      setSelectedBrushId,
+      setTileBrushMode,
+    ],
   );
 
   const [containerRef, containerSize] = useContainerSize();
@@ -281,28 +294,8 @@ export function MightyMikeKonvaView({
           setSelectedItem(undefined);
         }}
         onWheel={(e) => {
-          e.evt.preventDefault();
-
-          const scaleBy = 1.05;
-          const stageRef = e.target.getStage();
-          if (!stageRef) return;
-          const oldScale = stageRef.scaleX();
-          const pointerPosition = stageRef.getPointerPosition();
-          if (!pointerPosition) return;
-
-          const mousePointTo = {
-            x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
-            y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
-          };
-
-          const newScale =
-            e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-          setStage({
-            scale: newScale,
-            x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-            y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-          });
+          const nextStage = computeWheelZoomStage(e);
+          if (nextStage) setStage(nextStage);
         }}
       >
         {/* Render 2D tile grid - Mighty Mike uses simple tile mapping, always visible */}
@@ -327,6 +320,7 @@ export function MightyMikeKonvaView({
 
         {/* Tile brush stamp preview */}
         <TileBrushPreviewLayer
+          game="mightymike"
           tileSize={TILE_SIZE}
           mapWidth={mapWidth}
           mapHeight={mapHeight}

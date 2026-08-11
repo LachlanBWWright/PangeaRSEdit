@@ -94,20 +94,19 @@ export function AnimationEditor({
               }
             }}
           >
-            <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+            <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-gray-700 border-gray-600 text-white">
-              <SelectItem value="loop" className="text-white focus:bg-gray-600">
+            <SelectContent>
+              <SelectItem value="loop">
                 Loop
               </SelectItem>
               <SelectItem
                 value="pingpong"
-                className="text-white focus:bg-gray-600"
               >
                 Zigzag (Ping-Pong)
               </SelectItem>
-              <SelectItem value="once" className="text-white focus:bg-gray-600">
+              <SelectItem value="once">
                 Play Once
               </SelectItem>
             </SelectContent>
@@ -120,16 +119,15 @@ export function AnimationEditor({
       <div className="space-y-2">
         <label className="text-xs text-gray-300">Duration Change Mode</label>
         <Select value={durationMode} onValueChange={onDurationModeChange}>
-          <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+          <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-gray-700 border-gray-600 text-white">
-            <SelectItem value="scale" className="text-white focus:bg-gray-600">
+          <SelectContent>
+            <SelectItem value="scale">
               Scale Keyframes
             </SelectItem>
             <SelectItem
               value="truncate"
-              className="text-white focus:bg-gray-600"
             >
               Truncate Keyframes
             </SelectItem>

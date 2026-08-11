@@ -1,34 +1,39 @@
 import { Layer, Rect } from "react-konva";
 import { useAtomValue } from "jotai";
 import {
-  selectedTileBrushIdAtom,
-  tileBrushAnchorAtom,
+  getSelectedTileBrushIdAtom,
+  getTileBrushAnchorAtom,
   tileBrushesAtom,
-  tileBrushModeAtom,
+  getTileBrushModeAtom,
   tileBrushPreviewAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
 import { getBrushTargetCells } from "@/data/tileBrushes/tileBrushApply";
+import type { TileBrushGame } from "@/data/tileBrushes/tileBrushTypes";
 
 interface TileBrushPreviewLayerProps {
+  game: TileBrushGame;
   tileSize: number;
   mapWidth: number;
   mapHeight: number;
 }
 
 export function TileBrushPreviewLayer({
+  game,
   tileSize,
   mapWidth,
   mapHeight,
 }: TileBrushPreviewLayerProps) {
-  const mode = useAtomValue(tileBrushModeAtom);
+  const mode = useAtomValue(getTileBrushModeAtom(game));
   const preview = useAtomValue(tileBrushPreviewAtom);
   const brushes = useAtomValue(tileBrushesAtom);
-  const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
-  const anchor = useAtomValue(tileBrushAnchorAtom);
+  const selectedBrushId = useAtomValue(getSelectedTileBrushIdAtom(game));
+  const anchor = useAtomValue(getTileBrushAnchorAtom(game));
 
   if (mode !== "stamp" || !preview) return null;
 
-  const brush = brushes.find((b) => b.id === selectedBrushId);
+  const brush = brushes.find(
+    (candidate) => candidate.game === game && candidate.id === selectedBrushId,
+  );
   if (!brush) return null;
 
   const targets = getBrushTargetCells({

@@ -24,3 +24,26 @@ export function LiquidThumbnail({
     />
   );
 }
+
+export function LiquidPreview({
+  alt,
+  globals,
+  liquidType,
+}: {
+  alt: string;
+  globals: GlobalsInterface;
+  liquidType: number;
+}) {
+  const texture = useGameLiquidTexture(globals, liquidType);
+  const src = useMemo(() => texture?.toDataURL("image/png") ?? null, [texture]);
+
+  if (!src) return null;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="max-h-36 max-w-full object-contain"
+    />
+  );
+}

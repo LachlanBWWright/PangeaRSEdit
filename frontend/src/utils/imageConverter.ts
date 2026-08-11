@@ -47,8 +47,28 @@ export function imageDataToSixteenBit(data: Uint8ClampedArray): DataView {
 
     output.setUint16(
       i / 2,
-      ((r / 8) << 10) | ((g / 8) << 5) | (b / 8) | (a ? 0x0 : 0x8000),
+      ((r / 8) << 10) |
+        ((g / 8) << 5) |
+        (b / 8) |
+        (a >= 128 ? 0x0 : 0x8000),
     );
   }
   return output;
+}
+
+export function quantizeRgbaToSixteenBit(
+  data: Uint8ClampedArray,
+): Uint8ClampedArray {
+  const encoded = imageDataToSixteenBit(data);
+  const quantized = new Uint8ClampedArray(data.length);
+  for (let byteOffset = 0; byteOffset < encoded.byteLength; byteOffset += 2) {
+    const pixel = byteOffset / 2;
+    const rgbaOffset = pixel * 4;
+    const value = encoded.getUint16(byteOffset);
+    quantized[rgbaOffset] = ((value & 0x7c00) >> 10) * 8;
+    quantized[rgbaOffset + 1] = ((value & 0x03e0) >> 5) * 8;
+    quantized[rgbaOffset + 2] = (value & 0x001f) * 8;
+    quantized[rgbaOffset + 3] = value & 0x8000 ? 0 : 255;
+  }
+  return quantized;
 }

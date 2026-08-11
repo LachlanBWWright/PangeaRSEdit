@@ -138,6 +138,7 @@ function serializeMightyMikeTileset(
     paletteRgbaBytes: paletteResult.success
       ? paletteResult.data
       : createDefaultMightyMikePalette(),
+    tilePaletteIndices: parsedTileset.paletteIndices,
     preservedData,
   });
   if (serializationResult.isErr()) {

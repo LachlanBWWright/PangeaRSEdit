@@ -11,11 +11,13 @@
 import { Game } from "../../globals/globals";
 import {
   type GameItemModelMapper,
+  type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
 import { BUGDOM_ITEM_MODEL_MAPPINGS } from "../bugdomItemModelMapping";
 import { ItemType } from "../bugdomItemType";
 import { getBugdomSourceDerivedMapping } from "../bugdomItemModelDefinitions";
+import { hasVisibleSplineItemModel } from "../splineItemModelVisibility";
 
 function resolveVariant(
   mapping: UniversalItemModelMapping,
@@ -67,6 +69,35 @@ const PARAM_DEPENDENT_TYPES = new Set<number>([
   ItemType.HoneyTube,
 ]);
 
+function getBugdomSplineMapping(
+  itemType: number,
+): UniversalItemModelMapping | undefined {
+  if (itemType !== ItemType.HoneycombPlatform) {
+    return undefined;
+  }
+
+  return {
+    modelFile: "BeeHive_Models.3dmf",
+    modelPath: "models",
+    modelIndex: 2,
+    verificationStatus: "verified",
+    citations: [
+      {
+        file: "src/Items/Items2.c",
+        line: 863,
+        endLine: 911,
+        description: "Spline honeycomb platforms use HIVE_MObjType_WoodPlatform.",
+      },
+      {
+        file: "src/Headers/mobjtypes.h",
+        line: 146,
+        endLine: 148,
+        description: "WoodPlatform is model index 2 in the hive model group.",
+      },
+    ],
+  };
+}
+
 /**
  * Bugdom 1 item model mapper
  *
@@ -83,7 +114,21 @@ export class BugdomItemMapper implements GameItemModelMapper {
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
     flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
+    if (
+      kind === "splineItem" &&
+      !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+
+    const splineMapping =
+      kind === "splineItem" ? getBugdomSplineMapping(itemType) : undefined;
+    if (splineMapping) {
+      return splineMapping;
+    }
+
     const sourceDerived = getBugdomSourceDerivedMapping(itemType, {
       levelNum,
       params,

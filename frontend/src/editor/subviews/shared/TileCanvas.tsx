@@ -20,7 +20,10 @@ export const TileCanvas = memo(function TileCanvas({
     const ctx = target.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, size, size);
-    ctx.drawImage(image, 0, 0, size, size);
+    const scale = Math.min(size / image.width, size / image.height);
+    const width = image.width * scale;
+    const height = image.height * scale;
+    ctx.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
   }, [image, size]);
 
   return <canvas ref={ref} width={size} height={size} />;

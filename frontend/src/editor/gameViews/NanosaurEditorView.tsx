@@ -32,7 +32,6 @@ import {
   createZoomInHandler,
   createZoomOutHandler,
   normalizeEditorView,
-  terrainHasSupertileData,
 } from "../utils/editorViewUtils";
 import { Globals } from "@/data/globals/globals";
 import type { NanosaurEditorViewProps } from "../utils/editorViewTypes";
@@ -41,6 +40,8 @@ import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeNanosaurSupertiles } from "@/editor/gameViews/nanosaurEditorState";
 import { EmptyItemPrompt } from "../subviews/EmptyDataPrompts";
 import { createEmptyItemData } from "../utils/dataInitializers";
+import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
+import { NanosaurCollisionPathMenu } from "../subviews/tiles/NanosaurCollisionPathMenu";
 
 export function NanosaurEditorView({
   headerData,
@@ -59,6 +60,7 @@ export function NanosaurEditorView({
   const globals = useAtomValue(Globals);
   const storedView = useAtomValue(ActiveView);
   const setView = useSetAtom(ActiveView);
+  const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -76,18 +78,21 @@ export function NanosaurEditorView({
     [setItemData],
   );
 
-  const showSupertileMenu = terrainHasSupertileData(terrainData);
   const allowedViews = ENABLE_SCRIPTS
-    ? [View.items, View.scripts, View.tiles, View.supertiles]
-    : [View.items, View.tiles, View.supertiles];
+    ? [View.items, View.scripts, View.tiles, View.supertiles, View.collisionPath]
+    : [View.items, View.tiles, View.supertiles, View.collisionPath];
   const view = normalizeEditorView(
     storedView,
     allowedViews,
-    showSupertileMenu ? View.supertiles : View.tiles,
+    View.supertiles,
   );
   useEffect(() => {
     if (storedView !== view) setView(view);
   }, [setView, storedView, view]);
+  useEffect(() => {
+    setEditorNavbarTabs(<Nanosaur1EditorToolbar compact />);
+    return () => setEditorNavbarTabs(null);
+  }, [setEditorNavbarTabs]);
   const handleSupertileResize = (
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
@@ -107,8 +112,7 @@ export function NanosaurEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <Nanosaur1EditorToolbar terrainHasSTgd={showSupertileMenu} />
-      <MenuSection scrollable={true}>
+      <MenuSection key={view} scrollable={true}>
         {view === View.items &&
           (itemData ? (
             <ItemMenu
@@ -140,7 +144,7 @@ export function NanosaurEditorView({
             terrainData={terrainData}
           />
         )}
-        {view === View.supertiles && showSupertileMenu && (
+        {view === View.supertiles && (
           <BugdomTileMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
@@ -149,6 +153,9 @@ export function NanosaurEditorView({
             mapImages={mapImages}
             setMapImages={setMapImages}
           />
+        )}
+        {view === View.collisionPath && (
+          <NanosaurCollisionPathMenu terrainData={terrainData} />
         )}
       </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">

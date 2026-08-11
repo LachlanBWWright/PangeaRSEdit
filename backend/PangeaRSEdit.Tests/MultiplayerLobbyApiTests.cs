@@ -65,6 +65,24 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     }
 
     [Fact]
+    public async Task CreateLobby_RestrictsNanosaur2ToItsTwoPlayerRuntime()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/multiplayer/lobbies", new
+        {
+            gameId = "nanosaur2",
+            mode = "multiplayerBattle",
+            trackOrLevel = "3",
+            maxPlayers = 6,
+            displayName = "Host"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(2, document.RootElement.GetProperty("maxPlayers").GetInt32());
+    }
+
+    [Fact]
     public async Task JoinLobby_AssignsNextPlayerIndex()
     {
         var hostClient = _factory.CreateClient();

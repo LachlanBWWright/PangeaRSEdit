@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { atom, useAtom } from "jotai";
+import { Button } from "@/components/ui/button";
 
 /** Currently selected alt-tile value for brush painting (0=None … 10=Loop). */
 export const AltMapBrushValue = atom<number>(0);
@@ -80,31 +81,29 @@ export function MightyMikeAltMapEditorPanel() {
 
       <div className="grid grid-cols-6 gap-1">
         {ALT_TILE_OPTIONS.filter((o) => o.value > 0).map((opt) => (
-          <button
+          <Button
             key={opt.value}
-            className={`flex flex-col items-center justify-center rounded border px-1 py-2 text-sm transition-colors ${
-              brushValue === opt.value
-                ? "border-white bg-gray-600"
-                : "border-gray-600 hover:border-gray-400"
-            }`}
+            type="button"
+            variant="selectable"
+            aria-pressed={brushValue === opt.value}
+            className="h-auto flex-col px-1 py-2"
             onClick={() => setBrushValue(opt.value)}
             title={opt.label}
           >
             <span className="text-lg">{opt.glyph}</span>
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           key={0}
-          className={`col-span-2 flex items-center justify-center gap-2 rounded border px-2 py-2 text-sm transition-colors ${
-            brushValue === 0
-              ? "border-white bg-gray-600"
-              : "border-gray-600 hover:border-gray-400"
-          }`}
+          type="button"
+          variant="selectable"
+          aria-pressed={brushValue === 0}
+          className="col-span-2 h-auto px-2 py-2"
           onClick={() => setBrushValue(0)}
         >
           <span className="text-lg">○</span>
           <span className="text-xs text-gray-400">Erase</span>
-        </button>
+        </Button>
       </div>
 
       <p className="text-xs text-gray-500">

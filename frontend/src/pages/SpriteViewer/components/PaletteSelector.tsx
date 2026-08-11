@@ -32,16 +32,27 @@ export function PaletteSelector({
   const selectedBuiltin = predefined.find(
     (palette) => palette.palette.name === currentPalette.name,
   );
-  const selectedValue = selectedBuiltin?.key ?? currentPalette.name;
+  const selectedCustom = palettes.find(
+    (palette) => palette.name === currentPalette.name,
+  );
+  const selectedValue = selectedBuiltin
+    ? `builtin:${selectedBuiltin.key}`
+    : selectedCustom
+      ? `custom:${selectedCustom.name}`
+      : "current";
 
-  const handleValueChange = (name: string) => {
-    const builtin = predefined.find((palette) => palette.key === name);
+  const handleValueChange = (value: string) => {
+    const builtin = predefined.find(
+      (palette) => `builtin:${palette.key}` === value,
+    );
     if (builtin) {
       onPaletteSelect(builtin.palette);
       return;
     }
 
-    const custom = palettes.find((palette) => palette.name === name);
+    const custom = palettes.find(
+      (palette) => `custom:${palette.name}` === value,
+    );
     if (custom) {
       onPaletteSelect(custom);
     }
@@ -54,12 +65,23 @@ export function PaletteSelector({
             <SelectValue placeholder="Select a palette" />
           </SelectTrigger>
           <SelectContent className="bg-gray-700 border-gray-600">
+            {!selectedBuiltin && !selectedCustom && (
+              <SelectGroup>
+                <SelectLabel className="text-gray-400">Current</SelectLabel>
+                <SelectItem
+                  value="current"
+                  className="text-white focus:bg-gray-600"
+                >
+                  {currentPalette.name}
+                </SelectItem>
+              </SelectGroup>
+            )}
             <SelectGroup>
               <SelectLabel className="text-gray-400">Built-in</SelectLabel>
               {predefined.map((palette) => (
                 <SelectItem
                   key={palette.key}
-                  value={palette.key}
+                  value={`builtin:${palette.key}`}
                   className="text-white focus:bg-gray-600"
                 >
                   {palette.label} ({palette.sourceFile})
@@ -72,7 +94,7 @@ export function PaletteSelector({
                 {palettes.map((palette) => (
                   <SelectItem
                     key={palette.name}
-                    value={palette.name}
+                    value={`custom:${palette.name}`}
                     className="text-white focus:bg-gray-600"
                   >
                     {palette.name}
@@ -90,7 +112,7 @@ export function PaletteSelector({
           onClick={onCreateNew}
         >
           <Plus className="w-3 h-3 mr-2" />
-          New Palette
+          Create Palette
       </Button>
     </EditorPanel>
   );

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 import { scriptLspClient } from "./scriptLspClient";
 import { hasConfiguredApiEndpoint } from "@/api/apiBase";
+import { preflightScriptSource } from "./scriptSourcePreflight";
 
 interface ScriptCodeModalProps {
   open: boolean;
@@ -50,16 +52,16 @@ export function ScriptCodeModal({
     () => scriptLspClient.getStatus(),
     () => "disconnected",
   );
-  const [editorContent, setEditorContent] = useState(content);
-  const [hasChanges, setHasChanges] = useState(false);
+  const [draft, setDraft] = useState({ base: content, value: content });
+  const editorContent = draft.base === content ? draft.value : content;
+  const hasChanges = editorContent !== content;
+  const preflightFindings = useMemo(
+    () => preflightScriptSource(editorContent, workspace.context.gameId, workspace.context.supportedHooks, workspace.context.levelNumber),
+    [editorContent, workspace.context.gameId, workspace.context.levelNumber, workspace.context.supportedHooks],
+  );
   const monacoEditorRef = useRef<MonacoEditorNamespace.IStandaloneCodeEditor | null>(
     null,
   );
-
-  useEffect(() => {
-    setEditorContent(content);
-    setHasChanges(false);
-  }, [content]);
 
   useEffect(() => {
     if (!open) {
@@ -88,8 +90,7 @@ export function ScriptCodeModal({
   const handleContentChange = useCallback(
     (value: string | undefined) => {
       const newContent = value ?? "";
-      setEditorContent(newContent);
-      setHasChanges(newContent !== content);
+      setDraft({ base: content, value: newContent });
     },
     [content],
   );
@@ -99,12 +100,11 @@ export function ScriptCodeModal({
       return;
     }
     onSave(editorContent);
-    setHasChanges(false);
+    setDraft({ base: editorContent, value: editorContent });
   }, [editorContent, hasChanges, onSave]);
 
   const handleRevert = useCallback(() => {
-    setEditorContent(content);
-    setHasChanges(false);
+    setDraft({ base: content, value: content });
   }, [content]);
 
   const handleFormat = useCallback(() => {
@@ -187,7 +187,14 @@ export function ScriptCodeModal({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-700 px-6 py-3 text-xs text-slate-400">
-          <span>{filePath}</span>
+          <span>
+            {filePath}
+            {preflightFindings.length > 0 && (
+              <span className="ml-3 text-amber-400" title={preflightFindings.map((finding) => `Line ${finding.line}: ${finding.message}`).join("\n")}>
+                {preflightFindings.length} preflight warning{preflightFindings.length === 1 ? "" : "s"}
+              </span>
+            )}
+          </span>
           <span>
             Lua intelligence: {hasConfiguredApiEndpoint()
               ? lspStatus === "connected"

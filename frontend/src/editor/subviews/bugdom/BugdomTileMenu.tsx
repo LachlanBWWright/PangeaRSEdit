@@ -31,9 +31,8 @@ import {
   uploadTileImageToIndex,
 } from "./BugdomTileMenuUtils";
 import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
-import { BugdomVertexColorControls } from "./BugdomVertexColorControls";
 import { MenuEmptyState } from "../MenuEmptyState";
-import { NanosaurPathControls } from "../tiles/NanosaurPathControls";
+import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
 
 interface BugdomTileMenuProps {
   headerData: HeaderData;
@@ -53,6 +52,7 @@ function BugdomTileMenuInner({
 }: BugdomTileMenuProps) {
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
+  const showRoof = useAtomValue(ShowRoofInTopology);
   const supertileCounts = getSupertileCounts(
     hedr.mapWidth,
     hedr.mapHeight,
@@ -61,7 +61,9 @@ function BugdomTileMenuInner({
   const totalSupertiles = supertileCounts.width * supertileCounts.height;
 
   const [selectedTileInSupertile, setSelectedTileInSupertile] = useState(0);
-  const [selectedTileImageIndex, setSelectedTileImageIndex] = useState(0);
+  const [manualTileImageIndex, setManualTileImageIndex] = useState<
+    number | null
+  >(null);
   const [storedSelectedTile, setSelectedTile] = useAtom(SelectedTile);
   const selectedTile = normalizeSelectedSupertile(
     storedSelectedTile,
@@ -79,7 +81,13 @@ function BugdomTileMenuInner({
     }
   }, [selectedTile, setSelectedTile, storedSelectedTile]);
 
-  const layerData = terrainData.Layr?.[1000]?.obj;
+  const activeLayer: 1000 | 1001 =
+    globals.GAME_TYPE === Game.BUGDOM &&
+    showRoof &&
+    terrainData.Layr?.[1001]
+      ? 1001
+      : 1000;
+  const layerData = terrainData.Layr?.[activeLayer]?.obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
   const numTileImages = mapImages.length;
 
@@ -111,6 +119,8 @@ function BugdomTileMenuInner({
 
   const currentSelectedTileData =
     tilesInSelectedSupertile[selectedTileInSupertile];
+  const selectedTileImageIndex =
+    manualTileImageIndex ?? currentSelectedTileData?.info.imageIndex ?? 0;
   const currentFlatIndex = currentSelectedTileData
     ? getFlatIndexForTile(
         selectedTile,
@@ -121,21 +131,28 @@ function BugdomTileMenuInner({
       )
     : -1;
 
+  const handleSelectTileInSupertile = (index: number) => {
+    const tile = tilesInSelectedSupertile[index];
+    if (!tile) return;
+    setSelectedTileInSupertile(index);
+    setManualTileImageIndex(null);
+  };
+
   const handleRotateTile = () => {
     if (!layerData || currentFlatIndex < 0) return;
-    rotateTileAtIndex(setTerrainData, currentFlatIndex);
+    rotateTileAtIndex(setTerrainData, currentFlatIndex, activeLayer);
     toast.success("Tile rotated");
   };
 
   const handleFlipX = () => {
     if (!layerData || currentFlatIndex < 0) return;
-    flipTileXAtIndex(setTerrainData, currentFlatIndex);
+    flipTileXAtIndex(setTerrainData, currentFlatIndex, activeLayer);
     toast.success("Tile flipped horizontally");
   };
 
   const handleFlipY = () => {
     if (!layerData || currentFlatIndex < 0) return;
-    flipTileYAtIndex(setTerrainData, currentFlatIndex);
+    flipTileYAtIndex(setTerrainData, currentFlatIndex, activeLayer);
     toast.success("Tile flipped vertically");
   };
 
@@ -153,7 +170,12 @@ function BugdomTileMenuInner({
       return;
     }
 
-    replaceTileAtIndex(setTerrainData, currentFlatIndex, tileIndexForImage);
+    replaceTileAtIndex(
+      setTerrainData,
+      currentFlatIndex,
+      tileIndexForImage,
+      activeLayer,
+    );
     toast.success(
       `Replaced with image #${selectedTileImageIndex} (tile index ${tileIndexForImage})`,
     );
@@ -196,8 +218,18 @@ function BugdomTileMenuInner({
   };
 
   const isTileImageInUse = useMemo(
-    () => computeIsTileImageInUse(layerData, selectedTileImageIndex, xlatTable),
-    [layerData, selectedTileImageIndex, xlatTable],
+    () =>
+      computeIsTileImageInUse(
+        terrainData.Layr?.[1000]?.obj,
+        selectedTileImageIndex,
+        xlatTable,
+      ) ||
+      computeIsTileImageInUse(
+        terrainData.Layr?.[1001]?.obj,
+        selectedTileImageIndex,
+        xlatTable,
+      ),
+    [terrainData.Layr, selectedTileImageIndex, xlatTable],
   );
 
   const handleAddTileImage = () => {
@@ -206,7 +238,7 @@ function BugdomTileMenuInner({
     setTerrainData((data) => {
       appendBugdomTileImageMapping(data, newImageIndex);
     });
-    setSelectedTileImageIndex(newImageIndex);
+    setManualTileImageIndex(newImageIndex);
     toast.success(`Added tile image #${newImageIndex}`);
   };
 
@@ -227,7 +259,7 @@ function BugdomTileMenuInner({
       setTerrainData,
     );
 
-    setSelectedTileImageIndex((current) => Math.max(0, current - 1));
+    setManualTileImageIndex(Math.max(0, selectedTileImageIndex - 1));
     toast.success("Tile image removed");
   };
 
@@ -245,49 +277,39 @@ function BugdomTileMenuInner({
     <>
       <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto">
         <BugdomTileMenuContent
-        tilesPerSupertile={globals.TILES_PER_SUPERTILE}
-        tileImageSize={TILE_IMAGE_SIZE}
-        tilesInSelectedSupertile={tilesInSelectedSupertile}
-        currentSelectedTileData={currentSelectedTileData}
-        mapImages={mapImages}
-        selectedTileImageIndex={selectedTileImageIndex}
-        selectedTile={selectedTile}
-        supertileCounts={supertileCounts}
-        uniqueSupertiles={hedr.numUniqueSupertiles}
-        isTileImageInUse={isTileImageInUse}
-        setSelectedTileInSupertile={setSelectedTileInSupertile}
-        setSelectedTileImageIndex={setSelectedTileImageIndex}
-        setIsEditingTileImage={setIsEditingTileImage}
-        setEditingTileImageIndex={setEditingTileImageIndex}
-        tileImageUploadInputRef={tileImageUploadInputRef}
-        onRotate={handleRotateTile}
-        onFlipX={handleFlipX}
-        onFlipY={handleFlipY}
-        onReplaceTile={handleReplaceTile}
-        onUploadTileImage={handleUploadTileImage}
-        onAddTileImage={handleAddTileImage}
-        onRemoveTileImage={handleRemoveTileImage}
+          game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
+          stampLibrary={(
+            <TileBrushPanel
+              game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
+              mapImages={mapImages}
+              xlatTable={xlatTable}
+            />
+          )}
+          tilesPerSupertile={globals.TILES_PER_SUPERTILE}
+          tileImageSize={TILE_IMAGE_SIZE}
+          tilesInSelectedSupertile={tilesInSelectedSupertile}
+          currentSelectedTileData={currentSelectedTileData}
+          mapImages={mapImages}
+          selectedTileImageIndex={selectedTileImageIndex}
+          selectedTile={selectedTile}
+          currentFlatIndex={currentFlatIndex}
+          activeLayer={activeLayer}
+          isTileImageInUse={isTileImageInUse}
+          onSelectTileInSupertile={handleSelectTileInSupertile}
+          setSelectedTileImageIndex={setManualTileImageIndex}
+          tileImageUploadInputRef={tileImageUploadInputRef}
+          onEditPaletteTileImage={() => {
+            setEditingTileImageIndex(selectedTileImageIndex);
+            setIsEditingTileImage(true);
+          }}
+          onRotate={handleRotateTile}
+          onFlipX={handleFlipX}
+          onFlipY={handleFlipY}
+          onReplaceTile={handleReplaceTile}
+          onUploadPaletteTileImage={handleUploadTileImage}
+          onAddTileImage={handleAddTileImage}
+          onRemoveTileImage={handleRemoveTileImage}
         />
-        <TileBrushPanel
-        game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
-        terrainData={terrainData}
-        setTerrainData={setTerrainData}
-        mapWidth={hedr.mapWidth}
-        mapHeight={hedr.mapHeight}
-        selectedTileIndex={
-          Math.floor(selectedTile / supertileCounts.width) *
-            globals.TILES_PER_SUPERTILE *
-            hedr.mapWidth +
-          (selectedTile % supertileCounts.width) * globals.TILES_PER_SUPERTILE
-        }
-        activeLayer={1000}
-        />
-        {globals.GAME_TYPE === Game.BUGDOM && terrainData.Vcol?.[1000] && (
-          <BugdomVertexColorControls />
-        )}
-        {globals.GAME_TYPE === Game.NANOSAUR && terrainData.nanosaurPathLayer && (
-          <NanosaurPathControls />
-        )}
       </div>
       <ImageEditor
         isOpen={isEditingTileImage}
@@ -318,10 +340,7 @@ function bugdomTileMenuPropsEqual(
     previous.mapImages === next.mapImages &&
     previous.setMapImages === next.setMapImages &&
     previous.terrainData.Layr === next.terrainData.Layr &&
-    previous.terrainData.Xlat === next.terrainData.Xlat &&
-    previous.terrainData.Vcol === next.terrainData.Vcol &&
-    Boolean(previous.terrainData.nanosaurPathLayer) ===
-      Boolean(next.terrainData.nanosaurPathLayer)
+    previous.terrainData.Xlat === next.terrainData.Xlat
   );
 }
 

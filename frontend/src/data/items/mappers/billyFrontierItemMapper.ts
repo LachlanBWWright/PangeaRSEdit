@@ -16,8 +16,13 @@
 import { Game } from "../../globals/globals";
 import {
   type GameItemModelMapper,
+  type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
+import {
+  hasVisibleSplineItemModel,
+  isSplineOnlyItemType,
+} from "../splineItemModelVisibility";
 import { ItemType } from "../billyFrontierItemType";
 import { ROTATION_4_WAY, ROTATION_8_WAY } from "../standardParamTypes";
 
@@ -322,11 +327,12 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.StampedeKanga]: {
-    modelFile: "stampedekanga.bg3d",
+    modelFile: "KangaCow.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
-    skeletonFile: "stampedekanga.skeleton.rsrc",
+    skeletonFile: "KangaCow.skeleton.rsrc",
+    scale: 2.1,
   },
 
   [ItemType.StampedeKangarex]: {
@@ -368,7 +374,19 @@ export class BillyFrontierItemMapper implements GameItemModelMapper {
     itemType: number,
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
+    _flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
+    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
+      return undefined;
+    }
+    if (
+      kind === "splineItem" &&
+      !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+
     const base = BILLY_BASE_MAPPINGS[itemType];
     if (!base) return undefined;
 

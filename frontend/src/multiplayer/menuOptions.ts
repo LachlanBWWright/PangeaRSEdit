@@ -53,6 +53,10 @@ export const CROMAG_TAG_DURATION_OPTIONS: readonly LevelOption[] = [
   { value: "4", label: "4 minutes" },
 ];
 
+export function getMaxPlayerOptions(gameId: string): readonly number[] {
+  return gameId === "nanosaur2" ? [2] : [2, 3, 4, 5, 6];
+}
+
 export const JOIN_GAME_FILTER_OPTIONS: readonly {
   readonly value: JoinGameFilter;
   readonly label: string;
@@ -214,6 +218,7 @@ export function buildUpdatedLobbyFormState(
     gameId: nextGameId,
     mode: nextMode,
     trackOrLevel: defaultTrackForMode(nextGameId, nextMode),
+    maxPlayers: getMaxPlayerOptions(nextGameId)[0] ?? 2,
   };
 }
 

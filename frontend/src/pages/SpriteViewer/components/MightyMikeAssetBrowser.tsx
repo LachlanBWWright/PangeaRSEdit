@@ -81,7 +81,10 @@ export function MightyMikeAssetBrowser({
   const availableFiles = getAvailableFiles(selectedType);
 
   return (
-    <EditorPanel title="Mighty Mike Assets">
+    <EditorPanel title="Game Assets">
+        <p className="text-xs text-gray-400">
+          Load a bundled sprite asset from the game library.
+        </p>
         <EditorField label="Asset Type">
           <Select
             value={selectedType}

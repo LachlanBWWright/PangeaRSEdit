@@ -16,5 +16,11 @@ export function getContextualApiName(
 export function buildNativeIdSnippet(nativeSpawnIds: readonly string[]): string {
   return nativeSpawnIds.length === 0
     ? "${1:native-id}"
-    : `\${1|${nativeSpawnIds.join(",")}|}`;
+    : `\${1|${nativeSpawnIds.map(nativeIdInsertText).join(",")}|}`;
+}
+
+export function nativeIdInsertText(id: string): string {
+  const numericId = Number(id);
+  if (Number.isInteger(numericId) && String(numericId) === id) return id;
+  return `"${id.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }

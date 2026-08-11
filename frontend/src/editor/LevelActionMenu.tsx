@@ -60,77 +60,77 @@ export function LevelActionMenu({
 
       <div className="absolute right-0 top-full z-60 mt-2 min-w-56 overflow-hidden rounded-md border border-slate-700 bg-slate-800 shadow-lg">
         {canPreviewInGame && (
-          <button
+          <Button
             type="button"
-            className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
+            variant="menu"
             onClick={() => closeAndRun(onPreviewInGame)}
           >
             <Gamepad2 className="h-4 w-4" />
             {ENABLE_SCRIPTS && hasScripts
               ? "Preview in Game (no scripts)"
               : "Preview in Game"}
-          </button>
+          </Button>
         )}
         {ENABLE_SCRIPTS &&
           canPreviewInGame &&
           hasScripts &&
           onPreviewWithScripts && (
-          <button
+          <Button
             type="button"
-            className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
+            variant="menu"
             onClick={() => closeAndRun(onPreviewWithScripts)}
           >
             <Code className="h-4 w-4" />
             Preview in Game (scripts)
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="button"
-          className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
+          variant="menu"
           onClick={() => closeAndRun(onDownload)}
         >
           <Download className="h-4 w-4" />
           Download Level
-        </button>
+        </Button>
         {ENABLE_SCRIPTS && hasScripts && onDownloadExtendedPackage && (
-          <button
+          <Button
             type="button"
-            className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
+            variant="menu"
             onClick={() => closeAndRun(onDownloadExtendedPackage)}
           >
             <Package className="h-4 w-4" />
             Download Extended Package
-          </button>
+          </Button>
         )}
         {ENABLE_SCRIPTS && hasScripts && onDownloadScriptPackage && (
-          <button
+          <Button
             type="button"
-            className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
+            variant="menu"
             onClick={() => closeAndRun(onDownloadScriptPackage)}
           >
             <FileCode className="h-4 w-4" />
             Download Script Package
-          </button>
+          </Button>
         )}
         {ENABLE_SCRIPTS && hasScripts && onUploadScriptPackage && (
-          <button
+          <Button
             type="button"
-            className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
+            variant="menu"
             onClick={() => closeAndRun(onUploadScriptPackage)}
           >
             <Upload className="h-4 w-4" />
             Upload Script Package
-          </button>
+          </Button>
         )}
         {canSaveToCloud && (
-          <button
+          <Button
             type="button"
-            className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
+            variant="menu"
             onClick={() => closeAndRun(onSaveToCloud)}
           >
             <CloudUpload className="h-4 w-4" />
             Save to Cloud
-          </button>
+          </Button>
         )}
       </div>
     </details>

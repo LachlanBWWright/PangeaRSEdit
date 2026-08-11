@@ -155,10 +155,7 @@ export function MightyMikeEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection
-        className="border-b border-gray-600"
-        scrollable={view !== View.animations}
-      >
+      <MenuSection scrollable={view !== View.animations}>
         {view === View.items &&
           (itemData ? (
             <MightyMikeItemMenu

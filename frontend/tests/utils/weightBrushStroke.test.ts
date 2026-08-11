@@ -18,10 +18,13 @@ describe("applyWeightBrushStroke", () => {
     scene.add(mesh);
 
     const data: SkinWeightsData = {
-      boneNames: ["Root"],
+      boneNames: ["Root", "Child"],
       vertices: [
         { vertexIndex: 0, influences: [] },
-        { vertexIndex: 1, influences: [] },
+        {
+          vertexIndex: 1,
+          influences: [{ boneIndex: 1, boneName: "Child", weight: 1 }],
+        },
       ],
     };
     const settings: WeightBrushSettings = {
@@ -40,7 +43,7 @@ describe("applyWeightBrushStroke", () => {
 
     expect(result.vertices[0]?.influences).toEqual([]);
     expect(result.vertices[1]?.influences).toEqual([
-      { boneIndex: 0, boneName: "Root", weight: 0.75 },
+      { boneIndex: 0, boneName: "Root", weight: 1 },
     ]);
   });
 });

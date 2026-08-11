@@ -30,7 +30,9 @@ public sealed class EfMultiplayerLobbyService(
             Mode = request.Mode,
             TrackOrLevel = request.TrackOrLevel,
             TagDurationMinutes = Math.Clamp(request.TagDurationMinutes, 2, 4),
-            MaxPlayers = Math.Clamp(request.MaxPlayers, 2, 6),
+            MaxPlayers = request.GameId == "nanosaur2"
+                ? 2
+                : Math.Clamp(request.MaxPlayers, 2, 6),
             IsPublic = request.IsPublic,
             HostParticipantId = request.ParticipantId,
             JoinCode = BuildJoinCode(),
@@ -647,7 +649,8 @@ public sealed class EfMultiplayerLobbyService(
         if (request.Result.Placements.Count != lobby.Players.Count
             || request.Result.Placements.Distinct().Count() != request.Result.Placements.Count
             || request.Result.Placements.Any(playerIndex => !validPlayerIndexes.Contains(playerIndex))
-            || !validPlayerIndexes.Contains(request.Result.WinnerPlayerIndex))
+            || (request.Result.WinnerPlayerIndex != -1
+                && !validPlayerIndexes.Contains(request.Result.WinnerPlayerIndex)))
         {
             MultiplayerMetrics.ResultRejected("placement-mismatch");
             return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyInvalidState);

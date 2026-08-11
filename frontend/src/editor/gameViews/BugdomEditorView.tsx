@@ -42,7 +42,6 @@ import {
   createZoomInHandler,
   createZoomOutHandler,
   normalizeEditorView,
-  terrainHasSupertileData,
 } from "../utils/editorViewUtils";
 import { Globals } from "@/data/globals/globals";
 import { useSetAtom } from "jotai";
@@ -55,6 +54,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
+import { BugdomVertexColorMenu } from "../subviews/bugdom/BugdomVertexColorMenu";
 
 export function BugdomEditorView({
   headerData,
@@ -104,23 +104,20 @@ export function BugdomEditorView({
     [setSplineData],
   );
 
-  const showSupertileMenu = terrainHasSupertileData(terrainData);
   const view = normalizeEditorView(
     storedView,
     ENABLE_SCRIPTS
-      ? [View.fences, View.items, View.splines, View.scripts, View.tiles, View.supertiles]
-      : [View.fences, View.items, View.splines, View.tiles, View.supertiles],
-    showSupertileMenu ? View.supertiles : View.tiles,
+      ? [View.fences, View.items, View.splines, View.scripts, View.tiles, View.supertiles, View.vertexColors]
+      : [View.fences, View.items, View.splines, View.tiles, View.supertiles, View.vertexColors],
+    View.supertiles,
   );
   useEffect(() => {
     if (storedView !== view) setView(view);
   }, [setView, storedView, view]);
   useEffect(() => {
-    setEditorNavbarTabs(
-      <Bugdom1EditorToolbar terrainHasSTgd={showSupertileMenu} compact />,
-    );
+    setEditorNavbarTabs(<Bugdom1EditorToolbar compact />);
     return () => setEditorNavbarTabs(null);
-  }, [setEditorNavbarTabs, showSupertileMenu]);
+  }, [setEditorNavbarTabs]);
 
   const handleSupertileResize = (
     direction: "top" | "bottom" | "left" | "right",
@@ -150,7 +147,7 @@ export function BugdomEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection scrollable={true}>
+      <MenuSection key={view} scrollable={true}>
         {view === View.fences &&
           (fenceData ? (
             <FenceMenu
@@ -206,7 +203,7 @@ export function BugdomEditorView({
             terrainData={terrainData}
           />
         )}
-        {view === View.supertiles && showSupertileMenu && (
+        {view === View.supertiles && (
           <BugdomTileMenu
             key={selectedTile}
             headerData={headerData}
@@ -216,6 +213,9 @@ export function BugdomEditorView({
             mapImages={mapImages}
             setMapImages={setMapImages}
           />
+        )}
+        {view === View.vertexColors && (
+          <BugdomVertexColorMenu terrainData={terrainData} />
         )}
       </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">

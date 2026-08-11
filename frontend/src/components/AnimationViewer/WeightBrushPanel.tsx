@@ -1,8 +1,13 @@
 import { useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import { Info } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -12,15 +17,9 @@ import {
 } from "@/components/ui/select";
 import type {
   WeightBrushSettings,
-  WeightBrushMode,
-  WeightFalloff,
   SkinWeightsData,
 } from "@/modelEditing/weights/weightTypes";
-import {
-  findUnweightedVertices,
-  findNormalizationErrors,
-  repairNormalizationErrors,
-} from "@/modelEditing/weights/weightNormalization";
+import { findUnweightedVertices } from "@/modelEditing/weights/weightNormalization";
 
 interface WeightBrushPanelProps {
   boneNames: string[];
@@ -30,26 +29,11 @@ interface WeightBrushPanelProps {
   onRepairWeights?: (repaired: SkinWeightsData) => void;
 }
 
-const BRUSH_MODES: { value: WeightBrushMode; label: string }[] = [
-  { value: "paint", label: "Paint" },
-  { value: "add", label: "Add" },
-  { value: "subtract", label: "Subtract" },
-  { value: "smooth", label: "Smooth" },
-  { value: "normalize", label: "Normalize" },
-];
-
-const FALLOFF_OPTIONS: { value: WeightFalloff; label: string }[] = [
-  { value: "smooth", label: "Smooth" },
-  { value: "linear", label: "Linear" },
-  { value: "sharp", label: "Sharp" },
-];
-
 export function WeightBrushPanel({
   boneNames,
   skinData,
   brushSettings,
   onBrushSettingsChange,
-  onRepairWeights,
 }: WeightBrushPanelProps) {
   const update = useCallback(
     (patch: Partial<WeightBrushSettings>) => {
@@ -61,28 +45,37 @@ export function WeightBrushPanel({
   const unweightedCount = skinData
     ? findUnweightedVertices(skinData).length
     : 0;
-  const normErrorCount = skinData
-    ? findNormalizationErrors(skinData).length
-    : 0;
-
-  const handleRepair = useCallback(() => {
-    if (!skinData || !onRepairWeights) return;
-    onRepairWeights(repairNormalizationErrors(skinData));
-  }, [skinData, onRepairWeights]);
-
   return (
     <div className="space-y-4">
-      {/* Target bone */}
       <div className="space-y-1">
-        <Label className="text-xs text-gray-400">Target Bone</Label>
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs text-gray-400">Assign To Bone</Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="icon"
+                size="icon"
+                aria-label="Bone assignment format help"
+                className="h-6 w-6"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs">
+              Each affected vertex is assigned entirely to one bone. Pangea
+              models do not support blended bone weights.
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <Select
           value={brushSettings.targetBone ?? ""}
           onValueChange={(v) => update({ targetBone: v || null })}
         >
-          <SelectTrigger className="h-8 border-gray-600 bg-gray-800 text-xs text-white">
+          <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select bone..." />
           </SelectTrigger>
-          <SelectContent className="max-h-60 border-gray-600 bg-gray-800 text-white">
+          <SelectContent className="max-h-60">
             {boneNames.map((name) => (
               <SelectItem
                 key={name}
@@ -96,25 +89,6 @@ export function WeightBrushPanel({
         </Select>
       </div>
 
-      {/* Brush mode */}
-      <div className="space-y-1">
-        <Label className="text-xs text-gray-400">Brush Mode</Label>
-        <div className="grid grid-cols-3 gap-1">
-          {BRUSH_MODES.map((m) => (
-            <Button
-              key={m.value}
-              size="sm"
-              variant={brushSettings.mode === m.value ? "default" : "outline"}
-              className="text-xs h-7"
-              onClick={() => update({ mode: m.value })}
-            >
-              {m.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Radius */}
       <div className="space-y-1">
         <div className="flex justify-between">
           <Label className="text-xs text-gray-400">Radius</Label>
@@ -131,60 +105,11 @@ export function WeightBrushPanel({
         />
       </div>
 
-      {/* Strength */}
-      <div className="space-y-1">
-        <div className="flex justify-between">
-          <Label className="text-xs text-gray-400">Strength</Label>
-          <span className="text-xs text-gray-300">
-            {(brushSettings.strength * 100).toFixed(0)}%
-          </span>
-        </div>
-        <Slider
-          min={0}
-          max={1}
-          step={0.01}
-          value={[brushSettings.strength]}
-          onValueChange={([v]) =>
-            update({ strength: v ?? brushSettings.strength })
-          }
-        />
-      </div>
-
-      {/* Falloff */}
-      <div className="space-y-1">
-        <Label className="text-xs text-gray-400">Falloff</Label>
-        <div className="grid grid-cols-3 gap-1">
-          {FALLOFF_OPTIONS.map((f) => (
-            <Button
-              key={f.value}
-              size="sm"
-              variant={
-                brushSettings.falloff === f.value ? "default" : "outline"
-              }
-              className="text-xs h-7"
-              onClick={() => update({ falloff: f.value })}
-            >
-              {f.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Auto-normalize */}
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-400">Auto-normalize</Label>
-        <Switch
-          checked={brushSettings.autoNormalize}
-          onCheckedChange={(checked) => update({ autoNormalize: checked })}
-        />
-      </div>
-
-      {/* Diagnostics & repair */}
       {skinData && (
         <div className="rounded border border-gray-700 bg-gray-900/60 p-2 space-y-2">
           <p className="text-xs text-gray-400 font-medium">Diagnostics</p>
           <div className="grid grid-cols-2 gap-x-2 text-xs">
-            <span className="text-gray-400">Unweighted vertices</span>
+            <span className="text-gray-400">Unassigned vertices</span>
             <span
               className={
                 unweightedCount > 0 ? "text-red-400" : "text-green-400"
@@ -192,31 +117,13 @@ export function WeightBrushPanel({
             >
               {unweightedCount}
             </span>
-            <span className="text-gray-400">Normalization errors</span>
-            <span
-              className={
-                normErrorCount > 0 ? "text-yellow-400" : "text-green-400"
-              }
-            >
-              {normErrorCount}
-            </span>
           </div>
-          {normErrorCount > 0 && onRepairWeights && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full text-xs h-7"
-              onClick={handleRepair}
-            >
-              Repair Normalization ({normErrorCount})
-            </Button>
-          )}
         </div>
       )}
 
       {!skinData && (
         <p className="text-xs text-gray-500">
-          Load an animated model with a skeleton to use weight painting.
+          Load an animated model with a skeleton to assign vertices.
         </p>
       )}
     </div>

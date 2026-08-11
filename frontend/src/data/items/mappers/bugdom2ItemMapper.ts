@@ -6,10 +6,15 @@
  */
 
 import { Game } from "../../globals/globals";
-import { 
-  type GameItemModelMapper, 
+import {
+  type GameItemModelMapper,
+  type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
+import {
+  hasVisibleSplineItemModel,
+  isSplineOnlyItemType,
+} from "../splineItemModelVisibility";
 import { BUGDOM2_ITEM_MODEL_MAPPINGS } from "../bugdom2ItemModelMapping";
 import { ItemType } from "../bugdom2ItemType";
 import { ROTATION_4_WAY } from "../standardParamTypes";
@@ -37,6 +42,82 @@ const BUGDOM2_DOOR_PARAM_OPTIONS = {
     2: "Blue door",
   },
 };
+
+function getBugdom2SplineSpecificMapping(
+  itemType: number,
+  params?: { p0: number; p1: number; p2: number; p3: number },
+): UniversalItemModelMapping | undefined {
+  switch (itemType) {
+    case 25:
+      return {
+        modelFile: "BumbleBee.bg3d",
+        modelPath: "skeletons",
+        modelIndex: 0,
+        requiresSkeleton: true,
+        skeletonFile: "BumbleBee.skeleton.rsrc",
+        scale: 1.3,
+        verificationStatus: "verified",
+        citations: [
+          {
+            file: "Source/Items/Items2.c",
+            line: 190,
+            endLine: 247,
+            description: "PrimeBumbleBee creates the spline skeleton at scale 1.3.",
+          },
+        ],
+      };
+    case ItemType.SlotCar:
+      return {
+        modelFile: "Level5_Playroom.bg3d",
+        modelPath: "models",
+        modelIndex: 11 + Math.min(Math.max(params?.p0 ?? 0, 0), 1),
+        scale: 4.5,
+        verificationStatus: "verified",
+        citations: [
+          {
+            file: "Source/Items/SlotCar.c",
+            line: 85,
+            endLine: 125,
+            description: "PrimeSlotCar selects the red/yellow playroom model from p0.",
+          },
+        ],
+      };
+    case ItemType.Vaccum:
+      return {
+        modelFile: "Level6_Closet.bg3d",
+        modelPath: "models",
+        modelIndex: 11,
+        scale: 2,
+        verificationStatus: "verified",
+        citations: [
+          {
+            file: "Source/Items/Traps.c",
+            line: 1236,
+            endLine: 1270,
+            description: "PrimeVacuume creates closet model 11 at scale 2.",
+          },
+        ],
+      };
+    case 63:
+      return {
+        modelFile: "Level6_Closet.bg3d",
+        modelPath: "models",
+        modelIndex: 25,
+        scale: 2,
+        verificationStatus: "verified",
+        citations: [
+          {
+            file: "Source/Items/Snails2.c",
+            line: 236,
+            endLine: 280,
+            description: "PrimeHanger creates closet model 25 at scale 2.",
+          },
+        ],
+      };
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Bugdom 2 level model file associations
@@ -281,7 +362,26 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
     flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
+    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
+      return undefined;
+    }
+    if (
+      kind === "splineItem" &&
+      !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+
+    const splineMapping =
+      kind === "splineItem"
+        ? getBugdom2SplineSpecificMapping(itemType, params)
+        : undefined;
+    if (splineMapping) {
+      return splineMapping;
+    }
+
     if (itemType === ItemType.RideBall && levelNum === BUGDOM2_PLAYROOM_LEVEL) {
       return {
         modelFile: "Level5_Playroom.bg3d",

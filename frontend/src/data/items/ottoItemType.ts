@@ -2099,7 +2099,7 @@ export const TerrainItemTypeParams = defineItemParams(
 );
 
 //Level restriction - Return 0 if available across levels, -1 if item isn't available (wasn't implemented in game)
-export function getLevelRestriction(itemType: ItemType): number {
+export function getLevelRestriction(itemType: number): number {
   switch (itemType) {
     case ItemType.StartCoords:
       return 0;

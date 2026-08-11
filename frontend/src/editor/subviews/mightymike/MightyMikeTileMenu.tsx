@@ -22,10 +22,6 @@ import {
 } from "./MightyMikeTileMenuHandlers";
 import {
   computeSelectedPaletteTile,
-  createTransformedTileCanvas,
-  createBlankTileCanvas,
-  downloadCanvasAsPng,
-  findMatchingTileCanvasIndex,
   getCurrentTileImageIndex,
   getFileFromInputEvent,
   getNumber,
@@ -34,8 +30,6 @@ import {
   isArray,
   isRecord,
   removePaletteTile,
-  replaceTileImage,
-  saveEditedImage,
   type TileImageTransform,
 } from "./MightyMikeTileMenuUtils";
 import {
@@ -67,6 +61,20 @@ import {
   MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS,
 } from "./mightyMikeTileInspectorState";
 import { MightyMikeAltMapEditorPanel } from "./MightyMikeAltMapEditor";
+import { TileSelectionModePanel } from "../shared/TileSelectionModePanel";
+import {
+  createMightyMikePaletteCanvas,
+  findMatchingMightyMikePaletteTile,
+  loadAndQuantizeMightyMikeTile,
+  quantizeMightyMikeCanvas,
+  quantizeMightyMikeTile,
+  renderMightyMikePaletteIndices,
+  transformMightyMikePaletteIndices,
+} from "./mightyMikePaletteQuantization";
+import {
+  getMightyMikePaletteTileState,
+  replaceMightyMikePaletteTileIndices,
+} from "./mightyMikePaletteTileState";
 
 type OverlaySelectValue =
   | "none"
@@ -148,8 +156,6 @@ export function MightyMikeTileMenu({
     tile: number;
     palette: number;
   } | null>(null);
-  const [isEditingTile, setIsEditingTile] = useState(false);
-  const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
   const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
   const paletteUploadInputRef = useRef<HTMLInputElement>(null);
 
@@ -258,27 +264,67 @@ export function MightyMikeTileMenu({
       return;
     }
 
-    const transformedCanvas = createTransformedTileCanvas(
-      sourceCanvas,
-      transform,
-    );
-    if (!transformedCanvas) {
-      toast.error("Failed to transform palette tile");
+    const paletteState = getMightyMikePaletteTileState(terrainData);
+    if (paletteState.isErr()) {
+      toast.error(paletteState.error);
       return;
     }
-
-    const existingImageIndex = findMatchingTileCanvasIndex(
-      mapImages,
-      transformedCanvas,
+    const sourceIndices = paletteState.value.paletteIndices[selectedPaletteTile];
+    const quantizedSource = quantizeMightyMikeCanvas(
+      sourceCanvas,
+      paletteState.value.palette,
+      paletteState.value.transparencyColors,
+    );
+    if (!sourceIndices && quantizedSource.isErr()) {
+      toast.error(quantizedSource.error);
+      return;
+    }
+    const sourceResult = sourceIndices
+      ? [...sourceIndices]
+      : quantizedSource.isOk()
+        ? quantizedSource.value.indices
+        : [];
+    const transformedIndices = transformMightyMikePaletteIndices(
+      sourceResult,
+      transform,
+    );
+    if (transformedIndices.isErr()) {
+      toast.error(transformedIndices.error);
+      return;
+    }
+    const rendered = renderMightyMikePaletteIndices(
+      transformedIndices.value,
+      paletteState.value.palette,
+      paletteState.value.transparencyColors,
+    );
+    if (rendered.isErr()) {
+      toast.error(rendered.error);
+      return;
+    }
+    const transformedCanvas = createMightyMikePaletteCanvas(rendered.value);
+    if (transformedCanvas.isErr()) {
+      toast.error(transformedCanvas.error);
+      return;
+    }
+    const existingImageIndex = findMatchingMightyMikePaletteTile(
+      paletteState.value.paletteIndices,
+      transformedIndices.value,
     );
     const targetImageIndex =
       existingImageIndex === null ? mapImages.length : existingImageIndex;
 
     if (existingImageIndex === null) {
-      setMapImages([...mapImages, transformedCanvas]);
+      setMapImages([...mapImages, transformedCanvas.value]);
     }
 
     setTerrainData((data) => {
+      if (existingImageIndex === null) {
+        replaceMightyMikePaletteTileIndices(
+          data,
+          targetImageIndex,
+          transformedIndices.value,
+        );
+      }
       const logicalIndex = findOrCreateLogicalIndexForImage(
         data,
         targetImageIndex,
@@ -303,77 +349,6 @@ export function MightyMikeTileMenu({
     );
   };
 
-  const handleDownloadTile = () => {
-    if (currentImageIndex === null) {
-      toast.error("No valid tile to download");
-      return;
-    }
-
-    const canvas = mapImages[currentImageIndex];
-    if (!canvas) {
-      toast.error("Tile image not found");
-      return;
-    }
-
-    downloadCanvasAsPng(
-      canvas,
-      `mighty_mike_tile_${effectiveSelectedTile}.png`,
-    );
-  };
-
-  const handleEditTile = () => {
-    if (currentImageIndex === null) {
-      toast.error("No valid tile to edit");
-      return;
-    }
-
-    const canvas = mapImages[currentImageIndex];
-    if (!canvas) {
-      toast.error("Tile image not found");
-      return;
-    }
-
-    setEditingImageUrl(canvas.toDataURL("image/png"));
-    setIsEditingTile(true);
-  };
-
-  const handleSaveTileEdit = async (editedImageData: ImageData) => {
-    if (currentImageIndex === null) {
-      toast.error("Invalid tile index");
-      return;
-    }
-
-    await saveEditedImage(
-      editedImageData,
-      currentImageIndex,
-      mapImages,
-      setMapImages,
-    );
-    setIsEditingTile(false);
-    setEditingImageUrl(null);
-    toast.success("Tile updated successfully");
-  };
-
-  const handleUploadTile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = getFileFromInputEvent(event);
-    if (!file) return;
-
-    if (currentImageIndex === null) {
-      toast.error("No valid tile selected for upload");
-      return;
-    }
-
-    await replaceTileImage(
-      file,
-      currentImageIndex,
-      mapImages,
-      setMapImages,
-      "Tile image replaced",
-    );
-  };
-
   const handleUploadPaletteTile = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -385,31 +360,96 @@ export function MightyMikeTileMenu({
       return;
     }
 
-    await replaceTileImage(
+    const paletteState = getMightyMikePaletteTileState(terrainData);
+    if (paletteState.isErr()) {
+      toast.error(paletteState.error);
+      return;
+    }
+    const quantized = await loadAndQuantizeMightyMikeTile(
       file,
-      selectedPaletteTile,
-      mapImages,
-      setMapImages,
-      `Palette tile #${selectedPaletteTile} updated`,
+      paletteState.value.palette,
+      paletteState.value.transparencyColors,
     );
+    if (quantized.isErr()) {
+      toast.error(quantized.error);
+      return;
+    }
+    const nextImages = [...mapImages];
+    nextImages[selectedPaletteTile] = quantized.value.canvas;
+    setMapImages(nextImages);
+    setTerrainData((data) => {
+      replaceMightyMikePaletteTileIndices(
+        data,
+        selectedPaletteTile,
+        quantized.value.indices,
+      );
+    });
+    toast.success(`Palette tile #${selectedPaletteTile} replaced and quantized`);
 
     event.target.value = "";
   };
 
   const handleSavePaletteTileEdit = async (editedImageData: ImageData) => {
-    await saveEditedImage(
-      editedImageData,
-      selectedPaletteTile,
-      mapImages,
-      setMapImages,
-    );
+    const paletteState = getMightyMikePaletteTileState(terrainData);
+    if (paletteState.isErr()) {
+      toast.error(paletteState.error);
+      return;
+    }
+    const quantized = quantizeMightyMikeTile({
+      rgba: editedImageData.data,
+      palette: paletteState.value.palette,
+      transparencyColors: paletteState.value.transparencyColors,
+    });
+    if (quantized.isErr()) {
+      toast.error(quantized.error);
+      return;
+    }
+    const canvas = createMightyMikePaletteCanvas(quantized.value.rgba);
+    if (canvas.isErr()) {
+      toast.error(canvas.error);
+      return;
+    }
+    const nextImages = [...mapImages];
+    nextImages[selectedPaletteTile] = canvas.value;
+    setMapImages(nextImages);
+    setTerrainData((data) => {
+      replaceMightyMikePaletteTileIndices(
+        data,
+        selectedPaletteTile,
+        quantized.value.indices,
+      );
+    });
     setIsEditingPaletteTile(false);
-    toast.success(`Edited palette tile #${selectedPaletteTile}`);
+    toast.success(`Edited and quantized palette tile #${selectedPaletteTile}`);
   };
 
   const handleAddPaletteTile = () => {
+    const paletteState = getMightyMikePaletteTileState(terrainData);
+    if (paletteState.isErr()) {
+      toast.error(paletteState.error);
+      return;
+    }
+    const blankIndex = paletteState.value.transparencyColors[0] ?? 0;
+    const blankIndices = new Array<number>(32 * 32).fill(blankIndex);
+    const rendered = renderMightyMikePaletteIndices(
+      blankIndices,
+      paletteState.value.palette,
+      paletteState.value.transparencyColors,
+    );
+    if (rendered.isErr()) {
+      toast.error(rendered.error);
+      return;
+    }
+    const canvas = createMightyMikePaletteCanvas(rendered.value);
+    if (canvas.isErr()) {
+      toast.error(canvas.error);
+      return;
+    }
     const newImageIndex = mapImages.length;
-    setMapImages([...mapImages, createBlankTileCanvas()]);
+    setMapImages([...mapImages, canvas.value]);
+    setTerrainData((data) => {
+      replaceMightyMikePaletteTileIndices(data, newImageIndex, blankIndices);
+    });
     setManualTilePaletteSelection({
       tile: effectiveSelectedTile,
       palette: newImageIndex,
@@ -448,10 +488,6 @@ export function MightyMikeTileMenu({
   const handleUpdateTileAttribute = createUpdatePaletteAttributeHandler(
     setTerrainData,
     selectedPaletteTile,
-  );
-  const handleCloseTileEditor = createCloseEditorHandler(
-    setIsEditingTile,
-    setEditingImageUrl,
   );
   const handleClosePaletteEditor = createCloseEditorHandler(
     setIsEditingPaletteTile,
@@ -613,25 +649,30 @@ export function MightyMikeTileMenu({
       {mode === "visual" ? (
         <div className="grid h-full min-h-0 gap-3 p-3 xl:grid-cols-3">
           <div className="min-h-0 overflow-auto pr-1 xl:border-r xl:border-gray-700 xl:pr-3">
-            <div className="space-y-3">
-              <MightyMikeTileOperationsPanel
-                currentImageIndex={currentImageIndex}
-                currentTileCanvas={currentTileCanvas}
-                effectiveSelectedTile={effectiveSelectedTile}
-                selectedPaletteTile={selectedPaletteTile}
-                handleUploadTile={handleUploadTile}
-                handleEditTile={handleEditTile}
-                handleDownloadTile={handleDownloadTile}
-                handleRotateTile={() => handleApplyPaletteTransform("rotate")}
-                handleFlipTileHorizontal={() =>
-                  handleApplyPaletteTransform("flipX")
-                }
-                handleFlipTileVertical={() =>
-                  handleApplyPaletteTransform("flipY")
-                }
-              />
-            </div>
-
+            <TileSelectionModePanel
+              game="mightymike"
+              individualTile={(
+                <MightyMikeTileOperationsPanel
+                  currentImageIndex={currentImageIndex}
+                  currentTileCanvas={currentTileCanvas}
+                  selectedPaletteTile={selectedPaletteTile}
+                  handleRotateTile={() => handleApplyPaletteTransform("rotate")}
+                  handleFlipTileHorizontal={() =>
+                    handleApplyPaletteTransform("flipX")
+                  }
+                  handleFlipTileVertical={() =>
+                    handleApplyPaletteTransform("flipY")
+                  }
+                />
+              )}
+              stampLibrary={(
+                <TileBrushPanel
+                  game="mightymike"
+                  mapImages={mapImages}
+                  xlatTable={xlatTable}
+                />
+              )}
+            />
           </div>
 
           <div className="min-h-0 overflow-hidden xl:border-r xl:border-gray-700 xl:px-3">
@@ -676,20 +717,6 @@ export function MightyMikeTileMenu({
             <div className="my-2 grid grid-cols-2 gap-x-2 text-[11px] text-gray-400">
               {tileInfoRows.slice(3).map((row) => <span key={row}>{row}</span>)}
             </div>
-            <details className="mt-3 border-t border-gray-700 pt-2">
-              <summary className="cursor-pointer text-sm font-bold">Region Brushes</summary>
-              <div className="mt-2">
-                <TileBrushPanel
-                  game="mightymike"
-                  terrainData={terrainData}
-                  setTerrainData={setTerrainData}
-                  mapWidth={mapWidth}
-                  mapHeight={mapHeight}
-                  selectedTileIndex={effectiveSelectedTile}
-                  activeLayer={1000}
-                />
-              </div>
-            </details>
           </div>
         </div>
       ) : (
@@ -847,15 +874,10 @@ export function MightyMikeTileMenu({
       )}
 
       <MightyMikeTileMenuEditors
-        isEditingTile={isEditingTile}
-        editingImageUrl={editingImageUrl}
         isEditingPaletteTile={isEditingPaletteTile}
         selectedPaletteTile={selectedPaletteTile}
         mapImages={mapImages}
-        effectiveSelectedTile={effectiveSelectedTile}
-        onCloseTileEditor={handleCloseTileEditor}
         onClosePaletteEditor={handleClosePaletteEditor}
-        onSaveTileEdit={handleSaveTileEdit}
         onSavePaletteTileEdit={handleSavePaletteTileEdit}
       />
     </>

@@ -36,6 +36,12 @@ export interface GameModelSelectorProps {
 
 import { GAMES } from "@/data/games";
 
+function compareGamesByName(left: GameInfo, right: GameInfo): number {
+  return left.name.localeCompare(right.name);
+}
+
+const GAMES_SORTED_BY_NAME = [...GAMES].sort(compareGamesByName);
+
 export function GameModelSelector({
   onLoadModel,
   loading,
@@ -184,13 +190,15 @@ export function GameModelSelector({
     <div className="space-y-4">
       {/* Game Selection */}
       <div className="space-y-2">
-        <label className="text-sm text-gray-300">Game</label>
+        <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
+          Game
+        </label>
         <Select value={selectedGameId} onValueChange={setSelectedGameId}>
           <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
             <SelectValue placeholder="Select a game" />
           </SelectTrigger>
           <SelectContent className="bg-gray-700 border-gray-600">
-            {GAMES.map((game) => (
+            {GAMES_SORTED_BY_NAME.map((game) => (
               <SelectItem
                 key={game.id}
                 value={game.id}
@@ -206,7 +214,9 @@ export function GameModelSelector({
       {/* Model Category Selection */}
       {selectedGame && availableCategories.length > 1 && (
         <div className="space-y-2">
-          <label className="text-sm text-gray-300">Category</label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
+            Category
+          </label>
           <Select value={effectiveCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
               <SelectValue placeholder="Select a category" />
@@ -229,7 +239,9 @@ export function GameModelSelector({
       {/* Model Selection */}
       {selectedGame && (
         <div className="space-y-2">
-          <label className="text-sm text-gray-300">Model</label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
+            Model
+          </label>
           {availableModels.length > 0 ? (
             <Select
               value={effectiveModel?.name || ""}

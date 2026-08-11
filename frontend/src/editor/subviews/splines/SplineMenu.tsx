@@ -26,6 +26,8 @@ import {
 import { Globals } from "@/data/globals/globals";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { initSplineItem } from "@/editor/subviews/splines/editSplineItemMenuState";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
+import { LevelNumber } from "@/data/globals/levelNumber";
 
 const ADD_SPLINE_ITEM_VALUE = "AddSplineItem";
 const NO_SPLINE_ITEM_SELECTED_VALUE = "NoneSelected";
@@ -43,6 +45,7 @@ export const SplineMenu = memo(function SplineMenu({
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
   const globals = useAtomValue(Globals);
+  const levelNum = useAtomValue(LevelNumber);
   const hasSplines = (splineData.Spln?.[1000]?.obj?.length ?? 0) > 0;
 
   useEffect(() => {
@@ -60,6 +63,11 @@ export const SplineMenu = memo(function SplineMenu({
     return <AddNewSplineMenu setSplineData={setSplineData} hasSplines={hasSplines} />;
   }
 
+  const selectedItem =
+    selectedSplineItem === undefined
+      ? undefined
+      : splineItemData[selectedSplineItem];
+
   const selectedSplineItemControl = (
     <Select
       onValueChange={(e) => {
@@ -74,23 +82,40 @@ export const SplineMenu = memo(function SplineMenu({
       }}
     >
       <SelectTrigger>
-        {selectedSplineItem !== undefined
-          ? `#${selectedSplineItem} ${getSplineItemName(
-              globals,
-              splineItemData?.[selectedSplineItem]?.type ?? 0,
-            )}`
-          : "No Item Selected"}
+        {selectedSplineItem !== undefined && selectedItem ? (
+          <ItemThumbnail
+            game={globals.GAME_TYPE}
+            kind="splineItem"
+            itemType={selectedItem.type}
+            label={getSplineItemName(globals, selectedItem.type)}
+            levelNum={levelNum}
+            params={selectedItem}
+            metadata={`#${selectedSplineItem}`}
+            compact
+          />
+        ) : (
+          "No Item Selected"
+        )}
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={NO_SPLINE_ITEM_SELECTED_VALUE}>
           No Item Selected
         </SelectItem>
-        <SelectItem value={ADD_SPLINE_ITEM_VALUE}>Add New Spline Item</SelectItem>
         {splineItemData.map((item, itemIdx) => (
           <SelectItem key={itemIdx} value={itemIdx.toString()}>
-            #{itemIdx} ({getSplineItemName(globals, item.type)})
+            <ItemThumbnail
+              game={globals.GAME_TYPE}
+              kind="splineItem"
+              itemType={item.type}
+              label={getSplineItemName(globals, item.type)}
+              levelNum={levelNum}
+              params={item}
+              metadata={`#${itemIdx}`}
+              compact
+            />
           </SelectItem>
         ))}
+        <SelectItem value={ADD_SPLINE_ITEM_VALUE}>Add New Spline Item</SelectItem>
       </SelectContent>
     </Select>
   );

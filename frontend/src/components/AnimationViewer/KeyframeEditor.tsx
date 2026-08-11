@@ -198,10 +198,13 @@ export function KeyframeEditor({
           gameLabel,
         );
         return (
-          <button
+          <Button
             key={`${event.time}-${event.type}-${event.value}-${index}`}
             type="button"
-            className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 border ${
+            variant="ghost"
+            size="icon"
+            aria-pressed={isSelected}
+            className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-none border p-0 ${
               isSelected
                 ? "border-amber-100 bg-amber-500"
                 : "border-amber-300 bg-amber-400"
@@ -333,10 +336,12 @@ export function KeyframeEditor({
                 const position =
                   timelineDuration > 0 ? (time / timelineDuration) * 100 : 0;
                 return (
-                  <button
+                  <Button
                     key={`${row.boneName}-${time}-${index}`}
                     type="button"
-                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400 p-0"
                     style={{
                       left: `${clampTimelinePercent(position)}%`,
                     }}
@@ -535,10 +540,10 @@ export function KeyframeEditor({
             <div className="space-y-2">
               <label className="text-xs text-gray-300">Bone</label>
               <Select value={selectedBoneName} onValueChange={onBoneNameChange}>
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectTrigger>
                   <SelectValue placeholder="Select bone" />
                 </SelectTrigger>
-                <SelectContent className="max-h-60 bg-gray-700 border-gray-600 text-white">
+                <SelectContent className="max-h-60">
                   {availableBoneNames.length === 0 ? (
                     <div className="px-2 py-1 text-xs text-gray-400">
                       No bones found
@@ -550,7 +555,6 @@ export function KeyframeEditor({
                         <SelectItem
                           key={bone}
                           value={bone}
-                          className="text-white focus:bg-gray-600"
                           textValue={formattedBone}
                         >
                           <span
@@ -580,16 +584,15 @@ export function KeyframeEditor({
                   onTrackPropertyChange(nextProperty);
                 }}
               >
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                <SelectContent>
                   {Object.entries(TRACK_PROPERTY_CONFIG).map(
                     ([key, config]) => (
                       <SelectItem
                         key={key}
                         value={key}
-                        className="text-white focus:bg-gray-600"
                       >
                         {config.label}
                       </SelectItem>

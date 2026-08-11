@@ -10,10 +10,15 @@
  */
 
 import { Game } from "../../globals/globals";
-import { 
-  type GameItemModelMapper, 
+import {
+  type GameItemModelMapper,
+  type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
+import {
+  hasVisibleSplineItemModel,
+  isSplineOnlyItemType,
+} from "../splineItemModelVisibility";
 import { OTTO_ITEM_MODEL_MAPPINGS } from "../ottoItemModelMapping";
 import { ItemType } from "../ottoItemType";
 import { 
@@ -143,7 +148,19 @@ export class OttoItemMapper implements GameItemModelMapper {
     itemType: number,
     _levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
+    _flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
+    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
+      return undefined;
+    }
+    if (
+      kind === "splineItem" &&
+      !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+
     if (itemType === ItemType.SpacePodGenerator || itemType === ItemType.CloudPlatform) {
       return undefined;
     }

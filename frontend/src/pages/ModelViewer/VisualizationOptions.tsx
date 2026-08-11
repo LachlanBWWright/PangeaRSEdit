@@ -74,7 +74,7 @@ export function VisualizationOptions({
                 Edit rig
               </SelectItem>
               <SelectItem value="paint-weights" disabled={!hasSkinWeights}>
-                Paint weights
+                Assign vertices
               </SelectItem>
             </SelectContent>
           </Select>
@@ -84,7 +84,7 @@ export function VisualizationOptions({
               : interactionMode === "bone-edit"
                 ? "Edit the skeleton structure, bone names, and transforms."
                 : interactionMode === "paint-weights"
-                  ? "Left-drag to paint. Right-drag to orbit; scroll to zoom."
+                  ? "Left-drag to assign vertices to one bone. Right-drag to orbit."
                   : "Orbit the camera and inspect model rendering."}
           </p>
         </div>
@@ -93,21 +93,22 @@ export function VisualizationOptions({
           <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
             Display
           </div>
-        {interactionMode === "navigate" && (
-        <div className="flex items-center justify-between">
-          <label
-            htmlFor="wireframe-mode"
-            className="text-sm text-gray-300 cursor-pointer"
-          >
-            Wireframe
-          </label>
-          <Switch
-            id="wireframe-mode"
-            checked={wireframeMode}
-            onCheckedChange={setWireframeMode}
-          />
-        </div>
-        )}
+          {(interactionMode === "navigate" ||
+            interactionMode === "bone-edit") && (
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="wireframe-mode"
+                className="text-sm text-gray-300 cursor-pointer"
+              >
+                Wireframe
+              </label>
+              <Switch
+                id="wireframe-mode"
+                checked={wireframeMode}
+                onCheckedChange={setWireframeMode}
+              />
+            </div>
+          )}
         {hasSkeleton &&
           (interactionMode === "animate" || interactionMode === "bone-edit") && (
           <div className="flex items-center justify-between">
@@ -148,7 +149,7 @@ export function VisualizationOptions({
         )}
         {interactionMode === "paint-weights" && (
           <div className="space-y-2 pt-1">
-            <label className="text-xs text-gray-300">Weight overlay</label>
+            <label className="text-xs text-gray-300">Assignment overlay</label>
             <Select
               value={weightVisualizationMode}
               onValueChange={(value) => {
@@ -168,9 +169,8 @@ export function VisualizationOptions({
               </SelectTrigger>
               <SelectContent className="border-gray-600 bg-gray-800 text-white">
                 <SelectItem value="none">None</SelectItem>
-                <SelectItem value="heatmap">Heatmap</SelectItem>
-                <SelectItem value="dominant">Dominant bone</SelectItem>
-                <SelectItem value="unweighted">Unweighted vertices</SelectItem>
+                <SelectItem value="dominant">Assigned bone</SelectItem>
+                <SelectItem value="unweighted">Unassigned vertices</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -44,7 +44,7 @@ import {
   finalizeWaterFromPoints,
   popCreationPoint,
 } from "@/editor/creation/pendingCreationState";
-import { LiquidThumbnail } from "./LiquidThumbnail";
+import { LiquidPreview, LiquidThumbnail } from "./LiquidThumbnail";
 import { Switch } from "@/components/ui/switch";
 import {
   FIXED_LIQUID_HEIGHTS,
@@ -157,7 +157,8 @@ export const WaterMenu = memo(function WaterMenu({
       </p>
       <SnappingToggle />
 
-      <div className="flex flex-col gap-2 flex-1 min-h-0">
+      <div className="grid min-h-0 w-full flex-1 grid-cols-[1fr_auto] gap-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
         {waterBodyData !== null && waterBodyData !== undefined && (
           <>
             <Select
@@ -199,6 +200,21 @@ export const WaterMenu = memo(function WaterMenu({
                 ))}
               </SelectContent>
             </Select>
+
+            <Button
+              variant="destructive"
+              disabled={selectedWaterBody === null}
+              onClick={() => {
+                if (selectedWaterBody === null) return;
+                setLiquidData((draft) => {
+                  deleteWaterBody(draft, selectedWaterBody);
+                });
+                setSelectedWaterBody(null);
+                setSelectedWaterNub(null);
+              }}
+            >
+              Delete Water Body
+            </Button>
 
             {supportsFixedHeight && selectedWaterBody !== null && (
               <div className="rounded border border-gray-700 p-2">
@@ -352,8 +368,9 @@ export const WaterMenu = memo(function WaterMenu({
                 </>
               )}
 
-            <div className="grid grid-cols-3 gap-2 mt-auto">
+            <div className="mt-auto flex w-full gap-2">
               <Button
+                className="flex-1"
                 onClick={() =>
                   setLiquidData((liquidData) => {
                     addWaterBodyNub(
@@ -367,6 +384,7 @@ export const WaterMenu = memo(function WaterMenu({
                 Add Nub
               </Button>
               <Button
+                className="flex-1"
                 variant="destructive"
                 disabled={!canDeleteWaterBodyNub(liquidData, selectedWaterBody)}
                 onClick={() => {
@@ -375,25 +393,20 @@ export const WaterMenu = memo(function WaterMenu({
                   });
                 }}
               >
-                Delete Nub
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={selectedWaterBody === null}
-                onClick={() => {
-                  if (selectedWaterBody === null) return;
-                  setLiquidData((draft) => {
-                    deleteWaterBody(draft, selectedWaterBody);
-                  });
-                  setSelectedWaterBody(null);
-                  setSelectedWaterNub(null);
-                }}
-              >
-                Delete Water Body
+                Remove Nub
               </Button>
             </div>
           </>
         )}
+        </div>
+
+        <div className="flex w-48 self-stretch items-center justify-center rounded border border-gray-600 bg-gray-800 p-2">
+          <LiquidPreview
+            alt={getWaterBodyTypeName(globals, waterBodyData.type)}
+            globals={globals}
+            liquidType={waterBodyData.type}
+          />
+        </div>
       </div>
     </div>
   );

@@ -165,7 +165,7 @@ export function EditSplineItemMenu({
         </Select>
       </div>
 
-      <div className="grid grid-cols-6 gap-2 items-center">
+      <div className="grid grid-cols-2 gap-2">
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
           const param = currentSplineItemParams?.[paramKey] ?? "Unknown";
@@ -181,30 +181,41 @@ export function EditSplineItemMenu({
               );
             });
           };
-          return [
-            <ParamTooltip
-              key={`tooltip-${i}`}
-              label={<span>{`Parameter ${i}`}</span>}
-              tooltip={getParamTooltip(param)}
-              codeSample={
-                typeof param === "string" || !param || param.type !== "Integer"
-                  ? undefined
-                  : {
-                      code: param.defaultCitation.code,
-                      fileName: param.defaultCitation.fileName,
-                      lineNumber: param.defaultCitation.lineNumber,
-                      endLineNumber: param.defaultCitation.endLineNumber,
-                    }
-              }
-              citationGame={citationGame ?? undefined}
-            />,
+          const flags =
             param &&
             typeof param !== "string" &&
             param.type === "Bit Flags" &&
-            Array.isArray(param.flags) ? (
-              <div key={`flags-${i}`} className="flex flex-col gap-1">
-                <div className="flex flex-wrap gap-2">
-                  {param.flags.map((flag: FlagDescription) => {
+            Array.isArray(param.flags)
+              ? param.flags
+              : [];
+          return (
+            <div
+              key={paramKey}
+              className="flex flex-col gap-2 rounded border border-gray-700 bg-gray-900/30 p-2"
+            >
+              <ParamTooltip
+                label={<span>{`Parameter ${i}`}</span>}
+                tooltip={getParamTooltip(param)}
+                codeSample={
+                  typeof param === "string" || !param || param.type !== "Integer"
+                    ? undefined
+                    : {
+                        code: param.defaultCitation.code,
+                        fileName: param.defaultCitation.fileName,
+                        lineNumber: param.defaultCitation.lineNumber,
+                        endLineNumber: param.defaultCitation.endLineNumber,
+                      }
+                }
+                citationGame={citationGame ?? undefined}
+              />
+              <Input
+                type="number"
+                value={value.toString()}
+                onChange={(e) => setValue(parseU8(e.target.value))}
+              />
+              {flags.length > 0 && (
+                <div className="flex flex-wrap gap-2 border-t border-gray-700 pt-2">
+                  {flags.map((flag: FlagDescription) => {
                     const checked = (value & (1 << flag.index)) !== 0;
                     return (
                       <label
@@ -238,25 +249,9 @@ export function EditSplineItemMenu({
                     );
                   })}
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <p>Value:</p>
-                  <Input
-                    type="number"
-                    className="w-24"
-                    value={value.toString()}
-                    onChange={(e) => setValue(parseU8(e.target.value))}
-                  />
-                </div>
-              </div>
-            ) : (
-              <Input
-                key={`input-${i}`}
-                type="number"
-                value={value.toString()}
-                onChange={(e) => setValue(parseU8(e.target.value))}
-              />
-            ),
-          ];
+              )}
+            </div>
+          );
         })}
 
         <span>Placement (0-1)</span>

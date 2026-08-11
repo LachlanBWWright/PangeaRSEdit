@@ -36,9 +36,11 @@ export function SpriteControls({
         <EditorField label="Shape">
           <div className="flex items-center gap-1">
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              size="icon"
               className="text-white shrink-0"
+              aria-label="Previous shape"
+              title="Previous shape"
               onClick={() => onShapeChange(Math.max(0, selectedShapeIndex - 1))}
               disabled={selectedShapeIndex === 0}
             >
@@ -71,9 +73,11 @@ export function SpriteControls({
             </Select>
 
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              size="icon"
               className="text-white shrink-0"
+              aria-label="Next shape"
+              title="Next shape"
               onClick={() =>
                 onShapeChange(
                   Math.min(shapesFile.shapes.length - 1, selectedShapeIndex + 1),
@@ -91,9 +95,11 @@ export function SpriteControls({
         <EditorField label="Frame">
           <div className="flex items-center gap-1">
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              size="icon"
               className="text-white shrink-0"
+              aria-label="Previous frame"
+              title="Previous frame"
               onClick={() => onFrameChange(Math.max(0, selectedFrameIndex - 1))}
               disabled={selectedFrameIndex === 0}
             >
@@ -105,9 +111,11 @@ export function SpriteControls({
               </p>
             </div>
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              size="icon"
               className="text-white shrink-0"
+              aria-label="Next frame"
+              title="Next frame"
               onClick={() =>
                 onFrameChange(
                   Math.min(currentShape.frames.length - 1, selectedFrameIndex + 1),
