@@ -139,4 +139,6 @@ export interface GameFeatures {
   hasElectricFloorOptions: boolean;
   /** Whether the game has checkpoint data */
   hasCheckpoints: boolean;
+  /** Whether the game has racing path resources */
+  hasPaths: boolean;
 }

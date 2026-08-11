@@ -18,7 +18,7 @@ import {
   createCloseEditorHandler,
   createSetManualTilePaletteSelectionHandler,
   createUpdateCollisionPropertyHandler,
-  createUpdateTileAttributeHandler,
+  createUpdatePaletteAttributeHandler,
 } from "./MightyMikeTileMenuHandlers";
 import {
   computeSelectedPaletteTile,
@@ -39,14 +39,12 @@ import {
   type TileImageTransform,
 } from "./MightyMikeTileMenuUtils";
 import {
-  appendPaletteMapping,
   applySelectedTileLogicalIndex,
-  findOrCreateLogicalIndexForImage,
-  getCurrentTileAttributeIndex,
-  getCurrentTileAttributes,
   getCurrentTileCanvas,
   getEffectiveSelectedTile,
+  getPaletteTileAttributes,
   getTotalTileCount,
+  findOrCreateLogicalIndexForImage,
   isValidPaletteTileIndex,
 } from "./mightyMikeTileMenuState";
 import { MightyMikeTileMenuEditors } from "./MightyMikeTileMenuEditors";
@@ -54,6 +52,7 @@ import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
 import { MightyMikeTileOperationsPanel } from "./MightyMikeTileOperationsPanel";
 import { MightyMikePalettePanel } from "./MightyMikePalettePanel";
 import { MightyMikeTileInspectorPanel } from "./MightyMikeTileInspectorPanel";
+import { MenuEmptyState } from "../MenuEmptyState";
 import {
   Select,
   SelectContent,
@@ -76,17 +75,27 @@ type OverlaySelectValue =
   | "flagsAny"
   | "p0"
   | "p1"
+  | "p2"
   | "altMap"
   | `flagBit:${number}`;
+
+const EMPTY_PALETTE_ATTRIBUTES: Readonly<Record<string, number>> = {
+  flags: 0,
+  p0: 0,
+  p1: 0,
+  p2: 0,
+  p3: 0,
+  p4: 0,
+};
 
 function getOverlayOptionValue(flagBit: number): OverlaySelectValue {
   return `flagBit:${flagBit}`;
 }
 
-const overlayDropdownItems: ReadonlyArray<{
+const overlayDropdownItems: readonly {
   value: OverlaySelectValue;
   label: string;
-}> = [
+}[] = [
   { value: "none", label: "No Overlay" },
   { value: "collision", label: "Collision Mask" },
   { value: "solidEdges", label: "Solid Sides" },
@@ -99,6 +108,7 @@ const overlayDropdownItems: ReadonlyArray<{
   ),
   { value: "p0", label: "Extra Setting A" },
   { value: "p1", label: "Extra Setting B" },
+  { value: "p2", label: "Extra Setting C" },
   { value: "altMap", label: "Alt Map Directions" },
 ];
 
@@ -204,15 +214,10 @@ export function MightyMikeTileMenu({
 
   const currentTileCanvas = getCurrentTileCanvas(mapImages, currentImageIndex);
 
-  const currentTileAttributes = getCurrentTileAttributes(
+  const currentPaletteAttributes = getPaletteTileAttributes(
     terrainData,
-    effectiveSelectedTile,
+    selectedPaletteTile,
   );
-  const currentAttributeIndex = getCurrentTileAttributeIndex(
-    terrainData,
-    effectiveSelectedTile,
-  );
-
   const paletteTileIsInUse = useMemo(
     () => isPaletteTileInUse(layr, selectedPaletteTile, xlatTable),
     [layr, selectedPaletteTile, xlatTable],
@@ -274,17 +279,14 @@ export function MightyMikeTileMenu({
     }
 
     setTerrainData((data) => {
-      if (existingImageIndex === null) {
-        appendPaletteMapping(data, targetImageIndex);
-      }
       const logicalIndex = findOrCreateLogicalIndexForImage(
         data,
         targetImageIndex,
+        selectedPaletteTile,
       );
-      if (logicalIndex === null) {
-        return;
+      if (logicalIndex !== null) {
+        applySelectedTileLogicalIndex(data, effectiveSelectedTile, logicalIndex);
       }
-      applySelectedTileLogicalIndex(data, effectiveSelectedTile, logicalIndex);
     });
 
     setManualTilePaletteSelection({
@@ -408,9 +410,6 @@ export function MightyMikeTileMenu({
   const handleAddPaletteTile = () => {
     const newImageIndex = mapImages.length;
     setMapImages([...mapImages, createBlankTileCanvas()]);
-    setTerrainData((data) => {
-      appendPaletteMapping(data, newImageIndex);
-    });
     setManualTilePaletteSelection({
       tile: effectiveSelectedTile,
       palette: newImageIndex,
@@ -442,21 +441,13 @@ export function MightyMikeTileMenu({
     toast.success("Palette tile removed");
   };
 
-  if (totalTiles <= 0) {
-    return (
-      <div className="p-4 text-white">
-        <p>No map tiles available for this level.</p>
-      </div>
-    );
-  }
-
   const handleUpdateCollisionProperty = createUpdateCollisionPropertyHandler(
     setTerrainData,
     effectiveSelectedTile,
   );
-  const handleUpdateTileAttribute = createUpdateTileAttributeHandler(
+  const handleUpdateTileAttribute = createUpdatePaletteAttributeHandler(
     setTerrainData,
-    effectiveSelectedTile,
+    selectedPaletteTile,
   );
   const handleCloseTileEditor = createCloseEditorHandler(
     setIsEditingTile,
@@ -485,6 +476,8 @@ export function MightyMikeTileMenu({
         return "Extra Setting A";
       case "p1":
         return "Extra Setting B";
+      case "p2":
+        return "Extra Setting C";
       case "altMap":
         return "Alt Map Directions";
       default:
@@ -537,6 +530,7 @@ export function MightyMikeTileMenu({
       value === "flagsAny" ||
       value === "p0" ||
       value === "p1" ||
+      value === "p2" ||
       value === "altMap"
     ) {
       setOverlayMode(value);
@@ -550,6 +544,7 @@ export function MightyMikeTileMenu({
       value === "flags" ||
       value === "p0" ||
       value === "p1" ||
+      value === "p2" ||
       value === "altMap"
     ) {
       const nextMode: MightyMikeCanvasEditModeValue = value;
@@ -565,7 +560,10 @@ export function MightyMikeTileMenu({
           setParamsOverlayFlagBit(flagBrushBit);
         }
       }
-      if ((nextMode === "p0" || nextMode === "p1") && overlayMode === "none") {
+      if (
+        (nextMode === "p0" || nextMode === "p1" || nextMode === "p2") &&
+        overlayMode === "none"
+      ) {
         setOverlayMode(nextMode);
       }
       if (nextMode === "altMap") {
@@ -600,6 +598,16 @@ export function MightyMikeTileMenu({
     }
   };
 
+  if (totalTiles <= 0) {
+    return (
+      <MenuEmptyState
+        title="No Map Tiles"
+        description="This level doesn't contain any map tiles to edit."
+        fillHeight
+      />
+    );
+  }
+
   return (
     <>
       {mode === "visual" ? (
@@ -624,21 +632,6 @@ export function MightyMikeTileMenu({
               />
             </div>
 
-            <div className="space-y-3 border-t border-gray-700 pt-3 text-sm">
-              <div>
-                <p className="font-bold text-sm">Map Layout</p>
-                <p className="text-xs text-gray-400">
-                  Visual tile work stays here: select a tile on the canvas, swap
-                  or transform its artwork, then use brushes for larger visual
-                  passes.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-300">
-                {tileInfoRows.map((row) => (
-                  <p key={row}>{row}</p>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="min-h-0 overflow-hidden xl:border-r xl:border-gray-700 xl:px-3">
@@ -657,20 +650,46 @@ export function MightyMikeTileMenu({
           </div>
 
           <div className="min-h-0 overflow-auto xl:pl-3">
-            <p className="mb-2 font-bold text-sm">Tile Brushes</p>
-            <p className="mb-3 text-xs text-gray-400">
-              Capture and stamp larger visual regions directly in the Konva
-              canvas.
+            <p className="mb-1 text-xs font-bold text-gray-300">
+              Shared behavior for image #{selectedPaletteTile}
             </p>
-            <TileBrushPanel
-              game="mightymike"
-              terrainData={terrainData}
-              setTerrainData={setTerrainData}
+            <MightyMikeTileInspectorPanel
+              showCellMask={false}
+              showTileBehavior
               mapWidth={mapWidth}
               mapHeight={mapHeight}
-              selectedTileIndex={effectiveSelectedTile}
-              activeLayer={1000}
+              totalTiles={totalTiles}
+              mapImagesLength={mapImages.length}
+              effectiveSelectedTile={effectiveSelectedTile}
+              layr={layr}
+              currentImageIndex={currentImageIndex}
+              xlatTable={xlatTable}
+              collisionProps={collisionProps}
+              mightyMikeTileValuesArrayLength={mightyMikeTileValuesArray.length}
+              currentTileAttributes={
+                currentPaletteAttributes ?? EMPTY_PALETTE_ATTRIBUTES
+              }
+              handleUpdateCollisionProperty={handleUpdateCollisionProperty}
+              handleUpdateTileAttribute={handleUpdateTileAttribute}
+              getNumber={getNumber}
             />
+            <div className="my-2 grid grid-cols-2 gap-x-2 text-[11px] text-gray-400">
+              {tileInfoRows.slice(3).map((row) => <span key={row}>{row}</span>)}
+            </div>
+            <details className="mt-3 border-t border-gray-700 pt-2">
+              <summary className="cursor-pointer text-sm font-bold">Region Brushes</summary>
+              <div className="mt-2">
+                <TileBrushPanel
+                  game="mightymike"
+                  terrainData={terrainData}
+                  setTerrainData={setTerrainData}
+                  mapWidth={mapWidth}
+                  mapHeight={mapHeight}
+                  selectedTileIndex={effectiveSelectedTile}
+                  activeLayer={1000}
+                />
+              </div>
+            </details>
           </div>
         </div>
       ) : (
@@ -679,9 +698,8 @@ export function MightyMikeTileMenu({
             <div>
               <p className="font-bold text-sm">Canvas Tools</p>
               <p className="text-xs text-gray-400">
-                Behavior editing stays on this tab. Use the canvas to select a
-                tile, paint collision, paint specific gameplay flags, or edit
-                alt-map directions without mixing it with visual tile work.
+                Edit map-cell rendering masks and alt-map directions. Tile
+                definition flags stay with their artwork in Visual Tiles.
               </p>
             </div>
 
@@ -696,10 +714,7 @@ export function MightyMikeTileMenu({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="select">Select Tile</SelectItem>
-                  <SelectItem value="collision">Paint Collision</SelectItem>
-                  <SelectItem value="flags">Paint Gameplay Flags</SelectItem>
-                  <SelectItem value="p0">Paint Extra Setting A</SelectItem>
-                  <SelectItem value="p1">Paint Extra Setting B</SelectItem>
+                  <SelectItem value="collision">Paint Rendering Mask</SelectItem>
                   <SelectItem value="altMap">Paint Alt Map</SelectItem>
                 </SelectContent>
               </Select>
@@ -713,11 +728,18 @@ export function MightyMikeTileMenu({
                   <SelectValue placeholder="No Overlay" />
                 </SelectTrigger>
                 <SelectContent>
-                  {overlayDropdownItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
+                  {overlayDropdownItems
+                    .filter(
+                      (item) =>
+                        item.value === "none" ||
+                        item.value === "collision" ||
+                        item.value === "altMap",
+                    )
+                    .map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -728,7 +750,7 @@ export function MightyMikeTileMenu({
 
               {canvasEditMode === "collision" && (
                 <>
-                  <label className="text-gray-300">Collision</label>
+                  <label className="text-gray-300">Mask</label>
                   <Select
                     value={collisionBrushValue}
                     onValueChange={handleCollisionBrushValueChange}
@@ -803,17 +825,19 @@ export function MightyMikeTileMenu({
 
           <div className="min-h-0 overflow-auto border-l border-gray-700 pl-3">
             <MightyMikeTileInspectorPanel
+              showCellMask
+              showTileBehavior={false}
               mapWidth={mapWidth}
               mapHeight={mapHeight}
               totalTiles={totalTiles}
               mapImagesLength={mapImages.length}
               effectiveSelectedTile={effectiveSelectedTile}
               layr={layr}
-              currentImageIndex={currentAttributeIndex}
+              currentImageIndex={currentImageIndex}
               xlatTable={xlatTable}
               collisionProps={collisionProps}
               mightyMikeTileValuesArrayLength={mightyMikeTileValuesArray.length}
-              currentTileAttributes={currentTileAttributes}
+              currentTileAttributes={null}
               handleUpdateCollisionProperty={handleUpdateCollisionProperty}
               handleUpdateTileAttribute={handleUpdateTileAttribute}
               getNumber={getNumber}

@@ -209,7 +209,7 @@ export const bugdom1: GameInfo = {
       category: "Objects",
     },
     {
-      name: "Pangea Logo",
+      name: "Pangea",
       bg3dFile: "/PangeaRSEdit/games/bugdom1/models/Pangea.3dmf",
       category: "Objects",
     },

@@ -8,6 +8,9 @@ import {
   itemSchema,
   tileAttributeSchema,
   supertileGridOttoSchema,
+  checkpointSchema,
+  pathDefinitionSchema,
+  pathPointSchema,
 } from "../levelDataSchemas";
 
 // Cro-Mag Rally similar to Otto except header uses numPaths instead of numWaterPatches
@@ -24,6 +27,15 @@ export const croMagLevelSchema = z
       .optional(),
     Itms: z
       .record(z.string(), resourceEntrySchema(z.array(itemSchema)))
+      .optional(),
+    Path: z
+      .record(z.string(), resourceEntrySchema(z.array(pathDefinitionSchema)))
+      .optional(),
+    PaPt: z
+      .record(z.string(), resourceEntrySchema(z.array(pathPointSchema)))
+      .optional(),
+    CkPt: z
+      .record(z.string(), resourceEntrySchema(z.array(checkpointSchema)))
       .optional(),
   })
   .passthrough();

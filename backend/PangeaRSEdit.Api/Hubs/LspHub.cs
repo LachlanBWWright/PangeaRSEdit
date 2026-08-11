@@ -13,8 +13,10 @@ namespace PangeaRSEdit.Api.Hubs
         public string ConnectionId { get; set; } = string.Empty;
         public string TempDirectory { get; set; } = string.Empty;
         public Process? Process { get; set; }
+        internal LspMessageTransport? Transport { get; set; }
         public DateTime LastActivity { get; set; } = DateTime.UtcNow;
         public CancellationTokenSource Cts { get; } = new CancellationTokenSource();
+        public ConcurrentDictionary<string, byte> Files { get; } = new();
     }
 
     public sealed class LspHub : Hub
@@ -50,6 +52,9 @@ namespace PangeaRSEdit.Api.Hubs
             }
             catch { }
 
+            session.Process?.Dispose();
+            session.Cts.Dispose();
+
             try
             {
                 if (Directory.Exists(session.TempDirectory))
@@ -69,11 +74,16 @@ namespace PangeaRSEdit.Api.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        public Task<bool> InitializeSession(string gameId)
+        public Task<string> InitializeSession(string gameId)
         {
-            if (Sessions.ContainsKey(Context.ConnectionId))
+            if (Sessions.TryGetValue(Context.ConnectionId, out var existingSession))
             {
-                return Task.FromResult(true);
+                return Task.FromResult(new Uri(existingSession.TempDirectory + Path.DirectorySeparatorChar).AbsoluteUri);
+            }
+
+            if (string.IsNullOrWhiteSpace(gameId) || gameId.Length > 64)
+            {
+                throw new HubException("Invalid game ID.");
             }
 
             // Enforce concurrent session limit (e.g. max 50 total active sessions on the server)
@@ -143,29 +153,42 @@ namespace PangeaRSEdit.Api.Hubs
                 ConnectionId = Context.ConnectionId,
                 TempDirectory = workspacePath,
                 Process = process,
+                Transport = new LspMessageTransport(process.StandardOutput.BaseStream, process.StandardInput.BaseStream),
                 LastActivity = DateTime.UtcNow
             };
 
             Sessions[Context.ConnectionId] = session;
 
             // Start background tasks to read stdout/stderr and forward them
-            _ = Task.Run(() => ReadStream(process.StandardOutput, session, "ReceiveLspMessage"));
-            _ = Task.Run(() => ReadStream(process.StandardError, session, "ReceiveLspError"));
+            _ = Task.Run(() => ReadMessages(session));
+            _ = Task.Run(() => ReadErrors(process.StandardError, session));
 
-            return Task.FromResult(true);
+            return Task.FromResult(new Uri(workspacePath + Path.DirectorySeparatorChar).AbsoluteUri);
         }
 
-        private async Task ReadStream(StreamReader reader, LspSession session, string clientMethod)
+        private async Task ReadMessages(LspSession session)
         {
-            var buffer = new char[4096];
             try
             {
-                while (!session.Cts.Token.IsCancellationRequested && session.Process != null && !session.Process.HasExited)
+                while (!session.Cts.Token.IsCancellationRequested && session.Transport != null)
                 {
-                    int read = await reader.ReadAsync(buffer, 0, buffer.Length);
-                    if (read <= 0) break;
-                    var text = new string(buffer, 0, read);
-                    await Clients.Client(session.ConnectionId).SendAsync(clientMethod, text);
+                    var payload = await session.Transport.ReadPayloadAsync(session.Cts.Token);
+                    if (payload == null) break;
+                    await Clients.Client(session.ConnectionId).SendAsync("ReceiveLspPayload", payload, session.Cts.Token);
+                }
+            }
+            catch { }
+        }
+
+        private async Task ReadErrors(StreamReader reader, LspSession session)
+        {
+            try
+            {
+                while (!session.Cts.Token.IsCancellationRequested)
+                {
+                    var line = await reader.ReadLineAsync(session.Cts.Token);
+                    if (line == null) break;
+                    await Clients.Client(session.ConnectionId).SendAsync("ReceiveLspError", line, session.Cts.Token);
                 }
             }
             catch { }
@@ -180,9 +203,15 @@ namespace PangeaRSEdit.Api.Hubs
 
             session.LastActivity = DateTime.UtcNow;
 
-            // Sanitize path to prevent directory traversal
-            var sanitizedPath = path.Replace("..", "").TrimStart('/', '\\');
-            var fullPath = Path.Combine(session.TempDirectory, sanitizedPath);
+            if (content.Length > 1024 * 1024 ||
+                !TryResolveWorkspacePath(session, path, out var fullPath, out var normalizedPath))
+            {
+                throw new HubException("Invalid or oversized workspace file.");
+            }
+            if (!session.Files.ContainsKey(normalizedPath) && session.Files.Count >= 256)
+            {
+                throw new HubException("Workspace file limit exceeded.");
+            }
 
             var dir = Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(dir))
@@ -191,6 +220,7 @@ namespace PangeaRSEdit.Api.Hubs
             }
 
             await File.WriteAllTextAsync(fullPath, content);
+            session.Files[normalizedPath] = 0;
         }
 
         public Task DeleteFile(string path)
@@ -202,19 +232,22 @@ namespace PangeaRSEdit.Api.Hubs
 
             session.LastActivity = DateTime.UtcNow;
 
-            var sanitizedPath = path.Replace("..", "").TrimStart('/', '\\');
-            var fullPath = Path.Combine(session.TempDirectory, sanitizedPath);
+            if (!TryResolveWorkspacePath(session, path, out var fullPath, out var normalizedPath))
+            {
+                throw new HubException("Invalid workspace file path.");
+            }
 
             if (File.Exists(fullPath))
             {
                 File.Delete(fullPath);
             }
+            session.Files.TryRemove(normalizedPath, out _);
             return Task.CompletedTask;
         }
 
-        public async Task SendLspMessage(string message)
+        public async Task SendLspPayload(string payload)
         {
-            if (!Sessions.TryGetValue(Context.ConnectionId, out var session) || session.Process == null)
+            if (!Sessions.TryGetValue(Context.ConnectionId, out var session) || session.Transport == null)
             {
                 throw new HubException("Session not initialized.");
             }
@@ -223,13 +256,40 @@ namespace PangeaRSEdit.Api.Hubs
 
             try
             {
-                await session.Process.StandardInput.WriteAsync(message);
-                await session.Process.StandardInput.FlushAsync();
+                if (!await session.Transport.WritePayloadAsync(payload, session.Cts.Token))
+                {
+                    throw new HubException("LuaLS message size limit exceeded.");
+                }
             }
             catch (Exception ex)
             {
                 throw new HubException($"Failed to write to LuaLS standard input: {ex.Message}");
             }
+        }
+
+        private static bool TryResolveWorkspacePath(
+            LspSession session,
+            string path,
+            out string fullPath,
+            out string normalizedPath)
+        {
+            fullPath = string.Empty;
+            normalizedPath = string.Empty;
+            if (string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path))
+            {
+                return false;
+            }
+
+            normalizedPath = path.Replace('\\', '/');
+            var workspaceRoot = Path.GetFullPath(session.TempDirectory) + Path.DirectorySeparatorChar;
+            var candidate = Path.GetFullPath(Path.Combine(session.TempDirectory, normalizedPath));
+            if (!candidate.StartsWith(workspaceRoot, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            fullPath = candidate;
+            return true;
         }
 
         private static string? FindLuaLanguageServer()
@@ -270,8 +330,12 @@ namespace PangeaRSEdit.Api.Hubs
                 using var p = Process.Start(psi);
                 if (p != null)
                 {
-                    p.WaitForExit(1000);
-                    return true;
+                    if (!p.WaitForExit(1000))
+                    {
+                        p.Kill(entireProcessTree: true);
+                        return false;
+                    }
+                    return p.ExitCode == 0;
                 }
             }
             catch { }

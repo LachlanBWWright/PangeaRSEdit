@@ -29,7 +29,7 @@ export function MightyMikePalettePanel({
   onSelectPaletteTile,
 }: MightyMikePalettePanelProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-1.5">
       <p className="font-bold text-sm">Tile Palette</p>
 
       <div className="min-h-0 flex-1 overflow-auto rounded border border-gray-600 p-1">
@@ -51,7 +51,7 @@ export function MightyMikePalettePanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 flex-none">
+      <div className="grid grid-cols-2 gap-1.5 flex-none">
         <Button
           size="sm"
           variant="outline"

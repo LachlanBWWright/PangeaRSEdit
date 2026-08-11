@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Document, WebIO } from "@gltf-transform/core";
 import {
   formatGltfCompatibilityWarnings,
   normalizeGltfAsset,
@@ -134,6 +135,59 @@ function createEmbeddedGltf(
 }
 
 describe("gltfCompatibility", () => {
+  it("warns when smooth skinning will be rigidized", async () => {
+    const document = new Document();
+    const buffer = document.createBuffer();
+    const primitive = document
+      .createPrimitive()
+      .setAttribute(
+        "POSITION",
+        document
+          .createAccessor()
+          .setType("VEC3")
+          .setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]))
+          .setBuffer(buffer),
+      )
+      .setAttribute(
+        "JOINTS_0",
+        document
+          .createAccessor()
+          .setType("VEC4")
+          .setArray(new Uint8Array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+          .setBuffer(buffer),
+      )
+      .setAttribute(
+        "WEIGHTS_0",
+        document
+          .createAccessor()
+          .setType("VEC4")
+          .setArray(new Uint8Array([153, 102, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0]))
+          .setNormalized(true)
+          .setBuffer(buffer),
+      );
+    const mesh = document.createMesh().addPrimitive(primitive);
+    const node = document.createNode().setMesh(mesh);
+    const scene = document.createScene().addChild(node);
+    document.getRoot().setDefaultScene(scene);
+    const glb = await new WebIO().writeBinary(document);
+
+    const result = await normalizeGltfAsset(
+      "smooth-skin.glb",
+      glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength),
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      expect.fail(result.error.message);
+    }
+    expect(result.value.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "primitives.rigid-skinning",
+        count: 1,
+      }),
+    );
+  });
+
   it("normalizes embedded .gltf uploads and reports downgrade warnings", async () => {
     const result = await normalizeGltfAsset(
       "rich-model.gltf",

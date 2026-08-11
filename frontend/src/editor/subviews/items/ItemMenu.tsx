@@ -42,6 +42,7 @@ import {
 import { TerrainItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
+import { ItemStateFlags } from "./ItemStateFlags";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -61,7 +62,10 @@ export const ItemMenu = memo(function ItemMenu({
 
   const selectedItemData = getSelectedItem(itemData, selectedItem);
   const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
-  const selectedItemParams = getSelectedItemParams(selectedItemData?.type);
+  const selectedItemParams = getSelectedItemParams(
+    globals,
+    selectedItemData?.type,
+  );
 
   const allItemValues = useMemo(() => getAllItemValues(globals), [globals]);
 
@@ -89,7 +93,7 @@ export const ItemMenu = memo(function ItemMenu({
   }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-h-full flex-col gap-2">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu hasItems={itemCount > 0} />
       ) : (
@@ -151,6 +155,18 @@ export const ItemMenu = memo(function ItemMenu({
               ))}
             </SelectContent>
           </Select>
+
+          <ItemStateFlags
+            description={selectedItemParams?.flags ?? "Unknown"}
+            value={selectedItemData.flags}
+            onChange={(value) => {
+              setItemData((draft) => {
+                if (selectedItem === undefined) return;
+                const item = draft.Itms?.[1000]?.obj[selectedItem];
+                if (item) item.flags = value;
+              });
+            }}
+          />
 
           {/* Safe Items Filter Toggle */}
           {safeItemTypes.size > 0 && (
@@ -351,6 +367,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
         }
         buttonText={hasItems ? "Add More Items" : "Add First Item"}
         onInitialize={() => setClickToAddItem(0)}
+        fillHeight
       />
       {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
     </>

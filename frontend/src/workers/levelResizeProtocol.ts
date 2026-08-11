@@ -8,6 +8,7 @@ export const levelResizeWorkerRequestSchema = z.object({
   globals: z.object({
     TILES_PER_SUPERTILE: z.number().int().positive(),
     TILE_INGAME_SIZE: z.number().positive(),
+    TILE_SIZE: z.number().positive(),
     EMPTY_TILE_IDX: z.number().int(),
   }),
   options: z.object({

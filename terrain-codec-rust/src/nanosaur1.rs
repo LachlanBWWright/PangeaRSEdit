@@ -63,6 +63,7 @@ pub struct ParsedNanosaur1Level {
 #[serde(rename_all = "camelCase")]
 pub struct Nanosaur1CompilePayload {
     pub texture_layer: Option<Vec<u16>>,
+    pub path_layer: Option<Vec<u16>>,
     pub object_list: Option<Vec<TerrainItemEntry>>,
     pub texture_attributes: Option<Vec<TileAttribEntry>>,
 }
@@ -445,7 +446,12 @@ pub fn compile_nanosaur1_level(
     }
 
     if let Some(path_layer_offset) = offset_to_usize(header.path_layer_offset, "path layer")? {
-        if let Some(path_layer) = parsed.path_layer.as_ref() {
+        let path_layer = edits
+            .path_layer
+            .as_ref()
+            .filter(|values| values.len() == layer_size)
+            .or(parsed.path_layer.as_ref());
+        if let Some(path_layer) = path_layer {
             for (index, value) in path_layer.iter().enumerate() {
                 let entry_offset = path_layer_offset
                     .checked_add(index * 2)
@@ -562,4 +568,3 @@ pub fn compile_nanosaur1_level(
 
     Ok(buffer)
 }
-

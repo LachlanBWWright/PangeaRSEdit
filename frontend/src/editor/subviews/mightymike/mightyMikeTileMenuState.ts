@@ -2,14 +2,14 @@ import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 import { setMightyMikeTileLogicalIndex } from "@/data/game/mightyMikeTileValueUtils";
 import { isArray, isRecord } from "./MightyMikeTileMenuUtils";
 
-type MutableTileAttribute = {
+interface MutableTileAttribute {
   flags: number;
   p0: number;
   p1: number;
   p2: number;
   p3: number;
   p4: number;
-};
+}
 
 const DEFAULT_TILE_ATTRIBUTE: MutableTileAttribute = {
   flags: 0,
@@ -148,6 +148,31 @@ export function getCurrentTileAttributes(
   return isRecord(attribute) ? attribute : null;
 }
 
+function getLogicalIndicesForImage(
+  terrainData: TerrainData,
+  imageIndex: number,
+): number[] {
+  const xlat = terrainData.Xlat?.[1000]?.obj;
+  if (!xlat) {
+    return [imageIndex];
+  }
+  return xlat.flatMap((entry, logicalIndex) =>
+    entry.idx === imageIndex ? [logicalIndex] : [],
+  );
+}
+
+export function getPaletteTileAttributes(
+  terrainData: TerrainData,
+  imageIndex: number,
+): Record<string, unknown> | null {
+  const logicalIndex = getLogicalIndicesForImage(terrainData, imageIndex)[0];
+  if (logicalIndex === undefined) {
+    return null;
+  }
+  const attribute = terrainData.Atrb?.[1000]?.obj?.[logicalIndex];
+  return isRecord(attribute) ? attribute : null;
+}
+
 export function ensureUniqueTileAttributeIndex(
   terrainData: TerrainData,
   selectedTile: number,
@@ -240,6 +265,51 @@ export function updateTileAttributeForSelectedTile(
   }
 }
 
+export function updateTileAttributeForPaletteImage(
+  terrainData: TerrainData,
+  imageIndex: number,
+  property: keyof MutableTileAttribute,
+  value: number,
+): void {
+  const logicalIndices = getLogicalIndicesForImage(terrainData, imageIndex);
+  const levelAttributes = ensureLevelAttributesArray(terrainData);
+  const tileset = ensureTilesetRecord(terrainData);
+  if (!levelAttributes || !tileset) {
+    return;
+  }
+
+  if (logicalIndices.length === 0) {
+    const xlat = ensureXlatTable(terrainData, levelAttributes.length);
+    levelAttributes.push({ ...DEFAULT_TILE_ATTRIBUTE, [property]: value });
+    xlat.push({ idx: imageIndex });
+    if (isArray(tileset.xlateTable)) {
+      tileset.xlateTable.push(imageIndex);
+    }
+    if (isArray(tileset.tileAttributes)) {
+      tileset.tileAttributes.push({
+        ...DEFAULT_TILE_ATTRIBUTE,
+        [property]: value,
+      });
+    }
+    return;
+  }
+
+  const sharedAttribute = cloneTileAttribute(
+    levelAttributes[logicalIndices[0] ?? -1],
+  );
+  sharedAttribute[property] = value;
+  for (const logicalIndex of logicalIndices) {
+    const levelAttribute = levelAttributes[logicalIndex];
+    if (isRecord(levelAttribute)) {
+      Object.assign(levelAttribute, sharedAttribute);
+    }
+    const tilesetAttribute = tileset.tileAttributes?.[logicalIndex];
+    if (isRecord(tilesetAttribute)) {
+      Object.assign(tilesetAttribute, sharedAttribute);
+    }
+  }
+}
+
 export function isValidPaletteTileIndex(
   selectedPaletteTile: number,
   imageCount: number,
@@ -255,23 +325,10 @@ export function applySelectedTileLogicalIndex(
   setMightyMikeTileLogicalIndex(terrainData, selectedTile, logicalIndex);
 }
 
-export function appendPaletteMapping(
-  terrainData: TerrainData,
-  imageIndex: number,
-): void {
-  const atrbLength = terrainData.Atrb?.[1000]?.obj?.length ?? 0;
-  const xlatTable = ensureXlatTable(terrainData, atrbLength);
-  xlatTable.push({ idx: imageIndex });
-
-  const tileset = ensureTilesetRecord(terrainData);
-  if (tileset && isArray(tileset.xlateTable)) {
-    tileset.xlateTable.push(imageIndex);
-  }
-}
-
 export function findOrCreateLogicalIndexForImage(
   terrainData: TerrainData,
   imageIndex: number,
+  templateImageIndex?: number,
 ): number | null {
   if (imageIndex < 0) {
     return null;
@@ -289,6 +346,29 @@ export function findOrCreateLogicalIndexForImage(
     return existingIndex;
   }
 
+  const levelAttributes = ensureLevelAttributesArray(terrainData);
+  const tileset = ensureTilesetRecord(terrainData);
+  if (!levelAttributes || !tileset) {
+    return null;
+  }
+  const templateAttribute =
+    templateImageIndex === undefined
+      ? DEFAULT_TILE_ATTRIBUTE
+      : getPaletteTileAttributes(terrainData, templateImageIndex) ??
+        DEFAULT_TILE_ATTRIBUTE;
+  const nextAttribute = cloneTileAttribute(templateAttribute);
+  const nextIndex = xlatTable.length;
+  while (levelAttributes.length < nextIndex) {
+    levelAttributes.push({ ...DEFAULT_TILE_ATTRIBUTE });
+  }
+  levelAttributes.push(nextAttribute);
   xlatTable.push({ idx: imageIndex });
-  return xlatTable.length - 1;
+
+  if (isArray(tileset.xlateTable)) {
+    tileset.xlateTable.push(imageIndex);
+  }
+  if (isArray(tileset.tileAttributes)) {
+    tileset.tileAttributes.push({ ...nextAttribute });
+  }
+  return nextIndex;
 }

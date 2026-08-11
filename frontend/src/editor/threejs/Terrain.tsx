@@ -4,11 +4,18 @@ import {
   StandardHeader,
 } from "@/python/structSpecs/LevelTypes";
 import { useRef, useMemo, forwardRef, useEffect } from "react";
-import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
+import {
+  CanvasTexture,
+  DoubleSide,
+  Float32BufferAttribute,
+  Mesh,
+  PlaneGeometry,
+} from "three";
 import type { Event } from "three";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import combineMapImages from "./terrainUtils";
+import { decodeBugdomVertexColors } from "@/data/terrain/bugdomVertexColors";
 
 export const TerrainGeometry = forwardRef<Mesh, {
   headerData: HeaderData;
@@ -79,6 +86,21 @@ export const TerrainGeometry = forwardRef<Mesh, {
       }
     }
     geom.computeVertexNormals();
+    const vertexColorResource = terrainData.Vcol?.[1000];
+    if (vertexColorResource) {
+      const colorsResult = decodeBugdomVertexColors(
+        vertexColorResource.data,
+        positionAttr.count,
+      );
+      if (colorsResult.isOk()) {
+        const colors = colorsResult.value.flatMap((color) => [
+          color.r,
+          color.g,
+          color.b,
+        ]);
+        geom.setAttribute("color", new Float32BufferAttribute(colors, 3));
+      }
+    }
     positionAttr.needsUpdate = true;
     return geom;
   }, [
@@ -88,6 +110,7 @@ export const TerrainGeometry = forwardRef<Mesh, {
     globals.TILE_INGAME_SIZE,
     header,
     terrainData.YCrd,  // Include YCrd to rebuild geometry on changes
+    terrainData.Vcol,
   ]);
 
   const combinedTexture = useMemo(() => {
@@ -122,6 +145,7 @@ export const TerrainGeometry = forwardRef<Mesh, {
         side={DoubleSide}
         needsUpdate={true}
         map={combinedTexture}
+        vertexColors={geometry.getAttribute("color") !== undefined}
       />
     </mesh>
   );

@@ -1234,18 +1234,18 @@ export function SpriteViewer() {
           : "No file";
 
   return (
-    <div className="h-full overflow-hidden bg-gray-900 p-4 text-white">
+    <div className="h-full overflow-hidden bg-gray-900 p-2 text-white">
       <ResizablePanelGroup
         orientation="horizontal"
         className="h-full w-full min-w-0"
       >
         <ResizablePanel
-          defaultSize={28}
-          minSize={18}
-          className="min-h-0 min-w-0 pr-3"
+          defaultSize={30}
+          minSize={20}
+          className="min-h-0 min-w-0 pr-2"
         >
-          <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden px-2">
-            <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden py-1 pb-4">
+          <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950/80 px-3 pb-4 pt-2">
               <FileUploadPanel
                 selectedType={uploadFileType}
                 onTypeChange={setUploadFileType}
@@ -1470,9 +1470,9 @@ export function SpriteViewer() {
         <ResizableHandle withHandle />
 
         <ResizablePanel
-          defaultSize={72}
+          defaultSize={70}
           minSize={35}
-          className="min-h-0 pl-3"
+          className="min-h-0 pl-2"
         >
           <div className="h-full relative overflow-hidden rounded-lg bg-gray-800 flex flex-col">
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-800 px-3">

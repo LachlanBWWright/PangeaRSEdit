@@ -74,6 +74,7 @@ import {
   type WeightVisualizationMode,
 } from "@/modelEditing/weights/weightTypes";
 import type { ViewerInteractionMode } from "@/components/model-viewer/types";
+import { collectSceneBoneNames, createBone, removeBone } from "@/modelEditing/bones/boneEditing";
 
 type ViewerHistoryAction =
   | {
@@ -658,6 +659,9 @@ export function ModelViewer() {
       if (!scene || currentName === nextName) {
         return false;
       }
+      if (collectSceneBoneNames(scene).includes(nextName)) {
+        return false;
+      }
 
       let renamed = false;
       scene.traverse((object) => {
@@ -699,6 +703,24 @@ export function ModelViewer() {
           renameModelNodeBone(node, currentName, nextName),
         ),
       );
+      setSkinDataWithScene((current) => {
+        const source = current?.scene === scene ? current.data : skinData;
+        if (!source) return current;
+        const data = {
+          boneNames: source.boneNames.map((name) =>
+            name === currentName ? nextName : name,
+          ),
+          vertices: source.vertices.map((vertex) => ({
+            ...vertex,
+            influences: vertex.influences.map((influence) =>
+              influence.boneName === currentName
+                ? { ...influence, boneName: nextName }
+                : influence,
+            ),
+          })),
+        };
+        return { scene, data };
+      });
       setSelectedBoneName(nextName);
       setBoneRenameInput(nextName);
       setWeightBrushSettings((current) =>
@@ -709,7 +731,7 @@ export function ModelViewer() {
 
       return true;
     },
-    [scene],
+    [scene, skinData],
   );
 
   const applyViewerHistoryAction = useCallback(
@@ -946,13 +968,92 @@ export function ModelViewer() {
     selectedBoneName,
   ]);
 
-  const boneInfluenceRows = useMemo(
-    () =>
-      skinData
-        ? collectBoneInfluenceRowsFromSkinData(skinData)
-        : collectBoneInfluenceRows(scene),
-    [scene, skinData],
+  const handleCreateBone = useCallback(
+    (baseName: string) => {
+      if (!scene) return;
+      const names = new Set(collectSceneBoneNames(scene));
+      let suffix = 1;
+      let name = baseName;
+      while (names.has(name)) name = `${baseName}${suffix++}`;
+      const result = createBone(scene, name, selectedBoneName, skinData);
+      if (result.isErr()) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.value.skinData) setSkinDataWithScene({ scene, data: result.value.skinData });
+      setBg3dParsed((current) => {
+        if (!current?.skeleton) return current;
+        const parentBone = current.skeleton.bones.findIndex((bone) => bone.name === selectedBoneName);
+        const bones = [...current.skeleton.bones, {
+          parentBone,
+          name,
+          coordX: 0,
+          coordY: 0,
+          coordZ: 0,
+          numPointsAttachedToBone: 0,
+          numNormalsAttachedToBone: 0,
+        }];
+        return { ...current, skeleton: { ...current.skeleton, bones, numJoints: bones.length } };
+      });
+      setSceneUpdateRevision((revision) => revision + 1);
+      handleBoneSelectionChange(name);
+      toast.success(`Created bone '${name}'`);
+    },
+    [handleBoneSelectionChange, scene, selectedBoneName, skinData],
   );
+
+  const handleRemoveSelectedBone = useCallback(() => {
+    if (!scene || !selectedBoneName) return;
+    const removedName = selectedBoneName;
+    const result = removeBone(scene, removedName, skinData);
+    if (result.isErr()) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.value.skinData) {
+      applyWeightEditToScene(scene, result.value.skinData);
+      setSkinDataWithScene({ scene, data: result.value.skinData });
+    }
+    const animationsWithoutBone = latestAnimationsRef.current.map((animation) => {
+      const clip = animation.clip.clone();
+      clip.tracks = clip.tracks.filter(
+        (track) => !track.name.startsWith(`${removedName}.`),
+      );
+      return { ...animation, clip };
+    });
+    latestAnimationsRef.current = animationsWithoutBone;
+    setAnimations(animationsWithoutBone);
+    setBg3dParsed((current) => {
+      if (!current?.skeleton) return current;
+      const removedIndex = current.skeleton.bones.findIndex((bone) => bone.name === removedName);
+      if (removedIndex < 0) return current;
+      const bones = current.skeleton.bones
+        .filter((_, index) => index !== removedIndex)
+        .map((bone) => ({
+          ...bone,
+          parentBone: bone.parentBone === removedIndex
+            ? current.skeleton?.bones[removedIndex]?.parentBone ?? -1
+            : bone.parentBone > removedIndex ? bone.parentBone - 1 : bone.parentBone,
+        }));
+      return { ...current, skeleton: { ...current.skeleton, bones, numJoints: bones.length } };
+    });
+    setSceneUpdateRevision((revision) => revision + 1);
+    handleBoneSelectionChange(result.value.parentName);
+    toast.success(`Removed bone '${removedName}'`);
+  }, [handleBoneSelectionChange, scene, selectedBoneName, skinData]);
+
+  const boneInfluenceRows = (() => {
+    const weightedRows = skinData
+        ? collectBoneInfluenceRowsFromSkinData(skinData)
+        : collectBoneInfluenceRows(scene);
+    const weightedNames = new Set(weightedRows.map((row) => row.boneName));
+    const unweightedRows = scene
+      ? collectSceneBoneNames(scene)
+          .filter((name) => !weightedNames.has(name))
+          .map((boneName) => ({ boneName, vertexCount: 0, weightedSum: 0 }))
+      : [];
+    return [...weightedRows, ...unweightedRows];
+  })();
 
   const displayedBoneInfluenceRows = useMemo(() => {
     if (!selectedBoneName) {
@@ -1454,6 +1555,10 @@ export function ModelViewer() {
                       onSelectBone={handleBoneSelectionChange}
                       onBoneRenameInputChange={setBoneRenameInput}
                       onRenameSelectedBone={handleRenameSelectedBone}
+                      onCreateBone={handleCreateBone}
+                      onRemoveSelectedBone={handleRemoveSelectedBone}
+                      gizmoMode={gizmoMode}
+                      onGizmoModeChange={handleGizmoModeChange}
                       onBrushSettingsChange={handleWeightBrushSettingsChange}
                       onRepairWeights={handleRepairWeights}
                     />

@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { LevelEditor } from "./pages/LevelEditor";
 import { ModelViewer } from "./pages/ModelViewer";
@@ -8,7 +8,6 @@ import { TestModelViewer } from "./pages/TestModelViewer";
 import { ItemModelViewer } from "./pages/ItemModelViewer";
 import { ItemAuditPage } from "./pages/ItemAuditPage";
 import { MultiplayerPage } from "./pages/Multiplayer";
-import { FeatureFlagsPage } from "./pages/FeatureFlags";
 import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,11 +35,10 @@ export function App() {
                   featureFlags.multiplayer ? (
                     <MultiplayerPage />
                   ) : (
-                    <FeatureFlagsPage />
+                    <Navigate to="/" replace />
                   )
                 }
               />
-              <Route path="/feature-flags" element={<FeatureFlagsPage />} />
               <Route path="*" element={<LevelEditor />} />
             </Routes>
           </div>

@@ -8,7 +8,6 @@ import {
   TileViews,
   TopologyBrushMode,
   TopologyBrushRadius,
-  TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
   TileEditingEnabled,
@@ -40,9 +39,9 @@ import {
   getTabForTileView,
   getTileMenuFlags,
   getTileViewForTab,
-  parseFiniteNumber,
   parseIntOrZero,
 } from "@/editor/subviews/tiles/tilesMenuState";
+import { TopologyOpacityControl } from "./TopologyOpacityControl";
 
 export function TilesMenu({
   headerData,
@@ -56,7 +55,6 @@ export function TilesMenu({
   const [valueMode, setValueMode] = useAtom(CurrentTopologyValueMode);
   const [brushRadius, setBrushRadius] = useAtom(TopologyBrushRadius);
   const [value, setValue] = useAtom(TopologyValue);
-  const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setShow3DSplines] = useAtom(Show3DSplines);
   const [, setShow3DItems] = useAtom(Show3DItems);
@@ -211,15 +209,7 @@ export function TilesMenu({
             <Input type="number" value={minY} onChange={handleMinYChange} />
             <p>Max Height</p>
             <Input type="number" value={maxY} onChange={handleMaxYChange} />
-            <p>Topology View Opacity</p>
-            <Input
-              type="number"
-              defaultValue={toplogyOpacity}
-              onChange={(e) => {
-                const nextValue = parseFiniteNumber(e.target.value);
-                setTopologyOpacity(nextValue ?? 1);
-              }}
-            />
+            <TopologyOpacityControl />
 
             <div className="flex flex-row justify-between gap-2 items-center col-span-2">
               <div className="flex items-center gap-2">

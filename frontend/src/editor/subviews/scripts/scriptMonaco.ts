@@ -1,11 +1,28 @@
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+import { z } from "zod";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
-import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
-import { buildApiUrl } from "@/api/apiBase";
-import { buildScriptTypeDeclarationFiles } from "./scriptTypeDeclarations";
+import { hasConfiguredApiEndpoint } from "@/api/apiBase";
 import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
+import { scriptLspClient } from "./scriptLspClient";
+import {
+  buildNativeIdSnippet,
+  getContextualApiName,
+} from "./scriptCompletionText";
+import type {
+  LspCompletionItem,
+  LspDocumentSymbol,
+  LspLocation,
+  LspRange,
+} from "./scriptLspSchemas";
+import {
+  lspCompletionResultSchema,
+  lspDocumentSymbolSchema,
+  lspHoverSchema,
+  lspLocationSchema,
+  lspLocationsSchema,
+} from "./scriptLspSchemas";
 
 declare global {
   interface Window {
@@ -17,221 +34,7 @@ declare global {
 
 let configured = false;
 
-// Stream parser for Content-Length delimited JSON-RPC messages from stdio
-class LspStreamParser {
-  private buffer = "";
-  public onMessage: (message: any) => void = () => {};
-
-  public append(chunk: string) {
-    this.buffer += chunk;
-    this.parse();
-  }
-
-  private parse() {
-    while (true) {
-      const headerIndex = this.buffer.indexOf("Content-Length:");
-      if (headerIndex === -1) break;
-
-      const newlineIndex = this.buffer.indexOf("\r\n\r\n", headerIndex);
-      if (newlineIndex === -1) break;
-
-      const header = this.buffer.substring(headerIndex, newlineIndex);
-      const contentLengthMatch = header.match(/Content-Length:\s*(\d+)/i);
-      if (!contentLengthMatch) {
-        this.buffer = this.buffer.substring(newlineIndex + 4);
-        continue;
-      }
-
-      const contentLength = parseInt(contentLengthMatch[1]!, 10);
-      const bodyStartIndex = newlineIndex + 4;
-      if (this.buffer.length < bodyStartIndex + contentLength) {
-        break;
-      }
-
-      const body = this.buffer.substring(bodyStartIndex, bodyStartIndex + contentLength);
-      this.buffer = this.buffer.substring(bodyStartIndex + contentLength);
-
-      try {
-        const json = JSON.parse(body);
-        this.onMessage(json);
-      } catch (e) {
-        console.error("Failed to parse LSP message body", e);
-      }
-    }
-  }
-}
-
-class LspClient {
-  private connection: HubConnection | null = null;
-  private parser = new LspStreamParser();
-  private nextRequestId = 0;
-  private pendingRequests = new Map<number, { resolve: (val: any) => void; reject: (err: any) => void }>();
-  public status: "disconnected" | "connecting" | "connected" | "unavailable" = "disconnected";
-  private gameId = "";
-  private state: ScriptWorkspaceState | null = null;
-
-  constructor() {
-    this.parser.onMessage = (message) => {
-      if (message.id !== undefined) {
-        const pending = this.pendingRequests.get(message.id);
-        if (pending) {
-          this.pendingRequests.delete(message.id);
-          if (message.error) {
-            pending.reject(message.error);
-          } else {
-            pending.resolve(message.result);
-          }
-        }
-      } else if (message.method === "textDocument/publishDiagnostics") {
-        this.handlePublishDiagnostics(message.params);
-      }
-    };
-  }
-
-  public async connect(state: ScriptWorkspaceState): Promise<void> {
-    this.state = state;
-
-    if (this.status === "connected" && this.gameId === state.context.gameId) {
-      await this.syncWorkspaceFiles();
-      return;
-    }
-
-    this.gameId = state.context.gameId;
-    this.status = "connecting";
-
-    try {
-      const url = buildApiUrl("/api/lsp");
-      this.connection = new HubConnectionBuilder()
-        .withUrl(url, { withCredentials: true })
-        .withAutomaticReconnect()
-        .configureLogging(LogLevel.Warning)
-        .build();
-
-      this.connection.on("ReceiveLspMessage", (text: string) => {
-        this.parser.append(text);
-      });
-
-      this.connection.on("ReceiveLspError", (text: string) => {
-        console.warn("LuaLS stderr:", text);
-      });
-
-      await this.connection.start();
-      
-      const success = await this.connection.invoke<boolean>("InitializeSession", this.gameId);
-      if (!success) {
-        this.status = "unavailable";
-        return;
-      }
-
-      this.status = "connected";
-
-      // Synchronize all workspace files
-      await this.syncWorkspaceFiles();
-
-      // Send standard LSP initialize request
-      await this.sendLspRequest("initialize", {
-        processId: null,
-        rootUri: "file:///workspace",
-        capabilities: {
-          textDocument: {
-            completion: { completionItem: { snippetSupport: true } },
-            hover: {},
-            definition: {},
-            references: {},
-            documentSymbol: {},
-          }
-        }
-      });
-
-      await this.sendLspNotification("initialized", {});
-    } catch (e) {
-      console.warn("LSP connection failed. Degrading to snippets.", e);
-      this.status = "unavailable";
-    }
-  }
-
-  public disconnect(): void {
-    if (this.connection) {
-      this.connection.stop();
-      this.connection = null;
-    }
-    this.status = "disconnected";
-    this.pendingRequests.clear();
-  }
-
-  private async syncWorkspaceFiles(): Promise<void> {
-    if (!this.connection || !this.state) return;
-
-    // Sync user source files
-    for (const file of Object.values(this.state.sourceFiles)) {
-      await this.connection.invoke("SyncFile", file.path, file.content);
-    }
-
-    // Sync generated declaration files
-    const typeFiles = buildScriptTypeDeclarationFiles(this.state);
-    for (const file of typeFiles) {
-      await this.connection.invoke("SyncFile", file.path, file.content);
-    }
-  }
-
-  public sendLspRequest(method: string, params: any): Promise<any> {
-    if (this.status !== "connected" || !this.connection) {
-      return Promise.reject(new Error("LSP client not connected"));
-    }
-
-    const id = ++this.nextRequestId;
-    const payload = JSON.stringify({
-      jsonrpc: "2.0",
-      id,
-      method,
-      params
-    });
-    const formatted = `Content-Length: ${payload.length}\r\n\r\n${payload}`;
-
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve, reject });
-      this.connection!.invoke("SendLspMessage", formatted).catch((err) => {
-        this.pendingRequests.delete(id);
-        reject(err);
-      });
-    });
-  }
-
-  public sendLspNotification(method: string, params: any): Promise<void> {
-    if (this.status !== "connected" || !this.connection) {
-      return Promise.resolve();
-    }
-
-    const payload = JSON.stringify({
-      jsonrpc: "2.0",
-      method,
-      params
-    });
-    const formatted = `Content-Length: ${payload.length}\r\n\r\n${payload}`;
-    return this.connection.invoke("SendLspMessage", formatted);
-  }
-
-  private handlePublishDiagnostics(params: any) {
-    const uri = params.uri;
-    const model = monaco.editor.getModels().find((m) => m.uri.toString() === uri);
-    if (!model) return;
-
-    const markers = params.diagnostics.map((diag: any) => ({
-      severity: diag.severity === 1 ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
-      message: diag.message,
-      startLineNumber: diag.range.start.line + 1,
-      startColumn: diag.range.start.character + 1,
-      endLineNumber: diag.range.end.line + 1,
-      endColumn: diag.range.end.character + 1
-    }));
-
-    monaco.editor.setModelMarkers(model, "luals", markers);
-  }
-}
-
-export const lspClient = new LspClient();
-
-function mapLspRange(range: any): monaco.IRange {
+function mapLspRange(range: LspRange): monaco.IRange {
   return {
     startLineNumber: range.start.line + 1,
     startColumn: range.start.character + 1,
@@ -240,14 +43,17 @@ function mapLspRange(range: any): monaco.IRange {
   };
 }
 
-function mapLspLocation(location: any): monaco.languages.Location {
+function mapLspLocation(location: LspLocation): monaco.languages.Location {
   return {
-    uri: monaco.Uri.parse(location.uri),
+    uri: scriptLspClient.clientUri(location.uri),
     range: mapLspRange(location.range)
   };
 }
 
-function mapLspCompletionItem(item: any, range: monaco.IRange): monaco.languages.CompletionItem {
+function mapLspCompletionItem(
+  item: LspCompletionItem,
+  range: monaco.IRange,
+): monaco.languages.CompletionItem {
   const kindMap: Record<number, number> = {
     1: monaco.languages.CompletionItemKind.Text,
     2: monaco.languages.CompletionItemKind.Method,
@@ -278,7 +84,9 @@ function mapLspCompletionItem(item: any, range: monaco.IRange): monaco.languages
 
   return {
     label: item.label,
-    kind: kindMap[item.kind] ?? monaco.languages.CompletionItemKind.Property,
+    kind: item.kind === undefined
+      ? monaco.languages.CompletionItemKind.Property
+      : kindMap[item.kind] ?? monaco.languages.CompletionItemKind.Property,
     detail: item.detail,
     documentation: item.documentation,
     insertText: item.insertText ?? item.label,
@@ -286,8 +94,31 @@ function mapLspCompletionItem(item: any, range: monaco.IRange): monaco.languages
   };
 }
 
+function mapDocumentSymbol(
+  symbol: LspDocumentSymbol,
+): monaco.languages.DocumentSymbol {
+  return {
+    name: symbol.name,
+    detail: symbol.detail ?? "",
+    kind: symbol.kind,
+    tags: symbol.tags ?? [],
+    range: mapLspRange(symbol.range),
+    selectionRange: mapLspRange(symbol.selectionRange),
+    children: symbol.children?.map(mapDocumentSymbol) ?? [],
+  };
+}
+
+function getHoverValue(content: unknown): string | null {
+  const stringResult = z.string().safeParse(content);
+  if (stringResult.success) return stringResult.data;
+  const valueResult = z.object({ value: z.string() }).safeParse(content);
+  return valueResult.success ? valueResult.data.value : null;
+}
+
 function buildCompletionItems(
   state: ScriptWorkspaceState,
+  model: monaco.editor.ITextModel,
+  position: monaco.Position,
   range: monaco.IRange,
 ): readonly monaco.languages.CompletionItem[] {
   const getHookContextType = (hookId: string): string => {
@@ -321,50 +152,76 @@ function buildCompletionItems(
               : buildHookSnippet(hookId, "$0"),
   }));
 
+  const linePrefix = model
+    .getLineContent(position.lineNumber)
+    .slice(0, position.column - 1);
+  const contextualApiName = (qualifiedName: string): string =>
+    getContextualApiName(linePrefix, qualifiedName);
+  const game = AUTHORITATIVE_API_SCHEMA.games.find(
+    (candidate) => candidate.gameId === state.context.gameId,
+  );
+  const nativeSpawns = game?.nativeSpawns ?? [];
+  const nativeSpawnIds = nativeSpawns.map((nativeSpawn) => nativeSpawn.id);
+  const nativeIdSnippet = buildNativeIdSnippet(nativeSpawnIds);
   const apiItems = [
     {
       label: "pangea.log.info",
       kind: monaco.languages.CompletionItemKind.Function,
       range,
       documentation: "Log an informational message.",
-      insertText: 'pangea.log.info("${1:message}")',
+      insertText: `${contextualApiName("pangea.log.info")}("\${1:message}")`,
     },
     {
       label: "pangea.log.warn",
       kind: monaco.languages.CompletionItemKind.Function,
       range,
       documentation: "Log a warning message.",
-      insertText: 'pangea.log.warn("${1:message}")',
+      insertText: `${contextualApiName("pangea.log.warn")}("\${1:message}")`,
     },
     {
       label: "pangea.log.error",
       kind: monaco.languages.CompletionItemKind.Function,
       range,
       documentation: "Log an error message.",
-      insertText: 'pangea.log.error("${1:message}")',
+      insertText: `${contextualApiName("pangea.log.error")}("\${1:message}")`,
     },
     {
       label: "pangea.object.position",
       kind: monaco.languages.CompletionItemKind.Function,
       range,
       documentation: "Read the current position for an object handle.",
-      insertText: "pangea.object.position(${1:handle})",
+      insertText: `${contextualApiName("pangea.object.position")}(\${1:handle})`,
     },
     {
       label: "pangea.object.setPosition",
       kind: monaco.languages.CompletionItemKind.Function,
       range,
       documentation: "Update an object handle position from Lua.",
-      insertText: "pangea.object.setPosition(${1:handle}, { x = ${2:0}, y = ${3:0}, z = ${4:0} })",
+      insertText: `${contextualApiName("pangea.object.setPosition")}(\${1:handle}, { x = \${2:0}, y = \${3:0}, z = \${4:0} })`,
     },
     {
       label: "pangea.spawn.native",
       kind: monaco.languages.CompletionItemKind.Function,
       range,
       documentation: "Spawn a native game object at a position.",
-      insertText: 'pangea.spawn.native("${1:native-id}", { x = ${2:0}, y = ${3:0}, z = ${4:0} })',
+      insertText: `${contextualApiName("pangea.spawn.native")}("${nativeIdSnippet}", { x = \${2:0}, y = \${3:0}, z = \${4:0} })`,
+      insertTextRules:
+        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
     },
-  ];
+  ].map((item) => ({
+    ...item,
+    insertTextRules:
+      monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+  }));
+
+  const nativeSpawnItems = nativeSpawns.map((nativeSpawn) => ({
+    label: nativeSpawn.id,
+    kind: monaco.languages.CompletionItemKind.EnumMember,
+    range,
+    detail: `${nativeSpawn.category} — ${nativeSpawn.label}`,
+    documentation: nativeSpawn.description,
+    insertText: JSON.stringify(nativeSpawn.id),
+  }));
 
   const tagItems = state.context.allowedTags.map((tag) => ({
     label: tag.id,
@@ -377,6 +234,7 @@ function buildCompletionItems(
   return [
     ...hookItems,
     ...apiItems,
+    ...nativeSpawnItems,
     ...tagItems,
     {
       label: "local pangea = require('pangea')",
@@ -409,7 +267,7 @@ export function ensureScriptMonacoConfigured(): void {
   }
 
   window.MonacoEnvironment = {
-    getWorker(_moduleId, _label) {
+    getWorker() {
       return new editorWorker();
     },
   };
@@ -423,8 +281,12 @@ export function configureScriptMonaco(
 ): readonly monaco.IDisposable[] {
   ensureScriptMonacoConfigured();
 
-  // Try to connect to LSP in background
-  lspClient.connect(state);
+  if (hasConfiguredApiEndpoint()) {
+    void scriptLspClient.connect(state).match(
+      () => undefined,
+      () => undefined,
+    );
+  }
 
   const completionDisposable = monaco.languages.registerCompletionItemProvider(
     "lua",
@@ -433,28 +295,28 @@ export function configureScriptMonaco(
       async provideCompletionItems(model, position) {
         const range = buildCompletionRange(model, position);
 
-        if (lspClient.status === "connected") {
-          try {
-            const result = await lspClient.sendLspRequest("textDocument/completion", {
-              textDocument: { uri: model.uri.toString() },
+        if (scriptLspClient.status === "connected") {
+          const result = await scriptLspClient.request("textDocument/completion", {
+              textDocument: { uri: scriptLspClient.documentUri(model) },
               position: { line: position.lineNumber - 1, character: position.column - 1 }
             });
-
-            if (result) {
-              const items = Array.isArray(result) ? result : result.items || [];
+          if (result.isOk()) {
+            const parsed = lspCompletionResultSchema.safeParse(result.value);
+            if (parsed.success) {
+              const items = Array.isArray(parsed.data)
+                ? parsed.data
+                : parsed.data.items;
               return {
-                suggestions: items.map((item: any) => mapLspCompletionItem(item, range))
+                suggestions: items.map((item) => mapLspCompletionItem(item, range)),
               };
             }
-          } catch (e) {
-            console.warn("LSP completion failed, falling back to snippets", e);
           }
         }
 
         // Fallback to snippets
         return {
           suggestions: [
-            ...buildCompletionItems(state, range),
+            ...buildCompletionItems(state, model, position, range),
           ],
         };
       },
@@ -465,23 +327,27 @@ export function configureScriptMonaco(
     "lua",
     {
       async provideHover(model, position) {
-        if (lspClient.status !== "connected") return null;
-
-        try {
-          const result = await lspClient.sendLspRequest("textDocument/hover", {
-            textDocument: { uri: model.uri.toString() },
+        if (scriptLspClient.status !== "connected") return null;
+        const result = await scriptLspClient.request("textDocument/hover", {
+            textDocument: { uri: scriptLspClient.documentUri(model) },
             position: { line: position.lineNumber - 1, character: position.column - 1 }
           });
-
-          if (result && result.contents) {
-            const contents = Array.isArray(result.contents) ? result.contents : [result.contents];
-            return {
-              range: mapLspRange(result.range || { start: { line: position.lineNumber - 1, character: position.column - 1 }, end: { line: position.lineNumber - 1, character: position.column } }),
-              contents: contents.map((c: any) => typeof c === "string" ? { value: c } : { value: c.value })
-            };
-          }
-        } catch { }
-        return null;
+        if (result.isErr()) return null;
+        const parsed = lspHoverSchema.safeParse(result.value);
+        if (!parsed.success) return null;
+        const rawContents = Array.isArray(parsed.data.contents)
+          ? parsed.data.contents
+          : [parsed.data.contents];
+        const contents = rawContents
+          .map(getHoverValue)
+          .flatMap((value) => value === null ? [] : [{ value }]);
+        return {
+          range: mapLspRange(parsed.data.range ?? {
+            start: { line: position.lineNumber - 1, character: position.column - 1 },
+            end: { line: position.lineNumber - 1, character: position.column },
+          }),
+          contents,
+        };
       }
     }
   );
@@ -490,22 +356,17 @@ export function configureScriptMonaco(
     "lua",
     {
       async provideDefinition(model, position) {
-        if (lspClient.status !== "connected") return null;
-
-        try {
-          const result = await lspClient.sendLspRequest("textDocument/definition", {
-            textDocument: { uri: model.uri.toString() },
+        if (scriptLspClient.status !== "connected") return null;
+        const result = await scriptLspClient.request("textDocument/definition", {
+            textDocument: { uri: scriptLspClient.documentUri(model) },
             position: { line: position.lineNumber - 1, character: position.column - 1 }
           });
-
-          if (result) {
-            if (Array.isArray(result)) {
-              return result.map(mapLspLocation);
-            }
-            return mapLspLocation(result);
-          }
-        } catch { }
-        return null;
+        if (result.isErr()) return null;
+        const parsed = lspLocationsSchema.safeParse(result.value);
+        if (!parsed.success) return null;
+        return Array.isArray(parsed.data)
+          ? parsed.data.map(mapLspLocation)
+          : mapLspLocation(parsed.data);
       }
     }
   );
@@ -514,20 +375,15 @@ export function configureScriptMonaco(
     "lua",
     {
       async provideReferences(model, position, context) {
-        if (lspClient.status !== "connected") return null;
-
-        try {
-          const result = await lspClient.sendLspRequest("textDocument/references", {
-            textDocument: { uri: model.uri.toString() },
+        if (scriptLspClient.status !== "connected") return null;
+        const result = await scriptLspClient.request("textDocument/references", {
+            textDocument: { uri: scriptLspClient.documentUri(model) },
             position: { line: position.lineNumber - 1, character: position.column - 1 },
             context
           });
-
-          if (result && Array.isArray(result)) {
-            return result.map(mapLspLocation);
-          }
-        } catch { }
-        return null;
+        if (result.isErr()) return null;
+        const parsed = z.array(lspLocationSchema).safeParse(result.value);
+        return parsed.success ? parsed.data.map(mapLspLocation) : null;
       }
     }
   );
@@ -536,49 +392,34 @@ export function configureScriptMonaco(
     "lua",
     {
       async provideDocumentSymbols(model) {
-        if (lspClient.status !== "connected") return null;
-
-        try {
-          const result = await lspClient.sendLspRequest("textDocument/documentSymbol", {
-            textDocument: { uri: model.uri.toString() }
+        if (scriptLspClient.status !== "connected") return null;
+        const result = await scriptLspClient.request("textDocument/documentSymbol", {
+            textDocument: { uri: scriptLspClient.documentUri(model) }
           });
-
-          if (result && Array.isArray(result)) {
-            // Map LSP DocumentSymbol to Monaco DocumentSymbol
-            const mapSymbol = (sym: any): monaco.languages.DocumentSymbol => ({
-              name: sym.name,
-              detail: sym.detail || "",
-              kind: sym.kind,
-              tags: sym.tags || [],
-              range: mapLspRange(sym.range),
-              selectionRange: mapLspRange(sym.selectionRange),
-              children: sym.children ? sym.children.map(mapSymbol) : []
-            });
-            return result.map(mapSymbol);
-          }
-        } catch { }
-        return null;
+        if (result.isErr()) return null;
+        const parsed = z.array(lspDocumentSymbolSchema).safeParse(result.value);
+        return parsed.success ? parsed.data.map(mapDocumentSymbol) : null;
       }
     }
   );
 
   // Monitor model changes to send textDocument/didChange
   const contentChangeDisposable = monaco.editor.onDidCreateModel((model) => {
-    if (model.getModeId() !== "lua") return;
+    if (model.getLanguageId() !== "lua") return;
 
-    lspClient.sendLspNotification("textDocument/didOpen", {
+    void scriptLspClient.notify("textDocument/didOpen", {
       textDocument: {
-        uri: model.uri.toString(),
+        uri: scriptLspClient.documentUri(model),
         languageId: "lua",
         version: 1,
         text: model.getValue()
       }
-    });
+    }).match(() => undefined, () => undefined);
 
     const modelChangeSub = model.onDidChangeContent((e) => {
-      lspClient.sendLspNotification("textDocument/didChange", {
+      void scriptLspClient.notify("textDocument/didChange", {
         textDocument: {
-          uri: model.uri.toString(),
+          uri: scriptLspClient.documentUri(model),
           version: model.getVersionId()
         },
         contentChanges: e.changes.map((c) => ({
@@ -589,14 +430,14 @@ export function configureScriptMonaco(
           rangeLength: c.rangeLength,
           text: c.text
         }))
-      });
+      }).match(() => undefined, () => undefined);
     });
 
     model.onWillDispose(() => {
       modelChangeSub.dispose();
-      lspClient.sendLspNotification("textDocument/didClose", {
-        textDocument: { uri: model.uri.toString() }
-      });
+      void scriptLspClient.notify("textDocument/didClose", {
+        textDocument: { uri: scriptLspClient.documentUri(model) }
+      }).match(() => undefined, () => undefined);
     });
   });
 
@@ -606,6 +447,14 @@ export function configureScriptMonaco(
     definitionDisposable,
     referencesDisposable,
     symbolDisposable,
-    contentChangeDisposable
+    contentChangeDisposable,
+    {
+      dispose: () => {
+        void scriptLspClient.disconnect().match(
+          () => undefined,
+          () => undefined,
+        );
+      },
+    },
   ];
 }

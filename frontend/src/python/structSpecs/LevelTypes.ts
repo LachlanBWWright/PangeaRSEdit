@@ -38,6 +38,11 @@ export interface TileAttribute {
   flags: number;
   p0: number;
   p1: number;
+  bits?: number;
+  parm0?: number;
+  parm1?: number;
+  parm2?: number;
+  undefined?: number;
 }
 
 export interface ExtendedTileAttribute {
@@ -148,6 +153,24 @@ export interface Checkpoint {
   x2: number;
   z1: number;
   z2: number;
+}
+
+export interface PathDefinition {
+  flags: number;
+  p0: number;
+  p1: number;
+  p2: number;
+  numNubs: number;
+  numPoints: number;
+  bbTop: number;
+  bbLeft: number;
+  bbBottom: number;
+  bbRight: number;
+}
+
+export interface PathPoint {
+  x: number;
+  z: number;
 }
 
 // DATA SECTION INTERFACES (Resource format wrappers)
@@ -316,6 +339,29 @@ export interface TerrainData<
       order: number;
     }
   >;
+  CkPt?: {
+    1000: {
+      name?: "Checkpoint List";
+      obj: Checkpoint[];
+      order?: number;
+    };
+  };
+  Path?: {
+    1000: {
+      name?: "Path List";
+      obj: PathDefinition[];
+      order?: number;
+    };
+  };
+  PaPt?: Record<
+    number,
+    {
+      name?: "Path Point List";
+      obj: PathPoint[];
+      order?: number;
+    }
+  >;
+  nanosaurPathLayer?: number[];
   alis: Record<
     number,
     {
@@ -326,6 +372,15 @@ export interface TerrainData<
   >;
   _metadata: LevelMetadata;
     tileset?: unknown;
+}
+
+export interface Checkpoint {
+  unused: number;
+  infoBits: number;
+  x1: number;
+  x2: number;
+  z1: number;
+  z2: number;
 }
 
 // COMPLETE LEVEL DATA INTERFACE

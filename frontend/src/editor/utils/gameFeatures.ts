@@ -20,6 +20,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: false,
         hasElectricFloorOptions: true,
         hasCheckpoints: false,
+        hasPaths: false,
       };
 
     case Game.BUGDOM:
@@ -30,6 +31,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: true,
         hasElectricFloorOptions: false,
         hasCheckpoints: false,
+        hasPaths: false,
       };
 
     case Game.BUGDOM_2:
@@ -40,6 +42,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: false,
         hasElectricFloorOptions: false,
         hasCheckpoints: true,
+        hasPaths: false,
       };
 
     case Game.NANOSAUR:
@@ -50,6 +53,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: true,
         hasElectricFloorOptions: false,
         hasCheckpoints: false,
+        hasPaths: false,
       };
 
     case Game.NANOSAUR_2:
@@ -60,6 +64,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: false,
         hasElectricFloorOptions: false,
         hasCheckpoints: true,
+        hasPaths: false,
       };
 
     case Game.CRO_MAG:
@@ -69,7 +74,8 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         supportsSplines: true,
         usesIndividualTiles: false,
         hasElectricFloorOptions: false,
-        hasCheckpoints: false,
+        hasCheckpoints: true,
+        hasPaths: true,
       };
 
     case Game.BILLY_FRONTIER:
@@ -80,6 +86,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: false,
         hasElectricFloorOptions: false,
         hasCheckpoints: true,
+        hasPaths: false,
       };
 
     case Game.MIGHTY_MIKE:
@@ -90,6 +97,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: true,
         hasElectricFloorOptions: false,
         hasCheckpoints: false,
+        hasPaths: false,
       };
 
     default:
@@ -101,6 +109,7 @@ export function getGameFeatures(gameType: Game): GameFeatures {
         usesIndividualTiles: false,
         hasElectricFloorOptions: false,
         hasCheckpoints: false,
+        hasPaths: false,
       };
   }
 }

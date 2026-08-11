@@ -177,13 +177,13 @@ export async function parseMightyMikeFile(
               flags: attribute.flags,
               p0: attribute.p0,
               p1: attribute.p1,
+              p2: attribute.p2,
             }),
           ) ??
-          new Array(tilesetData?.numTileDefinitions || 100).fill({
-            flags: 0,
-            p0: 0,
-            p1: 0,
-          }),
+          Array.from(
+            { length: tilesetData?.numTileDefinitions || 100 },
+            () => ({ flags: 0, p0: 0, p1: 0, p2: 0 }),
+          ),
         order: 6,
       },
     },

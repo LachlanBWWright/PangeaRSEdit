@@ -208,7 +208,7 @@ export async function saveEditedImage(
 }
 
 export function isPaletteTileInUse(
-  layr: number[],
+  _layr: number[],
   selectedPaletteTile: number,
   xlatTable: unknown[] | undefined,
 ): boolean {
@@ -223,8 +223,7 @@ export function isPaletteTileInUse(
     matchingLogicalIndices.add(selectedPaletteTile);
   }
 
-  if (matchingLogicalIndices.size === 0) return false;
-  return layr.some((tileIndex) => matchingLogicalIndices.has(tileIndex));
+  return matchingLogicalIndices.size > 0;
 }
 
 export function removePaletteTile(
@@ -239,30 +238,22 @@ export function removePaletteTile(
     const xlat = data.Xlat?.[1000]?.obj;
     if (!xlat) return;
 
-    const keptEntries = xlat
-      .map((entry, logicalIndex) => ({ entry, logicalIndex }))
-      .filter(({ entry }) => getXlatEntryIndex(entry) !== selectedPaletteTile);
-
-    const logicalIndexMap = new Map<number, number>();
-    keptEntries.forEach(({ logicalIndex }, nextLogicalIndex) => {
-      logicalIndexMap.set(logicalIndex, nextLogicalIndex);
-    });
-
     const xlatEntry = data.Xlat?.[1000];
     if (!xlatEntry) return;
 
-    xlatEntry.obj = keptEntries.map(({ entry }) => {
+    xlatEntry.obj = xlat.map((entry) => {
       const idx = getXlatEntryIndex(entry);
       const newIdx =
         idx !== null && idx > selectedPaletteTile ? idx - 1 : getNumber(idx);
       return { idx: newIdx };
     });
 
-    const layrEntry = data.Layr?.[1000];
-    if (!layrEntry) return;
-    layrEntry.obj = layrEntry.obj.map(
-      (logicalIndex) => logicalIndexMap.get(logicalIndex) ?? logicalIndex,
-    );
+    if (isRecord(data.tileset) && isArray(data.tileset.xlateTable)) {
+      data.tileset.xlateTable = data.tileset.xlateTable.map((entry) => {
+        const idx = getNumber(entry);
+        return idx > selectedPaletteTile ? idx - 1 : idx;
+      });
+    }
     syncMightyMikeTileValuesFromLayer(data);
   });
 }

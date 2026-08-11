@@ -93,7 +93,14 @@ describe("item citation source audit", () => {
     ].join("\n");
 
     expect(citationMatchesSourceLine(citation, source, 0)).toBe(false);
-    expect(citationMatchesSourceLine(citation, source, 1)).toBe(true);
+    expect(citationMatchesSourceLine(citation, source, 1)).toBe(false);
+    expect(
+      citationMatchesSourceLine(
+        { ...citation, code: "itemPtr -> parm [ 1 ];" },
+        source,
+        1,
+      ),
+    ).toBe(true);
     expect(
       citationMatchesSourceLine({ ...citation, code: "" }, source, 1),
     ).toBe(false);

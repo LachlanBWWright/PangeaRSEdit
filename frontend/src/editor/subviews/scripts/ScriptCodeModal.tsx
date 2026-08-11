@@ -1,15 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import type { editor as MonacoEditorNamespace } from "monaco-editor";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { configureScriptMonaco, ensureScriptMonacoConfigured } from "./scriptMonaco";
 import { Button } from "@/components/ui/button";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
+import { scriptLspClient } from "./scriptLspClient";
+import { hasConfiguredApiEndpoint } from "@/api/apiBase";
 
 interface ScriptCodeModalProps {
   open: boolean;
@@ -36,6 +45,11 @@ export function ScriptCodeModal({
   onSave,
   onDelete,
 }: ScriptCodeModalProps) {
+  const lspStatus = useSyncExternalStore(
+    (listener) => scriptLspClient.subscribe(listener),
+    () => scriptLspClient.getStatus(),
+    () => "disconnected",
+  );
   const [editorContent, setEditorContent] = useState(content);
   const [hasChanges, setHasChanges] = useState(false);
   const monacoEditorRef = useRef<MonacoEditorNamespace.IStandaloneCodeEditor | null>(
@@ -146,6 +160,9 @@ export function ScriptCodeModal({
               )}
             </div>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Edit the Lua source file and save or revert its changes.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 relative">
@@ -169,8 +186,17 @@ export function ScriptCodeModal({
           />
         </div>
 
-        <div className="px-6 py-3 border-t border-slate-700 text-xs text-slate-400">
-          {filePath}
+        <div className="flex items-center justify-between gap-3 border-t border-slate-700 px-6 py-3 text-xs text-slate-400">
+          <span>{filePath}</span>
+          <span>
+            Lua intelligence: {hasConfiguredApiEndpoint()
+              ? lspStatus === "connected"
+                ? "LuaLS connected"
+                : lspStatus === "connecting"
+                  ? "connecting"
+                  : "snippets only"
+              : "snippets only"}
+          </span>
         </div>
       </DialogContent>
     </Dialog>

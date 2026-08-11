@@ -37,41 +37,43 @@ export function MightyMikeTileOperationsPanel({
 }: MightyMikeTileOperationsPanelProps) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-bold text-sm">Tile #{effectiveSelectedTile}</p>
-      <p className="text-xs text-gray-400">Palette #{selectedPaletteTile}</p>
+      <p className="font-bold text-sm">
+        Cell #{effectiveSelectedTile}
+        <span className="ml-2 font-normal text-gray-400">
+          Image #{selectedPaletteTile}
+        </span>
+      </p>
 
-      <div className="border border-gray-600 self-start">
-        <TileCanvas image={currentTileCanvas ?? undefined} size={64} />
+      <div className="grid grid-cols-[66px_1fr] gap-2">
+        <div className="self-start border border-gray-600">
+          <TileCanvas image={currentTileCanvas ?? undefined} size={64} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleEditTile}
+            disabled={currentImageIndex === null}
+          >
+            <Edit className="mr-1 h-4 w-4" /> Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDownloadTile}
+            disabled={currentImageIndex === null}
+          >
+            <Download className="mr-1 h-4 w-4" /> Download
+          </Button>
+          <div className="col-span-2">
+            <FileUpload
+              acceptType="image"
+              disabled={currentImageIndex === null}
+              handleOnChange={handleUploadTile}
+            />
+          </div>
+        </div>
       </div>
-
-      <div>
-        <p className="text-xs mb-1">Replace Image</p>
-        <FileUpload
-          acceptType="image"
-          disabled={currentImageIndex === null}
-          handleOnChange={handleUploadTile}
-        />
-      </div>
-
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={handleEditTile}
-        disabled={currentImageIndex === null}
-      >
-        <Edit className="w-4 h-4 mr-1" />
-        Edit
-      </Button>
-
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={handleDownloadTile}
-        disabled={currentImageIndex === null}
-      >
-        <Download className="w-4 h-4 mr-1" />
-        Download
-      </Button>
 
       <div className="grid grid-cols-3 gap-2">
         <Button

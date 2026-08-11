@@ -24,6 +24,18 @@ interface IndividualTileSupertilesProps {
   mapImages: HTMLCanvasElement[];
 }
 
+function individualTileSupertilesPropsEqual(
+  previous: IndividualTileSupertilesProps,
+  next: IndividualTileSupertilesProps,
+): boolean {
+  return (
+    previous.headerData === next.headerData &&
+    previous.mapImages === next.mapImages &&
+    previous.terrainData.Layr === next.terrainData.Layr &&
+    previous.terrainData.Xlat === next.terrainData.Xlat
+  );
+}
+
 export const IndividualTileSupertiles = memo(
   ({ headerData, terrainData, mapImages }: IndividualTileSupertilesProps) => {
     const globals = useAtomValue(Globals);
@@ -46,6 +58,7 @@ export const IndividualTileSupertiles = memo(
       />
     );
   },
+  individualTileSupertilesPropsEqual,
 );
 
 IndividualTileSupertiles.displayName = "IndividualTileSupertiles";

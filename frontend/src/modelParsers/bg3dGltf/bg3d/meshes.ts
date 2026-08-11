@@ -107,43 +107,26 @@ export function bg3dMeshesToGltf(
 
       // All arrays initialized to 0 (no bone influences by default)
 
-      // Apply bone influences based on Otto's point indices
-      // Each vertex can be influenced by multiple bones - we track all influences
+      // Pangea points are rigidly attached. Preserve the lowest bone index if
+      // malformed source data lists the same point under multiple bones.
       parsedSkeleton.bones.forEach((bone: BG3DBone, boneIndex: number) => {
         if (bone.pointIndices) {
           bone.pointIndices.forEach((vertexIndex: number) => {
             if (vertexIndex < numVertices) {
               const offset = vertexIndex * 4;
-
-              // Find empty slot for this influence (skip slots already used)
-              for (let slot = 0; slot < 4; slot++) {
-                if (weights[offset + slot] === 0) {
-                  joints[offset + slot] = boneIndex;
-                  weights[offset + slot] = 1.0;
-                  break;
-                }
+              if (weights[offset] === 0) {
+                joints[offset] = boneIndex;
+                weights[offset] = 1.0;
               }
             }
           });
         }
       });
 
-      // Normalize weights for each vertex
-      // If a vertex has no bone influences, assign it to root bone (bone 0)
+      // If a vertex has no bone influence, assign it to the root bone.
       for (let i = 0; i < numVertices; i++) {
         const offset = i * 4;
-        let totalWeight = 0;
-        for (let j = 0; j < 4; j++) {
-          totalWeight += weights[offset + j] ?? 0;
-        }
-
-        if (totalWeight > 0) {
-          // Normalize existing weights
-          for (let j = 0; j < 4; j++) {
-            weights[offset + j] = (weights[offset + j] ?? 0) / totalWeight;
-          }
-        } else {
-          // No bone influences - assign to root bone
+        if (weights[offset] === 0) {
           joints[offset] = 0;
           weights[offset] = 1.0;
         }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -62,7 +63,7 @@ function parseBehaviorTarget(value: string): BehaviorTarget {
 
 const HOOK_OPTIONS: Record<
   BehaviorTarget,
-  ReadonlyArray<{ id: ScriptHookId; label: string }>
+  readonly { id: ScriptHookId; label: string }[]
 > = {
   global: [
     { id: "onLevelLoad", label: "Level Load" },
@@ -93,6 +94,18 @@ const HOOK_OPTIONS: Record<
 
 function getDefaultHook(target: BehaviorTarget): ScriptHookId | null {
   return HOOK_OPTIONS[target][0]?.id ?? null;
+}
+
+function getInitialScriptLabel(
+  target: BehaviorTarget,
+  hooks: readonly ScriptHookId[] | undefined,
+): string {
+  if (target !== "global" || hooks?.length !== 1) {
+    return "";
+  }
+
+  const hook = HOOK_OPTIONS.global.find((option) => option.id === hooks[0]);
+  return hook === undefined ? "" : `${hook.label} Script`;
 }
 
 function getObjectTypeOptions(
@@ -245,7 +258,9 @@ export function DefineBehaviorModal({
   const [selectedHooks, setSelectedHooks] = useState<readonly ScriptHookId[]>(
     initialHooks ?? ["onTerrainItem"],
   );
-  const [label, setLabel] = useState("");
+  const [label, setLabel] = useState(() =>
+    getInitialScriptLabel(initialTarget, initialHooks),
+  );
   const [description, setDescription] = useState("");
   const [selectedObjectTypeId, setSelectedObjectTypeId] = useState("");
   const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
@@ -270,7 +285,7 @@ export function DefineBehaviorModal({
       return;
     }
     setTarget(initialTarget);
-    setLabel("");
+    setLabel(getInitialScriptLabel(initialTarget, initialHooks));
     setDescription("");
     setSelectedObjectTypeId("");
     setSelectedTags([]);
@@ -311,9 +326,6 @@ export function DefineBehaviorModal({
     const trimmedLabel = label.trim();
     const trimmedDescription = description.trim();
     const normalizedSourcePath = generatedSourceFilePath;
-    const selectedTagsForTarget =
-      target === "objectType" ? [selectedObjectTypeId] : [...selectedTags];
-
     if (trimmedLabel.length === 0 || selectedHooks.length === 0) {
       return;
     }
@@ -333,7 +345,7 @@ export function DefineBehaviorModal({
       id: buildScriptId(normalizedSourcePath),
       label: trimmedLabel,
       description: trimmedDescription,
-      tags: selectedTagsForTarget,
+      tags: [...selectedTags],
       objectType: target === "objectType" ? selectedObjectTypeId : undefined,
       sourceFilePath: normalizedSourcePath,
       sourceTemplate,
@@ -353,6 +365,9 @@ export function DefineBehaviorModal({
       <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
         <DialogHeader className="shrink-0">
           <DialogTitle>Create Script</DialogTitle>
+          <DialogDescription className="sr-only">
+            Define where a Lua script runs and which game events it handles.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 space-y-4 overflow-y-auto pr-2">

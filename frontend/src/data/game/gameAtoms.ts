@@ -27,6 +27,7 @@ export type MightyMikeOverlayModeValue =
   | "flagBit"
   | "p0"
   | "p1"
+  | "p2"
   | "altMap";
 
 export type MightyMikeCanvasEditModeValue =
@@ -35,6 +36,7 @@ export type MightyMikeCanvasEditModeValue =
   | "flags"
   | "p0"
   | "p1"
+  | "p2"
   | "altMap";
 
 export type MightyMikeCollisionBrushValue = "enabled" | "disabled";
@@ -71,7 +73,7 @@ export const CollisionBrushMode = atom<boolean>(false);
 export const ShowMightyMikeParamsOverlay = atom<boolean>(false);
 
 export const MightyMikeParamsOverlayMode = atom<
-  "flagsAny" | "flagBit" | "p0" | "p1"
+  "flagsAny" | "flagBit" | "p0" | "p1" | "p2"
 >("flagsAny");
 
 export const MightyMikeParamsOverlayFlagBit = atom<number>(0);
@@ -80,7 +82,9 @@ export const MightyMikeParamsOverlayFlagBit = atom<number>(0);
  * Which tile attribute field the param brush is currently painting.
  * Null = param brush inactive (select mode).
  */
-export const ParamBrushField = atom<"flags" | "p0" | "p1" | null>(null);
+export const ParamBrushField = atom<"flags" | "p0" | "p1" | "p2" | null>(
+  null,
+);
 
 /**
  * The value the param brush writes when active.

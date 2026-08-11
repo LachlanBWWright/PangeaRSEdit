@@ -296,6 +296,23 @@ function writeTerrainToVfs(
       );
       return;
     }
+    if (terrainPaths.altTexturePath) {
+      const alternateTextureResult = writeFileToVfs(
+        module,
+        terrainPaths.altTexturePath,
+        terrainTextureBytes,
+      );
+      if (alternateTextureResult.isErr()) {
+        onError(
+          `Failed to write alternate terrain texture file: ${alternateTextureResult.error}`,
+        );
+        return;
+      }
+      logPreviewRuntime("Injected alternate terrain texture bytes", {
+        texturePath: terrainPaths.altTexturePath,
+        byteLength: terrainTextureBytes.byteLength,
+      });
+    }
   }
 
   if (customFiles && customFiles.length > 0) {

@@ -150,6 +150,7 @@ export async function parseNanosaur1LevelWithRust(
 
 function levelDataToRustCompilePayload(levelData: LevelData): {
   readonly textureLayer?: number[];
+  readonly pathLayer?: number[];
   readonly objectList?: {
     readonly x: number;
     readonly y: number;
@@ -173,6 +174,9 @@ function levelDataToRustCompilePayload(levelData: LevelData): {
         .map((value) => (typeof value === "number" ? value : null))
         .filter((value): value is number => value !== null)
     : undefined;
+  const pathLayer = levelData.nanosaurPathLayer?.filter((value) =>
+    Number.isInteger(value),
+  );
 
   const editorItems = levelData.Itms?.[1000]?.obj;
   const objectList = Array.isArray(editorItems)
@@ -267,6 +271,7 @@ function levelDataToRustCompilePayload(levelData: LevelData): {
 
   return {
     textureLayer,
+    pathLayer,
     objectList,
     textureAttributes,
   };

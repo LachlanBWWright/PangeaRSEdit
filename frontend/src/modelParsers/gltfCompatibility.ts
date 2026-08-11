@@ -13,6 +13,7 @@ import {
 import { err, ok, Result, ResultAsync, type Result as ResultType } from "neverthrow";
 import { z } from "zod";
 import { mapErr } from "@/utils/mapErr";
+import { getRigidInfluence } from "./rigidSkinning";
 
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
@@ -55,6 +56,7 @@ export interface GltfCompatibilityWarning {
     | "primitives.tangents"
     | "primitives.morph-targets"
     | "primitives.extra-skinning"
+    | "primitives.rigid-skinning"
     | "animations.unsupported"
     | "nodes.transform-animation";
   readonly message: string;
@@ -387,6 +389,8 @@ function normalizePrimitives(
   let tangentCount = 0;
   let morphTargetCount = 0;
   let extraSkinningCount = 0;
+  let rigidizedVertexCount = 0;
+  let maximumDiscardedWeight = 0;
   let supportedPrimitiveCount = 0;
 
   for (const mesh of document.getRoot().listMeshes()) {
@@ -437,6 +441,26 @@ function normalizePrimitives(
         )
       ) {
         extraSkinningCount += 1;
+      }
+      const joints = primitive.getAttribute("JOINTS_0");
+      const weights = primitive.getAttribute("WEIGHTS_0");
+      if (joints && weights) {
+        const vertexCount = Math.min(joints.getCount(), weights.getCount());
+        for (let vertexIndex = 0; vertexIndex < vertexCount; vertexIndex++) {
+          const influence = getRigidInfluence(
+            joints,
+            weights,
+            vertexIndex,
+            Number.MAX_SAFE_INTEGER,
+          );
+          if (influence && influence.positiveInfluenceCount > 1) {
+            rigidizedVertexCount++;
+            maximumDiscardedWeight = Math.max(
+              maximumDiscardedWeight,
+              influence.discardedWeight,
+            );
+          }
+        }
       }
       if (primitive.listTargets().length > 0) {
         morphTargetCount += 1;
@@ -495,6 +519,15 @@ function normalizePrimitives(
       code: "primitives.extra-skinning",
       message: "Ignored extra skinning attribute sets beyond JOINTS_0/WEIGHTS_0.",
       count: extraSkinningCount,
+    });
+  }
+  if (rigidizedVertexCount > 0) {
+    warnings.push({
+      code: "primitives.rigid-skinning",
+      message:
+        "Collapsed smooth glTF skinning to the single highest-weight bone required by Pangea skeletons",
+      count: rigidizedVertexCount,
+      details: [`maximum discarded weight ${maximumDiscardedWeight.toFixed(4)}`],
     });
   }
 

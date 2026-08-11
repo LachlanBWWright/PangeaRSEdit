@@ -7,8 +7,74 @@ import {
   Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TileCanvas } from "../shared/TileCanvas";
 import type { ChangeEvent, RefObject } from "react";
+import { MenuEmptyState } from "../MenuEmptyState";
+import { useMemo } from "react";
+
+interface SupertilePreviewTile {
+  readonly row: number;
+  readonly col: number;
+  readonly info: {
+    readonly flipX: boolean;
+    readonly flipY: boolean;
+    readonly rotationDegrees: number;
+    readonly imageIndex: number;
+  };
+}
+
+function buildSupertilePreview(
+  tiles: readonly SupertilePreviewTile[],
+  mapImages: readonly HTMLCanvasElement[],
+  tilesPerSupertile: number,
+  tileImageSize: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = tilesPerSupertile * tileImageSize;
+  canvas.height = tilesPerSupertile * tileImageSize;
+  const context = canvas.getContext("2d");
+  if (!context) return canvas;
+  tiles.forEach((tile) => {
+    const image = mapImages[tile.info.imageIndex];
+    if (!image) return;
+    const centerX = tile.col * tileImageSize + tileImageSize / 2;
+    const centerY = tile.row * tileImageSize + tileImageSize / 2;
+    context.save();
+    context.translate(centerX, centerY);
+    context.rotate((tile.info.rotationDegrees * Math.PI) / 180);
+    context.scale(tile.info.flipX ? -1 : 1, tile.info.flipY ? -1 : 1);
+    context.drawImage(
+      image,
+      -tileImageSize / 2,
+      -tileImageSize / 2,
+      tileImageSize,
+      tileImageSize,
+    );
+    context.restore();
+  });
+  return canvas;
+}
+
+function buildTilePalette(
+  mapImages: readonly HTMLCanvasElement[],
+  columns: number,
+  tileSize: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = columns * tileSize;
+  canvas.height = Math.ceil(mapImages.length / columns) * tileSize;
+  const context = canvas.getContext("2d");
+  if (!context) return canvas;
+  mapImages.forEach((image, index) => {
+    context.drawImage(
+      image,
+      (index % columns) * tileSize,
+      Math.floor(index / columns) * tileSize,
+      tileSize,
+      tileSize,
+    );
+  });
+  return canvas;
+}
 
 interface BugdomTileMenuContentProps {
   tilesPerSupertile: number;
@@ -81,6 +147,22 @@ export function BugdomTileMenuContent({
   onAddTileImage,
   onRemoveTileImage,
 }: BugdomTileMenuContentProps) {
+  const supertilePreview = useMemo(
+    () =>
+      buildSupertilePreview(
+        tilesInSelectedSupertile,
+        mapImages,
+        tilesPerSupertile,
+        tileImageSize,
+      ),
+    [mapImages, tileImageSize, tilesInSelectedSupertile, tilesPerSupertile],
+  );
+  const paletteColumns = 4;
+  const paletteTileSize = 32;
+  const tilePalette = useMemo(
+    () => buildTilePalette(mapImages, paletteColumns, paletteTileSize),
+    [mapImages],
+  );
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-2">
       <div className="grid h-full min-h-0 grid-cols-3 gap-4">
@@ -111,28 +193,7 @@ export function BugdomTileMenuContent({
                   }}
                 >
                   <Layer>
-                    {tilesInSelectedSupertile.map((tile, idx) => {
-                      const img = mapImages[tile.info.imageIndex];
-                      if (!img) return null;
-                      const cx = tile.col * tileImageSize + tileImageSize / 2;
-                      const cy = tile.row * tileImageSize + tileImageSize / 2;
-                      return (
-                        <Image
-                          key={idx}
-                          image={img}
-                          width={tileImageSize}
-                          height={tileImageSize}
-                          x={cx}
-                          y={cy}
-                          offsetX={tileImageSize / 2}
-                          offsetY={tileImageSize / 2}
-                          rotation={tile.info.rotationDegrees}
-                          scaleX={tile.info.flipX ? -1 : 1}
-                          scaleY={tile.info.flipY ? -1 : 1}
-                          listening={false}
-                        />
-                      );
-                    })}
+                    <Image image={supertilePreview} listening={false} />
                     {currentSelectedTileData && (
                       <Rect
                         x={currentSelectedTileData.col * tileImageSize}
@@ -208,9 +269,11 @@ export function BugdomTileMenuContent({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center rounded border border-gray-600 p-3">
-                  <p className="text-gray-400 text-center">No tile selected</p>
-                </div>
+                <MenuEmptyState
+                  title="No Tile Selected"
+                  description="Select a tile on the canvas to inspect and edit it."
+                  compact
+                />
               )}
             </div>
           </div>
@@ -224,17 +287,32 @@ export function BugdomTileMenuContent({
                 {mapImages.length} tiles • Selected: #{selectedTileImageIndex}
               </p>
 
-              <div className="grid grid-cols-4 gap-1">
-                {mapImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className={`cursor-pointer rounded transition-all ${selectedTileImageIndex === idx ? "ring-2 ring-green-500 ring-offset-1 ring-offset-gray-900" : "border border-gray-700 hover:border-gray-500"}`}
-                    onClick={() => setSelectedTileImageIndex(idx)}
-                    title={`Tile #${idx}`}
-                  >
-                    <TileCanvas image={img} size={32} />
-                  </div>
-                ))}
+              <div className="relative mx-auto w-fit">
+                <canvas
+                  width={tilePalette.width}
+                  height={tilePalette.height}
+                  className="block cursor-pointer"
+                  ref={(canvas) => {
+                    const context = canvas?.getContext("2d");
+                    if (!canvas || !context) return;
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(tilePalette, 0, 0);
+                  }}
+                  onClick={(event) => {
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const column = Math.floor((event.clientX - bounds.left) / paletteTileSize);
+                    const row = Math.floor((event.clientY - bounds.top) / paletteTileSize);
+                    const index = row * paletteColumns + column;
+                    if (index < mapImages.length) setSelectedTileImageIndex(index);
+                  }}
+                />
+                <div
+                  className="pointer-events-none absolute h-8 w-8 ring-2 ring-green-500"
+                  style={{
+                    left: (selectedTileImageIndex % paletteColumns) * paletteTileSize,
+                    top: Math.floor(selectedTileImageIndex / paletteColumns) * paletteTileSize,
+                  }}
+                />
               </div>
             </div>
           </div>

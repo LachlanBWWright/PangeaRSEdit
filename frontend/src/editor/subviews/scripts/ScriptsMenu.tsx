@@ -1,12 +1,11 @@
 import { useAtom, useAtomValue } from "jotai";
-import { Code2 } from "lucide-react";
 import { ResultAsync } from "neverthrow";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +14,7 @@ import { LevelNumber } from "@/data/globals/levelNumber";
 import { SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline, SelectedSplineItem } from "@/data/splines/splineAtoms";
 import { TestGameDialog } from "@/editor/TestGameDialog";
+import { MenuEmptyState } from "@/editor/subviews/MenuEmptyState";
 import { getSelectedItem } from "@/editor/subviews/items/itemMenuState";
 import type {
   FenceData,
@@ -636,24 +636,20 @@ export function ScriptsMenu({
 
   return (
     <>
-      <div className="flex justify-center p-4">
-        <div className="flex w-full max-w-sm flex-col items-center gap-3 px-5 py-6 text-center">
-          <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Code2 className="size-5" aria-hidden="true" />
-          </div>
-          <div className="space-y-1">
-            <p className="font-medium">Scripts workspace</p>
-            <p className="text-xs text-muted-foreground">
-              Create behaviors and customize this level with Lua.
-            </p>
-          </div>
-          <Button onClick={() => setScriptsOpen(true)}>Open Scripts</Button>
-        </div>
-      </div>
+      <MenuEmptyState
+        title="Scripts Workspace"
+        description="Create behaviors and customize this level with Lua."
+        actionLabel="Open Scripts"
+        onAction={() => setScriptsOpen(true)}
+        fillHeight
+      />
 
       <Dialog open={scriptsOpen} onOpenChange={setScriptsOpen}>
         <DialogContent className="h-[90vh] w-[90vw] max-w-none grid-rows-[minmax(0,1fr)] overflow-hidden p-0">
           <DialogTitle className="sr-only">Scripts</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create, assign, edit, preview, and export Lua scripts for this level.
+          </DialogDescription>
 
           <div className="overflow-y-auto p-6 pr-12 text-sm">
             <Tabs

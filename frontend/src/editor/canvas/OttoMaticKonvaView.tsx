@@ -17,7 +17,7 @@ import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
-import { Stage } from "react-konva";
+import { Layer, Stage } from "react-konva";
 import Konva from "konva";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
@@ -45,6 +45,9 @@ import {
   type MapResizeDirection,
 } from "./MapResizeEdgeControls";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { CheckpointLayer } from "../subviews/checkpoints/CheckpointLayer";
+import { CroMagPathLayer } from "../subviews/paths/CroMagPathLayer";
+import { getGameFeatures } from "../utils/gameFeatures";
 
 export interface StageData {
   scale: number;
@@ -98,6 +101,7 @@ export function OttoMaticKonvaView({
   const customObjectPlacement = useCustomObjectPlacement();
   const pendingCreation = useAtomValue(PendingCreation);
   const globals = useAtomValue(Globals);
+  const gameFeatures = getGameFeatures(globals.GAME_TYPE);
 
   const [containerRef, containerSize] = useContainerSize();
 
@@ -283,6 +287,7 @@ export function OttoMaticKonvaView({
                 terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
+                fenceData={fenceData}
               />
             )}
             {fenceData && view !== View.fences && (
@@ -290,6 +295,7 @@ export function OttoMaticKonvaView({
                 key="fences"
                 fenceData={fenceData}
                 setFenceData={setFenceDataNotNull}
+                liquidData={liquidData}
               />
             )}
             {itemData && view !== View.items && (
@@ -316,6 +322,7 @@ export function OttoMaticKonvaView({
                 terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
+                fenceData={fenceData}
               />
             )}
             {view === View.fences && fenceData && (
@@ -323,6 +330,7 @@ export function OttoMaticKonvaView({
                 key="fences"
                 fenceData={fenceData}
                 setFenceData={setFenceDataNotNull}
+                liquidData={liquidData}
               />
             )}
             {view === View.items && itemData && (
@@ -342,6 +350,24 @@ export function OttoMaticKonvaView({
               />
             )}
             <CustomScriptPlacements />
+            {view === View.supertiles &&
+              (gameFeatures.hasPaths || gameFeatures.hasCheckpoints) && (
+              <Layer>
+                {gameFeatures.hasPaths && (
+                  <CroMagPathLayer
+                    terrainData={terrainData}
+                    setTerrainData={setTerrainData}
+                  />
+                )}
+                {gameFeatures.hasCheckpoints && (
+                  <CheckpointLayer
+                    terrainData={terrainData}
+                    setTerrainData={setTerrainData}
+                    coordinateScale={1}
+                  />
+                )}
+              </Layer>
+            )}
           </>
         )}
         <PendingCreationOverlay />

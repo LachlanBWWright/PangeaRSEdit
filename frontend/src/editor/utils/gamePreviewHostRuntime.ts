@@ -91,9 +91,13 @@ function syncRuntimeCanvasSize(module: PreviewRuntimeModule): void {
 
 function scheduleStartupCanvasSync(
   module: PreviewRuntimeModule,
-  timerIds: Set<number>,
   frameIds: Set<number>,
 ): void {
+  const startedAt = performance.now();
+  const minimumRunTimeMs = 1_000;
+  const maximumRunTimeMs = 3_000;
+  let consecutiveMatchingFrames = 0;
+
   const sync = (): void => {
     syncRuntimeCanvasSize(module);
     window.dispatchEvent(new Event("resize"));
@@ -103,21 +107,30 @@ function scheduleStartupCanvasSync(
     const frameId = window.requestAnimationFrame(() => {
       frameIds.delete(frameId);
       sync();
+
+      const width = Math.round(module.canvas.clientWidth);
+      const height = Math.round(module.canvas.clientHeight);
+      const matchesLayout =
+        width > 0 &&
+        height > 0 &&
+        module.canvas.width === width &&
+        module.canvas.height === height;
+      consecutiveMatchingFrames = matchesLayout
+        ? consecutiveMatchingFrames + 1
+        : 0;
+
+      const elapsedMs = performance.now() - startedAt;
+      const isStable =
+        elapsedMs >= minimumRunTimeMs && consecutiveMatchingFrames >= 8;
+      if (!isStable && elapsedMs < maximumRunTimeMs) {
+        requestSyncFrame();
+      }
     });
     frameIds.add(frameId);
   };
 
   sync();
   requestSyncFrame();
-  requestSyncFrame();
-
-  for (const delay of [50, 150, 300, 600]) {
-    const timerId = window.setTimeout(() => {
-      timerIds.delete(timerId);
-      sync();
-    }, delay);
-    timerIds.add(timerId);
-  }
 }
 
 function restorePreviewModule(
@@ -370,7 +383,6 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
         stopGame = stopOrErr.value;
         scheduleStartupCanvasSync(
           activeModule,
-          resizePulseTimerIds,
           resizePulseFrameIds,
         );
         return;

@@ -20,9 +20,11 @@ import {
 import { isLevelDataLike } from "@/data/utils/levelDataUtils";
 import { isRecord } from "@/editor/loadLogic/typeGuards";
 import {
+  extractMightyMikeTilesetPreservedData,
   parseMightyMikeMap,
   parseMightyMikeTileSet,
 } from "@/modelParsers/parseMightyMike";
+import type { MightyMikeTilesetPreservedData } from "@/modelParsers/parseMightyMike";
 import type {
   MightyMikeItem,
   MightyMikeTileSet,
@@ -242,6 +244,8 @@ function buildMightyMikeLevelData(
     : never,
   tilesetResult: MightyMikeTileSet | null,
   mightyMikeSceneName?: string,
+  tilesetPreservedData?: MightyMikeTilesetPreservedData,
+  paletteRgbaBytes?: readonly number[],
 ): unknown {
   const ottoCompatible = {
     Hedr: {
@@ -351,6 +355,8 @@ function buildMightyMikeLevelData(
           mightyMikeScene: mightyMikeSceneName,
           mightyMikeMapData: mapResult,
           mightyMikeTileValues: mapResult.mapImage.flat(),
+          mightyMikeTilesetPreservedData: tilesetPreservedData,
+          mightyMikePaletteRgbaBytes: paletteRgbaBytes,
         },
         order: 100,
       },
@@ -420,10 +426,26 @@ function parseMightyMikeLevelBytes(
       )
     : { tileImages: [], collisionImages: [] };
 
+  const preservedDataResult = mightyMikeTilesetBytes
+    ? extractMightyMikeTilesetPreservedData(mightyMikeTilesetBytes)
+    : null;
+  if (preservedDataResult?.isErr()) {
+    return err(
+      levelIoError(
+        "parse.failed",
+        `Failed to preserve Mighty Mike tileset data: ${preservedDataResult.error}`,
+      ),
+    );
+  }
+
   const levelData = buildMightyMikeLevelData(
     mapResult.value,
     tileSetResult && tileSetResult.isOk() ? tileSetResult.value : null,
     mightyMikeSceneName,
+    preservedDataResult?.isOk() ? preservedDataResult.value : undefined,
+    mightyMikePaletteBytes
+      ? Array.from(new Uint8Array(mightyMikePaletteBytes))
+      : undefined,
   );
   if (!isLevelDataLike(levelData)) {
     return err(levelIoError("parse.failed", "Final data is not LevelData"));

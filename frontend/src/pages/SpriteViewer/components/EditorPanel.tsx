@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -16,16 +15,12 @@ export function EditorPanel({
   contentClassName,
 }: EditorPanelProps) {
   return (
-    <Card className={cn("border-gray-700 bg-gray-800", className)}>
-      <CardHeader className="px-3 py-2 text-center">
-        <CardTitle className="w-full text-center text-sm font-medium text-gray-100">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className={cn("space-y-3 px-3 pb-3", contentClassName)}>
+    <section className={cn("border-b border-gray-700/80 pb-4", className)}>
+      <h2 className="mb-3 text-sm font-semibold text-white">{title}</h2>
+      <div className={cn("space-y-3", contentClassName)}>
         {children}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 

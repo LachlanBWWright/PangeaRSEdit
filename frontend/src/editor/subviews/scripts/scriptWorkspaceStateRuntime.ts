@@ -1073,7 +1073,7 @@ function buildGeneratedEntryModule(
       `end`
     );
     customObjectFrameDispatch.push(
-      `  if __hasTag(ctx.tags, ${JSON.stringify(objectDefinition.id)}) or __hasTag(ctx.tags, ${JSON.stringify(objectDefinition.tags[0] ?? objectDefinition.id)}) then`,
+      `  if ctx.objectType == ${JSON.stringify(objectDefinition.id)} then`,
       `    local behavior = ${varName}.${objectDefinition.exportName}`,
       "    local handlerNames = { spawn = 'onSpawn', update = 'onUpdate', triggerEnter = 'onTriggerEnter', animationEvent = 'onAnimationEvent', animationComplete = 'onAnimationComplete', destroy = 'onDestroy' }",
       "    local handlerName = handlerNames[ctx.event or 'update']",

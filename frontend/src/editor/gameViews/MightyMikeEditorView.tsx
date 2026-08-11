@@ -14,6 +14,7 @@ import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
 import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
+import { MightyMikeTilesetDataPanel } from "../subviews/mightymike/MightyMikeTilesetDataPanel";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
@@ -24,17 +25,24 @@ import {
   createUndoRedoKeyHandler,
   createZoomInHandler,
   createZoomOutHandler,
+  normalizeEditorView,
 } from "../utils/editorViewUtils";
 import { Globals } from "@/data/globals/globals";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-import { CurrentScene } from "@/data/game/gameAtoms";
+import {
+  CurrentScene,
+  MightyMikeCanvasEditMode,
+  MightyMikeOverlayMode,
+} from "@/data/game/gameAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicTiles } from "@/editor/gameViews/editorResizeState";
+import { EmptyItemPrompt } from "../subviews/EmptyDataPrompts";
+import { createEmptyItemData } from "../utils/dataInitializers";
 
 function getCurrentSceneFromTerrainData(
   terrainData: MightyMikeEditorViewProps["terrainData"],
@@ -69,8 +77,17 @@ export function MightyMikeEditorView({
 }: MightyMikeEditorViewProps) {
   const globals = useAtomValue(Globals);
   const setCurrentScene = useSetAtom(CurrentScene);
+  const setCanvasEditMode = useSetAtom(MightyMikeCanvasEditMode);
+  const setOverlayMode = useSetAtom(MightyMikeOverlayMode);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
-  const [view, setView] = useAtom(ActiveView);
+  const [storedView, setView] = useAtom(ActiveView);
+  const view = normalizeEditorView(
+    storedView,
+    ENABLE_SCRIPTS
+      ? [View.items, View.scripts, View.supertiles, View.tiles, View.animations]
+      : [View.items, View.supertiles, View.tiles, View.animations],
+    View.supertiles,
+  );
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -85,15 +102,13 @@ export function MightyMikeEditorView({
   }, [setCurrentScene, terrainData]);
 
   useEffect(() => {
-    if (
-      view !== View.items &&
-      view !== View.scripts &&
-      view !== View.supertiles &&
-      view !== View.tiles
-    ) {
-      setView(View.supertiles);
-    }
-  }, [setView, view]);
+    if (storedView !== view) setView(view);
+  }, [setView, storedView, view]);
+
+  useEffect(() => {
+    setCanvasEditMode("select");
+    setOverlayMode("none");
+  }, [setCanvasEditMode, setOverlayMode, view]);
 
   useEffect(() => {
     setEditorNavbarTabs(<MightyMikeEditorToolbar compact />);
@@ -140,15 +155,23 @@ export function MightyMikeEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection className="border-b border-gray-600" scrollable={true}>
-        {view === View.items && itemData && (
-          <MightyMikeItemMenu
-            itemData={itemData}
-            setItemData={setItemDataNotNull}
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-          />
-        )}
+      <MenuSection
+        className="border-b border-gray-600"
+        scrollable={view !== View.animations}
+      >
+        {view === View.items &&
+          (itemData ? (
+            <MightyMikeItemMenu
+              itemData={itemData}
+              setItemData={setItemDataNotNull}
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+            />
+          ) : (
+            <EmptyItemPrompt
+              onInitialize={() => setItemData(createEmptyItemData())}
+            />
+          ))}
         {ENABLE_SCRIPTS && view === View.scripts && (
           <ScriptsMenu
             headerData={headerData}
@@ -178,6 +201,13 @@ export function MightyMikeEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
+          />
+        )}
+        {view === View.animations && (
+          <MightyMikeTilesetDataPanel
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            mapImages={mapImages}
           />
         )}
       </MenuSection>

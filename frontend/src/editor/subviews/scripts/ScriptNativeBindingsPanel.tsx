@@ -20,6 +20,7 @@ import type {
   ScriptTerrainBinding,
   ScriptTerrainBindingSignature,
 } from "./scriptWorkspaceState";
+import { MenuEmptyState } from "../MenuEmptyState";
 
 interface ScriptNativeBindingsPanelProps {
   selectionTargetKind: ScriptTargetKind | null;
@@ -74,15 +75,11 @@ export function ScriptNativeBindingsPanel({
           />
         ) : null}
         {selectionTargetKind === null ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-            <p className="font-medium text-white">
-              Attach to current selection
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Select a terrain item, spline item, or Mighty Mike item to attach
-              a script.
-            </p>
-          </div>
+          <MenuEmptyState
+            title="No Item Selected"
+            description="Select a terrain item, spline item, or Mighty Mike item to attach a script."
+            compact
+          />
         ) : null}
 
         {terrainBindings.map((binding) => (

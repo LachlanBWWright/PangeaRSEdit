@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -10,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { EditorPanel } from "./EditorPanel";
 import {
   Palette,
   PREDEFINED_PALETTE_OPTIONS,
@@ -48,14 +48,8 @@ export function PaletteSelector({
   };
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader className="text-center">
-        <CardTitle className="w-full text-center text-white text-sm">
-          Palettes
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <Select value={selectedValue} onValueChange={handleValueChange}>
+    <EditorPanel title="Palettes" contentClassName="space-y-2">
+      <Select value={selectedValue} onValueChange={handleValueChange}>
           <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
             <SelectValue placeholder="Select a palette" />
           </SelectTrigger>
@@ -87,9 +81,9 @@ export function PaletteSelector({
               </SelectGroup>
             )}
           </SelectContent>
-        </Select>
+      </Select>
 
-        <Button
+      <Button
           size="sm"
           variant="outline"
           className="w-full text-white"
@@ -97,8 +91,7 @@ export function PaletteSelector({
         >
           <Plus className="w-3 h-3 mr-2" />
           New Palette
-        </Button>
-      </CardContent>
-    </Card>
+      </Button>
+    </EditorPanel>
   );
 }

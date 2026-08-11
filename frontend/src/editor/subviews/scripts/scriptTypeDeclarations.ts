@@ -60,14 +60,46 @@ function buildHookSignatures(state: ScriptWorkspaceState): string {
     .join("\n");
 }
 
-function buildTagDeclarations(state: ScriptWorkspaceState): string {
-  const tags = state.context.allowedTags
-    .concat(
-      state.behaviorCatalog.flatMap((behavior) => behavior.contributedTags),
-    )
-    .map((tag) => JSON.stringify(tag.id));
+function buildStringAlias(values: readonly string[]): string {
+  const uniqueValues = [...new Set(values)];
+  return uniqueValues.length > 0
+    ? uniqueValues.map((value) => JSON.stringify(value)).join(" | ")
+    : "string";
+}
 
-  return tags.length > 0 ? tags.join(" | ") : "string";
+function buildTagDeclarations(state: ScriptWorkspaceState): string {
+  return buildStringAlias(
+    state.context.allowedTags
+      .concat(
+        state.behaviorCatalog.flatMap((behavior) => behavior.contributedTags),
+      )
+      .map((tag) => tag.id),
+  );
+}
+
+function buildObjectTypeDeclarations(state: ScriptWorkspaceState): string {
+  return buildStringAlias([
+    ...state.context.allowedTags
+      .filter((tag) => tag.targetKinds.includes("customObject"))
+      .map((tag) => tag.id),
+    ...state.customObjects.map((objectDefinition) => objectDefinition.id),
+  ]);
+}
+
+function buildNativeSpawnIdDeclarations(state: ScriptWorkspaceState): string {
+  const game = AUTHORITATIVE_API_SCHEMA.games.find(
+    (candidate) => candidate.gameId === state.context.gameId,
+  );
+  if (game === undefined || game.nativeSpawns.length === 0) {
+    return "---@alias NativeSpawnId string";
+  }
+  return [
+    "---@alias NativeSpawnId",
+    ...game.nativeSpawns.map(
+      (nativeSpawn) =>
+        `---| ${JSON.stringify(nativeSpawn.id)} # ${nativeSpawn.label}: ${nativeSpawn.description}`,
+    ),
+  ].join("\n");
 }
 
 function buildPangeaModuleDeclaration(): readonly string[] {
@@ -85,6 +117,8 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
   const gameFields = buildContextFields(state.context.gameId);
   const frameFields = buildFrameFields(state.context.gameId);
   const tagType = buildTagDeclarations(state);
+  const objectType = buildObjectTypeDeclarations(state);
+  const nativeSpawnIdDeclaration = buildNativeSpawnIdDeclarations(state);
 
   return [
     "---@class Vector2",
@@ -100,6 +134,10 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field id number",
     "---@field generation number",
     "",
+    `---@alias ObjectTag ${tagType}`,
+    `---@alias ObjectTypeId ${objectType}`,
+    nativeSpawnIdDeclaration,
+    "",
     "---@class GameContext",
     "---@field gameId string",
     "---@field gameName string",
@@ -112,7 +150,7 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "",
     "---@class ObjectFrameContext : FrameContext",
     "---@field object ObjectHandle",
-    `---@field objectType ${tagType}`,
+    "---@field objectType ObjectTypeId",
     "---@field position Vector3",
     `---@field tags ${tagType}[]`,
     "",
@@ -225,8 +263,12 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field state fun(handle: ObjectHandle): table|nil",
     "---@field delete fun(handle: ObjectHandle): boolean",
     "",
+    "---@class NativeSpawnOptions",
+    "---@field subtype integer|nil Game-specific subtype, such as a powerup kind.",
+    "---@field amount integer|nil Game-specific quantity when supported.",
+    "",
     "---@class PangeaSpawnApi",
-    "---@field native fun(id: string, position: Vector3, options: table|nil): ObjectHandle|nil",
+    "---@field native fun(id: NativeSpawnId, position: Vector3, options: NativeSpawnOptions|nil): ObjectHandle|nil",
     "---@field scripted fun(id: string, position: Vector3, options: table|nil): ObjectHandle|nil",
     "",
     "---@class PangeaApi",

@@ -39,11 +39,15 @@ import {
   arrayBufferSchema,
   uint8ArraySchema,
   float32ArraySchema,
-  uint16ArraySchema,
   plainObjectSchema,
   getNumberField,
   getArrayNumberField,
 } from "@/schemas/common";
+import {
+  getRigidInfluence,
+  shouldReplaceRigidInfluence,
+  type RigidInfluence,
+} from "./rigidSkinning";
 
 /**
  * Type guard helper functions for safe extraction from unknown values
@@ -270,9 +274,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
 
       // All arrays initialized to 0 (no bone influences by default)
 
-      // Apply bone influences based on Otto's decomposed point indices
-      // bone.pointIndices contains indices into the decomposed point list,
-      // not direct vertex indices. We need to translate through the mapping.
+      // Valid Pangea data has one owner per decomposed point. If malformed input
+      // lists a point under several bones, preserve the lowest bone index.
       parsed.skeleton.bones.forEach((bone, boneIndex) => {
         if (bone.pointIndices) {
           bone.pointIndices.forEach((decomposedIndex) => {
@@ -288,15 +291,9 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
                   const localVertexIndex = ref.vertexIndex;
                   if (localVertexIndex < numVertices) {
                     const offset = localVertexIndex * 4;
-
-                    // Find empty slot for this influence (skip slots already used)
-                    for (let slot = 0; slot < 4; slot++) {
-                      const weightSlot = weights[offset + slot];
-                      if (weightSlot === 0) {
-                        joints[offset + slot] = boneIndex;
-                        weights[offset + slot] = 1.0;
-                        break;
-                      }
+                    if (weights[offset] === 0) {
+                      joints[offset] = boneIndex;
+                      weights[offset] = 1.0;
                     }
                   }
                 }
@@ -306,26 +303,10 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
         }
       });
 
-      // Normalize weights for each vertex
-      // If a vertex has no bone influences, assign it to root bone (bone 0)
+      // If a vertex has no bone influence, assign it to the root bone.
       for (let i = 0; i < numVertices; i++) {
         const offset = i * 4;
-        let totalWeight = 0;
-        for (let j = 0; j < 4; j++) {
-          const w = weights[offset + j];
-          totalWeight += w ?? 0;
-        }
-
-        if (totalWeight > 0) {
-          // Normalize existing weights
-          for (let j = 0; j < 4; j++) {
-            const w = weights[offset + j];
-            if (w !== undefined) {
-              weights[offset + j] = w / totalWeight;
-            }
-          }
-        } else {
-          // No bone influences - assign to root bone
+        if (weights[offset] === 0) {
           joints[offset] = 0;
           weights[offset] = 1.0;
         }
@@ -843,14 +824,17 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
       }
 
       const vertexToDecomposedIndex = new Map<string, number>();
+      const vertexToDecomposedNormalIndex = new Map<string, number>();
+      const decomposedNormals: [number, number, number][] = [];
 
-      let currentMeshIndex = 0;
+      let currentPrimitiveIndex = 0;
       doc
         .getRoot()
         .listMeshes()
         .forEach((mesh) => {
           mesh.listPrimitives().forEach((prim) => {
             const posAcc = prim.getAttribute("POSITION");
+            const normalAcc = prim.getAttribute("NORMAL");
             if (posAcc) {
               const posArrayRaw = posAcc.getArray();
               const float32ArrayResult =
@@ -884,12 +868,32 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
                   }
                 }
 
-                const key = `${currentMeshIndex}:${vi}`;
+                const key = `${currentPrimitiveIndex}:${vi}`;
+                if (normalAcc && vi < normalAcc.getCount()) {
+                  const normalValues = normalAcc.getElement(vi, []);
+                  const normal: [number, number, number] = [
+                    normalValues[0] ?? 0,
+                    normalValues[1] ?? 0,
+                    normalValues[2] ?? 0,
+                  ];
+                  const existingNormalIndex = decomposedNormals.findIndex(
+                    (existingNormal) =>
+                      reversePointsMatchCloseEnough(normal, existingNormal),
+                  );
+                  const normalIndex =
+                    existingNormalIndex >= 0
+                      ? existingNormalIndex
+                      : decomposedNormals.length;
+                  if (existingNormalIndex < 0) {
+                    decomposedNormals.push(normal);
+                  }
+                  vertexToDecomposedNormalIndex.set(key, normalIndex);
+                }
                 if (foundIndex >= 0) {
                   const existingPoint = reverseDecomposedPointList[foundIndex];
                   if (existingPoint) {
                     existingPoint.refs.push({
-                      meshIndex: currentMeshIndex,
+                      meshIndex: currentPrimitiveIndex,
                       vertexIndex: vi,
                     });
                   }
@@ -898,25 +902,22 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
                   const newIndex = reverseDecomposedPointList.length;
                   reverseDecomposedPointList.push({
                     realPoint: vertex,
-                    refs: [{ meshIndex: currentMeshIndex, vertexIndex: vi }],
+                    refs: [{ meshIndex: currentPrimitiveIndex, vertexIndex: vi }],
                   });
                   vertexToDecomposedIndex.set(key, newIndex);
                 }
               }
             }
+            currentPrimitiveIndex++;
           });
-          currentMeshIndex++;
         });
 
       const bonePointSets: Set<number>[] = bones.map(() => new Set<number>());
       const boneNormalSets: Set<number>[] = bones.map(() => new Set<number>());
-      const pointToJointSets = new Map<number, Set<number>>();
-      const pointToJointMap = new Map<
-        number,
-        { jointIndex: number; weight: number }
-      >();
+      const pointToJointMap = new Map<number, RigidInfluence>();
+      const normalToJointMap = new Map<number, RigidInfluence>();
 
-      let meshIndexForSkinning = 0;
+      let primitiveIndexForSkinning = 0;
       doc
         .getRoot()
         .listMeshes()
@@ -927,84 +928,45 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             const posAcc = prim.getAttribute("POSITION");
 
             if (jointsAcc && weightsAcc && posAcc) {
-              const jointsArrayRaw = jointsAcc.getArray();
-              const weightsArrayRaw = weightsAcc.getArray();
-              const uint16ArrayResult =
-                uint16ArraySchema.safeParse(jointsArrayRaw);
-              const float32ArrayResult =
-                float32ArraySchema.safeParse(weightsArrayRaw);
-              if (!uint16ArrayResult.success || !float32ArrayResult.success) {
-                console.warn("Joints or weights array type mismatch");
-                return;
-              }
-              const jointsArray = uint16ArrayResult.data;
-              const weightsArray = float32ArrayResult.data;
               const numVertices = posAcc.getCount();
 
               for (let vi = 0; vi < numVertices; vi++) {
-                const key = `${meshIndexForSkinning}:${vi}`;
+                const key = `${primitiveIndexForSkinning}:${vi}`;
                 const decomposedIndex = vertexToDecomposedIndex.get(key);
                 if (decomposedIndex === undefined) continue;
 
-                let bestJointIndex = -1;
-                let bestWeight = 0;
-
-                for (let ji = 0; ji < 4; ji++) {
-                  const jointIndex = jointsArray[vi * 4 + ji];
-                  const weight = weightsArray[vi * 4 + ji];
-
-                  if (
-                    weight !== undefined &&
-                    jointIndex !== undefined &&
-                    weight > 0 &&
-                    jointIndex < bones.length
-                  ) {
-                    let jointSet = pointToJointSets.get(decomposedIndex);
-                    if (!jointSet) {
-                      jointSet = new Set<number>();
-                      pointToJointSets.set(decomposedIndex, jointSet);
-                    }
-                    jointSet.add(jointIndex);
-                  }
-
-                  if (
-                    weight !== undefined &&
-                    jointIndex !== undefined &&
-                    weight > bestWeight &&
-                    weight > 0 &&
-                    jointIndex < bones.length
-                  ) {
-                    bestJointIndex = jointIndex;
-                    bestWeight = weight;
-                  }
+                const candidate = getRigidInfluence(
+                  jointsAcc,
+                  weightsAcc,
+                  vi,
+                  bones.length,
+                );
+                const previousOwner = pointToJointMap.get(decomposedIndex);
+                if (candidate && shouldReplaceRigidInfluence(previousOwner, candidate)) {
+                  pointToJointMap.set(decomposedIndex, candidate);
                 }
-
-                if (bestJointIndex >= 0) {
-                  const previousOwner = pointToJointMap.get(decomposedIndex);
-                  if (!previousOwner || bestWeight > previousOwner.weight) {
-                    pointToJointMap.set(decomposedIndex, {
-                      jointIndex: bestJointIndex,
-                      weight: bestWeight,
-                    });
+                const decomposedNormalIndex =
+                  vertexToDecomposedNormalIndex.get(key);
+                if (candidate && decomposedNormalIndex !== undefined) {
+                  const previousNormalOwner =
+                    normalToJointMap.get(decomposedNormalIndex);
+                  if (
+                    shouldReplaceRigidInfluence(previousNormalOwner, candidate)
+                  ) {
+                    normalToJointMap.set(decomposedNormalIndex, candidate);
                   }
                 }
               }
             }
+            primitiveIndexForSkinning++;
           });
-          meshIndexForSkinning++;
         });
 
-      pointToJointSets.forEach((jointSet, decomposedIndex) => {
-        jointSet.forEach((jointIndex) => {
-          const pointSet = bonePointSets[jointIndex];
-          const normalSet = boneNormalSets[jointIndex];
-          if (pointSet) {
-            pointSet.add(decomposedIndex);
-          }
-          if (normalSet) {
-            normalSet.add(decomposedIndex);
-          }
-        });
+      pointToJointMap.forEach((owner, decomposedIndex) => {
+        bonePointSets[owner.jointIndex]?.add(decomposedIndex);
+      });
+      normalToJointMap.forEach((owner, decomposedNormalIndex) => {
+        boneNormalSets[owner.jointIndex]?.add(decomposedNormalIndex);
       });
 
       bones.forEach((bone, index) => {

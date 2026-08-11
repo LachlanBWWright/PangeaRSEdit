@@ -25,6 +25,20 @@ export const croMagSpecs = [
   "YCrd:f+",
 
   /////////////////////////////////////////////////////////////////
+  // Racing paths and checkpoints
+  /////////////////////////////////////////////////////////////////
+
+  // File_PathDefType. Pointer fields are intentionally skipped; PaPt resources
+  // contain the runtime point lists.
+  "Path:BBBBh 2x 4x i 4x hhhh+:flags,p0,p1,p2,numNubs,numPoints,bbTop,bbLeft,bbBottom,bbRight",
+
+  // One point-list resource per path, starting at resource ID 1000.
+  "PaPt:ff+:x,z",
+
+  // CheckpointDefType stores the two X coordinates followed by the two Z coordinates.
+  "CkPt:HHffff+:unused,infoBits,x1,x2,z1,z2",
+
+  /////////////////////////////////////////////////////////////////
   // Items
   /////////////////////////////////////////////////////////////////
 

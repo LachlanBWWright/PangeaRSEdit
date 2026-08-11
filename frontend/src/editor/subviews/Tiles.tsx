@@ -15,6 +15,12 @@ import {
   getTileFlagBit,
   hasTopologyData,
 } from "@/editor/subviews/tileViewState";
+import { Globals } from "@/data/globals/globals";
+import {
+  SelectedSemanticTileAttribute,
+  TileAttributeOverlayOpacity,
+} from "@/data/tiles/tileAtoms";
+import { getSemanticTileAttributes } from "@/data/terrain/semanticTileAttributes";
 
 export function Tiles({
   headerData,
@@ -28,7 +34,13 @@ export function Tiles({
   isEditingTopology: boolean;
 }) {
   const tileViewMode = useAtomValue(TileViewMode);
-  const tileGrid = useMemo(() => buildTileGrid(terrainData), [terrainData]);
+  const globals = useAtomValue(Globals);
+  const semanticAttributeId = useAtomValue(SelectedSemanticTileAttribute);
+  const attributeOverlayOpacity = useAtomValue(TileAttributeOverlayOpacity);
+  const tileGrid = useMemo(
+    () => buildTileGrid(terrainData, globals.GAME_TYPE),
+    [terrainData, globals.GAME_TYPE],
+  );
 
   if (tileViewMode === TileViews.Topology) {
     if (!hasTopologyData(terrainData)) {
@@ -48,13 +60,24 @@ export function Tiles({
     return <Layer />;
   }
 
-  const flagBit = getTileFlagBit(tileViewMode);
+  const semanticAttribute =
+    tileViewMode === TileViews.Attributes
+      ? getSemanticTileAttributes(globals.GAME_TYPE).find(
+          (attribute) => attribute.id === semanticAttributeId,
+        )
+      : undefined;
+  const flagBit = semanticAttribute?.mask ?? getTileFlagBit(tileViewMode);
   return (
     <FlagTileEditor
       headerData={headerData}
       setTerrainData={setTerrainData}
       tileGrid={tileGrid}
+      game={globals.GAME_TYPE}
       flagBit={flagBit}
+      flagField={semanticAttribute?.field ?? "flags"}
+      opacity={
+        tileViewMode === TileViews.Attributes ? attributeOverlayOpacity : 1
+      }
       flagToColour={(flag) => flagToVisibilityRgba(flag, flagBit)}
     />
   );

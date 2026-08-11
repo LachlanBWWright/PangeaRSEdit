@@ -68,7 +68,7 @@ export function getTileAttributes(
 /** Returns the per-tile collision/value records stored in Mighty Mike metadata. */
 export function getTileValueEntries(
   metadata: unknown,
-): Array<MightyMikeTileValue | null> {
+): (MightyMikeTileValue | null)[] {
   if (!isRecord(metadata)) return [];
   const entry = isRecord(metadata[1000]) ? metadata[1000] : null;
   if (!entry) return [];
@@ -156,7 +156,7 @@ export function buildCollisionCanvas(
   mapHeight: number,
   resolvedImageIndices: (number | null)[],
   collisionImages: HTMLCanvasElement[],
-  tileValues: ReadonlyArray<MightyMikeTileValue | null>,
+  tileValues: readonly (MightyMikeTileValue | null)[],
 ): HTMLCanvasElement | null {
   const canvas = document.createElement("canvas");
   canvas.width = mapWidth * TILE_SIZE;
@@ -223,7 +223,13 @@ export function buildAltMapCanvas(
 
 /** Renders param-flag overlays for the currently visible tiles. */
 export function buildParamsCanvas(
-  overlayMode: "solidEdges" | "flagsAny" | "flagBit" | "p0" | "p1",
+  overlayMode:
+    | "solidEdges"
+    | "flagsAny"
+    | "flagBit"
+    | "p0"
+    | "p1"
+    | "p2",
   overlayFlagBit: number,
   tileAttributes: Record<string, unknown>[],
   mapWidth: number,
@@ -248,6 +254,8 @@ export function buildParamsCanvas(
     const p0 = p0Result.success ? p0Result.data : 0;
     const p1Result = numberSchema.safeParse(attr["p1"]);
     const p1 = p1Result.success ? p1Result.data : 0;
+    const p2Result = numberSchema.safeParse(attr["p2"]);
+    const p2 = p2Result.success ? p2Result.data : 0;
     const hasSolidTop = (flags & (1 << 0)) !== 0;
     const hasSolidBottom = (flags & (1 << 1)) !== 0;
     const hasSolidLeft = (flags & (1 << 2)) !== 0;
@@ -278,12 +286,18 @@ export function buildParamsCanvas(
       }
       overlayAlpha = 0.55;
       overlayColor = "rgba(50, 200, 50, 0.55)";
-    } else {
+    } else if (overlayMode === "p1") {
       if (p1 === 0) {
         return;
       }
       overlayAlpha = 0.55;
       overlayColor = "rgba(50, 100, 220, 0.55)";
+    } else {
+      if (p2 === 0) {
+        return;
+      }
+      overlayAlpha = 0.55;
+      overlayColor = "rgba(160, 80, 220, 0.55)";
     }
 
     const tx = (i % mapWidth) * TILE_SIZE;

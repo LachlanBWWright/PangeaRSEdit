@@ -163,7 +163,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.Egg]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Egg has been rescued",
     p0: {
       type: "Integer",
       description: "Egg color/species type",
@@ -421,7 +421,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.ForestDoorKey]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Forest door key has been destroyed",
     p0: {
       type: "Integer",
       description: "Key ID (which door this key opens)",
@@ -444,7 +444,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.Electrode]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Electrode has been destroyed",
     p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
@@ -610,7 +610,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.Crystal]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Crystal has been destroyed",
     p0: {
       type: "Integer",
       description: "Crystal model variant (0-2)",

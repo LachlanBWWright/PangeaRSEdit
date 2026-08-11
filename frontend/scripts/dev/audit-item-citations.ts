@@ -25,6 +25,7 @@ import {
   getGitHubPermalink,
   type GameRepository,
 } from "../../src/validation/gameRepositories";
+import { collectLevelParamCoverage } from "./audit-level-param-coverage";
 
 type ItemParamsMap = Partial<Record<number, ItemParams>>;
 
@@ -107,8 +108,7 @@ function normalizeCitationSnippet(value: string): string {
   return value
     .replace(/\r\n/g, "\n")
     .replace(/\/\/.*$/gm, "")
-    .replace(/[ \t]+/g, " ")
-    .trim();
+    .replace(/\s+/g, "");
 }
 
 function resolveCitationPath(
@@ -190,7 +190,78 @@ export function citationMatchesSourceLine(
 
   const citedText = lines.slice(citation.lineNumber - 1, endLine).join("\n");
   const paramPattern = new RegExp(`parm\\s*\\[\\s*${String(paramIndex)}\\s*\\]`);
-  return paramPattern.test(citedText);
+  return paramPattern.test(citedText)
+    && normalizeCitationSnippet(citedText).includes(snippet);
+}
+
+function validateObservedValue(
+  param: ParamDescription,
+  value: number,
+): string | null {
+  if (param === "Unused" || param === "Unknown") {
+    return `is ${param.toLowerCase()}`;
+  }
+  if (param.type === "TypeSelector" && param.options[value] === undefined) {
+    return `has undocumented selector value ${String(value)}`;
+  }
+  if (param.type === "Rotation" && (value < 0 || value >= param.divisions)) {
+    return `has rotation value ${String(value)} outside 0-${String(param.divisions - 1)}`;
+  }
+  if (param.type === "Bit Flags") {
+    const documentedMask = param.flags.reduce(
+      (mask, flag) => mask | (1 << flag.index),
+      0,
+    );
+    const undocumentedBits = value & ~documentedMask;
+    if (undocumentedBits !== 0) {
+      return `has undocumented set bits 0x${undocumentedBits.toString(16)}`;
+    }
+  }
+  return null;
+}
+
+async function auditObservedLevelCoverage(): Promise<AuditFailure[]> {
+  const coverage = await collectLevelParamCoverage();
+  const datasetsByLabel = new Map(
+    PARAM_DATASETS.map((dataset) => [dataset.label, dataset]),
+  );
+  const failures: AuditFailure[] = [];
+
+  for (const [label, result] of coverage) {
+    for (const failure of result.failures) {
+      failures.push({ category: "param", label, itemType: -1, detail: failure.detail });
+    }
+    const dataset = datasetsByLabel.get(label);
+    if (!dataset) {
+      failures.push({ category: "param", label, itemType: -1, detail: "parameter dataset is missing" });
+      continue;
+    }
+    for (const observation of result.observations) {
+      const paramName = getParamName(observation.paramIndex);
+      if (paramName === null) continue;
+      const param = dataset.params[observation.itemType]?.[paramName];
+      const levels = observation.levelNames.join(", ");
+      if (!param) {
+        failures.push({
+          category: "param",
+          label,
+          itemType: observation.itemType,
+          detail: `${paramName}=${String(observation.value)} occurs in ${levels}, but the item has no parameter metadata.`,
+        });
+        continue;
+      }
+      const invalidReason = validateObservedValue(param, observation.value);
+      if (invalidReason !== null) {
+        failures.push({
+          category: "param",
+          label,
+          itemType: observation.itemType,
+          detail: `${paramName}=${String(observation.value)} occurs in ${levels}, but ${paramName} ${invalidReason}.`,
+        });
+      }
+    }
+  }
+  return failures;
 }
 
 async function auditParamDataset(
@@ -544,6 +615,7 @@ export async function run(): Promise<void> {
   for (const dataset of MODEL_DATASETS) {
     failures.push(...(await auditModelDataset(dataset)));
   }
+  failures.push(...(await auditObservedLevelCoverage()));
 
   if (failures.length === 0) {
     console.log("Item citation audit passed.");

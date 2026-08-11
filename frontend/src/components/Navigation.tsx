@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Map,
@@ -11,7 +10,6 @@ import {
   Boxes,
   ClipboardList,
   Network,
-  Flag,
 } from "lucide-react";
 import {
   editorNavbarLeftAtom,
@@ -20,7 +18,6 @@ import {
   editorNavbarTabsAtom,
 } from "@/data/globals/editorNavbarAtoms";
 import { UserMenu } from "@/components/UserMenu";
-import { checkBackendApiAvailable } from "@/api/backendAvailability";
 import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 export function Navigation() {
@@ -32,24 +29,6 @@ export function Navigation() {
   const editorNavbarTabs = useAtomValue(editorNavbarTabsAtom);
   const showExperimentalLinks = false;
   const showEditorNavbar = location.pathname === "/" && editorNavbarOpen;
-  const [showMultiplayerLink, setShowMultiplayerLink] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void checkBackendApiAvailable().match(
-      (available) => {
-        if (!cancelled) setShowMultiplayerLink(available);
-      },
-      () => {
-        if (!cancelled) setShowMultiplayerLink(false);
-      },
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-1 min-h-14 flex items-center gap-2 md:gap-4 overflow-visible">
@@ -102,7 +81,7 @@ export function Navigation() {
                 <span>Sprite Editor</span>
               </Link>
             </Button>
-            {featureFlags.multiplayer && showMultiplayerLink && (
+            {featureFlags.multiplayer && (
               <Button
                 asChild
                 variant={
@@ -116,18 +95,6 @@ export function Navigation() {
                 </Link>
               </Button>
             )}
-            <Button
-              asChild
-              variant={
-                location.pathname === "/feature-flags" ? "default" : "ghost"
-              }
-              className="flex items-center gap-2"
-            >
-              <Link to="/feature-flags" className="text-white">
-                <Flag className="w-4 h-4" />
-                <span>Feature Flags</span>
-              </Link>
-            </Button>
             <Button
               asChild
               variant={

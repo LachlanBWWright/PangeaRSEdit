@@ -9,7 +9,7 @@ import {
   isRecord,
 } from "@/editor/subviews/supertiles/mightyMikeSupertilesHelpers";
 import { toggleFlagBit } from "../mightymike/mightyMikeTileInspectorState";
-import { updateTileAttributeForSelectedTile } from "../mightymike/mightyMikeTileMenuState";
+import { updateTileAttributeForPaletteImage } from "../mightymike/mightyMikeTileMenuState";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 
 /** Converts a pointer position into a tile index within the active supertile grid. */
@@ -77,12 +77,14 @@ export function applyCollisionMaskValue(
 export function applyParamBrush(
   data: TerrainData,
   tileIdx: number,
-  paramBrushField: "flags" | "p0" | "p1",
+  paramBrushField: "flags" | "p0" | "p1" | "p2",
   paramBrushValue: number,
 ): void {
-  updateTileAttributeForSelectedTile(
+  const logicalIndex = data.Layr?.[1000]?.obj?.[tileIdx] ?? 0;
+  const imageIndex = data.Xlat?.[1000]?.obj?.[logicalIndex]?.idx ?? logicalIndex;
+  updateTileAttributeForPaletteImage(
     data,
-    tileIdx,
+    imageIndex,
     paramBrushField,
     paramBrushValue,
   );
@@ -102,9 +104,11 @@ export function applyFlagBrush(
     typeof currentLevelAttribute.flags === "number"
       ? currentLevelAttribute.flags
       : 0;
-  updateTileAttributeForSelectedTile(
+  const logicalIndex = data.Layr?.[1000]?.obj?.[tileIdx] ?? 0;
+  const imageIndex = data.Xlat?.[1000]?.obj?.[logicalIndex]?.idx ?? logicalIndex;
+  updateTileAttributeForPaletteImage(
     data,
-    tileIdx,
+    imageIndex,
     "flags",
     toggleFlagBit(currentFlags, flagBit, enabled),
   );

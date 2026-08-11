@@ -17,6 +17,8 @@ export interface PreviewTerrainPaths {
   readonly dataPath: string;
   readonly rsrcPath: string | null;
   readonly texturePath?: string;
+  /** Alternate case variant for case-sensitive Mighty Mike tileset lookup. */
+  readonly altTexturePath?: string;
   /**
    * Additional data-fork path to write the same bytes to.
    * Used for MightyMike where the WASM may look for either lowercase or
@@ -201,7 +203,21 @@ export function getPreviewTerrainPaths(
         : capitalizedFilename;
     const alternatePath = `${dataPathDir}/${alternateFilename}`;
     const altDataPath = alternatePath !== dataPath ? alternatePath : undefined;
-    return { dataPath, rsrcPath, altDataPath };
+    const tilesetFilename = filename.replace(/\.map-\d+$/i, ".tileset");
+    const alternateTilesetFilename = alternateFilename.replace(
+      /\.map-\d+$/i,
+      ".tileset",
+    );
+    const texturePath = `${dataPathDir}/${tilesetFilename}`;
+    const alternateTexturePath = `${dataPathDir}/${alternateTilesetFilename}`;
+    return {
+      dataPath,
+      rsrcPath,
+      altDataPath,
+      texturePath,
+      altTexturePath:
+        alternateTexturePath !== texturePath ? alternateTexturePath : undefined,
+    };
   }
 
   return { dataPath, rsrcPath };

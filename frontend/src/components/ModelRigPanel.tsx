@@ -1,6 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Plus, Trash2 } from "lucide-react";
+import type { GizmoMode } from "@/components/model-viewer/types";
 import type { BoneInfluenceRow } from "@/components/AnimationViewer/rigToolsState";
 import { WeightBrushPanel } from "@/components/AnimationViewer/WeightBrushPanel";
 import type { ViewerInteractionMode } from "@/components/model-viewer/types";
@@ -19,6 +21,10 @@ interface ModelRigPanelProps {
   onSelectBone: (boneName: string) => void;
   onBoneRenameInputChange: (value: string) => void;
   onRenameSelectedBone: () => void;
+  onCreateBone: (name: string) => void;
+  onRemoveSelectedBone: () => void;
+  gizmoMode: GizmoMode;
+  onGizmoModeChange: (mode: GizmoMode) => void;
   onBrushSettingsChange: (settings: WeightBrushSettings) => void;
   onRepairWeights?: (repaired: SkinWeightsData) => void;
 }
@@ -33,9 +39,14 @@ export function ModelRigPanel({
   onSelectBone,
   onBoneRenameInputChange,
   onRenameSelectedBone,
+  onCreateBone,
+  onRemoveSelectedBone,
+  gizmoMode,
+  onGizmoModeChange,
   onBrushSettingsChange,
   onRepairWeights,
 }: ModelRigPanelProps) {
+  const newBoneName = "NewBone";
   const maxWeightedSum = Math.max(
     1,
     ...boneInfluenceRows.map((row) => row.weightedSum),
@@ -61,6 +72,32 @@ export function ModelRigPanel({
             >
               Rename Bone
             </Button>
+            <div className="grid grid-cols-3 gap-1" aria-label="Bone transform tool">
+              {(["translate", "rotate", "scale"] as const).map((mode) => (
+                <Button
+                  key={mode}
+                  size="sm"
+                  variant={gizmoMode === mode ? "default" : "outline"}
+                  onClick={() => onGizmoModeChange(mode)}
+                  className="capitalize"
+                >
+                  {mode}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button size="sm" variant="outline" onClick={() => onCreateBone(newBoneName)}>
+                <Plus className="mr-1 h-4 w-4" /> Add Child
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={onRemoveSelectedBone}
+                disabled={!selectedBoneName}
+              >
+                <Trash2 className="mr-1 h-4 w-4" /> Remove
+              </Button>
+            </div>
           </section>
 
           <section className="space-y-2 border-t border-gray-700 pt-4">

@@ -6,4 +6,5 @@ export enum View {
   scripts,
   tiles,
   supertiles,
+  animations,
 }

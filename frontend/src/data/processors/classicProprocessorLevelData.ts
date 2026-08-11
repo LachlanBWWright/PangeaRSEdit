@@ -170,6 +170,7 @@ export function nanosaur1LevelToLevelData(
     Layr: {
       1000: { name: "Terrain Layer Matrix", obj: level.textureLayer, order: 0 },
     },
+    ...(level.pathLayer ? { nanosaurPathLayer: [...level.pathLayer] } : {}),
     Liqd: { 1000: { name: "Water List", obj: [], order: 0 } },
     STgd: { 1000: { name: "SuperTile Grid", obj: [], order: 0 } },
     SpIt: emptyRecord,

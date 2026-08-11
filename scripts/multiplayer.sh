@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 # Starts the local multiplayer dev stack.
 #
-# Runtime assets:
-#   - Builds Cro-Mag Rally and Nanosaur 2 only when their staged frontend
-#     assets are missing.
-#   - Use --rebuild-games after changing game source or pulling pangea-ports
-#     updates so the frontend gets fresh .js/.wasm/.data files.
+# Runtime assets are fingerprinted and only games with changed inputs are built.
 #
 # Usage:
 #   scripts/multiplayer.sh
@@ -42,32 +38,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 ensure_runtime_assets() {
-  local missing_games=()
-
-  if [[ "$FORCE_REBUILD_GAMES" -eq 1 ]] ||
-    [[ ! -f "$REPO_ROOT/frontend/public/generated/pangea-ports/wasm/cromagrally/CroMagRally.js" ]] ||
-    [[ ! -f "$REPO_ROOT/frontend/public/generated/pangea-ports/wasm/cromagrally/CroMagRally.wasm" ]] ||
-    [[ ! -f "$REPO_ROOT/frontend/public/generated/pangea-ports/wasm/cromagrally/CroMagRally.data" ]]; then
-    missing_games+=("cromagrally")
-  fi
-
-  if [[ "$FORCE_REBUILD_GAMES" -eq 1 ]] ||
-    [[ ! -f "$REPO_ROOT/frontend/public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.js" ]] ||
-    [[ ! -f "$REPO_ROOT/frontend/public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.wasm" ]] ||
-    [[ ! -f "$REPO_ROOT/frontend/public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.data" ]]; then
-    missing_games+=("nanosaur2")
-  fi
-
-  if [[ "${#missing_games[@]}" -eq 0 ]]; then
+  echo "Ensuring all game runtime assets are current..."
+  if [[ "$FORCE_REBUILD_GAMES" -eq 1 ]]; then
+    "$REPO_ROOT/scripts/build-games.sh" --force
     return
   fi
 
-  echo "Preparing multiplayer runtime assets..."
-
-  local game
-  for game in "${missing_games[@]}"; do
-    "$REPO_ROOT/scripts/build-pangea-ports.sh" --game "$game"
-  done
+  "$REPO_ROOT/scripts/build-games.sh"
 }
 
 port_in_use() {
@@ -197,12 +174,24 @@ assert_url_served() {
 }
 
 assert_runtime_assets_served() {
-  assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/cromagrally/CroMagRally.js" "Cro-Mag Rally runtime script"
-  assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/cromagrally/CroMagRally.wasm" "Cro-Mag Rally runtime wasm"
-  assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/cromagrally/CroMagRally.data" "Cro-Mag Rally runtime data"
-  assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/nanosaur2/Nanosaur2.js" "Nanosaur 2 runtime script"
-  assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/nanosaur2/Nanosaur2.wasm" "Nanosaur 2 runtime wasm"
-  assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/nanosaur2/Nanosaur2.data" "Nanosaur 2 runtime data"
+  local game
+  local runtime
+  local runtimes=(
+    "billyfrontier/billyfrontier"
+    "bugdom/Bugdom"
+    "bugdom2/Bugdom2"
+    "cromagrally/CroMagRally"
+    "mightymike/MightyMike"
+    "nanosaur/Nanosaur"
+    "nanosaur2/Nanosaur2"
+    "ottomatic/OttoMatic"
+  )
+
+  for runtime in "${runtimes[@]}"; do
+    game="${runtime%%/*}"
+    assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/${runtime}.js" "$game runtime script"
+    assert_url_served "${FRONTEND_URL}generated/pangea-ports/wasm/${runtime}.wasm" "$game runtime wasm"
+  done
 }
 
 stop_process_group() {
@@ -257,6 +246,11 @@ start_backend() {
   BACKEND_PID="$!"
 }
 
+build_backend() {
+  echo "Building multiplayer backend..."
+  dotnet build "$REPO_ROOT/backend/PangeaRSEdit.Api/PangeaRSEdit.Api.csproj"
+}
+
 start_frontend() {
   echo "Starting frontend on $FRONTEND_URL"
 
@@ -275,6 +269,7 @@ trap shutdown EXIT
 trap handle_interrupt INT TERM HUP
 
 ensure_runtime_assets
+build_backend
 
 cleanup_port "$FRONTEND_PORT" "Frontend"
 cleanup_port "$BACKEND_PORT" "Backend"

@@ -419,7 +419,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.Door]: {
-    flags: "ITEM_FLAGS_USER1: Door is open",
+    flags: "ITEM_FLAGS_USER1: Door is open or silicon chip 1 is installed | ITEM_FLAGS_USER2: Silicon chip 2 is installed | ITEM_FLAGS_USER3: Silicon battery is installed",
     p0: {
       type: "Integer",
       description: "Door rotation (0-3, where each unit = 90°)",

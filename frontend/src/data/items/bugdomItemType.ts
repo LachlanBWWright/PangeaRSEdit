@@ -375,9 +375,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Y offset (×4 world units) or Y table index when p3 bit 2 is set",
       codeSample: {
-        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;\t\t// get y coord of patch",
+        code: "yOff = itemPtr->parm[2];",
         fileName: "src/Items/Liquids.c",
-            lineNumber: 328,
+        lineNumber: 328,
       },
     },
     p3: {
@@ -406,9 +406,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           description:
             "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "y = yTable[itemPtr->parm[2]];\t\t\t\t\t// get y from table\t\t",
+            code: "if (itemPtr->parm[3] & (1<<2))",
             fileName: "src/Items/Liquids.c",
-              lineNumber: 319,
+            lineNumber: 319,
           },
         },
       ],
@@ -435,7 +435,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
     },
   },
   [ItemType.WaterBug]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Water Bug has been paid for",
     p0: {
       type: "Integer",
       description: "Initial aim (0-15, counter-clockwise).",
@@ -602,9 +602,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;\t\t// get y coord of patch",
+        code: "yOff = itemPtr->parm[2];",
         fileName: "src/Items/Liquids.c",
-            lineNumber: 832,
+        lineNumber: 832,
       },
     },
     p3: {
@@ -615,9 +615,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           description:
             "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "y = gLiquidYTable[kind][itemPtr->parm[2]];\t\t\t// get y from table",
+            code: "if (itemPtr->parm[3]&1)",
             fileName: "src/Items/Liquids.c",
-              lineNumber: 825,
+            lineNumber: 825,
           },
         },
       ],
@@ -640,7 +640,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.Detonator]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Plunger has been detonated",
     p0: {
       type: "Integer",
       description: "Detonator ID used by linked nuts and hive doors.",
@@ -726,7 +726,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.LawnDoor]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Door is open",
     p0: {
       type: "Integer",
       description: "Key ID / door color index.",
@@ -925,7 +925,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
     p3: "Unused",
   },
   [ItemType.WaterValve]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Valve is open",
     p0: {
       type: "Integer",
       description: "Valve identifier used by linked water objects",
@@ -1131,9 +1131,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;		// get y coord of patch",
+        code: "yOff = itemPtr->parm[2];",
         fileName: "src/Items/Liquids.c",
-            lineNumber: 832,
+        lineNumber: 832,
       },
     },
     p3: {
@@ -1144,9 +1144,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           description:
             "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "y = gLiquidYTable[kind][itemPtr->parm[2]];			// get y from table",
+            code: "if (itemPtr->parm[3]&1)",
             fileName: "src/Items/Liquids.c",
-              lineNumber: 825,
+            lineNumber: 825,
           },
         },
       ],
@@ -1177,9 +1177,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;		// get y coord of patch",
+        code: "yOff = itemPtr->parm[2];",
         fileName: "src/Items/Liquids.c",
-            lineNumber: 832,
+        lineNumber: 832,
       },
     },
     p3: {
@@ -1190,9 +1190,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           description:
             "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "y = gLiquidYTable[kind][itemPtr->parm[2]];			// get y from table",
+            code: "if (itemPtr->parm[3]&1)",
             fileName: "src/Items/Liquids.c",
-              lineNumber: 825,
+            lineNumber: 825,
           },
         },
       ],

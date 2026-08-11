@@ -30,7 +30,11 @@ if (configurationErrors.Count > 0)
 builder.Services.AddControllers();
 builder.Services.AddSingleton<ParticipantTokenService>();
 builder.Services.AddOpenApi();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 2 * 1024 * 1024;
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
 builder.Services.AddPangeaInfrastructure(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<PangeaRSEditDbContext>("database");
@@ -64,6 +68,14 @@ builder.Services.AddRateLimiter(options =>
                 TokensPerPeriod = 300,
                 ReplenishmentPeriod = TimeSpan.FromMinutes(1),
                 AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+    options.AddPolicy("lsp-hub", context =>
+        RateLimitPartition.GetConcurrencyLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = 4,
                 QueueLimit = 0
             }));
 });
@@ -206,7 +218,8 @@ app.MapControllers();
 app.MapHealthChecks("/healthz");
 app.MapHub<MultiplayerHub>("/api/multiplayer/signaling")
     .RequireRateLimiting("multiplayer-hub");
-app.MapHub<LspHub>("/api/lsp");
+app.MapHub<LspHub>("/api/lsp")
+    .RequireRateLimiting("lsp-hub");
 
 app.Run();
 

@@ -104,7 +104,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   if (itemData.Itms === undefined) return null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-h-full flex-col gap-2">
       {/* Global Toggle for Item Images */}
       <Button
         size="sm"
@@ -398,6 +398,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
       }
       buttonText={hasItems ? "Add More Items" : "Add First Item"}
       onInitialize={() => setClickToAddItem(0)}
+      fillHeight
     />
   );
 }

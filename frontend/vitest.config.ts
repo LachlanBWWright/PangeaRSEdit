@@ -22,6 +22,7 @@ export default defineConfig({
       "tests/modelRoundtrip/**/*.test.ts",
       "tests/tunnel/**/*.test.ts",
       "tests/levelEdit/**/*.test.ts",
+      "tests/levelIo/**/*.test.ts",
       "tests/levelTemplates/**/*.test.ts",
       "tests/tiles/**/*.test.ts",
       "tests/items/**/*.test.ts",

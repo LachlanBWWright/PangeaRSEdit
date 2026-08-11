@@ -6,6 +6,8 @@ import { Tiles } from "../subviews/Tiles";
 import { WaterBodies } from "../subviews/WaterBodies";
 import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { CheckpointLayer } from "../subviews/checkpoints/CheckpointLayer";
+import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import {
   FenceData,
@@ -101,10 +103,11 @@ export function CanvasStageLayers({
               terrainData={terrainData}
               liquidData={liquidData}
               setLiquidData={setLiquidData}
+              fenceData={fenceData}
             />
           )}
           {fenceData && shouldRenderFences(view) && (
-            <Fences fenceData={fenceData} setFenceData={setFenceData} />
+            <Fences fenceData={fenceData} setFenceData={setFenceData} liquidData={liquidData} />
           )}
           {itemData && shouldRenderItems(view) && (
             <Items
@@ -117,6 +120,15 @@ export function CanvasStageLayers({
           {splineData && shouldRenderSplines(view) && (
             <Splines splineData={splineData} setSplineData={setSplineData} />
           )}
+          {view === CanvasViewMode.supertiles && terrainData.CkPt && (
+            <Layer>
+              <CheckpointLayer
+                terrainData={terrainData}
+                setTerrainData={setTerrainData}
+                coordinateScale={1}
+              />
+            </Layer>
+          )}
         </>
       )}
       {view === CanvasViewMode.fences && (
@@ -127,6 +139,7 @@ export function CanvasStageLayers({
               terrainData={terrainData}
               liquidData={liquidData}
               setLiquidData={setLiquidData}
+              fenceData={fenceData}
             />
           )}
           {itemData && (
@@ -141,14 +154,14 @@ export function CanvasStageLayers({
             <Splines splineData={splineData} setSplineData={setSplineData} />
           )}
           {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceData} />
+            <Fences fenceData={fenceData} setFenceData={setFenceData} liquidData={liquidData} />
           )}
         </>
       )}
       {view === CanvasViewMode.water && (
         <>
           {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceData} />
+            <Fences fenceData={fenceData} setFenceData={setFenceData} liquidData={liquidData} />
           )}
           {itemData && (
             <Items
@@ -167,6 +180,7 @@ export function CanvasStageLayers({
               terrainData={terrainData}
               liquidData={liquidData}
               setLiquidData={setLiquidData}
+              fenceData={fenceData}
             />
           )}
         </>
@@ -179,6 +193,7 @@ export function CanvasStageLayers({
               terrainData={terrainData}
               liquidData={liquidData}
               setLiquidData={setLiquidData}
+              fenceData={fenceData}
             />
           )}
           {itemData && (
@@ -190,7 +205,7 @@ export function CanvasStageLayers({
             />
           )}
           {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceData} />
+            <Fences fenceData={fenceData} setFenceData={setFenceData} liquidData={liquidData} />
           )}
           {splineData && (
             <Splines splineData={splineData} setSplineData={setSplineData} />
@@ -205,13 +220,14 @@ export function CanvasStageLayers({
               terrainData={terrainData}
               liquidData={liquidData}
               setLiquidData={setLiquidData}
+              fenceData={fenceData}
             />
           )}
           {splineData && (
             <Splines splineData={splineData} setSplineData={setSplineData} />
           )}
           {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceData} />
+            <Fences fenceData={fenceData} setFenceData={setFenceData} liquidData={liquidData} />
           )}
           {itemData && (
             <Items

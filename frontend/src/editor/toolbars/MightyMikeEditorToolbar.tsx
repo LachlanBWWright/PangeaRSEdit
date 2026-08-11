@@ -31,8 +31,10 @@ export const MightyMikeEditorToolbar = memo(function MightyMikeEditorToolbar({
         ? "scripts"
       : view === View.supertiles
         ? "supertiles"
-        : view === View.tiles
+      : view === View.tiles
           ? "tiles"
+          : view === View.animations
+            ? "animations"
           : "supertiles";
 
   const handleValueChange = (value: string) => {
@@ -40,6 +42,7 @@ export const MightyMikeEditorToolbar = memo(function MightyMikeEditorToolbar({
     else if (value === "scripts") setView(View.scripts);
     else if (value === "supertiles") setView(View.supertiles);
     else if (value === "tiles") setView(View.tiles);
+    else if (value === "animations") setView(View.animations);
   };
 
   return (
@@ -69,6 +72,9 @@ export const MightyMikeEditorToolbar = memo(function MightyMikeEditorToolbar({
           </TabsTrigger>
           <TabsTrigger className="w-full" value="tiles">
             Behavior Tiles
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="animations">
+            Animations
           </TabsTrigger>
         </TabsList>
       </Tabs>

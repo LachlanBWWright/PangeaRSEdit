@@ -1,10 +1,16 @@
 import { TerrainItemTypeParams } from "@/data/items/ottoItemType";
+import { bugdomItemTypeParams } from "@/data/items/bugdomItemType";
+import { bugdom2ItemTypeParams } from "@/data/items/bugdom2ItemType";
+import { nanosaurItemTypeParams } from "@/data/items/nanosaurItemType";
+import { nanosaur2ItemTypeParams } from "@/data/items/nanosaur2ItemType";
+import { croMagItemTypeParams } from "@/data/items/croMagItemType";
+import { billyFrontierItemTypeParams } from "@/data/items/billyFrontierItemType";
 import type {
   FlagDescription,
   ParamDescription,
 } from "@/data/items/itemParams";
 import { getItemTypes } from "@/data/items/getItemTypes";
-import type { GlobalsInterface } from "@/data/globals/globals";
+import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { ItemData } from "@/python/structSpecs/LevelTypes";
 
 export function getAllItemValues(globals: GlobalsInterface): number[] {
@@ -34,11 +40,31 @@ export function getSelectedItem(data: ItemData, index: number | undefined) {
   return data.Itms?.[1000]?.obj?.[index] ?? null;
 }
 
-export function getSelectedItemParams(type: number | undefined) {
+export function getSelectedItemParams(
+  globals: GlobalsInterface,
+  type: number | undefined,
+) {
   if (type === undefined) {
     return undefined;
   }
-  return TerrainItemTypeParams[type];
+  switch (globals.GAME_TYPE) {
+    case Game.OTTO_MATIC:
+      return TerrainItemTypeParams[type];
+    case Game.BUGDOM:
+      return bugdomItemTypeParams[type];
+    case Game.BUGDOM_2:
+      return bugdom2ItemTypeParams[type];
+    case Game.NANOSAUR:
+      return nanosaurItemTypeParams[type];
+    case Game.NANOSAUR_2:
+      return nanosaur2ItemTypeParams[type];
+    case Game.CRO_MAG:
+      return croMagItemTypeParams[type];
+    case Game.BILLY_FRONTIER:
+      return billyFrontierItemTypeParams[type];
+    case Game.MIGHTY_MIKE:
+      return undefined;
+  }
 }
 
 export function updateSelectedItemType(

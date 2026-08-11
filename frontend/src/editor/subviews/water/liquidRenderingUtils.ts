@@ -1,6 +1,10 @@
 import { type GlobalsInterface } from "@/data/globals/globals";
 import { HeaderData, Liquid, TerrainData } from "@/python/structSpecs/LevelTypes";
 import {
+  resolveLiquidSurfaceHeight,
+  supportsFixedHeightLiquid,
+} from "@/data/water/fixedHeightLiquid";
+import {
   getLiquidTextureCanvas,
   getLiquidVisualStyle,
   type LiquidTextureKind,
@@ -97,15 +101,20 @@ export function getLiquidSurfaceY(
   terrainData: TerrainData,
   liquidBody: Liquid,
 ) {
-  return (
+  const terrainRelativeHeight =
     sampleTerrainHeightAtPoint(
       liquidBody.hotSpotX,
       liquidBody.hotSpotZ,
       headerData,
       terrainData,
       globals,
-    ) + DEFAULT_LIQUID_HEIGHT_OFFSET
-  );
+    ) + DEFAULT_LIQUID_HEIGHT_OFFSET;
+  return resolveLiquidSurfaceHeight({
+    supportsFixedHeight: supportsFixedHeightLiquid(globals.GAME_TYPE),
+    flags: liquidBody.flags,
+    heightIndex: liquidBody.height,
+    terrainRelativeHeight,
+  });
 }
 
 export interface LiquidBodyCanvas {
@@ -119,13 +128,14 @@ export function buildLiquidBodyCanvas(
   headerData: HeaderData,
   terrainData: TerrainData,
   liquidBody: Liquid,
+  gameTexture: HTMLCanvasElement | null = null,
 ): LiquidBodyCanvas | null {
   const visibleNubs = liquidBody.nubs
     .slice(0, liquidBody.numNubs)
     .filter((nub) => Array.isArray(nub) && nub.length >= 2);
   if (visibleNubs.length < 3) return null;
 
-  const texture = getLiquidTextureCanvas(globals, liquidBody.type);
+  const texture = gameTexture ?? getLiquidTextureCanvas(globals, liquidBody.type);
   const liquidSurfaceY = getLiquidSurfaceY(globals, headerData, terrainData, liquidBody);
 
   const points = visibleNubs.map((nub) => [nub[0], nub[1]] as [number, number]);
@@ -141,11 +151,21 @@ export function buildLiquidBodyCanvas(
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
 
   const cellSize = Math.max(1, Math.round(globals.TILE_SIZE / 4));
   const pattern = ctx.createPattern(texture, "repeat");
   if (!pattern) return null;
+  const textureRepeatInGameUnits =
+    globals.GAME_TYPE === 4 ? 2000 : 500;
+  const textureRepeatInEditorUnits =
+    textureRepeatInGameUnits * (globals.TILE_SIZE / globals.TILE_INGAME_SIZE);
+  pattern.setTransform(
+    new DOMMatrix().scale(
+      textureRepeatInEditorUnits / texture.width,
+      textureRepeatInEditorUnits / texture.height,
+    ),
+  );
 
   const firstPoint = points[0];
   if (!firstPoint) return null;
@@ -161,6 +181,12 @@ export function buildLiquidBodyCanvas(
   }
   ctx.closePath();
   ctx.clip();
+
+  const coverageCanvas = document.createElement("canvas");
+  coverageCanvas.width = width;
+  coverageCanvas.height = height;
+  const coverageContext = coverageCanvas.getContext("2d");
+  if (!coverageContext) return null;
 
   for (let y = Math.floor(minY / cellSize) * cellSize; y < maxY; y += cellSize) {
     for (let x = Math.floor(minX / cellSize) * cellSize; x < maxX; x += cellSize) {
@@ -186,13 +212,21 @@ export function buildLiquidBodyCanvas(
       const opacity = getLiquidCoverageOpacity(liquidSurfaceY, terrainHeights);
       if (opacity <= 0) continue;
 
-      ctx.globalAlpha = opacity;
-      ctx.fillStyle = pattern;
-      ctx.fillRect(x, y, cellSize, cellSize);
+      coverageContext.globalAlpha = opacity;
+      coverageContext.fillStyle = "white";
+      coverageContext.fillRect(x - minX, y - minY, cellSize, cellSize);
     }
   }
 
+  ctx.filter = `blur(${Math.max(1, cellSize / 2)}px)`;
+  ctx.drawImage(coverageCanvas, minX, minY);
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = pattern;
+  ctx.fillRect(minX, minY, width, height);
+
   ctx.restore();
+  ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
   return { canvas, x: minX, y: minY };
 }

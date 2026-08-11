@@ -7,6 +7,7 @@
 
 import type { DraftFunction, Updater } from "use-immer";
 import type { Draft } from "immer";
+import { View } from "../viewEnum";
 import type {
   ItemData,
   LiquidData,
@@ -113,6 +114,14 @@ export function terrainHasSupertileData(
     (terrainData.STgd !== undefined && terrainData.STgd !== null) ||
     (terrainData.Layr !== undefined && terrainData.Layr !== null)
   );
+}
+
+export function normalizeEditorView(
+  view: View,
+  allowedViews: readonly View[],
+  fallback: View,
+): View {
+  return allowedViews.includes(view) ? view : fallback;
 }
 
 // Re-export types for convenience

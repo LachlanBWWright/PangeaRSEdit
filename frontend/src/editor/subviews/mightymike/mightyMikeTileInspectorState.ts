@@ -15,7 +15,7 @@ export const MIGHTY_MIKE_FLAG_OPTIONS: readonly (readonly [number, string])[] =
     [12, "Ice"],
     [13, "(unused)"],
     [14, "(unused)"],
-    [15, "Track"],
+    [15, "Race-car Path"],
   ];
 
 export const MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS: readonly (readonly [

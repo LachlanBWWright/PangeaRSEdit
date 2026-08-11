@@ -16,7 +16,6 @@ import {
   TileViews,
   TopologyBrushMode,
   TopologyBrushRadius,
-  TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
   TileEditingEnabled,
@@ -49,6 +48,9 @@ import {
   createHeaderHeightChangeHandler,
   getHeaderHeightBounds,
 } from "@/editor/gameViews/tilesMenuState";
+import { getSemanticTileAttributes } from "@/data/terrain/semanticTileAttributes";
+import { SemanticTileAttributeControls } from "../subviews/tiles/SemanticTileAttributeControls";
+import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl";
 
 export function StandardTilesMenu({
   headerData,
@@ -64,7 +66,6 @@ export function StandardTilesMenu({
   const [valueMode, setValueMode] = useAtom(CurrentTopologyValueMode);
   const [brushRadius, setBrushRadius] = useAtom(TopologyBrushRadius);
   const [value, setValue] = useAtom(TopologyValue);
-  const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
@@ -76,6 +77,7 @@ export function StandardTilesMenu({
     ShowAccessibilityOverlay,
   );
   const globals = useAtomValue(Globals);
+  const semanticAttributes = getSemanticTileAttributes(globals.GAME_TYPE);
 
   const { minY, maxY } = getHeaderHeightBounds(headerData);
   const canShowAccessibilityOverlay = hasAccessibleOverlayData(
@@ -107,10 +109,19 @@ export function StandardTilesMenu({
   return (
     <div className="flex flex-col gap-2">
       <Tabs
-        value={tileView === TileViews.Topology ? "topology" : "flags"}
+        value={
+          tileView === TileViews.Topology
+            ? "topology"
+            : tileView === TileViews.Attributes
+              ? "attributes"
+              : "flags"
+        }
         onValueChange={(value) => {
           if (value === "topology") {
             setTileView(TileViews.Topology);
+          } else if (value === "attributes") {
+            setTileView(TileViews.Attributes);
+            setCanvasViewMode(CanvasView.TWO_D);
           } else {
             setTileView(TileViews.Flags);
             setCanvasViewMode(CanvasView.TWO_D);
@@ -124,6 +135,11 @@ export function StandardTilesMenu({
           <TabsTrigger className="w-full" value="flags">
             Empty Tiles
           </TabsTrigger>
+          {semanticAttributes.length > 0 && (
+            <TabsTrigger className="w-full" value="attributes">
+              Attributes
+            </TabsTrigger>
+          )}
         </TabsList>
       </Tabs>
 
@@ -192,14 +208,7 @@ export function StandardTilesMenu({
           <Input type="number" value={minY} onChange={handleMinYChange} />
           <p>Max Height</p>
           <Input type="number" value={maxY} onChange={handleMaxYChange} />
-          <p>Topology View Opacity</p>
-          <Input
-            type="number"
-            defaultValue={toplogyOpacity}
-            onChange={(e) =>
-              setTopologyOpacity(parseFloat(e.target.value) || 1)
-            }
-          />
+          <TopologyOpacityControl />
           {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
             canShowAccessibilityOverlay && (
               <div className="flex items-center justify-between col-span-4 rounded border border-gray-700 px-3 py-2">
@@ -281,6 +290,9 @@ export function StandardTilesMenu({
             (black).
           </p>
         </div>
+      )}
+      {tileView === TileViews.Attributes && semanticAttributes.length > 0 && (
+        <SemanticTileAttributeControls attributes={semanticAttributes} />
       )}
     </div>
   );

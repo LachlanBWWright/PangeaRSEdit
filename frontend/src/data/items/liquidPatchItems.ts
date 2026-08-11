@@ -359,16 +359,18 @@ function drawLiquidPatchCanvas(
   centerX: number,
   centerZ: number,
   liquidSurfaceY: number,
+  texture: HTMLCanvasElement | null,
 ) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
   ctx.clearRect(0, 0, width, height);
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
 
   const cellSize = Math.max(2, Math.round(globals.TILE_SIZE / 8));
   const left = centerX - width / 2;
   const top = centerZ - height / 2;
+  const texturePattern = texture ? ctx.createPattern(texture, "repeat") : null;
 
   for (let y = 0; y < height; y += cellSize) {
     for (let x = 0; x < width; x += cellSize) {
@@ -387,7 +389,7 @@ function drawLiquidPatchCanvas(
       if (terrainY > liquidSurfaceY) continue;
 
       ctx.globalAlpha = 0.9;
-      ctx.fillStyle = style.fill2D;
+      ctx.fillStyle = texturePattern ?? style.fill2D;
       ctx.fillRect(
         x,
         y,
@@ -433,6 +435,7 @@ export function getLiquidPatchCanvas(
   p3: number,
   centerX: number,
   centerZ: number,
+  texture: HTMLCanvasElement | null = null,
 ): LiquidPatchCanvas | null {
   const style = getLiquidPatchStyle(globals, itemType);
   if (!style) return null;
@@ -466,6 +469,7 @@ export function getLiquidPatchCanvas(
     Math.round(centerX),
     Math.round(centerZ),
     Math.round(liquidSurfaceY),
+    texture ? "game-texture" : "fallback",
   ].join(":");
 
   const cachedCanvas = terrainData
@@ -489,6 +493,7 @@ export function getLiquidPatchCanvas(
     centerX,
     centerZ,
     liquidSurfaceY,
+    texture,
   );
   if (terrainData) {
     let terrainCache = LIQUID_PATCH_CANVAS_CACHE.get(terrainData);

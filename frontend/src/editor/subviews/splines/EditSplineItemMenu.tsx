@@ -33,6 +33,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SplineItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
+import { ItemStateFlags } from "@/editor/subviews/items/ItemStateFlags";
 import {
   clampPlacement,
   deleteSelectedSplineItem,
@@ -42,6 +43,7 @@ import {
 } from "@/editor/subviews/splines/editSplineItemMenuState";
 import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import { LevelNumber } from "@/data/globals/levelNumber";
+import { MenuEmptyState } from "../MenuEmptyState";
 
 export function EditSplineItemMenu({
   setSplineData,
@@ -84,16 +86,15 @@ export function EditSplineItemMenu({
     return (
       <>
         {selectedSplineItemControl}
-        <div className="flex flex-col gap-1 rounded border border-dashed border-gray-700 p-3 text-sm">
-          <p className="font-medium text-white">
-            {hasSplineItems ? "No Spline Item Selected" : "No Spline Items"}
-          </p>
-          <p className="text-gray-300">
-            {hasSplineItems
+        <MenuEmptyState
+          title={hasSplineItems ? "No Spline Item Selected" : "No Spline Items"}
+          description={
+            hasSplineItems
               ? "Select a spline item from the dropdown."
-              : "Add a spline item from the dropdown."}
-          </p>
-        </div>
+              : "Add a spline item from the dropdown."
+          }
+          compact
+        />
       </>
     );
   }
@@ -275,6 +276,18 @@ export function EditSplineItemMenu({
           }}
         />
       </div>
+      <ItemStateFlags
+        description={currentSplineItemParams?.flags ?? "Unknown"}
+        value={currentSplineItemData.flags}
+        onChange={(value) => {
+          setSplineData((draft) => {
+            const item = draft.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj[
+              selectedSplineItem
+            ];
+            if (item) item.flags = value;
+          });
+        }}
+      />
       <div>
         <SplineItemScriptSection
           selectionLabel={getSplineItemName(globals, currentSplineItemData.type)}

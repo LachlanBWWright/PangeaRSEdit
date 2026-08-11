@@ -57,6 +57,9 @@ import {
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { BugdomVertexColorOverlay } from "../subviews/bugdom/BugdomVertexColorOverlay";
+import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
+import { editBugdomVertexColorsAtom } from "@/data/terrain/bugdomVertexColorAtoms";
 
 export interface StageData {
   scale: number;
@@ -105,6 +108,8 @@ export function Bugdom1KonvaView({
   const clickToAddItem = useAtomValue(ClickToAddItem);
   const customObjectPlacement = useCustomObjectPlacement();
   const globals = useAtomValue(Globals);
+  const showRoof = useAtomValue(ShowRoofInTopology);
+  const editingVertexColors = useAtomValue(editBugdomVertexColorsAtom);
 
   const tileBrushMode = useAtomValue(tileBrushModeAtom);
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
@@ -346,7 +351,11 @@ export function Bugdom1KonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={tileBrushMode !== "stamp" && tileBrushMode !== "capture"}
+        draggable={
+          !editingVertexColors &&
+          tileBrushMode !== "stamp" &&
+          tileBrushMode !== "capture"
+        }
         onClick={handleStageClick}
         onDblClick={handleStageDblClick}
         onWheel={handleStageWheel}
@@ -398,6 +407,16 @@ export function Bugdom1KonvaView({
             headerData={headerData}
             terrainData={terrainData}
             mapImages={mapImages}
+          />
+        )}
+
+        {view === View.supertiles && terrainData.Vcol?.[1000] && (
+          <BugdomVertexColorOverlay
+            headerData={headerData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            tileSize={tileSize}
+            layerKey={showRoof && terrainData.Vcol[1001] ? 1001 : 1000}
           />
         )}
 

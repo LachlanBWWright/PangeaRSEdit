@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { StatusChip } from "./ScriptSharedComponents";
 import type { ScriptDiagnostic } from "./scriptWorkspaceState";
+import { MenuEmptyState } from "../MenuEmptyState";
 
 interface ScriptCodeWorkspacePanelProps {
   activeCodePath: string | null;
@@ -47,19 +48,27 @@ export function ScriptCodeWorkspacePanel({
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate font-medium text-white">
-                {activeCodePath ?? "No file selected"}
-              </p>
-              <p className="text-xs text-slate-400">{activeCodeDescription}</p>
+        {hasActiveCodeFile && activeCodePath !== null ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-white">
+                  {activeCodePath}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {activeCodeDescription}
+                </p>
+              </div>
+              <Button onClick={onOpenEditor}>Open Editor</Button>
             </div>
-            <Button onClick={onOpenEditor} disabled={!hasActiveCodeFile}>
-              Open Editor
-            </Button>
           </div>
-        </div>
+        ) : (
+          <MenuEmptyState
+            title="No File Selected"
+            description={activeCodeDescription}
+            compact
+          />
+        )}
 
         <div className="grid gap-2 rounded-xl border border-slate-800 bg-slate-900/80 p-3">
           <div className="flex items-center justify-between gap-3">

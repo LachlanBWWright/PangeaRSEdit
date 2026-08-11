@@ -27,6 +27,16 @@ import {
 } from "@/data/terrain-io/terrainImageSerialization";
 import { compileNanosaur1LevelWithRust } from "./nanosaurLevelCodecWasm";
 import { parseNanosaur1Level } from "@/data/processors/classicProprocessor";
+import { z } from "zod";
+import {
+  mightyMikeTileAttributeSchema,
+  mightyMikeTileSetSchema,
+} from "@/schemas/common";
+import {
+  mightyMikeTileSetToBinary,
+  type MightyMikeTilesetPreservedData,
+} from "@/modelParsers/parseMightyMike";
+import { regenerateDerivedLevelData } from "@/data/saveMap/regenerateDerivedLevelData";
 
 function notify(
   onProgress: ((progress: LevelIoProgress) => void) | undefined,
@@ -39,6 +49,101 @@ function cloneUint8Array(bytes: Uint8Array): Uint8Array {
   const clone = new Uint8Array(bytes.byteLength);
   clone.set(bytes);
   return clone;
+}
+
+const preservedTilesetDataSchema = z.object({
+  headerPrefixBytes: z.array(z.number().int().min(0).max(255)).length(6),
+  preTileDefinitionBytes: z.array(z.number().int().min(0).max(255)),
+  legacyPaletteEntryCount: z.number().int().min(0).max(0xffff),
+  legacyPaletteBytes: z.array(z.number().int().min(0).max(255)),
+  animationNameFieldBytes: z.array(
+    z.array(z.number().int().min(0).max(255)).length(16),
+  ),
+  trailingBytes: z.array(z.number().int().min(0).max(255)),
+});
+
+const paletteBytesSchema = z.array(z.number().int().min(0).max(255)).length(1024);
+const mightyMikeXlatEntrySchema = z.object({ idx: z.number().int().min(0) });
+
+function createDefaultMightyMikePalette(): number[] {
+  return Array.from({ length: 256 }, (_, index) => [index, index, index, 255]).flat();
+}
+
+function getMightyMikeMetadataObject(
+  levelData: LevelData,
+): Record<string, unknown> | null {
+  const metadataEntry = levelData._metadata?.[1000];
+  if (!isRecord(metadataEntry) || !isRecord(metadataEntry.obj)) {
+    return null;
+  }
+  return metadataEntry.obj;
+}
+
+function serializeMightyMikeTileset(
+  levelData: LevelData,
+  mapImages: readonly LevelIoImagePayload[],
+): Result<Uint8Array, LevelIoError> {
+  const tilesetResult = mightyMikeTileSetSchema.safeParse(levelData.tileset);
+  if (!tilesetResult.success) {
+    return err(
+      levelIoError(
+        "serialize.failed",
+        "Missing or invalid Mighty Mike tileset data",
+      ),
+    );
+  }
+  const metadata = getMightyMikeMetadataObject(levelData);
+  const preservedResult = preservedTilesetDataSchema.safeParse(
+    metadata?.mightyMikeTilesetPreservedData,
+  );
+  const paletteResult = paletteBytesSchema.safeParse(
+    metadata?.mightyMikePaletteRgbaBytes,
+  );
+  const parsedTileset = tilesetResult.data;
+  const editorAttributesResult = z
+    .array(mightyMikeTileAttributeSchema)
+    .safeParse(levelData.Atrb?.[1000]?.obj);
+  const editorXlatResult = z
+    .array(mightyMikeXlatEntrySchema)
+    .safeParse(levelData.Xlat?.[1000]?.obj);
+  const tileAttributes = editorAttributesResult.success
+    ? editorAttributesResult.data
+    : parsedTileset.tileAttributes;
+  const xlateTable = editorXlatResult.success
+    ? editorXlatResult.data.map((entry) => entry.idx)
+    : parsedTileset.xlateTable;
+  if (tileAttributes.length !== xlateTable.length) {
+    return err(
+      levelIoError(
+        "serialize.failed",
+        "Mighty Mike tile definitions and behavior attributes are out of sync",
+      ),
+    );
+  }
+  const preservedData: MightyMikeTilesetPreservedData | undefined =
+    preservedResult.success ? preservedResult.data : undefined;
+  const serializationResult = mightyMikeTileSetToBinary({
+    tileset: {
+      numTileDefinitions: parsedTileset.numTileDefinitions,
+      numXlateEntries: parsedTileset.numXlateEntries,
+      numTileAttributeEntries: parsedTileset.numTileAttributeEntries,
+      numTileAnims: parsedTileset.numTileAnims,
+      numTileXparentColors: parsedTileset.numTileXparentColors,
+      xlateTable,
+      tileAttributes,
+      tileAnimations: parsedTileset.tileAnimations,
+      transparencyColors: parsedTileset.transparencyColors,
+    },
+    tileImages: mapImages,
+    paletteRgbaBytes: paletteResult.success
+      ? paletteResult.data
+      : createDefaultMightyMikePalette(),
+    preservedData,
+  });
+  if (serializationResult.isErr()) {
+    return err(levelIoError("serialize.failed", serializationResult.error));
+  }
+  return ok(new Uint8Array(serializationResult.value));
 }
 
 function serializeBugdomTileImages(
@@ -215,7 +320,8 @@ export async function serializeLevelDownloadBytes(
   if (!isLevelDataLike(options.levelData)) {
     return err(levelIoError("serialize.failed", "Level data is not valid"));
   }
-  const levelData = options.levelData;
+  const levelData = structuredClone(options.levelData);
+  regenerateDerivedLevelData(levelData);
 
   notify(onProgress, {
     stage: "serialize.resource-fork",
@@ -276,11 +382,23 @@ export async function serializeLevelDownloadBytes(
     if (mapBytesResult.isErr()) {
       return err(mapBytesResult.error);
     }
+    const tilesetBytesResult = serializeMightyMikeTileset(
+      levelData,
+      options.mapImages,
+    );
+    if (tilesetBytesResult.isErr()) {
+      return err(tilesetBytesResult.error);
+    }
     return ok([
       {
         filename: options.fileName,
         extension: ".map",
         bytes: mapBytesResult.value,
+      },
+      {
+        filename: options.mapImagesFileName ?? options.fileName,
+        extension: ".tileset",
+        bytes: tilesetBytesResult.value,
       },
     ]);
   }
@@ -419,6 +537,10 @@ export async function preparePreviewLevelBytes(
     if (dataBytes.isErr()) {
       return err(levelIoError("preview.failed", dataBytes.error.message));
     }
+    const tilesetBytes = serializeMightyMikeTileset(levelData, options.mapImages);
+    if (tilesetBytes.isErr()) {
+      return err(levelIoError("preview.failed", tilesetBytes.error.message));
+    }
     notify(onProgress, {
       stage: "preview.ready",
       message: "Preview bytes are ready",
@@ -426,7 +548,7 @@ export async function preparePreviewLevelBytes(
     return ok({
       dataBytes: dataBytes.value,
       rsrcBytes: null,
-      textureBytes: null,
+      textureBytes: tilesetBytes.value,
     });
   }
 

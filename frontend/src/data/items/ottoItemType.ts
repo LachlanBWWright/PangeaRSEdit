@@ -1508,14 +1508,14 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p3: "Unused",
   },
   [ItemType.PitcherPlantBoss]: {
-    flags: "Auto-fade status bits",
+    flags: "ITEM_FLAGS_USER1: Boss has been burned",
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.PitcherPod]: {
-    flags: "Auto-fade status bits",
+    flags: "ITEM_FLAGS_USER1: Pod has been destroyed",
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",

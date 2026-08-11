@@ -1,0 +1,18 @@
+export const NANOSAUR_PATH_TILES: readonly string[] = [
+  "None",
+  "Path up", "Path up-right", "Path right", "Path down-right",
+  "Path down", "Path down-left", "Path left", "Path up-left",
+  "Solid all sides", "Solid top", "Solid right", "Solid bottom", "Solid left",
+  "Solid top/bottom", "Solid left/right", "Solid top/right",
+  "Solid bottom/right", "Solid bottom/left", "Solid top/left",
+  "Solid top/left/right", "Solid top/right/bottom",
+  "Solid bottom/left/right", "Solid top/bottom/left",
+  "Secondary solid all sides", "Secondary solid top", "Secondary solid right",
+  "Secondary solid bottom", "Secondary solid left", "Secondary solid top/bottom",
+  "Secondary solid left/right", "Secondary solid top/right",
+  "Secondary solid bottom/right", "Secondary solid bottom/left",
+  "Secondary solid top/left", "Secondary solid top/left/right",
+  "Secondary solid top/right/bottom", "Secondary solid bottom/left/right",
+  "Secondary solid top/bottom/left", "Reverse path", "Hurt", "Fold A", "Fold B",
+  "Slope force",
+];

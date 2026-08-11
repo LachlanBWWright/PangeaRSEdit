@@ -7,8 +7,13 @@ import { useMemo } from "react";
 import { Layer, Image } from "react-konva";
 import { useAtomValue } from "jotai";
 import type { KonvaEventObject } from "konva/lib/Node";
-import type { HeaderData, TerrainData, TileAttribute } from "@/python/structSpecs/LevelTypes";
+import type {
+  HeaderData,
+  TerrainData,
+  TileAttribute,
+} from "@/python/structSpecs/LevelTypes";
 import type { Updater } from "use-immer";
+import type { Game } from "@/data/globals/globals";
 import { Globals } from "../../../data/globals/globals";
 import {
   TileEditingEnabled,
@@ -16,20 +21,27 @@ import {
   TopologyBrushRadius,
 } from "../../../data/tiles/tileAtoms";
 import { createImageCanvas } from "./tilesUtils";
+import { getTileAttributeIndex } from "../tileViewState";
 
 export interface FlagTileEditorProps {
   headerData: HeaderData;
+  game: Game;
   setTerrainData: Updater<TerrainData>;
   tileGrid: TileAttribute[];
   flagBit: number;
+  flagField?: "flags" | "bits";
+  opacity?: number;
   flagToColour: (flags: number) => [number, number, number, number];
 }
 
 export function FlagTileEditor({
   headerData,
+  game,
   setTerrainData,
   tileGrid,
   flagBit,
+  flagField = "flags",
+  opacity = 1,
   flagToColour,
 }: FlagTileEditorProps) {
   const globals = useAtomValue(Globals);
@@ -40,8 +52,10 @@ export function FlagTileEditor({
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
   const coordColours = useMemo(() => {
-    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-  }, [tileGrid, flagToColour]);
+    return tileGrid.flatMap((tile) =>
+      flagToColour(flagField === "bits" ? (tile.bits ?? 0) : tile.flags),
+    );
+  }, [tileGrid, flagField, flagToColour]);
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
@@ -94,16 +108,17 @@ export function FlagTileEditor({
             continue;
 
           const flatPos = tileGridY * header.mapWidth + tileGridX;
-          const atrbIdx = data.Layr[1000].obj[flatPos];
-          if (atrbIdx === undefined) continue;
+          const layerValue = data.Layr[1000].obj[flatPos];
+          if (layerValue === undefined) continue;
+          const atrbIdx = getTileAttributeIndex(game, layerValue);
           const attr = data.Atrb[1000].obj[atrbIdx];
           if (!attr) continue;
 
-          if (brushType === "add") {
-            attr.flags |= flagBit;
-          } else if (brushType === "remove") {
-            attr.flags &= ~flagBit;
-          }
+          const current = flagField === "bits" ? (attr.bits ?? 0) : attr.flags;
+          const next =
+            brushType === "add" ? current | flagBit : current & ~flagBit;
+          if (flagField === "bits") attr.bits = next;
+          else attr.flags = next;
         }
       }
     });
@@ -117,6 +132,7 @@ export function FlagTileEditor({
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
         image={imgCanvas ?? undefined}
+        opacity={opacity}
         onClick={handleTileClickEvent}
       />
     </Layer>

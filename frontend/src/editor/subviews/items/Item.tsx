@@ -21,6 +21,8 @@ import {
   getLiquidHoverTag,
   getLiquidPatchLayout,
 } from "@/editor/subviews/items/itemRenderState";
+import { useItemLiquidTexture } from "./useItemLiquidTexture";
+import { LevelNumber } from "@/data/globals/levelNumber";
 
 export const Item = memo(function Item({
   itemData,
@@ -42,6 +44,7 @@ export const Item = memo(function Item({
   const item = itemData.Itms[1000].obj[itemIdx];
   const setSelectedItem = useSetAtom(SelectedItem);
   const globals = useAtomValue(Globals);
+  const levelNumber = useAtomValue(LevelNumber);
   const itemType = item?.type ?? 0;
   const itemP0 = item?.p0 ?? 0;
   const itemP1 = item?.p1 ?? 0;
@@ -49,6 +52,7 @@ export const Item = memo(function Item({
   const itemP3 = item?.p3 ?? 0;
   const itemPosX = item?.x ?? 0;
   const itemPosZ = item?.z ?? 0;
+  const liquidTexture = useItemLiquidTexture(globals, itemType, levelNumber);
 
   const handleMouseDown = useCallback(
     () => setSelectedItem(itemIdx),
@@ -97,6 +101,7 @@ export const Item = memo(function Item({
             itemP3,
             itemPosX,
             itemPosZ,
+            liquidTexture,
           )
         : null,
     [
@@ -111,6 +116,7 @@ export const Item = memo(function Item({
       itemPosX,
       itemPosZ,
       liquidPatchLayout,
+      liquidTexture,
     ],
   );
 

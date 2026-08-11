@@ -27,6 +27,10 @@ import {
   canEditTileTexture,
   updateSelectedTileTexture,
 } from "@/editor/subviews/supertiles/supertileMenuState";
+import { CheckpointPanel } from "../checkpoints/CheckpointPanel";
+import { getGameFeatures } from "@/editor/utils/gameFeatures";
+import { MenuEmptyState } from "../MenuEmptyState";
+import { CroMagPathPanel } from "../paths/CroMagPathPanel";
 
 /**
  * Standard Supertile Menu for games with STgd-based terrain
@@ -52,6 +56,8 @@ export function SupertileMenu({
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
+  const supportsCheckpoints = getGameFeatures(globals.GAME_TYPE).hasCheckpoints;
+  const supportsPaths = getGameFeatures(globals.GAME_TYPE).hasPaths;
   const supertileCounts = getSupertileCounts(
     hedr.mapWidth,
     hedr.mapHeight,
@@ -66,9 +72,11 @@ export function SupertileMenu({
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {
     return (
-      <div className="p-4 text-white">
-        <p>No supertile grid data available</p>
-      </div>
+      <MenuEmptyState
+        title="No Supertile Grid"
+        description="This level doesn't contain supertile grid data to edit."
+        fillHeight
+      />
     );
   }
 
@@ -156,31 +164,16 @@ export function SupertileMenu({
               Edit
             </Button>
           </div>
-          <Stage width={120} height={120} className="mx-auto">
+          <Stage width={170} height={170} className="mx-auto">
             <Layer>
               <ImageDisplay
+                size={170}
                 image={
                   mapImages[stgd[selectedTile]?.superTileId ?? 0] ?? undefined
                 }
               />
             </Layer>
           </Stage>
-          <p>Download Selected Tile</p>
-          <Button
-            size="sm"
-            onClick={() => {
-              const tileEntry = stgd[selectedTile];
-              if (tileEntry) {
-                downloadSelectedTile(
-                  mapImages,
-                  tileEntry.superTileId,
-                  selectedTile,
-                );
-              }
-            }}
-          >
-            Download
-          </Button>
         </div>
         <div className="flex h-full min-h-0 flex-col gap-2">
           <p>Upload Image For Whole Map</p>
@@ -221,6 +214,22 @@ export function SupertileMenu({
             Edit whole map in texture editor
           </Button>
           <div className="flex-1" />
+          <p>Download Selected Tile</p>
+          <Button
+            size="sm"
+            onClick={() => {
+              const tileEntry = stgd[selectedTile];
+              if (tileEntry) {
+                downloadSelectedTile(
+                  mapImages,
+                  tileEntry.superTileId,
+                  selectedTile,
+                );
+              }
+            }}
+          >
+            Download
+          </Button>
           <p>Download Image For Whole Map</p>
           <Button
             size="sm"
@@ -257,6 +266,22 @@ export function SupertileMenu({
           >
             Set to Blank
           </Button>
+          {supportsCheckpoints && (
+            <CheckpointPanel
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+              terrainData={terrainData}
+              setTerrainData={setTerrainData}
+            />
+          )}
+          {supportsPaths && (
+            <CroMagPathPanel
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+              terrainData={terrainData}
+              setTerrainData={setTerrainData}
+            />
+          )}
         </div>
       </div>
       <ImageEditor

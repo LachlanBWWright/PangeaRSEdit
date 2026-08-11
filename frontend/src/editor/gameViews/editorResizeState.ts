@@ -106,6 +106,7 @@ async function resizeEditorAtomicData(
     globals: {
       TILES_PER_SUPERTILE: args.globals.TILES_PER_SUPERTILE,
       TILE_INGAME_SIZE: args.globals.TILE_INGAME_SIZE,
+      TILE_SIZE: args.globals.TILE_SIZE,
       EMPTY_TILE_IDX: args.globals.EMPTY_TILE_IDX,
     },
     options: {

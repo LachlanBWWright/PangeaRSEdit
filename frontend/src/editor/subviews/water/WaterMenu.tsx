@@ -7,10 +7,8 @@ import {
   SelectedWaterNub,
 } from "../../../data/water/waterAtoms";
 import { PendingCreation } from "@/data/creation/pendingCreationAtom";
-import {
-  waterBodyNames,
-  WaterBodyType,
-} from "../../../data/water/ottoWaterBodyType";
+import { waterBodyNames } from "../../../data/water/ottoWaterBodyType";
+import { getWaterBodyTypeName } from "@/data/water/getWaterBodyTypeName";
 import { Globals } from "../../../data/globals/globals";
 import {
   Select,
@@ -22,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { memo, useMemo } from "react";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { SnappingToggle } from "../shared/SnappingToggle";
 import {
   Tooltip,
   TooltipContent,
@@ -45,6 +44,13 @@ import {
   finalizeWaterFromPoints,
   popCreationPoint,
 } from "@/editor/creation/pendingCreationState";
+import { LiquidThumbnail } from "./LiquidThumbnail";
+import { Switch } from "@/components/ui/switch";
+import {
+  FIXED_LIQUID_HEIGHTS,
+  supportsFixedHeightLiquid,
+  WATER_FLAG_FIXED_HEIGHT,
+} from "@/data/water/fixedHeightLiquid";
 
 export const WaterMenu = memo(function WaterMenu({
   liquidData,
@@ -59,6 +65,7 @@ export const WaterMenu = memo(function WaterMenu({
   const globals = useAtomValue(Globals);
 
   const waterBodyValues = useMemo(() => getWaterBodyValues(globals), [globals]);
+  const supportsFixedHeight = supportsFixedHeightLiquid(globals.GAME_TYPE);
 
   if (liquidData.Liqd === undefined) return null;
 
@@ -148,6 +155,7 @@ export const WaterMenu = memo(function WaterMenu({
       <p>
         Water Body {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
       </p>
+      <SnappingToggle />
 
       <div className="flex flex-col gap-2 flex-1 min-h-0">
         {waterBodyData !== null && waterBodyData !== undefined && (
@@ -166,7 +174,15 @@ export const WaterMenu = memo(function WaterMenu({
               }}
             >
               <SelectTrigger>
-                <SelectValue>{waterBodyNames[waterBodyData.type]}</SelectValue>
+                <SelectValue>
+                  <span className="flex items-center gap-2">
+                    <LiquidThumbnail
+                      globals={globals}
+                      liquidType={waterBodyData.type}
+                    />
+                    {getWaterBodyTypeName(globals, waterBodyData.type)}
+                  </span>
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {waterBodyValues.map((key) => (
@@ -175,11 +191,44 @@ export const WaterMenu = memo(function WaterMenu({
                     className="text-white"
                     value={key.toString()}
                   >
-                    {waterBodyNames[key as WaterBodyType]}
+                    <span className="flex items-center gap-2">
+                      <LiquidThumbnail globals={globals} liquidType={key} />
+                      {getWaterBodyTypeName(globals, key)}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            {supportsFixedHeight && selectedWaterBody !== null && (
+              <div className="rounded border border-gray-700 p-2">
+                <label className="flex items-center justify-between gap-3">
+                  <span>Use fixed world height</span>
+                  <Switch
+                    checked={
+                      (waterBodyData.flags & WATER_FLAG_FIXED_HEIGHT) !== 0
+                    }
+                    onCheckedChange={(checked) => {
+                      setLiquidData((draft) => {
+                        const body = draft.Liqd[1000].obj[selectedWaterBody];
+                        if (!body) return;
+                        if (checked) {
+                          body.flags |= WATER_FLAG_FIXED_HEIGHT;
+                          body.height = 0;
+                        } else {
+                          body.flags &= ~WATER_FLAG_FIXED_HEIGHT;
+                        }
+                      });
+                    }}
+                  />
+                </label>
+                {(waterBodyData.flags & WATER_FLAG_FIXED_HEIGHT) !== 0 && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    Fixed height: {FIXED_LIQUID_HEIGHTS[0]} world units
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Hotspot Adjustments */}
             {waterBodyData && selectedWaterBody !== null && (

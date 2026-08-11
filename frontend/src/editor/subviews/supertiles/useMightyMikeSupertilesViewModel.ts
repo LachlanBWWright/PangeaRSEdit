@@ -20,7 +20,6 @@ import {
   buildParamsCanvas,
   flattenAltMap,
   getCollisionImages,
-  getTileAttributes,
   getTileValueEntries,
   resolveImageIndices,
 } from "./mightyMikeSupertilesHelpers";
@@ -76,7 +75,8 @@ export function useMightyMikeSupertilesViewModel({
     overlayMode === "flagsAny" ||
     overlayMode === "flagBit" ||
     overlayMode === "p0" ||
-    overlayMode === "p1";
+    overlayMode === "p1" ||
+    overlayMode === "p2";
   const showAltMap = overlayMode === "altMap" || canvasEditMode === "altMap";
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;
@@ -96,10 +96,6 @@ export function useMightyMikeSupertilesViewModel({
   const altMapFlat = useMemo<number[]>(
     () => flattenAltMap(terrainData._metadata),
     [terrainData._metadata],
-  );
-  const tileAttributes = useMemo(
-    () => getTileAttributes(terrainData.tileset),
-    [terrainData.tileset],
   );
   const tileValues = useMemo(
     () => getTileValueEntries(terrainData._metadata),
@@ -158,7 +154,8 @@ export function useMightyMikeSupertilesViewModel({
       overlayMode === "solidEdges" ||
         overlayMode === "flagBit" ||
         overlayMode === "p0" ||
-        overlayMode === "p1"
+        overlayMode === "p1" ||
+        overlayMode === "p2"
         ? overlayMode
         : "flagsAny",
       paramsOverlayFlagBit,
@@ -191,7 +188,7 @@ export function useMightyMikeSupertilesViewModel({
   );
 
   const handleBrushParam = useCallback(
-    (tileIdx: number, field: "flags" | "p0" | "p1") => {
+    (tileIdx: number, field: "flags" | "p0" | "p1" | "p2") => {
       setTerrainData((data) => {
         applyParamBrush(data, tileIdx, field, paramBrushValue);
       });

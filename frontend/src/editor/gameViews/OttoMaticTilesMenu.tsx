@@ -14,7 +14,6 @@ import {
   TileViews,
   TopologyBrushMode,
   TopologyBrushRadius,
-  TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
   TileEditingEnabled,
@@ -44,6 +43,7 @@ import {
   getTileViewForTab,
   shouldForceTwoDForTileView,
 } from "@/editor/gameViews/tilesMenuState";
+import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl";
 
 export function OttoMaticTilesMenu({
   headerData,
@@ -57,7 +57,6 @@ export function OttoMaticTilesMenu({
   const [valueMode, setValueMode] = useAtom(CurrentTopologyValueMode);
   const [brushRadius, setBrushRadius] = useAtom(TopologyBrushRadius);
   const [value, setValue] = useAtom(TopologyValue);
-  const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
@@ -169,14 +168,7 @@ export function OttoMaticTilesMenu({
           <Input type="number" value={minY} onChange={handleMinYChange} />
           <p>Max Height</p>
           <Input type="number" value={maxY} onChange={handleMaxYChange} />
-          <p>Topology View Opacity</p>
-          <Input
-            type="number"
-            defaultValue={toplogyOpacity}
-            onChange={(e) =>
-              setTopologyOpacity(parseFloat(e.target.value) || 1)
-            }
-          />
+          <TopologyOpacityControl />
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D View</p>

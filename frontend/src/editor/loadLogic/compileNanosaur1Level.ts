@@ -73,12 +73,17 @@ export function compileNanosaur1Level(
       }
     }
 
-    // -- Path Layer (not editable in editor) --
-    if (pathLayerOffset > 0 && rawLevelData.pathLayer) {
-      for (let i = 0; i < rawLevelData.pathLayer.length; i++) {
+    // -- Path Layer --
+    const editorPathLayer = levelData.nanosaurPathLayer;
+    const pathLayer =
+      editorPathLayer?.length === layerSizeInTiles
+        ? editorPathLayer
+        : rawLevelData.pathLayer;
+    if (pathLayerOffset > 0 && pathLayer) {
+      for (let i = 0; i < pathLayer.length; i++) {
         view.setUint16(
           pathLayerOffset + i * 2,
-          rawLevelData.pathLayer[i] ?? 0,
+          pathLayer[i] ?? 0,
           false,
         );
       }

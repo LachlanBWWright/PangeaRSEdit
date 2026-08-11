@@ -28,10 +28,12 @@ import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
 import { MenuSection } from "./MenuSection";
 import {
   EmptyFencePrompt,
+  EmptyItemPrompt,
   EmptySplinePrompt,
 } from "../subviews/EmptyDataPrompts";
 import {
   createEmptyFenceData,
+  createEmptyItemData,
   createEmptySplineData,
 } from "../utils/dataInitializers";
 import {
@@ -39,6 +41,7 @@ import {
   createUndoRedoKeyHandler,
   createZoomInHandler,
   createZoomOutHandler,
+  normalizeEditorView,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
 import { Globals } from "@/data/globals/globals";
@@ -73,7 +76,8 @@ export function BugdomEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
-  const view = useAtomValue(ActiveView);
+  const storedView = useAtomValue(ActiveView);
+  const setView = useSetAtom(ActiveView);
   const selectedTile = useAtomValue(SelectedTile);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
@@ -101,6 +105,16 @@ export function BugdomEditorView({
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
+  const view = normalizeEditorView(
+    storedView,
+    ENABLE_SCRIPTS
+      ? [View.fences, View.items, View.splines, View.scripts, View.tiles, View.supertiles]
+      : [View.fences, View.items, View.splines, View.tiles, View.supertiles],
+    showSupertileMenu ? View.supertiles : View.tiles,
+  );
+  useEffect(() => {
+    if (storedView !== view) setView(view);
+  }, [setView, storedView, view]);
   useEffect(() => {
     setEditorNavbarTabs(
       <Bugdom1EditorToolbar terrainHasSTgd={showSupertileMenu} compact />,
@@ -148,14 +162,19 @@ export function BugdomEditorView({
               onInitialize={() => setFenceData(createEmptyFenceData())}
             />
           ))}
-        {view === View.items && itemData && (
-          <ItemMenu
-            itemData={itemData}
-            setItemData={setItemDataNotNull}
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-          />
-        )}
+        {view === View.items &&
+          (itemData ? (
+            <ItemMenu
+              itemData={itemData}
+              setItemData={setItemDataNotNull}
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+            />
+          ) : (
+            <EmptyItemPrompt
+              onInitialize={() => setItemData(createEmptyItemData())}
+            />
+          ))}
         {ENABLE_SCRIPTS && view === View.scripts && (
           <ScriptsMenu
             headerData={headerData}

@@ -118,6 +118,10 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
     "alis",
     "Xlat",
     "Vcol",
+    "CkPt",
+    "Path",
+    "PaPt",
+    "nanosaurPathLayer",
     "_metadata",
     "tileset",
   ]);
@@ -147,6 +151,12 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
         },
         ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
         ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
+        ...(levelData.CkPt !== undefined ? { CkPt: levelData.CkPt } : {}),
+        ...(levelData.Path !== undefined ? { Path: levelData.Path } : {}),
+        ...(levelData.PaPt !== undefined ? { PaPt: levelData.PaPt } : {}),
+        ...(levelData.nanosaurPathLayer !== undefined
+          ? { nanosaurPathLayer: levelData.nanosaurPathLayer }
+          : {}),
         // Preserve game-specific tileset data (e.g. MightyMikeTileSet with collisionImages)
         ...(levelData.tileset !== undefined ? { tileset: levelData.tileset } : {}),
       }

@@ -18,10 +18,10 @@ import {
   getFlagChecked,
   getTileInfoRows,
   MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS,
-  MIGHTY_MIKE_UNUSED_FLAG_OPTIONS,
   parseInputNumber,
   toggleFlagBit,
 } from "./mightyMikeTileInspectorState";
+import { MIGHTY_MIKE_TRACK_SEGMENTS } from "./mightyMikeTrackSegments";
 
 export type CollisionProperties = {
   hasCollisionMask: boolean;
@@ -29,6 +29,8 @@ export type CollisionProperties = {
 } | null;
 
 interface MightyMikeTileInspectorPanelProps {
+  showCellMask: boolean;
+  showTileBehavior: boolean;
   mapWidth: number;
   mapHeight: number;
   totalTiles: number;
@@ -52,6 +54,8 @@ interface MightyMikeTileInspectorPanelProps {
 }
 
 export function MightyMikeTileInspectorPanel({
+  showCellMask,
+  showTileBehavior,
   mapWidth,
   mapHeight,
   totalTiles,
@@ -67,6 +71,14 @@ export function MightyMikeTileInspectorPanel({
   handleUpdateTileAttribute,
   getNumber,
 }: MightyMikeTileInspectorPanelProps) {
+  const gameplayFlags = currentTileAttributes
+    ? getNumber(currentTileAttributes["flags"])
+    : 0;
+  const hasWind = getFlagChecked(gameplayFlags, 8);
+  const hasTrack = getFlagChecked(gameplayFlags, 15);
+  const selectedTrackSegment = MIGHTY_MIKE_TRACK_SEGMENTS.find(
+    (segment) => segment.value === getNumber(currentTileAttributes?.["p0"]),
+  );
   return (
     <div className="flex flex-col gap-3 text-sm">
       <TooltipProvider>
@@ -94,14 +106,14 @@ export function MightyMikeTileInspectorPanel({
         </Tooltip>
       </TooltipProvider>
 
-      {mightyMikeTileValuesArrayLength > 0 ? (
+      {showCellMask && mightyMikeTileValuesArrayLength > 0 ? (
         <CollisionPropertiesSection
           collisionProps={collisionProps}
           onUpdateCollisionProperty={handleUpdateCollisionProperty}
         />
       ) : null}
 
-      {currentTileAttributes && (
+      {showTileBehavior && currentTileAttributes && (
         <div className="space-y-3 border-t border-gray-600 pt-3">
           <p className="font-bold text-xs">Tile Behavior</p>
           <div>
@@ -109,7 +121,7 @@ export function MightyMikeTileInspectorPanel({
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 xl:grid-cols-3 2xl:grid-cols-4">
               {MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS.map(([bit, label]) => {
                 const checked = getFlagChecked(
-                  getNumber(currentTileAttributes["flags"]),
+                  gameplayFlags,
                   bit,
                 );
                 return (
@@ -134,69 +146,103 @@ export function MightyMikeTileInspectorPanel({
               })}
             </div>
 
-            {MIGHTY_MIKE_UNUSED_FLAG_OPTIONS.length > 0 && (
-              <details className="mt-2 rounded border border-gray-700 px-2 py-1">
-                <summary className="cursor-pointer text-[11px] text-gray-400">
-                  Advanced: Reserved Flags
-                </summary>
-                <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
-                  {MIGHTY_MIKE_UNUSED_FLAG_OPTIONS.map(([bit, label]) => {
-                    const checked = getFlagChecked(
-                      getNumber(currentTileAttributes["flags"]),
-                      bit,
-                    );
-                    return (
-                      <label
-                        key={bit}
-                        className="flex items-center gap-1 text-xs cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(val) => {
-                            const current = getNumber(
-                              currentTileAttributes["flags"],
-                            );
-                            const next = toggleFlagBit(
-                              current,
-                              bit,
-                              val === true,
-                            );
-                            handleUpdateTileAttribute("flags", next);
-                          }}
-                          className="h-3 w-3"
-                        />
-                        <span title={`Bit ${bit}`}>{label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </details>
-            )}
           </div>
 
-          <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
-            {(["p0", "p1"] as const).map((property) => (
-              <div
-                key={property}
-                className="grid grid-cols-[auto_1fr] items-center gap-2"
+          {hasWind ? (
+            <div className="grid grid-cols-[88px_1fr] items-center gap-2 text-xs">
+              <label className="text-gray-300">Wind direction</label>
+              <Select
+                value={String(getNumber(currentTileAttributes["p0"]))}
+                onValueChange={(value) =>
+                  handleUpdateTileAttribute("p0", parseInputNumber(value))
+                }
               >
-                <label className="text-gray-300 whitespace-nowrap">
-                  {property === "p0" ? "Extra Setting A" : "Extra Setting B"}
-                </label>
-                <Input
-                  type="number"
-                  value={getNumber(currentTileAttributes[property]).toString()}
-                  onChange={(e) =>
-                    handleUpdateTileAttribute(
-                      property,
-                      parseInputNumber(e.target.value),
-                    )
-                  }
-                  className="h-8 text-xs"
-                />
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[
+                    "Up",
+                    "Up Right",
+                    "Right",
+                    "Down Right",
+                    "Down",
+                    "Down Left",
+                    "Left",
+                    "Up Left",
+                  ].map((label, index) => (
+                    <SelectItem key={label} value={String(index)}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <label className="text-gray-300">Wind force</label>
+              <Input
+                type="number"
+                min={0}
+                max={255}
+                value={getNumber(currentTileAttributes["p1"]).toString()}
+                onChange={(event) =>
+                  handleUpdateTileAttribute("p1", parseInputNumber(event.target.value))
+                }
+                className="h-8 text-xs"
+              />
+            </div>
+          ) : null}
+
+          {hasTrack ? (
+            <div className="space-y-2 rounded border border-gray-700 p-2 text-xs">
+              <div>
+                <p className="font-medium text-gray-200">Race-car path</p>
+                <p className="text-[11px] text-gray-400">
+                  Used in Bargain Basement. Race cars follow this curve across
+                  the tile and continue through its two indicated edges.
+                </p>
               </div>
-            ))}
-          </div>
+              <div className="grid grid-cols-[72px_1fr] items-center gap-2">
+                <label className="text-gray-300">Path shape</label>
+                <Select
+                  value={String(getNumber(currentTileAttributes["p0"]))}
+                  onValueChange={(value) =>
+                    handleUpdateTileAttribute("p0", parseInputNumber(value))
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MIGHTY_MIKE_TRACK_SEGMENTS.map((segment) => (
+                      <SelectItem key={segment.value} value={String(segment.value)}>
+                        {segment.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedTrackSegment ? (
+                <div className="flex items-center gap-2 rounded bg-gray-900 p-2">
+                  <svg
+                    aria-label={`${selectedTrackSegment.label} path preview`}
+                    className="h-16 w-16 flex-none rounded border border-gray-600 bg-gray-800"
+                    viewBox="-2 -2 35 35"
+                  >
+                    <polyline
+                      fill="none"
+                      points={selectedTrackSegment.points}
+                      stroke="#4ade80"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                    />
+                    <circle cx="16" cy="16" fill="#facc15" r="1.5" />
+                  </svg>
+                  <div>
+                    <p className="font-medium text-gray-200">
+                      {selectedTrackSegment.connection}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      Green line: exact route followed through this tile.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       )}
     </div>
@@ -215,11 +261,15 @@ function CollisionPropertiesSection({
 }) {
   return (
     <div className="border-t border-gray-600 pt-3">
-      <p className="mb-2 font-bold text-xs">Collision</p>
+      <p className="mb-1 font-bold text-xs">Cell Rendering Mask</p>
+      <p className="mb-2 text-[11px] text-gray-400">
+        Controls whether sprites pass behind this map cell. Gameplay collision
+        comes from the tile definition's solid-side flags.
+      </p>
       {collisionProps ? (
         <div className="grid gap-2 text-xs md:grid-cols-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs">Mask:</span>
+            <span className="text-xs">Mask</span>
             <Select
               value={collisionProps.hasCollisionMask ? "enabled" : "disabled"}
               onValueChange={(value) =>
@@ -241,7 +291,7 @@ function CollisionPropertiesSection({
 
           {collisionProps.hasCollisionMask && (
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span>Type:</span>
+              <span>Coverage</span>
               <Select
                 value={
                   collisionProps.usePixelAccurateCollision ? "pixel" : "tile"
@@ -257,8 +307,8 @@ function CollisionPropertiesSection({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pixel">Pixel-Accurate</SelectItem>
-                  <SelectItem value="tile">Tile-Based</SelectItem>
+                  <SelectItem value="pixel">Opaque Pixels</SelectItem>
+                  <SelectItem value="tile">Whole Tile</SelectItem>
                 </SelectContent>
               </Select>
             </div>

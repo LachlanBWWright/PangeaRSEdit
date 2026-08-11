@@ -40,3 +40,10 @@ export function buildApiUrl(path: string): string {
     : window.location.origin;
   return new URL(buildApiPath(path), origin).toString();
 }
+
+export function hasConfiguredApiEndpoint(): boolean {
+  return (
+    z.string().min(1).safeParse(import.meta.env.VITE_API_ORIGIN).success ||
+    z.string().min(1).safeParse(import.meta.env.VITE_API_BASE_PATH).success
+  );
+}

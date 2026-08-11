@@ -22,6 +22,7 @@ import { getFenceTypes } from "@/data/fences/getFenceTypes";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { SnappingToggle } from "../shared/SnappingToggle";
 import {
   canFinalizeCreation,
   finalizeFenceFromPoints,
@@ -164,6 +165,7 @@ export const FenceMenu = memo(function FenceMenu({
       <p>
         Fence {selectedFence} ({numNubs} points)
       </p>
+      <SnappingToggle />
 
       {/* Two-column layout: left = type + delete + nub controls; right = preview */}
       <div
@@ -189,7 +191,16 @@ export const FenceMenu = memo(function FenceMenu({
             >
               <SelectTrigger>
                 <SelectValue>
-                  {getFenceName(globals, fenceDataObj.fenceType)}
+                  <span className="flex items-center gap-2">
+                    {fencePreviewPath && (
+                      <FenceThumbnail
+                        src={fencePreviewPath}
+                        alt=""
+                        className="h-4 w-6 shrink-0 rounded-sm object-cover"
+                      />
+                    )}
+                    {getFenceName(globals, fenceDataObj.fenceType)}
+                  </span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>

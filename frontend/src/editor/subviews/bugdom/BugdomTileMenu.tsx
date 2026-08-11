@@ -3,7 +3,7 @@ import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Game, Globals } from "../../../data/globals/globals";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "@/components/ImageEditor";
@@ -31,6 +31,9 @@ import {
   uploadTileImageToIndex,
 } from "./BugdomTileMenuUtils";
 import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
+import { BugdomVertexColorControls } from "./BugdomVertexColorControls";
+import { MenuEmptyState } from "../MenuEmptyState";
+import { NanosaurPathControls } from "../tiles/NanosaurPathControls";
 
 interface BugdomTileMenuProps {
   headerData: HeaderData;
@@ -41,7 +44,7 @@ interface BugdomTileMenuProps {
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
 }
 
-export function BugdomTileMenu({
+function BugdomTileMenuInner({
   headerData,
   terrainData,
   setTerrainData,
@@ -59,7 +62,11 @@ export function BugdomTileMenu({
 
   const [selectedTileInSupertile, setSelectedTileInSupertile] = useState(0);
   const [selectedTileImageIndex, setSelectedTileImageIndex] = useState(0);
-  const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
+  const [storedSelectedTile, setSelectedTile] = useAtom(SelectedTile);
+  const selectedTile = normalizeSelectedSupertile(
+    storedSelectedTile,
+    totalSupertiles,
+  );
   const tileImageUploadInputRef = useRef<HTMLInputElement>(null);
   const [isEditingTileImage, setIsEditingTileImage] = useState(false);
   const [editingTileImageIndex, setEditingTileImageIndex] = useState<
@@ -67,14 +74,10 @@ export function BugdomTileMenu({
   >(null);
 
   useEffect(() => {
-    const normalized = normalizeSelectedSupertile(
-      selectedTile,
-      totalSupertiles,
-    );
-    if (normalized !== selectedTile) {
-      setSelectedTile(normalized);
+    if (selectedTile !== storedSelectedTile) {
+      setSelectedTile(selectedTile);
     }
-  }, [selectedTile, setSelectedTile, totalSupertiles]);
+  }, [selectedTile, setSelectedTile, storedSelectedTile]);
 
   const layerData = terrainData.Layr?.[1000]?.obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
@@ -230,15 +233,18 @@ export function BugdomTileMenu({
 
   if (!layerData) {
     return (
-      <div className="p-4 text-white">
-        <p>No tile layer data available</p>
-      </div>
+      <MenuEmptyState
+        title="No Tile Layer"
+        description="This level doesn't contain tile layer data to edit."
+        fillHeight
+      />
     );
   }
 
   return (
     <>
-      <BugdomTileMenuContent
+      <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto">
+        <BugdomTileMenuContent
         tilesPerSupertile={globals.TILES_PER_SUPERTILE}
         tileImageSize={TILE_IMAGE_SIZE}
         tilesInSelectedSupertile={tilesInSelectedSupertile}
@@ -261,8 +267,8 @@ export function BugdomTileMenu({
         onUploadTileImage={handleUploadTileImage}
         onAddTileImage={handleAddTileImage}
         onRemoveTileImage={handleRemoveTileImage}
-      />
-      <TileBrushPanel
+        />
+        <TileBrushPanel
         game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
         terrainData={terrainData}
         setTerrainData={setTerrainData}
@@ -275,7 +281,14 @@ export function BugdomTileMenu({
           (selectedTile % supertileCounts.width) * globals.TILES_PER_SUPERTILE
         }
         activeLayer={1000}
-      />
+        />
+        {globals.GAME_TYPE === Game.BUGDOM && terrainData.Vcol?.[1000] && (
+          <BugdomVertexColorControls />
+        )}
+        {globals.GAME_TYPE === Game.NANOSAUR && terrainData.nanosaurPathLayer && (
+          <NanosaurPathControls />
+        )}
+      </div>
       <ImageEditor
         isOpen={isEditingTileImage}
         onClose={() => {
@@ -293,3 +306,26 @@ export function BugdomTileMenu({
     </>
   );
 }
+
+function bugdomTileMenuPropsEqual(
+  previous: BugdomTileMenuProps,
+  next: BugdomTileMenuProps,
+): boolean {
+  return (
+    previous.headerData === next.headerData &&
+    previous.setHeaderData === next.setHeaderData &&
+    previous.setTerrainData === next.setTerrainData &&
+    previous.mapImages === next.mapImages &&
+    previous.setMapImages === next.setMapImages &&
+    previous.terrainData.Layr === next.terrainData.Layr &&
+    previous.terrainData.Xlat === next.terrainData.Xlat &&
+    previous.terrainData.Vcol === next.terrainData.Vcol &&
+    Boolean(previous.terrainData.nanosaurPathLayer) ===
+      Boolean(next.terrainData.nanosaurPathLayer)
+  );
+}
+
+export const BugdomTileMenu = memo(
+  BugdomTileMenuInner,
+  bugdomTileMenuPropsEqual,
+);

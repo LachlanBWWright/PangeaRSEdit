@@ -225,6 +225,24 @@ export const checkpointSchema = z.object({
 });
 export type Checkpoint = z.infer<typeof checkpointSchema>;
 
+export const pathDefinitionSchema = z.object({
+  flags: z.number(),
+  p0: z.number(),
+  p1: z.number(),
+  p2: z.number(),
+  numNubs: z.number(),
+  numPoints: z.number(),
+  bbTop: z.number(),
+  bbLeft: z.number(),
+  bbBottom: z.number(),
+  bbRight: z.number(),
+});
+
+export const pathPointSchema = z.object({
+  x: z.number(),
+  z: z.number(),
+});
+
 /** Schema for metadata */
 export const metadataSchema = z
   .object({

@@ -2,6 +2,7 @@ import { ActiveView } from "@/data/globals/activeViewAtom";
 import { Updater } from "use-immer";
 import {
   LiquidData,
+  FenceData,
   HeaderData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
@@ -25,6 +26,13 @@ import {
   selectWaterNub,
   updatePreviewNub,
 } from "@/editor/subviews/water/waterBodyInteractions";
+import { NubSnappingEnabled } from "@/data/snapping/snappingAtoms";
+import {
+  getHotspotSnapTargets,
+  getWaterNubSnapTargets,
+  snapCanvasPoint,
+} from "../shared/nubSnapping";
+import { useGameLiquidTexture } from "./useGameLiquidTexture";
 
 export const WaterBody = memo(
   ({
@@ -33,19 +41,23 @@ export const WaterBody = memo(
     liquidData,
     setLiquidData,
     waterBodyIdx,
+    fenceData,
   }: {
     headerData: HeaderData;
     terrainData: TerrainData;
     liquidData: LiquidData;
     setLiquidData: Updater<LiquidData>;
     waterBodyIdx: number;
+    fenceData: FenceData | null;
   }) => {
     const [selectedWaterBody, setSelectedWaterBody] =
       useAtom(SelectedWaterBody);
     const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
     const setActiveView = useSetAtom(ActiveView);
     const globals = useAtomValue(Globals);
+    const snappingEnabled = useAtomValue(NubSnappingEnabled);
     const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
+    const gameTexture = useGameLiquidTexture(globals, waterBody?.type ?? 0);
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
@@ -56,9 +68,15 @@ export const WaterBody = memo(
     const bodyCanvas = useMemo(
       () =>
         waterBody
-          ? buildLiquidBodyCanvas(globals, headerData, terrainData, waterBody)
+          ? buildLiquidBodyCanvas(
+              globals,
+              headerData,
+              terrainData,
+              waterBody,
+              gameTexture,
+            )
           : null,
-      [globals, headerData, terrainData, waterBody],
+      [gameTexture, globals, headerData, terrainData, waterBody],
     );
 
     if (!waterBody) return <></>;
@@ -175,46 +193,101 @@ export const WaterBody = memo(
                   );
                 }}
                 onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
-                  const newX = Math.round(e.target.x());
-                  const newY = Math.round(e.target.y());
+                  const snapped: [number, number] = snappingEnabled
+                    ? snapCanvasPoint(
+                        [e.target.x(), e.target.y()],
+                        getWaterNubSnapTargets(
+                          fenceData,
+                          liquidData,
+                          waterBodyIdx,
+                        ),
+                        e.target.getStage(),
+                      )
+                    : [Math.round(e.target.x()), Math.round(e.target.y())];
+                  e.target.position({ x: snapped[0], y: snapped[1] });
                   if (!previewNubsRef.current) return;
                   const preview = updatePreviewNub(
                     previewNubsRef.current,
                     nubIdx,
-                    newX,
-                    newY,
+                    snapped[0],
+                    snapped[1],
                   );
                   drawPreviewLine(lineRef.current, preview);
                 }}
                 onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
                   previewNubsRef.current = null;
+                  const snapped: [number, number] = snappingEnabled
+                    ? snapCanvasPoint(
+                        [e.target.x(), e.target.y()],
+                        getWaterNubSnapTargets(
+                          fenceData,
+                          liquidData,
+                          waterBodyIdx,
+                        ),
+                        e.target.getStage(),
+                      )
+                    : [e.target.x(), e.target.y()];
                   commitWaterNubPosition(
                     setLiquidData,
                     waterBodyIdx,
                     nubIdx,
-                    e.target.x(),
-                    e.target.y(),
+                    snapped[0],
+                    snapped[1],
                   );
                 }}
               />
             );
           })}
         {selectedWaterBody === waterBodyIdx && (
-          <Circle
-            x={waterBody.hotSpotX}
-            y={waterBody.hotSpotZ}
-            radius={10}
-            fill="orange"
-            draggable
-            onDragEnd={(e) =>
-              commitWaterHotspotPosition(
-                setLiquidData,
-                waterBodyIdx,
-                e.target.x(),
-                e.target.y(),
-              )
-            }
-          />
+          <>
+            {getHotspotSnapTargets(liquidData, waterBodyIdx).map(
+              (hotspot, index) => (
+                <Circle
+                  key={`other-hotspot-${index}`}
+                  x={hotspot[0]}
+                  y={hotspot[1]}
+                  radius={7}
+                  fill="#22d3ee"
+                  stroke="#164e63"
+                  strokeWidth={2}
+                  listening={false}
+                />
+              ),
+            )}
+            <Circle
+              x={waterBody.hotSpotX}
+              y={waterBody.hotSpotZ}
+              radius={10}
+              fill="orange"
+              stroke="#7c2d12"
+              strokeWidth={2}
+              draggable
+              onDragMove={(e) => {
+                if (!snappingEnabled) return;
+                const snapped = snapCanvasPoint(
+                  [e.target.x(), e.target.y()],
+                  getHotspotSnapTargets(liquidData, waterBodyIdx),
+                  e.target.getStage(),
+                );
+                e.target.position({ x: snapped[0], y: snapped[1] });
+              }}
+              onDragEnd={(e) => {
+                const snapped: [number, number] = snappingEnabled
+                  ? snapCanvasPoint(
+                      [e.target.x(), e.target.y()],
+                      getHotspotSnapTargets(liquidData, waterBodyIdx),
+                      e.target.getStage(),
+                    )
+                  : [e.target.x(), e.target.y()];
+                commitWaterHotspotPosition(
+                  setLiquidData,
+                  waterBodyIdx,
+                  snapped[0],
+                  snapped[1],
+                );
+              }}
+            />
+          </>
         )}
       </>
     );

@@ -8,7 +8,7 @@ shortest commands.
 
 | Script | Suggested command name | Purpose |
 | --- | --- | --- |
-| `scripts/dev-everything.sh` | `dev-everything` | Rebuild every game WASM runtime, then start the multiplayer frontend/backend stack. |
+| `scripts/dev-everything.sh` | `dev-everything` | Incrementally update every game WASM runtime, then start the frontend/backend stack. |
 | `scripts/dev-frontend.sh` | `dev-frontend` | Start the Vite development server. Extra Vite arguments are forwarded. |
 | `scripts/dev-backend.sh` | `dev-backend` | Start the .NET API development server. Extra application arguments are forwarded. |
 | `scripts/multiplayer.sh` | `dev-multiplayer` | Start the integrated frontend/backend multiplayer stack. |
@@ -39,9 +39,11 @@ scripts/test-container.sh
 `test-e2e.sh` expects the Playwright Chromium browser to be installed. Install
 it once with `pnpm --dir frontend exec playwright install chromium`.
 
-`dev-everything.sh` is the single-command full startup path. It rebuilds all
-game runtimes before starting the site, so it can take substantially longer
-than `multiplayer.sh`.
+`dev-everything.sh` is the single-command full startup path. It fingerprints
+each game's inputs, rebuilds only changed or missing runtimes, and starts the
+frontend plus a freshly compiled multiplayer backend. `multiplayer.sh` uses the
+same preparation path; pass `--rebuild-games` only when you intentionally want
+a refresh of every staged runtime.
 
 `test-container.sh` uses `pangearsedit-api:local` as its image tag. Override it
 with `PANGEA_BACKEND_IMAGE`, for example:
@@ -76,29 +78,15 @@ pnpm run build:games
 scripts/build-pangea-ports.sh --game ottomatic
 ```
 
-`multiplayer.sh` only builds the runtime assets needed by the multiplayer dev stack when they are missing, currently Cro-Mag Rally and Nanosaur 2. It is not the all-games build script.
+Build directories are retained so CMake can also reuse unchanged object files
+inside a game that needs rebuilding. Input fingerprints are stored beside the
+generated assets as `.build-input.sha256` files.
 
 ## Multiplayer asset rebuilds
 
-`multiplayer.sh` checks for these staged files before starting the dev stack:
-
-```text
-frontend/public/generated/pangea-ports/wasm/cromagrally/CroMagRally.js
-frontend/public/generated/pangea-ports/wasm/cromagrally/CroMagRally.wasm
-frontend/public/generated/pangea-ports/wasm/cromagrally/CroMagRally.data
-frontend/public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.js
-frontend/public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.wasm
-frontend/public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.data
-```
-
-If any are missing, it runs:
-
-```bash
-scripts/build-pangea-ports.sh --game cromagrally
-scripts/build-pangea-ports.sh --game nanosaur2
-```
-
-It does not detect whether the game source changed. After editing game code, pulling `games/pangea-ports`, or otherwise needing to sync fresh runtime assets into the frontend, force those two multiplayer builds with:
+`multiplayer.sh` checks every game runtime before starting. A game is rebuilt
+when its own sources, shared runtime sources, or build tooling changed, or when
+its staged JavaScript/WASM files are missing. To force every game build, run:
 
 ```bash
 scripts/multiplayer.sh --rebuild-games
@@ -114,5 +102,5 @@ scripts/build-pangea-ports.sh --game nanosaur2
 ## Other scripts
 
 - `build-pangea-ports.sh`: implementation used by `build-games.sh`; builds all games by default or one game with `--game`.
-- `multiplayer.sh`: starts the local multiplayer frontend/backend test stack; use `--rebuild-games` to sync fresh Cro-Mag Rally and Nanosaur 2 runtime assets first.
+- `multiplayer.sh`: updates all changed game runtimes and starts the local frontend/backend stack; use `--rebuild-games` to force every runtime build.
 - `analyze-complexity.sh`: reports frontend files over line-count and indentation-depth thresholds.

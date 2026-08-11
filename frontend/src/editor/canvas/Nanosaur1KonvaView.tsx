@@ -49,6 +49,7 @@ import {
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { NanosaurPathLayer } from "../subviews/tiles/NanosaurPathLayer";
 
 export interface StageData {
   scale: number;
@@ -345,6 +346,13 @@ export function Nanosaur1KonvaView({
         )}
 
         {view !== View.tiles && <CustomScriptPlacements />}
+        {view === View.supertiles && (
+          <NanosaurPathLayer
+            headerData={headerData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+          />
+        )}
 
         {/* Tile brush preview (stamp mode) */}
         <TileBrushPreviewLayer

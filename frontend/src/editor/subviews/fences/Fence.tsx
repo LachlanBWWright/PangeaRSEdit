@@ -1,8 +1,9 @@
 import { Updater } from "use-immer";
-import { FenceData } from "@/python/structSpecs/LevelTypes";
-import { Circle, Group, Line, Text } from "react-konva";
+import { FenceData, LiquidData } from "@/python/structSpecs/LevelTypes";
+import { Line } from "react-konva";
 import Konva from "konva";
 import { FenceNub } from "./FenceNub";
+import { KonvaIconButton } from "../shared/KonvaIconButton";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -10,6 +11,8 @@ import { Globals } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
+import { NubSnappingEnabled } from "@/data/snapping/snappingAtoms";
+import { getFenceNubSnapTargets } from "../shared/nubSnapping";
 
 const NUB_KEY_BASE = 1000;
 const MIN_NUBS = 2;
@@ -31,56 +34,21 @@ function useFenceImage(src: string | null) {
   return img;
 }
 
-/**
- * Small icon button rendered in Konva (a coloured circle + symbol text).
- * Calls onClick when pressed.
- */
-function KonvaIconButton({
-  x,
-  y,
-  label,
-  bgColor,
-  onClick,
-}: {
-  x: number;
-  y: number;
-  label: string;
-  bgColor: string;
-  onClick: () => void;
-}) {
-  const R = 12;
-  return (
-    <Group x={x} y={y} onClick={onClick} onTap={onClick} listening>
-      <Circle radius={R} fill={bgColor} stroke="#fff" strokeWidth={1} />
-      <Text
-        text={label}
-        fontSize={14}
-        fontStyle="bold"
-        fill="#fff"
-        align="center"
-        verticalAlign="middle"
-        x={-R}
-        y={-R}
-        width={R * 2}
-        height={R * 2}
-        listening={false}
-      />
-    </Group>
-  );
-}
-
 export const Fence = memo(
   ({
     fenceData,
     setFenceData,
     fenceIdx,
+    liquidData,
   }: {
     fenceData: FenceData;
     setFenceData: Updater<FenceData>;
     fenceIdx: number;
+    liquidData: LiquidData | null;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
     const globals = useAtomValue(Globals);
+    const snappingEnabled = useAtomValue(NubSnappingEnabled);
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
@@ -243,6 +211,12 @@ export const Fence = memo(
             borderColor={imageColor}
             onPreviewNub={handlePreviewNub}
             setNub={handleSetNub}
+            snappingEnabled={snappingEnabled}
+            snapTargets={getFenceNubSnapTargets(
+              fenceData,
+              liquidData,
+              fenceIdx,
+            )}
           />
         ))}
 
@@ -267,7 +241,7 @@ export const Fence = memo(
               x={firstNub[0] - BTN_OFFSET}
               y={firstNub[1] - BTN_OFFSET}
               label="+"
-              bgColor="#22c55e"
+              backgroundColor="#22c55e"
               onClick={handleAddFront}
             />
             {numNubs > MIN_NUBS && (
@@ -290,7 +264,7 @@ export const Fence = memo(
                   x={firstNub[0] + BTN_OFFSET}
                   y={firstNub[1] - BTN_OFFSET}
                   label="×"
-                  bgColor="#ef4444"
+                  backgroundColor="#ef4444"
                   onClick={handleRemoveFront}
                 />
               </>
@@ -317,7 +291,7 @@ export const Fence = memo(
               x={lastNub[0] + BTN_OFFSET}
               y={lastNub[1] + BTN_OFFSET}
               label="+"
-              bgColor="#22c55e"
+              backgroundColor="#22c55e"
               onClick={handleAddBack}
             />
             {numNubs > MIN_NUBS && (
@@ -340,7 +314,7 @@ export const Fence = memo(
                   x={lastNub[0] - BTN_OFFSET}
                   y={lastNub[1] + BTN_OFFSET}
                   label="×"
-                  bgColor="#ef4444"
+                  backgroundColor="#ef4444"
                   onClick={handleRemoveBack}
                 />
               </>

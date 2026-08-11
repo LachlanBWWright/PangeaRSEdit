@@ -1,4 +1,8 @@
 import React from "react";
+import {
+  resolveLiquidSurfaceHeight,
+  supportsFixedHeightLiquid,
+} from "@/data/water/fixedHeightLiquid";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import {
@@ -112,14 +116,20 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, head
         const shape = new Shape(points);
         const { color: liquidColor, opacity } = getLiquidProperties(patch.type);
         // Assuming patch.height is in tile units, similar to other Y coordinates
-        const liquidLevelY =
+        const terrainRelativeHeight =
           getTerrainHeightAtPoint(
             patch.hotSpotX,
             patch.hotSpotZ,
             headerData,
             terrainData,
             globals,
-          ) + 100; //patch.height;
+          ) + 100;
+        const liquidLevelY = resolveLiquidSurfaceHeight({
+          supportsFixedHeight: supportsFixedHeightLiquid(globals.GAME_TYPE),
+          flags: patch.flags,
+          heightIndex: patch.height,
+          terrainRelativeHeight,
+        });
 
         if (DEBUG_LIQUID_RENDERING) {
           console.log(`[LiquidGeometry] Rendering patch ${index} at Y=${liquidLevelY}`);

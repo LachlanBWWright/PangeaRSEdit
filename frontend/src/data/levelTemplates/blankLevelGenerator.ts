@@ -322,6 +322,14 @@ function createBlankMightyMikeLevel(
       order: 100,
     },
   };
+  terrainData.tileset = blankTileSet;
+  terrainData.Xlat = {
+    1000: {
+      name: "Tile Index Translation Table",
+      obj: [{ idx: 0 }],
+      order: 7,
+    },
+  };
   return ok({
     headerData,
     terrainData,

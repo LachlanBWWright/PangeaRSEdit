@@ -12,7 +12,7 @@ const featureFlagsSchema = z.object({
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
-  multiplayer: import.meta.env.VITE_MULTIPLAYER_ENABLED === "true",
+  multiplayer: import.meta.env.VITE_MULTIPLAYER_ENABLED !== "false",
 };
 
 type FeatureFlagListener = () => void;

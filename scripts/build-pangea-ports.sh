@@ -13,6 +13,7 @@
 #   scripts/build-pangea-ports.sh --list
 #   scripts/build-pangea-ports.sh --target wasm
 #   scripts/build-pangea-ports.sh --target wasm --game ottomatic
+#   scripts/build-pangea-ports.sh --force
 #   scripts/build-pangea-ports.sh --target native --game OttoMatic-Android
 #   scripts/build-pangea-ports.sh --target android --dry-run
 #
@@ -33,6 +34,7 @@ DRY_RUN=0
 VERBOSE=0
 LIST_ONLY=0
 CHECK_ONLY=0
+FORCE_REBUILD=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --game)
@@ -57,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --check-env)
       CHECK_ONLY=1
+      shift
+      ;;
+    --force)
+      FORCE_REBUILD=1
       shift
       ;;
     -h|--help)
@@ -98,15 +104,6 @@ wasm_dir_for_port() {
     BillyFrontier-Android) echo "billyfrontier" ;;
     MightyMike-Android) echo "mightymike" ;;
     Nanosaur2-Android) echo "nanosaur2" ;;
-    *) echo "" ;;
-  esac
-}
-
-wasm_build_dirs_for_port() {
-  case "$1" in
-    Bugdom-android) echo "build-wasm dist-wasm" ;;
-    Bugdom2-Android|CroMagRally-Android|MightyMike-Android|Nanosaur2-Android) echo "build-wasm" ;;
-    BillyFrontier-Android|Nanosaur-android|OttoMatic-Android) echo "build" ;;
     *) echo "" ;;
   esac
 }
@@ -210,6 +207,44 @@ run_step() {
   fi
 }
 
+game_input_fingerprint() {
+  local port_name="$1"
+
+  (
+    cd "$PANGEA_PORTS"
+    git ls-files -co --exclude-standard -- \
+      "games/$port_name" \
+      shared \
+      scripts \
+      | LC_ALL=C sort \
+      | while IFS= read -r path; do
+          printf '%s\0' "$path"
+          if [[ -d "$path" ]]; then
+            git -C "$path" rev-parse HEAD
+            git -C "$path" diff --no-ext-diff --binary HEAD
+            git -C "$path" ls-files --others --exclude-standard \
+              | LC_ALL=C sort \
+              | while IFS= read -r nested_path; do
+                  printf '%s\0' "$nested_path"
+                  git -C "$path" hash-object -- "$nested_path"
+                done
+          elif [[ -e "$path" || -L "$path" ]]; then
+            git hash-object -- "$path"
+          else
+            printf 'deleted\n'
+          fi
+        done \
+      | sha256sum \
+      | cut -d ' ' -f 1
+  )
+}
+
+wasm_assets_are_complete() {
+  local destination="$1"
+  compgen -G "$destination/*.js" >/dev/null &&
+    compgen -G "$destination/*.wasm" >/dev/null
+}
+
 for PORT_NAME in $ALL_GAMES; do
   if [[ -n "$GAME_FILTER" ]]; then
     SHORT_NAME="$(wasm_dir_for_port "$PORT_NAME")"
@@ -222,6 +257,22 @@ for PORT_NAME in $ALL_GAMES; do
   echo "========================================"
   echo " Building $PORT_NAME ($TARGET) …"
   echo "========================================"
+
+  TARGET_DIR="$(wasm_dir_for_port "$PORT_NAME")"
+  DEST="$WASM_OUT/$TARGET_DIR"
+  INPUT_FINGERPRINT=""
+  FINGERPRINT_FILE="$DEST/.build-input.sha256"
+
+  if [[ "$TARGET" == "wasm" ]]; then
+    INPUT_FINGERPRINT="$(game_input_fingerprint "$PORT_NAME")"
+    if [[ "$FORCE_REBUILD" -eq 0 ]] &&
+      [[ -f "$FINGERPRINT_FILE" ]] &&
+      [[ "$(<"$FINGERPRINT_FILE")" == "$INPUT_FINGERPRINT" ]] &&
+      wasm_assets_are_complete "$DEST"; then
+      echo "Up to date: $PORT_NAME"
+      continue
+    fi
+  fi
 
   case "$TARGET" in
     native|desktop)
@@ -246,7 +297,6 @@ for PORT_NAME in $ALL_GAMES; do
   STAGE_TMP="$(mktemp -d)"
   (cd "$PANGEA_PORTS" && run_step python3 scripts/ports.py run --game "$PORT_NAME" --task stage-wasm --dest "$STAGE_TMP")
 
-  TARGET_DIR="$(wasm_dir_for_port "$PORT_NAME")"
   if [[ -z "$TARGET_DIR" ]]; then
     echo "WARNING: no wasmDir mapping for $PORT_NAME — skipping copy" >&2
     if [[ "$DRY_RUN" -eq 0 ]]; then
@@ -255,7 +305,6 @@ for PORT_NAME in $ALL_GAMES; do
     continue
   fi
 
-  DEST="$WASM_OUT/$TARGET_DIR"
   if [[ "$DRY_RUN" -eq 0 ]]; then
     rm -rf "$DEST"
     mkdir -p "$DEST"
@@ -272,17 +321,10 @@ for PORT_NAME in $ALL_GAMES; do
 
   if [[ "$DRY_RUN" -eq 0 ]]; then
     rm -rf "$STAGE_TMP"
+    printf '%s\n' "$INPUT_FINGERPRINT" > "$FINGERPRINT_FILE"
+  else
+    rmdir "$STAGE_TMP"
   fi
-
-  BUILD_DIRS="$(wasm_build_dirs_for_port "$PORT_NAME")"
-  for BUILD_DIR in $BUILD_DIRS; do
-    BUILD_PATH="$PANGEA_PORTS/games/$PORT_NAME/$BUILD_DIR"
-    if [[ "$DRY_RUN" -eq 0 ]]; then
-      rm -rf "$BUILD_PATH"
-    else
-      echo "Would remove build files at $BUILD_PATH"
-    fi
-  done
 
   echo "Done: $PORT_NAME → $DEST"
 done

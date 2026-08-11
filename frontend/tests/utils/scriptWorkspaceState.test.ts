@@ -150,6 +150,39 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain("---@field playerMode string|nil");
     expect(runtimeDeclaration.content).toContain("---@field info fun(message: string)");
     expect(runtimeDeclaration.content).toContain("---@field position fun(handle: ObjectHandle): Vector3|nil");
+    expect(runtimeDeclaration.content).toContain(
+      "---@alias NativeSpawnId",
+    );
+    expect(runtimeDeclaration.content).toContain(
+      '---| "ottomatic.teleporter" # Teleporter:',
+    );
+    expect(runtimeDeclaration.content).toContain(
+      "---@field native fun(id: NativeSpawnId",
+    );
+  });
+
+  it("emits documented native spawn IDs for every game", () => {
+    const games = [
+      { globals: BugdomGlobals, expectedIds: ["bugdom.nut", "bugdom.clover", "bugdom.checkpoint"] },
+      { globals: Bugdom2Globals, expectedIds: ["bugdom2.powerup", "bugdom2.dcell", "bugdom2.gliderPart"] },
+      { globals: NanosaurGlobals, expectedIds: ["nanosaur.powerup", "nanosaur.egg", "nanosaur.crystal"] },
+      { globals: Nanosaur2Globals, expectedIds: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow"] },
+      { globals: CroMagGlobals, expectedIds: ["cromag.pow", "cromag.token", "cromag.stickyTiresPow", "cromag.suspensionPow", "cromag.invisibilityPow"] },
+      { globals: BillyFrontierGlobals, expectedIds: ["billy.peso", "billy.freeLifePow", "billy.boost"] },
+      { globals: MightyMikeGlobals, expectedIds: ["mightymike.bunny", "mightymike.healthPow", "mightymike.key"] },
+    ];
+
+    for (const game of games) {
+      const context = createScriptWorkspaceContext(game.globals, 1);
+      const state = ensureScriptWorkspace({}, context);
+      const declaration = buildScriptTypeDeclarationFiles(state).find(
+        (file) => file.path === "Data/Scripts/types/pangea-runtime.lua",
+      );
+      expect(declaration).toBeDefined();
+      for (const id of game.expectedIds) {
+        expect(declaration?.content).toContain(`---| "${id}" #`);
+      }
+    }
   });
 
   it("uses game-specific hook sets for adventure and area-based games", () => {
@@ -336,8 +369,8 @@ describe("scriptWorkspaceState", () => {
       position: { x: 0, y: 160, z: 0 },
     });
     expect(bundle).toContain('pangea.spawn.scripted("sample.hoverBeacon"');
-    expect(bundle).toContain('__hasTag(ctx.tags, "sample.hoverBeacon")');
-    expect(bundle).toContain(
+    expect(bundle).toContain('ctx.objectType == "sample.hoverBeacon"');
+    expect(bundle).not.toContain(
       '__hasTag(ctx.tags, "editor.custom.hoverBeacon")',
     );
     expect(
@@ -484,6 +517,7 @@ describe("scriptWorkspaceState", () => {
       compileResult.value.compiledFiles["Data/Scripts/dist/main.lua"]?.content;
     expect(bundle).toContain('["bugdom.player"]');
     expect(bundle).toContain("__objectTypeModules[ctx.objectType]");
+    expect(bundle).not.toContain('__hasTag(ctx.tags, "bugdom.player")');
     expect(bundle).toContain("__module_Data_Scripts_src_objects_player_frame_lua");
     expect(
       compileResult.value.sourceFiles[

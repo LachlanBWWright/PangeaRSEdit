@@ -4,19 +4,12 @@
 
 import { BG3DBone } from "../../parseBG3D";
 import { Document, Skin, Node, Buffer } from "@gltf-transform/core";
-import { uint16ArraySchema, float32ArraySchema } from "../../../schemas/common";
+import { getRigidInfluence } from "../../rigidSkinning";
 
 // Minimal shape for original skeleton binary data we read in this module
 interface SkeletonResourceLike {
   BonP?: Record<string, { obj?: { pointIndex: number }[] }>;
   BonN?: Record<string, { obj?: { normal: number }[] }>;
-}
-
-/**
- * Type guard to check if a value is an ArrayBufferView
- */
-function isArrayBufferView(value: unknown): value is ArrayBufferView {
-  return ArrayBuffer.isView(value);
 }
 
 /**
@@ -110,55 +103,20 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
         const posAcc = prim.getAttribute("POSITION");
 
         if (jointsAcc && weightsAcc && posAcc) {
-          const jointsArrayRaw = jointsAcc.getArray();
-          const weightsArrayRaw = weightsAcc.getArray();
-          // Normalize typed array views to expected element types
-          // Note: byteOffset is guaranteed to be present on ArrayBufferView (defaults to 0)
-          const jointsResult = jointsArrayRaw ? uint16ArraySchema.safeParse(jointsArrayRaw) : null;
-          const jointsArray = jointsResult?.success
-            ? jointsResult.data
-            : jointsArrayRaw && isArrayBufferView(jointsArrayRaw)
-              ? new Uint16Array(
-                  (jointsArrayRaw as ArrayBufferView).buffer,
-                  (jointsArrayRaw as ArrayBufferView).byteOffset,
-                  (jointsArrayRaw as ArrayBufferView).byteLength / Uint16Array.BYTES_PER_ELEMENT,
-                )
-              : Array.isArray(jointsArrayRaw)
-                ? new Uint16Array(jointsArrayRaw)
-                : new Uint16Array(0);
-
-          const weightsResult = weightsArrayRaw ? float32ArraySchema.safeParse(weightsArrayRaw) : null;
-          const weightsArray = weightsResult?.success
-            ? weightsResult.data
-            : weightsArrayRaw && isArrayBufferView(weightsArrayRaw)
-              ? new Float32Array(
-                  (weightsArrayRaw as ArrayBufferView).buffer,
-                  (weightsArrayRaw as ArrayBufferView).byteOffset,
-                  (weightsArrayRaw as ArrayBufferView).byteLength / Float32Array.BYTES_PER_ELEMENT,
-                )
-              : Array.isArray(weightsArrayRaw)
-                ? new Float32Array(weightsArrayRaw)
-                : new Float32Array(0);
-
           const numVertices = posAcc.getCount();
 
           for (let vi = 0; vi < numVertices; vi++) {
             const globalVertexIndex = globalVertexOffset + vi;
 
-            // Each vertex has up to 4 joint influences
-            for (let ji = 0; ji < 4; ji++) {
-              const jointIndex = jointsArray[vi * 4 + ji];
-              const weight = weightsArray[vi * 4 + ji];
-
-              // Only consider influences with non-zero weight
-              if (weight !== undefined && weight > 0 && jointIndex !== undefined && jointIndex < bones.length) {
-                const pointSet = bonePointSets[jointIndex];
-                const normalSet = boneNormalSets[jointIndex];
-                if (pointSet) pointSet.add(globalVertexIndex);
-                // For normals, use same indices as points
-                if (normalSet) normalSet.add(globalVertexIndex);
-              }
-            }
+            const influence = getRigidInfluence(
+              jointsAcc,
+              weightsAcc,
+              vi,
+              bones.length,
+            );
+            if (!influence) continue;
+            bonePointSets[influence.jointIndex]?.add(globalVertexIndex);
+            boneNormalSets[influence.jointIndex]?.add(globalVertexIndex);
           }
 
           globalVertexOffset += numVertices;

@@ -21,6 +21,7 @@ export type ResizeDirection = "top" | "bottom" | "left" | "right";
 export interface LevelResizeGlobals {
   readonly TILES_PER_SUPERTILE: number;
   readonly TILE_INGAME_SIZE: number;
+  readonly TILE_SIZE: number;
   readonly EMPTY_TILE_IDX: number;
 }
 
@@ -188,6 +189,23 @@ function resizeTerrainData(
     Layr: buildLayr(terrainData.Layr, resizedLayr),
     YCrd: buildYCrd(terrainData.YCrd, resizedYCrd),
   };
+  if (terrainData.CkPt?.[1000]?.obj) {
+    const checkpointOffsetX = offsetX * globals.TILE_SIZE;
+    const checkpointOffsetZ = offsetZ * globals.TILE_SIZE;
+    resized.CkPt = {
+      ...terrainData.CkPt,
+      1000: {
+        ...terrainData.CkPt[1000],
+        obj: terrainData.CkPt[1000].obj.map((checkpoint) => ({
+          ...checkpoint,
+          x1: checkpoint.x1 + checkpointOffsetX,
+          x2: checkpoint.x2 + checkpointOffsetX,
+          z1: checkpoint.z1 + checkpointOffsetZ,
+          z2: checkpoint.z2 + checkpointOffsetZ,
+        })),
+      },
+    };
+  }
   if (terrainData.YCrd?.[1001]?.obj) {
     const roof = resizeYCrdArray(
       terrainData.YCrd[1001].obj,
@@ -325,6 +343,7 @@ export function resizeLevel(
     _metadata: levelData._metadata,
     ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
     ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
+    ...(levelData.CkPt !== undefined ? { CkPt: levelData.CkPt } : {}),
   };
   const resizedTerrain = resizeTerrainData(
     terrainData,
@@ -345,7 +364,7 @@ export function resizeLevel(
     ...updatedHeader,
     ...resizedTerrainWithItCo,
     ...(resizedItems ? resizedItems : {}),
-  } as LevelData;
+  };
   return {
     ok: true,
     levelData: resizedLevel,

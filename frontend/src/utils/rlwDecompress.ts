@@ -96,6 +96,58 @@ export function rlbDecompress(
   return ok({ data: output.buffer, decompressedSize, compressionType });
 }
 
+/** Compresses data using Mighty Mike's byte-oriented RLB format. */
+export function rlbCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
+  const input = new Uint8Array(decompressedBuffer);
+  const output = new Uint8Array(8 + input.byteLength * 2);
+  const header = new DataView(output.buffer);
+  header.setUint32(0, input.byteLength, false);
+  header.setUint32(4, PACK_TYPE_RLB, false);
+  let inputOffset = 0;
+  let outputOffset = 8;
+
+  while (inputOffset < input.byteLength) {
+    let runLength = 1;
+    while (
+      runLength < 129 &&
+      inputOffset + runLength < input.byteLength &&
+      input[inputOffset + runLength] === input[inputOffset]
+    ) {
+      runLength += 1;
+    }
+    if (runLength >= 3) {
+      output[outputOffset] = 257 - runLength;
+      output[outputOffset + 1] = input[inputOffset] ?? 0;
+      outputOffset += 2;
+      inputOffset += runLength;
+      continue;
+    }
+
+    const literalStart = inputOffset;
+    inputOffset += runLength;
+    while (inputOffset < input.byteLength && inputOffset - literalStart < 128) {
+      let nextRunLength = 1;
+      while (
+        nextRunLength < 3 &&
+        inputOffset + nextRunLength < input.byteLength &&
+        input[inputOffset + nextRunLength] === input[inputOffset]
+      ) {
+        nextRunLength += 1;
+      }
+      if (nextRunLength >= 3) break;
+      if (inputOffset - literalStart + nextRunLength > 128) break;
+      inputOffset += nextRunLength;
+    }
+    const literalLength = inputOffset - literalStart;
+    output[outputOffset] = literalLength - 1;
+    outputOffset += 1;
+    output.set(input.subarray(literalStart, inputOffset), outputOffset);
+    outputOffset += literalLength;
+  }
+
+  return output.buffer.slice(0, outputOffset);
+}
+
 /** Decompresses a Mighty Mike RLW-compressed file. */
 export function rlwDecompress(
   compressedBuffer: ArrayBuffer,

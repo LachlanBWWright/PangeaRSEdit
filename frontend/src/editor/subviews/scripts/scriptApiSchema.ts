@@ -40,11 +40,21 @@ export const ApiFunctionSchema = z.object({
 
 export type ApiFunction = z.infer<typeof ApiFunctionSchema>;
 
+export const NativeSpawnSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  category: z.string(),
+  description: z.string(),
+});
+
+export type NativeSpawn = z.infer<typeof NativeSpawnSchema>;
+
 export const GameSchema = z.object({
   gameId: z.string(),
   gameName: z.string(),
   supportedHooks: z.array(z.string()),
   contextFields: z.array(FieldSchema),
+  nativeSpawns: z.array(NativeSpawnSchema),
 });
 
 export type Game = z.infer<typeof GameSchema>;
@@ -283,24 +293,45 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       contextFields: [
         { name: "playerMode", type: "string", optional: true },
       ],
+      nativeSpawns: [
+        { id: "ottomatic.human", label: "Human", category: "NPC", description: "Spawn a rescue human using the loaded level's human assets." },
+        { id: "ottomatic.powerupPod", label: "Powerup Pod", category: "Pickup", description: "Spawn an Otto Matic health or weapon powerup pod." },
+        { id: "ottomatic.checkpoint", label: "Checkpoint", category: "Trigger", description: "Spawn a level checkpoint trigger." },
+        { id: "ottomatic.teleporter", label: "Teleporter", category: "Trigger", description: "Spawn a teleporter using the current level transition state." },
+      ],
     },
     {
       gameId: "Bugdom-android",
       gameName: "Bugdom",
       supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
+      nativeSpawns: [
+        { id: "bugdom.nut", label: "Nut", category: "Pickup", description: "Spawn a health nut pickup." },
+        { id: "bugdom.clover", label: "Clover", category: "Pickup", description: "Spawn a clover key pickup." },
+        { id: "bugdom.checkpoint", label: "Checkpoint", category: "Trigger", description: "Spawn a Bugdom checkpoint trigger." },
+      ],
     },
     {
       gameId: "Bugdom2-Android",
       gameName: "Bugdom 2",
       supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
+      nativeSpawns: [
+        { id: "bugdom2.powerup", label: "Powerup", category: "Powerup", description: "Spawn a powerup; options.subtype selects the powerup kind." },
+        { id: "bugdom2.dcell", label: "D-Cell", category: "Pickup", description: "Spawn a D-Cell using the current level's pickup assets." },
+        { id: "bugdom2.gliderPart", label: "Glider Part", category: "Pickup", description: "Spawn a collectible glider part when its level assets are loaded." },
+      ],
     },
     {
       gameId: "Nanosaur-android",
       gameName: "Nanosaur",
       supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
+      nativeSpawns: [
+        { id: "nanosaur.powerup", label: "Powerup", category: "Powerup", description: "Spawn a Nanosaur powerup." },
+        { id: "nanosaur.egg", label: "Egg", category: "Pickup", description: "Spawn a collectible dinosaur egg." },
+        { id: "nanosaur.crystal", label: "Crystal", category: "Pickup", description: "Spawn a collectible crystal." },
+      ],
     },
     {
       gameId: "Nanosaur2-Android",
@@ -309,6 +340,11 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["adventure", "race", "battle", "capture"] },
         { name: "networked", type: "boolean" },
+      ],
+      nativeSpawns: [
+        { id: "nanosaur2.egg", label: "Egg", category: "Pickup", description: "Spawn a Nanosaur 2 objective egg." },
+        { id: "nanosaur2.weaponPow", label: "Weapon Powerup", category: "Pickup", description: "Spawn a weapon powerup." },
+        { id: "nanosaur2.healthPow", label: "Health Powerup", category: "Pickup", description: "Spawn a health powerup." },
       ],
     },
     {
@@ -320,6 +356,13 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { name: "trackName", type: "string", optional: true },
         { name: "networked", type: "boolean" },
       ],
+      nativeSpawns: [
+        { id: "cromag.pow", label: "Powerup", category: "Pickup", description: "Spawn a general race powerup." },
+        { id: "cromag.token", label: "Token", category: "Pickup", description: "Spawn a scoring token." },
+        { id: "cromag.stickyTiresPow", label: "Sticky Tires", category: "Pickup", description: "Spawn a sticky-tires vehicle powerup." },
+        { id: "cromag.suspensionPow", label: "Suspension", category: "Pickup", description: "Spawn a suspension vehicle powerup." },
+        { id: "cromag.invisibilityPow", label: "Invisibility", category: "Pickup", description: "Spawn an invisibility powerup." },
+      ],
     },
     {
       gameId: "BillyFrontier-Android",
@@ -327,6 +370,11 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       supportedHooks: ["onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"] },
+      ],
+      nativeSpawns: [
+        { id: "billy.peso", label: "Peso", category: "Pickup", description: "Spawn a peso score pickup." },
+        { id: "billy.freeLifePow", label: "Free Life", category: "Pickup", description: "Spawn a free-life powerup." },
+        { id: "billy.boost", label: "Stampede Boost", category: "Pickup", description: "Spawn a speed boost for Stampede mode." },
       ],
     },
     {
@@ -336,6 +384,11 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       contextFields: [
         { name: "sceneName", type: "string", optional: true },
         { name: "areaName", type: "string", optional: true },
+      ],
+      nativeSpawns: [
+        { id: "mightymike.bunny", label: "Bunny", category: "Pickup", description: "Spawn a bunny objective pickup." },
+        { id: "mightymike.healthPow", label: "Health Powerup", category: "Pickup", description: "Spawn a Mighty Mike health powerup." },
+        { id: "mightymike.key", label: "Key", category: "Pickup", description: "Spawn an inventory key pickup." },
       ],
     },
   ],
