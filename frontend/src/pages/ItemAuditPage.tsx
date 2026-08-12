@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Game } from "@/data/globals/globals";
-import { ResultAsync } from "neverthrow";
+import { Result, ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import {
   buildItemAuditEntries,
@@ -128,10 +128,10 @@ export function ItemAuditPage() {
         setImportStatus(`Failed to read file: ${textResult.error}`);
         return;
       }
-      const parsedResult = await ResultAsync.fromPromise(
-        Promise.resolve().then(() => JSON.parse(textResult.value)),
+      const parsedResult = Result.fromThrowable(
+        () => JSON.parse(textResult.value),
         mapErr,
-      );
+      )();
       if (parsedResult.isErr()) {
         setImportStatus(`Invalid JSON: ${parsedResult.error}`);
         return;

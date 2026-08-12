@@ -123,6 +123,46 @@ function parseFiniteNumber(value: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function updateNativeModelGroup(
+  definition: ScriptCustomObjectDefinition,
+  group: string,
+): ScriptCustomObjectDefinition {
+  if (definition.visual.kind !== "nativeDisplayGroup") return definition;
+  return {
+    ...definition,
+    visual: {
+      ...definition.visual,
+      group: group === "levelSpecific" ? group : "global",
+    },
+  };
+}
+
+function updateVisualIndex(
+  definition: ScriptCustomObjectDefinition,
+  value: number,
+): ScriptCustomObjectDefinition {
+  const visual = definition.visual;
+  if (visual.kind === "nativeSkeleton") {
+    return { ...definition, visual: { ...visual, skeletonType: value } };
+  }
+  if (
+    visual.kind === "nativeDisplayGroup" ||
+    visual.kind === "customDisplayGroup"
+  ) {
+    return { ...definition, visual: { ...visual, modelObject: value } };
+  }
+  return definition;
+}
+
+function updateVisualScale(
+  definition: ScriptCustomObjectDefinition,
+  scale: number,
+): ScriptCustomObjectDefinition {
+  const visual = definition.visual;
+  if (visual.kind === "none") return definition;
+  return { ...definition, visual: { ...visual, scale } };
+}
+
 export function ScriptCustomObjectsPanel({
   gameId,
   customObjectBehaviorId,
@@ -297,13 +337,7 @@ export function ScriptCustomObjectsPanel({
                 <Select
                   value={objectDefinition.visual.group}
                   onValueChange={(group) =>
-                    onUpdateObject({
-                      ...objectDefinition,
-                      visual: {
-                        ...objectDefinition.visual,
-                        group: group === "levelSpecific" ? group : "global",
-                      },
-                    })
+                    onUpdateObject(updateNativeModelGroup(objectDefinition, group))
                   }
                 >
                   <SelectTrigger aria-label={`${objectDefinition.label} model group`}>
@@ -329,14 +363,7 @@ export function ScriptCustomObjectsPanel({
                     }
                     onChange={(event) => {
                       const value = Math.trunc(parseFiniteNumber(event.target.value, 0));
-                      const visual = objectDefinition.visual;
-                      onUpdateObject({
-                        ...objectDefinition,
-                        visual:
-                          visual.kind === "nativeSkeleton"
-                            ? { ...visual, skeletonType: value }
-                            : { ...visual, modelObject: value },
-                      });
+                      onUpdateObject(updateVisualIndex(objectDefinition, value));
                     }}
                   />
                   <Input
@@ -346,13 +373,12 @@ export function ScriptCustomObjectsPanel({
                     aria-label={`${objectDefinition.label} scale`}
                     value={objectDefinition.visual.scale}
                     onChange={(event) =>
-                      onUpdateObject({
-                        ...objectDefinition,
-                        visual: {
-                          ...objectDefinition.visual,
-                          scale: parseFiniteNumber(event.target.value, 1),
-                        },
-                      })
+                      onUpdateObject(
+                        updateVisualScale(
+                          objectDefinition,
+                          parseFiniteNumber(event.target.value, 1),
+                        ),
+                      )
                     }
                   />
                 </>

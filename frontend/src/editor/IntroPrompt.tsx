@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { zipSync } from "fflate";
-import { ResultAsync, okAsync } from "neverthrow";
+import { ResultAsync } from "neverthrow";
 import {
   HeaderData,
   ItemData,
@@ -57,7 +57,6 @@ import {
 import { createSavedLevel } from "@/api/savedLevelsApi";
 import { getMe } from "@/api/authApi";
 import { getGoogleSignInUrl } from "@/api/authApi";
-import { mapErr } from "@/utils/mapErr";
 import { currentAuthUserAtom } from "@/data/globals/authState";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import type { PreviewVfsFile } from "./utils/gamePreviewRuntimeTypes";
@@ -766,33 +765,19 @@ export function IntroPrompt() {
   const handleSaveToCloud = useCallback(() => {
     const cloudToastId = "save-to-cloud";
     toast.loading("Checking sign-in…", { id: cloudToastId });
-    void ResultAsync.fromPromise(getMe(), mapErr)
-      .andThen((meResult) => {
-        if (meResult.isErr()) {
-          toast.error("Sign in to save to cloud", {
-            id: cloudToastId,
-            description: "Use the account button in the top right.",
-            action: {
-              label: "Sign in",
-              onClick: () => {
-                window.location.href = getGoogleSignInUrl(window.location.href);
-              },
-            },
-          });
-          return okAsync(undefined);
-        }
-
+    void new ResultAsync(getMe()).match(
+      () => {
         const combinedDataResult = combineLevelData(getCurrentAtomicData());
         if (combinedDataResult.isErr()) {
           toast.error("Could not save: level data error", {
             id: cloudToastId,
             description: combinedDataResult.error,
           });
-          return okAsync(undefined);
+          return;
         }
 
         toast.loading("Saving to cloud…", { id: cloudToastId });
-        return ResultAsync.fromPromise(
+        void new ResultAsync(
           createSavedLevel({
             gameName: String(globals.GAME_TYPE),
             levelId: mapFile?.name ?? "unknown",
@@ -802,31 +787,31 @@ export function IntroPrompt() {
               ? { fileName: mapFile.name, fileSize: mapFile.size }
               : undefined,
           }),
-          mapErr,
-        ).andThen((saveResult) => {
-          if (saveResult.isOk()) {
+        ).match(
+          () => {
             toast.success("Level saved to cloud!", { id: cloudToastId });
-            return okAsync(undefined);
-          }
-
-          toast.error("Save failed", {
-            id: cloudToastId,
-            description: saveResult.error.message,
-          });
-          return okAsync(undefined);
-        });
-      })
-      .mapErr((error) => {
-        toast.error("Save failed", {
+          },
+          (error) => {
+            toast.error("Save failed", {
+              id: cloudToastId,
+              description: error.message,
+            });
+          },
+        );
+      },
+      () => {
+        toast.error("Sign in to save to cloud", {
           id: cloudToastId,
-          description: error,
+          description: "Use the account button in the top right.",
+          action: {
+            label: "Sign in",
+            onClick: () => {
+              window.location.href = getGoogleSignInUrl(window.location.href);
+            },
+          },
         });
-        return error;
-      })
-      .match(
-        () => undefined,
-        () => undefined,
-      );
+      },
+    );
   }, [getCurrentAtomicData, globals, mapFile]);
 
   const handleConfirmNewMap = useCallback(() => {

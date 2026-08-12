@@ -469,46 +469,26 @@ export function decodeLzssTerrainTile(
   tileId: number,
   request: DecodeLzssTerrainTileRequest,
 ): ResultAsync<DecodedTerrainTileBuffer, TerrainIoError> {
-  return ResultAsync.fromPromise(runDecodeLzssTerrainTile(tileId, request), () =>
-    terrainIoError(
-      "terrain.decode.failed",
-      "Failed to decode the LZSS terrain tile",
-    ),
-  ).andThen((result) => result);
+  return new ResultAsync(runDecodeLzssTerrainTile(tileId, request));
 }
 
 export function decodeJpegTerrainTile(
   tileId: number,
   request: DecodeJpegTerrainTileRequest,
 ): ResultAsync<DecodedTerrainTileBuffer, TerrainIoError> {
-  return ResultAsync.fromPromise(runDecodeJpegTerrainTile(tileId, request), () =>
-    terrainIoError(
-      "terrain.decode.failed",
-      "Failed to decode the JPEG terrain tile",
-    ),
-  ).andThen((result) => result);
+  return new ResultAsync(runDecodeJpegTerrainTile(tileId, request));
 }
 
 export function encodeLzssTerrainTile(
   tileId: number,
   request: EncodeLzssTerrainTileRequest,
 ): ResultAsync<EncodedTerrainTileBuffer, TerrainIoError> {
-  return ResultAsync.fromPromise(runEncodeLzssTerrainTile(tileId, request), () =>
-    terrainIoError(
-      "terrain.encode.failed",
-      "Failed to encode the LZSS terrain tile",
-    ),
-  ).andThen((result) => result);
+  return new ResultAsync(runEncodeLzssTerrainTile(tileId, request));
 }
 
 export function encodeJpegTerrainTile(
   tileId: number,
   request: EncodeJpegTerrainTileRequest,
 ): ResultAsync<EncodedTerrainTileBuffer, TerrainIoError> {
-  return ResultAsync.fromPromise(runEncodeJpegTerrainTile(tileId, request), () =>
-    terrainIoError(
-      "terrain.encode.failed",
-      "Failed to encode the JPEG terrain tile",
-    ),
-  ).andThen((result) => result);
+  return new ResultAsync(runEncodeJpegTerrainTile(tileId, request));
 }

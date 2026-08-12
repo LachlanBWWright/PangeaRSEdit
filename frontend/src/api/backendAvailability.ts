@@ -12,6 +12,30 @@ export interface BackendAvailabilityError {
   readonly status: number;
 }
 
+function networkUnavailableError(): BackendAvailabilityError {
+  return {
+    code: "network.unreachable",
+    message: "Could not reach backend API server.",
+    status: 0,
+  };
+}
+
+function invalidJsonError(status: number): BackendAvailabilityError {
+  return {
+    code: "schema.invalid",
+    message: "Backend health response was not valid JSON.",
+    status,
+  };
+}
+
+function httpError(status: number): BackendAvailabilityError {
+  return {
+    code: "http.error",
+    message: "Backend API server returned an unsuccessful health check.",
+    status,
+  };
+}
+
 function parseHealthResponse(
   status: number,
   payload: unknown,
@@ -40,24 +64,14 @@ export function checkBackendApiAvailable(): ResultAsync<
         Accept: "application/json",
       },
     }),
-    () => ({
-      code: "network.unreachable",
-      message: "Could not reach backend API server.",
-      status: 0,
-    }),
+    networkUnavailableError,
   ).andThen((response) => {
     if (!response.ok) {
-      return err({
-        code: "http.error",
-        message: "Backend API server returned an unsuccessful health check.",
-        status: response.status,
-      });
+      return err(httpError(response.status));
     }
 
-    return ResultAsync.fromPromise(response.json(), () => ({
-      code: "schema.invalid",
-      message: "Backend health response was not valid JSON.",
-      status: response.status,
-    })).andThen((payload) => parseHealthResponse(response.status, payload));
+    return ResultAsync.fromPromise(response.json(), () =>
+      invalidJsonError(response.status),
+    ).andThen((payload) => parseHealthResponse(response.status, payload));
   });
 }

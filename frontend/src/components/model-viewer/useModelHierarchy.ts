@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Object3D, Mesh, Group } from "three";
-import { GLTF as GLTFResult } from "three-stdlib";
-import { ModelNode } from "./types";
+import type { ModelGltfResult, ModelNode } from "./types";
 import { isJoint } from "./utils";
 
 /** Extracts a node hierarchy from the scene while filtering out joints. */
@@ -37,7 +36,7 @@ function extractNode(obj: Object3D, level = 0): ModelNode | null {
   if (obj.children.length > 0) {
     node.children = obj.children
       .map((child) => extractNode(child, level + 1))
-      .filter((child): child is ModelNode => child !== null);
+      .filter((child) => child !== null);
   }
 
   return node;
@@ -45,7 +44,7 @@ function extractNode(obj: Object3D, level = 0): ModelNode | null {
 
 /** Populates model nodes from a glTF scene and notifies when the scene is ready. */
 export function useModelHierarchy(
-  gltfResult: GLTFResult | undefined,
+  gltfResult: ModelGltfResult | undefined,
   setModelNodes: (nodes: ModelNode[]) => void,
   onSceneReady?: (scene: Group | undefined) => void,
 ) {
@@ -54,9 +53,7 @@ export function useModelHierarchy(
       const extractedNodes = gltfResult.scene.children.map((child: Object3D) =>
         extractNode(child),
       );
-      const nodes = extractedNodes.filter(
-        (node): node is ModelNode => node !== null,
-      );
+      const nodes = extractedNodes.filter((node) => node !== null);
 
       setModelNodes(nodes);
       if (onSceneReady) onSceneReady(gltfResult.scene);

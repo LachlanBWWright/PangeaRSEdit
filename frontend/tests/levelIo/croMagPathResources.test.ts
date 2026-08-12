@@ -18,8 +18,11 @@ describe("Cro-Mag racing resources", () => {
     expect(validated.success).toBe(true);
     if (!validated.success) return;
     const level = validated.data;
-    expect(level.Path?.[1000]?.obj.length).toBe(level.Hedr[1000]?.obj.numPaths);
-    expect(Object.keys(level.PaPt ?? {})).toHaveLength(level.Hedr[1000]?.obj.numPaths);
+    const numPaths = level.Hedr[1000]?.obj.numPaths;
+    expect(numPaths).toBeDefined();
+    if (numPaths === undefined) return;
+    expect(level.Path?.[1000]?.obj.length).toBe(numPaths);
+    expect(Object.keys(level.PaPt ?? {})).toHaveLength(numPaths);
     expect(level.CkPt?.[1000]?.obj.length).toBe(level.Hedr[1000]?.obj.numCheckpoints);
 
     const serialized = await loadBytesFromJsonAsync(level, croMagSpecs, [], []);

@@ -26,7 +26,6 @@ import {
   scriptSplineBindingSchema,
   scriptTagDefinitionSchema,
   scriptTerrainBindingSchema,
-  scriptTerrainReplacementSchema,
 } from "./scriptWorkspaceStateTypes";
 import { getDefaultHoverBeaconVisual } from "./scriptDefaultCustomVisuals";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
@@ -81,7 +80,7 @@ function buildAssignmentId(prefix: string, value: string): string {
   return `${prefix}-${slugify(value)}`;
 }
 
-function inferLanguage(_path: string): "lua" {
+function inferLanguage(): "lua" {
   return "lua";
 }
 
@@ -121,7 +120,7 @@ function createSourceFile(
     path,
     content,
     savedContent: content,
-    language: inferLanguage(path),
+    language: inferLanguage(),
     readOnly: role === "generated-entry",
     role,
     ownerId,
@@ -1756,7 +1755,7 @@ export function upsertScriptSourceFile(
     ? {
         ...existing,
         content,
-        language: inferLanguage(path),
+        language: inferLanguage(),
       }
     : createSourceFile(path, content, role, ownerId);
 
@@ -1850,8 +1849,11 @@ export function removeScriptSourceFile(
     return state;
   }
 
-  const nextFiles: Record<string, ScriptSourceFile> = { ...state.sourceFiles };
-  delete nextFiles[path];
+  const nextFiles = Object.fromEntries(
+    Object.entries(state.sourceFiles).filter(
+      ([sourcePath]) => sourcePath !== path,
+    ),
+  );
 
   return refreshGeneratedEntry(
     {
@@ -2793,6 +2795,10 @@ export function importScriptPackageZip(
         splineBindings,
         mapItemBindings,
         customPlacements,
+        terrainReplacements:
+          projectJson.editor.levels[levelKey]?.terrainReplacements ?? [],
+        splineReplacements:
+          projectJson.editor.levels[levelKey]?.splineReplacements ?? [],
       };
     }
   }
@@ -2805,6 +2811,8 @@ export function importScriptPackageZip(
       splineBindings: [],
       mapItemBindings: [],
       customPlacements: [],
+      terrainReplacements: [],
+      splineReplacements: [],
     };
   }
 

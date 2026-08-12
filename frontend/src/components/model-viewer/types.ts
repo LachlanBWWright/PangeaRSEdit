@@ -1,5 +1,10 @@
 /** Types for model hierarchy and node management. */
-import { Object3D, Group, AnimationMixer } from "three";
+import {
+  Object3D,
+  Group,
+  AnimationMixer,
+  type AnimationClip,
+} from "three";
 import { AnimationInfo } from "@/components/AnimationViewer";
 import { Game } from "@/data/globals/globals";
 import type {
@@ -11,6 +16,11 @@ import type { WeightBrushHit } from "@/modelEditing/weights/weightBrushStroke";
 
 /** Gizmo modes supported by the model viewer. */
 export type GizmoMode = "translate" | "rotate" | "scale";
+
+export interface ModelGltfResult {
+  readonly scene: Group;
+  readonly animations: readonly AnimationClip[];
+}
 /** High-level interaction modes supported by the model viewer. */
 export type ViewerInteractionMode =
   | "navigate"

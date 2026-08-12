@@ -293,11 +293,13 @@ function createSkin(
   // Calculate and set inverse bind matrices
   // These transform vertices from model space to bone space
   const ibmData = calculateInverseBindMatrices(bones);
+  const accessorData = new Float32Array(ibmData.length);
+  accessorData.set(ibmData);
   const buffer = doc.getRoot().listBuffers()[0] ?? null;
   const ibmAccessor = doc
     .createAccessor()
     .setType("MAT4")
-    .setArray(ibmData)
+    .setArray(accessorData)
     .setBuffer(buffer);
 
   skin.setInverseBindMatrices(ibmAccessor);

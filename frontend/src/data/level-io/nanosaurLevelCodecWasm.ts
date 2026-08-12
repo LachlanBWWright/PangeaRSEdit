@@ -3,7 +3,7 @@ import initTerrainCodecWasm, {
   wasm_parse_nanosaur1_level,
 } from "../../../../terrain-codec-rust/pkg/terrain_codec_rust.js";
 import terrainCodecWasmUrl from "../../../../terrain-codec-rust/pkg/terrain_codec_rust_bg.wasm?url";
-import { ResultAsync, err, ok, type Result } from "neverthrow";
+import { Result, ResultAsync, err, ok } from "neverthrow";
 import { z } from "zod";
 import type { LevelData } from "@/python/structSpecs/LevelTypes";
 import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
@@ -121,16 +121,15 @@ export async function parseNanosaur1LevelWithRust(
     return err(initialized.error);
   }
 
-  const parseResult = ResultAsync.fromPromise(
-    Promise.resolve(wasm_parse_nanosaur1_level(new Uint8Array(levelBytes))),
+  const parseResult = Result.fromThrowable(
+    () => wasm_parse_nanosaur1_level(new Uint8Array(levelBytes)),
     mapRustCallError,
-  );
-  const resolved = await parseResult;
-  if (resolved.isErr()) {
-    return err(`Failed to parse Nanosaur 1 level in Rust: ${resolved.error}`);
+  )();
+  if (parseResult.isErr()) {
+    return err(`Failed to parse Nanosaur 1 level in Rust: ${parseResult.error}`);
   }
 
-  const parsed = nanosaurParsedSchema.safeParse(resolved.value);
+  const parsed = nanosaurParsedSchema.safeParse(parseResult.value);
   if (!parsed.success) {
     return err(`Rust parser returned invalid payload: ${parsed.error.message}`);
   }
@@ -287,12 +286,10 @@ export async function compileNanosaur1LevelWithRust(
   }
 
   const edits = levelDataToRustCompilePayload(levelData);
-  const compileResult = await ResultAsync.fromPromise(
-    Promise.resolve(
-      wasm_compile_nanosaur1_level(new Uint8Array(rawLevelBytes), edits),
-    ),
+  const compileResult = Result.fromThrowable(
+    () => wasm_compile_nanosaur1_level(new Uint8Array(rawLevelBytes), edits),
     mapRustCallError,
-  );
+  )();
   if (compileResult.isErr()) {
     return err(
       `Failed to compile Nanosaur 1 level in Rust: ${compileResult.error}`,

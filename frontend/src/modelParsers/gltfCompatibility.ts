@@ -131,30 +131,28 @@ function decodeDataUri(
   return ok(new TextEncoder().encode(decoded));
 }
 
-function parseGltfJson(buffer: ArrayBuffer): ResultAsync<ParsedGltfJson, GltfCompatibilityError> {
+function parseGltfJson(
+  buffer: ArrayBuffer,
+): ResultType<ParsedGltfJson, GltfCompatibilityError> {
   const text = new TextDecoder().decode(new Uint8Array(buffer));
-  return ResultAsync.fromPromise(
-    Promise.resolve().then(() => JSON.parse(text)),
+  return Result.fromThrowable(
+    () => JSON.parse(text),
     () =>
       compatibilityError(
         "gltf.invalid-json",
         "The .gltf file could not be parsed as JSON",
       ),
-  ).andThen((value) => {
+  )().andThen((value) => {
     const parsed = gltfJsonSchema.safeParse(value);
     if (!parsed.success) {
-      return ResultAsync.fromPromise(
-        Promise.reject(parsed.error),
-        () =>
-          compatibilityError(
-            "gltf.invalid-json",
-            "The .gltf file is missing required glTF fields",
-          ),
+      return err(
+        compatibilityError(
+          "gltf.invalid-json",
+          "The .gltf file is missing required glTF fields",
+        ),
       );
     }
-    return ResultAsync.fromPromise(Promise.resolve(parsed.data), () =>
-      compatibilityError("gltf.invalid-json", "Failed to validate the .gltf file"),
-    );
+    return ok(parsed.data);
   });
 }
 
@@ -207,8 +205,10 @@ function getUnsupportedRequiredExtension(
 
 async function collectInlineResources(
   json: ParsedGltfJson,
-): Promise<Result<Record<string, Uint8Array>, GltfCompatibilityError>> {
-  const resources: Record<string, Uint8Array> = {};
+): Promise<
+  Result<Record<string, Uint8Array<ArrayBuffer>>, GltfCompatibilityError>
+> {
+  const resources: Record<string, Uint8Array<ArrayBuffer>> = {};
   const uris = new Set<string>();
 
   for (const buffer of json.buffers ?? []) {
@@ -251,7 +251,9 @@ async function collectInlineResources(
     if (decoded.isErr()) {
       return err(decoded.error);
     }
-    resources[uri] = decoded.value;
+    const bytes = new Uint8Array(decoded.value.length);
+    bytes.set(decoded.value);
+    resources[uri] = bytes;
   }
 
   return ok(resources);

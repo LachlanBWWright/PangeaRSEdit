@@ -149,8 +149,10 @@ describe("Mighty Mike palette behaviour", () => {
     expect(reparsedTileset.value.xlateTable[exportedLogicalIndex]).toBe(
       imageIndex,
     );
-    expect(
-      reparsedTileset.value.tileAttributes[exportedLogicalIndex]?.flags & 1,
-    ).toBe(1);
+    const exportedFlags =
+      reparsedTileset.value.tileAttributes[exportedLogicalIndex]?.flags;
+    expect(exportedFlags).toBeDefined();
+    if (exportedFlags === undefined) return;
+    expect(exportedFlags & 1).toBe(1);
   });
 });

@@ -39,6 +39,7 @@ import {
   getTabForTileView,
   getTileMenuFlags,
   getTileViewForTab,
+  parseFiniteNumber,
   parseIntOrZero,
 } from "@/editor/subviews/tiles/tilesMenuState";
 import { TopologyOpacityControl } from "./TopologyOpacityControl";

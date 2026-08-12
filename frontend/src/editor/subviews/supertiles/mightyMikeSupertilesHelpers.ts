@@ -231,7 +231,7 @@ export function buildParamsCanvas(
     | "p1"
     | "p2",
   overlayFlagBit: number,
-  tileAttributes: Record<string, unknown>[],
+  tileAttributes: readonly unknown[],
   mapWidth: number,
   mapHeight: number,
   layr: number[],
@@ -245,8 +245,11 @@ export function buildParamsCanvas(
 
   layr.forEach((attrIndex, i) => {
     if (attrIndex < 0 || attrIndex >= tileAttributes.length) return;
-    const attr = tileAttributes[attrIndex];
-    if (!attr) return;
+    const attrResult = z.record(z.string(), z.unknown()).safeParse(
+      tileAttributes[attrIndex],
+    );
+    if (!attrResult.success) return;
+    const attr = attrResult.data;
 
     const flagsResult = numberSchema.safeParse(attr["flags"]);
     const flags = flagsResult.success ? flagsResult.data : 0;

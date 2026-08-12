@@ -2,7 +2,7 @@ Follow these project standards for all code changes:
 
 Never use TypeScript `any`, or type assertions. Model unknown values explicitly and narrow them safely.
 Never throw exceptions. Use `neverthrow` (`Result`, `ResultAsync`) for recoverable failure paths.
-Wrap third-party libraries that can throw exceptions with `neverthrow` at the boundary, then expose typed `Result` or `ResultAsync` APIs to the rest of the codebase.
+Use `Result.fromThrowable` and `ResultAsync.fromPromise` only at third-party or external boundaries that may throw or reject. Wrap those exceptions immediately at the boundary and expose typed `Result` or `ResultAsync` APIs to the rest of the codebase. Internal functions must never throw; model their failures directly with `Result` or `ResultAsync` instead of wrapping internal calls with `fromThrowable` or `fromPromise`.
 Never disable ESLint rules, TypeScript checks, or type checking comments to bypass errors.
 Use Zod to parse and validate unknown data at runtime before treating it as typed data.10 +- Avoid introspection-like solutions such as `typeof`, `instanceof`, and custom `value is Type` guard functions wherever feasible. Prefer schema parsing and explicit typed inputs.
 Write high-quality React code: keep components focused, make state ownership clear, and avoid unnecessary re-renders.

@@ -53,4 +53,4 @@ export const MIGHTY_MIKE_TRACK_SEGMENTS: readonly MightyMikeTrackSegmentOption[]
     connection,
     points: TRACK_POINT_STRINGS[value] ?? "",
   }));
-import raceCarSource from "../../../../../games/originals/mightymike/src/Enemies/Bargain/RaceCar.c?raw";
+import raceCarSource from "../../../../../games/mightymike/src/Enemies/Bargain/RaceCar.c?raw";

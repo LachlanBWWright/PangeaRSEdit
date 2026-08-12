@@ -6,7 +6,7 @@ import type Konva from "konva";
 
 interface Point {
   x: number;
-  z: number;
+  y: number;
 }
 
 export const PendingCreationOverlay = memo(function PendingCreationOverlay() {
@@ -105,8 +105,8 @@ export const PendingCreationOverlay = memo(function PendingCreationOverlay() {
       {hasPoints && pointerPos && (
         <Line
           points={[
-            points[points.length - 1].x,
-            points[points.length - 1].z,
+            points.at(-1)?.x ?? pointerPos.x,
+            points.at(-1)?.z ?? pointerPos.y,
             pointerPos.x,
             pointerPos.y,
           ]}
@@ -121,7 +121,12 @@ export const PendingCreationOverlay = memo(function PendingCreationOverlay() {
       {/* 4. For water bodies, dashed line from cursor back to first point to show closure */}
       {kind === "water" && points.length >= 2 && pointerPos && (
         <Line
-          points={[pointerPos.x, pointerPos.y, points[0].x, points[0].z]}
+          points={[
+            pointerPos.x,
+            pointerPos.y,
+            points[0]?.x ?? pointerPos.x,
+            points[0]?.z ?? pointerPos.y,
+          ]}
           stroke={themeColor}
           strokeWidth={2}
           dash={[4, 4]}

@@ -451,14 +451,6 @@ export async function loadPreviewRuntime(
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions,
   ): void {
-    if (target === window) {
-      prevWindowAddEventListener.call(window, type, listener, options);
-      return;
-    }
-    if (target === document) {
-      prevDocumentAddEventListener.call(document, type, listener, options);
-      return;
-    }
     realAddEventListener.call(target, type, listener, options);
   }
 
@@ -468,14 +460,6 @@ export async function loadPreviewRuntime(
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | EventListenerOptions,
   ): void {
-    if (target === window) {
-      prevWindowRemoveEventListener.call(window, type, listener, options);
-      return;
-    }
-    if (target === document) {
-      prevDocumentRemoveEventListener.call(document, type, listener, options);
-      return;
-    }
     realRemoveEventListener.call(target, type, listener, options);
   }
 
@@ -486,6 +470,10 @@ export async function loadPreviewRuntime(
       listener: EventListenerOrEventListenerObject | null,
       options?: boolean | AddEventListenerOptions,
     ): void {
+      if (listener === null) {
+        callAddEventListener(this, type, listener, options);
+        return;
+      }
       if (!shouldWrapKeyboardListener(this, type, listener)) {
         callAddEventListener(this, type, listener, options);
         return;

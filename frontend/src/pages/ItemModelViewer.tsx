@@ -7,7 +7,13 @@
  */
 
 import { mapErr } from "@/utils/mapErr";
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  type ComponentRef,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
@@ -60,7 +66,8 @@ import type {
 } from "@/data/items/itemModelTypes";
 import { getCitationPermalink } from "@/data/items/itemModelTypes";
 import { ResultAsync, err, ok, type Result } from "neverthrow";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+
+type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
 
 /**
  * Camera configuration for optimal model viewing

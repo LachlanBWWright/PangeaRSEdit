@@ -11,6 +11,11 @@ interface MutableTileAttribute {
   p4: number;
 }
 
+interface MutableTilesetRecord {
+  tileAttributes: unknown[];
+  xlateTable: unknown[];
+}
+
 const DEFAULT_TILE_ATTRIBUTE: MutableTileAttribute = {
   flags: 0,
   p0: 0,
@@ -37,7 +42,7 @@ function cloneTileAttribute(value: unknown): MutableTileAttribute {
 
 function ensureTilesetRecord(
   terrainData: TerrainData,
-): Record<string, unknown> | null {
+): MutableTilesetRecord | null {
   const tileset = isRecord(terrainData.tileset) ? terrainData.tileset : null;
   if (!tileset) {
     return null;
@@ -48,7 +53,10 @@ function ensureTilesetRecord(
   if (!isArray(tileset.xlateTable)) {
     tileset.xlateTable = [];
   }
-  return tileset;
+  const tileAttributes = tileset.tileAttributes;
+  const xlateTable = tileset.xlateTable;
+  if (!isArray(tileAttributes) || !isArray(xlateTable)) return null;
+  return { tileAttributes, xlateTable };
 }
 
 function ensureXlatTable(
@@ -71,7 +79,7 @@ function ensureXlatTable(
   } else {
     data.Xlat = {
       1000: {
-        name: "Tile Translation Table",
+        name: "Tile Index Translation Table",
         obj: created,
         order: 7,
       },

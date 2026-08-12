@@ -1,5 +1,5 @@
 import LevelIoWorker from "@/workers/levelIo.worker?worker";
-import { ResultAsync, errAsync } from "neverthrow";
+import { Result, ResultAsync, errAsync, okAsync } from "neverthrow";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import {
   levelIoRequestSchema,
@@ -48,15 +48,17 @@ function collectImageTransfers(
 }
 
 function createWorkerResult(): ResultAsync<Worker, LevelIoError> {
-  const createResult = ResultAsync.fromPromise(
-    Promise.resolve().then(() => new LevelIoWorker()),
+  const createResult = Result.fromThrowable(
+    () => new LevelIoWorker(),
     () =>
       levelIoError(
         "worker.unavailable",
         "Failed to construct the level I/O worker",
       ),
-  );
-  return createResult;
+  )();
+  return createResult.isOk()
+    ? okAsync(createResult.value)
+    : errAsync(createResult.error);
 }
 
 function runWorkerRequest(
@@ -200,9 +202,7 @@ export function parseLevelWithWorker(
         ),
       );
     }
-    return ResultAsync.fromPromise(Promise.resolve(response), () =>
-      levelIoError("worker.invalid-response", "Failed to parse worker response"),
-    );
+    return okAsync(response);
   });
 }
 
@@ -240,9 +240,7 @@ export function serializeDownloadWithWorker(
         ),
       );
     }
-    return ResultAsync.fromPromise(Promise.resolve(response), () =>
-      levelIoError("worker.invalid-response", "Failed to parse worker response"),
-    );
+    return okAsync(response);
   });
 }
 
@@ -276,9 +274,7 @@ export function preparePreviewWithWorker(
         ),
       );
     }
-    return ResultAsync.fromPromise(Promise.resolve(response), () =>
-      levelIoError("worker.invalid-response", "Failed to parse worker response"),
-    );
+    return okAsync(response);
   });
 }
 

@@ -15,7 +15,7 @@ import {
   type GlobalsInterface,
 } from "../../src/data/globals/globals";
 import { fixNullToZero } from "../../src/data/processors/nullToZeroFixer";
-import { parseNanosaur1Level } from "../../src/data/processors/classicProprocessor";
+import { parseNanosaur1LevelWithRust } from "../../src/data/level-io/nanosaurLevelCodecWasm";
 import { parseMightyMikeMap } from "../../src/modelParsers/parseMightyMike";
 
 export interface LevelParamObservation {
@@ -101,16 +101,16 @@ async function parseItems(
     return parseMightyMikeMap(levelBuffer).map((level) => level.items);
   }
   if (dataset.key === "nanosaur") {
-    return Result.fromThrowable(
-      () => parseNanosaur1Level(levelBuffer),
-      () => `${fileName} could not be parsed`,
-    )().map((level) => level.objectList.map((item) => ({
+    const levelResult = await parseNanosaur1LevelWithRust(levelBuffer);
+    return levelResult
+      .mapErr(() => `${fileName} could not be parsed`)
+      .map((level) => level.objectList.map((item) => ({
       type: item.type,
       p0: item.parm[0],
       p1: item.parm[1],
       p2: item.parm[2],
       p3: item.parm[3],
-    })));
+      })));
   }
 
   const dumpResult = await ResultAsync.fromPromise(
@@ -123,9 +123,10 @@ async function parseItems(
     () => `${fileName} resource parsing failed`,
   );
   if (dumpResult.isErr()) return err(dumpResult.error);
-  if (!dumpResult.value.ok) return err(`${fileName}: ${dumpResult.value.error}`);
+  const resourceResult = dumpResult.value;
+  if (!resourceResult.ok) return err(`${fileName}: ${resourceResult.error}`);
   const jsonResult = Result.fromThrowable(
-    () => JSON.parse(dumpResult.value.value),
+    () => JSON.parse(resourceResult.value),
     () => `${fileName} produced invalid JSON`,
   )();
   if (jsonResult.isErr()) return jsonResult;

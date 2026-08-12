@@ -72,7 +72,13 @@ export function embeddedTextureToCanvas(
     return err(`Unsupported embedded texture format ${texture.srcPixelFormat}`);
   }
 
-  context.putImageData(new ImageData(pixels, texture.width, texture.height), 0, 0);
+  const imagePixels = new Uint8ClampedArray(pixels.length);
+  imagePixels.set(pixels);
+  context.putImageData(
+    new ImageData(imagePixels, texture.width, texture.height),
+    0,
+    0,
+  );
   return ok(canvas);
 }
 

@@ -5,15 +5,22 @@
  * Renders tunnel geometry, water, spline path, and items.
  */
 
-import { useRef, useMemo, useEffect, useState } from "react";
+import {
+  useRef,
+  useMemo,
+  useEffect,
+  useState,
+  type ComponentRef,
+} from "react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Line } from "@react-three/drei";
 import * as THREE from "three";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type {
   TunnelData,
   TunnelSection,
 } from "@/data/tunnelParser/types";
+
+type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
 import { tunnelTextureToCanvas } from "@/data/tunnelParser/textureUtils";
 import { cloneGroupForItemRendering } from "@/editor/threejs/hooks/itemModelLoaderUtils";
 import { useTunnelItemModels } from "@/editor/tunnel/useTunnelItemModels";

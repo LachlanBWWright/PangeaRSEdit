@@ -1,5 +1,6 @@
 import type {
   SkinWeightsData,
+  VertexWeightInfo,
   WeightBrushSettings,
 } from "./weightTypes";
 
@@ -30,7 +31,9 @@ export function applyWeightBrush(
 
     editedVertices.set(vertexIndex, {
       ...vertex,
-      influences: [{ boneIndex: targetBoneIndex, boneName: targetBone, weight: 1 }],
+      influences: [
+        { boneIndex: targetBoneIndex, boneName: targetBone, weight: 1 },
+      ],
     });
   }
 

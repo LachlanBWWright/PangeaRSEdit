@@ -10,10 +10,7 @@ import {
   type BG3DParseResult,
   type BG3DSkeleton,
 } from "@/modelParsers/parseBG3D";
-import {
-  bg3dParsedTo3DMF,
-  parse3DMF,
-} from "@/modelParsers/parse3dmf";
+import { bg3dParsedTo3DMF } from "@/modelParsers/parse3dmf";
 import { parseBG3DWithSkeletonResource } from "@/modelParsers/bg3dWithSkeleton";
 import {
   bg3dParsedToGLTF,
