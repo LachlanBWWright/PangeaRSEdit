@@ -54,6 +54,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
+import { applyLevelScale } from "../utils/applyLevelScale";
 import { BugdomVertexColorMenu } from "../subviews/bugdom/BugdomVertexColorMenu";
 
 export function BugdomEditorView({
@@ -201,6 +202,18 @@ export function BugdomEditorView({
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}
+            onApplyLevelScale={(nextTileSize, mode) =>
+              applyLevelScale({
+                previousTileSize: headerData.Hedr[1000].obj.tileSize,
+                nextTileSize,
+                mode,
+                setHeaderData,
+                setItemData,
+                setFenceData,
+                setSplineData,
+                setTerrainData,
+              })
+            }
           />
         )}
         {view === View.supertiles && (

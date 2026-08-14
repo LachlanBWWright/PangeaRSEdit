@@ -8,7 +8,7 @@ export function getDefaultHoverBeaconVisual(
       kind: "nativeDisplayGroup",
       group: "global",
       modelObject: 1,
-      scale: 1,
+      scale: 1.8,
       slot: 450,
     };
   }

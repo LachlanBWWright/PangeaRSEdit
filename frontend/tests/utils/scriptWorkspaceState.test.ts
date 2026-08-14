@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
+import { z } from "zod";
 import {
   BillyFrontierGlobals,
   BugdomGlobals,
@@ -40,12 +41,31 @@ import {
 } from "@/editor/subviews/scripts/scriptWorkspaceSelectors";
 import { buildScriptTypeDeclarationFiles } from "@/editor/subviews/scripts/scriptTypeDeclarations";
 import { validateScriptPackage } from "@/editor/subviews/scripts/scriptPackageValidator";
+import { CAPABILITY_MATRIX } from "@/editor/subviews/scripts/scriptCapabilityMatrix";
+
+const PlacementsFileSchema = z.object({
+  schemaVersion: z.literal(1),
+  placements: z.array(z.object({
+    objectId: z.string(),
+    position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  })),
+});
 
 function decodeJson(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
 describe("scriptWorkspaceState", () => {
+  it("advertises implemented core runtime capabilities for every game", () => {
+    for (const capabilities of Object.values(CAPABILITY_MATRIX)) {
+      expect(capabilities.nativeSpawn).toBe("supported");
+      expect(capabilities.scriptedSpawn).toBe("supported");
+      expect(capabilities.playerLookup).toBe("supported");
+      expect(capabilities.levelMetadata).toBe("supported");
+      expect(capabilities.timeAPIs).toBe("supported");
+    }
+  });
+
   it("builds preview files for the Otto humans jump sample", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 3);
     const state = loadScriptSample(context, "otto-humans-jump");
@@ -150,6 +170,14 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain("---@field playerMode string|nil");
     expect(runtimeDeclaration.content).toContain("---@field info fun(message: string)");
     expect(runtimeDeclaration.content).toContain("---@field position fun(handle: ObjectHandle): Vector3|nil");
+    expect(runtimeDeclaration.content).toContain("---@class PangeaCapabilities");
+    expect(runtimeDeclaration.content).toContain("---@field current fun(): integer");
+    expect(runtimeDeclaration.content).toContain("---@field frame fun(): integer");
+    expect(runtimeDeclaration.content).toContain("---@field after fun(delaySeconds: number");
+    expect(runtimeDeclaration.content).toContain("---@field diagnostics fun(): PangeaDiagnostics");
+    expect(runtimeDeclaration.content).toContain("---@class PangeaPlayerSnapshot");
+    expect(runtimeDeclaration.content).toContain("---@field get fun(playerNum: integer): PangeaPlayerSnapshot|nil");
+    expect(runtimeDeclaration.content).toContain('---@field reason "ok"|"not-enabled"');
     expect(runtimeDeclaration.content).toContain(
       "---@alias NativeSpawnId",
     );
@@ -360,7 +388,7 @@ describe("scriptWorkspaceState", () => {
         kind: "nativeDisplayGroup",
         group: "global",
         modelObject: 1,
-        scale: 1,
+        scale: 1.8,
         slot: 450,
       },
     });
@@ -377,6 +405,10 @@ describe("scriptWorkspaceState", () => {
       state.sourceFiles["Data/Scripts/src/objects/sample-hoverbeacon.lua"]
         ?.content,
     ).toContain("math.sin(ctx.levelTimeSeconds * 4) * 16");
+    expect(
+      state.sourceFiles["Data/Scripts/src/objects/sample-hoverbeacon.lua"]
+        ?.content,
+    ).toContain("pangea.object.setRotation");
     expect(bundle).toContain("handler({ handle = ctx.object }, ctx)");
     expect(bundle).toContain("triggerEnter = 'onTriggerEnter'");
   });
@@ -599,11 +631,15 @@ describe("scriptWorkspaceState", () => {
       return;
     }
 
-    const placementsJson = decodeJson(placementsFile.bytes);
+    const placementsResult = PlacementsFileSchema.safeParse(decodeJson(placementsFile.bytes));
+    expect(placementsResult.success).toBe(true);
+    if (!placementsResult.success) {
+      return;
+    }
+    const placementsJson = placementsResult.data;
     expect(placementsJson).toHaveProperty("schemaVersion", 1);
     expect(placementsJson).toHaveProperty("placements");
-    const placements = (placementsJson as any).placements;
-    expect(Array.isArray(placements)).toBe(true);
+    const placements = placementsJson.placements;
     expect(placements.length).toBeGreaterThan(0);
     expect(placements[0]).toMatchObject({
       objectId: "test-object",
@@ -668,26 +704,103 @@ describe("scriptWorkspaceState", () => {
     ).toBe(true);
   });
 
-  it("compiles and validates Lua script templates for all 8 games", () => {
-    const gameCases = [
-      { globals: OttoGlobals, sample: "otto-humans-jump", level: 3 },
-      { globals: BugdomGlobals, sample: "bugdom-bouncing-friends", level: 2 },
-      { globals: Bugdom2Globals, sample: "bugdom2-clover-bob", level: 2 },
-      { globals: CroMagGlobals, sample: "cromag-bouncing-pickups", level: 1 },
-      { globals: NanosaurGlobals, sample: "nanosaur-hover-eggs", level: 1 },
-      { globals: Nanosaur2Globals, sample: "nanosaur2-powerup-spin", level: 3 },
-      { globals: BillyFrontierGlobals, sample: "billy-cacti-bounce", level: 1 },
-      { globals: MightyMikeGlobals, sample: "mightymike-box-bob", level: 1 },
-    ];
-
-    for (const { globals, sample, level } of gameCases) {
+  it.each([
+    {
+      name: "Otto Matic",
+      globals: OttoGlobals,
+      sample: "otto-humans-jump",
+      level: 3,
+      sourcePath: "Data/Scripts/src/globals/otto-humans-jump.lua",
+      tag: "ottomatic.human",
+      formula: "ctx.levelTimeSeconds * 8",
+      amplitude: "return 56",
+    },
+    {
+      name: "Bugdom",
+      globals: BugdomGlobals,
+      sample: "bugdom-bouncing-friends",
+      level: 2,
+      sourcePath: "Data/Scripts/src/globals/bugdom-bouncing-friends.lua",
+      tag: "bugdom.buddy",
+      formula: "ctx.levelTimeSeconds * 6",
+      amplitude: "* 20",
+    },
+    {
+      name: "Bugdom 2",
+      globals: Bugdom2Globals,
+      sample: "bugdom2-clover-bob",
+      level: 2,
+      sourcePath: "Data/Scripts/src/globals/bugdom2-clover-bob.lua",
+      tag: "bugdom2.collectible",
+      formula: "ctx.levelTimeSeconds * 5",
+      amplitude: "* 15",
+    },
+    {
+      name: "Cro-Mag Rally",
+      globals: CroMagGlobals,
+      sample: "cromag-bouncing-pickups",
+      level: 1,
+      sourcePath: "Data/Scripts/src/globals/cromag-bouncing-pickups.lua",
+      tag: "cromag.pickup",
+      formula: "ctx.levelTimeSeconds * 7",
+      amplitude: "* 25",
+    },
+    {
+      name: "Nanosaur",
+      globals: NanosaurGlobals,
+      sample: "nanosaur-hover-eggs",
+      level: 1,
+      sourcePath: "Data/Scripts/src/globals/nanosaur-hover-eggs.lua",
+      tag: "nanosaur.egg",
+      formula: "ctx.levelTimeSeconds * 4",
+      amplitude: "* 12",
+    },
+    {
+      name: "Nanosaur 2",
+      globals: Nanosaur2Globals,
+      sample: "nanosaur2-powerup-spin",
+      level: 3,
+      sourcePath: "Data/Scripts/src/globals/nanosaur2-powerup-spin.lua",
+      tag: "nanosaur2.powerup",
+      formula: "ctx.levelTimeSeconds * 6",
+      amplitude: "* 18",
+    },
+    {
+      name: "Billy Frontier",
+      globals: BillyFrontierGlobals,
+      sample: "billy-cacti-bounce",
+      level: 1,
+      sourcePath: "Data/Scripts/src/globals/billy-cacti-bounce.lua",
+      tag: "billy.cacti",
+      formula: "ctx.levelTimeSeconds * 5",
+      amplitude: "* 14",
+    },
+    {
+      name: "Mighty Mike",
+      globals: MightyMikeGlobals,
+      sample: "mightymike-box-bob",
+      level: 1,
+      sourcePath: "Data/Scripts/src/globals/mightymike-box-bob.lua",
+      tag: "mightymike.box",
+      formula: "ctx.levelTimeSeconds * 5",
+      amplitude: "* 16",
+    },
+  ])(
+    "compiles and validates the $name Lua sample",
+    ({ globals, sample, level, sourcePath, tag, formula, amplitude }) => {
       const context = createScriptWorkspaceContext(globals, level);
       const state = loadScriptSample(context, sample);
+
+      const source = state.sourceFiles[sourcePath]?.content;
+      expect(source).toBeDefined();
+      expect(source).toContain(tag);
+      expect(source).toContain(formula);
+      expect(source).toContain(amplitude);
 
       const compileResult = compileScriptWorkspace(state);
       expect(compileResult.isOk()).toBe(true);
       if (compileResult.isErr()) {
-        continue;
+        return;
       }
 
       const diagnostics = compileResult.value.diagnostics;
@@ -697,8 +810,12 @@ describe("scriptWorkspaceState", () => {
       const packageFilesResult = buildScriptPackageFiles(compileResult.value);
       expect(packageFilesResult.isOk()).toBe(true);
       if (packageFilesResult.isErr()) {
-        continue;
+        return;
       }
+
+      expect(
+        packageFilesResult.value.some((file) => file.path === sourcePath),
+      ).toBe(true);
 
       const filesMap: Record<string, Uint8Array> = {};
       for (const file of packageFilesResult.value) {
@@ -707,6 +824,6 @@ describe("scriptWorkspaceState", () => {
 
       const validationResult = validateScriptPackage(filesMap, context);
       expect(validationResult.isOk()).toBe(true);
-    }
-  });
+    },
+  );
 });

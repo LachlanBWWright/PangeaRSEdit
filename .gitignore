@@ -8,6 +8,7 @@
 node_modules/
 plans/
 dist/
+build/pangea-script/
 .env
 pangearsedit-dev.db
 pangearsedit-dev.db-shm

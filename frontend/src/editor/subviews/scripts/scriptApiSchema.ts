@@ -16,7 +16,10 @@ export const FieldTypeSchema = z.enum([
   "vector2",
   "vector3",
   "objectHandle",
-  "stringUnion"
+  "stringUnion",
+  "table",
+  "function",
+  "unknown",
 ]);
 
 export type FieldType = z.infer<typeof FieldTypeSchema>;
@@ -112,6 +115,12 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       name: "onGameStart",
       description: "Triggered when the game boots.",
+      contextType: "LevelContext",
+      returnType: "nil",
+    },
+    {
+      name: "onGameShutdown",
+      description: "Triggered once before the scripting runtime is destroyed.",
       contextType: "LevelContext",
       returnType: "nil",
     },
@@ -273,6 +282,40 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       parameters: [],
       returnType: "number",
     },
+    { name: "pangea.level.setting", description: "Reads a typed setting from the active level configuration.", parameters: [{ name: "key", type: "string" }], returnType: "string|number|boolean|nil" },
+    { name: "pangea.api.capabilities", description: "Reports runtime features available for the selected game.", parameters: [], returnType: "PangeaCapabilities" },
+    { name: "pangea.api.diagnostics", description: "Reports script memory, scheduler, subscription, and frame diagnostics.", parameters: [], returnType: "PangeaDiagnostics" },
+    { name: "pangea.api.requireVersion", description: "Fails script loading unless the runtime API is within the requested range.", parameters: [{ name: "minimum", type: "number" }, { name: "maximum", type: "number", optional: true }], returnType: "true" },
+    { name: "pangea.time.frame", description: "Returns the current frame number.", parameters: [], returnType: "number" },
+    { name: "pangea.time.delta", description: "Returns the current frame delta in seconds.", parameters: [], returnType: "number" },
+    { name: "pangea.time.level", description: "Returns elapsed level time in seconds.", parameters: [], returnType: "number" },
+    { name: "pangea.time.after", description: "Schedules a one-shot budgeted callback using level time.", parameters: [{ name: "delaySeconds", type: "number" }, { name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.time.every", description: "Schedules a drift-resistant repeating callback using level time.", parameters: [{ name: "intervalSeconds", type: "number" }, { name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.time.cancel", description: "Cancels a one-shot or repeating timer.", parameters: [{ name: "timerId", type: "number" }], returnType: "boolean" },
+    { name: "pangea.time.isActive", description: "Checks whether a timer remains scheduled.", parameters: [{ name: "timerId", type: "number" }], returnType: "boolean" },
+    { name: "pangea.task.start", description: "Starts a budgeted coroutine task immediately.", parameters: [{ name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.task.wait", description: "Suspends the current task for a level-time delay.", parameters: [{ name: "delaySeconds", type: "number" }], returnType: "nil" },
+    { name: "pangea.task.cancel", description: "Cancels a suspended task.", parameters: [{ name: "taskId", type: "number" }], returnType: "boolean" },
+    { name: "pangea.task.isActive", description: "Checks whether a task remains suspended or runnable.", parameters: [{ name: "taskId", type: "number" }], returnType: "boolean" },
+    { name: "pangea.events.on", description: "Subscribes to a script-local event.", parameters: [{ name: "eventName", type: "string" }, { name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.events.once", description: "Subscribes for the next matching event emission only.", parameters: [{ name: "eventName", type: "string" }, { name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.events.off", description: "Removes an event subscription.", parameters: [{ name: "subscriptionId", type: "number" }], returnType: "boolean" },
+    { name: "pangea.events.emit", description: "Synchronously emits an event with a read-only payload.", parameters: [{ name: "eventName", type: "string" }, { name: "payload", type: "unknown", optional: true }], returnType: "number" },
+    { name: "pangea.random.number", description: "Returns a deterministic number from zero through one.", parameters: [], returnType: "number" },
+    { name: "pangea.random.integer", description: "Returns a deterministic integer in an inclusive range.", parameters: [{ name: "minimum", type: "number" }, { name: "maximum", type: "number" }], returnType: "number" },
+    { name: "pangea.random.seed", description: "Resets the deterministic random stream.", parameters: [{ name: "seed", type: "number" }], returnType: "nil" },
+    {
+      name: "pangea.player.count",
+      description: "Returns the number of active players exposed by the selected game.",
+      parameters: [],
+      returnType: "number",
+    },
+    {
+      name: "pangea.player.get",
+      description: "Returns a normalized read-only player snapshot.",
+      parameters: [{ name: "playerNum", type: "number" }],
+      returnType: "PangeaPlayerSnapshot|nil",
+    },
     {
       name: "pangea.spawn.native",
       description: "Spawns a native object.",
@@ -282,6 +325,16 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { name: "options", type: "stringUnion", optional: true, unionValues: [] },
       ],
       returnType: "ObjectHandle|nil",
+    },
+    {
+      name: "pangea.spawn.nativeResult",
+      description: "Spawns a native object and returns structured status and diagnostics.",
+      parameters: [
+        { name: "id", type: "unknown" },
+        { name: "position", type: "vector3" },
+        { name: "options", type: "table", optional: true },
+      ],
+      returnType: "NativeSpawnResult",
     },
     {
       name: "pangea.spawn.scripted",
@@ -299,6 +352,13 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       parameters: [{ name: "handle", type: "objectHandle" }],
       returnType: "Vector3|nil",
     },
+    { name: "pangea.object.all", description: "Returns all currently registered object handles.", parameters: [], returnType: "ObjectHandle[]" },
+    { name: "pangea.object.findByTag", description: "Returns registered object handles carrying a tag.", parameters: [{ name: "tag", type: "string" }], returnType: "ObjectHandle[]" },
+    { name: "pangea.object.nearest", description: "Returns the nearest readable registered object, optionally filtered by tag.", parameters: [{ name: "origin", type: "vector3" }, { name: "tag", type: "string", optional: true }], returnType: "ObjectHandle|nil" },
+    { name: "pangea.object.exists", description: "Checks whether a generation-checked object handle is live.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "boolean" },
+    { name: "pangea.object.tags", description: "Returns the tags assigned to an object.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "string[]" },
+    { name: "pangea.object.hasTag", description: "Checks whether an object has a tag.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "tag", type: "string" }], returnType: "boolean" },
+    { name: "pangea.object.state", description: "Returns mutable script-owned state scoped to an object generation.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "table|nil" },
     {
       name: "pangea.object.setPosition",
       description: "Sets the position of an object.",
@@ -317,6 +377,9 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       ],
       returnType: "boolean",
     },
+    { name: "pangea.object.setRotation", description: "Sets an object's Euler rotation.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "rotation", type: "vector3" }], returnType: "boolean" },
+    { name: "pangea.object.setScale", description: "Sets an object's uniform scale.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "scale", type: "number" }], returnType: "boolean" },
+    { name: "pangea.object.setAnimation", description: "Sets an object's animation by name or numeric ID.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "animation", type: "unknown" }, { name: "speed", type: "number", optional: true }, { name: "blendSeconds", type: "number", optional: true }], returnType: "boolean" },
     {
       name: "pangea.object.delete",
       description: "Deletes an object.",
@@ -328,7 +391,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "OttoMatic-Android",
       gameName: "Otto Matic",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "playerMode", type: "string", optional: true },
       ],
@@ -343,7 +406,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "Bugdom-android",
       gameName: "Bugdom",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
       nativeSpawns: [
         ...nativeTerrainItems(bugdomItemTypeNames, 1, bugdomItemParams),
@@ -355,7 +418,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "Bugdom2-Android",
       gameName: "Bugdom 2",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
       nativeSpawns: [
         ...nativeTerrainItems(bugdom2ItemTypeNames, 1, bugdom2ItemParams),
@@ -367,7 +430,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "Nanosaur-android",
       gameName: "Nanosaur",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [],
       nativeSpawns: [
         ...nativeTerrainItems(nanosaurItemTypeNames, 1, nanosaurItemParams),
@@ -379,10 +442,10 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "Nanosaur2-Android",
       gameName: "Nanosaur 2",
-      supportedHooks: ["onGameStart", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onLevelComplete", "onLevelUnload", "onFrame", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
-        { name: "mode", type: "stringUnion", unionValues: ["adventure", "race", "battle", "capture"] },
-        { name: "networked", type: "boolean" },
+        { name: "mode", type: "stringUnion", unionValues: ["adventure", "race", "battle", "capture"], optional: true },
+        { name: "networked", type: "boolean", optional: true },
       ],
       nativeSpawns: [
         ...nativeTerrainItems(nanosaur2ItemTypeNames, 1, nanosaur2ItemParams),
@@ -394,11 +457,11 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "CroMagRally-Android",
       gameName: "Cro-Mag Rally",
-      supportedHooks: ["onRaceLoad", "onRaceStart", "onRaceFrame", "onRaceComplete", "onRaceUnload", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onRaceLoad", "onRaceStart", "onRaceFrame", "onRaceComplete", "onRaceUnload", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
-        { name: "mode", type: "stringUnion", unionValues: ["local", "practice", "network"] },
+        { name: "mode", type: "stringUnion", unionValues: ["local", "practice", "network"], optional: true },
         { name: "trackName", type: "string", optional: true },
-        { name: "networked", type: "boolean" },
+        { name: "networked", type: "boolean", optional: true },
       ],
       nativeSpawns: [
         ...nativeTerrainItems(croMagItemTypeNames, 1, croMagItemParams),
@@ -412,9 +475,9 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "BillyFrontier-Android",
       gameName: "Billy Frontier",
-      supportedHooks: ["onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
-        { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"] },
+        { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"], optional: true },
       ],
       nativeSpawns: [
         ...nativeTerrainItems(billyItemTypeNames, 1, billyItemParams),
@@ -426,7 +489,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "MightyMike-Android",
       gameName: "Mighty Mike",
-      supportedHooks: ["onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onMapItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onMapItem", "onObjectFrame", "onPickupCollected", "onWeaponHit", "onTriggerEnter"],
       contextFields: [
         { name: "sceneName", type: "string", optional: true },
         { name: "areaName", type: "string", optional: true },

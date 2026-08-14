@@ -214,6 +214,20 @@ function buildCompletionItems(
     insertTextRules:
       monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
   }));
+  const specializedApiNames = new Set(apiItems.map((item) => item.label));
+  const schemaApiItems = AUTHORITATIVE_API_SCHEMA.apis
+    .filter((api) => !specializedApiNames.has(api.name))
+    .map((api) => ({
+      label: api.name,
+      kind: monaco.languages.CompletionItemKind.Function,
+      range,
+      documentation: api.description ?? api.name,
+      insertText: `${contextualApiName(api.name)}(${api.parameters
+        .map((parameter, index) => `\${${index + 1}:${parameter.name}}`)
+        .join(", ")})`,
+      insertTextRules:
+        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+    }));
 
   const nativeSpawnItems = nativeSpawns.map((nativeSpawn) => ({
     label: nativeSpawn.id,
@@ -235,6 +249,7 @@ function buildCompletionItems(
   return [
     ...hookItems,
     ...apiItems,
+    ...schemaApiItems,
     ...nativeSpawnItems,
     ...tagItems,
     {

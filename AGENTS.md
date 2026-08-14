@@ -9,7 +9,7 @@ Write high-quality React code: keep components focused, make state ownership cle
 Keep Storybook and visual-test concerns out of production components. Put stories, fixtures, test selectors, decorators, and screenshot or overflow-test markup in dedicated `*.stories.*`, test, or Storybook configuration files. Only add markup or attributes to production components when they serve a genuine runtime semantic, accessibility, or product requirement.
 Aim for files to stay under 300 lines wherever practical. When a React component approaches that size, split it into smaller focused components, hooks, and logic modules instead of letting one file accumulate UI, state transitions, and business rules.
 Minimize `useEffect`. Prefer derived values, event handlers, framework data APIs, and explicit state transitions before reaching for effects.
-Strongly prefer parameterized functions in their own files over closures. Keep business logic importable, testable, and independent of component render scope.
+Have a strong preference for parameterized functions in separate files over in-component closures. Pass dependencies explicitly so logic remains importable, testable, and independent of component render scope.
 Move logic out of React render-scope closures and into named functions in their own files whenever the logic is reusable, testable, or more than a small event adapter. Components should primarily compose UI and wire explicit inputs/outputs.
 Target a maximum of about 3-4 levels of indentation. If code needs deeper nesting, break it into smaller functions, use early returns, or restructure the control flow.
 Never use scripts to edit files, they are too prone to introducing mass-errors. You must make all edits yourself.

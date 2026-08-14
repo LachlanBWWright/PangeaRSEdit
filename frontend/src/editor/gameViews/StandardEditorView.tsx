@@ -58,6 +58,7 @@ import {
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
 import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
+import { applyLevelScale } from "../utils/applyLevelScale";
 
 export function StandardEditorView({
   headerData,
@@ -221,6 +222,19 @@ export function StandardEditorView({
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}
+            onApplyLevelScale={(nextTileSize, mode) =>
+              applyLevelScale({
+                previousTileSize: headerData.Hedr[1000].obj.tileSize,
+                nextTileSize,
+                mode,
+                setHeaderData,
+                setItemData,
+                setFenceData,
+                setSplineData,
+                setLiquidData,
+                setTerrainData,
+              })
+            }
           />
         )}
         {view === View.supertiles && showSupertileMenu && (

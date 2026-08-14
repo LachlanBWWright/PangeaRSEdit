@@ -53,15 +53,22 @@ import { hasCeilingHeightData } from "../utils/terrainCeiling";
 import { getSemanticTileAttributes } from "@/data/terrain/semanticTileAttributes";
 import { SemanticTileAttributeControls } from "../subviews/tiles/SemanticTileAttributeControls";
 import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl";
+import { LevelScaleControl } from "../subviews/tiles/LevelScaleControl";
+import {
+  supportsLevelScale,
+  type LevelScaleMode,
+} from "../utils/levelScaleState";
 
 export function IndividualTilesMenu({
   headerData,
   setHeaderData,
   terrainData,
+  onApplyLevelScale,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
+  onApplyLevelScale?: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -322,6 +329,12 @@ export function IndividualTilesMenu({
           <Input type="number" value={minY} onChange={handleMinYChange} />
           <p>Max Height</p>
           <Input type="number" value={maxY} onChange={handleMaxYChange} />
+          {supportsLevelScale(globals.GAME_TYPE) && onApplyLevelScale && (
+            <LevelScaleControl
+              tileSize={headerData.Hedr[1000].obj.tileSize}
+              onApply={onApplyLevelScale}
+            />
+          )}
           <TopologyOpacityControl />
           {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
             canShowAccessibilityOverlay && (

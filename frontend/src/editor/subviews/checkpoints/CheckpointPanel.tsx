@@ -3,6 +3,7 @@ import type { Updater } from "use-immer";
 import type { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { selectedCheckpointAtom } from "@/data/checkpoints/checkpointAtoms";
 import { Button } from "@/components/ui/button";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Globals } from "@/data/globals/globals";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -70,6 +71,21 @@ export function CheckpointPanel({
     setSelected(null);
   };
 
+  const moveCheckpoint = (offset: -1 | 1) => {
+    if (selected === null) return;
+    const destination = selected + offset;
+    if (destination < 0 || destination >= checkpoints.length) return;
+    setTerrainData((draft) => {
+      const list = draft.CkPt?.[1000]?.obj;
+      const current = list?.[selected];
+      const target = list?.[destination];
+      if (!list || !current || !target) return;
+      list[selected] = target;
+      list[destination] = current;
+    });
+    setSelected(destination);
+  };
+
   return (
     <div className="flex flex-col gap-2 rounded border border-gray-600 p-2 text-sm">
       <strong>Checkpoints</strong>
@@ -90,6 +106,26 @@ export function CheckpointPanel({
         </Select>
         <Button size="sm" onClick={addCheckpoint}>
           Add
+        </Button>
+        <Button
+          size="icon"
+          className="h-8 w-8"
+          variant="outline"
+          disabled={selected === null || selected === 0}
+          aria-label="Move checkpoint earlier"
+          onClick={() => moveCheckpoint(-1)}
+        >
+          <ArrowUp className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          className="h-8 w-8"
+          variant="outline"
+          disabled={selected === null || selected >= checkpoints.length - 1}
+          aria-label="Move checkpoint later"
+          onClick={() => moveCheckpoint(1)}
+        >
+          <ArrowDown className="h-4 w-4" />
         </Button>
         <Button
           size="sm"

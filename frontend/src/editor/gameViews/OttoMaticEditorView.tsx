@@ -60,6 +60,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
+import { applyLevelScale } from "../utils/applyLevelScale";
 
 export function OttoMaticEditorView({
   headerData,
@@ -222,6 +223,19 @@ export function OttoMaticEditorView({
           <OttoMaticTilesMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
+            onApplyLevelScale={(nextTileSize, mode) =>
+              applyLevelScale({
+                previousTileSize: headerData.Hedr[1000].obj.tileSize,
+                nextTileSize,
+                mode,
+                setHeaderData,
+                setItemData,
+                setFenceData,
+                setSplineData,
+                setLiquidData,
+                setTerrainData,
+              })
+            }
           />
         )}
         {view === View.supertiles && showSupertileMenu && (

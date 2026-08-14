@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue } from "jotai";
-import { Group, Layer, Rect } from "react-konva";
+import { Circle, Group, Layer, Line, Rect } from "react-konva";
 import { memo, useCallback, useEffect } from "react";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Globals } from "@/data/globals/globals";
@@ -47,6 +47,8 @@ interface CustomScriptPlacementNodeProps {
   onHoverChange: (tag: HoverTagInfo | null) => void;
 }
 
+const EMPTY_CUSTOM_PLACEMENTS: readonly ScriptCustomObjectPlacement[] = [];
+
 const CustomScriptPlacementNode = memo(function CustomScriptPlacementNode({
   placement,
   isSelected,
@@ -54,6 +56,7 @@ const CustomScriptPlacementNode = memo(function CustomScriptPlacementNode({
   onDragEnd,
   onHoverChange,
 }: CustomScriptPlacementNodeProps) {
+  const isHoverBeacon = placement.objectId === "sample.hoverBeacon";
   const handleSelect = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
@@ -91,21 +94,55 @@ const CustomScriptPlacementNode = memo(function CustomScriptPlacementNode({
       }
       onMouseLeave={() => onHoverChange(null)}
     >
-      <Rect
-        width={ITEM_BOX_SIZE}
-        height={ITEM_BOX_SIZE}
-        fill={isSelected ? "#16a34a" : "#22c55e"}
-        stroke="black"
-        strokeWidth={isSelected ? 2 : 1}
-        perfectDrawEnabled={false}
-      />
-      <ItemTypeNumber x={0} y={0} value="S" fill="white" />
+      {isHoverBeacon ? (
+        <>
+          <Circle
+            x={ITEM_BOX_OFFSET}
+            y={ITEM_BOX_OFFSET}
+            radius={ITEM_BOX_OFFSET}
+            fill={isSelected ? "#0891b2" : "#06b6d4"}
+            stroke="#ecfeff"
+            strokeWidth={isSelected ? 2 : 1}
+            shadowColor="#22d3ee"
+            shadowBlur={6}
+            shadowOpacity={0.9}
+            perfectDrawEnabled={false}
+          />
+          <Line
+            points={[ITEM_BOX_OFFSET, 1, ITEM_BOX_OFFSET, 11]}
+            stroke="white"
+            strokeWidth={2}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <Circle
+            x={ITEM_BOX_OFFSET}
+            y={ITEM_BOX_OFFSET}
+            radius={2}
+            fill="white"
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        </>
+      ) : (
+        <>
+          <Rect
+            width={ITEM_BOX_SIZE}
+            height={ITEM_BOX_SIZE}
+            fill={isSelected ? "#16a34a" : "#22c55e"}
+            stroke="black"
+            strokeWidth={isSelected ? 2 : 1}
+            perfectDrawEnabled={false}
+          />
+          <ItemTypeNumber x={0} y={0} value="S" fill="white" />
+        </>
+      )}
     </Group>
   );
 });
 
 export const CustomScriptPlacements = memo(
-  function CustomScriptPlacements({}: Record<string, never>) {
+  function CustomScriptPlacements() {
     const globals = useAtomValue(Globals);
     const levelNumber = useAtomValue(LevelNumber);
     const [workspaceStore, setWorkspaceStore] = useAtom(
@@ -120,7 +157,8 @@ export const CustomScriptPlacements = memo(
     const context = createScriptWorkspaceContext(globals, levelNumber ?? null);
     const workspace = ensureScriptWorkspace(workspaceStore, context);
     const currentLevel = workspace.levels[context.levelKey];
-    const placements = currentLevel?.customPlacements ?? [];
+    const placements =
+      currentLevel?.customPlacements ?? EMPTY_CUSTOM_PLACEMENTS;
 
     const handleSelect = useCallback(
       (placementId: string) => {
