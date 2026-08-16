@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "build:games": "../scripts/build-games.sh",
     "lint": "eslint .",
+    "pretest": "npm run build:games",
     "test": "vitest",
     "preview": "vite preview",
     "dev:capture:item-screenshots": "tsx scripts/dev/capture-item-screenshots.ts",

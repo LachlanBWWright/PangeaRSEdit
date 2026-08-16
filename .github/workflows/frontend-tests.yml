@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build game WASM bundles
+        run: npm run build:games
+
       - name: Run tests
         run: npm test -- --run
 
