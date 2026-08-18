@@ -136,13 +136,13 @@ export function BugdomTileMenuContent({
     [mapImages, tileImageSize, tilesInSelectedSupertile, tilesPerSupertile],
   );
   return (
-    <div className="flex h-[320px] min-h-0 flex-none flex-col gap-4 overflow-hidden p-2">
-      <div className="grid h-full min-h-0 grid-cols-2 gap-4">
+    <div className="flex h-[320px] min-h-0 min-w-0 flex-none flex-col gap-4 overflow-hidden p-2">
+      <div className="grid h-full min-h-0 min-w-0 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 md:overflow-hidden">
         <TileSelectionModePanel
           game={game}
           stampLibrary={stampLibrary}
           individualTile={(
-          <div className="flex min-h-0 flex-col overflow-hidden p-3">
+          <div className="flex min-h-0 min-w-0 flex-col overflow-hidden p-3">
           <div className="mx-auto cursor-pointer">
             <Stage
               width={tilesPerSupertile * tileImageSize}
@@ -174,8 +174,8 @@ export function BugdomTileMenuContent({
               </Layer>
             </Stage>
           </div>
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <div className="flex-1">
+          <div className="mt-2 flex min-w-0 flex-wrap items-center justify-center gap-2">
+            <div className="w-full min-w-0 sm:flex-1">
               <TileTransformActions
                 onRotate={onRotate}
                 onFlipHorizontal={onFlipX}
@@ -183,7 +183,7 @@ export function BugdomTileMenuContent({
                 disabled={!currentSelectedTileData}
               />
             </div>
-            <Button size="sm" onClick={onReplaceTile} disabled={!currentSelectedTileData}>
+            <Button className="w-full sm:w-auto" size="sm" onClick={onReplaceTile} disabled={!currentSelectedTileData}>
               Replace with Tile Image #{selectedTileImageIndex}
             </Button>
           </div>
@@ -199,7 +199,7 @@ export function BugdomTileMenuContent({
           </div>
           )}
         />
-        <div className="min-h-0 overflow-hidden">
+        <div className="min-h-0 min-w-0 overflow-hidden">
           <ReusableTilePalettePanel
             images={mapImages}
             selectedIndex={selectedTileImageIndex}

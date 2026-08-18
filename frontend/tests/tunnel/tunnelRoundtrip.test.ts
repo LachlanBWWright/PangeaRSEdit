@@ -18,7 +18,7 @@ import type {
 } from "../../src/data/tunnelParser/types";
 
 function getTunnelFixturePath(fileName: string): string {
-  return join(process.cwd(), "public", "games", "bugdom2", "tunnels", fileName);
+  return join(import.meta.dirname, "../../public/games/bugdom2/tunnels", fileName);
 }
 
 /**

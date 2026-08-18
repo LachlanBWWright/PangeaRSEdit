@@ -451,6 +451,18 @@ export async function loadPreviewRuntime(
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions,
   ): void {
+    if (target === window) {
+      Reflect.apply(prevWindowAddEventListener, window, [type, listener, options]);
+      return;
+    }
+    if (target === document) {
+      Reflect.apply(prevDocumentAddEventListener, document, [
+        type,
+        listener,
+        options,
+      ]);
+      return;
+    }
     realAddEventListener.call(target, type, listener, options);
   }
 
@@ -460,6 +472,22 @@ export async function loadPreviewRuntime(
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | EventListenerOptions,
   ): void {
+    if (target === window) {
+      Reflect.apply(prevWindowRemoveEventListener, window, [
+        type,
+        listener,
+        options,
+      ]);
+      return;
+    }
+    if (target === document) {
+      Reflect.apply(prevDocumentRemoveEventListener, document, [
+        type,
+        listener,
+        options,
+      ]);
+      return;
+    }
     realRemoveEventListener.call(target, type, listener, options);
   }
 

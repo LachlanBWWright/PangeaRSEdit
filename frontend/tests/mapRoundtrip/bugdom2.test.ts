@@ -26,6 +26,7 @@ function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
 import { bugdom2Specs } from "../../src/python/structSpecs/bugdom2";
 import { Bugdom2Globals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
+import { expectStructuredRoundtrip } from "./structuredRoundtripTestHelpers";
 
 describe("Bugdom 2 Map Roundtrip", () => {
   const testFilePath = join(
@@ -193,8 +194,9 @@ describe("Bugdom 2 Map Roundtrip", () => {
     console.log("✅ Bugdom 2 hex data roundtrip successful");
   });
 
-  it.skip("should roundtrip with bugdom2 specs (structured data)", () => {
-    // Skip: StructConverter.pack not implemented
+  it("should roundtrip structured resources with Bugdom 2 specs", async () => {
+    if (!fileExists) return;
+    await expectStructuredRoundtrip(new Uint8Array(originalData), bugdom2Specs);
   });
 
   it("should produce similar binary size", async () => {
@@ -227,7 +229,4 @@ describe("Bugdom 2 Map Roundtrip", () => {
     expect(sizeRatio).toBeLessThan(1.2);
   });
 
-  it.skip("should preserve all resource types", () => {
-    // Skip: StructConverter.pack not implemented
-  });
 });

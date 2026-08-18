@@ -176,30 +176,24 @@ describe("usesIndividualTiles", () => {
 });
 
 // Mock canvas for testing in Node environment
-function createMockCanvas(width: number, height: number): unknown {
-  // This is a simplified mock for testing
-  // In browser environment, this would be a real canvas
-  const canvas = {
-    width,
-    height,
-    getContext: () => ({
-      fillStyle: "",
-      fillRect: () => { /* mock */ },
-      save: () => { /* mock */ },
-      restore: () => { /* mock */ },
-      translate: () => { /* mock */ },
-      scale: () => { /* mock */ },
-      rotate: () => { /* mock */ },
-      drawImage: () => { /* mock */ },
-      createImageData: (w: number, h: number) => ({
-        data: new Uint8ClampedArray(w * h * 4),
-        width: w,
-        height: h,
-      }),
-      putImageData: () => { /* mock */ },
-    }),
-    toDataURL: () => "data:image/png;base64,mock",
-  };
+function createMockCanvas(width: number, height: number): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "";
+    ctx.fillRect = () => undefined;
+    ctx.save = () => undefined;
+    ctx.restore = () => undefined;
+    ctx.translate = () => undefined;
+    ctx.scale = () => undefined;
+    ctx.rotate = () => undefined;
+    ctx.drawImage = () => undefined;
+    ctx.putImageData = () => undefined;
+  }
+
   return canvas;
 }
 

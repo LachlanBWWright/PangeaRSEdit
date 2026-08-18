@@ -14,6 +14,12 @@ const terrainCodecBoundaryErrorSchema = z.object({
   message: z.string(),
 });
 
+const nodeRuntimeSchema = z.object({
+  process: z.object({
+    versions: z.object({ node: z.string() }),
+  }),
+});
+
 const nanosaurHeaderSchema = z.object({
   textureLayerOffset: z.number().int(),
   heightmapLayerOffset: z.number().int(),
@@ -52,6 +58,12 @@ const nanosaurAttribSchema = z.object({
 });
 
 const rustByteValueSchema = z.number().int().min(0).max(255);
+const nanosaurItemParmSchema = z.tuple([
+  rustByteValueSchema,
+  rustByteValueSchema,
+  rustByteValueSchema,
+  rustByteValueSchema,
+]);
 
 const rustByteArraySchema = z
   .instanceof(Uint8Array)
@@ -77,6 +89,16 @@ const encodedBytesSchema = z.object({
 
 let initPromise: Promise<void> | null = null;
 
+async function resolveTerrainCodecWasmInput(): Promise<string | Uint8Array> {
+  const nodeRuntime = nodeRuntimeSchema.safeParse(globalThis);
+  if (!nodeRuntime.success || !terrainCodecWasmUrl.startsWith("/@fs/")) {
+    return terrainCodecWasmUrl;
+  }
+
+  const { readFile } = await import("node:fs/promises");
+  return readFile(decodeURIComponent(terrainCodecWasmUrl.slice(4)));
+}
+
 function cloneArrayBuffer(buffer: ArrayBuffer): ArrayBuffer {
   const copy = new ArrayBuffer(buffer.byteLength);
   new Uint8Array(copy).set(new Uint8Array(buffer));
@@ -91,9 +113,11 @@ function cloneUint8ArrayToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 
 async function ensureInitialized(): Promise<Result<void, string>> {
   if (!initPromise) {
-    initPromise = initTerrainCodecWasm({
-      module_or_path: terrainCodecWasmUrl,
-    }).then(() => undefined);
+    initPromise = resolveTerrainCodecWasmInput().then((moduleOrPath) =>
+      initTerrainCodecWasm({ module_or_path: moduleOrPath }).then(
+        () => undefined,
+      ),
+    );
   }
   const initialized = await ResultAsync.fromPromise(initPromise, (error) => {
     const parsed = terrainCodecBoundaryErrorSchema.safeParse(error);
@@ -187,10 +211,7 @@ function levelDataToRustCompilePayload(levelData: LevelData): {
           const x = typeof item.x === "number" ? item.x : null;
           const y = typeof item.z === "number" ? item.z : null;
           const type = typeof item.type === "number" ? item.type : null;
-          const p0 = typeof item.p0 === "number" ? item.p0 : 0;
-          const p1 = typeof item.p1 === "number" ? item.p1 : 0;
-          const p2 = typeof item.p2 === "number" ? item.p2 : 0;
-          const p3 = typeof item.p3 === "number" ? item.p3 : 0;
+          const parsedParm = nanosaurItemParmSchema.safeParse(item.parm);
           const flags = typeof item.flags === "number" ? item.flags : 0;
           const prevItemIdx =
             typeof item.prevItemIdx === "number" ? item.prevItemIdx : 0;
@@ -199,7 +220,9 @@ function levelDataToRustCompilePayload(levelData: LevelData): {
           if (x === null || y === null || type === null) {
             return null;
           }
-          const parm: [number, number, number, number] = [p0, p1, p2, p3];
+          const parm: [number, number, number, number] = parsedParm.success
+            ? [...parsedParm.data]
+            : [0, 0, 0, 0];
           return {
             x,
             y,

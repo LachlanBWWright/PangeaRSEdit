@@ -15,7 +15,7 @@ export function TileTransformActions({
   disabled = false,
 }: TileTransformActionsProps) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid min-w-0 grid-cols-3 gap-2">
       <Button size="sm" variant="outline" onClick={onRotate} disabled={disabled}>
         <RotateCw className="mr-1 h-4 w-4" />
         Rotate

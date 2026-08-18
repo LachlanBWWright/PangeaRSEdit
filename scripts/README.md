@@ -13,11 +13,12 @@ shortest commands.
 | `scripts/dev-backend.sh` | `dev-backend` | Start the .NET API development server. Extra application arguments are forwarded. |
 | `scripts/multiplayer.sh` | `dev-multiplayer` | Start the integrated frontend/backend multiplayer stack. |
 | `scripts/lint.sh` | `lint` | Run frontend ESLint and verify backend formatting. |
-| `scripts/test.sh` | `test` | Run frontend Vitest tests and backend .NET tests. |
+| `scripts/test.sh` | `test` | Run frontend Vitest tests with coverage and backend .NET tests with coverage collection. |
 | `scripts/test-e2e.sh` | `test-e2e` | Run Playwright end-to-end tests, including its configured Vite server. |
 | `scripts/build-production.sh` | `build-production` | Build the frontend and publish the backend in Release mode. |
 | `scripts/preview-production.sh` | `preview-production` | Build if needed, then serve the frontend production bundle locally. |
-| `scripts/test-ci.sh` | `test-ci` | Reproduce the frontend and backend CI checks with locked dependencies. |
+| `scripts/test-ci.sh` | `test-ci` | Reproduce the frontend and backend CI checks with locked dependencies, test discovery verification, and coverage output. |
+| `scripts/test-rust-coverage.sh` | `test-rust-coverage` | Run `cargo llvm-cov` for the Rust terrain codec and generate an LCOV report. |
 | `scripts/test-container.sh` | `test-container` | Build the backend Docker image without pushing it. |
 | `scripts/analyze-complexity.sh` | `analyze-complexity` | Report oversized or deeply nested frontend source files. |
 

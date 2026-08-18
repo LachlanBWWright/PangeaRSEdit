@@ -79,7 +79,7 @@ const EXPECTED_BUGDOM2_FENCE_IMAGES: readonly {
 
 describe("bugdom2FenceImages", () => {
   it("keeps source metadata and public assets aligned", () => {
-    const publicRoot = resolve(process.cwd(), "public");
+    const publicRoot = resolve(import.meta.dirname, "../../../public");
 
     for (const { fenceType, definition } of EXPECTED_BUGDOM2_FENCE_IMAGES) {
       expect(BUGDOM2_FENCE_IMAGE_MANIFEST[fenceType]).toBe(definition);

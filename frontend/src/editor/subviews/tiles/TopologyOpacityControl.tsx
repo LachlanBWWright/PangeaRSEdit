@@ -6,7 +6,7 @@ export function TopologyOpacityControl() {
   const [opacity, setOpacity] = useAtom(TopologyOpacity);
 
   return (
-    <div className="col-span-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+    <div className="col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:col-span-4">
       <p>Topology opacity</p>
       <Slider
         min={0.1}

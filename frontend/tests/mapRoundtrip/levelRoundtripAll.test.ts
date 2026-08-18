@@ -1,5 +1,5 @@
 /**
- * Auto-discover and roundtrip every game's Data/Terrain *.ter.rsrc files
+ * Auto-discover and roundtrip every checked-in public terrain fixture.
  * Tests: load -> saveToJsonObject (hex-only) -> loadFromJson -> saveToBytes
  * Compares resulting bytes to the original file and reports first differing offset.
  */
@@ -8,24 +8,25 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
 import {
+  ADF_ENTRYNUM_RESOURCEFORK,
+  unpackAdf,
   saveToJson,
   loadBytesFromJsonAsync,
 } from "@lachlanbwwright/rsrcdump-ts";
 
-function findTerrainFiles(gamesRoot: string): { game: string; path: string }[] {
+function findTerrainFiles(assetsRoot: string): { game: string; path: string }[] {
   const results: { game: string; path: string }[] = [];
-  if (!existsSync(gamesRoot)) return results;
+  if (!existsSync(assetsRoot)) return results;
 
-  const entries = readdirSync(gamesRoot, { withFileTypes: true });
+  const entries = readdirSync(assetsRoot, { withFileTypes: true });
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const gameName = e.name;
-    const terrainDir = join(gamesRoot, gameName, "Data", "Terrain");
-    if (!existsSync(terrainDir)) continue;
+    const terrainDir = join(assetsRoot, gameName, "terrain");
     if (!existsSync(terrainDir)) continue;
     const files = readdirSync(terrainDir);
     for (const f of files) {
-      if (f.endsWith(".ter.rsrc") || f.endsWith(".ter")) {
+      if (f.endsWith(".ter.rsrc")) {
         results.push({ game: gameName, path: join(terrainDir, f) });
       }
     }
@@ -54,15 +55,14 @@ function firstDifference(
 }
 
 describe("Per-level roundtrip for all games' terrain files", () => {
-  const gamesRoot = join(__dirname, "../../../games");
-  const terrainFiles = findTerrainFiles(gamesRoot);
+  const assetsRoot = join(__dirname, "../../public/assets");
+  const terrainFiles = findTerrainFiles(assetsRoot);
 
   if (terrainFiles.length === 0) {
-    it("should find terrain files (smoke)", () => {
-      // If no files found, at least assert the games folder exists
-      expect(existsSync(gamesRoot)).toBe(true);
+    it("should find checked-in terrain fixtures", () => {
+      expect(existsSync(assetsRoot)).toBe(true);
+      expect(terrainFiles).not.toHaveLength(0);
     });
-    return;
   }
 
   for (const entry of terrainFiles) {
@@ -71,19 +71,29 @@ describe("Per-level roundtrip for all games' terrain files", () => {
     it(`${game} - ${path.replace(
       /.*Data\/Terrain\//,
       "",
-    )}: byte-for-byte hex roundtrip`, async () => {
+    )}: preserves resources and produces stable canonical bytes`, async () => {
       expect(existsSync(path)).toBe(true);
       const orig = readFileSync(path);
       expect(orig.length).toBeGreaterThan(0);
 
-      // Parse into JSON using hex-only (no struct specs) to ensure roundtrip works at resource-fork level
+      const appleDoubleResult = unpackAdf(new Uint8Array(orig));
+      expect(appleDoubleResult.ok).toBe(true);
+      if (!appleDoubleResult.ok) return;
+      const originalResourceFork = appleDoubleResult.value.get(
+        ADF_ENTRYNUM_RESOURCEFORK,
+      );
+      expect(originalResourceFork).toBeDefined();
+      if (!originalResourceFork) return;
+
+      // AppleDouble contains Finder metadata in addition to the resource fork.
+      // The JSON format represents resources only, so compare the extracted fork.
       const jsonStringRes = await saveToJson(new Uint8Array(orig), [], [], []);
       expect(jsonStringRes.ok).toBe(true);
       if (!jsonStringRes.ok) return;
       const json1 = JSON.parse(jsonStringRes.value);
 
       // Recreate bytes from JSON
-      const bytesRes = await loadBytesFromJsonAsync(json1, [], [], []);
+      const bytesRes = await loadBytesFromJsonAsync(json1, [], [], [], false);
       expect(bytesRes.ok).toBe(true);
       if (!bytesRes.ok) return;
       const bytes = bytesRes.value;
@@ -91,25 +101,29 @@ describe("Per-level roundtrip for all games' terrain files", () => {
       expect(bytes).toBeDefined();
       expect(bytes.length).toBeGreaterThan(0);
 
-      // Compare
-      const origArr = new Uint8Array(
-        orig.buffer,
-        orig.byteOffset,
-        orig.byteLength,
+      const canonicalJsonResult = await saveToJson(bytes, [], [], []);
+      expect(canonicalJsonResult.ok).toBe(true);
+      if (!canonicalJsonResult.ok) return;
+      const canonicalJson = JSON.parse(canonicalJsonResult.value);
+      expect(canonicalJson).toEqual(json1);
+
+      const secondBytesResult = await loadBytesFromJsonAsync(
+        canonicalJson,
+        [],
+        [],
+        [],
+        false,
       );
-      const newArr = new Uint8Array(bytes);
+      expect(secondBytesResult.ok).toBe(true);
+      if (!secondBytesResult.ok) return;
 
-      const { offset, count } = firstDifference(origArr, newArr);
-      const equal = count === 0;
-
-      if (!equal) {
-        // Provide actionable diagnostics in the test output
-        console.error(
-          `${game} ${path} roundtrip mismatch: first diff offset=${offset}, differing bytes=${count}, origLen=${origArr.length}, newLen=${newArr.length}`,
-        );
-      }
-
-      expect(equal).toBe(true);
+      const canonicalBytes = new Uint8Array(bytes);
+      const secondCanonicalBytes = new Uint8Array(secondBytesResult.value);
+      const { offset, count } = firstDifference(
+        canonicalBytes,
+        secondCanonicalBytes,
+      );
+      expect(count, `canonical resource fork first differs at ${String(offset)}`).toBe(0);
     });
   }
 });

@@ -13,8 +13,11 @@ dotnet restore "$SOLUTION"
 echo "Checking backend formatting..."
 dotnet format "$SOLUTION" --verify-no-changes --verbosity minimal
 
-echo "Running frontend tests..."
-pnpm --dir "$REPO_ROOT/frontend" test -- --run
+echo "Running frontend test discovery..."
+pnpm --dir "$REPO_ROOT/frontend" run test:discovery
+
+echo "Running frontend tests with coverage..."
+pnpm --dir "$REPO_ROOT/frontend" run test:coverage -- --run
 
 echo "Building the frontend..."
 pnpm --dir "$REPO_ROOT/frontend" run build
@@ -22,7 +25,11 @@ pnpm --dir "$REPO_ROOT/frontend" run build
 echo "Building the backend..."
 dotnet build "$SOLUTION" --configuration Release --no-restore
 
-echo "Running backend tests..."
-dotnet test "$SOLUTION" --configuration Release --no-build
+echo "Running backend tests with coverage..."
+dotnet test "$SOLUTION" \
+  --configuration Release \
+  --no-build \
+  --collect:"XPlat Code Coverage" \
+  --settings "$REPO_ROOT/backend/PangeaRSEdit.Tests/coverlet.runsettings"
 
 echo "Local CI checks passed."

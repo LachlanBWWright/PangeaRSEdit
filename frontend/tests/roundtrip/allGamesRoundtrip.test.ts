@@ -8,6 +8,10 @@ import { join } from "path";
 import { parseNanosaur1Level, nanosaur1LevelToLevelData } from "../../src/data/processors/classicProprocessor";
 import { compileNanosaur1Level } from "../../src/editor/loadLogic/compileNanosaur1Level";
 import { parseMightyMikeMap, mightyMikeMapToCompressedBinary } from "../../src/modelParsers/parseMightyMike";
+import {
+  findNanosaurBinaryDifferenceRanges,
+  formatNanosaurBinaryDifferenceRanges,
+} from "./nanosaurBinaryDiagnostics";
 
 /**
  * Converts a Node.js Buffer to an ArrayBuffer
@@ -71,18 +75,12 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
       // Byte comparison
       expect(recompiledData.length).toBe(originalData.length);
       
-      // Check for differences
-      let diffCount = 0;
-      for (let i = 0; i < originalData.length; i++) {
-        if (originalData[i] !== recompiledData[i]) {
-          diffCount++;
-          if (diffCount <= 5) {
-            console.log(`Byte ${i}: original=${originalData[i]}, recompiled=${recompiledData[i]}`);
-          }
-        }
-      }
-
-      expect(diffCount).toBe(0);
+      const differences = findNanosaurBinaryDifferenceRanges(
+        originalData,
+        recompiledData,
+        parsed,
+      );
+      expect(differences, formatNanosaurBinaryDifferenceRanges(differences)).toHaveLength(0);
     });
   });
 });

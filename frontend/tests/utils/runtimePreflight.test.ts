@@ -17,6 +17,7 @@ describe("runtime preflight", () => {
         if (textUrl.endsWith(".js")) {
           return Promise.resolve({
             ok: true,
+            arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
             text: () =>
               Promise.resolve(
                 `PangeaGame_SetNetworkMatchConfig PangeaGame_StartNetworkMatch PangeaGame_DebugGetLocalPlayerIndex PangeaGame_DebugGetPlayerCount PangeaGame_DebugIsNetworkMatchRunning "Test.wasm" "Test.data"`,
@@ -25,7 +26,7 @@ describe("runtime preflight", () => {
         }
         return Promise.resolve({
           ok: true,
-          text: () => Promise.resolve(""),
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
         });
       }),
     );
@@ -69,6 +70,7 @@ describe("runtime preflight", () => {
         if (textUrl.endsWith(".js")) {
           return Promise.resolve({
             ok: true,
+            arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
             text: () =>
               Promise.resolve(
                 `PangeaGame_SetNetworkMatchConfig PangeaGame_StartNetworkMatch PangeaGame_DebugGetLocalPlayerIndex PangeaGame_DebugGetPlayerCount PangeaGame_DebugIsNetworkMatchRunning "Test.wasm"`,
@@ -90,7 +92,7 @@ describe("runtime preflight", () => {
       trackOrLevel: "1",
     });
 
-    await vi.advanceTimersByTimeAsync(60_001);
+    await vi.runAllTimersAsync();
     const result = await resultPromise;
 
     expect(result.isErr()).toBe(true);

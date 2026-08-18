@@ -7,12 +7,16 @@ function getSplineArray(arr: SplinePoint[][], index: number): SplinePoint[] {
 
 /** Generates sampled spline points for the given nub positions. */
 export function getPoints(nubs: SplinePoint[], circular = true) {
-  const numNubs = circular ? nubs.length : nubs.length - 1;
+  if (circular) {
+    return bakeCircularSpline(removeDuplicateClosingNub(nubs));
+  }
+
+  const numNubs = nubs.length - 1;
   const pointsPerSpan = new Array<number>(numNubs);
 
   for (let i = 0; i < numNubs; i += 1) {
     const currentNub = nubs[i];
-    const nextIndex = circular ? (i + 1) % nubs.length : i + 1;
+    const nextIndex = i + 1;
     const nextNub = nubs[nextIndex];
     if (!currentNub || !nextNub) continue;
 
@@ -25,7 +29,75 @@ export function getPoints(nubs: SplinePoint[], circular = true) {
     pointsPerSpan[i] = spanPoints(distance);
   }
 
-  return bakeSpline(nubs, pointsPerSpan, circular);
+  return bakeSpline(nubs, pointsPerSpan);
+}
+
+function removeDuplicateClosingNub(nubs: SplinePoint[]): SplinePoint[] {
+  const firstNub = nubs[0];
+  const lastNub = nubs[nubs.length - 1];
+  if (
+    nubs.length > 1 &&
+    firstNub &&
+    lastNub &&
+    firstNub.x === lastNub.x &&
+    firstNub.z === lastNub.z
+  ) {
+    return nubs.slice(0, -1);
+  }
+  return nubs;
+}
+
+function bakeCircularSpline(nubs: SplinePoint[]): SplinePoint[] {
+  if (nubs.length < 2) {
+    return nubs.map((nub) => ({ x: nub.x, z: nub.z }));
+  }
+
+  return nubs.flatMap((currentNub, index) => {
+    const previousNub = nubs[(index - 1 + nubs.length) % nubs.length];
+    const nextNub = nubs[(index + 1) % nubs.length];
+    const followingNub = nubs[(index + 2) % nubs.length];
+    if (!previousNub || !nextNub || !followingNub) return [];
+
+    const subdivisions = spanPoints(
+      calcQuickDistance(currentNub.x, currentNub.z, nextNub.x, nextNub.z),
+    );
+
+    return Array.from({ length: subdivisions }, (_, pointIndex) => {
+      const t = pointIndex / subdivisions;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      return {
+        x:
+          0.5 *
+          (2 * currentNub.x +
+            (-previousNub.x + nextNub.x) * t +
+            (2 * previousNub.x -
+              5 * currentNub.x +
+              4 * nextNub.x -
+              followingNub.x) *
+              t2 +
+            (-previousNub.x +
+              3 * currentNub.x -
+              3 * nextNub.x +
+              followingNub.x) *
+              t3),
+        z:
+          0.5 *
+          (2 * currentNub.z +
+            (-previousNub.z + nextNub.z) * t +
+            (2 * previousNub.z -
+              5 * currentNub.z +
+              4 * nextNub.z -
+              followingNub.z) *
+              t2 +
+            (-previousNub.z +
+              3 * currentNub.z -
+              3 * nextNub.z +
+              followingNub.z) *
+              t3),
+      };
+    });
+  });
 }
 
 /** Converts a segment distance into the number of interpolated points to bake. */
@@ -37,8 +109,6 @@ export function spanPoints(distance: number) {
 export function bakeSpline(
   nubs: SplinePoint[],
   pointsPerSpan: number[],
-  _circular = true,
-  _allowClosingSegment = true,
 ) {
   const numNubs = nubs.length;
   const space: SplinePoint[][] = [];

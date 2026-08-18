@@ -85,12 +85,17 @@ export async function parseLevelBuffer(
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   const bytes = new Uint8Array(buffer);
-  const parseResult = await saveToJson(
-    bytes,
-    structSpecs || [],
-    includeTypes,
-    excludeTypes,
-  );
+  let parseResult: Awaited<ReturnType<typeof saveToJson>>;
+  try {
+    parseResult = await saveToJson(
+      bytes,
+      structSpecs || [],
+      includeTypes,
+      excludeTypes,
+    );
+  } catch (error) {
+    return err(String(error));
+  }
 
   const parsedJsonResult = parseResult.ok
     ? ok(parseResult.value)

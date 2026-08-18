@@ -5,8 +5,8 @@ import { parseBG3D } from "@/modelParsers/parseBG3D";
 import { extractEmbeddedTexture } from "@/editor/subviews/water/embeddedLiquidTexture";
 
 const CRO_MAG_GLOBAL_MODEL = resolve(
-  process.cwd(),
-  "../games/pangea-ports/games/CroMagRally-Android/Data/Models/global.bg3d",
+  import.meta.dirname,
+  "../../../games/pangea-ports/games/CroMagRally-Android/Data/Models/global.bg3d",
 );
 
 describe("extractEmbeddedTexture", () => {

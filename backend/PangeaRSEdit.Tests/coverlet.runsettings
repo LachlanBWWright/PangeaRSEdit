@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>json,lcov,cobertura</Format>
+          <ExcludeByFile>
+            **/Persistence/Migrations/*.cs,
+            **/Persistence/Migrations/*.Designer.cs,
+            **/Persistence/PangeaRSEditDbContextModelSnapshot.cs,
+            **/*.g.cs,
+            **/*.generated.cs
+          </ExcludeByFile>
+          <Exclude>
+            [*]PangeaRSEdit.Infrastructure.Persistence.Migrations.*,
+            [*]PangeaRSEdit.Infrastructure.Persistence.PangeaRSEditDbContextModelSnapshot,
+            [*]*.Generated.*
+          </Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

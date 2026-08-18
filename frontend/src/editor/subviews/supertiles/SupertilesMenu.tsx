@@ -125,9 +125,9 @@ export function SupertileMenu({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2">
-        <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 overflow-hidden">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-2 overflow-y-auto md:grid-cols-3 md:grid-rows-1 md:overflow-hidden">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
           <p>Replace Selected Tile ({selectedTile})</p>
           <ImageDropzone
             inputRef={tileUploadInputRef}
@@ -175,7 +175,7 @@ export function SupertileMenu({
             </Layer>
           </Stage>
         </div>
-        <div className="flex h-full min-h-0 flex-col gap-2">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
           <p>Upload Image For Whole Map</p>
           <ImageDropzone
             inputRef={mapUploadInputRef}
@@ -240,7 +240,7 @@ export function SupertileMenu({
             Download
           </Button>
         </div>
-        <div className="flex h-full min-h-0 flex-col gap-2 overflow-auto pr-1">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 overflow-auto pr-1">
           <div className="flex flex-col gap-1 text-sm">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               <p>Supertiles Wide: {supertileCounts.width}</p>

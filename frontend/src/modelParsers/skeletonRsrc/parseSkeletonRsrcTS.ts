@@ -13,6 +13,7 @@ import { handleNumK } from "./handlers/numk";
 import { handleKeyF } from "./handlers/keyf";
 import { handleBone } from "./handlers/bone";
 import { handleAnHd } from "./handlers/anhd";
+import { decodePascalHexString } from "./parseHelpers";
 
 // Types derived from `skeletonSpecs` (approximate, shaped to the saveToJson output)
 type ResourceMap<T> = Record<string, T>;
@@ -231,6 +232,54 @@ export async function parseSkeletonRsrc(
   return transformToSkeletonResource(parsed);
 }
 
+function parseHedrFallback(hexData: string | undefined): HedrRaw | undefined {
+  if (!hexData || hexData.length < 8) {
+    return undefined;
+  }
+
+  const bytes = new Uint8Array(hexData.length / 2);
+  for (let i = 0; i < hexData.length; i += 2) {
+    const byte = Number.parseInt(hexData.slice(i, i + 2), 16);
+    if (Number.isNaN(byte)) {
+      return undefined;
+    }
+    bytes[i / 2] = byte;
+  }
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const values: number[] = [];
+  for (let i = 0; i < 4 && i * 2 + 2 <= bytes.length; i += 1) {
+    values.push(view.getUint16(i * 2, true));
+  }
+
+  if (values.length === 4) {
+    return {
+      version: values[0] ?? 0,
+      numAnims: values[1] ?? 0,
+      numJoints: values[2] ?? 0,
+      num3DMFLimbs: values[3] ?? 0,
+    };
+  }
+
+  return undefined;
+}
+
+function parseAnHdFallback(hexData: string | undefined): AnHdRaw | undefined {
+  if (!hexData || hexData.length < 4) {
+    return undefined;
+  }
+
+  const animName = decodePascalHexString(hexData);
+  if (!animName) {
+    return undefined;
+  }
+
+  return {
+    animName,
+    numAnimEvents: 0,
+  };
+}
+
 export async function parseSkeletonRsrcJson(
   bytes: ArrayBuffer,
 ): Promise<ParsedSkeleton> {
@@ -240,6 +289,51 @@ export async function parseSkeletonRsrcJson(
     return Promise.reject(new Error(String(result.error)));
   }
   const parsed: unknown = JSON.parse(result.value);
+  if (isRecord(parsed)) {
+    for (const [resourceType, entries] of Object.entries(parsed)) {
+      if (!isRecord(entries)) {
+        continue;
+      }
+      for (const resource of Object.values(entries)) {
+        if (!isRecord(resource)) {
+          continue;
+        }
+        const raw = resource;
+
+        if (resourceType === "AnHd") {
+          if (raw.obj !== undefined && isRecord(raw.obj)) {
+            const animName = raw.obj.animName;
+            if (typeof animName === "string") {
+              raw.obj.animName = decodePascalHexString(animName);
+            }
+          } else if (raw.data !== undefined) {
+            const fallback = parseAnHdFallback(typeof raw.data === "string" ? raw.data : undefined);
+            if (fallback) {
+              raw.obj = fallback;
+              delete raw.data;
+              delete raw.conversion_error;
+            }
+          }
+          continue;
+        }
+
+        if (raw.obj !== undefined || raw.data === undefined) {
+          continue;
+        }
+
+        const fallback =
+          resourceType === "Hedr"
+            ? parseHedrFallback(typeof raw.data === "string" ? raw.data : undefined)
+            : undefined;
+
+        if (fallback) {
+          raw.obj = fallback;
+          delete raw.data;
+          delete raw.conversion_error;
+        }
+      }
+    }
+  }
   // Validate the parsed structure at runtime
   if (!isParsedSkeleton(parsed)) {
     return Promise.reject(new Error("Invalid skeleton structure"));

@@ -226,12 +226,4 @@ describe("Nanosaur 1 Map Roundtrip", () => {
     console.log("✅ Nanosaur 1 double-convert produces consistent results");
   });
 
-  // Note: Full binary roundtrip is not possible for Nanosaur 1
-  // because we don't have a serializer for the proprietary format.
-  // This would need to be implemented if full editing support is needed.
-  it.skip("should roundtrip to binary (NOT IMPLEMENTED)", () => {
-    // Nanosaur 1 uses a proprietary binary format that doesn't use resource forks
-    // Serialization back to this format is not currently implemented
-    console.log("⚠️ Nanosaur 1 binary serialization not implemented");
-  });
 });

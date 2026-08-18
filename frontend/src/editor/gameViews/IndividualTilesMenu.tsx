@@ -181,7 +181,7 @@ export function IndividualTilesMenu({
         </Tabs>
       )}
       {tileView === TileViews.Topology && (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)]">
           <p>Brush Mode</p>
           <Select
             value={brushMode.toString()}
@@ -338,7 +338,7 @@ export function IndividualTilesMenu({
           <TopologyOpacityControl />
           {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
             canShowAccessibilityOverlay && (
-              <div className="flex items-center justify-between col-span-4 rounded border border-gray-700 px-3 py-2">
+              <div className="col-span-2 flex items-center justify-between rounded border border-gray-700 px-3 py-2 sm:col-span-4">
                 <p>{getAccessibilityOverlayLabel()}</p>
                 <Switch
                   checked={showAccessibilityOverlay}

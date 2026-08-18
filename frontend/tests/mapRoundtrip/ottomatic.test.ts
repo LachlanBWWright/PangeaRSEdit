@@ -270,9 +270,7 @@ describe("Otto Matic Map Roundtrip", () => {
     console.log("✅ Hex data roundtrip successful");
   });
 
-  it.skip("should roundtrip with otto specs (structured data)", async () => {
-    // Skip: JSON->Binary packing not implemented in StructConverter
-    // This test will pass once pack() is implemented
+  it("should roundtrip with otto specs (structured data)", async () => {
     if (!fileExists) return;
 
     // Parse with otto specs
@@ -422,9 +420,7 @@ describe("Otto Matic Map Roundtrip", () => {
     expect(sizeRatio).toBeLessThan(1.2);
   });
 
-  it.skip("should preserve all resource types", async () => {
-    // Skip: JSON->Binary packing not implemented in StructConverter
-    // This test will pass once pack() is implemented
+  it("should preserve all resource types", async () => {
     if (!fileExists) return;
 
     const jsonStringResult1 = await saveToJson(

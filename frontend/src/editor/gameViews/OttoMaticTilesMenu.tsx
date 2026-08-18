@@ -80,7 +80,7 @@ export function OttoMaticTilesMenu({
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <Tabs
         value={getOttoTileTabValue(tileView)}
         onValueChange={(value) => {
@@ -91,24 +91,24 @@ export function OttoMaticTilesMenu({
           }
         }}
       >
-        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
-          <TabsTrigger className="w-full" value="topology">
+        <TabsList className="grid w-full min-w-0 grid-flow-col auto-cols-fr gap-2 overflow-clip">
+          <TabsTrigger className="w-full min-w-0 truncate" value="topology">
             Topology
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="flags">
+          <TabsTrigger className="w-full min-w-0 truncate" value="flags">
             Empty Tiles
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="electric0">
+          <TabsTrigger className="w-full min-w-0 truncate" value="electric0">
             Electric Floor 1
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="electric1">
+          <TabsTrigger className="w-full min-w-0 truncate" value="electric1">
             Electric Floor 2
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
       {tileView === TileViews.Topology && (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)]">
           <p>Brush Mode</p>
           <Select
             value={brushMode.toString()}
@@ -208,8 +208,8 @@ export function OttoMaticTilesMenu({
       {(tileView === TileViews.Flags ||
         tileView === TileViews.ElectricFloor0 ||
         tileView === TileViews.ElectricFloor1) && (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
-          <div className="flex flex-row justify-center gap-2 items-center col-span-4">
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)]">
+          <div className="col-span-2 flex flex-row items-center justify-center gap-2 sm:col-span-4">
             <p>Enable Tile Editing</p>
             <Switch
               checked={tileEditingEnabled}
@@ -245,7 +245,7 @@ export function OttoMaticTilesMenu({
             </>
           )}
 
-          <p className="col-span-4 mt-2">
+          <p className="col-span-2 mt-2 sm:col-span-4">
             {tileView === TileViews.Flags &&
               "Click on the map to mark tiles as empty (white) or not empty (black)."}
             {tileView === TileViews.ElectricFloor0 &&

@@ -26,11 +26,8 @@ function nodeBufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
 
 describe("Mighty Mike border.tga palette", () => {
   const terrainDir = join(
-    process.cwd(),
-    "public",
-    "assets",
-    "mightyMike",
-    "terrain",
+    import.meta.dirname,
+    "../../public/assets/mightyMike/terrain",
   );
 
   it("border.tga exists in editor assets", () => {

@@ -20,16 +20,16 @@ function expectRequiredExports(jsPath: string): void {
 describe("generated multiplayer wasm exports", () => {
   it("Cro-Mag generated runtime exposes required multiplayer exports", () => {
     const jsPath = resolve(
-      process.cwd(),
-      "public/generated/pangea-ports/wasm/cromagrally/CroMagRally.js",
+      import.meta.dirname,
+      "../../public/generated/pangea-ports/wasm/cromagrally/CroMagRally.js",
     );
     expectRequiredExports(jsPath);
   });
 
   it("Nanosaur 2 generated runtime exposes required multiplayer exports", () => {
     const jsPath = resolve(
-      process.cwd(),
-      "public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.js",
+      import.meta.dirname,
+      "../../public/generated/pangea-ports/wasm/nanosaur2/Nanosaur2.js",
     );
     expectRequiredExports(jsPath);
   });

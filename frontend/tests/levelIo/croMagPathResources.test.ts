@@ -8,7 +8,7 @@ import { croMagLevelSchema } from "@/validation/games/croMag";
 describe("Cro-Mag racing resources", () => {
   it("parses and structurally round-trips paths, points, and checkpoints", async () => {
     const bytes = readFileSync(
-      join(process.cwd(), "public/assets/croMag/terrain/StoneAge_Desert.ter.rsrc"),
+      join(import.meta.dirname, "../../public/assets/croMag/terrain/StoneAge_Desert.ter.rsrc"),
     );
     const parsedJson = await saveToJson(new Uint8Array(bytes), croMagSpecs, [], []);
     expect(parsedJson.ok).toBe(true);

@@ -44,7 +44,7 @@ export function ReusableTilePalettePanel({
 }: ReusableTilePalettePanelProps) {
   const hasSelection = selectedIndex >= 0 && selectedIndex < images.length;
   return (
-    <div className="flex h-full min-h-0 flex-col gap-1.5">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-1.5">
       <p className="text-center font-bold text-sm">{title}</p>
       {summary ? (
         <p className="text-center text-xs text-gray-400">{summary}</p>
@@ -59,12 +59,13 @@ export function ReusableTilePalettePanel({
           itemClassName={itemClassName}
         />
       </div>
-      <div className="grid grid-cols-2 gap-1.5 flex-none">
-        <Button size="sm" variant="outline" onClick={onEdit} disabled={!hasSelection}>
+      <div className="grid min-w-0 flex-none grid-cols-2 gap-1.5">
+        <Button className="min-w-0 overflow-hidden" size="sm" variant="outline" onClick={onEdit} disabled={!hasSelection}>
           <Edit className="mr-1 h-4 w-4" /> Edit {itemLabel}
         </Button>
         <Button
           size="sm"
+          className="min-w-0 overflow-hidden"
           variant="outline"
           onClick={() => uploadInputRef.current?.click()}
           disabled={!hasSelection}
@@ -78,9 +79,10 @@ export function ReusableTilePalettePanel({
           accept="image/*"
           onChange={onUpload}
         />
-        <Button size="sm" variant="outline" onClick={onAdd}>Add {itemLabel}</Button>
+        <Button className="min-w-0 overflow-hidden" size="sm" variant="outline" onClick={onAdd}>Add {itemLabel}</Button>
         <Button
           size="sm"
+          className="min-w-0 overflow-hidden"
           variant="outline"
           onClick={onRemove}
           disabled={selectedImageInUse || images.length <= 1}
@@ -88,7 +90,7 @@ export function ReusableTilePalettePanel({
           Remove {itemLabel}
         </Button>
       </div>
-      <Button size="sm" onClick={onReplace} disabled={!hasSelection}>
+      <Button className="min-w-0 overflow-hidden" size="sm" onClick={onReplace} disabled={!hasSelection}>
         <Upload className="mr-1 h-4 w-4" /> {replaceLabel}{selectedIndex}
       </Button>
     </div>

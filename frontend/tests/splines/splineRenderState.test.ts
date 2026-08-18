@@ -3,7 +3,7 @@ import { getSplinePointGenerationInput } from "@/editor/subviews/splines/splineU
 import { getPreviewSplinePoints } from "@/editor/subviews/splines/splineRenderState";
 
 describe("spline render state", () => {
-  it("keeps the duplicate endpoint when generating circular spline points", () => {
+  it("keeps the duplicate endpoint in the stored circular spline nubs", () => {
     const nubs = [
       { x: 0, z: 0 },
       { x: 20, z: 0 },
@@ -34,5 +34,25 @@ describe("spline render state", () => {
     });
 
     expect(includesPenultimateNub).toBe(true);
+  });
+
+  it("curves smoothly through the hidden closing nub", () => {
+    const previewPoints = getPreviewSplinePoints(
+      [
+        { x: 0, z: 0 },
+        { x: 20, z: 0 },
+        { x: 20, z: 20 },
+        { x: 0, z: 20 },
+        { x: 0, z: 0 },
+      ],
+      true,
+    );
+
+    const firstPoint = previewPoints.slice(0, 2);
+    const lastPoint = previewPoints.slice(-2);
+
+    expect(firstPoint).toEqual([0, 0]);
+    expect(lastPoint[0]).toBeLessThan(0);
+    expect(lastPoint[1]).toBeGreaterThan(0);
   });
 });

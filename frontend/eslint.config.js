@@ -42,8 +42,9 @@ export default defineConfig(
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        projectService: true,
-        allowDefaultProject: true,
+        projectService: {
+          allowDefaultProject: ["scripts/*.mjs"],
+        },
         tsconfigRootDir: process.cwd(),
       },
     },

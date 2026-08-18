@@ -77,9 +77,6 @@ export function MightyMikeTileInspectorPanel({
     : 0;
   const hasWind = getFlagChecked(gameplayFlags, 8);
   const hasTrack = getFlagChecked(gameplayFlags, 15);
-  const selectedTrackSegment = MIGHTY_MIKE_TRACK_SEGMENTS.find(
-    (segment) => segment.value === getNumber(currentTileAttributes?.["p0"]),
-  );
   return (
     <div className="flex flex-col gap-3 text-sm">
       <TooltipProvider>
@@ -215,33 +212,6 @@ export function MightyMikeTileInspectorPanel({
                   </SelectContent>
                 </Select>
               </div>
-              {selectedTrackSegment ? (
-                <div className="flex items-center gap-2 rounded bg-gray-900 p-2">
-                  <svg
-                    aria-label={`${selectedTrackSegment.label} path preview`}
-                    className="h-16 w-16 flex-none rounded border border-gray-600 bg-gray-800"
-                    viewBox="-2 -2 35 35"
-                  >
-                    <polyline
-                      fill="none"
-                      points={selectedTrackSegment.points}
-                      stroke="#4ade80"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                    />
-                    <circle cx="16" cy="16" fill="#facc15" r="1.5" />
-                  </svg>
-                  <div>
-                    <p className="font-medium text-gray-200">
-                      {selectedTrackSegment.connection}
-                    </p>
-                    <p className="text-[11px] text-gray-400">
-                      Green line: exact route followed through this tile.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
             </div>
           ) : null}
         </div>

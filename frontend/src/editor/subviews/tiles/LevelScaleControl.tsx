@@ -25,7 +25,7 @@ export function LevelScaleControl({
   const valid = Number.isFinite(parsed) && parsed > 0;
 
   return (
-    <div className="col-span-4 grid grid-cols-[auto_1fr] items-center gap-2 rounded border border-gray-700 p-2">
+    <div className="col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded border border-gray-700 p-2 sm:col-span-4">
       <p className="font-medium">Level scale</p>
       <Input
         type="number"

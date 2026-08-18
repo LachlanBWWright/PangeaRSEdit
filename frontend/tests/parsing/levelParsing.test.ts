@@ -226,7 +226,7 @@ describe("Level Parsing - Pure Functions", () => {
       expect(result.equal).toBe(false);
       expect(result.differences).toBeDefined();
       expect(result.differences.length).toBeGreaterThan(0);
-      expect(result.differences[0]?.path).toContain("width");
+      expect(result.differences[0]?.path).toContain("mapHeight");
     });
 
     it("should detect differences in nested arrays", () => {

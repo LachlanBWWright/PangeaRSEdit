@@ -1,9 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { ModelCanvas } from "./ModelCanvas";
-import { ModelHierarchy } from "@/components/ModelHierarchy";
 import {
-  AnimationViewer,
-  AnimationInfo,
+  type AnimationInfo,
   type AnimationEvent,
   type ModelSourceKind,
 } from "@/components/AnimationViewer";
@@ -12,14 +9,6 @@ import {
   collectBoneInfluenceRows,
   pinSelectedBoneRow,
 } from "@/components/AnimationViewer/rigToolsState";
-import { ModelRigPanel } from "@/components/ModelRigPanel";
-import { Button } from "@/components/ui/button";
-import { Redo2, Undo2, Upload } from "lucide-react";
-import { TextureManager } from "@/components/TextureManager";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
-import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
-import { SidebarSection } from "@/components/model-viewer/SidebarSection";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -75,6 +64,16 @@ import {
 } from "@/modelEditing/weights/weightTypes";
 import type { ViewerInteractionMode } from "@/components/model-viewer/types";
 import { collectSceneBoneNames, createBone, removeBone } from "@/modelEditing/bones/boneEditing";
+import { ModelViewerSidebar } from "./ModelViewer/ModelViewerSidebar";
+import { ModelViewerViewport } from "./ModelViewer/ModelViewerViewport";
+import {
+  collectBoneRows,
+  getEffectiveModelBaseName,
+  getModelSourceKind,
+  removeAnimationBone,
+  renameAnimationBone,
+  renameModelNodeBone,
+} from "./ModelViewer/modelViewerState";
 
 type ViewerHistoryAction =
   | {
@@ -93,37 +92,6 @@ type ViewerHistoryAction =
       beforeName: string;
       afterName: string;
     };
-
-function renameAnimationBone(
-  animation: AnimationInfo,
-  currentName: string,
-  nextName: string,
-): AnimationInfo {
-  const cloned = animation.clip.clone();
-  cloned.tracks.forEach((track) => {
-    if (track.name.startsWith(`${currentName}.`)) {
-      track.name = `${nextName}.${track.name.slice(currentName.length + 1)}`;
-    }
-  });
-  return {
-    ...animation,
-    clip: cloned,
-  };
-}
-
-function renameModelNodeBone(
-  node: ModelNode,
-  currentName: string,
-  nextName: string,
-): ModelNode {
-  return {
-    ...node,
-    name: node.name === currentName ? nextName : node.name,
-    children: node.children?.map((child) =>
-      renameModelNodeBone(child, currentName, nextName),
-    ),
-  };
-}
 
 export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
@@ -222,7 +190,7 @@ export function ModelViewer() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const viewerHistoryRef = useRef(viewerHistory);
-  const effectiveModelBaseName = modelBaseName.trim() || "model";
+  const effectiveModelBaseName = getEffectiveModelBaseName(modelBaseName);
   // Initialize file upload hook
   const { uploadFile } = useFileUpload({
     onGltfUrlChange: setGltfUrl,
@@ -254,16 +222,7 @@ export function ModelViewer() {
   ) => {
     setModelBaseName(bg3dFile.name.replace(/\.[^.]+$/, ""));
     setGameLabel(loadedGameLabel ?? null);
-    const lowerName = bg3dFile.name.toLowerCase();
-    if (lowerName.endsWith(".3dmf")) {
-      setModelSourceKind("3dmf");
-    } else if (lowerName.endsWith(".bg3d")) {
-      setModelSourceKind("bg3d");
-    } else if (lowerName.endsWith(".glb")) {
-      setModelSourceKind("glb");
-    } else {
-      setModelSourceKind("unknown");
-    }
+    setModelSourceKind(getModelSourceKind(bg3dFile.name));
     return uploadFile(bg3dFile, skeletonFile).then((result) => {
       if (result.isOk()) {
         setViewerHistory({ past: [], future: [] });
@@ -1014,13 +973,9 @@ export function ModelViewer() {
       applyWeightEditToScene(scene, result.value.skinData);
       setSkinDataWithScene({ scene, data: result.value.skinData });
     }
-    const animationsWithoutBone = latestAnimationsRef.current.map((animation) => {
-      const clip = animation.clip.clone();
-      clip.tracks = clip.tracks.filter(
-        (track) => !track.name.startsWith(`${removedName}.`),
-      );
-      return { ...animation, clip };
-    });
+    const animationsWithoutBone = latestAnimationsRef.current.map((animation) =>
+      removeAnimationBone(animation, removedName),
+    );
     latestAnimationsRef.current = animationsWithoutBone;
     setAnimations(animationsWithoutBone);
     setBg3dParsed((current) => {
@@ -1042,18 +997,17 @@ export function ModelViewer() {
     toast.success(`Removed bone '${removedName}'`);
   }, [handleBoneSelectionChange, scene, selectedBoneName, skinData]);
 
-  const boneInfluenceRows = (() => {
-    const weightedRows = skinData
-        ? collectBoneInfluenceRowsFromSkinData(skinData)
-        : collectBoneInfluenceRows(scene);
-    const weightedNames = new Set(weightedRows.map((row) => row.boneName));
-    const unweightedRows = scene
-      ? collectSceneBoneNames(scene)
-          .filter((name) => !weightedNames.has(name))
-          .map((boneName) => ({ boneName, vertexCount: 0, weightedSum: 0 }))
-      : [];
-    return [...weightedRows, ...unweightedRows];
-  })();
+  const boneInfluenceRows = useMemo(
+    () =>
+      collectBoneRows(
+        scene,
+        skinData,
+        collectBoneInfluenceRows,
+        collectBoneInfluenceRowsFromSkinData,
+        collectSceneBoneNames,
+      ),
+    [scene, skinData],
+  );
 
   const displayedBoneInfluenceRows = useMemo(() => {
     if (!selectedBoneName) {
@@ -1472,243 +1426,116 @@ export function ModelViewer() {
     toast.success("Model cleared");
   };
 
+  const handleVisibilityChange = useCallback((nodeObject: import("three").Object3D, visible: boolean) => {
+    nodeObject.visible = visible;
+  }, []);
+
   return (
-    <>
-      <div className="h-full overflow-hidden p-2 bg-gray-900 text-white">
-        <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
-          <ResizablePanel
-            defaultSize={30}
-            minSize={20}
-            className="min-h-0 min-w-0 pr-2"
-          >
-            <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950/80 px-3 pb-4 pt-2">
-                <ModelUploadPanel
-                  gltfUrl={gltfUrl}
-                  loading={loading}
-                  uploadStep={uploadStep}
-                  pendingBg3dFile={pendingBg3dFile}
-                  fileInputRef={fileInputRef}
-                  handleDrop={handleDrop}
-                  handleDragOver={handleDragOver}
-                  handleBg3dFileSelect={handleBg3dFileSelect}
-                  handleSkeletonFileSelect={handleSkeletonFileSelect}
-                  handleSkipSkeleton={handleSkipSkeleton}
-                  handleFileUpload={handleFileUpload}
-                  modelBaseName={modelBaseName}
-                  onModelBaseNameChange={setModelBaseName}
-                  exportTargets={[
-                    ...BG3D_EXPORT_TARGETS,
-                    { id: "glb", label: "GLB" },
-                  ]}
-                  handleDownloadSelectedExport={handleDownloadSelectedExport}
-                  handleClearModel={handleClearModel}
-                  onCancelSelection={() => {
-                    setUploadStep("select-bg3d");
-                    setPendingBg3dFile(null);
-                  }}
-                />
-
-                {/* Visualization Controls */}
-                {gltfUrl && (
-                  <VisualizationOptions
-                    wireframeMode={wireframeMode}
-                    setWireframeMode={setWireframeMode}
-                    showSkeleton={showSkeletonOverlay}
-                    setShowSkeleton={setShowSkeletonOverlay}
-                    logBonePositions={logBonePositions}
-                    setLogBonePositions={setLogBonePositions}
-                    hasSkeleton={hasAnimations || skinData !== null}
-                    canLogBonePositions={hasAnimations}
-                    interactionMode={interactionMode}
-                    setInteractionMode={handleInteractionModeChange}
-                    weightVisualizationMode={
-                      interactionMode === "paint-weights"
-                        ? weightVisualizationMode
-                        : "none"
-                    }
-                    setWeightVisualizationMode={setWeightVisualizationMode}
-                    hasSkinWeights={skinData !== null}
-                  />
-                )}
-
-                {gltfUrl &&
-                  (interactionMode === "bone-edit" ||
-                    interactionMode === "paint-weights") &&
-                  (interactionMode === "bone-edit"
-                    ? hasAnimations || skinData !== null
-                    : skinData !== null) && (
-                  <SidebarSection
-                    title={
-                      interactionMode === "bone-edit"
-                        ? "Bone Editor"
-                        : "Weight Painting"
-                    }
-                  >
-                    <ModelRigPanel
-                      selectedBoneName={selectedBoneName}
-                      boneRenameInput={boneRenameInput}
-                      boneInfluenceRows={displayedBoneInfluenceRows}
-                      skinData={skinData}
-                      interactionMode={interactionMode}
-                      brushSettings={weightBrushSettings}
-                      onSelectBone={handleBoneSelectionChange}
-                      onBoneRenameInputChange={setBoneRenameInput}
-                      onRenameSelectedBone={handleRenameSelectedBone}
-                      onCreateBone={handleCreateBone}
-                      onRemoveSelectedBone={handleRemoveSelectedBone}
-                      gizmoMode={gizmoMode}
-                      onGizmoModeChange={handleGizmoModeChange}
-                      onBrushSettingsChange={handleWeightBrushSettingsChange}
-                      onRepairWeights={handleRepairWeights}
-                    />
-                  </SidebarSection>
-                )}
-
-                {/* Model Hierarchy — visibility toggles + poly counts */}
-                {gltfUrl &&
-                  interactionMode === "navigate" &&
-                  modelNodes.length > 0 && (
-                  <ModelHierarchy
-                    nodes={modelNodes}
-                    clonedScene={scene}
-                    onVisibilityChange={(nodeObject, visible) => {
-                      nodeObject.visible = visible;
-                    }}
-                  />
-                )}
-
-                {/* Animation Viewer - Show when animations are available */}
-                {gltfUrl && hasAnimations && interactionMode === "animate" && (
-                  <AnimationViewer
-                    key={modelSessionId}
-                    animations={animations}
-                    animationMixer={animationMixer}
-                    gameLabel={gameLabel}
-                    modelSourceKind={modelSourceKind}
-                    onAnimationsChange={handleAnimationsChange}
-                    onBoneSelectionChange={handleBoneSelectionChange}
-                    onAnimationEventsChange={handleAnimationEventsChange}
-                    animationMetadata={animationMetadata}
-                    boneTransform={boneTransform}
-                    boneRotation={boneRotation}
-                    boneScale={boneScale}
-                    onGizmoModeChange={handleGizmoModeChange}
-                    boneRenameInput={boneRenameInput}
-                    boneInfluenceRows={displayedBoneInfluenceRows}
-                    skinData={skinData}
-                    onBoneRenameInputChange={setBoneRenameInput}
-                    onRenameSelectedBone={handleRenameSelectedBone}
-                    onRepairWeights={handleRepairWeights}
-                  />
-                )}
-
-                {/* Texture Manager - Always show this section when model is loaded */}
-                {gltfUrl && interactionMode === "navigate" && (
-                  <SidebarSection title="Texture Management">
-                      {textures.length > 0 ? (
-                        <TextureManager
-                          textures={textures}
-                          onDownloadTexture={handleDownloadTexture}
-                          onReplaceTexture={handleReplaceTexture}
-                          onTextureEdit={handleTextureEdit}
-                          uvLayouts={uvLayouts}
-                          onPreviewUvEdit={handlePreviewUvEdit}
-                          onResetUvPreview={handleResetUvPreview}
-                          onApplyUvEdit={handleApplyUvEdit}
-                        />
-                      ) : (
-                        <p className="text-sm text-gray-400">
-                          No textures found in this model
-                        </p>
-                      )}
-                  </SidebarSection>
-                )}
-
-              </div>
-            </div>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel
-            defaultSize={70}
-            minSize={35}
-            className="min-h-0 pl-2"
-          >
-            <div className="relative h-full min-h-0 overflow-hidden rounded-lg bg-gray-800">
-              {gltfUrl && (
-                <div className="absolute left-3 top-3 z-20 flex gap-1 rounded-md border border-gray-600/80 bg-gray-900/80 p-1 shadow-lg backdrop-blur-sm">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-gray-200"
-                    onClick={handleUndoViewerChange}
-                    disabled={viewerHistory.past.length === 0}
-                    aria-label="Undo model change"
-                    title="Undo"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-gray-200"
-                    onClick={handleRedoViewerChange}
-                    disabled={viewerHistory.future.length === 0}
-                    aria-label="Redo model change"
-                    title="Redo"
-                  >
-                    <Redo2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              {/* Main viewport - 3D Scene */}
-              {gltfUrl ? (
-                <ErrorBoundary>
-                  <ModelCanvas
-                    gltfUrl={gltfUrl}
-                    setModelNodes={setModelNodes}
-                    onSceneReady={setScene}
-                    onAnimationsReady={handleAnimationsReady}
-                    wireframeMode={wireframeMode}
-                    showSkeleton={
-                      showSkeletonOverlay &&
-                      (hasAnimations || skinData !== null)
-                    }
-                    logBonePositions={logBonePositions}
-                    selectedBoneName={selectedBoneName}
-                    onBoneTransformChange={handleBoneTransformChange}
-                    onBoneRotationChange={handleBoneRotationChange}
-                    onBoneScaleChange={handleBoneScaleChange}
-                    gizmoMode={gizmoMode}
-                    interactionMode={interactionMode}
-                    skinData={skinData}
-                    weightBrushSettings={weightBrushSettings}
-                    weightVisualizationMode={
-                      interactionMode === "paint-weights"
-                        ? weightVisualizationMode
-                        : "none"
-                    }
-                    onWeightBrushStroke={handleWeightBrushStroke}
-                    sceneUpdateRevision={sceneUpdateRevision}
-                  />
-                </ErrorBoundary>
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  <div className="text-center">
-                    <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                      <Upload className="w-12 h-12" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-2">
-                      No Model Loaded
-                    </h3>
-                    <p>Upload a BG3D file to start viewing 3D models</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
-    </>
+    <div className="h-full overflow-hidden p-2 bg-gray-900 text-white">
+      <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
+        <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pr-2">
+          <ModelViewerSidebar
+            gltfUrl={gltfUrl}
+            loading={loading}
+            uploadStep={uploadStep}
+            pendingBg3dFile={pendingBg3dFile}
+            fileInputRef={fileInputRef}
+            handleDrop={handleDrop}
+            handleDragOver={handleDragOver}
+            handleBg3dFileSelect={handleBg3dFileSelect}
+            handleSkeletonFileSelect={handleSkeletonFileSelect}
+            handleSkipSkeleton={handleSkipSkeleton}
+            handleFileUpload={handleFileUpload}
+            modelBaseName={modelBaseName}
+            onModelBaseNameChange={setModelBaseName}
+            exportTargets={BG3D_EXPORT_TARGETS}
+            handleDownloadSelectedExport={handleDownloadSelectedExport}
+            handleClearModel={handleClearModel}
+            onCancelSelection={() => {
+              setUploadStep("select-bg3d");
+              setPendingBg3dFile(null);
+            }}
+            wireframeMode={wireframeMode}
+            setWireframeMode={setWireframeMode}
+            showSkeletonOverlay={showSkeletonOverlay}
+            setShowSkeletonOverlay={setShowSkeletonOverlay}
+            logBonePositions={logBonePositions}
+            setLogBonePositions={setLogBonePositions}
+            hasSkeleton={hasAnimations || skinData !== null}
+            canLogBonePositions={hasAnimations}
+            interactionMode={interactionMode}
+            setInteractionMode={handleInteractionModeChange}
+            weightVisualizationMode={weightVisualizationMode}
+            setWeightVisualizationMode={setWeightVisualizationMode}
+            hasSkinWeights={skinData !== null}
+            modelNodes={modelNodes}
+            scene={scene}
+            onVisibilityChange={handleVisibilityChange}
+            hasAnimations={hasAnimations}
+            modelSessionId={modelSessionId}
+            animations={animations}
+            animationMixer={animationMixer}
+            gameLabel={gameLabel}
+            modelSourceKind={modelSourceKind}
+            onAnimationsChange={handleAnimationsChange}
+            onBoneSelectionChange={handleBoneSelectionChange}
+            onAnimationEventsChange={handleAnimationEventsChange}
+            animationMetadata={animationMetadata}
+            boneTransform={boneTransform}
+            boneRotation={boneRotation}
+            boneScale={boneScale}
+            gizmoMode={gizmoMode}
+            onGizmoModeChange={handleGizmoModeChange}
+            boneRenameInput={boneRenameInput}
+            boneInfluenceRows={displayedBoneInfluenceRows}
+            skinData={skinData}
+            onBoneRenameInputChange={setBoneRenameInput}
+            onRenameSelectedBone={handleRenameSelectedBone}
+            onRepairWeights={handleRepairWeights}
+            textures={textures}
+            onDownloadTexture={handleDownloadTexture}
+            onReplaceTexture={handleReplaceTexture}
+            onTextureEdit={handleTextureEdit}
+            uvLayouts={uvLayouts}
+            onPreviewUvEdit={handlePreviewUvEdit}
+            onResetUvPreview={handleResetUvPreview}
+            onApplyUvEdit={handleApplyUvEdit}
+            selectedBoneName={selectedBoneName}
+            onCreateBone={handleCreateBone}
+            onRemoveSelectedBone={handleRemoveSelectedBone}
+            weightBrushSettings={weightBrushSettings}
+            onBrushSettingsChange={handleWeightBrushSettingsChange}
+          />
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={70} minSize={35} className="min-h-0 pl-2">
+          <ModelViewerViewport
+            gltfUrl={gltfUrl}
+            scene={scene}
+            setModelNodes={setModelNodes}
+            onSceneReady={setScene}
+            onAnimationsReady={handleAnimationsReady}
+            wireframeMode={wireframeMode}
+            showSkeleton={showSkeletonOverlay && (hasAnimations || skinData !== null)}
+            logBonePositions={logBonePositions}
+            selectedBoneName={selectedBoneName}
+            onBoneTransformChange={handleBoneTransformChange}
+            onBoneRotationChange={handleBoneRotationChange}
+            onBoneScaleChange={handleBoneScaleChange}
+            gizmoMode={gizmoMode}
+            interactionMode={interactionMode}
+            skinData={skinData}
+            weightBrushSettings={weightBrushSettings}
+            weightVisualizationMode={interactionMode === "paint-weights" ? weightVisualizationMode : "none"}
+            onWeightBrushStroke={handleWeightBrushStroke}
+            sceneUpdateRevision={sceneUpdateRevision}
+            pastCount={viewerHistory.past.length}
+            futureCount={viewerHistory.future.length}
+            onUndo={handleUndoViewerChange}
+            onRedo={handleRedoViewerChange}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
   );
 }

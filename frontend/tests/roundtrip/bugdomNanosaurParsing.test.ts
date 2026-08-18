@@ -33,6 +33,10 @@ import {
 import { compileNanosaur1Level } from "../../src/editor/loadLogic/compileNanosaur1Level";
 import type { Nanosaur1LevelData } from "../../src/data/processors/classicProprocessor";
 import type { LevelData } from "../../src/python/structSpecs/LevelTypes";
+import {
+  findNanosaurBinaryDifferenceRanges,
+  formatNanosaurBinaryDifferenceRanges,
+} from "./nanosaurBinaryDiagnostics";
 
 // ============================================================================
 // BUGDOM 1 TESTS
@@ -166,7 +170,10 @@ describe("Bugdom 1 Full Save Pipeline", () => {
 // ============================================================================
 
 describe("Nanosaur 1 Full Save Pipeline", () => {
-  const assetDir = join(__dirname, "../../public/assets/nanosaur");
+  const assetDir = join(
+    __dirname,
+    "../../public/assets/nanosaur/terrain",
+  );
 
   async function runNanosaurPipeline(arrayBuffer: ArrayBuffer): Promise<{
     original: Uint8Array;
@@ -177,6 +184,7 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
     const rawLevelData = parseNanosaur1Level(arrayBuffer);
 
     const withMetadata = nanosaur1LevelToLevelData(rawLevelData);
+    withMetadata._metadata.nanosaur1RawLevel = rawLevelData;
     fixNullToZero(withMetadata);
 
     const valResult = validateLevelDataForGame(
@@ -210,19 +218,25 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
   }
 
   const level1Path = join(assetDir, "Level1.ter");
-  const level1Test = existsSync(level1Path) ? it : it.skip;
 
-  level1Test(
+  it(
     "should roundtrip Level1.ter byte-perfectly",
     async () => {
       const data = readFileSync(level1Path);
-      const { original, compiled } = await runNanosaurPipeline(data.buffer);
-      expect(compiled).toEqual(original);
+      const { original, compiled, rawLevelData } = await runNanosaurPipeline(
+        data.buffer,
+      );
+      const differences = findNanosaurBinaryDifferenceRanges(
+        original,
+        compiled,
+        rawLevelData,
+      );
+      expect(differences, formatNanosaurBinaryDifferenceRanges(differences)).toHaveLength(0);
     },
     120000,
   );
 
-  level1Test(
+  it(
     "should preserve modifications through the pipeline for Level1.ter",
     async () => {
       const data = readFileSync(level1Path);

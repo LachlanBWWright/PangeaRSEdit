@@ -42,8 +42,25 @@ jobs:
       - name: Build game WASM bundles
         run: npm run build:games
 
-      - name: Run tests
-        run: pnpm test -- --run
+      - name: Verify frontend test discovery
+        run: pnpm run test:discovery
+
+      - name: Install Chromium for component and browser tests
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run unit and Storybook tests with combined coverage
+        run: pnpm run test:coverage:combined
+
+      - name: Upload frontend coverage reports
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: |
+            frontend/coverage
+            frontend/coverage-storybook
+            frontend/coverage-combined
+          if-no-files-found: error
 
       - name: Audit item parameter citations
         run: pnpm run audit:item-citations
@@ -51,10 +68,6 @@ jobs:
       - name: Build project
         if: success()
         run: pnpm run build
-
-      - name: Install Chromium for multiplayer smoke tests
-        if: success()
-        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run real-WASM multiplayer browser smoke tests
         if: success()

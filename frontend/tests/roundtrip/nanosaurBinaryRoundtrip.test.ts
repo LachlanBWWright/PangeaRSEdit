@@ -13,6 +13,10 @@ import {
   nanosaur1LevelToLevelData,
 } from "../../src/data/processors/classicProprocessor";
 import { compileNanosaur1Level } from "../../src/editor/loadLogic/compileNanosaur1Level";
+import {
+  findNanosaurBinaryDifferenceRanges,
+  formatNanosaurBinaryDifferenceRanges,
+} from "./nanosaurBinaryDiagnostics";
 
 describe("Nanosaur 1 Binary Roundtrip", () => {
   const terrainDir = join(__dirname, "../../public/assets/nanosaur/terrain");
@@ -41,24 +45,12 @@ describe("Nanosaur 1 Binary Roundtrip", () => {
       // Compare sizes
       expect(roundtripData.length).toBe(originalData.length);
 
-      // Compare byte-for-byte
-      let firstDiff = -1;
-      for (let i = 0; i < originalData.length; i++) {
-        if (roundtripData[i] !== originalData[i]) {
-          firstDiff = i;
-          break;
-        }
-      }
-
-      if (firstDiff !== -1) {
-        console.error(
-          `Byte difference in ${levelFile} at offset ${firstDiff}: ` +
-            `original=0x${originalData[firstDiff]?.toString(16)}, ` +
-            `roundtrip=0x${roundtripData[firstDiff]?.toString(16)}`,
-        );
-      }
-
-      expect(firstDiff).toBe(-1);
+      const differences = findNanosaurBinaryDifferenceRanges(
+        originalData,
+        roundtripData,
+        rawLevelData,
+      );
+      expect(differences, formatNanosaurBinaryDifferenceRanges(differences)).toHaveLength(0);
     });
   }
 });

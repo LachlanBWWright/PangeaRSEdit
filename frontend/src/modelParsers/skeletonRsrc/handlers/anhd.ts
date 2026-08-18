@@ -1,4 +1,3 @@
-import { decodePascalHexString } from "../parseHelpers";
 import type { AnHdRaw } from "../parseSkeletonRsrcTS";
 import {
   plainObjectSchema,
@@ -25,11 +24,7 @@ export function handleAnHd(
       : resourceData;
   if (isAnHdRaw(obj)) {
     const rd = obj;
-    const isParsedObj = isRecord(resourceData) && isAnHdRaw(resourceData.obj);
-    const animName = isParsedObj
-      ? decodePascalHexString(String(rd.animName))
-      : String(rd.animName);
-    return { animName, numAnimEvents: rd.numAnimEvents };
+    return { animName: String(rd.animName), numAnimEvents: rd.numAnimEvents };
   }
 
   // Fallback: keep minimal structure

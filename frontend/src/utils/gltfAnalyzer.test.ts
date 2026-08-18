@@ -55,9 +55,17 @@ vi.mock("@gltf-transform/core", () => {
     readBinary: vi.fn().mockResolvedValue(mockDocument),
   };
 
+  function DocumentCtor() {
+    return mockDocument;
+  }
+
+  function WebIOCtor() {
+    return mockWebIO;
+  }
+
   return {
-    Document: vi.fn().mockImplementation(() => mockDocument),
-    WebIO: vi.fn().mockImplementation(() => mockWebIO),
+    Document: DocumentCtor,
+    WebIO: WebIOCtor,
   };
 });
 

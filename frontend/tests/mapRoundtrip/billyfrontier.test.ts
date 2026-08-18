@@ -18,6 +18,7 @@ import {
 import { billyFrontierSpecs } from "../../src/python/structSpecs/billyFrontier";
 import { BillyFrontierGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
+import { expectStructuredRoundtrip } from "./structuredRoundtripTestHelpers";
 
 function assertIsHeader(
   x: unknown,
@@ -191,22 +192,6 @@ describe("Billy Frontier Map Roundtrip", () => {
     });
   });
 
-  it.skip("should complete Binary -> JSON -> Binary roundtrip", () => {
-    // Skip: StructConverter.pack not implemented
-  });
-
-  it.skip("should complete Binary -> JSON -> Binary -> JSON roundtrip with consistent data", () => {
-    // Skip: StructConverter.pack not implemented
-  });
-
-  it.skip("should preserve layer data through roundtrip", () => {
-    // Skip: StructConverter.pack not implemented
-  });
-
-  it.skip("should preserve item data through roundtrip", () => {
-    // Skip: StructConverter.pack not implemented
-  });
-
   it("should preprocess JSON correctly with Billy Frontier globals", async () => {
     if (!fileExists) return;
 
@@ -314,6 +299,14 @@ describe("Billy Frontier Map Roundtrip", () => {
     }
 
     console.log("✅ Billy Frontier hex data roundtrip successful");
+  });
+
+  it("should roundtrip structured resources with Billy Frontier specs", async () => {
+    if (!fileExists) return;
+    await expectStructuredRoundtrip(
+      new Uint8Array(originalData),
+      billyFrontierSpecs,
+    );
   });
 });
 

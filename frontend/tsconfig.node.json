@@ -23,6 +23,7 @@
     ".storybook",
     "playwright.storybook-screenshots.config.ts",
     "playwright.storybook.config.ts",
+    "vitest.storybook.config.ts",
     "vite.config.ts",
     "scripts/dev/capture-item-screenshots.ts"
   ]

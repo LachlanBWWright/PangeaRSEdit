@@ -904,7 +904,7 @@ export function extractAnimationsFromGLTF(
     const events = parseAnimationEventsFromExtras(anim);
 
     return {
-      name: anim.getName() || "Unknown",
+      name: anim.getName(),
       numAnimEvents: events.length,
       events,
       keyframes,
