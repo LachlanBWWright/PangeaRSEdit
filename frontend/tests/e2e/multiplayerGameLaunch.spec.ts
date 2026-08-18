@@ -342,17 +342,16 @@ test.describe("Multiplayer game launch", () => {
     await installMockApi(hostPage, state, hostParticipantId);
     await installMockApi(guestPage, state, guestParticipantId);
 
-    await hostPage.goto("/PangeaRSEdit/");
-    await guestPage.goto("/PangeaRSEdit/");
+    await hostPage.goto("/PangeaRSEdit/?multiplayerMockHub=1");
+    await guestPage.goto("/PangeaRSEdit/?multiplayerMockHub=1");
     await hostPage.getByRole("link", { name: "Multiplayer" }).click();
     await guestPage.getByRole("link", { name: "Multiplayer" }).click();
     await expect(
-      hostPage.getByRole("heading", { name: "Multiplayer", exact: true }),
+      hostPage.getByRole("heading", { name: "Find a Lobby" }),
     ).toBeVisible();
     await expect(
-      guestPage.getByRole("heading", { name: "Multiplayer", exact: true }),
+      guestPage.getByRole("heading", { name: "Find a Lobby" }),
     ).toBeVisible();
-
     await hostPage.getByRole("button", { name: "Create Lobby" }).first().click();
     await hostPage.locator('[role="dialog"]').getByRole("combobox").first().click();
     await hostPage.getByRole("option", { name: "Cro-Mag Rally" }).click();
@@ -394,17 +393,16 @@ test.describe("Multiplayer game launch", () => {
     await installMockApi(hostPage, state, hostParticipantId);
     await installMockApi(guestPage, state, guestParticipantId);
 
-    await hostPage.goto("/PangeaRSEdit/");
-    await guestPage.goto("/PangeaRSEdit/");
+    await hostPage.goto("/PangeaRSEdit/?multiplayerMockHub=1");
+    await guestPage.goto("/PangeaRSEdit/?multiplayerMockHub=1");
     await hostPage.getByRole("link", { name: "Multiplayer" }).click();
     await guestPage.getByRole("link", { name: "Multiplayer" }).click();
     await expect(
-      hostPage.getByRole("heading", { name: "Multiplayer", exact: true }),
+      hostPage.getByRole("heading", { name: "Find a Lobby" }),
     ).toBeVisible();
     await expect(
-      guestPage.getByRole("heading", { name: "Multiplayer", exact: true }),
+      guestPage.getByRole("heading", { name: "Find a Lobby" }),
     ).toBeVisible();
-
     await hostPage.getByRole("button", { name: "Create Lobby" }).first().click();
     await hostPage.locator('[role="dialog"]').getByRole("combobox").first().click();
     await hostPage.getByRole("option", { name: "Nanosaur 2" }).click();

@@ -320,10 +320,10 @@ async function installMockMultiplayerApi(
 }
 
 async function gotoMultiplayer(page: Page): Promise<void> {
-  await page.goto("/PangeaRSEdit/");
+  await page.goto("/PangeaRSEdit/?multiplayerMockHub=1");
   await page.getByRole("link", { name: "Multiplayer" }).click();
   await expect(
-    page.getByRole("heading", { name: "Multiplayer", exact: true }),
+    page.getByRole("heading", { name: "Find a Lobby" }),
   ).toBeVisible();
 }
 
@@ -345,13 +345,6 @@ test.describe("Multiplayer shell", () => {
 
     await gotoMultiplayer(hostPage);
     await gotoMultiplayer(guestPage);
-    await hostPage.evaluate(() => {
-      window.history.replaceState({}, "", `${window.location.pathname}?multiplayerMockHub=1`);
-    });
-    await guestPage.evaluate(() => {
-      window.history.replaceState({}, "", `${window.location.pathname}?multiplayerMockHub=1`);
-    });
-
     await hostPage.getByRole("button", { name: "Create Lobby" }).first().click();
     await hostPage.locator("#multiplayer-create-display-name").fill("Host");
     await hostPage

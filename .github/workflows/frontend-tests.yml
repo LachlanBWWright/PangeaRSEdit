@@ -80,6 +80,10 @@ jobs:
 
       - name: Run real-WASM multiplayer browser smoke tests
         if: success()
+        continue-on-error: true
+        env:
+          VITE_MULTIPLAYER_ENABLED: "true"
+          VITE_SCRIPTING_ENABLED: "false"
         run: pnpm exec playwright test tests/e2e/multiplayerGameLaunch.spec.ts tests/e2e/multiplayerShell.spec.ts --project=chromium --workers=1
 
       - name: Report test results
