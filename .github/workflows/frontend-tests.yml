@@ -45,8 +45,17 @@ jobs:
       - name: Verify frontend test discovery
         run: pnpm run test:discovery
 
-      - name: Install Chromium for component and browser tests
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm exec playwright install chromium
 
       - name: Run unit and Storybook tests with combined coverage
         run: pnpm run test:coverage:combined
