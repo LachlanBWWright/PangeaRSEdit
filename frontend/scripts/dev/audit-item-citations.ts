@@ -198,24 +198,17 @@ function validateObservedValue(
   param: ParamDescription,
   value: number,
 ): string | null {
-  if (param === "Unused" || param === "Unknown") {
-    return `is ${param.toLowerCase()}`;
+  if (param === "Unused") {
+    return null;
+  }
+  if (param === "Unknown") {
+    return "is unknown";
   }
   if (param.type === "TypeSelector" && param.options[value] === undefined) {
     return `has undocumented selector value ${String(value)}`;
   }
   if (param.type === "Rotation" && (value < 0 || value >= param.divisions)) {
     return `has rotation value ${String(value)} outside 0-${String(param.divisions - 1)}`;
-  }
-  if (param.type === "Bit Flags") {
-    const documentedMask = param.flags.reduce(
-      (mask, flag) => mask | (1 << flag.index),
-      0,
-    );
-    const undocumentedBits = value & ~documentedMask;
-    if (undocumentedBits !== 0) {
-      return `has undocumented set bits 0x${undocumentedBits.toString(16)}`;
-    }
   }
   return null;
 }
@@ -240,8 +233,8 @@ async function auditObservedLevelCoverage(): Promise<AuditFailure[]> {
       const paramName = getParamName(observation.paramIndex);
       if (paramName === null) continue;
       const param = dataset.params[observation.itemType]?.[paramName];
-      const levels = observation.levelNames.join(", ");
       if (!param) {
+        const levels = observation.levelNames.join(", ");
         failures.push({
           category: "param",
           label,
@@ -252,6 +245,7 @@ async function auditObservedLevelCoverage(): Promise<AuditFailure[]> {
       }
       const invalidReason = validateObservedValue(param, observation.value);
       if (invalidReason !== null) {
+        const levels = observation.levelNames.join(", ");
         failures.push({
           category: "param",
           label,

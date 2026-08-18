@@ -236,7 +236,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 1,
           description: "Rock dropper (pteranodon carries and drops rocks)",
           codeSample: {
-            code: "newObj->RockDropper = itemPtr->parm[3] & (1<<1);\nif (newObj->RockDropper) {\n  AttachARock(newObj);\n  SetSkeletonAnim(newObj->Skeleton, PTERA_ANIM_CARRY);\n}",
+            code: "newObj->RockDropper = itemPtr->parm[3] & (1<<1);",
             fileName: "src/Enemies/Enemy_Ptera.c",
             lineNumber: 97,
           },
@@ -266,7 +266,15 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
   },
   [ItemType.TimePortal]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Portal number used to associate this portal with its destination",
+      codeSample: {
+        code: "n = gMasterItemList[i].parm[0];										// parm0 = portal #",
+        fileName: "src/Items/TimePortal.c",
+        lineNumber: 69,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -406,10 +414,10 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
   },
   [ItemType.SporePod]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: "Unused",
   },
 };
 

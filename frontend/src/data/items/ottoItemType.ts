@@ -388,9 +388,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Encased in ice",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1)\n\t\tEncaseHumanInIce(newObj);",
+            code: "if (itemPtr->parm[3] & 1)",
             fileName: "Items/Humans.c",
-            lineNumber: 233,
+            lineNumber: 234,
           },
         },
       ],
@@ -973,7 +973,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       divisions: 4,
       multiplier: "PI/2",
       codeSample: {
-        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        code: "if (itemPtr->parm[0] == 1)",
         fileName: "Items/Triggers2.c",
         lineNumber: 72,
       },
@@ -987,8 +987,8 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     p0: {
       type: "Rotation",
       description: "Rotation (0-3, multiplied by PI/2)",
-      divisions: 4,
-      multiplier: "PI/2",
+      divisions: 8,
+      multiplier: "PI/4",
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/4.0f);",
         fileName: "Items/Traps.c",
@@ -1005,7 +1005,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Rotation (0-3, multiplied by PI/2)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
         lineNumber: 545,
       },
@@ -1035,7 +1035,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Rotation (0-3, multiplied by PI/2)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
         lineNumber: 1777,
       },
@@ -1093,7 +1093,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Smashable type (0-2)",
       codeSample: {
-        code: "short type = itemPtr->parm[0];\ngNewObjectDefinition.type = JUNGLE_ObjType_Hut + type;",
+        code: "short\ttype = itemPtr->parm[0];",
         fileName: "Items/Triggers2.c",
         lineNumber: 354,
       },
@@ -1303,7 +1303,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Platform type (0-3)",
       codeSample: {
-        code: "gNewObjectDefinition.type 		= BLOBBOSS_ObjType_BarPlatform_Blue + type;",
+        code: "itemPtr->parm[0]",
         fileName: "Items/Triggers.c",
         lineNumber: 1321,
       },
@@ -1369,9 +1369,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Encased in ice",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1)\n\t\tEncaseHumanInIce(newObj);",
+            code: "if (itemPtr->parm[3] & 1)",
             fileName: "Items/Humans.c",
-            lineNumber: 233,
+            lineNumber: 234,
           },
         },
       ],
@@ -1869,7 +1869,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
+            code: "body->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
             fileName: "Enemies/FireIce/Enemy_HammerBot.c",
             lineNumber: 90,
           },

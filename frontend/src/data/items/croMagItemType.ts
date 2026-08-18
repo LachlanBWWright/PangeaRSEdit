@@ -317,7 +317,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
           index: 1,
           description: "Bump up position (+500 units)",
           codeSample: {
-            code: "def.coord.y += 500.0f;",
+            code: "if (itemPtr->parm[3] & (1<<1))",
             fileName: "Source/Items/Items.c",
               lineNumber: 353,
           },
@@ -340,9 +340,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "Height offset multiplier (×400 units)",
       codeSample: {
-        code: "heightOff = (float)itemPtr->parm[1] * 400.0f;\nwhere.y = GetTerrainY(x,z) + heightOff;",
+        code: "heightOff = (float)itemPtr->parm[1] * 400.0f;",
         fileName: "Source/Items/Triggers.c",
-        lineNumber: 203,
+        lineNumber: 204,
       },
     },
     p2: "Unknown",
@@ -516,14 +516,14 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   [ItemType.TeamTorch]: {
     flags: "Unknown",
     p0: sourceInteger("Torch team", "Source/Items/Triggers.c", 1184, "newObj->TorchTeam = itemPtr->parm[0];"),
-    p1: "Unknown",
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.TeamBase]: {
     flags: "Unknown",
     p0: sourceInteger("Team-base color/team", "Source/Items/Triggers.c", 1341, ".type = GLOBAL_ObjType_TeamBaseRed + itemPtr->parm[0],"),
-    p1: "Unknown",
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -594,7 +594,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   [ItemType.CastleTower]: {
     flags: "Unknown",
     p0: sourceInteger("Castle-tower model variant", "Source/Items/Items.c", 1174, ".type = EUROPE_ObjType_CastleTower + itemPtr->parm[0],"),
-    p1: "Unknown",
+    p1: "Unused",
     p2: "Unknown",
     p3: sourceFlag("Enable solid collision", "Source/Items/Items.c", 1169, "Boolean isSolid = itemPtr->parm[3] & 1;"),
   },
@@ -618,7 +618,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "House type (varies by track: hut, cabin, dome, etc.)",
       codeSample: {
-        code: ".type 		= info[gTrackNum].type[type],",
+        code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
         lineNumber: 1290,
       },

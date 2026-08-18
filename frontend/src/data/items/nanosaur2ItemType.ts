@@ -113,9 +113,9 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       description:
         "Player number (0-3, which player this start position is for)",
       codeSample: {
-        code: "p = itemPtr[i].parm[0]; // player # is in parm 0\nif (p >= MAX_PLAYERS) // skip illegal player #'s\n  continue;",
+        code: "p = itemPtr[i].parm[0];",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 230,
+        lineNumber: 231,
       },
     },
     p1: {
@@ -183,7 +183,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Wormhole rotation (0-7, where each unit = 45°).",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
+        code: ".rot\t\t= (float)itemPtr->parm[0] * (PI2/8),",
         fileName: "Source/Items/Wormhole.c",
         lineNumber: 151,
       },
@@ -205,7 +205,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
     p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: "Unused",
   },
   [ItemType.WeaponPOW]: {
     flags: "Unknown",
@@ -213,7 +213,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Weapon type (e.g., WEAPON_TYPE_HEATSEEKER, etc.)",
       codeSample: {
-        code: "short weaponType = itemPtr->parm[0];\nif (weaponType == WEAPON_TYPE_SONICSCREAM) // since this in an infinite weapon, don't need POW's\n  return(true);",
+        code: "short weaponType = itemPtr->parm[0];",
         fileName: "Source/Items/POWs.c",
         lineNumber: 63,
       },
@@ -349,7 +349,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       description:
         "Rotation (0=random, 1-8 = specific rotation where each unit = 45°)",
       codeSample: {
-        code: ".rot		= (rot == 0) ? (RandomFloat()*PI2) : ((float)(rot-1) * (PI2/8.0f)),",
+        code: "long rot = itemPtr->parm[1];",
         fileName: "Source/Items/Items.c",
         lineNumber: 202,
       },

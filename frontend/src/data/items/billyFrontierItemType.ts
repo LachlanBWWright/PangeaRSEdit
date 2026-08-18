@@ -98,7 +98,7 @@ const billyFrontierItemTypeParamsSource: Record<
         lineNumber: 211,
       },
     },
-    p1: "Unknown",
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },

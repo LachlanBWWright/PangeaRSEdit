@@ -33,6 +33,22 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
     p2: "Unknown",
     p3: "Unknown",
   },
+  // Item 1: Appear zone. The original add routine never reads any parm field.
+  1: {
+    flags: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  // Item 3: Fuzzy bunny. The original add routine never reads any parm field.
+  3: {
+    flags: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
   4: {
     flags: "Unknown",
     p0: {
@@ -55,6 +71,22 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
     },
     p2: "Unknown",
     p3: "Unknown",
+  },
+  // Item 7: Dinosaur egg. The original add routine never reads any parm field.
+  7: {
+    flags: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  // Item 9: Rex. The original add routine never reads any parm field.
+  9: {
+    flags: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   13: {
     flags: "Unknown",
@@ -80,7 +112,7 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
       description:
         "Initial animation frame (passed to MakeNewShape as frameNum)",
       codeSample: {
-        code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
+        code: "newObj = MakeNewShape(group,type,itemPtr->parm[0],itemPtr->x,itemPtr->y,",
         fileName: "src/Misc/Bonus.c",
         lineNumber: 388,
       },
@@ -130,6 +162,39 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
     },
   },
 
+  // Item 18: Bargain-scene race car
+  18: {
+    flags: "Unknown",
+    p0: {
+      type: "TypeSelector",
+      description: "Car-speed table index (0-13)",
+      options: {
+        0: "12 units per update",
+        1: "4 units per update",
+        2: "6 units per update",
+        3: "8 units per update",
+        4: "10 units per update",
+        5: "12 units per update",
+        6: "14 units per update",
+        7: "16 units per update",
+        8: "18 units per update",
+        9: "20 units per update",
+        10: "22 units per update",
+        11: "24 units per update",
+        12: "26 units per update",
+        13: "28 units per update",
+      },
+      codeSample: {
+        code: "GAME_ASSERT_MESSAGE(itemPtr->parm[0] >= 0 && itemPtr->parm[0] < kNumCarSpeeds",
+        fileName: "src/Enemies/Bargain/RaceCar.c",
+        lineNumber: 481,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
   // Item 19: Key
   19: {
     flags: "Unknown",
@@ -137,7 +202,7 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
       type: "Integer",
       description: "Key frame (initial animation frame passed to MakeNewShape)",
       codeSample: {
-        code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
+        code: "newObj = MakeNewShape(group,type,itemPtr->parm[0],itemPtr->x,itemPtr->y,",
         fileName: "src/Misc/Bonus.c",
         lineNumber: 453,
       },
@@ -232,7 +297,7 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
       description:
         "Weapon type (0=SuctionCup, 1=Cake, 2=Oozie, 3=RBand, 4=Toothpaste, 5=Tracer, 6=PixieDust, 7=Rock, 8=FireHose, 9=ElephantGun, 10=Pie, 11=DoubleShot, 12=TripleShot, 13=Flamethrower, 14=RocketGun)",
       codeSample: {
-        code: "newObj = MakeNewShape(GroupNum_WeaponPOWs, ObjType_WeaponPOWs, itemPtr->parm[0], ...);\nnewObj->Kind = itemPtr->parm[0];",
+        code: "newObj->Kind = itemPtr->parm[0];",
         fileName: "src/MeAndMo/Weapon.c",
         lineNumber: 174,
       },
@@ -242,7 +307,7 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
       description:
         "Temporary flag (1=disappears after GAME_FPS*6 seconds, 0=permanent)",
       codeSample: {
-        code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
+        code: "if (itemPtr->parm[1])",
         fileName: "src/MeAndMo/Weapon.c",
         lineNumber: 176,
       },
@@ -259,7 +324,7 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
       description:
         "Misc powerup type (0=Nuke, 1=Freeze, 2=Shield, 3=RingShot, 4=Speed, 5=FreeDude)",
       codeSample: {
-        code: "newObj = MakeNewShape(GroupNum_MiscPOWs, ObjType_MiscPOWs, itemPtr->parm[0], ...);\nnewObj->Kind = itemPtr->parm[0];",
+        code: "newObj->Kind = itemPtr->parm[0];",
         fileName: "src/Misc/Bonus.c",
         lineNumber: 555,
       },
@@ -269,11 +334,27 @@ const mightyMikeItemParamsSource: Partial<Record<number, ItemParamsSource>> = {
       description:
         "Temporary flag (1=disappears after GAME_FPS*6 seconds, 0=permanent)",
       codeSample: {
-        code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
+        code: "if (itemPtr->parm[1])",
         fileName: "src/Misc/Bonus.c",
         lineNumber: 557,
       },
     },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  // Item 28: Gummy bear. The original add routine never reads any parm field.
+  28: {
+    flags: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  // Item 35: Gumball. The original add routine never reads any parm field.
+  35: {
+    flags: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },

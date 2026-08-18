@@ -247,7 +247,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Clover type (0-1, different variants)",
       codeSample: {
-        code: 'n = itemPtr->parm[0];\nif (n > 1)\n\tDoFatalAlert("AddClover: illegal clover type");\ngNewObjectDefinition.type = LAWN2_MObjType_Clover + n;',
+        code: "n = itemPtr->parm[0];",
         fileName: "src/Items/Items.c",
         lineNumber: 161,
       },
@@ -263,7 +263,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Grass variant (0-1); the active model file changes by level, but parm[0] selects the mesh within that level's grass set",
       codeSample: {
-        code: 'n = itemPtr->parm[0];\nif (n > 1)\n\tDoFatalAlert("AddGrass: illegal grass type");\nswitch(gLevelType)\n{\n\tcase LEVEL_TYPE_LAWN: gNewObjectDefinition.type = LAWN2_MObjType_Grass + n; break;\n\tcase LEVEL_TYPE_FOREST: gNewObjectDefinition.type = FOREST_MObjType_Grass + n; break;\n\tcase LEVEL_TYPE_NIGHT: gNewObjectDefinition.type = NIGHT_MObjType_Grass + n; break;\n}',
+        code: "n = itemPtr->parm[0];",
         fileName: "src/Items/Items.c",
         lineNumber: 203,
       },
@@ -416,9 +416,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.Enemy_FireAnt]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
     p3: {
       type: "Bit Flags",
       flags: [
@@ -505,7 +505,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Pond grass variant (0-2)",
       codeSample: {
-        code: 'if (itemPtr->parm[0] > 2)\n\tDoFatalAlert("AddPondGrass:parm[0] out of range!");\ngNewObjectDefinition.type = POND_MObjType_PondGrass + itemPtr->parm[0];',
+        code: "if (itemPtr->parm[0] > 2)",
         fileName: "src/Items/Items.c",
         lineNumber: 956,
       },
@@ -520,7 +520,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Reed variant (0-1)",
       codeSample: {
-        code: 'if (itemPtr->parm[0] > 1)\n\tDoFatalAlert("AddReed:parm[0] out of range!");\ngNewObjectDefinition.type = POND_MObjType_Reed + itemPtr->parm[0];',
+        code: "if (itemPtr->parm[0] > 1)",
         fileName: "src/Items/Items.c",
         lineNumber: 994,
       },
@@ -565,6 +565,15 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
     p3: {
       type: "Bit Flags",
       flags: [
+        {
+          index: 0,
+          description: "Resurface after falling",
+          codeSample: {
+            code: "newObj->ResurfacePlatform = itemPtr->parm[3] & 1;",
+            fileName: "src/Items/Triggers.c",
+            lineNumber: 483,
+          },
+        },
         {
           index: 1,
           description: "Is small platform",
@@ -678,7 +687,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Door orientation (0-3, where each unit = 90°).",
       codeSample: {
-        code: "rot = itemPtr->parm[1];\ngNewObjectDefinition.rot = (float)rot * (PI2/4);",
+        code: "rot = itemPtr->parm[1];",
         fileName: "src/Items/Items2.c",
         lineNumber: 271,
       },
@@ -687,7 +696,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Door color (0=green, 1=orange, 2=purple, 3=red, 4=teal).",
       codeSample: {
-        code: "color = itemPtr->parm[2];\ngNewObjectDefinition.type = HIVE_MObjType_HiveDoor_Green + color;",
+        code: "color = itemPtr->parm[2];",
         fileName: "src/Items/Items2.c",
         lineNumber: 272,
       },
@@ -740,7 +749,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Door orientation (0-3, where each unit = 90°).",
       codeSample: {
-        code: "Byte aim = itemPtr->parm[1];",
+        code: "aim = itemPtr->parm[1];",
         fileName: "src/Items/Triggers.c",
         lineNumber: 764,
       },
@@ -840,7 +849,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Additional scale factor; final scale is 1.4 + p2*0.3.",
       codeSample: {
-        code: "gNewObjectDefinition.scale = 1.4f + (scaleFactor * .3f);",
+        code: "float\tscaleFactor = itemPtr->parm[2];",
         fileName: "src/Items/Items2.c",
         lineNumber: 536,
       },
@@ -888,7 +897,15 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   },
   [ItemType.FireFlyTargetLocation]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Firefly target ID; fireflies with this ID home to this target",
+      codeSample: {
+        code: "if (itemPtr[i].parm[0] == id) // see if ID's match",
+        fileName: "src/Enemies/Enemy_FireFly.c",
+        lineNumber: 560,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -946,7 +963,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Tube type (0=bent, 1=remapped to straight, 2=straight, 3=taper).",
       codeSample: {
-        code: "if (type == 1)\n\ttype = 2;",
+        code: "n = itemPtr->parm[0];",
         fileName: "src/Items/Items2.c",
         lineNumber: 774,
       },
@@ -955,7 +972,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Tube orientation (0-3, where each unit = 90°).",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
+        code: "itemPtr->parm[1]",
         fileName: "src/Items/Items2.c",
         lineNumber: 792,
       },
@@ -964,7 +981,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Tube size factor; final scale is 3 * (1 + p2*0.5).",
       codeSample: {
-        code: "gNewObjectDefinition.scale = 3.0f * (1.0f + itemPtr->parm[2] * .5f);",
+        code: "s = ((float)itemPtr->parm[2] * .5f) + 1.0f;",
         fileName: "src/Items/Items2.c",
         lineNumber: 781,
       },
@@ -1226,7 +1243,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Spew only when the linked valve is open.",
           codeSample: {
-            code: "newObj->SpewWater = itemPtr->parm[3] & (1<<0);",
+            code: "newObj->ValvePipe = itemPtr->parm[3] & 1;",
             fileName: "src/Items/Items.c",
               lineNumber: 1070,
           },
@@ -1235,9 +1252,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 1,
           description: "Always spew water.",
           codeSample: {
-            code: "newObj->AlwaysSpew = itemPtr->parm[3] & (1<<1);",
+            code: "newObj->SpewWater = itemPtr->parm[3] & (1<<1);",
             fileName: "src/Items/Items.c",
-            lineNumber: 1070,
+            lineNumber: 1071,
           },
         },
       ],
@@ -1279,7 +1296,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Spew only when the linked valve is open.",
           codeSample: {
-            code: "newObj->SpewWater = itemPtr->parm[3] & (1<<0);",
+            code: "newObj->ValvePipe = itemPtr->parm[3] & 1;",
             fileName: "src/Items/Items.c",
             lineNumber: 1134,
           },
@@ -1288,7 +1305,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 1,
           description: "Always spew water.",
           codeSample: {
-            code: "newObj->AlwaysSpew = itemPtr->parm[3] & (1<<1);",
+            code: "newObj->SpewWater = itemPtr->parm[3] & (1<<1);",
             fileName: "src/Items/Items.c",
             lineNumber: 1135,
           },
