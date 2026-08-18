@@ -15,8 +15,8 @@ import {
   type GlobalsInterface,
 } from "../../src/data/globals/globals";
 import { fixNullToZero } from "../../src/data/processors/nullToZeroFixer";
-import { parseNanosaur1LevelWithRust } from "../../src/data/level-io/nanosaurLevelCodecWasm";
 import { parseMightyMikeMap } from "../../src/modelParsers/parseMightyMike";
+import { parseNanosaurObservedItems } from "./nanosaur-level-codec-node";
 
 export interface LevelParamObservation {
   readonly itemType: number;
@@ -101,16 +101,8 @@ async function parseItems(
     return parseMightyMikeMap(levelBuffer).map((level) => level.items);
   }
   if (dataset.key === "nanosaur") {
-    const levelResult = await parseNanosaur1LevelWithRust(levelBuffer);
-    return levelResult
-      .mapErr(() => `${fileName} could not be parsed`)
-      .map((level) => level.objectList.map((item) => ({
-      type: item.type,
-      p0: item.parm[0],
-      p1: item.parm[1],
-      p2: item.parm[2],
-      p3: item.parm[3],
-      })));
+    const levelResult = await parseNanosaurObservedItems(levelBuffer);
+    return levelResult.mapErr(() => `${fileName} could not be parsed`);
   }
 
   const dumpResult = await ResultAsync.fromPromise(
