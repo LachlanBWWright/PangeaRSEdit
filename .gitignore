@@ -4,6 +4,15 @@
 
 # Common ignores
 .DS_Store
+.tmp/
 node_modules/
+plans/
 dist/
+build/pangea-script/
 .env
+pangearsedit-dev.db
+pangearsedit-dev.db-shm
+pangearsedit-dev.db-wal
+
+# Rust build output
+terrain-codec-rust/target/

@@ -1,10 +1,10 @@
 import { Updater } from "use-immer";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-import { Image as KonvaImage, Rect } from "react-konva";
+import { Group, Image as KonvaImage, Rect } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useState, useCallback, memo, useMemo } from "react";
+import { useCallback, memo, useMemo } from "react";
 import { Globals } from "@/data/globals/globals";
 import { updateItem } from "../../../data/selectors";
 import { getLiquidPatchCanvas } from "@/data/items/liquidPatchItems";
@@ -21,6 +21,8 @@ import {
   getLiquidHoverTag,
   getLiquidPatchLayout,
 } from "@/editor/subviews/items/itemRenderState";
+import { useItemLiquidTexture } from "./useItemLiquidTexture";
+import { LevelNumber } from "@/data/globals/levelNumber";
 
 export const Item = memo(function Item({
   itemData,
@@ -28,6 +30,7 @@ export const Item = memo(function Item({
   terrainData,
   setItemData,
   itemIdx,
+  selected,
   onHoverChange,
 }: {
   itemData: ItemData;
@@ -35,12 +38,13 @@ export const Item = memo(function Item({
   terrainData: TerrainData;
   setItemData: Updater<ItemData>;
   itemIdx: number;
+  selected: boolean;
   onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
   const item = itemData.Itms[1000].obj[itemIdx];
   const setSelectedItem = useSetAtom(SelectedItem);
-  const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
+  const levelNumber = useAtomValue(LevelNumber);
   const itemType = item?.type ?? 0;
   const itemP0 = item?.p0 ?? 0;
   const itemP1 = item?.p1 ?? 0;
@@ -48,6 +52,7 @@ export const Item = memo(function Item({
   const itemP3 = item?.p3 ?? 0;
   const itemPosX = item?.x ?? 0;
   const itemPosZ = item?.z ?? 0;
+  const liquidTexture = useItemLiquidTexture(globals, itemType, levelNumber);
 
   const handleMouseDown = useCallback(
     () => setSelectedItem(itemIdx),
@@ -96,6 +101,7 @@ export const Item = memo(function Item({
             itemP3,
             itemPosX,
             itemPosZ,
+            liquidTexture,
           )
         : null,
     [
@@ -110,6 +116,7 @@ export const Item = memo(function Item({
       itemPosX,
       itemPosZ,
       liquidPatchLayout,
+      liquidTexture,
     ],
   );
 
@@ -126,7 +133,6 @@ export const Item = memo(function Item({
     const style = liquidPatchLayout.style;
 
     const handleLiquidMouseOver = () => {
-      setHovering(true);
       onHoverChange(
         getLiquidHoverTag(
           style.name,
@@ -137,7 +143,6 @@ export const Item = memo(function Item({
       );
     };
     const handleLiquidMouseLeave = () => {
-      setHovering(false);
       onHoverChange(null);
     };
 
@@ -212,49 +217,45 @@ export const Item = memo(function Item({
   }
 
   const handleMouseOver = () => {
-    setHovering(true);
     onHoverChange(
       getDefaultItemHoverTag(
         globals,
         itemType,
         itemBoxPosition.x,
         itemBoxPosition.z,
+        selected,
       ),
     );
   };
   const handleMouseLeave = () => {
-    setHovering(false);
     onHoverChange(null);
   };
 
   // Default rendering for regular items
+  const isSelected = selected;
   return (
-    <>
+    <Group
+      x={itemBoxPosition.x}
+      y={itemBoxPosition.z}
+      draggable
+      onMouseOver={handleMouseOver}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
+      onDragStart={handleMouseDown}
+      onDragEnd={handleDragEnd}
+    >
       <Rect
-        x={itemBoxPosition.x}
-        y={itemBoxPosition.z}
+        x={0}
+        y={0}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
         stroke="black"
-        strokeWidth={1}
-        fill="red"
-        draggable
-        onMouseOver={handleMouseOver}
-        onMouseLeave={handleMouseLeave}
-        onMouseDown={handleMouseDown}
-        onDragStart={handleMouseDown}
-        onDragEnd={handleDragEnd}
+        strokeWidth={isSelected ? 2 : 1}
+        fill={isSelected ? "red" : "blue"}
         perfectDrawEnabled={false}
       />
 
-      {!hovering && (
-        <ItemTypeNumber
-          x={itemBoxPosition.x}
-          y={itemBoxPosition.z}
-          value={item.type.toString()}
-          fill="black"
-        />
-      )}
-    </>
+      <ItemTypeNumber x={0} y={0} value={item.type.toString()} fill="white" />
+    </Group>
   );
 });

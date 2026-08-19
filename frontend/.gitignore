@@ -28,9 +28,12 @@ screenshots/
 test-results/
 playwright-report/
 coverage/
+coverage-storybook/
+coverage-combined/
 
 # Build artifacts
 *.tsbuildinfo
+storybook-static/
 
 # Emscripten large data packages (served from CDN instead)
 public/wasm/**/*.data

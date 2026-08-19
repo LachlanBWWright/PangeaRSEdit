@@ -13,6 +13,7 @@ import { describe, it, expect } from "vitest";
 import { categorizeItem, getAllCategories } from "@/data/items/itemCategories";
 import { isItemVisible, createDefaultFilter, applyFilterPreset } from "@/data/items/itemFilterUtils";
 import { FilterMode, FILTER_PRESETS, DEFAULT_FILTER_STATE } from "@/data/items/itemFilterAtoms";
+import { toFilterableItemKey } from "@/data/items/itemFilterKeys";
 import { getGameMapper, getGamesWithMappers } from "@/data/items/mappers";
 import { 
   ROTATION_4_WAY, 
@@ -36,7 +37,9 @@ describe("Item Module Integration", () => {
       // Create filter showing only this item type via itemTypes toggle
       const filter = createDefaultFilter();
       filter.mode = FilterMode.SHOW_SELECTED;
-      filter.itemTypes = { [itemType]: true };
+      filter.itemTypes = {
+        [toFilterableItemKey({ kind: "item", type: itemType })]: true,
+      };
       
       // Item should be visible
       const visible = isItemVisible(itemType, filter);

@@ -13,11 +13,13 @@ import { SelectedFence } from "@/data/fences/fenceAtoms";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
-import { Stage } from "react-konva";
+import { Layer, Stage } from "react-konva";
 import Konva from "konva";
+import { computeWheelZoomStage } from "./konvaViewState";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
@@ -34,7 +36,19 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
+import { PendingCreationOverlay } from "../subviews/shared/PendingCreationOverlay";
 import { View } from "../viewEnum";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { Globals } from "@/data/globals/globals";
+import {
+  MapResizeEdgeControls,
+  type MapResizeDirection,
+} from "./MapResizeEdgeControls";
+import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { CheckpointLayer } from "../subviews/checkpoints/CheckpointLayer";
+import { CroMagPathLayer } from "../subviews/paths/CroMagPathLayer";
+import { getGameFeatures } from "../utils/gameFeatures";
 
 export interface StageData {
   scale: number;
@@ -58,6 +72,7 @@ interface OttoMaticKonvaViewProps {
   view: View;
   stage: StageData;
   setStage: Updater<StageData>;
+  onResize: (direction: MapResizeDirection, amount: number) => Promise<void>;
 }
 
 export function OttoMaticKonvaView({
@@ -76,12 +91,18 @@ export function OttoMaticKonvaView({
   view,
   stage,
   setStage,
+  onResize,
 }: OttoMaticKonvaViewProps) {
   const setSelectedFence = useSetAtom(SelectedFence);
   const setSelectedItem = useSetAtom(SelectedItem);
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
+  const setPendingCreation = useSetAtom(PendingCreation);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const customObjectPlacement = useCustomObjectPlacement();
+  const pendingCreation = useAtomValue(PendingCreation);
+  const globals = useAtomValue(Globals);
+  const gameFeatures = getGameFeatures(globals.GAME_TYPE);
 
   const [containerRef, containerSize] = useContainerSize();
 
@@ -128,9 +149,32 @@ export function OttoMaticKonvaView({
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (clickToAddItem === undefined) return;
+      if (pendingCreation) {
+        const stageRef = e.target.getStage();
+        const pos = stageRef?.getRelativePointerPosition();
+        if (!pos) return;
+        setPendingCreation({
+          ...pendingCreation,
+          points: [
+            ...pendingCreation.points,
+            { x: Math.round(pos.x), z: Math.round(pos.y) },
+          ],
+        });
+        return;
+      }
       const stageRef = e.target.getStage();
-      const pos = stageRef?.getRelativePointerPosition();
+      const customPos = stageRef?.getRelativePointerPosition();
+      if (customPos && customObjectPlacement.objectId !== null) {
+        customObjectPlacement.placeAt(
+          Math.round(customPos.x),
+          headerData.Hedr[1000].obj.minY ?? 0,
+          Math.round(customPos.y),
+        );
+        return;
+      }
+      if (clickToAddItem === undefined) return;
+      const nativeStageRef = e.target.getStage();
+      const pos = nativeStageRef?.getRelativePointerPosition();
       if (!pos) return;
       setItemDataNotNull((itemData) => {
         itemData.Itms[1000].obj.push({
@@ -145,7 +189,14 @@ export function OttoMaticKonvaView({
         });
       });
     },
-    [clickToAddItem, setItemDataNotNull],
+    [
+      clickToAddItem,
+      customObjectPlacement,
+      headerData,
+      pendingCreation,
+      setItemDataNotNull,
+      setPendingCreation,
+    ],
   );
 
   const handleStageDblClick = useCallback(() => {
@@ -153,27 +204,17 @@ export function OttoMaticKonvaView({
     setSelectedItem(undefined);
     setSelectedSpline(undefined);
     setSelectedWaterBody(null);
-  }, [setSelectedFence, setSelectedItem, setSelectedSpline, setSelectedWaterBody]);
+  }, [
+    setSelectedFence,
+    setSelectedItem,
+    setSelectedSpline,
+    setSelectedWaterBody,
+  ]);
 
   const handleStageWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
-      e.evt.preventDefault();
-      const scaleBy = 1.05;
-      const stageRef = e.target.getStage();
-      if (!stageRef) return;
-      const oldScale = stageRef.scaleX();
-      const pointerPosition = stageRef.getPointerPosition();
-      if (!pointerPosition) return;
-      const mousePointTo = {
-        x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
-        y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
-      };
-      const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-      setStage({
-        scale: newScale,
-        x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-        y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-      });
+      const nextStage = computeWheelZoomStage(e);
+      if (nextStage) setStage(nextStage);
     },
     [setStage],
   );
@@ -231,6 +272,7 @@ export function OttoMaticKonvaView({
                 terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
+                fenceData={fenceData}
               />
             )}
             {fenceData && view !== View.fences && (
@@ -238,6 +280,7 @@ export function OttoMaticKonvaView({
                 key="fences"
                 fenceData={fenceData}
                 setFenceData={setFenceDataNotNull}
+                liquidData={liquidData}
               />
             )}
             {itemData && view !== View.items && (
@@ -264,6 +307,7 @@ export function OttoMaticKonvaView({
                 terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
+                fenceData={fenceData}
               />
             )}
             {view === View.fences && fenceData && (
@@ -271,6 +315,7 @@ export function OttoMaticKonvaView({
                 key="fences"
                 fenceData={fenceData}
                 setFenceData={setFenceDataNotNull}
+                liquidData={liquidData}
               />
             )}
             {view === View.items && itemData && (
@@ -289,8 +334,37 @@ export function OttoMaticKonvaView({
                 setSplineData={setSplineDataNotNull}
               />
             )}
+            <CustomScriptPlacements />
+            {view === View.supertiles &&
+              (gameFeatures.hasPaths || gameFeatures.hasCheckpoints) && (
+              <Layer>
+                {gameFeatures.hasPaths && (
+                  <CroMagPathLayer
+                    terrainData={terrainData}
+                    setTerrainData={setTerrainData}
+                  />
+                )}
+                {gameFeatures.hasCheckpoints && (
+                  <CheckpointLayer
+                    terrainData={terrainData}
+                    setTerrainData={setTerrainData}
+                    coordinateScale={1}
+                  />
+                )}
+              </Layer>
+            )}
           </>
         )}
+        <PendingCreationOverlay />
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
+        <MapResizeEdgeControls
+          mapWidth={headerData.Hedr[1000].obj.mapWidth}
+          mapHeight={headerData.Hedr[1000].obj.mapHeight}
+          tileSize={globals.TILE_SIZE}
+          tilesPerUnit={globals.TILES_PER_SUPERTILE}
+          onResize={onResize}
+        />
       </Stage>
     </div>
   );

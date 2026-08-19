@@ -1,4 +1,4 @@
-import { LiquidData } from "@/python/structSpecs/LevelTypes";
+import { FenceData, LiquidData } from "@/python/structSpecs/LevelTypes";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { WaterBody } from "./water/WaterBody";
@@ -12,11 +12,13 @@ export const WaterBodies = memo(function WaterBodies({
   terrainData,
   liquidData,
   setLiquidData,
+  fenceData = null,
 }: {
   headerData: HeaderData;
   terrainData: TerrainData;
   liquidData: LiquidData;
   setLiquidData: Updater<LiquidData>;
+  fenceData?: FenceData | null;
 }) {
   const selectedWaterBody = useAtomValue(SelectedWaterBody);
   if (!liquidData.Liqd) return <></>;
@@ -33,6 +35,7 @@ export const WaterBodies = memo(function WaterBodies({
             setLiquidData={setLiquidData}
             key={waterIdx}
             waterBodyIdx={waterIdx}
+            fenceData={fenceData}
           />
         );
       })}
@@ -44,6 +47,7 @@ export const WaterBodies = memo(function WaterBodies({
           setLiquidData={setLiquidData}
           key={selectedWaterBody}
           waterBodyIdx={selectedWaterBody}
+          fenceData={fenceData}
         />
       )}
     </Layer>

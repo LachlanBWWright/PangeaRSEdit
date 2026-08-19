@@ -47,7 +47,7 @@ export const bugdom2: GameInfo = {
       category: "Characters",
     },
     {
-      name: "BuddyBug Toy",
+      name: "Otto Toy",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/OttoToy.bg3d",
       skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/OttoToy.skeleton.rsrc",
       category: "Characters",
@@ -195,7 +195,7 @@ export const bugdom2: GameInfo = {
       category: "Levels",
     },
     {
-      name: "Global Models",
+      name: "Global",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/models/Global.bg3d",
       category: "Objects",
     },
@@ -227,6 +227,16 @@ export const bugdom2: GameInfo = {
     {
       name: "High Scores",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/models/HighScores.bg3d",
+      category: "Objects",
+    },
+    {
+      name: "Bonus",
+      bg3dFile: "/PangeaRSEdit/games/bugdom2/models/Bonus.bg3d",
+      category: "Objects",
+    },
+    {
+      name: "Level Intro",
+      bg3dFile: "/PangeaRSEdit/games/bugdom2/models/LevelIntro.bg3d",
       category: "Objects",
     },
   ],

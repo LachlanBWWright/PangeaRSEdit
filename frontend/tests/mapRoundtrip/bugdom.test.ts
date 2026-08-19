@@ -21,6 +21,7 @@ import {
 import { bugdomSpecs } from "../../src/python/structSpecs/bugdom";
 import { BugdomGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
+import { expectStructuredRoundtrip } from "./structuredRoundtripTestHelpers";
 
 describe("Bugdom Map Roundtrip", () => {
   const testFilePath = join(
@@ -206,8 +207,9 @@ describe("Bugdom Map Roundtrip", () => {
     console.log("✅ Bugdom hex data roundtrip successful");
   });
 
-  it.skip("should roundtrip with bugdom specs (structured data)", () => {
-    // Skip: StructConverter.pack not implemented
+  it("should roundtrip structured resources with Bugdom specs", async () => {
+    if (!fileExists) return;
+    await expectStructuredRoundtrip(new Uint8Array(originalData), bugdomSpecs);
   });
 
   it("should produce similar binary size", async () => {
@@ -240,7 +242,4 @@ describe("Bugdom Map Roundtrip", () => {
     expect(sizeRatio).toBeLessThan(1.2);
   });
 
-  it.skip("should preserve all resource types", () => {
-    // Skip: StructConverter.pack not implemented
-  });
 });

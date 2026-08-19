@@ -130,6 +130,36 @@ export const ottomatic: GameInfo = {
       skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/VenusFlytrap.skeleton.rsrc",
       category: "Characters",
     },
+    {
+      name: "Clown",
+      bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Clown.bg3d",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Clown.skeleton.rsrc",
+      category: "Characters",
+    },
+    {
+      name: "IceCube",
+      bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/IceCube.bg3d",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/IceCube.skeleton.rsrc",
+      category: "Characters",
+    },
+    {
+      name: "PitcherPlant",
+      bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/PitcherPlant.bg3d",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/PitcherPlant.skeleton.rsrc",
+      category: "Characters",
+    },
+    {
+      name: "SkirtLady",
+      bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/SkirtLady.bg3d",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/SkirtLady.skeleton.rsrc",
+      category: "Characters",
+    },
+    {
+      name: "SlimeTree",
+      bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/SlimeTree.bg3d",
+      skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/SlimeTree.skeleton.rsrc",
+      category: "Characters",
+    },
 
     {
       name: "Main Menu",
@@ -147,7 +177,7 @@ export const ottomatic: GameInfo = {
       category: "Levels",
     },
     {
-      name: "Global Models",
+      name: "Global",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/models/global.bg3d",
       category: "Objects",
     },
@@ -187,7 +217,7 @@ export const ottomatic: GameInfo = {
       category: "Levels",
     },
     {
-      name: "Bonus Models",
+      name: "Bonus",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/models/bonus.bg3d",
       category: "Objects",
     },
@@ -204,6 +234,11 @@ export const ottomatic: GameInfo = {
     {
       name: "High Scores",
       bg3dFile: "/PangeaRSEdit/games/ottomatic/models/highscores.bg3d",
+      category: "Objects",
+    },
+    {
+      name: "Level Intro",
+      bg3dFile: "/PangeaRSEdit/games/ottomatic/models/LevelIntro.bg3d",
       category: "Objects",
     },
   ],

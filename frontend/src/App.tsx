@@ -1,5 +1,4 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
-import "./App.css";
+import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { LevelEditor } from "./pages/LevelEditor";
 import { ModelViewer } from "./pages/ModelViewer";
@@ -8,10 +7,14 @@ import { DownloadLevels } from "./pages/DownloadLevels";
 import { TestModelViewer } from "./pages/TestModelViewer";
 import { ItemModelViewer } from "./pages/ItemModelViewer";
 import { ItemAuditPage } from "./pages/ItemAuditPage";
+import { MultiplayerPage } from "./pages/Multiplayer";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
 export function App() {
+  const featureFlags = useFeatureFlags();
+
   return (
     <TooltipProvider>
       <HashRouter>
@@ -26,6 +29,16 @@ export function App() {
               <Route path="/test-models" element={<TestModelViewer />} />
               <Route path="/item-models" element={<ItemModelViewer />} />
               <Route path="/item-audit" element={<ItemAuditPage />} />
+              <Route
+                path="/multiplayer"
+                element={
+                  featureFlags.multiplayer ? (
+                    <MultiplayerPage />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
               <Route path="*" element={<LevelEditor />} />
             </Routes>
           </div>

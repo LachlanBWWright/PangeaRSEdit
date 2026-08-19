@@ -25,6 +25,8 @@ import { Globals } from "@/data/globals/globals";
 import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { LevelNumber } from "@/data/globals/levelNumber";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import {
   deleteSelectedItem,
   filterSafeItemValues,
@@ -37,10 +39,15 @@ import {
   updateSelectedItemPosition,
   updateSelectedItemType,
 } from "@/editor/subviews/items/itemMenuState";
+import { TerrainItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
+import { ItemStateFlags } from "./ItemStateFlags";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
   setItemData,
+  headerData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -48,13 +55,17 @@ export const ItemMenu = memo(function ItemMenu({
   setHeaderData?: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
+  const levelNum = useAtomValue(LevelNumber);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
 
   const selectedItemData = getSelectedItem(itemData, selectedItem);
   const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
-  const selectedItemParams = getSelectedItemParams(selectedItemData?.type);
+  const selectedItemParams = getSelectedItemParams(
+    globals,
+    selectedItemData?.type,
+  );
 
   const allItemValues = useMemo(() => getAllItemValues(globals), [globals]);
 
@@ -82,11 +93,11 @@ export const ItemMenu = memo(function ItemMenu({
   }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex h-full min-h-full flex-col gap-2">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu hasItems={itemCount > 0} />
       ) : (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm flex-1 min-h-0">
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm">
           <span className="text-gray-400">X</span>
           <Input
             type="number"
@@ -117,15 +128,13 @@ export const ItemMenu = memo(function ItemMenu({
       )}
 
       {selectedItemData !== null && selectedItemData !== undefined && (
-        <div className="flex flex-col gap-2 flex-1 min-h-0">
+        <div className="flex flex-col gap-2">
           <Select
             value={selectedItemData.type.toString() ?? ""}
             onValueChange={handleTypeChange}
           >
             <SelectTrigger>
-              <SelectValue>
-                {getItemName(globals, selectedItemData.type)}
-              </SelectValue>
+              <SelectValue placeholder="Select an item" />
             </SelectTrigger>
             <SelectContent>
               {itemValues.map((key) => (
@@ -134,11 +143,30 @@ export const ItemMenu = memo(function ItemMenu({
                   className="text-white"
                   value={key.toString()}
                 >
-                  {getItemName(globals, key)}
+                  <ItemThumbnail
+                    game={globals.GAME_TYPE}
+                    kind="terrainItem"
+                    itemType={key}
+                    label={getItemName(globals, key)}
+                    levelNum={levelNum}
+                    compact
+                  />
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          <ItemStateFlags
+            description={selectedItemParams?.flags ?? "Unknown"}
+            value={selectedItemData.flags}
+            onChange={(value) => {
+              setItemData((draft) => {
+                if (selectedItem === undefined) return;
+                const item = draft.Itms?.[1000]?.obj[selectedItem];
+                if (item) item.flags = value;
+              });
+            }}
+          />
 
           {/* Safe Items Filter Toggle */}
           {safeItemTypes.size > 0 && (
@@ -158,8 +186,7 @@ export const ItemMenu = memo(function ItemMenu({
             </div>
           )}
 
-          <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
-            {/* Param 0-3, refactored */}
+          <div className="grid grid-cols-2 gap-2">
             {([0, 1, 2, 3] as const).map((i) => {
               const paramKey = `p${i}` as const;
               const param = selectedItemParams?.[paramKey] ?? "Unknown";
@@ -169,29 +196,41 @@ export const ItemMenu = memo(function ItemMenu({
                   updateSelectedItemParam(draft, selectedItem, paramKey, v);
                 });
               };
-              return [
-                <ParamTooltip
-                  key={`tooltip-${i}`}
-                  label={<span>{`Parameter ${i}`}</span>}
-                  tooltip={getParamTooltip(param)}
-                  defaultCitation={
-                    typeof param === "string" || !param
-                      ? undefined
-                      : param.defaultCitation
-                  }
-                  additionalCitations={
-                    typeof param === "string" || !param
-                      ? undefined
-                      : param.additionalCitations
-                  }
-                />,
+              const flags =
                 param &&
                 typeof param !== "string" &&
                 param.type === "Bit Flags" &&
-                Array.isArray(param.flags) ? (
-                  <div key={`flags-${i}`} className="flex flex-col gap-1">
-                    <div className="flex flex-wrap gap-2">
-                      {param.flags.map((flag: FlagDescription) => {
+                Array.isArray(param.flags)
+                  ? param.flags
+                  : [];
+              return (
+                <div
+                  key={paramKey}
+                  className="flex flex-col gap-2 rounded border border-gray-700 bg-gray-900/30 p-2"
+                >
+                  <ParamTooltip
+                    label={<span>{`Parameter ${i}`}</span>}
+                    tooltip={getParamTooltip(param)}
+                    defaultCitation={
+                      typeof param === "string" || !param
+                        ? undefined
+                        : param.defaultCitation
+                    }
+                    additionalCitations={
+                      typeof param === "string" || !param
+                        ? undefined
+                        : param.additionalCitations
+                    }
+                  />
+                  <Input
+                    type="number"
+                    value={value.toString()}
+                    className="h-7 text-xs"
+                    onChange={(e) => setValue(parseU8(e.target.value))}
+                  />
+                  {flags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 border-t border-gray-700 pt-2">
+                      {flags.map((flag: FlagDescription) => {
                         const checked = (value & (1 << flag.index)) !== 0;
                         return (
                           <label
@@ -218,28 +257,33 @@ export const ItemMenu = memo(function ItemMenu({
                         );
                       })}
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p>Value:</p>
-                      <Input
-                        type="number"
-                        className="w-24"
-                        value={value.toString()}
-                        onChange={(e) => setValue(parseU8(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <Input
-                    key={`input-${i}`}
-                    type="number"
-                    value={value.toString()}
-                    onChange={(e) => setValue(parseU8(e.target.value))}
-                  />
-                ),
-              ];
+                  )}
+                </div>
+              );
             })}
           </div>
+          {ENABLE_SCRIPTS && (
+            <TerrainItemScriptSection
+              selectionLabel={getItemName(globals, selectedItemData.type)}
+              signature={{
+                itemType: selectedItemData.type,
+                position: {
+                  x: selectedItemData.x,
+                  y: headerData?.Hedr[1000].obj.minY ?? 0,
+                  z: selectedItemData.z,
+                },
+                flags: 0,
+                params: [
+                  selectedItemData.p0,
+                  selectedItemData.p1,
+                  selectedItemData.p2,
+                  selectedItemData.p3,
+                ],
+              }}
+            />
+          )}
           <Button
+            size="sm"
             variant="destructive"
             disabled={selectedItem === undefined}
             onClick={handleDeleteItem}
@@ -275,7 +319,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
           }}
         >
           <SelectTrigger>
-            <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
+            <SelectValue placeholder="Select an item" />
           </SelectTrigger>
           <SelectContent>
             {itemValues.map((key) => (
@@ -284,7 +328,13 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
                 className="text-white"
                 value={key.toString()}
               >
-                {getItemName(globals, key)}
+                <ItemThumbnail
+                  game={globals.GAME_TYPE}
+                  kind="terrainItem"
+                  itemType={key}
+                  label={getItemName(globals, key)}
+                  compact
+                />
               </SelectItem>
             ))}
           </SelectContent>
@@ -301,16 +351,19 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     );
 
   return (
-    <EmptyDataPrompt
-      title={hasItems ? "No Item Selected" : "No Items"}
-      description={
-        hasItems
-          ? "Select an item on the canvas or add another one."
-          : "This level doesn't have any items yet. Add your first item to get started."
-      }
-      buttonText={hasItems ? "Add More Items" : "Add First Item"}
-      onInitialize={() => setClickToAddItem(0)}
-      fillHeight={true}
-    />
+    <>
+      <EmptyDataPrompt
+        title={hasItems ? "No Item Selected" : "No Items"}
+        description={
+          hasItems
+            ? "Select an item on the canvas or add another one."
+            : "This level doesn't have any items yet. Add your first item to get started."
+        }
+        buttonText={hasItems ? "Add More Items" : "Add First Item"}
+        onInitialize={() => setClickToAddItem(0)}
+        fillHeight
+      />
+      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
+    </>
   );
 }

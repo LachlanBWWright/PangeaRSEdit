@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { GAME_DISPLAY_NAMES } from "./utils/gamePreviewRuntime";
 import type { AnyLevelInfo, GamePortConfig } from "./utils/gamePortConfig";
+import type { MultiplayerMatchConfig } from "@/multiplayer/types";
+import type { MultiplayerRuntimeManagedTransport } from "@/multiplayer/runtimeBridge";
 import {
   getPreviewOverlayState,
   isWaitingForPreviewLevelData,
   startPreparedGamePreview,
   type PreviewState,
 } from "./utils/gamePreviewHostState";
+import type { PreviewVfsFile } from "./utils/gamePreviewRuntime";
 
 interface Props {
   readonly config: GamePortConfig;
@@ -30,7 +33,10 @@ interface Props {
    * `null`      = no texture file needed for this game.
    */
   readonly terrainTextureBytes: Uint8Array | null | undefined;
+  readonly customFiles?: readonly PreviewVfsFile[];
   readonly runToken: number;
+  readonly networkMatchConfig?: MultiplayerMatchConfig | null;
+  readonly networkRuntimeTransport?: MultiplayerRuntimeManagedTransport | null;
   /** When true, launch from the title screen without level injection or level-jump globals. */
   readonly normalLaunch?: boolean;
 }
@@ -42,7 +48,10 @@ export function GamePreviewHost({
   terrainDataBytes,
   terrainRsrcBytes,
   terrainTextureBytes,
+  customFiles,
   runToken,
+  networkMatchConfig,
+  networkRuntimeTransport,
   normalLaunch = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -53,6 +62,15 @@ export function GamePreviewHost({
   });
 
   useEffect(() => {
+    return () => {
+      const canvas = canvasRef.current;
+      if (canvas && document.activeElement === canvas) {
+        canvas.blur();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     return startPreparedGamePreview({
       canvas: canvasRef.current,
       config,
@@ -61,8 +79,11 @@ export function GamePreviewHost({
       terrainDataBytes,
       terrainRsrcBytes,
       terrainTextureBytes,
+      customFiles,
       runToken,
       normalLaunch,
+      networkMatchConfig,
+      networkRuntimeTransport,
       onStatus: (text) => {
         setPreviewState({ runToken, statusText: text, errorText: null });
       },
@@ -80,9 +101,12 @@ export function GamePreviewHost({
     levelNumber,
     normalLaunch,
     runToken,
+    networkMatchConfig,
+    networkRuntimeTransport,
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
+    customFiles,
   ]);
 
   const waitingForLevelData = isWaitingForPreviewLevelData({
@@ -104,6 +128,9 @@ export function GamePreviewHost({
         ref={canvasRef}
         className="h-full w-full block bg-black outline-none"
         tabIndex={-1}
+        onPointerDown={(event) => {
+          event.currentTarget.focus();
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
         }}

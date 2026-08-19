@@ -1,17 +1,93 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using PangeaRSEdit.Api.Hubs;
+using PangeaRSEdit.Api.Security;
 using PangeaRSEdit.Infrastructure;
 using PangeaRSEdit.Infrastructure.Persistence;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+var isMigrationMode = args.Contains("--migrate", StringComparer.Ordinal);
+
+var configurationErrors = ValidateProductionConfiguration(
+    builder.Environment,
+    builder.Configuration,
+    isMigrationMode);
+if (configurationErrors.Count > 0)
+{
+    foreach (var configurationError in configurationErrors)
+    {
+        Console.Error.WriteLine(configurationError);
+    }
+
+    Environment.ExitCode = 1;
+    return;
+}
 
 builder.Services.AddControllers();
+builder.Services.AddSingleton<ParticipantTokenService>();
 builder.Services.AddOpenApi();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 2 * 1024 * 1024;
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
 builder.Services.AddPangeaInfrastructure(builder.Configuration);
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<PangeaRSEditDbContext>("database");
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("multiplayer-read", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 600,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy("multiplayer-write", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy("multiplayer-hub", context =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 600,
+                TokensPerPeriod = 300,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+    options.AddPolicy("lsp-hub", context =>
+        RateLimitPartition.GetConcurrencyLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = 4,
+                QueueLimit = 0
+            }));
+});
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var allowedOrigins = new HashSet<string>(corsOrigins, StringComparer.OrdinalIgnoreCase);
 builder.Services
     .AddCors(options =>
     {
@@ -19,7 +95,31 @@ builder.Services
             "frontend",
             policy =>
             {
-                policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+                policy
+                    .SetIsOriginAllowed(origin =>
+                    {
+                        if (allowedOrigins.Contains(origin))
+                        {
+                            return true;
+                        }
+
+                        if (!builder.Environment.IsDevelopment())
+                        {
+                            return false;
+                        }
+
+                        if (!Uri.TryCreate(origin, UriKind.Absolute, out var parsedOrigin))
+                        {
+                            return false;
+                        }
+
+                        return string.Equals(parsedOrigin.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(parsedOrigin.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase);
+                    })
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .WithExposedHeaders("X-Participant-Id", "X-Participant-Token")
+                    .AllowCredentials();
             }
         );
     });
@@ -84,10 +184,19 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (isMigrationMode)
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<PangeaRSEditDbContext>();
-    await dbContext.Database.EnsureCreatedAsync();
+    await using var migrationScope = app.Services.CreateAsyncScope();
+    var migrationDb = migrationScope.ServiceProvider.GetRequiredService<PangeaRSEditDbContext>();
+    await migrationDb.Database.MigrateAsync();
+    return;
+}
+
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+{
+    await using var initializationScope = app.Services.CreateAsyncScope();
+    var initializationDb = initializationScope.ServiceProvider.GetRequiredService<PangeaRSEditDbContext>();
+    await initializationDb.Database.EnsureCreatedAsync();
 }
 
 if (app.Environment.IsDevelopment())
@@ -95,14 +204,78 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseForwardedHeaders();
+if (!app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<MultiplayerHub>("/api/multiplayer/signaling");
+app.MapHealthChecks("/healthz");
+app.MapHub<MultiplayerHub>("/api/multiplayer/signaling")
+    .RequireRateLimiting("multiplayer-hub");
+app.MapHub<LspHub>("/api/lsp")
+    .RequireRateLimiting("lsp-hub");
 
 app.Run();
+
+static IReadOnlyList<string> ValidateProductionConfiguration(
+    IWebHostEnvironment environment,
+    IConfiguration configuration,
+    bool isMigrationMode)
+{
+    if (!environment.IsProduction())
+    {
+        return [];
+    }
+
+    var errors = new List<string>();
+    if (!string.Equals(configuration["Database:Provider"], "postgres", StringComparison.OrdinalIgnoreCase))
+    {
+        errors.Add("Production requires Database__Provider=postgres.");
+    }
+
+    if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("Default")))
+    {
+        errors.Add("Production requires ConnectionStrings__Default.");
+    }
+
+    if (isMigrationMode)
+    {
+        return errors;
+    }
+
+    if (configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() is not { Length: > 0 })
+    {
+        errors.Add("Production requires at least one Cors__AllowedOrigins entry.");
+    }
+
+    if (string.IsNullOrWhiteSpace(configuration["Multiplayer:TurnUrl"])
+        || string.IsNullOrWhiteSpace(configuration["Multiplayer:TurnSharedSecret"]))
+    {
+        errors.Add("Production multiplayer requires TURN URL and shared secret configuration.");
+    }
+
+    if (string.IsNullOrWhiteSpace(configuration["Multiplayer:ParticipantSigningKey"]))
+    {
+        errors.Add("Production multiplayer requires a participant signing key.");
+    }
+
+    if (!string.Equals(configuration["Multiplayer:Topology"], "single-instance", StringComparison.OrdinalIgnoreCase))
+    {
+        errors.Add("Production multiplayer currently requires Multiplayer__Topology=single-instance because signaling state is process-local.");
+    }
+
+    if (string.IsNullOrWhiteSpace(configuration["Multiplayer:RequiredContentHash"]))
+    {
+        errors.Add("Production multiplayer requires Multiplayer__RequiredContentHash to identify the deployed runtime and content bundle.");
+    }
+
+    return errors;
+}
 
 public partial class Program;

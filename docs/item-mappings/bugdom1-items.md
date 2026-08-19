@@ -1,0 +1,83 @@
+# Bugdom 1 item param/model mapping
+
+## Coverage
+
+- Terrain item record: `games/bugdom/src/Headers/structs.h:215-220`
+- Authoritative routing: `games/bugdom/src/Terrain/Terrain2.c:45-113`
+- Item ID span: `0..63`
+- Coverage proof: the table below addresses all 64 terrain item IDs from the authoritative dispatch table, including explicit `NilAdd` slots.
+
+## Terrain items
+
+| ID | Item | Add routine | Model / behavior | p0-p3 / flags semantics | Citations |
+|---:|---|---|---|---|---|
+| 0 | My Start Coords | `NilAdd` | Marker only; no model. Player start is read from item list. | `p0`=start aim `0..7`; `p1-p3`/flags unused here. | `games/bugdom/src/Terrain/Terrain2.c:49,199-214`; `games/bugdom/src/Headers/terrain.h:9-12` |
+| 1 | LadyBug Bonus | `AddLadyBugBonus` | 4 ladybug posts + cage display-group objects, plus chained `SKELETON_TYPE_LADYBUG`; cage is trigger/kickable. | No `parm` use in add. | `games/bugdom/src/Terrain/Terrain2.c:50`; `games/bugdom/src/Items/Triggers2.c:617-704` |
+| 2 | Nut | `AddNut` | `GLOBAL1_MGroupNum_Nut / GLOBAL1_MObjType_Nut`, scale `1.7`; trigger/kickable nut that spawns contents. | `p0`=contents enum; `p1`=content aux (key ID etc.); `p2`=detonator ID on hive; `p3 bit0`=regenerate powerup, `bit1`=detonatable. | `games/bugdom/src/Terrain/Terrain2.c:51`; `games/bugdom/src/Items/Triggers.c:212-303` |
+| 3 | ENEMY: BOXERFLY | `AddEnemy_BoxerFly` | Skeleton enemy `SKELETON_TYPE_BOXERFLY`, scale `.9` via `MakeEnemySkeleton`. | No item params documented at add site. | `games/bugdom/src/Terrain/Terrain2.c:52`; `games/bugdom/src/Enemies/Enemy_BoxerFly.c:45,88-137` |
+| 4 | Rock | `AddRock` | Level-dependent display-group rock: lawn `LAWN2_MObjType_Rock1+p0` scale `4.0`; night/forest `FlatRock+p0` scale `.6/.9`. | `p0`=rock variant; meaning depends on level (lawn big/little, night/forest flat/normal). | `games/bugdom/src/Terrain/Terrain2.c:53`; `games/bugdom/src/Items/Items2.c:677-755` |
+| 5 | Clover | `AddClover` | Lawn clover display-group `LAWN2_MObjType_Clover+p0`; random rot; scale `.15..~.25`. | `p0`=clover type `0..1`. | `games/bugdom/src/Terrain/Terrain2.c:54`; `games/bugdom/src/Items/Items.c:150-190` |
+| 6 | Grass | `AddGrass` | Level-dependent grass display-group (`LAWN2`, `FOREST`, `NIGHT`); random rot; scale `.15`. | `p0`=grass type `0..1`. | `games/bugdom/src/Terrain/Terrain2.c:55`; `games/bugdom/src/Items/Items.c:193-251` |
+| 7 | Weed | `AddWeed` | Lawn weed display-group `LAWN2_MObjType_Weed+p0`; random rot; scale `.2`. | `p0`=weed variant. | `games/bugdom/src/Terrain/Terrain2.c:56`; `games/bugdom/src/Items/Items.c:254-286` |
+| 8 | Slug enemy | `NilAdd` | Terrain slot exists, but no terrain add; slug is spline-driven. | No terrain semantics. | `games/bugdom/src/Terrain/Terrain2.c:57`; `games/bugdom/src/Terrain/SplineItems.c:57` |
+| 9 | Ant | `AddEnemy_Ant` | Skeleton enemy `SKELETON_TYPE_ANT`, scale `1.4`. | `p0`=attack type (`0` spear, `1` rock); `p3 bit0`=aggressive. | `games/bugdom/src/Terrain/Terrain2.c:58`; `games/bugdom/src/Enemies/Enemy_Ant.c:52,136-158,211` |
+| 10 | Sunflower | `AddSunFlower` | Lawn sunflower display-group; random rot; scale `.15`. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:59`; `games/bugdom/src/Items/Items.c:292-318` |
+| 11 | Cosmo | `AddCosmo` | Lawn cosmo display-group; random rot; scale `.4+rand`. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:60`; `games/bugdom/src/Items/Items.c:325-353` |
+| 12 | Poppy | `AddPoppy` | Lawn poppy display-group; random rot; scale `.4+rand`. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:61`; `games/bugdom/src/Items/Items.c:358-384` |
+| 13 | Wall End | `AddWallEnd` | `GLOBAL1_MObjType_WallEnd`; scale `1.5` in forest, `.7` otherwise; impassable. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:62`; `games/bugdom/src/Items/Items.c:391-425` |
+| 14 | Water Patch | `AddWaterPatch` | Procedural/custom-draw liquid mesh (`CTYPE_LIQUID`), no direct model index. | `p0`=tiles wide; `p1`=tiles deep; `p2`=depth / anthill ID / y-table index; `p3 bit0`=tesselate, `bit1`=underground, `bit2`=indexed y. | `games/bugdom/src/Terrain/Terrain2.c:63`; `games/bugdom/src/Items/Liquids.c:255-424` |
+| 15 | FireAnt | `AddEnemy_FireAnt` | Skeleton enemy `SKELETON_TYPE_FIREANT`, scale `1.2`. | `p3 bit0`=always add. | `games/bugdom/src/Terrain/Terrain2.c:64`; `games/bugdom/src/Enemies/Enemy_FireAnt.c:39,87-150,107` |
+| 16 | WaterBug | `AddWaterBug` | Rideable skeleton `SKELETON_TYPE_WATERBUG`, scale `1.4`; top-trigger mount. | `p0`=initial aim `0..15` ccw; `flags USER1`=already paid for. | `games/bugdom/src/Terrain/Terrain2.c:65`; `games/bugdom/src/Ride/WaterBug.c:52-105` |
+| 17 | Tree (flight level) | `AddTree` | Forest tree display-group `FOREST_MObjType_Tree`, scale `20`; persistent, multi-box collision. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:66`; `games/bugdom/src/Items/Items.c:430-538` |
+| 18 | Dragonfly | `AddDragonFly` | Rideable skeleton `SKELETON_TYPE_DRAGONFLY`, scale `2.0`; top-trigger mount. | `p0`=initial aim `0..15` clockwise. | `games/bugdom/src/Terrain/Terrain2.c:67`; `games/bugdom/src/Ride/DragonFly.c:68-122` |
+| 19 | Cat Tail | `AddCatTail` | Pond cattail display-group; random rot; scale `.15..~.25`. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:68`; `games/bugdom/src/Items/Items.c:811-840` |
+| 20 | Duck Weed | `AddDuckWeed` | Pond duckweed display-group; random rot; scale `.15..~.25`. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:69`; `games/bugdom/src/Items/Items.c:846-875` |
+| 21 | Lily Flower | `AddLilyFlower` | Pond lily-flower display-group; random rot; scale `3.0..3.5`; blocks camera. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:70`; `games/bugdom/src/Items/Items.c:880-909` |
+| 22 | Lily Pad | `AddLilyPad` | Pond lily-pad display-group, random rot, scale `2.5`; impassable platform-like collider. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:71`; `games/bugdom/src/Items/Items.c:916-945` |
+| 23 | Pond Grass | `AddPondGrass` | Pond grass display-group `PondGrass+p0`; random rot; scale `.25+rand`. | `p0`=variant `0..2`. | `games/bugdom/src/Terrain/Terrain2.c:72`; `games/bugdom/src/Items/Items.c:949-982` |
+| 24 | Reed | `AddReed` | Pond reed display-group `Reed+p0`; random rot; scale `.4`. | `p0`=variant `0..1`. | `games/bugdom/src/Terrain/Terrain2.c:73`; `games/bugdom/src/Items/Items.c:987-1023` |
+| 25 | Pond Fish Enemy | `AddEnemy_PondFish` | Skeleton enemy `SKELETON_TYPE_PONDFISH`, scale `2.0+rand*.3`. | No map params used in add. | `games/bugdom/src/Terrain/Terrain2.c:74`; `games/bugdom/src/Enemies/Enemy_PondFish.c:47,80-124,93` |
+| 26 | Honeycomb platform | `AddHoneycombPlatform` | Hive platform display-group: brick or metal; trigger if falling, solid misc if metal. | `p0`=`0` falling brick / `1` solid metal; `p1`=elevation; `p3 bit0`=resurface, `bit1`=small. | `games/bugdom/src/Terrain/Terrain2.c:75`; `games/bugdom/src/Items/Triggers.c:440-519` |
+| 27 | Honey Patch | `AddHoneyPatch` | Procedural liquid patch, kind=`LIQUID_HONEY`; no direct model. | Shared `AddLiquidPatch`: `p0`=width, `p1`=depth, `p2`=y offset or y-table index, `p3 bit0`=indexed y. | `games/bugdom/src/Terrain/Terrain2.c:76`; `games/bugdom/src/Items/Liquids.c:749-754,811-898` |
+| 28 | Firecracker | `AddFirecracker` | Hive firecracker (`HIVE_MObjType_Firecracker`, scale `.3`) or Night cherry-bomb/firecracker (`NIGHT_MObjType_CherryBomb+p0`, scale `.6`). | Hive: `p0`=detonator ID. Night: `p0`=bomb type (`0` cherry bomb, `1` firecracker). | `games/bugdom/src/Terrain/Terrain2.c:77`; `games/bugdom/src/Items/Items2.c:62-132` |
+| 29 | Detonator | `AddDetonator` | Hive detonator box `HIVE_MObjType_DetonatorGreen+p1` plus chained plunger. | `p0`=detonator ID; `p1`=color; `flags USER1`=already plunged. | `games/bugdom/src/Terrain/Terrain2.c:78`; `games/bugdom/src/Items/Triggers.c:603-683` |
+| 30 | Hive Door | `AddHiveDoor` | Hive door display-group `HIVE_MObjType_HiveDoor_Green+p2`, scale `7`; opens if detonator already blown. | `p0`=detonator ID; `p1`=rot `0..3`; `p2`=color. | `games/bugdom/src/Terrain/Terrain2.c:79`; `games/bugdom/src/Items/Items2.c:255-328` |
+| 31 | Mosquito Enemy | `AddEnemy_Mosquito` | Skeleton enemy `SKELETON_TYPE_MOSQUITO`, scale `.8`. | No map params used in add. | `games/bugdom/src/Terrain/Terrain2.c:80`; `games/bugdom/src/Enemies/Enemy_Mosquito.c:45,93-140,102` |
+| 32 | Checkpoint | `AddCheckpoint` | Straw display-group + chained droplet trigger; no procedural model. | `p0`=checkpoint number; `p1`=player restore rot `0..3`. | `games/bugdom/src/Terrain/Terrain2.c:81`; `games/bugdom/src/Items/Triggers2.c:60-139` |
+| 33 | Lawn Door | `AddLawnDoor` | Lawn/night door display-group `Door_Green+p0`; trigger unless already open. | `p0`=key ID; `p1`=orientation `0..3`; `flags USER1`=already open. | `games/bugdom/src/Terrain/Terrain2.c:82`; `games/bugdom/src/Items/Triggers.c:754-830` |
+| 34 | Dock | `AddDock` | Pond dock display-group, scale `1.0`; collision depends on orientation. | `p0`=rot `0..3`. | `games/bugdom/src/Terrain/Terrain2.c:83`; `games/bugdom/src/Items/Items2.c:452-486` |
+| 35 | Foot | `NilAdd` | Terrain slot exists, but no terrain add; spline foot trap only. | No terrain semantics. | `games/bugdom/src/Terrain/Terrain2.c:84`; `games/bugdom/src/Terrain/SplineItems.c:84` |
+| 36 | ENEMY: SPIDER | `AddEnemy_Spider` | Skeleton spider `SKELETON_TYPE_SPIDER`, scale `.9`, plus hidden level-specific web sphere display object. | No item params exposed at add site. | `games/bugdom/src/Terrain/Terrain2.c:85`; `games/bugdom/src/Enemies/Enemy_Spider.c:54,94-166` |
+| 37 | ENEMY: CATERPILLER | `NilAdd` | Terrain slot exists, but no terrain add; spline caterpillar only. | No terrain semantics. | `games/bugdom/src/Terrain/Terrain2.c:86`; `games/bugdom/src/Terrain/SplineItems.c:86` |
+| 38 | Firefly | `AddFireFly` | Skeleton firefly `SKELETON_TYPE_FIREFLY`, scale `.6`, plus chained glow flare display-group. | `p0`=target ID. | `games/bugdom/src/Terrain/Terrain2.c:87`; `games/bugdom/src/Enemies/Enemy_FireFly.c:34-35,80-155` |
+| 39 | Exit Log | `AddExitLog` | Exit-log display-group plus separate event trigger endpoint. | `p0`=rotation `0..3` ccw. | `games/bugdom/src/Terrain/Terrain2.c:88`; `games/bugdom/src/Items/Triggers2.c:236-411` |
+| 40 | Root swing | `AddRootSwing` | Skeleton rootswing, scale `1.4 + p2*.3`, plus event node; player-interaction object. | `p0`=rotation `0..8`; `p1`=sync `0..3`; `p2`=scale factor. | `games/bugdom/src/Terrain/Terrain2.c:89`; `games/bugdom/src/Items/Items2.c:533-585` |
+| 41 | Thorn Bush | `AddThorn` | Forest thorn display-group `Thorn1+p0`, scale `THORN_SCALE`; hurt collider. | `p0`=type `0..1`; `p1`=rot `0..3`; `p3 bit0`=randomize rotation. | `games/bugdom/src/Terrain/Terrain2.c:90`; `games/bugdom/src/Items/Traps.c:521-725` |
+| 42 | FireFly Target Location | `NilAdd` | Marker only; no model. Used as target location slot for fireflies. | No add-time params beyond target matching elsewhere. | `games/bugdom/src/Terrain/Terrain2.c:91`; `games/bugdom/src/Headers/terrain.h:10` |
+| 43 | Fire Wall | `AddFireWall` | `EVENT_GENRE` hazard only; no direct model created here. | `p0`=valve ID; `p1`=rot (`0 -`, `1 \\`, `2 |`); `p2`=width in tiles (`0` default). | `games/bugdom/src/Terrain/Terrain2.c:92`; `games/bugdom/src/Items/Traps.c:737-775` |
+| 44 | Water Valve | `AddWaterValve` | Anthill valve box + handle display-group; trigger unless already open. | `p0`=ID; `flags USER1`=already open. | `games/bugdom/src/Terrain/Terrain2.c:93`; `games/bugdom/src/Items/Triggers.c:1321-1391` |
+| 45 | Honey Tube | `AddHoneyTube` | Hive tube display-group `HIVE_MObjType_BentTube+p0`; scale `3*(1+p2*.5)`. | `p0`=tube type `0..3`; `p1`=aim `0..3`; `p2`=scale factor. | `games/bugdom/src/Terrain/Terrain2.c:94`; `games/bugdom/src/Items/Items2.c:768-806` |
+| 46 | ENEMY: LARVA | `AddEnemy_Larva` | Skeleton enemy `SKELETON_TYPE_LARVA`, scale `.5`. | No documented map params at add site. | `games/bugdom/src/Terrain/Terrain2.c:95`; `games/bugdom/src/Enemies/Enemy_Larva.c:44,63-99,76` |
+| 47 | ENEMY: FLYING BEE | `AddEnemy_FlyingBee` | Skeleton enemy `SKELETON_TYPE_FLYINGBEE`, scale `.8`. | `p0`=y offset in `100`-unit steps (`0` default); `p1`=detonator ID if gated; `p3 bit0`=only spawn after detonator blown. | `games/bugdom/src/Terrain/Terrain2.c:96`; `games/bugdom/src/Enemies/Enemy_Bee_Flying.c:44,78-150,106` |
+| 48 | ENEMY: WORKER BEE | `AddEnemy_WorkerBee` | Skeleton enemy `SKELETON_TYPE_WORKERBEE`, scale `1.5`. | `p0`=detonator ID if gated; `p3 bit0`=only spawn after detonator blown. | `games/bugdom/src/Terrain/Terrain2.c:97`; `games/bugdom/src/Enemies/Enemy_WorkerBee.c:41,90-153,114` |
+| 49 | ENEMY: QUEEN BEE | `AddEnemy_QueenBee` | Skeleton enemy `SKELETON_TYPE_QUEENBEE`, scale `1.5`. | `p0` must be `0` for base 0; `p3` bits are special queen-bee flags. | `games/bugdom/src/Terrain/Terrain2.c:98`; `games/bugdom/src/Enemies/Enemy_QueenBee.c:37,110-163,129` |
+| 50 | Rock Ledge | `AddRockLedge` | Stub only; returns true, creates no object/model. | No params used. | `games/bugdom/src/Terrain/Terrain2.c:99`; `games/bugdom/src/Items/Items2.c:978-987` |
+| 51 | Stump | `AddStump` | Forest stump display-group scale `25`, plus chained hive display-group scale `17`. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:100`; `games/bugdom/src/Items/Items.c:540-646` |
+| 52 | Rolling Boulder | `AddRollingBoulder` | Global throw-rock display-group, scale `BOULDER_SCALE`; rolling trap. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:101`; `games/bugdom/src/Items/Traps.c:965-996` |
+| 53 | ENEMY: ROACH | `AddEnemy_Roach` | Skeleton enemy `SKELETON_TYPE_ROACH`, scale `1.7`. | `p3 bit0`=always add. | `games/bugdom/src/Terrain/Terrain2.c:102`; `games/bugdom/src/Enemies/Enemy_Roach.c:37,83-138,102` |
+| 54 | ENEMY: SKIPPY | `AddEnemy_Skippy` | Skeleton enemy `SKELETON_TYPE_SKIPPY`, scale `.7`. | No documented map params at add site. | `games/bugdom/src/Terrain/Terrain2.c:103`; `games/bugdom/src/Enemies/Enemy_Skippy.c:39,63-96,72` |
+| 55 | Slime Patch | `AddSlimePatch` | Procedural liquid patch, kind=`LIQUID_SLIME`; no direct model. | Shared `AddLiquidPatch`: `p0`=width, `p1`=depth, `p2`=y offset/index, `p3 bit0`=indexed y. | `games/bugdom/src/Terrain/Terrain2.c:104`; `games/bugdom/src/Items/Liquids.c:756-761,811-898` |
+| 56 | Lava Patch | `AddLavaPatch` | Procedural liquid patch, kind=`LIQUID_LAVA`; no direct model. | Shared `AddLiquidPatch`: `p0`=width, `p1`=depth, `p2`=y offset/index, `p3 bit0`=indexed y. | `games/bugdom/src/Terrain/Terrain2.c:105`; `games/bugdom/src/Items/Liquids.c:763-768,811-898` |
+| 57 | Bent Ant Pipe | `AddBentAntPipe` | Anthill bent-pipe display-group, scale `1.0`. | `p0`=rot ccw; `p1`=valve ID; `p3 bit0`=spew if valve open, `bit1`=spew always. | `games/bugdom/src/Terrain/Terrain2.c:106`; `games/bugdom/src/Items/Items.c:1037-1083` |
+| 58 | Horiz Ant Pipe | `AddHorizAntPipe` | Anthill horizontal-pipe display-group, scale `.5`, y offset from `p1*10`. | `p0`=rot ccw; `p1`=height step; `p2`=valve ID; `p3 bit0`=spew if valve open, `bit1`=spew always. | `games/bugdom/src/Terrain/Terrain2.c:107`; `games/bugdom/src/Items/Items.c:1095-1147` |
+| 59 | ENEMY: KING ANT | `AddEnemy_KingAnt` | Skeleton enemy `SKELETON_TYPE_KINGANT`, scale `1.5`. | `p3` nonzero marks alternate/non-real variant. | `games/bugdom/src/Terrain/Terrain2.c:108`; `games/bugdom/src/Enemies/Enemy_KingAnt.c:43,102-156,114` |
+| 60 | Water Faucet | `AddFaucet` | Lawn faucet display-group `LAWN1_MObjType_WaterFaucet`, scale `1.0`. | `p0`=rot `0..3`. | `games/bugdom/src/Terrain/Terrain2.c:109`; `games/bugdom/src/Items/Items2.c:990-1026` |
+| 61 | Wooden Post | `AddWoodPost` | Forest wood-post display-group, scale `10`. | No item params used. | `games/bugdom/src/Terrain/Terrain2.c:110`; `games/bugdom/src/Items/Items.c:1235-1263` |
+| 62 | Floor Spike | `AddFloorSpike` | Hive floor-spike display-group, scale `1.0`; hurt collider; starts waiting. | No map params used in add. | `games/bugdom/src/Terrain/Terrain2.c:111`; `games/bugdom/src/Items/Traps.c:1146-1179` |
+| 63 | King Water Pipe | `AddKingWaterPipe` | Anthill king-pipe display-group, scale `4.0`; trigger. | `p0`=pipe ID. | `games/bugdom/src/Terrain/Terrain2.c:112`; `games/bugdom/src/Items/Triggers2.c:439-482` |
+
+## Notes
+
+1. Flora families in Bugdom 1 are level-dependent, so filename/model-index mappings must key off level context, not just item type.
+2. `p3` carries important gameplay semantics here, especially for regeneration and valve/detonator behavior.
+3. Terrain IDs `8`, `35`, `37`, and `42` are explicit non-spawning slots in the terrain table.

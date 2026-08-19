@@ -10,8 +10,8 @@ import {
 import { useRef, useState } from "react";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
 import { toast } from "sonner";
+import { Edit } from "lucide-react";
 import { downloadSelectedTile, downloadMapImage } from "./supertileUtils";
 import { ImageEditor } from "@/components/ImageEditor";
 import { ImageDisplay, ImageDropzone } from "./SupertileMenuParts";
@@ -25,9 +25,12 @@ import {
   applyCanvasToWholeMap,
   buildWholeMapEditorImage,
   canEditTileTexture,
-  canRemoveSupertile,
   updateSelectedTileTexture,
 } from "@/editor/subviews/supertiles/supertileMenuState";
+import { CheckpointPanel } from "../checkpoints/CheckpointPanel";
+import { getGameFeatures } from "@/editor/utils/gameFeatures";
+import { MenuEmptyState } from "../MenuEmptyState";
+import { CroMagPathPanel } from "../paths/CroMagPathPanel";
 
 /**
  * Standard Supertile Menu for games with STgd-based terrain
@@ -42,14 +45,9 @@ export function SupertileMenu({
   setTerrainData,
   mapImages,
   setMapImages,
-  onResizeSupertiles,
 }: {
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
-  onResizeSupertiles: (
-    direction: "top" | "bottom" | "left" | "right",
-    supertileCount: number,
-  ) => void;
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
@@ -58,6 +56,8 @@ export function SupertileMenu({
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
+  const supportsCheckpoints = getGameFeatures(globals.GAME_TYPE).hasCheckpoints;
+  const supportsPaths = getGameFeatures(globals.GAME_TYPE).hasPaths;
   const supertileCounts = getSupertileCounts(
     hedr.mapWidth,
     hedr.mapHeight,
@@ -72,9 +72,11 @@ export function SupertileMenu({
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {
     return (
-      <div className="p-4 text-white">
-        <p>No supertile grid data available</p>
-      </div>
+      <MenuEmptyState
+        title="No Supertile Grid"
+        description="This level doesn't contain supertile grid data to edit."
+        fillHeight
+      />
     );
   }
 
@@ -122,29 +124,10 @@ export function SupertileMenu({
     setTileEditorOpen(true);
   };
 
-  const handleRemoveSupertile = (
-    direction: "top" | "bottom" | "left" | "right",
-  ) => {
-    if (
-      !canRemoveSupertile(
-        direction,
-        supertileCounts.width,
-        supertileCounts.height,
-      )
-    ) {
-      toast.error("Cannot remove supertile", {
-        description:
-          "At least one supertile row and one supertile column must remain.",
-      });
-      return;
-    }
-    onResizeSupertiles(direction, -1);
-  };
-
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2">
-        <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 overflow-hidden">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-2 overflow-y-auto md:grid-cols-3 md:grid-rows-1 md:overflow-hidden">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
           <p>Replace Selected Tile ({selectedTile})</p>
           <ImageDropzone
             inputRef={tileUploadInputRef}
@@ -181,33 +164,18 @@ export function SupertileMenu({
               Edit
             </Button>
           </div>
-          <Stage width={120} height={120} className="mx-auto">
+          <Stage width={170} height={170} className="mx-auto">
             <Layer>
               <ImageDisplay
+                size={170}
                 image={
                   mapImages[stgd[selectedTile]?.superTileId ?? 0] ?? undefined
                 }
               />
             </Layer>
           </Stage>
-          <p>Download Selected Tile</p>
-          <Button
-            size="sm"
-            onClick={() => {
-              const tileEntry = stgd[selectedTile];
-              if (tileEntry) {
-                downloadSelectedTile(
-                  mapImages,
-                  tileEntry.superTileId,
-                  selectedTile,
-                );
-              }
-            }}
-          >
-            Download
-          </Button>
         </div>
-        <div className="flex h-full min-h-0 flex-col gap-2">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
           <p>Upload Image For Whole Map</p>
           <ImageDropzone
             inputRef={mapUploadInputRef}
@@ -246,6 +214,22 @@ export function SupertileMenu({
             Edit whole map in texture editor
           </Button>
           <div className="flex-1" />
+          <p>Download Selected Tile</p>
+          <Button
+            size="sm"
+            onClick={() => {
+              const tileEntry = stgd[selectedTile];
+              if (tileEntry) {
+                downloadSelectedTile(
+                  mapImages,
+                  tileEntry.superTileId,
+                  selectedTile,
+                );
+              }
+            }}
+          >
+            Download
+          </Button>
           <p>Download Image For Whole Map</p>
           <Button
             size="sm"
@@ -256,47 +240,7 @@ export function SupertileMenu({
             Download
           </Button>
         </div>
-        <div className="flex h-full min-h-0 flex-col gap-2 overflow-auto pr-1">
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={() => onResizeSupertiles("top", 1)}>
-              Add Supertile Row Top
-            </Button>
-            <Button onClick={() => onResizeSupertiles("bottom", 1)}>
-              Add Supertile Row Bottom
-            </Button>
-            <Button onClick={() => onResizeSupertiles("left", 1)}>
-              Add Supertile Column Left
-            </Button>
-            <Button onClick={() => onResizeSupertiles("right", 1)}>
-              Add Supertile Column Right
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="destructive"
-              onClick={() => handleRemoveSupertile("top")}
-            >
-              Remove Supertile Row Top
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleRemoveSupertile("bottom")}
-            >
-              Remove Supertile Row Bottom
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleRemoveSupertile("left")}
-            >
-              Remove Supertile Column Left
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleRemoveSupertile("right")}
-            >
-              Remove Supertile Column Right
-            </Button>
-          </div>
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 overflow-auto pr-1">
           <div className="flex flex-col gap-1 text-sm">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               <p>Supertiles Wide: {supertileCounts.width}</p>
@@ -322,6 +266,22 @@ export function SupertileMenu({
           >
             Set to Blank
           </Button>
+          {supportsCheckpoints && (
+            <CheckpointPanel
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+              terrainData={terrainData}
+              setTerrainData={setTerrainData}
+            />
+          )}
+          {supportsPaths && (
+            <CroMagPathPanel
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+              terrainData={terrainData}
+              setTerrainData={setTerrainData}
+            />
+          )}
         </div>
       </div>
       <ImageEditor

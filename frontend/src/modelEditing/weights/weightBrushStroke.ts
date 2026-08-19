@@ -71,7 +71,7 @@ export function applyWeightBrushStroke(
     }
 
     if (affectedVertices.length === 0 && nearestVertex) {
-      affectedVertices = [nearestVertex];
+      affectedVertices = [{ ...nearestVertex, distance: 0 }];
     }
 
     globalVertexOffset += vertexCount;

@@ -1,5 +1,10 @@
 /** Types for model hierarchy and node management. */
-import { Object3D, Group, AnimationMixer } from "three";
+import {
+  Object3D,
+  Group,
+  AnimationMixer,
+  type AnimationClip,
+} from "three";
 import { AnimationInfo } from "@/components/AnimationViewer";
 import { Game } from "@/data/globals/globals";
 import type {
@@ -11,8 +16,17 @@ import type { WeightBrushHit } from "@/modelEditing/weights/weightBrushStroke";
 
 /** Gizmo modes supported by the model viewer. */
 export type GizmoMode = "translate" | "rotate" | "scale";
+
+export interface ModelGltfResult {
+  readonly scene: Group;
+  readonly animations: readonly AnimationClip[];
+}
 /** High-level interaction modes supported by the model viewer. */
-export type ViewerInteractionMode = "navigate" | "paint-weights" | "bone-edit";
+export type ViewerInteractionMode =
+  | "navigate"
+  | "animate"
+  | "paint-weights"
+  | "bone-edit";
 
 /** Flattened representation of a node in the model hierarchy tree. */
 export interface ModelNode {
@@ -47,8 +61,11 @@ export interface ModelCanvasProps {
   gizmoMode?: GizmoMode;
   interactionMode?: ViewerInteractionMode;
   previewLighting?: boolean;
+  autoRotate?: boolean;
+  autoRotateSpeed?: number;
   skinData?: SkinWeightsData | null;
   weightBrushSettings?: WeightBrushSettings | null;
   weightVisualizationMode?: WeightVisualizationMode;
   onWeightBrushStroke?: (hit: WeightBrushHit) => void;
+  sceneUpdateRevision?: number;
 }

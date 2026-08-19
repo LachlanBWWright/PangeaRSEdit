@@ -102,6 +102,7 @@ export interface GamePortConfig {
     argTypes: string[];
     args: unknown[];
   } | null;
+  readonly requestQuitFn?: string;
   // ----- Controls -----
   readonly hasFenceCollision: boolean;
   readonly hasGodMode: boolean;

@@ -1,14 +1,18 @@
 {
   "name": "pangearsedit",
   "private": true,
+  "packageManager": "pnpm@11.5.0",
   "scripts": {
+    "build:terrain-codec": "wasm-pack build terrain-codec-rust --target web --out-dir pkg --no-opt",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:rust-coverage": "bash ./scripts/test-rust-coverage.sh"
   },
   "dependencies": {
     "gltf-validator": "^2.0.0-dev.3.10"
   },
   "devDependencies": {
+    "typescript": "^6.0.3",
     "vitest": "^4.0.16"
   }
 }

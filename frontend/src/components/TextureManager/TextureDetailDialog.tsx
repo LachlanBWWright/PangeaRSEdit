@@ -104,7 +104,7 @@ export function TextureDetailDialog({
 
           <TabsContent
             value="uv"
-            className="min-h-0 flex-1 space-y-3 overflow-auto"
+            className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden"
           >
             <DialogDescription className="text-gray-300">
               UV Map — move, rotate, scale, flip, or fit UV coordinates to the

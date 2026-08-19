@@ -5,6 +5,7 @@
  */
 
 import type { TunnelTexture } from "./types";
+import { Result, err, ok } from "neverthrow";
 
 /**
  * Convert tunnel texture to an HTMLCanvasElement for display
@@ -12,7 +13,9 @@ import type { TunnelTexture } from "./types";
  * @param texture - The tunnel texture data
  * @returns Canvas element with the texture rendered
  */
-export function tunnelTextureToCanvas(texture: TunnelTexture): HTMLCanvasElement {
+export function tunnelTextureToCanvas(
+  texture: TunnelTexture,
+): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = texture.width;
   canvas.height = texture.height;
@@ -35,7 +38,9 @@ export function tunnelTextureToCanvas(texture: TunnelTexture): HTMLCanvasElement
  * @param canvas - The source canvas
  * @returns TunnelTexture with RGBA data
  */
-export function canvasToTunnelTexture(canvas: HTMLCanvasElement): TunnelTexture {
+export function canvasToTunnelTexture(
+  canvas: HTMLCanvasElement,
+): TunnelTexture {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return {
@@ -52,6 +57,33 @@ export function canvasToTunnelTexture(canvas: HTMLCanvasElement): TunnelTexture 
     height: canvas.height,
     data: new Uint8Array(imageData.data),
   };
+}
+
+/**
+ * Convert ImageData to tunnel texture format without DOM dependencies.
+ */
+export function imageDataToTunnelTexture(imageData: ImageData): TunnelTexture {
+  return {
+    width: imageData.width,
+    height: imageData.height,
+    data: new Uint8Array(imageData.data),
+  };
+}
+
+/**
+ * Validate dimensions for a texture replacement/edit operation.
+ */
+export function validateTunnelTextureDimensions(
+  current: TunnelTexture,
+  next: TunnelTexture,
+): Result<null, string> {
+  if (current.width !== next.width || current.height !== next.height) {
+    return err(
+      `Texture dimensions must remain ${current.width}x${current.height} (got ${next.width}x${next.height})`,
+    );
+  }
+
+  return ok(null);
 }
 
 /**

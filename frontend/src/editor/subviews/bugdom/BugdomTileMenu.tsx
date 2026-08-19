@@ -3,7 +3,7 @@ import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Game, Globals } from "../../../data/globals/globals";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "@/components/ImageEditor";
@@ -11,7 +11,6 @@ import { getSupertileCounts } from "../supertiles/supertileResizeGuards";
 import { BugdomTileMenuContent } from "./BugdomTileMenuContent";
 import {
   appendBugdomTileImageMapping,
-  canRemoveBugdomSupertile,
   getEditingTileIndex,
   isValidTileImageSelection,
   normalizeSelectedSupertile,
@@ -32,6 +31,8 @@ import {
   uploadTileImageToIndex,
 } from "./BugdomTileMenuUtils";
 import { TileBrushPanel } from "@/editor/subviews/tileBrushes/TileBrushPanel";
+import { MenuEmptyState } from "../MenuEmptyState";
+import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
 
 interface BugdomTileMenuProps {
   headerData: HeaderData;
@@ -40,22 +41,18 @@ interface BugdomTileMenuProps {
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
-  onResizeSupertiles: (
-    direction: "top" | "bottom" | "left" | "right",
-    supertileCount: number,
-  ) => void;
 }
 
-export function BugdomTileMenu({
+function BugdomTileMenuInner({
   headerData,
   terrainData,
   setTerrainData,
   mapImages,
   setMapImages,
-  onResizeSupertiles,
 }: BugdomTileMenuProps) {
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
+  const showRoof = useAtomValue(ShowRoofInTopology);
   const supertileCounts = getSupertileCounts(
     hedr.mapWidth,
     hedr.mapHeight,
@@ -64,8 +61,14 @@ export function BugdomTileMenu({
   const totalSupertiles = supertileCounts.width * supertileCounts.height;
 
   const [selectedTileInSupertile, setSelectedTileInSupertile] = useState(0);
-  const [selectedTileImageIndex, setSelectedTileImageIndex] = useState(0);
-  const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
+  const [manualTileImageIndex, setManualTileImageIndex] = useState<
+    number | null
+  >(null);
+  const [storedSelectedTile, setSelectedTile] = useAtom(SelectedTile);
+  const selectedTile = normalizeSelectedSupertile(
+    storedSelectedTile,
+    totalSupertiles,
+  );
   const tileImageUploadInputRef = useRef<HTMLInputElement>(null);
   const [isEditingTileImage, setIsEditingTileImage] = useState(false);
   const [editingTileImageIndex, setEditingTileImageIndex] = useState<
@@ -73,35 +76,18 @@ export function BugdomTileMenu({
   >(null);
 
   useEffect(() => {
-    const normalized = normalizeSelectedSupertile(
-      selectedTile,
-      totalSupertiles,
-    );
-    if (normalized !== selectedTile) {
-      setSelectedTile(normalized);
+    if (selectedTile !== storedSelectedTile) {
+      setSelectedTile(selectedTile);
     }
-  }, [selectedTile, setSelectedTile, totalSupertiles]);
+  }, [selectedTile, setSelectedTile, storedSelectedTile]);
 
-  const handleRemoveSupertile = (
-    direction: "top" | "bottom" | "left" | "right",
-  ) => {
-    if (
-      !canRemoveBugdomSupertile(
-        direction,
-        supertileCounts.width,
-        supertileCounts.height,
-      )
-    ) {
-      toast.error("Cannot remove supertile", {
-        description:
-          "At least one supertile row and one supertile column must remain.",
-      });
-      return;
-    }
-    onResizeSupertiles(direction, -1);
-  };
-
-  const layerData = terrainData.Layr?.[1000]?.obj;
+  const activeLayer: 1000 | 1001 =
+    globals.GAME_TYPE === Game.BUGDOM &&
+    showRoof &&
+    terrainData.Layr?.[1001]
+      ? 1001
+      : 1000;
+  const layerData = terrainData.Layr?.[activeLayer]?.obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
   const numTileImages = mapImages.length;
 
@@ -133,6 +119,8 @@ export function BugdomTileMenu({
 
   const currentSelectedTileData =
     tilesInSelectedSupertile[selectedTileInSupertile];
+  const selectedTileImageIndex =
+    manualTileImageIndex ?? currentSelectedTileData?.info.imageIndex ?? 0;
   const currentFlatIndex = currentSelectedTileData
     ? getFlatIndexForTile(
         selectedTile,
@@ -143,21 +131,28 @@ export function BugdomTileMenu({
       )
     : -1;
 
+  const handleSelectTileInSupertile = (index: number) => {
+    const tile = tilesInSelectedSupertile[index];
+    if (!tile) return;
+    setSelectedTileInSupertile(index);
+    setManualTileImageIndex(null);
+  };
+
   const handleRotateTile = () => {
     if (!layerData || currentFlatIndex < 0) return;
-    rotateTileAtIndex(setTerrainData, currentFlatIndex);
+    rotateTileAtIndex(setTerrainData, currentFlatIndex, activeLayer);
     toast.success("Tile rotated");
   };
 
   const handleFlipX = () => {
     if (!layerData || currentFlatIndex < 0) return;
-    flipTileXAtIndex(setTerrainData, currentFlatIndex);
+    flipTileXAtIndex(setTerrainData, currentFlatIndex, activeLayer);
     toast.success("Tile flipped horizontally");
   };
 
   const handleFlipY = () => {
     if (!layerData || currentFlatIndex < 0) return;
-    flipTileYAtIndex(setTerrainData, currentFlatIndex);
+    flipTileYAtIndex(setTerrainData, currentFlatIndex, activeLayer);
     toast.success("Tile flipped vertically");
   };
 
@@ -175,7 +170,12 @@ export function BugdomTileMenu({
       return;
     }
 
-    replaceTileAtIndex(setTerrainData, currentFlatIndex, tileIndexForImage);
+    replaceTileAtIndex(
+      setTerrainData,
+      currentFlatIndex,
+      tileIndexForImage,
+      activeLayer,
+    );
     toast.success(
       `Replaced with image #${selectedTileImageIndex} (tile index ${tileIndexForImage})`,
     );
@@ -218,8 +218,18 @@ export function BugdomTileMenu({
   };
 
   const isTileImageInUse = useMemo(
-    () => computeIsTileImageInUse(layerData, selectedTileImageIndex, xlatTable),
-    [layerData, selectedTileImageIndex, xlatTable],
+    () =>
+      computeIsTileImageInUse(
+        terrainData.Layr?.[1000]?.obj,
+        selectedTileImageIndex,
+        xlatTable,
+      ) ||
+      computeIsTileImageInUse(
+        terrainData.Layr?.[1001]?.obj,
+        selectedTileImageIndex,
+        xlatTable,
+      ),
+    [terrainData.Layr, selectedTileImageIndex, xlatTable],
   );
 
   const handleAddTileImage = () => {
@@ -228,7 +238,7 @@ export function BugdomTileMenu({
     setTerrainData((data) => {
       appendBugdomTileImageMapping(data, newImageIndex);
     });
-    setSelectedTileImageIndex(newImageIndex);
+    setManualTileImageIndex(newImageIndex);
     toast.success(`Added tile image #${newImageIndex}`);
   };
 
@@ -249,60 +259,58 @@ export function BugdomTileMenu({
       setTerrainData,
     );
 
-    setSelectedTileImageIndex((current) => Math.max(0, current - 1));
+    setManualTileImageIndex(Math.max(0, selectedTileImageIndex - 1));
     toast.success("Tile image removed");
   };
 
   if (!layerData) {
     return (
-      <div className="p-4 text-white">
-        <p>No tile layer data available</p>
-      </div>
+      <MenuEmptyState
+        title="No Tile Layer"
+        description="This level doesn't contain tile layer data to edit."
+        fillHeight
+      />
     );
   }
 
   return (
     <>
-      <BugdomTileMenuContent
-        tilesPerSupertile={globals.TILES_PER_SUPERTILE}
-        tileImageSize={TILE_IMAGE_SIZE}
-        tilesInSelectedSupertile={tilesInSelectedSupertile}
-        currentSelectedTileData={currentSelectedTileData}
-        mapImages={mapImages}
-        selectedTileImageIndex={selectedTileImageIndex}
-        selectedTile={selectedTile}
-        supertileCounts={supertileCounts}
-        uniqueSupertiles={hedr.numUniqueSupertiles}
-        isTileImageInUse={isTileImageInUse}
-        setSelectedTileInSupertile={setSelectedTileInSupertile}
-        setSelectedTileImageIndex={setSelectedTileImageIndex}
-        setIsEditingTileImage={setIsEditingTileImage}
-        setEditingTileImageIndex={setEditingTileImageIndex}
-        tileImageUploadInputRef={tileImageUploadInputRef}
-        onRotate={handleRotateTile}
-        onFlipX={handleFlipX}
-        onFlipY={handleFlipY}
-        onReplaceTile={handleReplaceTile}
-        onUploadTileImage={handleUploadTileImage}
-        onAddTileImage={handleAddTileImage}
-        onRemoveTileImage={handleRemoveTileImage}
-        onResizeSupertiles={onResizeSupertiles}
-        onRemoveSupertile={handleRemoveSupertile}
-      />
-      <TileBrushPanel
-        game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
-        terrainData={terrainData}
-        setTerrainData={setTerrainData}
-        mapWidth={hedr.mapWidth}
-        mapHeight={hedr.mapHeight}
-        selectedTileIndex={
-          Math.floor(selectedTile / supertileCounts.width) *
-            globals.TILES_PER_SUPERTILE *
-            hedr.mapWidth +
-          (selectedTile % supertileCounts.width) * globals.TILES_PER_SUPERTILE
-        }
-        activeLayer={1000}
-      />
+      <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto">
+        <BugdomTileMenuContent
+          game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
+          stampLibrary={(
+            <TileBrushPanel
+              game={globals.GAME_TYPE === Game.NANOSAUR ? "nanosaur1" : "bugdom1"}
+              mapImages={mapImages}
+              xlatTable={xlatTable}
+            />
+          )}
+          tilesPerSupertile={globals.TILES_PER_SUPERTILE}
+          tileImageSize={TILE_IMAGE_SIZE}
+          tilesInSelectedSupertile={tilesInSelectedSupertile}
+          currentSelectedTileData={currentSelectedTileData}
+          mapImages={mapImages}
+          selectedTileImageIndex={selectedTileImageIndex}
+          selectedTile={selectedTile}
+          currentFlatIndex={currentFlatIndex}
+          activeLayer={activeLayer}
+          isTileImageInUse={isTileImageInUse}
+          onSelectTileInSupertile={handleSelectTileInSupertile}
+          setSelectedTileImageIndex={setManualTileImageIndex}
+          tileImageUploadInputRef={tileImageUploadInputRef}
+          onEditPaletteTileImage={() => {
+            setEditingTileImageIndex(selectedTileImageIndex);
+            setIsEditingTileImage(true);
+          }}
+          onRotate={handleRotateTile}
+          onFlipX={handleFlipX}
+          onFlipY={handleFlipY}
+          onReplaceTile={handleReplaceTile}
+          onUploadPaletteTileImage={handleUploadTileImage}
+          onAddTileImage={handleAddTileImage}
+          onRemoveTileImage={handleRemoveTileImage}
+        />
+      </div>
       <ImageEditor
         isOpen={isEditingTileImage}
         onClose={() => {
@@ -320,3 +328,23 @@ export function BugdomTileMenu({
     </>
   );
 }
+
+function bugdomTileMenuPropsEqual(
+  previous: BugdomTileMenuProps,
+  next: BugdomTileMenuProps,
+): boolean {
+  return (
+    previous.headerData === next.headerData &&
+    previous.setHeaderData === next.setHeaderData &&
+    previous.setTerrainData === next.setTerrainData &&
+    previous.mapImages === next.mapImages &&
+    previous.setMapImages === next.setMapImages &&
+    previous.terrainData.Layr === next.terrainData.Layr &&
+    previous.terrainData.Xlat === next.terrainData.Xlat
+  );
+}
+
+export const BugdomTileMenu = memo(
+  BugdomTileMenuInner,
+  bugdomTileMenuPropsEqual,
+);

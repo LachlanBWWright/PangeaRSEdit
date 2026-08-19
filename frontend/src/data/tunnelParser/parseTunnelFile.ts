@@ -46,6 +46,10 @@ class BinaryReader {
     this.offset += bytes;
   }
 
+  remainingBytes(): number {
+    return this.view.byteLength - this.offset;
+  }
+
   readUint8(): number {
     const value = this.view.getUint8(this.offset);
     this.offset += 1;
@@ -173,7 +177,31 @@ function parseSplinePoint(reader: BinaryReader): TunnelSplinePoint {
 function parseTexture(reader: BinaryReader): TunnelTexture {
   const width = reader.readInt32();
   const height = reader.readInt32();
+
+  if (width <= 0 || height <= 0) {
+    return {
+      width,
+      height,
+      data: new Uint8Array(0),
+    };
+  }
+
+  if (width > 8192 || height > 8192) {
+    return {
+      width,
+      height,
+      data: new Uint8Array(0),
+    };
+  }
+
   const dataSize = width * height * 4;
+  if (dataSize > reader.remainingBytes()) {
+    return {
+      width,
+      height,
+      data: new Uint8Array(0),
+    };
+  }
   const data = reader.readBytes(dataSize);
 
   return {
@@ -270,6 +298,103 @@ function parseSection(reader: BinaryReader): TunnelSection {
   };
 }
 
+function validateTexture(
+  texture: TunnelTexture,
+  textureName: string,
+): Result<null, string> {
+  if (texture.width <= 0 || texture.height <= 0) {
+    return err(
+      `Invalid ${textureName} dimensions: ${texture.width}x${texture.height}`,
+    );
+  }
+
+  if (texture.width > 8192 || texture.height > 8192) {
+    return err(
+      `Invalid ${textureName} dimensions: ${texture.width}x${texture.height} exceeds 8192`,
+    );
+  }
+
+  const expectedSize = texture.width * texture.height * 4;
+  if (texture.data.length !== expectedSize) {
+    return err(
+      `Invalid ${textureName} byte length: expected ${expectedSize}, got ${texture.data.length}`,
+    );
+  }
+
+  return ok(null);
+}
+
+function validateSectionMesh(
+  mesh: TunnelSectionMesh,
+  includeNormals: boolean,
+  sectionIndex: number,
+  meshLabel: "tunnel" | "water",
+): Result<null, string> {
+  if (mesh.numPoints < 0 || mesh.numTriangles < 0) {
+    return err(
+      `Section ${sectionIndex} ${meshLabel} mesh has negative counts (points=${mesh.numPoints}, triangles=${mesh.numTriangles})`,
+    );
+  }
+
+  if (mesh.points.length !== mesh.numPoints) {
+    return err(
+      `Section ${sectionIndex} ${meshLabel} point mismatch: expected ${mesh.numPoints}, got ${mesh.points.length}`,
+    );
+  }
+
+  if (mesh.uvs.length !== mesh.numPoints) {
+    return err(
+      `Section ${sectionIndex} ${meshLabel} UV mismatch: expected ${mesh.numPoints}, got ${mesh.uvs.length}`,
+    );
+  }
+
+  if (mesh.triangles.length !== mesh.numTriangles) {
+    return err(
+      `Section ${sectionIndex} ${meshLabel} triangle mismatch: expected ${mesh.numTriangles}, got ${mesh.triangles.length}`,
+    );
+  }
+
+  const normalsLength = mesh.normals?.length ?? 0;
+  if (includeNormals && normalsLength !== mesh.numPoints) {
+    return err(
+      `Section ${sectionIndex} ${meshLabel} normal mismatch: expected ${mesh.numPoints}, got ${normalsLength}`,
+    );
+  }
+
+  for (
+    let triangleIndex = 0;
+    triangleIndex < mesh.triangles.length;
+    triangleIndex++
+  ) {
+    const triangle = mesh.triangles[triangleIndex];
+    if (!triangle) {
+      return err(
+        `Section ${sectionIndex} ${meshLabel} triangle ${triangleIndex} missing`,
+      );
+    }
+
+    if (triangle.a >= mesh.numPoints) {
+      return err(
+        `Section ${sectionIndex} ${meshLabel} triangle ${triangleIndex} has out-of-range index ${triangle.a} for ${mesh.numPoints} points`,
+      );
+    }
+
+    if (triangle.b >= mesh.numPoints) {
+      return err(
+        `Section ${sectionIndex} ${meshLabel} triangle ${triangleIndex} has out-of-range index ${triangle.b} for ${mesh.numPoints} points`,
+      );
+    }
+
+    if (triangle.c >= mesh.numPoints) {
+      return err(
+        `Section ${sectionIndex} ${meshLabel} triangle ${triangleIndex} has out-of-range index ${triangle.c} for ${mesh.numPoints} points`,
+      );
+    }
+  }
+
+  return ok(null);
+}
+
 /**
  * Parse a Bugdom 2 tunnel file (.tun)
  *
@@ -285,65 +410,120 @@ export function parseTunnelFile(
     );
   }
 
-  const parseResult = Result.fromThrowable(
-    () => {
-      const reader = new BinaryReader(buffer);
+  const reader = new BinaryReader(buffer);
 
-      // Parse header (88 bytes)
-      const header = parseHeader(reader);
-
-      // Skip alias data (legacy Mac file alias)
-      const aliasSize = reader.readInt32();
-      reader.skip(aliasSize);
-
-      // Parse spline nubs (control points)
-      const nubs: TunnelSplinePoint[] = [];
-      for (let i = 0; i < header.numNubs; i++) {
-        nubs.push(parseSplinePoint(reader));
-      }
-
-      // Parse tunnel texture
-      const tunnelTexture = parseTexture(reader);
-
-      // Parse water texture (currently not used but must be read)
-      const waterTexture = parseTexture(reader);
-
-      // Parse items
-      const items: TunnelItem[] = [];
-      for (let i = 0; i < header.numItems; i++) {
-        items.push(parseItem(reader));
-      }
-
-      // Parse spline points
-      const splinePoints: TunnelSplinePoint[] = [];
-      for (let i = 0; i < header.numSplinePoints; i++) {
-        splinePoints.push(parseSplinePoint(reader));
-      }
-
-      // Parse section geometry
-      const sections: TunnelSection[] = [];
-      for (let i = 0; i < header.numSections; i++) {
-        sections.push(parseSection(reader));
-      }
-
-      return {
-        header,
-        nubs,
-        tunnelTexture,
-        waterTexture,
-        items,
-        splinePoints,
-        sections,
-      };
-    },
+  const headerResult = Result.fromThrowable(
+    () => parseHeader(reader),
     mapErr,
   )();
+  if (headerResult.isErr()) {
+    return err(`Failed to parse tunnel file header: ${headerResult.error}`);
+  }
+  const header = headerResult.value;
 
-  if (parseResult.isErr()) {
-    return err(`Failed to parse tunnel file: ${parseResult.error}`);
+  const aliasSizeResult = Result.fromThrowable(
+    () => reader.readInt32(),
+    mapErr,
+  )();
+  if (aliasSizeResult.isErr()) {
+    return err(`Failed to parse alias size: ${aliasSizeResult.error}`);
+  }
+  const aliasSize = aliasSizeResult.value;
+
+  if (aliasSize < 0) {
+    return err(`Invalid alias size: ${aliasSize}`);
   }
 
-  const tunnelData = parseResult.value;
+  if (aliasSize > reader.remainingBytes()) {
+    return err(
+      `Invalid alias size: ${aliasSize} exceeds remaining bytes ${reader.remainingBytes()}`,
+    );
+  }
+
+  const aliasDataResult = Result.fromThrowable(
+    () => reader.readBytes(aliasSize),
+    mapErr,
+  )();
+  if (aliasDataResult.isErr()) {
+    return err(`Failed to parse alias data: ${aliasDataResult.error}`);
+  }
+  const aliasData = aliasDataResult.value;
+
+  const nubs: TunnelSplinePoint[] = [];
+  for (let i = 0; i < header.numNubs; i++) {
+    const nubResult = Result.fromThrowable(
+      () => parseSplinePoint(reader),
+      mapErr,
+    )();
+    if (nubResult.isErr()) {
+      return err(`Failed to parse nub ${i}: ${nubResult.error}`);
+    }
+    nubs.push(nubResult.value);
+  }
+
+  const tunnelTextureResult = Result.fromThrowable(
+    () => parseTexture(reader),
+    mapErr,
+  )();
+  if (tunnelTextureResult.isErr()) {
+    return err(`Failed to parse tunnel texture: ${tunnelTextureResult.error}`);
+  }
+  const tunnelTexture = tunnelTextureResult.value;
+
+  const waterTextureResult = Result.fromThrowable(
+    () => parseTexture(reader),
+    mapErr,
+  )();
+  if (waterTextureResult.isErr()) {
+    return err(`Failed to parse water texture: ${waterTextureResult.error}`);
+  }
+  const waterTexture = waterTextureResult.value;
+
+  const items: TunnelItem[] = [];
+  for (let i = 0; i < header.numItems; i++) {
+    const itemResult = Result.fromThrowable(() => parseItem(reader), mapErr)();
+    if (itemResult.isErr()) {
+      return err(`Failed to parse item ${i}: ${itemResult.error}`);
+    }
+    items.push(itemResult.value);
+  }
+
+  const splinePoints: TunnelSplinePoint[] = [];
+  for (let i = 0; i < header.numSplinePoints; i++) {
+    const splinePointResult = Result.fromThrowable(
+      () => parseSplinePoint(reader),
+      mapErr,
+    )();
+    if (splinePointResult.isErr()) {
+      return err(
+        `Failed to parse spline point ${i}: ${splinePointResult.error}`,
+      );
+    }
+    splinePoints.push(splinePointResult.value);
+  }
+
+  const sections: TunnelSection[] = [];
+  for (let i = 0; i < header.numSections; i++) {
+    const sectionResult = Result.fromThrowable(
+      () => parseSection(reader),
+      mapErr,
+    )();
+    if (sectionResult.isErr()) {
+      return err(`Failed to parse section ${i}: ${sectionResult.error}`);
+    }
+    sections.push(sectionResult.value);
+  }
+
+  const tunnelData: TunnelData = {
+    header,
+    aliasData,
+    nubs,
+    tunnelTexture,
+    waterTexture,
+    items,
+    splinePoints,
+    sections,
+  };
 
   // Validate header values
   if (
@@ -355,6 +535,99 @@ export function parseTunnelFile(
     return err(
       `Invalid header: negative counts (nubs=${tunnelData.header.numNubs}, splinePoints=${tunnelData.header.numSplinePoints}, sections=${tunnelData.header.numSections}, items=${tunnelData.header.numItems})`,
     );
+  }
+
+  if (tunnelData.nubs.length !== tunnelData.header.numNubs) {
+    return err(
+      `Invalid nub count: expected ${tunnelData.header.numNubs}, got ${tunnelData.nubs.length}`,
+    );
+  }
+
+  if (tunnelData.splinePoints.length !== tunnelData.header.numSplinePoints) {
+    return err(
+      `Invalid spline point count: expected ${tunnelData.header.numSplinePoints}, got ${tunnelData.splinePoints.length}`,
+    );
+  }
+
+  if (tunnelData.sections.length !== tunnelData.header.numSections) {
+    return err(
+      `Invalid section count: expected ${tunnelData.header.numSections}, got ${tunnelData.sections.length}`,
+    );
+  }
+
+  if (tunnelData.items.length !== tunnelData.header.numItems) {
+    return err(
+      `Invalid item count: expected ${tunnelData.header.numItems}, got ${tunnelData.items.length}`,
+    );
+  }
+
+  const tunnelTextureValidation = validateTexture(
+    tunnelData.tunnelTexture,
+    "tunnel texture",
+  );
+  if (tunnelTextureValidation.isErr()) {
+    return err(tunnelTextureValidation.error);
+  }
+
+  const waterTextureValidation = validateTexture(
+    tunnelData.waterTexture,
+    "water texture",
+  );
+  if (waterTextureValidation.isErr()) {
+    return err(waterTextureValidation.error);
+  }
+
+  for (
+    let sectionIndex = 0;
+    sectionIndex < tunnelData.sections.length;
+    sectionIndex++
+  ) {
+    const section = tunnelData.sections[sectionIndex];
+    if (!section) {
+      return err(`Missing section at index ${sectionIndex}`);
+    }
+
+    const tunnelMeshValidation = validateSectionMesh(
+      section.tunnelMesh,
+      true,
+      sectionIndex,
+      "tunnel",
+    );
+    if (tunnelMeshValidation.isErr()) {
+      return err(tunnelMeshValidation.error);
+    }
+
+    const waterMeshValidation = validateSectionMesh(
+      section.waterMesh,
+      false,
+      sectionIndex,
+      "water",
+    );
+    if (waterMeshValidation.isErr()) {
+      return err(waterMeshValidation.error);
+    }
+  }
+
+  for (let itemIndex = 0; itemIndex < tunnelData.items.length; itemIndex++) {
+    const item = tunnelData.items[itemIndex];
+    if (!item) {
+      return err(`Missing item at index ${itemIndex}`);
+    }
+
+    if (
+      item.splineIndex < 0 ||
+      item.splineIndex >= tunnelData.splinePoints.length
+    ) {
+      return err(
+        `Item ${itemIndex} has invalid splineIndex ${item.splineIndex} (spline points=${tunnelData.splinePoints.length})`,
+      );
+    }
+
+    if (item.sectionNum < -1 || item.sectionNum >= tunnelData.sections.length) {
+      return err(
+        `Item ${itemIndex} has invalid sectionNum ${item.sectionNum} (valid range -1..${Math.max(-1, tunnelData.sections.length - 1)})`,
+      );
+    }
   }
 
   return ok(tunnelData);

@@ -9,7 +9,7 @@ public interface IMultiplayerLobbyService
         CancellationToken cancellationToken);
 
     Task<AppResult<IReadOnlyList<MultiplayerLobbySummary>>> ListLobbiesAsync(
-        string gameId,
+        string? gameId,
         CancellationToken cancellationToken);
 
     Task<AppResult<MultiplayerLobbyDetails>> GetLobbyAsync(
@@ -30,5 +30,36 @@ public interface IMultiplayerLobbyService
 
     Task<AppResult<MultiplayerLobbyDetails>> StartLobbyAsync(
         StartLobbyRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> UpdateSelectionAsync(
+        UpdateLobbySelectionRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> EndMatchAsync(
+        EndLobbyMatchRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> RematchLobbyAsync(
+        RematchLobbyRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> RemoveParticipantAsync(
+        RemoveLobbyParticipantRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> HeartbeatAsync(
+        LobbyHeartbeatRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> ReportEventAsync(
+        LobbyReportEventRequest request,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<MultiplayerLobbyDetails>> ReportMatchResultAsync(
+        LobbyReportMatchResultRequest request,
+        CancellationToken cancellationToken);
+
+    Task CleanupExpiredAndStaleAsync(
         CancellationToken cancellationToken);
 }

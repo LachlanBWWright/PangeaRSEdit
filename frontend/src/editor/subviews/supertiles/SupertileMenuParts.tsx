@@ -2,9 +2,15 @@ import { Layer, Image } from "react-konva";
 import { cn } from "@/lib/utils";
 import type { RefObject } from "react";
 
-export function ImageDisplay({ image }: { image?: HTMLCanvasElement }) {
+export function ImageDisplay({
+  image,
+  size = 250,
+}: {
+  image?: HTMLCanvasElement;
+  size?: number;
+}) {
   if (!image) return <></>;
-  return <Image image={image} width={250} height={250} />;
+  return <Image image={image} width={size} height={size} />;
 }
 
 interface ImageDropzoneProps {

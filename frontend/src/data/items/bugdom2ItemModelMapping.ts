@@ -113,8 +113,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.CardboardBox]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 2 }, // CLOSET_ObjType_CardboardBox1 = 2
   [ItemType.MothBall]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 10 }, // CLOSET_ObjType_MothBall = 10
   [ItemType.ClosetWall]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 13 }, // CLOSET_ObjType_PCICard = 13
-  [ItemType.SiliconPart]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 21 }, // CLOSET_ObjType_SiliconDoor = 21
-  [ItemType.BookStack]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 17 }, // CLOSET_ObjType_BookStack = 17
+  [ItemType.SiliconPart]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 22 }, // CLOSET_ObjType_Chip1 = 22
+  [ItemType.BookStack]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 16 }, // CLOSET_ObjType_FlatBook = 16
   [ItemType.ShoeBox]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 6 }, // CLOSET_ObjType_ShoeBox = 6
   [ItemType.PictureFrame]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 28 }, // CLOSET_ObjType_PictureFrame_Brian = 28
   [ItemType.Trampoline]: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 7 }, // CLOSET_ObjType_TrampolineBase = 7
@@ -140,7 +140,7 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Silverware]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 10 }, // PARK_ObjType_Fork = 10
   [ItemType.PicnicBasket]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 13 }, // PARK_ObjType_PicnicBasket = 13
   [ItemType.BeeHive]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 25, groupSize: 2 }, // PARK_ObjType_Hive = 25
-  [ItemType.Kindling]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 24 }, // PARK_ObjType_Twig = 24
+  [ItemType.Kindling]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 23 }, // PARK_ObjType_Leaf = 23
 
   // Global items (Global.bg3d)
   [ItemType.SnailShell]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 26, scale: 1.2 }, // GLOBAL_ObjType_SnailShell = 26; scale = SNAIL_SCALE = 1.2

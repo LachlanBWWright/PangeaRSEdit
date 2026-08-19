@@ -1,13 +1,22 @@
 /**
- * Data structure initializers for creating empty FenceData, LiquidData, and SplineData
- * Used when a level doesn't have these optional data structures
+ * Data structure initializers for optional level data.
  */
 
 import {
   FenceData,
+  ItemData,
   LiquidData,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
+
+export function createEmptyItemData(): ItemData {
+  const itemList: ItemData["Itms"][1000] = {
+    name: "Terrain Items List",
+    obj: [],
+    order: 0,
+  };
+  return { Itms: { 1000: itemList } };
+}
 
 /**
  * Create an empty FenceData structure

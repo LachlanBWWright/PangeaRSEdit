@@ -1,30 +1,11 @@
 import { Game, GlobalsInterface } from "../globals/globals";
 import { FenceType as Nanosaur2FenceType } from "./nanosaur2FenceType";
+import { getBugdom2FenceImageDefinition } from "./bugdom2FenceImages";
 
 function withBaseUrl(path: string): string {
-  const base = (import.meta.env?.BASE_URL as string | undefined) ?? "/";
+  const base = import.meta.env?.BASE_URL ?? "/";
   return `${base}${path.replace(/^\/+/, "")}`;
 }
-
-// Bugdom 2 fence thumbnails come from the ported sprite series in the Bugdom 2 data tree.
-const BUGDOM2_FENCE_IMAGES = [
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Global/012.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level1_Garden/004.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level3_DogHair/002.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Global/013.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level3_DogHair/003.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level3_DogHair/004.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level5_Playroom/002.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level5_Playroom/003.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level9_Balsa/001.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/001.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/002.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/003.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/004.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level10_Park/000.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level8_Garbage/000.tga",
-  "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level8_Garbage/001.tga",
-];
 
 // Billy Frontier fence sprite files, mapped by fence type index.
 const BILLY_FRONTIER_FENCE_FILES = [
@@ -93,9 +74,7 @@ export function getFenceImagePath(
     case Game.BUGDOM:
       return withBaseUrl(`assets/bugdom/fences/${2000 + fenceType}.jpg`);
     case Game.BUGDOM_2:
-      return withBaseUrl(
-        BUGDOM2_FENCE_IMAGES[fenceType] ?? BUGDOM2_FENCE_IMAGES[0] ?? "",
-      );
+      return withBaseUrl(getBugdom2FenceImageDefinition(fenceType).publicPath);
     case Game.BILLY_FRONTIER:
       return withBaseUrl(
         `assets/billyFrontier/fences/${BILLY_FRONTIER_FENCE_FILES[fenceType] ?? "global003.png"}`,

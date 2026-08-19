@@ -2,8 +2,20 @@ import type { TerrainItem, LevelData } from "../../python/structSpecs/LevelTypes
 import type { Nanosaur1LevelData } from "../../data/processors/classicProprocessor";
 import { ok } from "neverthrow";
 import { Result } from "neverthrow";
+import { z } from "zod";
 import type { RawNanosaurItem } from "./nanosaurInterfaces";
 import { isRawNanosaurAttribute, isRawNanosaurItem } from "./typeGuards";
+
+const nanosaurItemParmSchema = z.tuple([
+  z.number().int().min(0).max(255),
+  z.number().int().min(0).max(255),
+  z.number().int().min(0).max(255),
+  z.number().int().min(0).max(255),
+]);
+const nanosaurItemMetadataSchema = z.object({
+  prevItemIdx: z.number().int().optional(),
+  nextItemIdx: z.number().int().optional(),
+});
 
 /**
  * Compile a Nanosaur 1 level from LevelData back to binary format.
@@ -73,12 +85,17 @@ export function compileNanosaur1Level(
       }
     }
 
-    // -- Path Layer (not editable in editor) --
-    if (pathLayerOffset > 0 && rawLevelData.pathLayer) {
-      for (let i = 0; i < rawLevelData.pathLayer.length; i++) {
+    // -- Path Layer --
+    const editorPathLayer = levelData.nanosaurPathLayer;
+    const pathLayer =
+      editorPathLayer?.length === layerSizeInTiles
+        ? editorPathLayer
+        : rawLevelData.pathLayer;
+    if (pathLayerOffset > 0 && pathLayer) {
+      for (let i = 0; i < pathLayer.length; i++) {
         view.setUint16(
           pathLayerOffset + i * 2,
-          rawLevelData.pathLayer[i] ?? 0,
+          pathLayer[i] ?? 0,
           false,
         );
       }
@@ -89,12 +106,26 @@ export function compileNanosaur1Level(
       const editorItems = levelData.Itms?.[1000]?.obj;
       const hasRawParams = (
         item: RawNanosaurItem | TerrainItem<number>,
-      ): item is RawNanosaurItem =>
-        isRawNanosaurItem(item) &&
-        ("parm" in item ||
+      ): item is RawNanosaurItem => {
+        if (!isRawNanosaurItem(item)) {
+          return false;
+        }
+        const isEditorItemShape =
+          "p0" in item ||
+          "p1" in item ||
+          "p2" in item ||
+          "p3" in item;
+        if (isEditorItemShape) {
+          return false;
+        }
+        return (
+          "parm" in item ||
           "y" in item ||
+          "z" in item ||
           "prevItemIdx" in item ||
-          "nextItemIdx" in item);
+          "nextItemIdx" in item
+        );
+      };
       const toRawItem = (
         item: RawNanosaurItem | TerrainItem<number>,
       ): RawNanosaurItem | null => {
@@ -102,26 +133,49 @@ export function compileNanosaur1Level(
           return item;
         }
         if ("p0" in item && "p1" in item && "p2" in item && "p3" in item) {
+          const editorParm: [number, number, number, number] = [
+            item.p0,
+            item.p1,
+            item.p2,
+            item.p3,
+          ];
+          const rawParmResult = "parm" in item
+            ? nanosaurItemParmSchema.safeParse(item.parm)
+            : null;
+          const rawParm = rawParmResult?.success ? rawParmResult.data : undefined;
+          const itemMetadataResult = nanosaurItemMetadataSchema.safeParse(item);
+          const parm =
+            rawParm &&
+            editorParm.every((value, index) => value === rawParm[index])
+              ? rawParm
+              : editorParm;
           return {
             x: item.x,
             y: item.z,
             z: item.z,
             type: item.type,
-            parm: [item.p0, item.p1, item.p2, item.p3],
+            parm,
             flags: item.flags,
+            prevItemIdx: itemMetadataResult.success
+              ? itemMetadataResult.data.prevItemIdx ?? 0
+              : 0,
+            nextItemIdx: itemMetadataResult.success
+              ? itemMetadataResult.data.nextItemIdx ?? 0
+              : 0,
           };
         }
         return null;
       };
-      if (Array.isArray(editorItems) && editorItems.length > 0) {
-        // Use editor items - convert back to binary format
+      if (Array.isArray(editorItems)) {
+        // Use editor items even when empty: an explicit empty list is a valid
+        // edit, and falling back to the raw list would resurrect deleted items.
         view.setInt32(objectListOffset, editorItems.length, false);
         let writePtr = objectListOffset + 4;
         for (const item of editorItems) {
           const rawItem = toRawItem(item);
           if (!rawItem) continue;
           view.setUint16(writePtr, rawItem.x ?? 0, false);
-          view.setUint16(writePtr + 2, rawItem.y ?? rawItem.z ?? 0, false);
+          view.setUint16(writePtr + 2, rawItem.z ?? rawItem.y ?? 0, false);
           view.setUint16(writePtr + 4, rawItem.type ?? 0, false);
           if (rawItem.parm) {
             view.setUint8(writePtr + 6, rawItem.parm[0] ?? 0);

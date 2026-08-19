@@ -211,7 +211,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Snail kind (0-19)",
       codeSample: {
-        code: "int snailKind = itemPtr->parm[0];\nif (snailKind > 19) return(true);",
+        code: "int\t\tsnailKind = itemPtr->parm[0];",
         fileName: "Source/Items/Snails.c",
         lineNumber: 86,
       },
@@ -220,18 +220,18 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "gNewObjectDefinition.rot \t\t= (float)rot * (PI2/8);",
+        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 121,
+        lineNumber: 95,
       },
     },
     p2: {
       type: "Integer",
       description: "Key color (if applicable)",
       codeSample: {
-        code: "snail->KeyColor \t= keyColor;\t\t\t\t\t\t\t\t\t// remember key color",
+        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 127,
+        lineNumber: 95,
       },
     },
     p3: "Unknown",
@@ -257,9 +257,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "POW kind (0-12)",
       codeSample: {
-        code: "pow = MakePOW(itemPtr->parm[0], &where);",
+        code: "int\t\tpowKind = itemPtr->parm[0];",
         fileName: "Source/Items/Powerups.c",
-        lineNumber: 585,
+        lineNumber: 55,
       },
     },
     p1: "Unknown",
@@ -300,7 +300,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_GNOME] >= MAX_GNOMES)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_Gnome.c",
             lineNumber: 94,
           },
@@ -316,7 +316,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Daisy1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 181,
+        lineNumber: 182,
       },
     },
     p1: "Unused",
@@ -331,7 +331,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Grass1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 299,
+        lineNumber: 301,
       },
     },
     p1: "Unused",
@@ -340,15 +340,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.SnailShell]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused in current source (shell rotation is randomized)",
-      codeSample: {
-        code: "gNewObjectDefinition.rot = RandomFloat() * PI2;",
-        fileName: "Source/Items/Snails.c",
-        lineNumber: 682,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -361,7 +353,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Tulip1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 234,
+        lineNumber: 236,
       },
     },
     p1: "Unused",
@@ -395,7 +387,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_HOUSEFLY] >= MAX_HOUSEFLYS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_HouseFly.c",
             lineNumber: 101,
           },
@@ -407,11 +399,12 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "ITEM_FLAGS_USER1: Task completed (head attached)",
     p0: {
       type: "Integer",
-      description: "Scarecrow part (0 = body, 1 = head separately)",
+      description:
+        "Scarecrow part (0 = body/shirt base, nonzero = standalone head)",
       codeSample: {
-        code: "gNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;",
+        code: "if (itemPtr->parm[0] == 0)",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 817,
+        lineNumber: 812,
       },
     },
     p1: "Unknown",
@@ -426,7 +419,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     p3: "Unknown",
   },
   [ItemType.Door]: {
-    flags: "ITEM_FLAGS_USER1: Door is open",
+    flags: "ITEM_FLAGS_USER1: Door is open or silicon chip 1 is installed | ITEM_FLAGS_USER2: Silicon chip 2 is installed | ITEM_FLAGS_USER3: Silicon battery is installed",
     p0: {
       type: "Integer",
       description: "Door rotation (0-3, where each unit = 90°)",
@@ -438,7 +431,8 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Door color",
+      description:
+        "Door model variant (garden/sidewalk/playroom/park: 0=red, 1=green, 2=blue; closet: 0=silicon door, >0=diary door)",
       codeSample: {
         code: "int\t\tdoorColor = itemPtr->parm[1];",
         fileName: "Source/Items/Items.c",
@@ -478,7 +472,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "OGLMatrix3x3_SetRotate(&m, (float)itemPtr->parm[0] * (PI2/8));",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 1333,
+        lineNumber: 1337,
       },
     },
     p1: "Unknown",
@@ -496,15 +490,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
         lineNumber: 539,
       },
     },
-    p1: {
-      type: "Integer",
-      description: "Brick type (varies by level)",
-      codeSample: {
-        code: "gNewObjectDefinition.type = GARDEN_ObjType_Brick; // or SIDEWALK_ObjType_Brick depending on level",
-        fileName: "Source/Items/Items.c",
-        lineNumber: 517,
-      },
-    },
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -538,9 +524,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Chipmunk kind (see CHIPMUNK_KIND_* constants)",
       codeSample: {
-        code: "newObj->Kind = kind;\t\t\t\t\t\t\t\t\t// which kind of chipmunk",
+        code: "int\t\tkind = itemPtr->parm[1];",
         fileName: "Source/Items/Chipmunk.c",
-        lineNumber: 133,
+        lineNumber: 80,
       },
     },
     p2: {
@@ -578,15 +564,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.SnakeGenerator]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddSnakeGenerator(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_Snake.c",
-        lineNumber: 161,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -631,7 +609,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Has key",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1) { /* PUT KEY ON LEAF */ }",
+        code: "if (itemPtr->parm[3] & 1)",
             fileName: "Source/Items/Items.c",
             lineNumber: 783,
           },
@@ -648,20 +626,21 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.SquishBerry]: {
     flags: "ITEM_FLAGS_USER1: Is squished (shows as splat)",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.DogHouse]: {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Dog house rotation (0-3, where each unit = 90°, starting at 180°)",
+      description:
+        "Dog house rotation (0-3, where each unit = 90°, starting at 180°)",
       codeSample: {
         code: "gNewObjectDefinition.rot = PI + ((float)itemPtr->parm[0] * (PI2/4));",
         fileName: "Source/Items/Items.c",
-        lineNumber: 872,
+        lineNumber: 898,
       },
     },
     p1: "Unused",
@@ -674,9 +653,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Windmill rotation (0-3, where each unit = 90°)",
       codeSample: {
-        code: "float r = itemPtr->parm[0] * (PI2/4.0f);\ngNewObjectDefinition.rot = r;",
+        code: "float r = itemPtr->parm[0] * (PI2/4.0f);",
         fileName: "Source/Items/Traps.c",
-        lineNumber: 273,
+        lineNumber: 300,
       },
     },
     p1: "Unknown",
@@ -737,35 +716,23 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "POW type",
+      description:
+        "POW kind (0=health, 1=flight, 2=map, 3=free life, 4=ram grain, 5=buddy bug, 6=red key, 7=green key, 8=blue key, 9=green clover, 10=blue clover, 11=gold clover, 12=shield)",
       codeSample: {
         code: "pow = MakePOW(itemPtr->parm[0], &where);",
         fileName: "Source/Items/Powerups.c",
-        lineNumber: 585,
+        lineNumber: 586,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Firecracker]: {
     flags: "Unknown",
-    p0: {
-      type: "Bit Flags",
-      flags: [
-        {
-          index: 0,
-          description: "Build 2 collision boxes",
-          codeSample: {
-            code: "if (itemPtr->parm[0] & 1) { /* build 2 collision boxes */ }",
-            fileName: "Source/Items/Traps.c",
-            lineNumber: 327,
-          },
-        },
-      ],
-    },
-    p1: "Unknown",
-    p2: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
     p3: {
       type: "Bit Flags",
       flags: [
@@ -809,7 +776,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_FLEA] >= MAX_FLEAS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_Flea.c",
             lineNumber: 142,
           },
@@ -819,15 +786,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.Enemy_Tick]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_Tick(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_Tick.c",
-        lineNumber: 108,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -838,9 +797,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Car number (0 = red, 1 = blue)",
       codeSample: {
-        code: "int carNum = itemPtr->parm[0];\nGAME_ASSERT(carNum == 0 || carNum == 1);\ngNewObjectDefinition.type = PLAYROOM_ObjType_SlotCarRed + carNum;",
+        code: "carNum = itemPtr->parm[0];",
         fileName: "Source/Items/SlotCar.c",
-        lineNumber: 133,
+        lineNumber: 91,
       },
     },
     p1: "Unused",
@@ -855,7 +814,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.type = PLAYROOM_ObjType_LetterBlock1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 27,
+        lineNumber: 55,
       },
     },
     p1: "Unknown",
@@ -870,22 +829,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI / 2);",
         fileName: "Source/Items/Traps.c",
-        lineNumber: 749,
-      },
-    },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
-  },
-  [ItemType.Enemy_ToySoldier]: {
-    flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_ToySoldier(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_ToySoldier.c",
-        lineNumber: 105,
+        lineNumber: 743,
       },
     },
     p1: "Unknown",
@@ -895,11 +839,40 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       flags: [
         {
           index: 0,
+          description: "Mouse trap starts primed",
+          codeSample: {
+            code: "Boolean primed = itemPtr->parm[3] & 0x1;",
+            fileName: "Source/Items/Traps.c",
+            lineNumber: 723,
+          },
+        },
+        {
+          index: 1,
+          description: "Mouse trap contains a drowning mouse",
+          codeSample: {
+            code: "Boolean drowning = itemPtr->parm[3] & (1<<1);",
+            fileName: "Source/Items/Traps.c",
+            lineNumber: 724,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Enemy_ToySoldier]: {
+    flags: "Unknown",
+    p0: "Unused",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_TOYSOLDIER] >= MAX_TOYSOLDIERS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_ToySoldier.c",
-            lineNumber: 109,
+            lineNumber: 112,
           },
         },
       ],
@@ -932,9 +905,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_OTTO] >= MAX_OTTOS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_Otto.c",
-            lineNumber: 120,
+            lineNumber: 121,
           },
         },
       ],
@@ -944,9 +917,10 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Puzzle part (0 = main puzzle base, 1+ = individual pieces)",
+      description:
+        "Puzzle part (0 = full puzzle board, 1-3 = puzzle pieces 1-3)",
       codeSample: {
-        code: "int part = itemPtr->parm[0];\nif (part == 0) {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_PuzzleMain;",
+        code: "int\t\tpart = itemPtr->parm[0];",
         fileName: "Source/Items/Snails2.c",
         lineNumber: 52,
       },
@@ -962,18 +936,18 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       description:
         "Wall/brick type (0 = full wall, 1-5 = individual brick types)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 5) return(true);\nif (type == 0) {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall;\n} else {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall + type;\n}",
+        code: "int\t\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 369,
+        lineNumber: 372,
       },
     },
     p1: {
       type: "Integer",
       description: "Rotation (0-3, where each unit = 90°)",
       codeSample: {
-        code: "int r = itemPtr->parm[1];\ngNewObjectDefinition.rot = (float)r * (PI/2);",
+        code: "int\t\tr = itemPtr->parm[1];",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 372,
+        lineNumber: 371,
       },
     },
     p2: "Unknown",
@@ -984,7 +958,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Choose random color brick (for brick types only)",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1) gNewObjectDefinition.type = PLAYROOM_ObjType_LegoBrick_Red + RandomRange(0, 4);",
+        code: "if (itemPtr->parm[3] & 1)",
             fileName: "Source/Items/Items2.c",
             lineNumber: 410,
           },
@@ -1032,9 +1006,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_DRAGONFLY] >= MAX_DRAGONFLYS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_DragonFly.c",
-            lineNumber: 77,
+            lineNumber: 96,
           },
         },
       ],
@@ -1059,9 +1033,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_FROG] >= MAX_FROGS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_Frog.c",
-            lineNumber: 49,
+            lineNumber: 74,
           },
         },
       ],
@@ -1073,14 +1047,14 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Box type (0-3, affects model)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 3) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_CardboardBox1 + type;",
+        code: "int\t\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
         lineNumber: 693,
       },
     },
     p1: {
       type: "Integer",
-      description: "Stack level",
+      description: "Stack level; raises the box in stacked arrangements.",
       codeSample: {
         code: "int stackLevel = itemPtr->parm[1];",
         fileName: "Source/Items/Items2.c",
@@ -1119,14 +1093,14 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 796,
+        lineNumber: 793,
       },
     },
     p1: {
       type: "Integer",
       description: "Wall type (0 = PCI Card, 1-2 = Book stacks)",
       codeSample: {
-        code: "int type = itemPtr->parm[1];\nif (type > 2) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_PCICard + type;",
+        code: "int\ttype = itemPtr->parm[1];",
         fileName: "Source/Items/Items2.c",
         lineNumber: 779,
       },
@@ -1142,7 +1116,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "newObj->MothTargetID = itemPtr->parm[0]; // get target ID #",
         fileName: "Source/Enemies/Enemy_Moth.c",
-        lineNumber: 126,
+        lineNumber: 124,
       },
     },
     p1: "Unknown",
@@ -1152,11 +1126,12 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       flags: [
         {
           index: 0,
-          description: "Is target moth",
+          description:
+            "Target marker only; when set, no moth model is spawned.",
           codeSample: {
             code: "if (itemPtr->parm[3] & 1) // see if target\n    return(true);",
             fileName: "Source/Enemies/Enemy_Moth.c",
-            lineNumber: 117,
+              lineNumber: 92,
           },
         },
       ],
@@ -1174,7 +1149,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_COMPUTERBUG] >= MAX_COMPUTERBUGS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_ComputerBug.c",
             lineNumber: 104,
           },
@@ -1182,15 +1157,30 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       ],
     },
   },
-  [ItemType.SiliconPart]: bugdom2DefaultParams,
+  [ItemType.SiliconPart]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Silicon part (0=Chip1, 1=Chip2).",
+      codeSample: {
+        code: "Boolean\tpart = itemPtr->parm[0];",
+        fileName: "Source/Items/Pickups.c",
+        lineNumber: 681,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
   [ItemType.NilAdd2]: bugdom2DefaultParams,
   [ItemType.BookStack]: {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Book stack type (0-2: flat book, tall book, tall stack)",
+      description:
+        "Book stack type (0=flat book, 1=book stack, 2=tall book stack)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 2) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_FlatBook + type;",
+        code: "int\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
         lineNumber: 814,
       },
@@ -1209,15 +1199,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.Enemy_Roach]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_Roach(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_Roach.c",
-        lineNumber: 125,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: {
@@ -1227,9 +1209,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_ROACH] >= MAX_ROACHS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_Roach.c",
-            lineNumber: 110,
+            lineNumber: 132,
           },
         },
       ],
@@ -1243,16 +1225,16 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 753,
+        lineNumber: 754,
       },
     },
     p1: {
       type: "Integer",
       description: "Stack level",
       codeSample: {
-        code: "int stackLevel = itemPtr->parm[1];\nif (stackLevel > 0)\n    y += (float)stackLevel * (gNewObjectDefinition.scale * .44f);",
+        code: "int\t\tstackLevel = itemPtr->parm[1];",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 739,
+        lineNumber: 737,
       },
     },
     p2: "Unknown",
@@ -1262,7 +1244,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Picture type (affects model)",
+      description: "Picture art (0=Brian, 1=Peter, 2=Tuncer)",
       codeSample: {
         code: "gNewObjectDefinition.type = CLOSET_ObjType_PictureFrame_Brian + itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
@@ -1275,7 +1257,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 1127,
+        lineNumber: 1131,
       },
     },
     p2: "Unknown",
@@ -1289,7 +1271,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "int foodType = itemPtr->parm[0];",
         fileName: "Source/Enemies/Enemy_Ant.c",
-        lineNumber: 104,
+        lineNumber: 108,
       },
     },
     p1: "Unknown",
@@ -1301,9 +1283,9 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max enemy limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_ANT] >= MAX_ANTS)\n        return(false);\n}",
+        code: "if (!(itemPtr->parm[3] & 1))",
             fileName: "Source/Enemies/Enemy_Ant.c",
-            lineNumber: 110,
+            lineNumber: 114,
           },
         },
       ],
@@ -1311,15 +1293,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.Enemy_PondFish]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unused",
-      codeSample: {
-        code: "Boolean AddEnemy_PondFish(TerrainItemEntryType *itemPtr, float x, float z)",
-        fileName: "Source/Enemies/Enemy_PondFish.c",
-        lineNumber: 101,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -1327,7 +1301,21 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   [ItemType.LilyPad]: bugdom2DefaultParams,
   [ItemType.CatTail]: bugdom2DefaultParams,
   [ItemType.Bubbler]: bugdom2DefaultParams,
-  [ItemType.PlatformFlower]: bugdom2DefaultParams,
+  [ItemType.PlatformFlower]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Flower height variant (0=short, 1=medium, 2=tall).",
+      codeSample: {
+        code: "int\ttype = itemPtr->parm[0];",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 1241,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
   [ItemType.FishingLure]: bugdom2DefaultParams,
   [ItemType.Silverware]: {
     flags: "Unknown",
@@ -1352,16 +1340,32 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     p2: "Unknown",
     p3: "Unknown",
   },
-  [ItemType.PicnicBasket]: bugdom2DefaultParams,
+  [ItemType.PicnicBasket]: {
+    flags: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Picnic basket rotation in quarter turns",
+      divisions: 4,
+      multiplier: "PI2/4",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
+        fileName: "Source/Items/Snails2.c",
+        lineNumber: 519,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
   [ItemType.Kindling]: {
     flags: "Unknown",
     p0: {
       type: "Integer",
       description: "Kindling part (0 = leaf, 1 = twig)",
       codeSample: {
-        code: "gNewObjectDefinition.type = PARK_ObjType_Leaf + part;",
+        code: "Boolean\tpart = itemPtr->parm[0];",
         fileName: "Source/Items/BeeHive.c",
-        lineNumber: 239,
+        lineNumber: 237,
       },
     },
     p1: "Unknown",
@@ -1370,30 +1374,14 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   },
   [ItemType.BeeHive]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Bee hive part (0 or 1)",
-      codeSample: {
-        code: "gNewObjectDefinition.type = PARK_ObjType_Hive;",
-        fileName: "Source/Items/BeeHive.c",
-        lineNumber: 58,
-      },
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.SodaCan]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Unknown",
-      codeSample: {
-        code: "gNewObjectDefinition.type = GARBAGE_ObjType_Can;",
-        fileName: "Source/Items/Items3.c",
-        lineNumber: 67,
-      },
-    },
+    p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -1404,7 +1392,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Vegetable type",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 3) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_Banana + type;",
+        code: "int\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Items3.c",
         lineNumber: 362,
       },
@@ -1419,7 +1407,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       type: "Integer",
       description: "Jar type (0-1)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 1) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_Jar + type;",
+        code: "int\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Items3.c",
         lineNumber: 409,
       },
@@ -1432,16 +1420,24 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Tin can type",
+      description: "Tin can pose (0=upright/random yaw, 1=lying on its side)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type > 1) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_TinCan;",
+        code: "int\ttype = itemPtr->parm[0];",
         fileName: "Source/Items/Items3.c",
         lineNumber: 457,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: {
+      type: "Integer",
+      description: "Quarter-turn yaw used when p0 = 1.",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4);",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 475,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Detergent]: {
     flags: "Unknown",
@@ -1451,7 +1447,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 528,
+        lineNumber: 527,
       },
     },
     p1: "Unknown",
@@ -1466,7 +1462,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 571,
+        lineNumber: 570,
       },
     },
     p1: "Unknown",
@@ -1477,16 +1473,16 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Glider part (0 or 1)",
+      description: "Glider part (0=glider body, 1=wheel, 2=propeller)",
       codeSample: {
-        code: "int part = itemPtr->parm[0];\ngNewObjectDefinition.type = GARBAGE_ObjType_Glider + part;",
+        code: "int\tpart = itemPtr->parm[0];",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 601,
+        lineNumber: 602,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
 };
 

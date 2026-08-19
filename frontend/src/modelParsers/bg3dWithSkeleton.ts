@@ -14,6 +14,20 @@ import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { err, ok, ResultAsync, type Result } from "neverthrow";
 
+function getRelativePoints(
+  skeleton: SkeletonResource,
+): Record<string, [number, number, number][]> {
+  return Object.fromEntries(
+    Object.entries(skeleton.RelP ?? {}).map(([resourceId, entry]) => [
+      resourceId,
+      entry.obj.map((point) => [
+        point.relOffsetX,
+        point.relOffsetY,
+        point.relOffsetZ,
+      ]),
+    ]),
+  );
+}
 
 /**
  * Detect if a buffer is a 3DMF file based on magic number
@@ -162,6 +176,8 @@ function parseModelWithSkeletonResource(
           };
         }),
         animations: buildAnimations(skeleton, numJoints),
+        relPoints: getRelativePoints(skeleton),
+        metadata: skeleton._metadata,
       };
     }
 

@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { quantizeRgbaToSixteenBit } from "@/utils/imageConverter";
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 import {
@@ -143,11 +144,13 @@ export function getFlatIndexForTile(
 export function rotateTileAtIndex(
   setTerrainData: Updater<TerrainData>,
   flatIndex: number,
+  layer: 1000 | 1001,
 ): void {
   setTerrainData((data) => {
-    if (!data.Layr?.[1000]?.obj) return;
+    const layerData = data.Layr?.[layer]?.obj;
+    if (!layerData) return;
 
-    const currentValue = data.Layr[1000].obj[flatIndex];
+    const currentValue = layerData[flatIndex];
     if (currentValue === undefined) return;
     const currentRotation = currentValue & TILE_ROTATE_MASK;
 
@@ -167,7 +170,7 @@ export function rotateTileAtIndex(
         break;
     }
 
-    data.Layr[1000].obj[flatIndex] =
+    layerData[flatIndex] =
       (currentValue & ~TILE_ROTATE_MASK) | newRotation;
   });
 }
@@ -175,24 +178,28 @@ export function rotateTileAtIndex(
 export function flipTileXAtIndex(
   setTerrainData: Updater<TerrainData>,
   flatIndex: number,
+  layer: 1000 | 1001,
 ): void {
   setTerrainData((data) => {
-    if (!data.Layr?.[1000]?.obj) return;
-    const currentValue = data.Layr[1000].obj[flatIndex];
+    const layerData = data.Layr?.[layer]?.obj;
+    if (!layerData) return;
+    const currentValue = layerData[flatIndex];
     if (currentValue === undefined) return;
-    data.Layr[1000].obj[flatIndex] = currentValue ^ TILE_FLIPX_MASK;
+    layerData[flatIndex] = currentValue ^ TILE_FLIPX_MASK;
   });
 }
 
 export function flipTileYAtIndex(
   setTerrainData: Updater<TerrainData>,
   flatIndex: number,
+  layer: 1000 | 1001,
 ): void {
   setTerrainData((data) => {
-    if (!data.Layr?.[1000]?.obj) return;
-    const currentValue = data.Layr[1000].obj[flatIndex];
+    const layerData = data.Layr?.[layer]?.obj;
+    if (!layerData) return;
+    const currentValue = layerData[flatIndex];
     if (currentValue === undefined) return;
-    data.Layr[1000].obj[flatIndex] = currentValue ^ TILE_FLIPY_MASK;
+    layerData[flatIndex] = currentValue ^ TILE_FLIPY_MASK;
   });
 }
 
@@ -214,14 +221,16 @@ export function replaceTileAtIndex(
   setTerrainData: Updater<TerrainData>,
   flatIndex: number,
   tileIndexForImage: number,
+  layer: 1000 | 1001,
 ): void {
   setTerrainData((data) => {
-    if (!data.Layr?.[1000]?.obj) return;
-    const currentValue = data.Layr[1000].obj[flatIndex];
+    const layerData = data.Layr?.[layer]?.obj;
+    if (!layerData) return;
+    const currentValue = layerData[flatIndex];
     if (currentValue === undefined) return;
     const newValue =
       (currentValue & ~TILENUM_MASK) | (tileIndexForImage & TILENUM_MASK);
-    data.Layr[1000].obj[flatIndex] = newValue;
+    layerData[flatIndex] = newValue;
   });
 }
 
@@ -250,18 +259,33 @@ export async function uploadTileImageToIndex(
     sourceBitmap.width !== TILE_IMAGE_SIZE ||
     sourceBitmap.height !== TILE_IMAGE_SIZE
   ) {
+    sourceBitmap.close();
     toast.error(`Tile images must be ${TILE_IMAGE_SIZE}x${TILE_IMAGE_SIZE}`);
     return false;
   }
+  sourceBitmap.close();
 
-  context.fillStyle = "black";
-  context.fillRect(0, 0, TILE_IMAGE_SIZE, TILE_IMAGE_SIZE);
+  context.clearRect(0, 0, TILE_IMAGE_SIZE, TILE_IMAGE_SIZE);
   const imageBitmap = await createImageBitmap(file, {
     resizeWidth: TILE_IMAGE_SIZE,
     resizeHeight: TILE_IMAGE_SIZE,
     resizeQuality: "high",
   });
   context.drawImage(imageBitmap, 0, 0);
+  imageBitmap.close();
+  const uploadedData = context.getImageData(
+    0,
+    0,
+    TILE_IMAGE_SIZE,
+    TILE_IMAGE_SIZE,
+  );
+  const quantizedUpload = new Uint8ClampedArray(uploadedData.data.length);
+  quantizedUpload.set(quantizeRgbaToSixteenBit(uploadedData.data));
+  context.putImageData(
+    new ImageData(quantizedUpload, TILE_IMAGE_SIZE, TILE_IMAGE_SIZE),
+    0,
+    0,
+  );
 
   const newMapImages = [...mapImages];
   newMapImages[imageIndex] = canvas;
@@ -289,7 +313,17 @@ export function saveEditedTileImageToIndex(
     return false;
   }
 
-  context.putImageData(editedImageData, 0, 0);
+  const quantizedEdit = new Uint8ClampedArray(editedImageData.data.length);
+  quantizedEdit.set(quantizeRgbaToSixteenBit(editedImageData.data));
+  context.putImageData(
+    new ImageData(
+      quantizedEdit,
+      editedImageData.width,
+      editedImageData.height,
+    ),
+    0,
+    0,
+  );
   const newMapImages = [...mapImages];
   newMapImages[imageIndex] = canvas;
   updateTileImages(newMapImages);

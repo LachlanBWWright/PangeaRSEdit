@@ -19,6 +19,7 @@ import {
 import { croMagSpecs } from "../../src/python/structSpecs/croMag";
 import { CroMagGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
+import { expectStructuredRoundtrip } from "./structuredRoundtripTestHelpers";
 
 describe("Cro-Mag Rally Map Roundtrip", () => {
   const testFilePath = join(
@@ -191,8 +192,9 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     console.log("✅ Cro-Mag Rally hex data roundtrip successful");
   });
 
-  it.skip("should roundtrip with cro-mag specs (structured data)", () => {
-    // Skip: StructConverter.pack not implemented
+  it("should roundtrip structured resources with Cro-Mag specs", async () => {
+    if (!fileExists) return;
+    await expectStructuredRoundtrip(new Uint8Array(originalData), croMagSpecs);
   });
 
   it("should produce similar binary size", async () => {
@@ -225,7 +227,4 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     expect(sizeRatio).toBeLessThan(1.2);
   });
 
-  it.skip("should preserve all resource types", () => {
-    // Skip: StructConverter.pack not implemented
-  });
 });

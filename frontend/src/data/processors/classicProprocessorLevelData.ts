@@ -1,6 +1,25 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import type { Nanosaur1LevelData } from "./classicProprocessorTypes";
 
+function minMaxOrZero(values: readonly number[]): {
+  readonly min: number;
+  readonly max: number;
+} {
+  let min = 0;
+  let max = 0;
+
+  for (const value of values) {
+    if (value < min) {
+      min = value;
+    }
+    if (value > max) {
+      max = value;
+    }
+  }
+
+  return { min, max };
+}
+
 export function nanosaur1LevelToLevelData(
   level: Nanosaur1LevelData,
   tileSize = 32,
@@ -77,6 +96,8 @@ export function nanosaur1LevelToLevelData(
     }
   }
 
+  const yRange = minMaxOrZero(ycrdData);
+
   const ottoLevel: LevelData = {
     Atrb: {
       1000: {
@@ -114,8 +135,8 @@ export function nanosaur1LevelToLevelData(
           numTilePages: 1,
           numTiles: width * depth,
           tileSize: 32,
-          minY: Math.min(...ycrdData, 0),
-          maxY: Math.max(...ycrdData, 0),
+          minY: yRange.min,
+          maxY: yRange.max,
           numSplines: 0,
           numFences: 0,
           numUniqueSupertiles: 0,
@@ -138,10 +159,10 @@ export function nanosaur1LevelToLevelData(
           flags: item.flags,
           prevItemIdx: item.prevItemIdx,
           nextItemIdx: item.nextItemIdx,
-          p0: 0,
-          p1: 0,
-          p2: 0,
-          p3: 0,
+          p0: item.parm[0],
+          p1: item.parm[1],
+          p2: item.parm[2],
+          p3: item.parm[3],
         })),
         order: 0,
       },
@@ -149,6 +170,7 @@ export function nanosaur1LevelToLevelData(
     Layr: {
       1000: { name: "Terrain Layer Matrix", obj: level.textureLayer, order: 0 },
     },
+    ...(level.pathLayer ? { nanosaurPathLayer: [...level.pathLayer] } : {}),
     Liqd: { 1000: { name: "Water List", obj: [], order: 0 } },
     STgd: { 1000: { name: "SuperTile Grid", obj: [], order: 0 } },
     SpIt: emptyRecord,

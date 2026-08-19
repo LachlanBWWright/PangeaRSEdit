@@ -16,14 +16,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
 import { useAtom } from "jotai";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 interface Props {
-  terrainHasSTgd?: boolean;
   compact?: boolean;
 }
 
 export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
-  terrainHasSTgd,
   compact,
 }: Props) {
   const [view, setView] = useAtom(ActiveView);
@@ -34,6 +33,10 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
         ? "items"
         : view === View.splines
           ? "splines"
+          : view === View.scripts
+            ? "scripts"
+          : view === View.vertexColors
+            ? "vertexColors"
           : view === View.tiles
             ? "tiles"
             : "supertiles";
@@ -42,6 +45,8 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
     if (value === "fences") setView(View.fences);
     else if (value === "items") setView(View.items);
     else if (value === "splines") setView(View.splines);
+    else if (value === "scripts") setView(View.scripts);
+    else if (value === "vertexColors") setView(View.vertexColors);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -69,11 +74,19 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
           <TabsTrigger className="w-full" value="splines">
             Splines
           </TabsTrigger>
+          {ENABLE_SCRIPTS ? (
+            <TabsTrigger className="w-full" value="scripts">
+              Scripts
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger className="w-full" value="tiles">
-            Tiles
+            Terrain
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="supertiles" disabled={!terrainHasSTgd}>
-            Supertiles
+          <TabsTrigger className="w-full" value="supertiles">
+            Visual Tiles
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="vertexColors">
+            Vertex Colors
           </TabsTrigger>
         </TabsList>
       </Tabs>

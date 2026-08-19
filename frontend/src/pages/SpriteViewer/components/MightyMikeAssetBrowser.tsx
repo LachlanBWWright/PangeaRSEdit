@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -7,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EditorField, EditorPanel } from "./EditorPanel";
 
 type FileType = "sprites" | "tga" | "tileset";
 
@@ -81,13 +81,11 @@ export function MightyMikeAssetBrowser({
   const availableFiles = getAvailableFiles(selectedType);
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white text-sm">Mighty Mike Assets</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <label className="text-xs text-gray-400 block mb-2">Asset Type</label>
+    <EditorPanel title="Game Assets">
+        <p className="text-xs text-gray-400">
+          Load a bundled sprite asset from the game library.
+        </p>
+        <EditorField label="Asset Type">
           <Select
             value={selectedType}
             onValueChange={(value) => {
@@ -114,10 +112,9 @@ export function MightyMikeAssetBrowser({
               </SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </EditorField>
 
-        <div>
-          <label className="text-xs text-gray-400 block mb-2">Select Asset</label>
+        <EditorField label="Select Asset">
           <Select
             value={selectedAsset}
             onValueChange={(value) => {
@@ -143,7 +140,7 @@ export function MightyMikeAssetBrowser({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </EditorField>
 
         {loading && <p className="text-sm text-blue-400">Loading...</p>}
 
@@ -152,7 +149,6 @@ export function MightyMikeAssetBrowser({
             Loaded: {loadedFilename}
           </p>
         )}
-      </CardContent>
-    </Card>
+    </EditorPanel>
   );
 }

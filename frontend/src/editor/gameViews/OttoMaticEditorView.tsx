@@ -13,9 +13,11 @@ import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
+import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { WaterMenu } from "../subviews/water/WaterMenu";
 import { OttoMaticTilesMenu } from "./OttoMaticTilesMenu";
@@ -28,11 +30,13 @@ import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
 import { MenuSection } from "./MenuSection";
 import {
   EmptyFencePrompt,
+  EmptyItemPrompt,
   EmptyWaterPrompt,
   EmptySplinePrompt,
 } from "../subviews/EmptyDataPrompts";
 import {
   createEmptyFenceData,
+  createEmptyItemData,
   createEmptyLiquidData,
   createEmptySplineData,
 } from "../utils/dataInitializers";
@@ -41,6 +45,7 @@ import {
   createUndoRedoKeyHandler,
   createZoomInHandler,
   createZoomOutHandler,
+  normalizeEditorView,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
 import { Globals } from "@/data/globals/globals";
@@ -55,6 +60,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
+import { applyLevelScale } from "../utils/applyLevelScale";
 
 export function OttoMaticEditorView({
   headerData,
@@ -78,7 +84,8 @@ export function OttoMaticEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
-  const view = useAtomValue(ActiveView);
+  const storedView = useAtomValue(ActiveView);
+  const setView = useSetAtom(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -109,6 +116,16 @@ export function OttoMaticEditorView({
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
+  const view = normalizeEditorView(
+    storedView,
+    ENABLE_SCRIPTS
+      ? [View.fences, View.water, View.items, View.splines, View.scripts, View.tiles, View.supertiles]
+      : [View.fences, View.water, View.items, View.splines, View.tiles, View.supertiles],
+    showSupertileMenu ? View.supertiles : View.tiles,
+  );
+  useEffect(() => {
+    if (storedView !== view) setView(view);
+  }, [setView, storedView, view]);
   useEffect(() => {
     setEditorNavbarTabs(
       <StandardEditorToolbar terrainHasSTgd={showSupertileMenu} compact />,
@@ -120,7 +137,7 @@ export function OttoMaticEditorView({
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
   ) => {
-    resizeEditorAtomicSupertiles({
+    return resizeEditorAtomicSupertiles({
       headerData,
       itemData,
       liquidData,
@@ -165,12 +182,28 @@ export function OttoMaticEditorView({
               onInitialize={() => setLiquidData(createEmptyLiquidData())}
             />
           ))}
-        {view === View.items && itemData && (
-          <ItemMenu
-            itemData={itemData}
-            setItemData={setItemDataNotNull}
+        {view === View.items &&
+          (itemData ? (
+            <ItemMenu
+              itemData={itemData}
+              setItemData={setItemDataNotNull}
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+            />
+          ) : (
+            <EmptyItemPrompt
+              onInitialize={() => setItemData(createEmptyItemData())}
+            />
+          ))}
+        {ENABLE_SCRIPTS && view === View.scripts && (
+          <ScriptsMenu
             headerData={headerData}
-            setHeaderData={setHeaderData}
+            itemData={itemData}
+            liquidData={liquidData}
+            fenceData={fenceData}
+            splineData={splineData}
+            terrainData={terrainData}
+            mapImages={mapImages}
           />
         )}
         {view === View.splines &&
@@ -190,6 +223,19 @@ export function OttoMaticEditorView({
           <OttoMaticTilesMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
+            onApplyLevelScale={(nextTileSize, mode) =>
+              applyLevelScale({
+                previousTileSize: headerData.Hedr[1000].obj.tileSize,
+                nextTileSize,
+                mode,
+                setHeaderData,
+                setItemData,
+                setFenceData,
+                setSplineData,
+                setLiquidData,
+                setTerrainData,
+              })
+            }
           />
         )}
         {view === View.supertiles && showSupertileMenu && (
@@ -200,7 +246,6 @@ export function OttoMaticEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
-            onResizeSupertiles={handleSupertileResize}
           />
         )}
       </MenuSection>
@@ -244,6 +289,7 @@ export function OttoMaticEditorView({
             view={view}
             stage={stage}
             setStage={setStage}
+            onResize={handleSupertileResize}
           />
         )}
       </div>

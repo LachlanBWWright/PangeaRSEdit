@@ -1,7 +1,7 @@
-import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { combineLevelData, splitLevelData } from "@/data/utils/levelDataUtils";
 import type { ResizeDirection } from "@/data/utils/levelResizeUtils";
+import type { LevelResizeGlobals } from "@/data/utils/levelResizeUtils";
 import {
   ITEM_BOUNDS_WARNING,
   resizeLevel,
@@ -31,7 +31,7 @@ interface SupertileResizeMeasurements {
 }
 
 function getSupertileResizeMeasurements(
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
   options: ResizeUIOptions,
 ): SupertileResizeMeasurements {
   const supertileDelta = options.tileCount / globals.TILES_PER_SUPERTILE;
@@ -92,7 +92,7 @@ function resizeItemsWithWorldOffsets(
 
 export function applyResizeToAtomicData(
   atomicData: AtomicLevelData,
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
   options: ResizeUIOptions,
 ): Result<ResizeAtomicDataResult, string> {
   const combinedResult = combineLevelData(atomicData);
@@ -109,7 +109,7 @@ export function applyResizeToAtomicData(
 
 export function applySupertileResizeToAtomicData(
   atomicData: AtomicLevelData,
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
   options: ResizeUIOptions,
 ): Result<ResizeAtomicDataResult, string> {
   const combinedResult = combineLevelData(atomicData);

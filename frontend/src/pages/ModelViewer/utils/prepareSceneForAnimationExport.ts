@@ -1,4 +1,4 @@
-import { Material, Mesh, Object3D, SkinnedMesh } from "three";
+import { Material, Mesh, Object3D, Scene, SkinnedMesh } from "three";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -10,7 +10,14 @@ function hasWireframe(mat: Material): mat is Material & { wireframe: boolean } {
 }
 
 export function prepareSceneForAnimationExport(scene: Object3D): Object3D {
-  const exportScene = clone(scene);
+  const clonedRoot = clone(scene);
+  const exportScene = new Scene();
+  exportScene.name = clonedRoot.name;
+  exportScene.userData = { ...clonedRoot.userData };
+
+  for (const child of [...clonedRoot.children]) {
+    exportScene.add(child);
+  }
 
   // Collect skeleton helper meshes added by EnhancedModelMesh (bone spheres/tubes)
   // so they don't contaminate the export. These are identified by the

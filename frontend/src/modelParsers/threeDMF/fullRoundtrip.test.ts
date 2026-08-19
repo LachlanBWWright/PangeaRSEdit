@@ -22,7 +22,7 @@ import {
   testFiles,
 } from "./fullRoundtripTestHelpers";
 
-describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
+describe("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
   describe("3DMF → glTF → 3DMF (without skeleton)", () => {
     testFiles.forEach(({ path, name }) => {
       it(`should roundtrip ${name}: 3DMF → glTF → 3DMF`, async () => {

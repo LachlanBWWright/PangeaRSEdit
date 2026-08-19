@@ -9,6 +9,17 @@ import {
 
 export const SPLINE_KEY_BASE = 1000;
 
+export function getSplinePointGenerationInput(
+  nubs: { x: number; z: number }[],
+) {
+  const splineType = detectSplineType(nubs);
+  const isCircular = splineType === SplineType.CIRCULAR;
+  return {
+    isCircular,
+    workingNubs: nubs,
+  };
+}
+
 export function updateSplinePointsFromNubs(
   splineIdx: number,
   setSplineData: Updater<SplineData>,
@@ -16,12 +27,7 @@ export function updateSplinePointsFromNubs(
   // Compute points from current nubs and write them directly into the draft
   setSplineData((draft) => {
     const nubs = selectSplineNubs(draft, SPLINE_KEY_BASE + splineIdx);
-
-    // Detect if this spline is circular or open
-    const splineType = detectSplineType(nubs);
-    const isCircular = splineType === SplineType.CIRCULAR;
-    const workingNubs =
-      isCircular && nubs.length > 1 ? nubs.slice(0, -1) : nubs;
+    const { isCircular, workingNubs } = getSplinePointGenerationInput(nubs);
     const workingFirstNub = workingNubs[0];
 
     const newPoints =
@@ -32,7 +38,7 @@ export function updateSplinePointsFromNubs(
     const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
     if (spPt) {
       spPt.obj = newPoints;
-      const spln = draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+      const spln = draft.Spln?.[1000]?.obj?.[splineIdx];
       if (spln) spln.numPoints = newPoints.length;
     }
   });

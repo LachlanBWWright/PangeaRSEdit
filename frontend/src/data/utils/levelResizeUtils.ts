@@ -1,4 +1,3 @@
-import type { GlobalsInterface } from "@/data/globals/globals";
 import type {
   LevelData,
   TerrainData,
@@ -18,6 +17,13 @@ import {
 } from "./levelEntityResizeUtils";
 
 export type ResizeDirection = "top" | "bottom" | "left" | "right";
+
+export interface LevelResizeGlobals {
+  readonly TILES_PER_SUPERTILE: number;
+  readonly TILE_INGAME_SIZE: number;
+  readonly TILE_SIZE: number;
+  readonly EMPTY_TILE_IDX: number;
+}
 
 export interface ResizeOptions {
   direction: ResizeDirection;
@@ -147,7 +153,7 @@ function resizeYCrdArray(
 function resizeTerrainData(
   terrainData: TerrainData,
   header: { mapWidth: number; mapHeight: number },
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
   options: ResizeOptions,
 ): TerrainData {
   const { newWidth, newHeight, offsetX, offsetZ } = getResizeDimensions(
@@ -183,6 +189,23 @@ function resizeTerrainData(
     Layr: buildLayr(terrainData.Layr, resizedLayr),
     YCrd: buildYCrd(terrainData.YCrd, resizedYCrd),
   };
+  if (terrainData.CkPt?.[1000]?.obj) {
+    const checkpointOffsetX = offsetX * globals.TILE_SIZE;
+    const checkpointOffsetZ = offsetZ * globals.TILE_SIZE;
+    resized.CkPt = {
+      ...terrainData.CkPt,
+      1000: {
+        ...terrainData.CkPt[1000],
+        obj: terrainData.CkPt[1000].obj.map((checkpoint) => ({
+          ...checkpoint,
+          x1: checkpoint.x1 + checkpointOffsetX,
+          x2: checkpoint.x2 + checkpointOffsetX,
+          z1: checkpoint.z1 + checkpointOffsetZ,
+          z2: checkpoint.z2 + checkpointOffsetZ,
+        })),
+      },
+    };
+  }
   if (terrainData.YCrd?.[1001]?.obj) {
     const roof = resizeYCrdArray(
       terrainData.YCrd[1001].obj,
@@ -231,7 +254,7 @@ function resizeItems(
   itemData: ItemData | null,
   options: ResizeOptions,
   header: { mapWidth: number; mapHeight: number },
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
 ): { data: ItemData | null; outOfBounds: TerrainItem[] } {
   if (!itemData?.Itms?.[1000]?.obj) return { data: itemData, outOfBounds: [] };
   const { offsetX, offsetZ, newWidth, newHeight } = getResizeDimensions(
@@ -304,7 +327,7 @@ function updateHeader(
 
 export function resizeLevel(
   levelData: LevelData,
-  globals: GlobalsInterface,
+  globals: LevelResizeGlobals,
   options: ResizeOptions,
 ): ResizeResult {
   const headerData: HeaderData = { Hedr: levelData.Hedr };
@@ -320,6 +343,7 @@ export function resizeLevel(
     _metadata: levelData._metadata,
     ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
     ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
+    ...(levelData.CkPt !== undefined ? { CkPt: levelData.CkPt } : {}),
   };
   const resizedTerrain = resizeTerrainData(
     terrainData,
@@ -340,7 +364,7 @@ export function resizeLevel(
     ...updatedHeader,
     ...resizedTerrainWithItCo,
     ...(resizedItems ? resizedItems : {}),
-  } as LevelData;
+  };
   return {
     ok: true,
     levelData: resizedLevel,

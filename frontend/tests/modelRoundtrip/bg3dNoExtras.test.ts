@@ -18,7 +18,8 @@ describe("BG3D produces clean GLB (no extras)", () => {
   const skelPath = join(gamesRoot, "ottomatic", "skeletons", "Blob.skeleton.rsrc");
 
   it("GLB has no root extras", async () => {
-    if (!existsSync(bg3dPath)) return;
+    expect(existsSync(bg3dPath), `Required fixture is missing: ${bg3dPath}`).toBe(true);
+    expect(existsSync(skelPath), `Required fixture is missing: ${skelPath}`).toBe(true);
     const originalBg3d = bufferFromFile(bg3dPath);
     const originalSkel = bufferFromFile(skelPath);
 
@@ -44,7 +45,8 @@ describe("BG3D produces clean GLB (no extras)", () => {
   });
   
   it("GLB roundtrip produces valid game-compatible BG3D", async () => {
-    if (!existsSync(bg3dPath)) return;
+    expect(existsSync(bg3dPath), `Required fixture is missing: ${bg3dPath}`).toBe(true);
+    expect(existsSync(skelPath), `Required fixture is missing: ${skelPath}`).toBe(true);
     const originalBg3d = bufferFromFile(bg3dPath);
     const originalSkel = bufferFromFile(skelPath);
     

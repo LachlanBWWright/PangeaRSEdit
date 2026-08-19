@@ -25,21 +25,29 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Install dependencies
-        uses: bahmutov/npm-install@v1
-        with:
-          working-directory: frontend
+        run: pnpm install --frozen-lockfile
 
       - name: Build game WASM bundles
-        run: cd frontend && npm run build:games
+        run: pnpm --dir frontend run build:games
 
       - name: Build project
-        run: cd frontend && npm run build
+        env:
+          VITE_API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
+          VITE_API_BASE_PATH: ""
+          VITE_MULTIPLAYER_ENABLED: "false"
+          VITE_SCRIPTING_ENABLED: "false"
+        run: pnpm --dir frontend run build
 
       - name: Remove non-Pages build artifacts
         run: |

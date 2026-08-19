@@ -2,18 +2,30 @@ import type {
   TerrainData,
   TileAttribute,
 } from "@/python/structSpecs/LevelTypes";
+import { Game } from "@/data/globals/globals";
 import { TileViews } from "@/data/tiles/tileAtoms";
+import { TILENUM_MASK } from "./bugdom/BugdomTileRenderer.utils";
 
-export function buildTileGrid(terrainData: TerrainData): TileAttribute[] {
+const EMPTY_TILE_ATTRIBUTE: TileAttribute = { flags: 0, p0: 0, p1: 0 };
+
+export function getTileAttributeIndex(game: Game, layerValue: number): number {
+  return game === Game.NANOSAUR ? layerValue & TILENUM_MASK : layerValue;
+}
+
+export function buildTileGrid(
+  terrainData: TerrainData,
+  game: Game,
+): TileAttribute[] {
   const layrData = terrainData.Layr?.[1000]?.obj;
   const atrbData = terrainData.Atrb?.[1000]?.obj;
   if (!atrbData || !layrData) {
     return [];
   }
 
-  return layrData
-    .map((atrbIdx: number) => atrbData[atrbIdx])
-    .filter((tile): tile is TileAttribute => tile !== undefined);
+  return layrData.map(
+    (layerValue) =>
+      atrbData[getTileAttributeIndex(game, layerValue)] ?? EMPTY_TILE_ATTRIBUTE,
+  );
 }
 
 export function hasTopologyData(terrainData: TerrainData): boolean {

@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   itemFilterStateAtom,
   DEFAULT_FILTER_STATE,
@@ -38,12 +40,12 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
     return filterItemTypesBySearch(allItemTypes, search);
   }, [allItemTypes, search]);
 
-  const isTypeVisible = (id: number): boolean => {
-    return isFilterTypeVisible(filter, id);
+  const isTypeVisible = (itemType: (typeof allItemTypes)[number]): boolean => {
+    return isFilterTypeVisible(filter, itemType);
   };
 
-  const toggleType = (id: number) => {
-    setFilter(toggleHiddenItemType(filter, id));
+  const toggleType = (itemType: (typeof allItemTypes)[number]) => {
+    setFilter(toggleHiddenItemType(filter, itemType));
   };
 
   const showAll = () => setFilter(DEFAULT_FILTER_STATE);
@@ -52,7 +54,9 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
     setFilter(createHideAllFilterState(filter, allItemTypes));
   };
 
-  const visibleCount = allItemTypes.filter((t) => isTypeVisible(t.id)).length;
+  const visibleCount = allItemTypes.filter((itemType) =>
+    isTypeVisible(itemType),
+  ).length;
 
   if (!isOpen) return null;
 
@@ -63,13 +67,16 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
         <span className="text-sm font-semibold text-white">
           Item Visibility ({visibleCount}/{allItemTypes.length})
         </span>
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors text-lg leading-none"
+          className="h-7 w-7 text-gray-400"
           aria-label="Close filter panel"
         >
           ✕
-        </button>
+        </Button>
       </div>
 
       {/* Search + Toggle-all row */}
@@ -82,18 +89,23 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
           className="w-full bg-gray-800 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none"
         />
         <div className="flex gap-2">
-          <button
+          <Button
+            type="button"
+            size="sm"
             onClick={showAll}
-            className="flex-1 py-1 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"
+            className="flex-1"
           >
             Show All
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
             onClick={hideAll}
-            className="flex-1 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+            className="flex-1"
           >
             Hide All
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -104,26 +116,25 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
             No items match
           </p>
         ) : (
-          filteredTypes.map(({ id, name }) => {
-            const visible = isTypeVisible(id);
+          filteredTypes.map((itemType) => {
+            const visible = isTypeVisible(itemType);
             return (
               <label
-                key={id}
+                key={itemType.key}
                 className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-800 transition-colors"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={visible}
-                  onChange={() => toggleType(id)}
-                  className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
+                  onCheckedChange={() => toggleType(itemType)}
+                  className="h-3.5 w-3.5 cursor-pointer"
                 />
                 <span
                   className={`text-xs truncate ${visible ? "text-white" : "text-gray-500 line-through"}`}
                 >
-                  {name}
+                  {itemType.label}
                 </span>
                 <span className="ml-auto text-xs text-gray-600 flex-none">
-                  {id}
+                  {itemType.id}
                 </span>
               </label>
             );

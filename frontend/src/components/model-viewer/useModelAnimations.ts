@@ -1,14 +1,14 @@
 // Hook for managing animations in the model viewer
 import { useEffect, useState } from "react";
 import { AnimationMixer, AnimationClip } from "three";
-import { GLTF as GLTFResult } from "three-stdlib";
+import type { ModelGltfResult } from "./types";
 import { AnimationInfo } from "@/components/AnimationViewer";
 
 /**
  * Hook for processing and managing glTF animations
  */
 export function useModelAnimations(
-  gltfResult: GLTFResult | undefined,
+  gltfResult: ModelGltfResult | undefined,
   onAnimationsReady?: (
     animations: AnimationInfo[],
     mixer: AnimationMixer | null,

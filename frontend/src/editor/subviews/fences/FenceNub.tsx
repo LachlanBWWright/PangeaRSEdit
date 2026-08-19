@@ -1,9 +1,13 @@
 import { useAtom, useSetAtom } from "jotai";
 import { Circle, Group, Image as KonvaImage } from "react-konva";
-import { SelectedFence, SelectedFenceNub } from "../../../data/fences/fenceAtoms";
+import {
+  SelectedFence,
+  SelectedFenceNub,
+} from "../../../data/fences/fenceAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { memo, useRef } from "react";
-import { getColour } from "./Fence";
+import type { CanvasPoint } from "../shared/nubSnapping";
+import { snapCanvasPoint } from "../shared/nubSnapping";
 import {
   commitFenceNubDrag,
   previewFenceNubDrag,
@@ -17,23 +21,29 @@ export const FenceNub = memo(
     nub,
     idx,
     nubIdx,
+    borderColor,
     onPreviewNub,
     setNub,
     image,
+    snappingEnabled,
+    snapTargets,
   }: {
     nub: [number, number];
     idx: number;
     nubIdx: number;
+    borderColor: string;
     onPreviewNub: (nubIdx: number, nub: [number, number]) => void;
     setNub: (nubIdx: number, nub: [number, number]) => void;
     image?: HTMLImageElement | null;
+    snappingEnabled: boolean;
+    snapTargets: readonly CanvasPoint[];
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
     const setActiveView = useSetAtom(ActiveView);
     const setSelectedFenceNub = useSetAtom(SelectedFenceNub);
     const nubRafRef = useRef<number | null>(null);
     const isSelected = idx === selectedFence;
-    const color = isSelected ? "red" : getColour(idx);
+    const color = isSelected ? "red" : borderColor;
 
     const handleSelectNub = () => {
       selectFenceNub({
@@ -53,6 +63,14 @@ export const FenceNub = memo(
         onMouseDown={handleSelectNub}
         onDragStart={handleSelectNub}
         onDragMove={(event) => {
+          if (snappingEnabled) {
+            const snapped = snapCanvasPoint(
+              [event.target.x(), event.target.y()],
+              snapTargets,
+              event.target.getStage(),
+            );
+            event.target.position({ x: snapped[0], y: snapped[1] });
+          }
           previewFenceNubDrag({
             event,
             nubIndex: nubIdx,
@@ -61,6 +79,14 @@ export const FenceNub = memo(
           });
         }}
         onDragEnd={(event) => {
+          if (snappingEnabled) {
+            const snapped = snapCanvasPoint(
+              [event.target.x(), event.target.y()],
+              snapTargets,
+              event.target.getStage(),
+            );
+            event.target.position({ x: snapped[0], y: snapped[1] });
+          }
           commitFenceNubDrag({
             event,
             nubIndex: nubIdx,

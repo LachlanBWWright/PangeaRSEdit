@@ -4,33 +4,31 @@
  * These represent "safe" types that won't crash the game.
  */
 
-import { LevelData } from "@/python/structSpecs/LevelTypes";
+import type { LevelData } from "@/python/structSpecs/LevelTypes";
 import { z } from "zod";
 
-const numericTypeSchema = z.object({
-  type: z.number(),
+const typedItemSchema = z.object({
+  type: z.number().int(),
 });
 
-function hasNumericType(value: unknown): value is { type: number } {
-  return numericTypeSchema.safeParse(value).success;
-}
-
-function addItemTypeFromEntry(itemTypes: Set<number>, item: unknown): void {
-  if (!hasNumericType(item)) return;
-  itemTypes.add(item.type);
-}
-
-function addSplineItemTypeFromEntry(
-  splineItemTypes: Set<number>,
-  splineItem: unknown,
-): void {
-  if (!hasNumericType(splineItem)) return;
-  splineItemTypes.add(splineItem.type);
-}
+const typedItemBucketSchema = z.object({
+  obj: z.array(typedItemSchema),
+});
 
 export interface SafeItemTypesResult {
   itemTypes: Set<number>;
   splineItemTypes: Set<number>;
+}
+
+function addTypesFromBucket(target: Set<number>, bucket: unknown): void {
+  const parsedBucket = typedItemBucketSchema.safeParse(bucket);
+  if (!parsedBucket.success) {
+    return;
+  }
+
+  for (const item of parsedBucket.data.obj) {
+    target.add(item.type);
+  }
 }
 
 /**
@@ -44,16 +42,10 @@ export function extractSafeItemTypes(
   const itemTypes = new Set<number>();
   const splineItemTypes = new Set<number>();
 
-  const itemsObj = levelData.Itms?.[1000]?.obj;
-  if (Array.isArray(itemsObj)) {
-    itemsObj.forEach((item) => addItemTypeFromEntry(itemTypes, item));
-  }
+  addTypesFromBucket(itemTypes, levelData.Itms?.[1000]);
 
-  const splineItems = levelData.SpIt?.[1000]?.obj;
-  if (Array.isArray(splineItems)) {
-    splineItems.forEach((item) =>
-      addSplineItemTypeFromEntry(splineItemTypes, item),
-    );
+  for (const splineBucket of Object.values(levelData.SpIt ?? {})) {
+    addTypesFromBucket(splineItemTypes, splineBucket);
   }
 
   return { itemTypes, splineItemTypes };

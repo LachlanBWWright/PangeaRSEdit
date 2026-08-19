@@ -198,10 +198,13 @@ export function KeyframeEditor({
           gameLabel,
         );
         return (
-          <button
+          <Button
             key={`${event.time}-${event.type}-${event.value}-${index}`}
             type="button"
-            className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 border ${
+            variant="ghost"
+            size="icon"
+            aria-pressed={isSelected}
+            className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-none border p-0 ${
               isSelected
                 ? "border-amber-100 bg-amber-500"
                 : "border-amber-300 bg-amber-400"
@@ -333,10 +336,12 @@ export function KeyframeEditor({
                 const position =
                   timelineDuration > 0 ? (time / timelineDuration) * 100 : 0;
                 return (
-                  <button
+                  <Button
                     key={`${row.boneName}-${time}-${index}`}
                     type="button"
-                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400 p-0"
                     style={{
                       left: `${clampTimelinePercent(position)}%`,
                     }}
@@ -373,8 +378,11 @@ export function KeyframeEditor({
           <Button
             key={`${keyframe.time}-${index}`}
             size="sm"
-            className={`w-full justify-between ${
-              isSelected ? "bg-blue-700 hover:bg-blue-700" : ""
+            variant="ghost"
+            className={`h-8 justify-between rounded-md border px-2 text-xs ${
+              isSelected
+                ? "border-blue-400/70 bg-blue-500/15 text-blue-100 hover:bg-blue-500/20"
+                : "border-transparent bg-gray-800/60 text-gray-300 hover:border-gray-600 hover:bg-gray-800"
             }`}
             onClick={() => onSelectKeyframe(index)}
           >
@@ -408,7 +416,7 @@ export function KeyframeEditor({
 
   return (
     <div className="space-y-4 min-w-0">
-      <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900/50 p-3 shadow-sm min-w-0">
+      <div className="min-w-0 space-y-3">
         <AnimationControls
           hasActiveAction={hasActiveAction}
           isPlaying={isPlaying}
@@ -517,20 +525,25 @@ export function KeyframeEditor({
 
       <div
         ref={editKeyframesSectionRef}
-        className="space-y-3 border-t border-gray-700 pt-3"
+        className="space-y-3 border-t border-gray-700 pt-4"
       >
-        <div className="text-xs font-semibold text-gray-300">
-          Edit Keyframes
+        <div>
+          <div className="text-sm font-semibold text-gray-100">
+            Edit Keyframes
+          </div>
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            Choose a bone and track, then select a point to edit.
+          </p>
         </div>
-        <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900/30 p-3">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-xs text-gray-300">Bone</label>
               <Select value={selectedBoneName} onValueChange={onBoneNameChange}>
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectTrigger>
                   <SelectValue placeholder="Select bone" />
                 </SelectTrigger>
-                <SelectContent className="max-h-60 bg-gray-700 border-gray-600 text-white">
+                <SelectContent className="max-h-60">
                   {availableBoneNames.length === 0 ? (
                     <div className="px-2 py-1 text-xs text-gray-400">
                       No bones found
@@ -542,7 +555,6 @@ export function KeyframeEditor({
                         <SelectItem
                           key={bone}
                           value={bone}
-                          className="text-white focus:bg-gray-600"
                           textValue={formattedBone}
                         >
                           <span
@@ -572,16 +584,15 @@ export function KeyframeEditor({
                   onTrackPropertyChange(nextProperty);
                 }}
               >
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                <SelectContent>
                   {Object.entries(TRACK_PROPERTY_CONFIG).map(
                     ([key, config]) => (
                       <SelectItem
                         key={key}
                         value={key}
-                        className="text-white focus:bg-gray-600"
                       >
                         {config.label}
                       </SelectItem>
@@ -592,9 +603,14 @@ export function KeyframeEditor({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-gray-300">
-              <span>Keyframes</span>
+          <div className="space-y-2 border-t border-gray-700/70 pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-300">
+                Keyframes
+                <span className="ml-1.5 font-normal text-gray-500">
+                  {selectedKeyframes.length}
+                </span>
+              </span>
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
@@ -616,7 +632,7 @@ export function KeyframeEditor({
             </div>
             {selectedKeyframes.length > 0 ? (
               <div
-                className={`space-y-2 ${KEYFRAME_LIST_MAX_HEIGHT_CLASS} overflow-y-auto rounded-md border border-gray-700 p-2`}
+                className={`grid grid-cols-2 gap-1.5 ${KEYFRAME_LIST_MAX_HEIGHT_CLASS} overflow-y-auto pr-1`}
               >
                 {keyframeButtons}
               </div>
@@ -627,10 +643,11 @@ export function KeyframeEditor({
             )}
             <Button
               size="sm"
-              className={`w-full ${
+              variant="outline"
+              className={`w-full border-dashed ${
                 isCreatingKeyframe
-                  ? "border-blue-300 bg-blue-700 text-white hover:bg-blue-700"
-                  : ""
+                  ? "border-blue-400 bg-blue-500/15 text-blue-100 hover:bg-blue-500/20"
+                  : "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800"
               }`}
               onClick={onNewKeyframe}
             >
@@ -640,10 +657,10 @@ export function KeyframeEditor({
 
           {showKeyframeDetails && (
             <div
-              className={`space-y-4 rounded-md border p-3 ${
+              className={`space-y-4 border-t pt-4 ${
                 isCreatingKeyframe
-                  ? "border-blue-500/70 bg-blue-950/30"
-                  : "border-gray-700 bg-gray-900/20"
+                  ? "border-blue-500/50"
+                  : "border-gray-700/70"
               }`}
             >
               <div className="flex items-center justify-between">

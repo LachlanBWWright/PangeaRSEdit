@@ -4,13 +4,16 @@ import type {
   SplineNub as SplineNubType,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
-import { Line, Circle, Rect, Text } from "react-konva";
+import { Group, Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { memo, useCallback, useMemo, useState, useRef } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { itemFilterStateAtom } from "@/data/items/itemFilterAtoms";
+import { isSplineItemVisible } from "@/data/items/itemFilterUtils";
 import {
   SelectedSpline,
   SelectedSplineNub,
+  SelectedSplineItem,
 } from "../../../data/splines/splineAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { View } from "@/editor/viewEnum";
@@ -58,6 +61,7 @@ export const Spline = memo(
     onHoverChange: (tag: HoverTagInfo | null) => void;
   }) => {
     const selectedSpline = useAtomValue(SelectedSpline);
+    const itemFilterState = useAtomValue(itemFilterStateAtom);
     const [initialDragState, setInitialDragState] = useState<
       { x: number; z: number }[] | null
     >(null);
@@ -176,6 +180,9 @@ export const Spline = memo(
           );
         })}
         {items.map((item, itemIdx) => {
+          if (!isSplineItemVisible(item.type, itemFilterState)) {
+            return null;
+          }
           const pointIdx = getSplineItemPointIndex(points, item.placement);
 
           return (
@@ -184,6 +191,8 @@ export const Spline = memo(
               x={points[pointIdx] ?? 0}
               z={points[pointIdx + 1] ?? 0}
               item={item}
+              itemIdx={itemIdx}
+              splineIdx={splineIdx}
               onHoverChange={onHoverChange}
             />
           );
@@ -215,66 +224,69 @@ const SplineNub = memo(
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const setActiveView = useSetAtom(ActiveView);
-    const setSelectedSplineNub = useSetAtom(SelectedSplineNub);
-    const [hovering, setHovering] = useState(false);
+    const [selectedSplineNub, setSelectedSplineNub] =
+      useAtom(SelectedSplineNub);
+    const isSelected =
+      selectedSpline === splineIdx && selectedSplineNub === nubIdx;
     return (
-      <>
+      <Group
+        x={nub.x}
+        y={nub.z}
+        draggable
+        onMouseDown={() => {
+          setSelectedSpline(splineIdx);
+          setActiveView(View.splines);
+          setSelectedSplineNub(nubIdx);
+        }}
+        onDragStart={() => {
+          setSelectedSpline(splineIdx);
+          setActiveView(View.splines);
+          setSelectedSplineNub(nubIdx);
+        }}
+        onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
+          onNubPreviewMove(
+            nubIdx,
+            Math.round(e.target.x()),
+            Math.round(e.target.y()),
+          );
+        }}
+        onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+          const newX = Math.round(e.target.x());
+          const newZ = Math.round(e.target.y());
+
+          onNubDragEnd();
+
+          setSplineData((draft) => {
+            const currentNubs =
+              draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]?.obj || [];
+            const updatedNubs = [...currentNubs];
+            updatedNubs[nubIdx] = { x: newX, z: newZ };
+
+            if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
+              updatedNubs[0] = { x: newX, z: newZ };
+            }
+
+            const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
+            if (spNbEntry) spNbEntry.obj = updatedNubs;
+            const splnEntry = draft.Spln?.[1000]?.obj?.[splineIdx];
+            if (splnEntry) splnEntry.numNubs = updatedNubs.length;
+          });
+
+          onNubChange();
+        }}
+      >
         <Circle
-          x={nub.x}
-          y={nub.z}
+          x={0}
+          y={0}
           radius={10}
-          draggable
-          fill={selectedSpline === splineIdx ? "red" : "blue"}
+          fill={isSelected ? "red" : "blue"}
           stroke="black"
-          strokeWidth={2}
+          strokeWidth={isSelected ? 3 : 2}
           perfectDrawEnabled={false}
-          onMouseDown={() => {
-            setSelectedSpline(splineIdx);
-            setActiveView(View.splines);
-            setSelectedSplineNub(nubIdx);
-          }}
-          onDragStart={() => {
-            setSelectedSpline(splineIdx);
-            setActiveView(View.splines);
-            setSelectedSplineNub(nubIdx);
-          }}
-          onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
-            onNubPreviewMove(
-              nubIdx,
-              Math.round(e.target.x()),
-              Math.round(e.target.y()),
-            );
-          }}
-          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-            const newX = Math.round(e.target.x());
-            const newZ = Math.round(e.target.y());
-
-            onNubDragEnd();
-
-            setSplineData((draft) => {
-              const currentNubs =
-                draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]?.obj || [];
-              const updatedNubs = [...currentNubs];
-              updatedNubs[nubIdx] = { x: newX, z: newZ };
-
-              if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
-                updatedNubs[0] = { x: newX, z: newZ };
-              }
-
-              const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
-              if (spNbEntry) spNbEntry.obj = updatedNubs;
-              const splnEntry = draft.Spln?.[1000]?.obj?.[splineIdx];
-              if (splnEntry) splnEntry.numNubs = updatedNubs.length;
-            });
-
-            onNubChange();
-          }}
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
         />
         <Text
-          x={nub.x - 8}
-          y={nub.z - 8}
+          x={-8}
+          y={-8}
           width={16}
           height={16}
           text={nubIdx.toString()}
@@ -285,11 +297,8 @@ const SplineNub = memo(
           verticalAlign="middle"
           listening={false}
           perfectDrawEnabled={false}
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
-          visible={!hovering}
         />
-      </>
+      </Group>
     );
   },
 );
@@ -299,28 +308,40 @@ const SplineItem = memo(
     x,
     z,
     item,
+    itemIdx,
+    splineIdx,
     onHoverChange,
   }: {
     x: number;
     z: number;
     item: SplineItemType;
+    itemIdx: number;
+    splineIdx: number;
     onHoverChange: (tag: HoverTagInfo | null) => void;
   }) => {
-    const [hovering, setHovering] = useState(false);
     const globals = useAtomValue(Globals);
+    const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+    const [selectedSplineItem, setSelectedSplineItem] =
+      useAtom(SelectedSplineItem);
+    const setActiveView = useSetAtom(ActiveView);
+    const isSelected =
+      selectedSpline === splineIdx && selectedSplineItem === itemIdx;
     const handleMouseOver = () => {
-      setHovering(true);
       onHoverChange({
         x: x - ITEM_BOX_OFFSET + ITEM_BOX_SIZE + ITEM_TAG_GAP,
         y: z - ITEM_BOX_OFFSET,
         text: getSplineItemName(globals, item.type),
-        fill: "blue",
+        fill: isSelected ? "red" : "blue",
         textColor: "white",
       });
     };
     const handleMouseLeave = () => {
-      setHovering(false);
       onHoverChange(null);
+    };
+    const handleMouseDown = () => {
+      setSelectedSpline(splineIdx);
+      setSelectedSplineItem(itemIdx);
+      setActiveView(View.splines);
     };
     return (
       <>
@@ -330,21 +351,19 @@ const SplineItem = memo(
           width={ITEM_BOX_SIZE}
           height={ITEM_BOX_SIZE}
           stroke="black"
-          strokeWidth={1}
-          fill="blue"
+          strokeWidth={isSelected ? 2 : 1}
+          fill={isSelected ? "red" : "blue"}
           onMouseOver={handleMouseOver}
           onMouseLeave={handleMouseLeave}
+          onMouseDown={handleMouseDown}
           perfectDrawEnabled={false}
         />
-
-        {!hovering && (
-          <ItemTypeNumber
-            x={x - ITEM_BOX_OFFSET}
-            y={z - ITEM_BOX_OFFSET}
-            value={item.type.toString()}
-            fill="white"
-          />
-        )}
+        <ItemTypeNumber
+          x={x - ITEM_BOX_OFFSET}
+          y={z - ITEM_BOX_OFFSET}
+          value={item.type.toString()}
+          fill="white"
+        />
       </>
     );
   },

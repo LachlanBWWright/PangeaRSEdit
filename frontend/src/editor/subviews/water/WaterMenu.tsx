@@ -6,10 +6,9 @@ import {
   SelectedWaterBody,
   SelectedWaterNub,
 } from "../../../data/water/waterAtoms";
-import {
-  waterBodyNames,
-  WaterBodyType,
-} from "../../../data/water/ottoWaterBodyType";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
+import { waterBodyNames } from "../../../data/water/ottoWaterBodyType";
+import { getWaterBodyTypeName } from "@/data/water/getWaterBodyTypeName";
 import { Globals } from "../../../data/globals/globals";
 import {
   Select,
@@ -21,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { memo, useMemo } from "react";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { SnappingToggle } from "../shared/SnappingToggle";
 import {
   Tooltip,
   TooltipContent,
@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import {
-  addDefaultWaterBody,
   addWaterBodyNub,
   canDeleteWaterBodyNub,
   deleteWaterBody,
@@ -40,6 +39,18 @@ import {
   updateWaterBodyNub,
   updateWaterBodyType,
 } from "@/editor/subviews/water/waterMenuState";
+import {
+  canFinalizeCreation,
+  finalizeWaterFromPoints,
+  popCreationPoint,
+} from "@/editor/creation/pendingCreationState";
+import { LiquidPreview, LiquidThumbnail } from "./LiquidThumbnail";
+import { Switch } from "@/components/ui/switch";
+import {
+  FIXED_LIQUID_HEIGHTS,
+  supportsFixedHeightLiquid,
+  WATER_FLAG_FIXED_HEIGHT,
+} from "@/data/water/fixedHeightLiquid";
 
 export const WaterMenu = memo(function WaterMenu({
   liquidData,
@@ -50,9 +61,11 @@ export const WaterMenu = memo(function WaterMenu({
 }) {
   const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
   const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
+  const [pendingCreation, setPendingCreation] = useAtom(PendingCreation);
   const globals = useAtomValue(Globals);
 
   const waterBodyValues = useMemo(() => getWaterBodyValues(globals), [globals]);
+  const supportsFixedHeight = supportsFixedHeightLiquid(globals.GAME_TYPE);
 
   if (liquidData.Liqd === undefined) return null;
 
@@ -63,6 +76,63 @@ export const WaterMenu = memo(function WaterMenu({
 
   if (waterBodyData === null || waterBodyData === undefined) {
     const hasWaterBodies = waterBodyCount > 0;
+    const isPendingWaterCreation = pendingCreation?.kind === "water";
+    const pendingPoints = isPendingWaterCreation ? pendingCreation.points : [];
+
+    if (isPendingWaterCreation) {
+      return (
+        <div className="flex h-full min-h-full w-full flex-col gap-3 p-4">
+          <p className="text-sm text-gray-200">
+            Click on the canvas to place water body nubs.
+          </p>
+          <p className="text-sm text-gray-300">
+            Points: {pendingPoints.length}
+          </p>
+          <p className="text-xs text-gray-400">
+            Hotspot is auto-centered from your placed nubs when finalized.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={!canFinalizeCreation("water", pendingPoints, globals)}
+              onClick={() => {
+                setLiquidData((draft) => {
+                  const createdWaterBody = finalizeWaterFromPoints(
+                    draft,
+                    pendingPoints,
+                    globals,
+                  );
+                  setSelectedWaterBody(createdWaterBody);
+                  setSelectedWaterNub(null);
+                });
+                setPendingCreation(null);
+              }}
+            >
+              Finalize New Water Body
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pendingPoints.length === 0}
+              onClick={() => {
+                if (!pendingCreation) return;
+                setPendingCreation({
+                  ...pendingCreation,
+                  points: popCreationPoint(pendingCreation.points),
+                });
+              }}
+            >
+              Undo Last Point
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setPendingCreation(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <EmptyDataPrompt
         title={hasWaterBodies ? "No Water Body Selected" : "No Water Bodies"}
@@ -74,14 +144,7 @@ export const WaterMenu = memo(function WaterMenu({
         buttonText={
           hasWaterBodies ? "Add New Water Body" : "Add First Water Body"
         }
-        onInitialize={() =>
-          setLiquidData((draft) => {
-            const nextWaterBodyIndex = addDefaultWaterBody(draft, globals);
-
-            setSelectedWaterBody(nextWaterBodyIndex);
-            setSelectedWaterNub(null);
-          })
-        }
+        onInitialize={() => setPendingCreation({ kind: "water", points: [] })}
         fillHeight
       />
     );
@@ -92,8 +155,10 @@ export const WaterMenu = memo(function WaterMenu({
       <p>
         Water Body {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
       </p>
+      <SnappingToggle />
 
-      <div className="flex flex-col gap-2 flex-1 min-h-0">
+      <div className="grid min-h-0 w-full flex-1 grid-cols-[1fr_auto] gap-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
         {waterBodyData !== null && waterBodyData !== undefined && (
           <>
             <Select
@@ -110,7 +175,15 @@ export const WaterMenu = memo(function WaterMenu({
               }}
             >
               <SelectTrigger>
-                <SelectValue>{waterBodyNames[waterBodyData.type]}</SelectValue>
+                <SelectValue>
+                  <span className="flex items-center gap-2">
+                    <LiquidThumbnail
+                      globals={globals}
+                      liquidType={waterBodyData.type}
+                    />
+                    {getWaterBodyTypeName(globals, waterBodyData.type)}
+                  </span>
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {waterBodyValues.map((key) => (
@@ -119,11 +192,59 @@ export const WaterMenu = memo(function WaterMenu({
                     className="text-white"
                     value={key.toString()}
                   >
-                    {waterBodyNames[key as WaterBodyType]}
+                    <span className="flex items-center gap-2">
+                      <LiquidThumbnail globals={globals} liquidType={key} />
+                      {getWaterBodyTypeName(globals, key)}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            <Button
+              variant="destructive"
+              disabled={selectedWaterBody === null}
+              onClick={() => {
+                if (selectedWaterBody === null) return;
+                setLiquidData((draft) => {
+                  deleteWaterBody(draft, selectedWaterBody);
+                });
+                setSelectedWaterBody(null);
+                setSelectedWaterNub(null);
+              }}
+            >
+              Delete Water Body
+            </Button>
+
+            {supportsFixedHeight && selectedWaterBody !== null && (
+              <div className="rounded border border-gray-700 p-2">
+                <label className="flex items-center justify-between gap-3">
+                  <span>Use fixed world height</span>
+                  <Switch
+                    checked={
+                      (waterBodyData.flags & WATER_FLAG_FIXED_HEIGHT) !== 0
+                    }
+                    onCheckedChange={(checked) => {
+                      setLiquidData((draft) => {
+                        const body = draft.Liqd[1000].obj[selectedWaterBody];
+                        if (!body) return;
+                        if (checked) {
+                          body.flags |= WATER_FLAG_FIXED_HEIGHT;
+                          body.height = 0;
+                        } else {
+                          body.flags &= ~WATER_FLAG_FIXED_HEIGHT;
+                        }
+                      });
+                    }}
+                  />
+                </label>
+                {(waterBodyData.flags & WATER_FLAG_FIXED_HEIGHT) !== 0 && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    Fixed height: {FIXED_LIQUID_HEIGHTS[0]} world units
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Hotspot Adjustments */}
             {waterBodyData && selectedWaterBody !== null && (
@@ -247,8 +368,9 @@ export const WaterMenu = memo(function WaterMenu({
                 </>
               )}
 
-            <div className="grid grid-cols-3 gap-2 mt-auto">
+            <div className="mt-auto flex w-full gap-2">
               <Button
+                className="flex-1"
                 onClick={() =>
                   setLiquidData((liquidData) => {
                     addWaterBodyNub(
@@ -262,6 +384,7 @@ export const WaterMenu = memo(function WaterMenu({
                 Add Nub
               </Button>
               <Button
+                className="flex-1"
                 variant="destructive"
                 disabled={!canDeleteWaterBodyNub(liquidData, selectedWaterBody)}
                 onClick={() => {
@@ -270,25 +393,20 @@ export const WaterMenu = memo(function WaterMenu({
                   });
                 }}
               >
-                Delete Nub
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={selectedWaterBody === null}
-                onClick={() => {
-                  if (selectedWaterBody === null) return;
-                  setLiquidData((draft) => {
-                    deleteWaterBody(draft, selectedWaterBody);
-                  });
-                  setSelectedWaterBody(null);
-                  setSelectedWaterNub(null);
-                }}
-              >
-                Delete Water Body
+                Remove Nub
               </Button>
             </div>
           </>
         )}
+        </div>
+
+        <div className="flex w-48 self-stretch items-center justify-center rounded border border-gray-600 bg-gray-800 p-2">
+          <LiquidPreview
+            alt={getWaterBodyTypeName(globals, waterBodyData.type)}
+            globals={globals}
+            liquidType={waterBodyData.type}
+          />
+        </div>
       </div>
     </div>
   );

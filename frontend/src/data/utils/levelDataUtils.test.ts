@@ -158,6 +158,69 @@ describe("level data utils", () => {
     expect(combined.isOk()).toBe(true);
   });
 
+  it("keeps checkpoints in terrain data across split and combine", () => {
+    const checkpoint = {
+      unused: 0,
+      infoBits: 3,
+      x1: 10,
+      x2: 20,
+      z1: 30,
+      z2: 40,
+    };
+    const level: LevelData = {
+      Hedr: {
+        1000: {
+          name: "Header",
+          order: 0,
+          obj: {
+            version: 1,
+            numItems: 0,
+            mapWidth: 1,
+            mapHeight: 1,
+            tileSize: 16,
+            minY: 0,
+            maxY: 0,
+            numSplines: 0,
+            numFences: 0,
+            numTilePages: 0,
+            numTiles: 0,
+            numUniqueSupertiles: 0,
+            numWaterPatches: 0,
+            numCheckpoints: 1,
+          },
+        },
+      },
+      ItCo: {
+        1000: { name: "Terrain Items Color Array", data: "", order: 0 },
+      },
+      YCrd: {
+        1000: {
+          name: "Floor&Ceiling Y Coords",
+          obj: [0, 0, 0, 0],
+          order: 0,
+        },
+      },
+      STgd: { 1000: { name: "SuperTile Grid", obj: [], order: 0 } },
+      Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
+      alis: {},
+      CkPt: {
+        1000: {
+          name: "Checkpoint List",
+          obj: [checkpoint],
+          order: 0,
+        },
+      },
+      _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
+    };
+    const atomic = splitLevelData(level);
+    expect(atomic.terrainData?.CkPt?.[1000].obj).toEqual([checkpoint]);
+
+    const combined = combineLevelData(atomic);
+    expect(combined.isOk() && combined.value.CkPt?.[1000].obj).toEqual([
+      checkpoint,
+    ]);
+  });
+
   it("validateResourceForkJson detects malformed types", async () => {
     const good = {
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },

@@ -1,6 +1,6 @@
 /**
  * Test Model Viewer
- * 
+ *
  * A dedicated page for testing 3D model loading from different games.
  * Allows selecting a game, model file, and specific model index to load.
  */
@@ -12,7 +12,7 @@ import { OrbitControls, Grid } from "@react-three/drei";
 import { Group, Mesh, BufferGeometry } from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -23,9 +23,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import {
+  GLTFLoader,
+  type GLTF,
+} from "three/examples/jsm/loaders/GLTFLoader.js";
 import { ResultAsync } from "neverthrow";
-
 
 /**
  * Describes a model file with its path and label
@@ -309,19 +311,22 @@ const ModelDisplay: React.FC<{ gltfScene: Group | null }> = ({ gltfScene }) => {
       </mesh>
     );
   }
-  
+
   return <primitive object={gltfScene} />;
 };
 
 /**
  * Calculate model statistics (vertices, faces)
  */
-function calculateModelStats(scene: Group | null): { vertices: number; faces: number } {
+function calculateModelStats(scene: Group | null): {
+  vertices: number;
+  faces: number;
+} {
   let vertices = 0;
   let faces = 0;
-  
+
   if (!scene) return { vertices, faces };
-  
+
   scene.traverse((object) => {
     if (object instanceof Mesh) {
       const geometry = object.geometry;
@@ -339,7 +344,7 @@ function calculateModelStats(scene: Group | null): { vertices: number; faces: nu
       }
     }
   });
-  
+
   return { vertices, faces };
 }
 
@@ -358,7 +363,9 @@ function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
   }
 
   if (modelIndex >= groupsContainer.children.length) {
-    console.warn(`Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`);
+    console.warn(
+      `Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`,
+    );
     return null;
   }
 
@@ -379,9 +386,9 @@ function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
  */
 function getAllFilesForGame(config: GameConfig): ModelFileEntry[] {
   const files: ModelFileEntry[] = [];
-  
+
   // Add model files
-  config.modelFiles.forEach(filename => {
+  config.modelFiles.forEach((filename) => {
     files.push({
       filename,
       path: `${config.basePath}/${filename}`,
@@ -389,10 +396,10 @@ function getAllFilesForGame(config: GameConfig): ModelFileEntry[] {
       isSkeleton: false,
     });
   });
-  
+
   // Add skeleton files if available
   if (config.skeletonPath && config.skeletonFiles) {
-    config.skeletonFiles.forEach(filename => {
+    config.skeletonFiles.forEach((filename) => {
       files.push({
         filename,
         path: `${config.skeletonPath}/${filename}`,
@@ -401,7 +408,7 @@ function getAllFilesForGame(config: GameConfig): ModelFileEntry[] {
       });
     });
   }
-  
+
   return files;
 }
 
@@ -413,20 +420,31 @@ export function TestModelViewer() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [fullGltf, setFullGltf] = useState<GLTF | null>(null);
-  const [status, setStatus] = useState<string>("Select a game and model file to begin");
+  const [status, setStatus] = useState<string>(
+    "Select a game and model file to begin",
+  );
   const [modelNames, setModelNames] = useState<string[]>([]);
-  
+
   const workerRef = useRef<Worker | null>(null);
-  
+
   // Get the current game config
-  const gameConfig = useMemo(() => GAME_CONFIGS.find(g => g.id === selectedGame), [selectedGame]);
-  
+  const gameConfig = useMemo(
+    () => GAME_CONFIGS.find((g) => g.id === selectedGame),
+    [selectedGame],
+  );
+
   // Get all files for the selected game (models + skeletons combined)
-  const allFiles = useMemo(() => gameConfig ? getAllFilesForGame(gameConfig) : [], [gameConfig]);
-  
+  const allFiles = useMemo(
+    () => (gameConfig ? getAllFilesForGame(gameConfig) : []),
+    [gameConfig],
+  );
+
   // Get the selected file entry
-  const selectedFileEntry = useMemo(() => allFiles.find(f => f.path === selectedFileKey), [allFiles, selectedFileKey]);
-  
+  const selectedFileEntry = useMemo(
+    () => allFiles.find((f) => f.path === selectedFileKey),
+    [allFiles, selectedFileKey],
+  );
+
   // Initialize worker
   const getWorker = useCallback(() => {
     if (!workerRef.current) {
@@ -444,7 +462,7 @@ export function TestModelViewer() {
   const modelStats = useMemo(() => {
     return calculateModelStats(gltfScene);
   }, [gltfScene]);
-  
+
   // Reset model index when file selection changes
   const handleFileChange = useCallback((fileKey: string) => {
     setSelectedFileKey(fileKey);
@@ -454,7 +472,7 @@ export function TestModelViewer() {
     setModelNames([]);
     setStatus("File selected. Click 'Load Model' to load.");
   }, []);
-  
+
   // Reset everything when game changes
   const handleGameChange = useCallback((gameId: string) => {
     setSelectedGame(gameId);
@@ -465,7 +483,7 @@ export function TestModelViewer() {
     setModelNames([]);
     setStatus("Select a model file to continue");
   }, []);
-  
+
   // Load model file
   const loadModelFile = useCallback(async () => {
     if (!gameConfig || !selectedFileEntry) {
@@ -500,7 +518,10 @@ export function TestModelViewer() {
       return;
     }
 
-    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      mapErr,
+    );
     if (bufferResult.isErr()) {
       const errorMsg = `Failed to read buffer: ${bufferResult.error}`;
       setError(errorMsg);
@@ -587,7 +608,7 @@ export function TestModelViewer() {
           blobUrl,
           (gltf) => resolve(gltf),
           undefined,
-          (err) => reject(err)
+          (err) => reject(err),
         );
       }),
       mapErr,
@@ -624,7 +645,9 @@ export function TestModelViewer() {
     setModelNames(names);
 
     const currentName = names[0] || `Model 0`;
-    setStatus(`Loaded! File contains ${numModels} model(s). Showing: ${currentName}`);
+    setStatus(
+      `Loaded! File contains ${numModels} model(s). Showing: ${currentName}`,
+    );
     setLoading(false);
   }, [gameConfig, selectedFileEntry, getWorker]);
 
@@ -638,24 +661,24 @@ export function TestModelViewer() {
     }
     return status;
   }, [loading, error, fullGltf, modelNames, modelIndex, maxIndex, status]);
-  
+
   // Navigate to next/previous model
   const nextModel = () => {
     if (modelIndex < maxIndex) {
       setModelIndex(modelIndex + 1);
     }
   };
-  
+
   const prevModel = () => {
     if (modelIndex > 0) {
       setModelIndex(modelIndex - 1);
     }
   };
-  
+
   return (
     <div className="flex h-full gap-4 p-4 bg-gray-900">
       {/* Controls Panel */}
-      <Card className="w-80 flex-shrink-0 bg-gray-800 border-gray-700">
+      <Card className="w-80 shrink-0 bg-gray-800 border-gray-700">
         <CardHeader>
           <CardTitle className="text-white">Test Model Viewer</CardTitle>
         </CardHeader>
@@ -668,9 +691,9 @@ export function TestModelViewer() {
                 <SelectValue placeholder="Select a game" />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600">
-                {GAME_CONFIGS.map(game => (
-                  <SelectItem 
-                    key={game.id} 
+                {GAME_CONFIGS.map((game) => (
+                  <SelectItem
+                    key={game.id}
                     value={game.id}
                     className="text-white focus:bg-gray-600"
                   >
@@ -680,22 +703,26 @@ export function TestModelViewer() {
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* Model File Selector - Combined models and skeletons */}
           <div className="space-y-2">
             <Label className="text-gray-300">Model File</Label>
-            <Select 
-              value={selectedFileKey} 
+            <Select
+              value={selectedFileKey}
               onValueChange={handleFileChange}
               disabled={!gameConfig || allFiles.length === 0}
             >
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder={allFiles.length ? "Select a file" : "No files available"} />
+                <SelectValue
+                  placeholder={
+                    allFiles.length ? "Select a file" : "No files available"
+                  }
+                />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600 max-h-80">
-                {allFiles.map(file => (
-                  <SelectItem 
-                    key={file.path} 
+                {allFiles.map((file) => (
+                  <SelectItem
+                    key={file.path}
                     value={file.path}
                     className={`text-white focus:bg-gray-600 ${file.isSkeleton ? "text-purple-300" : ""}`}
                   >
@@ -705,28 +732,30 @@ export function TestModelViewer() {
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* Load Button - MOVED ABOVE index controls */}
-          <Button 
+          <Button
             onClick={loadModelFile}
             disabled={loading || !selectedGame || !selectedFileEntry}
             className="w-full"
           >
             {loading ? "Loading..." : "Load Model"}
           </Button>
-          
+
           {/* Model Index - only show after loading */}
           {fullGltf && (
             <div className="space-y-2">
               <Label className="text-gray-300">
                 Model Index (0-{maxIndex})
                 {modelNames[modelIndex] && (
-                  <span className="ml-2 text-blue-400">{modelNames[modelIndex]}</span>
+                  <span className="ml-2 text-blue-400">
+                    {modelNames[modelIndex]}
+                  </span>
                 )}
               </Label>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={prevModel}
                   disabled={modelIndex <= 0}
@@ -739,11 +768,18 @@ export function TestModelViewer() {
                   min={0}
                   max={maxIndex}
                   value={modelIndex}
-                  onChange={(e) => setModelIndex(Math.max(0, Math.min(maxIndex, parseInt(e.target.value) || 0)))}
+                  onChange={(e) =>
+                    setModelIndex(
+                      Math.max(
+                        0,
+                        Math.min(maxIndex, parseInt(e.target.value) || 0),
+                      ),
+                    )
+                  }
                   className="bg-gray-700 border-gray-600 text-white text-center"
                 />
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={nextModel}
                   disabled={modelIndex >= maxIndex}
@@ -754,27 +790,29 @@ export function TestModelViewer() {
               </div>
             </div>
           )}
-          
+
           {/* Status */}
           <div className="p-3 bg-gray-700 rounded text-sm text-gray-300">
             {displayStatus}
           </div>
-          
+
           {/* Model Stats */}
           {modelStats && (
             <div className="p-3 bg-gray-700/50 rounded text-sm text-gray-400 flex gap-4">
               <span>Vertices: {modelStats.vertices.toLocaleString()}</span>
-              <span>Faces: {Math.round(modelStats.faces).toLocaleString()}</span>
+              <span>
+                Faces: {Math.round(modelStats.faces).toLocaleString()}
+              </span>
             </div>
           )}
-          
+
           {/* Error */}
           {error && (
             <div className="p-3 bg-red-900/50 border border-red-700 rounded text-sm text-red-300">
               {error}
             </div>
           )}
-          
+
           {/* Info */}
           <div className="text-xs text-gray-500 space-y-1">
             <p>• Select a game to see available model files</p>
@@ -784,7 +822,7 @@ export function TestModelViewer() {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* 3D Canvas - Fixed camera far plane for clipping */}
       <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
         <Canvas
@@ -795,10 +833,10 @@ export function TestModelViewer() {
           <directionalLight position={[1, 2, 1]} intensity={1} />
 
           <ModelDisplay gltfScene={gltfScene} />
-          
+
           <OrbitControls />
-          <Grid 
-            args={[1000, 1000]} 
+          <Grid
+            args={[1000, 1000]}
             cellSize={50}
             cellThickness={0.5}
             cellColor="#3a3a5a"

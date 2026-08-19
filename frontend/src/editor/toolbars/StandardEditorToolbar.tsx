@@ -12,6 +12,7 @@ import { View } from "../viewEnum";
 import { memo } from "react";
 import { useAtom } from "jotai";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
 interface Props {
   terrainHasSTgd?: boolean;
@@ -32,6 +33,8 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
           ? "items"
           : view === View.splines
             ? "splines"
+            : view === View.scripts
+              ? "scripts"
             : view === View.tiles
               ? "tiles"
               : "supertiles";
@@ -41,6 +44,7 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
     else if (value === "water") setView(View.water);
     else if (value === "items") setView(View.items);
     else if (value === "splines") setView(View.splines);
+    else if (value === "scripts") setView(View.scripts);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -71,6 +75,11 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
           <TabsTrigger className="w-full" value="splines">
             Splines
           </TabsTrigger>
+          {ENABLE_SCRIPTS ? (
+            <TabsTrigger className="w-full" value="scripts">
+              Scripts
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger className="w-full" value="tiles">
             Tiles
           </TabsTrigger>

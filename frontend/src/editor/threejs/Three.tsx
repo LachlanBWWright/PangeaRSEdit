@@ -97,16 +97,21 @@ export function ThreeView({
     isShiftHeld,
     topologyVersion,
     draggingItemIdx,
+    hoveredItemIdx,
+    selectedItemIdx,
     displacementMagnitude,
     displacementDirection,
     handlePointerMove,
     handlePointerDown,
     handlePointerUp,
     handleItemPointerDown,
+    handleItemPointerEnter,
+    handleItemPointerLeave,
   } = useThreeTopologyEditing({
     globals,
     header,
     terrainData,
+    itemData,
     setTerrainData,
     setItemData,
     isEditingTopology,
@@ -230,6 +235,10 @@ export function ThreeView({
           headerData={headerData}
           terrainData={terrainData}
           onItemPointerDown={setItemData ? handleItemPointerDown : undefined}
+          onItemPointerEnter={handleItemPointerEnter}
+          onItemPointerLeave={handleItemPointerLeave}
+          hoveredItemIdx={hoveredItemIdx}
+          selectedItemIdx={selectedItemIdx}
           draggingItemIdx={draggingItemIdx}
           topologyVersion={topologyVersion}
         />

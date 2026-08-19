@@ -5,6 +5,7 @@ export enum TileViews {
   Flags,
   ElectricFloor0,
   ElectricFloor1,
+  Attributes,
 }
 
 export const TileViewMode = atom<TileViews>(TileViews.Topology);
@@ -49,6 +50,7 @@ export const TopologyBrushRadius = atom<number>(1);
 export const TopologyValue = atom<number>(0);
 
 export const TopologyOpacity = atom<number>(1);
+export const TileAttributeOverlayOpacity = atom<number>(0.5);
 
 export const ShowRoofInTopology = atom<boolean>(false);
 export const ShowAccessibilityOverlay = atom<boolean>(false);
@@ -64,6 +66,7 @@ export const CurrentTopologyHeightmapDisplayMode =
 // Tile editing atoms
 export const TileEditingEnabled = atom<boolean>(false);
 export const TileBrushType = atom<"add" | "remove">("add");
+export const SelectedSemanticTileAttribute = atom<string | null>(null);
 
 // Constants for the tile attributes flags
 export const TILE_ATTRIB_BLANK = 1;

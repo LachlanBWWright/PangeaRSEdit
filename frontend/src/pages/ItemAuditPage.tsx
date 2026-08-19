@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Game } from "@/data/globals/globals";
-import { ResultAsync } from "neverthrow";
+import { Result, ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import {
   buildItemAuditEntries,
@@ -127,10 +128,10 @@ export function ItemAuditPage() {
         setImportStatus(`Failed to read file: ${textResult.error}`);
         return;
       }
-      const parsedResult = await ResultAsync.fromPromise(
-        Promise.resolve().then(() => JSON.parse(textResult.value)),
+      const parsedResult = Result.fromThrowable(
+        () => JSON.parse(textResult.value),
         mapErr,
-      );
+      )();
       if (parsedResult.isErr()) {
         setImportStatus(`Invalid JSON: ${parsedResult.error}`);
         return;
@@ -258,7 +259,16 @@ export function ItemAuditPage() {
           {currentEntry && (
             <div className="space-y-4">
               <div className="flex justify-between items-center rounded-lg border border-gray-700 bg-gray-900/60 p-3">
-                <div>
+                <div className="flex items-center gap-3">
+                  <ItemThumbnail
+                    game={selectedGame}
+                    kind="terrainItem"
+                    itemType={currentEntry.itemType}
+                    label={currentEntry.itemName}
+                    params={previewParams}
+                    metadata={`Type ${String(currentEntry.itemType)}`}
+                  />
+                  <div>
                   <p className="text-sm text-gray-400">
                     Item {currentIndex + 1} of {entries.length}
                   </p>
@@ -271,6 +281,15 @@ export function ItemAuditPage() {
                       ? `${previewMapping.modelPath}/${previewMapping.modelFile}`
                       : "Not mapped"}
                   </p>
+                  {currentEntry.screenshot ? (
+                    <p className="text-sm text-gray-400">
+                      Screenshot: {currentEntry.screenshot.verificationStatus} (
+                      {currentEntry.screenshot.variantKey})
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500">Screenshot: no screenshot</p>
+                  )}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -351,6 +370,20 @@ export function ItemAuditPage() {
                   <p>Model Index: {previewMapping.modelIndex}</p>
                   <p>Group Size: {previewMapping.groupSize ?? 1}</p>
                   <p>Rotation Y: {previewMapping.rotationY ?? 0}</p>
+                  <p>Verification: {currentEntry.verificationStatus}</p>
+                  <p>Model Parts: {currentEntry.modelPartCount}</p>
+                  <p>Static Issues: {currentEntry.staticAnalysisIssues.length}</p>
+                </div>
+              )}
+
+              {currentEntry.staticAnalysisIssues.length > 0 && (
+                <div className="space-y-2 rounded border border-amber-700/60 bg-amber-950/30 p-3">
+                  <Label>Static analysis</Label>
+                  <ul className="list-disc pl-5 text-xs text-amber-100 space-y-1">
+                    {currentEntry.staticAnalysisIssues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

@@ -58,7 +58,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
       codeSample: {
         code: "gMyStartAim = gMasterItemList[i].parm[0]; // get aim 0..7",
         fileName: "src/Terrain/Terrain2.c",
-        lineNumber: 174,
+        lineNumber: 178,
       },
     },
     p1: "Unknown",
@@ -205,11 +205,11 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
       flags: [
         {
           index: 0,
-          description: "Auto Y positioning (follow terrain height)",
+          description: "Vent has a finite steam limit",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1)",
+            code: "newObj->VentHasLimit = itemPtr->parm[3] & 1;",
             fileName: "src/Items/Items.c",
-            lineNumber: 316,
+            lineNumber: 649,
           },
         },
       ],
@@ -236,7 +236,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 1,
           description: "Rock dropper (pteranodon carries and drops rocks)",
           codeSample: {
-            code: "newObj->RockDropper = itemPtr->parm[3] & (1<<1);\nif (newObj->RockDropper) {\n  AttachARock(newObj);\n  SetSkeletonAnim(newObj->Skeleton, PTERA_ANIM_CARRY);\n}",
+            code: "newObj->RockDropper = itemPtr->parm[3] & (1<<1);",
             fileName: "src/Enemies/Enemy_Ptera.c",
             lineNumber: 97,
           },
@@ -266,7 +266,15 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
   },
   [ItemType.TimePortal]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Portal number used to associate this portal with its destination",
+      codeSample: {
+        code: "n = gMasterItemList[i].parm[0];										// parm0 = portal #",
+        fileName: "src/Items/TimePortal.c",
+        lineNumber: 69,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -306,14 +314,40 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
     p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Spawn a triceratops inside the bush",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1)",
+            fileName: "src/Items/Items.c",
+            lineNumber: 591,
+          },
+        },
+      ],
+    },
   },
   [ItemType.WaterPatch]: {
     flags: "Unknown",
     p0: "Unknown",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Position water relative to terrain instead of at the fixed water height",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1)",
+            fileName: "src/Items/Items.c",
+            lineNumber: 316,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Crystal]: {
     flags: "Unknown",
@@ -380,10 +414,10 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
   },
   [ItemType.SporePod]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: "Unused",
   },
 };
 

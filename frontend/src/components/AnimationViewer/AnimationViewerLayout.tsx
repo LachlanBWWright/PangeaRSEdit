@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimationSelector } from "./AnimationSelector";
 import { AnimationEditor } from "./AnimationEditor";
 import { KeyframeEditor } from "./KeyframeEditor";
@@ -10,6 +9,7 @@ import { ViewerSection } from "@/components/AnimationViewer/animationViewerSecti
 import type { AnimationEvent, AnimationInfo, TimelineRow } from "./types";
 import type { BoneInfluenceRow } from "./rigToolsState";
 import type { ModelSourceKind, TrackProperty } from "./utils";
+import { SidebarSection } from "@/components/model-viewer/SidebarSection";
 
 interface AnimationViewerLayoutProps {
   editableAnimations: AnimationInfo[];
@@ -173,13 +173,8 @@ export function AnimationViewerLayout({
   onRepairWeights,
 }: AnimationViewerLayoutProps) {
   return (
-    <Card className="flex min-h-0 flex-col overflow-hidden bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white text-sm">
-          Animations ({editableAnimations.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+    <SidebarSection title={`Animations (${editableAnimations.length})`}>
+      <div className="min-h-0 flex-1 space-y-4">
         <AnimationSelector
           selectedAnimation={selectedAnimation}
           editableAnimations={editableAnimations}
@@ -289,7 +284,7 @@ export function AnimationViewerLayout({
             totalKeyframes={totalKeyframes}
           />
         </ViewerSection>
-      </CardContent>
-    </Card>
+      </div>
+    </SidebarSection>
   );
 }

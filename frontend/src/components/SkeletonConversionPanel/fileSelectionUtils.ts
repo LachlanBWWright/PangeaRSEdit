@@ -4,7 +4,10 @@ export type ConversionType = "bg3d-to-glb" | "glb-to-bg3d";
 export type UploadStep = "select-bg3d" | "select-skeleton" | "completed";
 
 interface HandleDropParams {
-  event: React.DragEvent;
+  event: {
+    preventDefault: () => void;
+    dataTransfer: { files: ArrayLike<File> };
+  };
   uploadStep: UploadStep;
   conversionType: ConversionType;
   onConvertPrimaryFile: (
@@ -16,7 +19,7 @@ interface HandleDropParams {
 }
 
 interface HandleFileInputParams {
-  event: React.ChangeEvent<HTMLInputElement>;
+  event: { target: { files: ArrayLike<File> | null; value: string } };
   uploadStep: UploadStep;
   conversionType: ConversionType;
   onSelectPrimaryFile: (primaryFile: File) => Promise<void>;

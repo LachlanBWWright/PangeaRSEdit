@@ -58,14 +58,20 @@ export const billyfrontier: GameInfo = {
       skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Rygar.skeleton.rsrc",
       category: "Characters",
     },
+    {
+      name: "KangaCow",
+      bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/KangaCow.bg3d",
+      skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/KangaCow.skeleton.rsrc",
+      category: "Characters",
+    },
 
     {
-      name: "Town Level",
+      name: "Town",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/models/town.bg3d",
       category: "Levels",
     },
     {
-      name: "Swamp Level",
+      name: "Swamp",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/models/swamp.bg3d",
       category: "Levels",
     },
@@ -80,7 +86,7 @@ export const billyfrontier: GameInfo = {
       category: "Objects",
     },
     {
-      name: "Global Models",
+      name: "Global",
       bg3dFile: "/PangeaRSEdit/games/billyfrontier/models/global.bg3d",
       category: "Objects",
     },

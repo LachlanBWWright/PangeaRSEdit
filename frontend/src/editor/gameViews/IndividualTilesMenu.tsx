@@ -7,6 +7,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CurrentTopologyDualEditMode,
   CurrentTopologyHeightmapDisplayMode,
@@ -20,7 +21,6 @@ import {
   TopologyHeightmapDisplayMode,
   TopologyLayerEditMode,
   TopologyBrushRadius,
-  TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
   ShowAccessibilityOverlay,
@@ -49,22 +49,32 @@ import {
   hasAccessibleOverlayData,
   supportsAccessibilityOverlay,
 } from "../utils/terrainAccessibility";
+import { hasCeilingHeightData } from "../utils/terrainCeiling";
+import { getSemanticTileAttributes } from "@/data/terrain/semanticTileAttributes";
+import { SemanticTileAttributeControls } from "../subviews/tiles/SemanticTileAttributeControls";
+import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl";
+import { LevelScaleControl } from "../subviews/tiles/LevelScaleControl";
+import {
+  supportsLevelScale,
+  type LevelScaleMode,
+} from "../utils/levelScaleState";
 
 export function IndividualTilesMenu({
   headerData,
   setHeaderData,
   terrainData,
+  onApplyLevelScale,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
+  onApplyLevelScale?: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
   const [valueMode, setValueMode] = useAtom(CurrentTopologyValueMode);
   const [brushRadius, setBrushRadius] = useAtom(TopologyBrushRadius);
   const [value, setValue] = useAtom(TopologyValue);
-  const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
@@ -78,11 +88,12 @@ export function IndividualTilesMenu({
     ShowAccessibilityOverlay,
   );
   const globals = useAtomValue(Globals);
+  const semanticAttributes = getSemanticTileAttributes(globals.GAME_TYPE);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
-  const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
+  const hasRoofLayer = hasCeilingHeightData(globals.GAME_TYPE, terrainData);
   const canShowAccessibilityOverlay = hasAccessibleOverlayData(
     globals.GAME_TYPE,
     header,
@@ -149,8 +160,28 @@ export function IndividualTilesMenu({
 
   return (
     <div className="flex flex-col gap-2 p-1">
+      {semanticAttributes.length > 0 && (
+        <Tabs
+          value={tileView === TileViews.Attributes ? "attributes" : "topology"}
+          onValueChange={(value) => {
+            setTileView(
+              value === "attributes" ? TileViews.Attributes : TileViews.Topology,
+            );
+            setCanvasViewMode(CanvasView.TWO_D);
+          }}
+        >
+          <TabsList className="grid grid-cols-2 gap-2 w-full overflow-clip">
+            <TabsTrigger className="w-full" value="topology">
+              Topology
+            </TabsTrigger>
+            <TabsTrigger className="w-full" value="attributes">
+              Attributes
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
       {tileView === TileViews.Topology && (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)]">
           <p>Brush Mode</p>
           <Select
             value={brushMode.toString()}
@@ -298,17 +329,16 @@ export function IndividualTilesMenu({
           <Input type="number" value={minY} onChange={handleMinYChange} />
           <p>Max Height</p>
           <Input type="number" value={maxY} onChange={handleMaxYChange} />
-          <p>Topology View Opacity</p>
-          <Input
-            type="number"
-            defaultValue={toplogyOpacity}
-            onChange={(e) =>
-              setTopologyOpacity(parseFloat(e.target.value) || 1)
-            }
-          />
+          {supportsLevelScale(globals.GAME_TYPE) && onApplyLevelScale && (
+            <LevelScaleControl
+              tileSize={headerData.Hedr[1000].obj.tileSize}
+              onApply={onApplyLevelScale}
+            />
+          )}
+          <TopologyOpacityControl />
           {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
             canShowAccessibilityOverlay && (
-              <div className="flex items-center justify-between col-span-4 rounded border border-gray-700 px-3 py-2">
+              <div className="col-span-2 flex items-center justify-between rounded border border-gray-700 px-3 py-2 sm:col-span-4">
                 <p>{getAccessibilityOverlayLabel()}</p>
                 <Switch
                   checked={showAccessibilityOverlay}
@@ -357,7 +387,7 @@ export function IndividualTilesMenu({
           )}
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
-              <p>Show 3D View (Experimental)</p>
+              <p>Show 3D View</p>
               <Switch
                 checked={canvasViewMode === CanvasView.THREE_D}
                 onCheckedChange={(e) =>
@@ -373,10 +403,14 @@ export function IndividualTilesMenu({
           </div>
           {canvasViewMode === CanvasView.THREE_D && (
             <>
-              {hasRoofLayer && (
+              {globals.GAME_TYPE === Game.BUGDOM && (
                 <div className="flex flex-row justify-center gap-2 items-center col-span-2">
                   <p>Show Ceiling Layer</p>
-                  <Switch checked={showRoof} onCheckedChange={setShowRoof} />
+                  <Switch
+                    checked={hasRoofLayer && showRoof}
+                    disabled={!hasRoofLayer}
+                    onCheckedChange={setShowRoof}
+                  />
                 </div>
               )}
               <div className="flex flex-row justify-center gap-2 items-center col-span-2">
@@ -389,6 +423,9 @@ export function IndividualTilesMenu({
             </>
           )}
         </div>
+      )}
+      {tileView === TileViews.Attributes && semanticAttributes.length > 0 && (
+        <SemanticTileAttributeControls attributes={semanticAttributes} />
       )}
     </div>
   );

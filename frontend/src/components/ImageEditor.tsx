@@ -16,6 +16,7 @@ import { buildSelectedColorHighlightCanvas } from "./ImageEditor/selectedColorHi
 import type { BrushStroke, ImageEditorSaveAction } from "./ImageEditor/types";
 import { DEFAULT_IMAGE_EDITOR_COLOR_PALETTE } from "./ImageEditor/colorPalette";
 import { LoadingImageEditorDialog } from "./ImageEditor/LoadingImageEditorDialog";
+import { getSteppedZoom, getWheelZoom } from "./editor/editorZoomState";
 
 interface ImageEditorProps {
   isOpen: boolean;
@@ -274,42 +275,41 @@ export function ImageEditor({
   };
 
   const zoomOut = () => {
-    setScale((current) => Math.max(baseScale * 0.1, current / 1.25));
+    setScale((current) =>
+      getSteppedZoom(current, -1, 1.25, {
+        min: baseScale * 0.1,
+        max: baseScale * 20,
+      }),
+    );
   };
 
   const zoomIn = () => {
-    setScale((current) => Math.min(baseScale * 20, current * 1.25));
+    setScale((current) =>
+      getSteppedZoom(current, 1, 1.25, {
+        min: baseScale * 0.1,
+        max: baseScale * 20,
+      }),
+    );
   };
 
   const resetZoom = () => {
     setScale(baseScale);
   };
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  const handleStageWheel = useCallback(
+    (event: Konva.KonvaEventObject<WheelEvent>) => {
+      event.evt.preventDefault();
+      if (event.evt.deltaY === 0) return;
 
-    const handleWheelNative = (e: WheelEvent) => {
-      e.preventDefault();
-      const scaleBy = 1.1;
-      const direction = e.deltaY > 0 ? -1 : 1;
-
-      setScale((current) => {
-        const newScale = direction > 0 ? current * scaleBy : current / scaleBy;
-        return Math.min(baseScale * 20, Math.max(baseScale * 0.1, newScale));
-      });
-    };
-
-    container.addEventListener("wheel", handleWheelNative, {
-      passive: false,
-      capture: true,
-    });
-    return () => {
-      container.removeEventListener("wheel", handleWheelNative, {
-        capture: true,
-      });
-    };
-  }, [baseScale]);
+      setScale((current) =>
+        getWheelZoom(current, event.evt.deltaY, 1.1, {
+          min: baseScale * 0.1,
+          max: baseScale * 20,
+        }),
+      );
+    },
+    [baseScale],
+  );
 
   const selectedColorHighlightCanvas = useMemo(
     () =>
@@ -372,6 +372,7 @@ export function ImageEditor({
             handleMouseDown={handleMouseDown}
             handleMouseMove={handleMouseMove}
             handleMouseUp={handleMouseUp}
+            handleWheel={handleStageWheel}
             selectedColorHighlightCanvas={selectedColorHighlightCanvas}
             strokes={strokes}
             currentStroke={currentStroke}

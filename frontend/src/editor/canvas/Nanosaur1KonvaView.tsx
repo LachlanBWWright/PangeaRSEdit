@@ -13,10 +13,15 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
+import {
+  MapResizeEdgeControls,
+  type MapResizeDirection,
+} from "./MapResizeEdgeControls";
 import Konva from "konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { Items } from "../subviews/Items";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
 import { Tiles } from "../subviews/Tiles";
@@ -30,10 +35,10 @@ import { Globals } from "@/data/globals/globals";
 import { TileBrushPreviewLayer } from "../subviews/tileBrushes/TileBrushPreviewLayer";
 import { TileBrushCaptureLayer } from "../subviews/tileBrushes/TileBrushCaptureLayer";
 import {
-  tileBrushModeAtom,
+  getTileBrushModeAtom,
   tileBrushPreviewAtom,
-  selectedTileBrushIdAtom,
-  tileBrushAnchorAtom,
+  nanosaurSelectedTileBrushIdAtom,
+  getTileBrushAnchorAtom,
   tileBrushesAtom,
   tileBrushActiveLayerAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
@@ -42,6 +47,10 @@ import {
   createTileBrushFromRegion,
 } from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { NanosaurPathLayer } from "../subviews/tiles/NanosaurPathLayer";
+import { computeWheelZoomStage } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -59,6 +68,7 @@ interface Nanosaur1KonvaViewProps {
   view: View;
   stage: StageData;
   setStage: Updater<StageData>;
+  onResize: (direction: MapResizeDirection, amount: number) => Promise<void>;
 }
 
 export function Nanosaur1KonvaView({
@@ -71,15 +81,19 @@ export function Nanosaur1KonvaView({
   view,
   stage,
   setStage,
+  onResize,
 }: Nanosaur1KonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const customObjectPlacement = useCustomObjectPlacement();
   const globals = useAtomValue(Globals);
 
-  const tileBrushMode = useAtomValue(tileBrushModeAtom);
+  const tileBrushMode = useAtomValue(getTileBrushModeAtom("nanosaur1"));
+  const setTileBrushMode = useSetAtom(getTileBrushModeAtom("nanosaur1"));
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
-  const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
-  const tileBrushAnchor = useAtomValue(tileBrushAnchorAtom);
+  const selectedBrushId = useAtomValue(nanosaurSelectedTileBrushIdAtom);
+  const setSelectedBrushId = useSetAtom(nanosaurSelectedTileBrushIdAtom);
+  const tileBrushAnchor = useAtomValue(getTileBrushAnchorAtom("nanosaur1"));
   const tileBrushes = useAtomValue(tileBrushesAtom);
   const activeLayer = useAtomValue(tileBrushActiveLayerAtom);
   const setTileBrushes = useSetAtom(tileBrushesAtom);
@@ -150,7 +164,7 @@ export function Nanosaur1KonvaView({
       const height = Math.abs(end.y - start.y) + 1;
       const result = createTileBrushFromRegion({
         id: crypto.randomUUID(),
-        name: `Brush ${new Date().toLocaleTimeString()}`,
+        name: `Stamp ${new Date().toLocaleTimeString()}`,
         game: "nanosaur1",
         terrainData,
         layer: activeLayer,
@@ -164,12 +178,22 @@ export function Nanosaur1KonvaView({
       result.match(
         (brush) => {
           setTileBrushes((prev) => [...prev, brush]);
-          toast.success(`Captured brush "${brush.name}" (${width}×${height})`);
+          setSelectedBrushId(brush.id);
+          setTileBrushMode("stamp");
+          toast.success(`Captured stamp (${width}×${height})`);
         },
         (err) => toast.error(`Capture failed: ${err}`),
       );
     },
-    [terrainData, activeLayer, mapWidth, mapHeight, setTileBrushes],
+    [
+      terrainData,
+      activeLayer,
+      mapWidth,
+      mapHeight,
+      setTileBrushes,
+      setSelectedBrushId,
+      setTileBrushMode,
+    ],
   );
 
   const [containerRef, containerSize] = useContainerSize();
@@ -200,13 +224,22 @@ export function Nanosaur1KonvaView({
             handleStampClick(e);
             return;
           }
-          if (clickToAddItem === undefined) return;
           const stageRef = e.target.getStage();
 
           const pos = stageRef?.getRelativePointerPosition();
           if (!pos) return;
           const x = Math.round(pos.x);
           const z = Math.round(pos.y);
+
+          if (customObjectPlacement.objectId !== null) {
+            customObjectPlacement.placeAt(
+              x,
+              headerData.Hedr[1000].obj.minY ?? 0,
+              z,
+            );
+            return;
+          }
+          if (clickToAddItem === undefined) return;
 
           setItemDataNotNull((itemData) => {
             itemData.Itms[1000].obj.push({
@@ -266,28 +299,8 @@ export function Nanosaur1KonvaView({
           setSelectedItem(undefined);
         }}
         onWheel={(e) => {
-          e.evt.preventDefault();
-
-          const scaleBy = 1.05;
-          const stageRef = e.target.getStage();
-          if (!stageRef) return;
-          const oldScale = stageRef.scaleX();
-          const pointerPosition = stageRef.getPointerPosition();
-          if (!pointerPosition) return;
-
-          const mousePointTo = {
-            x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
-            y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
-          };
-
-          const newScale =
-            e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-          setStage({
-            scale: newScale,
-            x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-            y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-          });
+          const nextStage = computeWheelZoomStage(e);
+          if (nextStage) setStage(nextStage);
         }}
       >
         {/* Render individual tiles - Nanosaur 1 uses 5x5 tile system like Bugdom 1 */}
@@ -325,8 +338,18 @@ export function Nanosaur1KonvaView({
           />
         )}
 
+        {view !== View.tiles && <CustomScriptPlacements />}
+        {view === View.collisionPath && (
+          <NanosaurPathLayer
+            headerData={headerData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+          />
+        )}
+
         {/* Tile brush preview (stamp mode) */}
         <TileBrushPreviewLayer
+          game="nanosaur1"
           tileSize={tileSize}
           mapWidth={mapWidth}
           mapHeight={mapHeight}
@@ -340,6 +363,15 @@ export function Nanosaur1KonvaView({
             captureEnd={captureEnd}
           />
         )}
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
+        <MapResizeEdgeControls
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+          tileSize={tileSize}
+          tilesPerUnit={globals.TILES_PER_SUPERTILE}
+          onResize={onResize}
+        />
       </Stage>
     </div>
   );

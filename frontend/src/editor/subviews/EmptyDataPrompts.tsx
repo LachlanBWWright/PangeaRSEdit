@@ -3,7 +3,7 @@
  * Allows users to initialize empty data structures for fences, water, and splines
  */
 
-import { Button } from "@/components/ui/button";
+import { MenuEmptyState } from "./MenuEmptyState";
 
 interface EmptyDataPromptProps {
   title: string;
@@ -20,20 +20,14 @@ export function EmptyDataPrompt({
   onInitialize,
   fillHeight = false,
 }: EmptyDataPromptProps) {
-  const containerClassName = fillHeight
-    ? "flex h-full min-h-full w-full flex-col gap-4 p-8"
-    : "flex w-full flex-col gap-4 p-8";
-
   return (
-    <div className={containerClassName}>
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
-        <p className="text-gray-300">{description}</p>
-      </div>
-      <Button onClick={onInitialize} className="w-auto px-6 self-center">
-        {buttonText}
-      </Button>
-    </div>
+    <MenuEmptyState
+      title={title}
+      description={description}
+      actionLabel={buttonText}
+      onAction={onInitialize}
+      fillHeight={fillHeight}
+    />
   );
 }
 
@@ -43,6 +37,18 @@ export function EmptyFencePrompt({ onInitialize }: { onInitialize: () => void })
       title="No Fences"
       description="This level doesn't have any fences yet. Add your first fence to get started."
       buttonText="Add First Fence"
+      onInitialize={onInitialize}
+      fillHeight
+    />
+  );
+}
+
+export function EmptyItemPrompt({ onInitialize }: { onInitialize: () => void }) {
+  return (
+    <EmptyDataPrompt
+      title="No Items"
+      description="This level doesn't have any item data yet. Add the item list to get started."
+      buttonText="Add Item List"
       onInitialize={onInitialize}
       fillHeight
     />

@@ -1,13 +1,38 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
+import wasm from "vite-plugin-wasm";
 import fs from "node:fs";
 import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
+import { listAnimationSoundAssets } from "./src/components/AnimationViewer/animationSoundAssets";
 
 // https://vitejs.dev/config/
 const repoRoot = path.resolve(__dirname, "..");
 const pangeaPortsSrcDir = path.resolve(repoRoot, "games/pangea-ports");
 const pangeaPortsMount = "/games/pangea-ports";
+const generatedAssetsDir = path.resolve(__dirname, "public/generated");
+const generatedAssetsMount = "/PangeaRSEdit/generated";
+
+function emitAnimationSoundAssets(): Plugin {
+  return {
+    name: "emit-animation-sound-assets",
+    apply: "build",
+    buildStart() {
+      for (const relativePath of listAnimationSoundAssets()) {
+        const sourcePath = path.join(pangeaPortsSrcDir, relativePath);
+        if (!fs.existsSync(sourcePath)) {
+          this.error(`Animation sound asset is missing: ${sourcePath}`);
+          continue;
+        }
+        this.emitFile({
+          type: "asset",
+          fileName: `generated/pangea-ports/audio/${relativePath}`,
+          source: fs.readFileSync(sourcePath),
+        });
+      }
+    },
+  };
+}
 
 function mimeTypeFor(filePath: string): string {
   switch (path.extname(filePath).toLowerCase()) {
@@ -86,6 +111,15 @@ function serveStaticDirectory(basePath: string, rootDir: string): Plugin {
 
         res.statusCode = 200;
         res.setHeader("Content-Type", mimeTypeFor(targetPath));
+        // Game pages must carry the same isolation headers as the parent app so
+        // browsers permit same-origin iframe embedding under COEP: require-corp.
+        res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+        res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+        res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+        if (req.method === "HEAD") {
+          res.end();
+          return;
+        }
         fs.createReadStream(targetPath).pipe(res);
       });
     },
@@ -114,6 +148,10 @@ export default defineConfig({
     target: "es2022",
   },
   server: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
     watch: {
       ignored: [
         "**/_codeql_detected_source_root",
@@ -124,7 +162,23 @@ export default defineConfig({
       allow: [repoRoot],
     },
   },
-  plugins: [react(), serveStaticDirectory(pangeaPortsMount, pangeaPortsSrcDir)],
+  preview: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+  },
+  plugins: [
+    react({
+      babel: {
+        plugins: [["babel-plugin-react-compiler", {}]],
+      },
+    }),
+    wasm(),
+    emitAnimationSoundAssets(),
+    serveStaticDirectory(generatedAssetsMount, generatedAssetsDir),
+    serveStaticDirectory(pangeaPortsMount, pangeaPortsSrcDir),
+  ],
   worker: { format: "es" },
   resolve: {
     alias: {

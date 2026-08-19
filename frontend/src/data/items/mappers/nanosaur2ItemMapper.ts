@@ -15,8 +15,13 @@
 import { Game } from "../../globals/globals";
 import {
   type GameItemModelMapper,
+  type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
+import {
+  hasVisibleSplineItemModel,
+  isSplineOnlyItemType,
+} from "../splineItemModelVisibility";
 import { ItemType } from "../nanosaur2ItemType";
 import { ROTATION_4_WAY, ROTATION_8_WAY } from "../standardParamTypes";
 
@@ -299,6 +304,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelPath: "models",
     modelIndex: 46,
     groupSize: 4,
+    scale: 2.5,
   },
 
   // ---- LEVEL 2: DESERT (desert.bg3d) ----
@@ -545,7 +551,18 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "ramphor.skeleton.rsrc",
+    scale: 2.2,
+    verificationStatus: "verified",
+    citations: [
+      {
+        file: "Source/Enemies/Enemy_Ramphor.c",
+        line: 81,
+        endLine: 170,
+        description: "Spline Ramphor uses the Ramphor skeleton at scale 2.2.",
+      },
+    ],
   },
+
 };
 
 /**
@@ -575,6 +592,7 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
       modelPath: "models",
       modelIndex: 46,
       groupSize: 4,
+      scale: 2.5,
     },
     // Forest: LEVEL1_ObjType_Rock1 = 31 ... TallRock2 = 36 (Items.c: scale = 2.0)
     [ItemType.Rock]: {
@@ -615,6 +633,7 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
       modelPath: "models",
       modelIndex: 48,
       groupSize: 4,
+      scale: 2.5,
     },
     // Desert: LEVEL2_ObjType_Rock_Small1 = 39 ... Rock_Large3 = 44 (Items.c: scale = 2.0)
     [ItemType.Rock]: {
@@ -655,6 +674,7 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
       modelPath: "models",
       modelIndex: 33,
       groupSize: 4,
+      scale: 2.5,
     },
     // Swamp: LEVEL3_ObjType_Grass_Single = 13, Grass_Small = 14, Grass_Patch = 15 (Bushes.c: scale = 2.0)
     [ItemType.Grass]: {
@@ -710,7 +730,19 @@ export class Nanosaur2ItemMapper implements GameItemModelMapper {
     itemType: number,
     levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
+    _flags?: number,
+    kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
+    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
+      return undefined;
+    }
+    if (
+      kind === "splineItem" &&
+      !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+
     // Ivy uses parm[1] (color) to switch between PurpleIvy (0) and RedIvy (1) families
     if (itemType === ItemType.Ivy && params) {
       const isRed = params.p1 !== 0;

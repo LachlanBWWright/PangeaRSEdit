@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { atom, useAtom } from "jotai";
+import { Button } from "@/components/ui/button";
 
 /** Currently selected alt-tile value for brush painting (0=None … 10=Loop). */
 export const AltMapBrushValue = atom<number>(0);
@@ -53,7 +54,7 @@ export function MightyMikeAltMapEditorPanel() {
     DEFAULT_ALT_TILE_OPTION;
 
   return (
-    <div className="flex flex-col gap-3 p-2">
+    <div className="flex flex-col gap-2">
       <div>
         <label className="block text-xs font-medium text-gray-400 mb-1">
           Brush Direction
@@ -78,33 +79,31 @@ export function MightyMikeAltMapEditorPanel() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-6 gap-1">
         {ALT_TILE_OPTIONS.filter((o) => o.value > 0).map((opt) => (
-          <button
+          <Button
             key={opt.value}
-            className={`flex flex-col items-center p-1 rounded border text-sm transition-colors ${
-              brushValue === opt.value
-                ? "border-white bg-gray-600"
-                : "border-gray-600 hover:border-gray-400"
-            }`}
+            type="button"
+            variant="selectable"
+            aria-pressed={brushValue === opt.value}
+            className="h-auto flex-col px-1 py-2"
             onClick={() => setBrushValue(opt.value)}
+            title={opt.label}
           >
             <span className="text-lg">{opt.glyph}</span>
-            <span className="text-xs text-gray-400">{opt.label}</span>
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           key={0}
-          className={`flex flex-col items-center p-2 rounded border text-sm transition-colors ${
-            brushValue === 0
-              ? "border-white bg-gray-600"
-              : "border-gray-600 hover:border-gray-400"
-          }`}
+          type="button"
+          variant="selectable"
+          aria-pressed={brushValue === 0}
+          className="col-span-2 h-auto px-2 py-2"
           onClick={() => setBrushValue(0)}
         >
           <span className="text-lg">○</span>
-          <span className="text-xs text-gray-400">None (erase)</span>
-        </button>
+          <span className="text-xs text-gray-400">Erase</span>
+        </Button>
       </div>
 
       <p className="text-xs text-gray-500">

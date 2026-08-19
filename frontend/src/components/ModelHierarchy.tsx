@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Group, Object3D } from "three";
 import { ModelNode } from "./model-viewer/types";
 import { HierarchyNodeItem } from "@/components/model-viewer/modelHierarchyTree";
+import { SidebarSection } from "@/components/model-viewer/SidebarSection";
 
 interface ModelHierarchyProps {
   nodes: ModelNode[];
@@ -33,21 +33,18 @@ export function ModelHierarchy({
   }
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white text-sm">Model Hierarchy</CardTitle>
+    <SidebarSection title="Scene">
+      <div className="mb-2 flex justify-end">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleToggleAll}
-            className="text-xs text-gray-300 hover:text-white"
+            className="h-7 text-xs text-gray-300 hover:text-white"
           >
             {showAll ? "Hide All" : "Show All"}
           </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="min-h-0 pt-0 space-y-1 max-h-60 overflow-y-auto">
+      </div>
+      <div className="min-h-0 max-h-48 space-y-1 overflow-y-auto">
         {nodes.map((node) => {
           // Use the stored THREE object reference for proper matching
           // This avoids index mismatch issues when bones/joints are filtered out
@@ -65,7 +62,7 @@ export function ModelHierarchy({
             />
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </SidebarSection>
   );
 }

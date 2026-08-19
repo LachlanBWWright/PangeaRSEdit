@@ -1,11 +1,16 @@
 /**
  * Item Filter Utility Functions
- * 
+ *
  * Functions for determining item visibility based on filter state.
  */
 
-import { ItemFilterState, FilterMode } from "./itemFilterAtoms";
+import { FilterMode, type ItemFilterState } from "./itemFilterAtoms";
 import { ItemCategory } from "./itemCategories";
+import {
+  type FilterableItemKey,
+  type FilterableItemKeyParts,
+  toFilterableItemKey,
+} from "./itemFilterKeys";
 
 /**
  * Get the item type name for display/search purposes.
@@ -23,9 +28,23 @@ export function isItemVisible(
   itemType: number,
   filter: ItemFilterState,
 ): boolean {
+  return isFilterableItemVisible({ kind: "item", type: itemType }, filter);
+}
+
+export function isSplineItemVisible(
+  itemType: number,
+  filter: ItemFilterState,
+): boolean {
+  return isFilterableItemVisible({ kind: "splineItem", type: itemType }, filter);
+}
+
+export function isFilterableItemVisible(
+  item: FilterableItemKeyParts,
+  filter: ItemFilterState,
+): boolean {
   if (filter.mode === FilterMode.SHOW_ALL) return true;
 
-  const typeOverride = filter.itemTypes[itemType];
+  const typeOverride = filter.itemTypes[toFilterableItemKey(item)];
   if (typeOverride !== undefined) {
     return filter.mode === FilterMode.SHOW_SELECTED ? typeOverride : !typeOverride;
   }
@@ -58,6 +77,18 @@ export function getVisibleItemTypes(
 ): number[] {
   if (filter.mode === FilterMode.SHOW_ALL) return allTypeIds;
   return allTypeIds.filter((typeId) => isItemVisible(typeId, filter));
+}
+
+export function getVisibleFilterableItemKeys(
+  allKeys: FilterableItemKeyParts[],
+  filter: ItemFilterState,
+): FilterableItemKey[] {
+  if (filter.mode === FilterMode.SHOW_ALL) {
+    return allKeys.map(toFilterableItemKey);
+  }
+  return allKeys
+    .filter((item) => isFilterableItemVisible(item, filter))
+    .map(toFilterableItemKey);
 }
 
 /**

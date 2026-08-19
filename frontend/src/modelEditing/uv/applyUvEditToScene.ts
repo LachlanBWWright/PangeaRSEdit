@@ -1,16 +1,28 @@
-import { Group, Mesh, BufferGeometry, BufferAttribute } from "three";
+import { Group, Mesh, BufferGeometry, Material } from "three";
 import type { UvLayout } from "./uvTypes";
+
+function markMaterialForUpdate(material: Material | Material[]): void {
+  if (Array.isArray(material)) {
+    material.forEach((entry) => {
+      entry.needsUpdate = true;
+    });
+    return;
+  }
+
+  material.needsUpdate = true;
+}
 
 /**
  * Write transformed UV layout back into Three.js geometry attributes.
  * Matches meshes by name. Does not return a new scene — mutates in place
  * because Three.js attributes must be mutated to trigger GPU upload.
  */
-export function applyUvEditToScene(scene: Group, layout: UvLayout): void {
+export function applyUvEditToScene(scene: Group, layout: UvLayout): boolean {
   const meshLayoutByGeometryIndex = new Map(
     layout.meshes.map((mesh) => [mesh.geometryIndex, mesh]),
   );
   let geometryIndex = 0;
+  let didUpdate = false;
 
   scene.traverse((object) => {
     if (!(object instanceof Mesh)) {
@@ -27,17 +39,23 @@ export function applyUvEditToScene(scene: Group, layout: UvLayout): void {
     if (!(geometry instanceof BufferGeometry)) return;
 
     const uvAttr = geometry.getAttribute("uv");
-    if (!uvAttr || !(uvAttr instanceof BufferAttribute)) return;
+    if (!uvAttr) return;
 
     const count = Math.min(uvAttr.count, meshLayout.vertices.length);
+    let meshDidUpdate = false;
     for (let i = 0; i < count; i++) {
       const v = meshLayout.vertices[i];
       if (!v) continue;
       uvAttr.setXY(i, v.u, v.v);
+      meshDidUpdate = true;
     }
 
-    uvAttr.needsUpdate = true;
-    geometry.computeBoundingBox();
-    geometry.computeBoundingSphere();
+    if (meshDidUpdate) {
+      uvAttr.needsUpdate = true;
+      markMaterialForUpdate(object.material);
+      didUpdate = true;
+    }
   });
+
+  return didUpdate;
 }

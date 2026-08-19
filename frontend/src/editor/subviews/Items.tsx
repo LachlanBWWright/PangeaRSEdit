@@ -1,13 +1,17 @@
-import { HeaderData, ItemData, TerrainData } from "@/python/structSpecs/LevelTypes";
+import {
+  HeaderData,
+  ItemData,
+  TerrainData,
+} from "@/python/structSpecs/LevelTypes";
 import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { Item } from "./items/Item";
-import { memo, useMemo, useState, useCallback } from "react";
-import { useAtomValue } from "jotai";
+import { memo, useMemo, useEffect } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { itemFilterStateAtom } from "@/data/items/itemFilterAtoms";
 import { isItemVisible } from "@/data/items/itemFilterUtils";
-import { HoverNameTag } from "./shared/nodeVisuals";
-import type { HoverTagInfo } from "./shared/nodeVisuals";
+import { ActiveHoverTag } from "@/data/globals/hoverTagAtom";
+import { SelectedItem } from "@/data/items/itemAtoms";
 
 export const Items = memo(
   ({
@@ -22,26 +26,27 @@ export const Items = memo(
     setItemData: Updater<ItemData>;
   }) => {
     const filterState = useAtomValue(itemFilterStateAtom);
-    const [hoveredTag, setHoveredTag] = useState<HoverTagInfo | null>(null);
+    const setActiveHoverTag = useSetAtom(ActiveHoverTag);
+    const selectedItem = useAtomValue(SelectedItem);
 
-    const handleHoverChange = useCallback((tag: HoverTagInfo | null) => {
-      setHoveredTag(tag);
-    }, []);
-
+    // Clear the hover tag when this layer unmounts (e.g. view switch).
+    useEffect(() => {
+      return () => setActiveHoverTag(null);
+    }, [setActiveHoverTag]);
     // Compute which item indices should be visible based on filter
     const visibleItemIndices = useMemo(() => {
       if (!itemData.Itms) return [];
-      
+
       const items = itemData.Itms[1000].obj;
       const indices: number[] = [];
-      
+
       for (let idx = 0; idx < items.length; idx++) {
         const item = items[idx];
         if (item && isItemVisible(item.type, filterState)) {
           indices.push(idx);
         }
       }
-      
+
       return indices;
     }, [itemData.Itms, filterState]);
 
@@ -58,19 +63,10 @@ export const Items = memo(
             itemData={itemData}
             setItemData={setItemData}
             itemIdx={itemIdx}
-            onHoverChange={handleHoverChange}
+            selected={selectedItem === itemIdx}
+            onHoverChange={setActiveHoverTag}
           />
         ))}
-        {/* Render hover tag last so it always appears above all items */}
-        {hoveredTag && (
-          <HoverNameTag
-            x={hoveredTag.x}
-            y={hoveredTag.y}
-            text={hoveredTag.text}
-            fill={hoveredTag.fill}
-            textColor={hoveredTag.textColor}
-          />
-        )}
       </Layer>
     );
   },

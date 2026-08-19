@@ -50,7 +50,7 @@ describe("skinning roundtrip", () => {
     const skin = bg3dSkinningToGltf(parsedSkeleton, joints, doc, baseBuffer);
     expect(skin).not.toBeNull();
 
-    // Create a mesh with 2 vertices. Vertex 0 influenced by bone 0, vertex 1 by bone 1
+    // Create a mesh with two smoothly weighted vertices.
     const mesh = doc.createMesh();
     const prim = doc.createPrimitive();
 
@@ -62,7 +62,7 @@ describe("skinning roundtrip", () => {
       .setBuffer(baseBuffer);
 
     // JOINTS_0: VEC4 per-vertex, using uint16
-    const jointsData = new Uint16Array([0, 0, 0, 0, 1, 0, 0, 0]);
+    const jointsData = new Uint8Array([0, 1, 0, 0, 1, 0, 0, 0]);
     const jointsAcc = doc
       .createAccessor()
       .setType("VEC4")
@@ -70,11 +70,12 @@ describe("skinning roundtrip", () => {
       .setBuffer(baseBuffer);
 
     // WEIGHTS_0: VEC4 per-vertex
-    const weightsData = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0]);
+    const weightsData = new Uint8Array([102, 153, 0, 0, 128, 128, 0, 0]);
     const weightsAcc = doc
       .createAccessor()
       .setType("VEC4")
       .setArray(weightsData)
+      .setNormalized(true)
       .setBuffer(baseBuffer);
 
     prim.setAttribute("POSITION", posAcc);
@@ -86,12 +87,11 @@ describe("skinning roundtrip", () => {
     // Now extract skinning info back into BG3D bones
     gltfSkinningToBg3d(parsedSkeleton.bones, doc);
 
-    // After extraction, each bone should have one point assigned
+    // Each vertex is rigidized to one bone. The tie on vertex 1 goes to bone 0.
     expect(parsedSkeleton.bones[0]?.numPointsAttachedToBone).toBe(1);
     expect(parsedSkeleton.bones[1]?.numPointsAttachedToBone).toBe(1);
 
-    // Verify the point indices match the global vertex indices (0 and 1)
-    expect(parsedSkeleton.bones[0]?.pointIndices).toEqual([0]);
-    expect(parsedSkeleton.bones[1]?.pointIndices).toEqual([1]);
+    expect(parsedSkeleton.bones[0]?.pointIndices).toEqual([1]);
+    expect(parsedSkeleton.bones[1]?.pointIndices).toEqual([0]);
   });
 });

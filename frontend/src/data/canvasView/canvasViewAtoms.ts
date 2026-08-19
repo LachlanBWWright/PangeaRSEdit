@@ -19,9 +19,9 @@ export const Show3DFences = atom<boolean>(true);
 /** Controls whether 3D liquid geometry is visible. */
 export const Show3DLiquid = atom<boolean>(true);
 
-// 3D item model visualization toggle (off by default)
+// 3D item model visualization toggle
 /** Controls whether 3D item models are visible in the canvas. */
-export const Show3DItemModels = atom<boolean>(false);
+export const Show3DItemModels = atom<boolean>(true);
 
 // Incrementing trigger to request the current 3D scene be exported/downloaded as a GLB
 // Components should increment this atom to request an export; the Three scene listens for

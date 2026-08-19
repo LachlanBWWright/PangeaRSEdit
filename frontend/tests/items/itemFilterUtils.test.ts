@@ -1,14 +1,17 @@
 import { describe, it, expect } from "vitest";
 import {
+  getVisibleFilterableItemKeys,
   isItemVisible,
+  isSplineItemVisible,
   itemMatchesSearch,
   getVisibleItemTypes,
   countItemsByCategory,
   createDefaultFilter,
   applyFilterPreset,
 } from "@/data/items/itemFilterUtils";
-import { FilterMode, ItemFilterState, DEFAULT_FILTER_STATE } from "@/data/items/itemFilterAtoms";
+import { FilterMode, type ItemFilterState, DEFAULT_FILTER_STATE } from "@/data/items/itemFilterAtoms";
 import { ItemCategory } from "@/data/items/itemCategories";
+import { toFilterableItemKey } from "@/data/items/itemFilterKeys";
 
 // Mock item type name lookup
 const mockGetTypeName = (itemType: number): string | undefined => {
@@ -44,8 +47,8 @@ describe("Item Filter Utils", () => {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.SHOW_SELECTED,
         itemTypes: {
-          1: true,
-          2: true,
+          [toFilterableItemKey({ kind: "item", type: 1 })]: true,
+          [toFilterableItemKey({ kind: "item", type: 2 })]: true,
         },
       };
 
@@ -60,8 +63,8 @@ describe("Item Filter Utils", () => {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.HIDE_SELECTED,
         itemTypes: {
-          1: true, // hide type 1
-          2: true, // hide type 2
+          [toFilterableItemKey({ kind: "item", type: 1 })]: true,
+          [toFilterableItemKey({ kind: "item", type: 2 })]: true,
         },
       };
 
@@ -74,8 +77,8 @@ describe("Item Filter Utils", () => {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.SHOW_SELECTED,
         itemTypes: {
-          1: true, // show type 1
-          3: true, // show type 3 override
+          [toFilterableItemKey({ kind: "item", type: 1 })]: true,
+          [toFilterableItemKey({ kind: "item", type: 3 })]: true,
         },
       };
 
@@ -132,8 +135,8 @@ describe("Item Filter Utils", () => {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.SHOW_SELECTED,
         itemTypes: {
-          1: true,
-          2: true,
+          [toFilterableItemKey({ kind: "item", type: 1 })]: true,
+          [toFilterableItemKey({ kind: "item", type: 2 })]: true,
         },
       };
       const allTypes = [1, 2, 3, 4, 5, 7];
@@ -143,6 +146,41 @@ describe("Item Filter Utils", () => {
       expect(visible).toContain(2); // explicitly shown
       expect(visible).not.toContain(3); // defaults hidden
       expect(visible).not.toContain(7); // defaults hidden
+    });
+  });
+
+  describe("spline item filter keys", () => {
+    it("keeps regular and spline type keys separate", () => {
+      const filter: ItemFilterState = {
+        ...DEFAULT_FILTER_STATE,
+        mode: FilterMode.HIDE_SELECTED,
+        itemTypes: {
+          [toFilterableItemKey({ kind: "item", type: 12 })]: true,
+        },
+      };
+
+      expect(isItemVisible(12, filter)).toBe(false);
+      expect(isSplineItemVisible(12, filter)).toBe(true);
+    });
+
+    it("returns visible keys for both item kinds", () => {
+      const filter: ItemFilterState = {
+        ...DEFAULT_FILTER_STATE,
+        mode: FilterMode.HIDE_SELECTED,
+        itemTypes: {
+          [toFilterableItemKey({ kind: "splineItem", type: 7 })]: true,
+        },
+      };
+
+      expect(
+        getVisibleFilterableItemKeys(
+          [
+            { kind: "item", type: 7 },
+            { kind: "splineItem", type: 7 },
+          ],
+          filter,
+        ),
+      ).toEqual([toFilterableItemKey({ kind: "item", type: 7 })]);
     });
   });
 

@@ -5,7 +5,6 @@ import type { BoneInfluenceRow } from "@/components/AnimationViewer/rigToolsStat
 import { WeightBrushPanel } from "@/components/AnimationViewer/WeightBrushPanel";
 import type {
   WeightBrushSettings,
-  WeightVisualizationMode,
   SkinWeightsData,
 } from "@/modelEditing/weights/weightTypes";
 import { defaultWeightBrushSettings } from "@/modelEditing/weights/weightTypes";
@@ -33,9 +32,6 @@ export function RigToolsPanel({
   const [brushSettings, setBrushSettings] = useState<WeightBrushSettings>(
     defaultWeightBrushSettings,
   );
-  const [visualizationMode, setVisualizationMode] =
-    useState<WeightVisualizationMode>("none");
-
   const boneNames =
     skinData?.boneNames ?? boneInfluenceRows.map((r) => r.boneName);
 
@@ -105,9 +101,7 @@ export function RigToolsPanel({
           boneNames={boneNames}
           skinData={skinData ?? null}
           brushSettings={brushSettings}
-          visualizationMode={visualizationMode}
           onBrushSettingsChange={setBrushSettings}
-          onVisualizationModeChange={setVisualizationMode}
           onRepairWeights={onRepairWeights}
         />
       </TabsContent>

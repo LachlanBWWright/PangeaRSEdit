@@ -99,18 +99,17 @@ export function AnimationCreator({
           <div className="space-y-2">
             <label className="text-xs text-gray-300">Copy tracks from</label>
             <Select value={sourceAnimation} onValueChange={setSourceAnimation}>
-              <SelectTrigger className="border-gray-600 bg-gray-700 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="No source" />
               </SelectTrigger>
-              <SelectContent className="border-gray-600 bg-gray-700 text-white">
-                <SelectItem value="none" className="text-white focus:bg-gray-600">
+              <SelectContent>
+                <SelectItem value="none">
                   None
                 </SelectItem>
                 {sourceOptions.map((option) => (
                   <SelectItem
                     key={option.id}
                     value={option.id}
-                    className="text-white focus:bg-gray-600"
                   >
                     {option.name}
                   </SelectItem>

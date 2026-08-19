@@ -35,28 +35,28 @@ export function AnimationMetadataDisplay({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-300 sm:grid-cols-3">
-        <div className="rounded-md border border-gray-700 bg-gray-900/40 px-2 py-1.5">
+      <div className="grid grid-cols-2 text-[11px] text-gray-300 sm:grid-cols-3">
+        <div className="border-b border-r border-gray-700 px-2 py-2">
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Duration</div>
           <div>{formatTime(selectedAnimationInfo.duration)}</div>
         </div>
-        <div className="rounded-md border border-gray-700 bg-gray-900/40 px-2 py-1.5">
+        <div className="border-b border-r border-gray-700 px-2 py-2 sm:border-r">
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Loop</div>
           <div>{selectedAnimationInfo.loop ? "On" : "Off"}</div>
         </div>
-        <div className="rounded-md border border-gray-700 bg-gray-900/40 px-2 py-1.5">
+        <div className="border-b border-r border-gray-700 px-2 py-2 sm:border-r-0">
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Bones</div>
           <div>{timelineRows.length}</div>
         </div>
-        <div className="rounded-md border border-gray-700 bg-gray-900/40 px-2 py-1.5">
+        <div className="border-b border-r border-gray-700 px-2 py-2 sm:border-b-0">
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Tracks</div>
           <div>{selectedAnimationInfo.clip.tracks.length}</div>
         </div>
-        <div className="rounded-md border border-gray-700 bg-gray-900/40 px-2 py-1.5">
+        <div className="border-r border-gray-700 px-2 py-2">
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Keyframes</div>
           <div>{totalKeyframes}</div>
         </div>
-        <div className="rounded-md border border-gray-700 bg-gray-900/40 px-2 py-1.5">
+        <div className="px-2 py-2">
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Events</div>
           <div>{selectedMetadata.eventCount}</div>
         </div>

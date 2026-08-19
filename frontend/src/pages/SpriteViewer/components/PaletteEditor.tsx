@@ -57,8 +57,10 @@ export function PaletteEditor({
     <div className="space-y-4">
       {/* Palette Name Editor */}
       <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white text-sm">Palette</CardTitle>
+        <CardHeader className="text-center">
+          <CardTitle className="w-full text-center text-white text-sm">
+            Palette
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2 items-end">
@@ -130,8 +132,8 @@ export function PaletteEditor({
 
       {/* Color Picker Grid */}
       <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white text-xs">
+        <CardHeader className="text-center">
+          <CardTitle className="w-full text-center text-white text-xs">
             Colors (Click to Edit)
           </CardTitle>
         </CardHeader>
@@ -163,10 +165,10 @@ export function PaletteEditor({
       {/* Color Details Editor */}
       {currentColor && currentIndex !== null ? (
         <Card className="bg-gray-800 border-blue-500 shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-white text-sm flex justify-between items-center">
-              <span>Edit Color {editingIndex}</span>
-              <span className="text-xs text-blue-400 font-mono">
+          <CardHeader className="relative pb-2 text-center">
+            <CardTitle className="w-full text-center text-white text-sm">
+              Edit Color {editingIndex}
+              <span className="absolute right-6 text-xs text-blue-400 font-mono">
                 {rgbToHex(
                   currentColor.r,
                   currentColor.g,

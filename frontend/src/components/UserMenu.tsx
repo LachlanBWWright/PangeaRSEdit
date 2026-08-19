@@ -142,13 +142,14 @@ export function UserMenu({ compact = false }: UserMenuProps) {
               <p className="text-xs text-slate-400">{user.email}</p>
             )}
           </div>
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white hover:bg-slate-700 cursor-pointer"
+          <Button
+            type="button"
+            variant="menu"
             onClick={handleSignOut}
           >
             <LogOut className="w-4 h-4" />
             Sign out
-          </button>
+          </Button>
         </div>
       )}
     </div>

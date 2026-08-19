@@ -19,6 +19,41 @@ export const MIGHTY_MIKE_SCENES = [
   "bargain",
 ] as const;
 
+export type MightyMikeOverlayModeValue =
+  | "none"
+  | "collision"
+  | "solidEdges"
+  | "flagsAny"
+  | "flagBit"
+  | "p0"
+  | "p1"
+  | "p2"
+  | "altMap";
+
+export type MightyMikeCanvasEditModeValue =
+  | "select"
+  | "collision"
+  | "flags"
+  | "p0"
+  | "p1"
+  | "p2"
+  | "altMap";
+
+export type MightyMikeCollisionBrushValue = "enabled" | "disabled";
+
+export const MightyMikeOverlayMode = atom<MightyMikeOverlayModeValue>("none");
+
+export const MightyMikeCanvasEditMode =
+  atom<MightyMikeCanvasEditModeValue>("select");
+
+export const MightyMikeCollisionBrushModeValue =
+  atom<MightyMikeCollisionBrushValue>("enabled");
+
+export const MightyMikeFlagBrushBit = atom<number>(0);
+
+export const MightyMikeFlagBrushModeValue =
+  atom<MightyMikeCollisionBrushValue>("enabled");
+
 /**
  * Toggle for visualizing collision masks on Mighty Mike tiles
  * When true, tiles with collision masking enabled will show a visual overlay
@@ -37,11 +72,19 @@ export const CollisionBrushMode = atom<boolean>(false);
  */
 export const ShowMightyMikeParamsOverlay = atom<boolean>(false);
 
+export const MightyMikeParamsOverlayMode = atom<
+  "flagsAny" | "flagBit" | "p0" | "p1" | "p2"
+>("flagsAny");
+
+export const MightyMikeParamsOverlayFlagBit = atom<number>(0);
+
 /**
  * Which tile attribute field the param brush is currently painting.
  * Null = param brush inactive (select mode).
  */
-export const ParamBrushField = atom<"flags" | "p0" | "p1" | null>(null);
+export const ParamBrushField = atom<"flags" | "p0" | "p1" | "p2" | null>(
+  null,
+);
 
 /**
  * The value the param brush writes when active.

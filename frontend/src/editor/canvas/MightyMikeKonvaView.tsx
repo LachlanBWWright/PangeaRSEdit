@@ -11,31 +11,43 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
+import {
+  MapResizeEdgeControls,
+  type MapResizeDirection,
+} from "./MapResizeEdgeControls";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
-import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
 import { MightyMikeItems } from "../subviews/MightyMikeItems";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { MightyMikeSupertiles } from "../subviews/supertiles/MightyMikeSupertiles";
+import { TileBrushCaptureLayer } from "../subviews/tileBrushes/TileBrushCaptureLayer";
 import {
   HeaderData,
   ItemData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
-import { View } from "../viewEnum";
 import { TileBrushPreviewLayer } from "../subviews/tileBrushes/TileBrushPreviewLayer";
 import {
-  tileBrushModeAtom,
+  getTileBrushModeAtom,
   tileBrushPreviewAtom,
-  selectedTileBrushIdAtom,
-  tileBrushAnchorAtom,
+  mightyMikeSelectedTileBrushIdAtom,
+  getTileBrushAnchorAtom,
   tileBrushesAtom,
+  tileBrushActiveLayerAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
 import { TILE_SIZE } from "../subviews/supertiles/mightyMikeSupertilesHelpers";
-import { applyTileBrush } from "@/data/tileBrushes/tileBrushApply";
+import {
+  applyTileBrush,
+  createTileBrushFromRegion,
+} from "@/data/tileBrushes/tileBrushApply";
 import type Konva from "konva";
+import { toast } from "sonner";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { computeWheelZoomStage } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -50,9 +62,9 @@ interface MightyMikeKonvaViewProps {
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
-  view: View;
   stage: StageData;
   setStage: Updater<StageData>;
+  onResize: (direction: MapResizeDirection, amount: number) => Promise<void>;
 }
 
 export function MightyMikeKonvaView({
@@ -62,23 +74,34 @@ export function MightyMikeKonvaView({
   terrainData,
   setTerrainData,
   mapImages,
-  view,
   stage,
   setStage,
+  onResize,
 }: MightyMikeKonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  const showCollisionOverlay = useAtomValue(ShowMightyMikeCollisionOverlay);
-  const tileBrushMode = useAtomValue(tileBrushModeAtom);
+  const customObjectPlacement = useCustomObjectPlacement();
+  const tileBrushMode = useAtomValue(getTileBrushModeAtom("mightymike"));
+  const setTileBrushMode = useSetAtom(getTileBrushModeAtom("mightymike"));
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
-  const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
-  const tileBrushAnchor = useAtomValue(tileBrushAnchorAtom);
+  const selectedBrushId = useAtomValue(mightyMikeSelectedTileBrushIdAtom);
+  const setSelectedBrushId = useSetAtom(mightyMikeSelectedTileBrushIdAtom);
+  const tileBrushAnchor = useAtomValue(getTileBrushAnchorAtom("mightymike"));
   const tileBrushes = useAtomValue(tileBrushesAtom);
+  const activeLayer = useAtomValue(tileBrushActiveLayerAtom);
+  const setTileBrushes = useSetAtom(tileBrushesAtom);
 
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;
   const layr = terrainData.Layr?.[1000]?.obj ?? [];
   const mapHeight = Math.ceil(layr.length / mapWidth);
+  const [captureStart, setCaptureStart] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [captureEnd, setCaptureEnd] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const getMapTileFromStageEvent = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -103,7 +126,7 @@ export function MightyMikeKonvaView({
       setTerrainData((draft) => {
         applyTileBrush({
           draft,
-          layer: 1000,
+          layer: activeLayer,
           mapWidth,
           mapHeight,
           targetX: tilePos.x,
@@ -118,10 +141,51 @@ export function MightyMikeKonvaView({
       selectedBrushId,
       tileBrushes,
       tileBrushAnchor,
+      activeLayer,
       mapWidth,
       mapHeight,
       setTerrainData,
       getMapTileFromStageEvent,
+    ],
+  );
+
+  const handleCaptureEnd = useCallback(
+    (start: { x: number; y: number }, end: { x: number; y: number }) => {
+      const minX = Math.min(start.x, end.x);
+      const minY = Math.min(start.y, end.y);
+      const width = Math.abs(end.x - start.x) + 1;
+      const height = Math.abs(end.y - start.y) + 1;
+      const result = createTileBrushFromRegion({
+        id: crypto.randomUUID(),
+        name: `Stamp ${new Date().toLocaleTimeString()}`,
+        game: "mightymike",
+        terrainData,
+        layer: activeLayer,
+        mapWidth,
+        mapHeight,
+        startX: minX,
+        startY: minY,
+        width,
+        height,
+      });
+      result.match(
+        (brush) => {
+          setTileBrushes((prev) => [...prev, brush]);
+          setSelectedBrushId(brush.id);
+          setTileBrushMode("stamp");
+          toast.success(`Captured stamp (${width}×${height})`);
+        },
+        (error) => toast.error(`Capture failed: ${error}`),
+      );
+    },
+    [
+      terrainData,
+      activeLayer,
+      mapWidth,
+      mapHeight,
+      setTileBrushes,
+      setSelectedBrushId,
+      setTileBrushMode,
     ],
   );
 
@@ -147,19 +211,52 @@ export function MightyMikeKonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={tileBrushMode !== "stamp"}
+        draggable={tileBrushMode !== "stamp" && tileBrushMode !== "capture"}
+        onMouseDown={(e) => {
+          if (tileBrushMode !== "capture") {
+            return;
+          }
+          const tilePos = getMapTileFromStageEvent(e);
+          if (!tilePos) {
+            return;
+          }
+          setCaptureStart(tilePos);
+          setCaptureEnd(tilePos);
+        }}
+        onMouseUp={(e) => {
+          if (tileBrushMode !== "capture" || !captureStart) {
+            return;
+          }
+          const tilePos =
+            getMapTileFromStageEvent(e) ?? captureEnd ?? captureStart;
+          handleCaptureEnd(captureStart, tilePos);
+          setCaptureStart(null);
+          setCaptureEnd(null);
+        }}
         onClick={(e) => {
           if (tileBrushMode === "stamp") {
             handleStageBrushStamp(e);
             return;
           }
-          if (clickToAddItem === undefined) return;
+          if (tileBrushMode === "capture") {
+            return;
+          }
           const stageRef = e.target.getStage();
 
           const pos = stageRef?.getRelativePointerPosition();
           if (!pos) return;
           const x = Math.round(pos.x);
           const z = Math.round(pos.y);
+
+          if (customObjectPlacement.objectId !== null) {
+            customObjectPlacement.placeAt(
+              x,
+              headerData.Hedr[1000].obj.minY ?? 0,
+              z,
+            );
+            return;
+          }
+          if (clickToAddItem === undefined) return;
 
           setItemDataNotNull((itemData) => {
             itemData.Itms[1000].obj.push({
@@ -175,38 +272,30 @@ export function MightyMikeKonvaView({
           });
         }}
         onMouseMove={(e) => {
+          if (tileBrushMode === "capture" && captureStart) {
+            const pos = getMapTileFromStageEvent(e);
+            if (pos) {
+              setCaptureEnd(pos);
+            }
+            return;
+          }
           if (tileBrushMode === "stamp") {
             const pos = getMapTileFromStageEvent(e);
             setTileBrushPreview(pos);
           }
         }}
-        onMouseLeave={() => setTileBrushPreview(null)}
+        onMouseLeave={() => {
+          setTileBrushPreview(null);
+          if (tileBrushMode === "capture" && captureStart) {
+            setCaptureEnd(captureStart);
+          }
+        }}
         onDblClick={() => {
           setSelectedItem(undefined);
         }}
         onWheel={(e) => {
-          e.evt.preventDefault();
-
-          const scaleBy = 1.05;
-          const stageRef = e.target.getStage();
-          if (!stageRef) return;
-          const oldScale = stageRef.scaleX();
-          const pointerPosition = stageRef.getPointerPosition();
-          if (!pointerPosition) return;
-
-          const mousePointTo = {
-            x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
-            y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
-          };
-
-          const newScale =
-            e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-          setStage({
-            scale: newScale,
-            x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-            y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-          });
+          const nextStage = computeWheelZoomStage(e);
+          if (nextStage) setStage(nextStage);
         }}
       >
         {/* Render 2D tile grid - Mighty Mike uses simple tile mapping, always visible */}
@@ -216,8 +305,6 @@ export function MightyMikeKonvaView({
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}
-            showCollisionOverlay={showCollisionOverlay}
-            view={view}
           />
         )}
 
@@ -229,11 +316,30 @@ export function MightyMikeKonvaView({
           />
         )}
 
+        <CustomScriptPlacements />
+
         {/* Tile brush stamp preview */}
         <TileBrushPreviewLayer
+          game="mightymike"
           tileSize={TILE_SIZE}
           mapWidth={mapWidth}
           mapHeight={mapHeight}
+        />
+        {captureStart && captureEnd && (
+          <TileBrushCaptureLayer
+            tileSize={TILE_SIZE}
+            captureStart={captureStart}
+            captureEnd={captureEnd}
+          />
+        )}
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
+        <MapResizeEdgeControls
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+          tileSize={TILE_SIZE}
+          tilesPerUnit={1}
+          onResize={onResize}
         />
       </Stage>
     </div>

@@ -23,13 +23,14 @@ export function getDefaultItemHoverTag(
   itemType: number,
   itemX: number,
   itemZ: number,
+  isSelected: boolean,
 ): HoverTagInfo {
   return {
     x: itemX + ITEM_BOX_SIZE + ITEM_TAG_GAP,
     y: itemZ,
     text: getItemName(globals, itemType),
-    fill: "red",
-    textColor: "black",
+    fill: isSelected ? "red" : "blue",
+    textColor: "white",
   };
 }
 

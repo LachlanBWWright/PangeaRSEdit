@@ -8,12 +8,32 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   Skeleton,
+  Scene,
   SkinnedMesh,
   SphereGeometry,
 } from "three";
 import { prepareSceneForAnimationExport } from "@/pages/ModelViewer/utils/prepareSceneForAnimationExport";
 
 describe("prepareSceneForAnimationExport", () => {
+  it("converts the GLTFLoader root group into a scene without nesting it", () => {
+    const loadedRoot = new Group();
+    loadedRoot.name = "AuxScene_1";
+    const modelRoot = new Group();
+    modelRoot.name = "Scene";
+    const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+    mesh.name = "Mesh_0000";
+    modelRoot.add(mesh);
+    loadedRoot.add(modelRoot);
+
+    const exportScene = prepareSceneForAnimationExport(loadedRoot);
+
+    expect(exportScene).toBeInstanceOf(Scene);
+    expect(exportScene.name).toBe("AuxScene_1");
+    expect(exportScene.children).toHaveLength(1);
+    expect(exportScene.children[0]?.name).toBe("Scene");
+    expect(exportScene.children[0]?.children[0]?.name).toBe("Mesh_0000");
+  });
+
   it("clones the scene and resets skinned meshes to their bind pose", () => {
     const pelvis = new Bone();
     pelvis.name = "Pelvis";

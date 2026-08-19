@@ -55,12 +55,24 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Faucet]: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 11 }, // LAWN1_MObjType_WaterFaucet = 11
 
   // Lawn level vegetation (Lawn_Models2.3dmf - group 4: LAWN2 items; indices = LAWN2_MObjType values)
-  [ItemType.Grass]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 0 }, // LAWN2_MObjType_Grass = 0
+  [ItemType.Grass]: {
+    modelFile: "Lawn_Models2.3dmf",
+    modelPath: "models",
+    modelIndex: 0,
+    scale: 0.15,
+    variants: { 0: { modelIndex: 0 }, 1: { modelIndex: 1 } },
+  }, // LAWN2_MObjType_Grass = 0; AddGrass uses GRASS_SCALE = .15f
   [ItemType.Weed]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 2 }, // LAWN2_MObjType_Weed = 2
   [ItemType.Cosmo]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 3 }, // LAWN2_MObjType_Cosmo = 3
   [ItemType.Poppy]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 4 }, // LAWN2_MObjType_Poppy = 4
   [ItemType.SunFlower]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 5 }, // LAWN2_MObjType_Sunflower = 5
-  [ItemType.Clover]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 6 }, // LAWN2_MObjType_Clover = 6
+  [ItemType.Clover]: {
+    modelFile: "Lawn_Models2.3dmf",
+    modelPath: "models",
+    modelIndex: 6,
+    scale: 0.2,
+    variants: { 0: { modelIndex: 6 }, 1: { modelIndex: 7 } },
+  }, // LAWN2_MObjType_Clover = 6; AddClover uses CLOVER_SCALE + RandomFloat()*.1f
   [ItemType.Rock]: { modelFile: "Lawn_Models2.3dmf", modelPath: "models", modelIndex: 8 }, // LAWN2_MObjType_Rock1 = 8
 
   // Pond level models (Pond_Models.3dmf; indices = POND_MObjType values)
@@ -71,12 +83,12 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.PondGrass]: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 4 }, // POND_MObjType_PondGrass = 4
   [ItemType.Reed]: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 7 }, // POND_MObjType_Reed = 7
   [ItemType.Dock]: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 10 }, // POND_MObjType_Dock = 10
-  [ItemType.Tree]: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 0 }, // flight level tree (uses pond models)
+  [ItemType.Tree]: undefined,
 
   // Forest level models (Forest_Models.3dmf; indices = FOREST_MObjType values)
   [ItemType.ExitLog]: { modelFile: "Global_Models2.3dmf", modelPath: "models", modelIndex: 1, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GLOBAL2_MObjType_ExitLog = 1; parm[0] sets rotation (0-3, 90° per step)
   [ItemType.Thorn]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 8 }, // FOREST_MObjType_Thorn1 = 8
-  [ItemType.RockLedge]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 10 }, // FOREST_MObjType_FlatRock = 10
+  [ItemType.RockLedge]: undefined,
   [ItemType.Stump]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 6 }, // FOREST_MObjType_Stump = 6
   [ItemType.WoodPost]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 12 }, // FOREST_MObjType_WoodPost = 12
 
@@ -89,8 +101,8 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.FloorSpike]: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 25 }, // HIVE_MObjType_FloorSpike = 25
 
   // Night level models (Night_Models.3dmf; indices = NIGHT_MObjType values)
-  [ItemType.RollingBoulder]: { modelFile: "Night_Models.3dmf", modelPath: "models", modelIndex: 7 }, // NIGHT_MObjType_CherryBomb = 7
-  [ItemType.Checkpoint]: { modelFile: "Night_Models.3dmf", modelPath: "models", modelIndex: 13 }, // NIGHT_MObjType_Door_Green = 13
+  [ItemType.RollingBoulder]: undefined,
+  [ItemType.Checkpoint]: undefined,
 
   // AntHill level models (AntHill_Models.3dmf; indices = ANTHILL_MObjType values)
   [ItemType.WaterValve]: { modelFile: "AntHill_Models.3dmf", modelPath: "models", modelIndex: 0 }, // ANTHILL_MObjType_WaterValveBox = 0

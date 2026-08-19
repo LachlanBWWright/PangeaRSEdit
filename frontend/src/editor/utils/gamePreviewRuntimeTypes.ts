@@ -1,5 +1,6 @@
 import { Game } from "../../data/globals/globals";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
+import type { Result } from "neverthrow";
 
 export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
   [Game.OTTO_MATIC]: "Otto Matic",
@@ -16,6 +17,8 @@ export interface PreviewTerrainPaths {
   readonly dataPath: string;
   readonly rsrcPath: string | null;
   readonly texturePath?: string;
+  /** Alternate case variant for case-sensitive Mighty Mike tileset lookup. */
+  readonly altTexturePath?: string;
   /**
    * Additional data-fork path to write the same bytes to.
    * Used for MightyMike where the WASM may look for either lowercase or
@@ -24,8 +27,18 @@ export interface PreviewTerrainPaths {
   readonly altDataPath?: string;
 }
 
+export interface PreviewVfsFile {
+  readonly path: string;
+  readonly data: Uint8Array;
+}
+
 export interface PreviewRuntimeModule {
   canvas: HTMLCanvasElement;
+  keyboardListeningElement?: HTMLCanvasElement;
+  preinitializedWebGLContext?:
+    | WebGLRenderingContext
+    | WebGL2RenderingContext
+    | null;
   arguments: string[];
   preInit?: (() => void)[];
   preRun: (() => void)[];
@@ -40,6 +53,7 @@ export interface PreviewRuntimeModule {
   monitorRunDependencies?: (left: number) => void;
   onRuntimeInitialized?: () => void;
   onAbort?: (reason: unknown) => void;
+  requestQuitFn?: string;
   FS?: {
     writeFile: (path: string, data: Uint8Array) => void;
     analyzePath?: (path: string) => { exists: boolean };
@@ -68,8 +82,23 @@ export interface PreviewRuntimeModule {
     argTypes: string[],
     args: unknown[],
   ) => unknown;
+  setCanvasSize?: (width: number, height: number) => void;
   calledRun?: boolean;
 }
+
+export type MultiplayerRuntimeEventType =
+  | "runtimeConfigApplied"
+  | "runtimeInitialized"
+  | "runtimeLevelReady"
+  | "runtimeStartNow"
+  | "runtimeLoadFailed";
+
+export interface MultiplayerRuntimeEvent {
+  readonly type: MultiplayerRuntimeEventType;
+  readonly detail?: string;
+}
+
+export type StartNetworkMatchFn = () => Result<void, string>;
 
 declare global {
   interface Window {
@@ -174,7 +203,21 @@ export function getPreviewTerrainPaths(
         : capitalizedFilename;
     const alternatePath = `${dataPathDir}/${alternateFilename}`;
     const altDataPath = alternatePath !== dataPath ? alternatePath : undefined;
-    return { dataPath, rsrcPath, altDataPath };
+    const tilesetFilename = filename.replace(/\.map-\d+$/i, ".tileset");
+    const alternateTilesetFilename = alternateFilename.replace(
+      /\.map-\d+$/i,
+      ".tileset",
+    );
+    const texturePath = `${dataPathDir}/${tilesetFilename}`;
+    const alternateTexturePath = `${dataPathDir}/${alternateTilesetFilename}`;
+    return {
+      dataPath,
+      rsrcPath,
+      altDataPath,
+      texturePath,
+      altTexturePath:
+        alternateTexturePath !== texturePath ? alternateTexturePath : undefined,
+    };
   }
 
   return { dataPath, rsrcPath };

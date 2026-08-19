@@ -39,6 +39,8 @@ export { serializeTunnelFile } from "./serializeTunnelFile";
 export {
   tunnelTextureToCanvas,
   canvasToTunnelTexture,
+  imageDataToTunnelTexture,
+  validateTunnelTextureDimensions,
   tunnelTextureToDataUrl,
   createSolidTexture,
 } from "./textureUtils";

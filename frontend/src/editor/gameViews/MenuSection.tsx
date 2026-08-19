@@ -12,7 +12,7 @@ export function MenuSection({
 }: MenuSectionProps) {
   return (
     <div
-      className={`h-[300px] ${scrollable ? "overflow-y-auto" : "overflow-hidden"} ${className ?? ""}`.trim()}
+      className={`h-[320px] ${scrollable ? "overflow-y-auto" : "overflow-hidden"} ${className ?? ""}`.trim()}
     >
       {children}
     </div>

@@ -9,6 +9,7 @@ import {
   FlaskConical,
   Boxes,
   ClipboardList,
+  Network,
 } from "lucide-react";
 import {
   editorNavbarLeftAtom,
@@ -17,9 +18,12 @@ import {
   editorNavbarTabsAtom,
 } from "@/data/globals/editorNavbarAtoms";
 import { UserMenu } from "@/components/UserMenu";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
+import { SettingsMenu } from "@/components/SettingsMenu";
 
 export function Navigation() {
   const location = useLocation();
+  const featureFlags = useFeatureFlags();
   const editorNavbarOpen = useAtomValue(editorNavbarOpenAtom);
   const editorNavbarLeft = useAtomValue(editorNavbarLeftAtom);
   const editorNavbarActions = useAtomValue(editorNavbarActionsAtom);
@@ -78,6 +82,20 @@ export function Navigation() {
                 <span>Sprite Editor</span>
               </Link>
             </Button>
+            {featureFlags.multiplayer && (
+              <Button
+                asChild
+                variant={
+                  location.pathname === "/multiplayer" ? "default" : "ghost"
+                }
+                className="flex items-center gap-2"
+              >
+                <Link to="/multiplayer" className="text-white">
+                  <Network className="w-4 h-4" />
+                  <span>Multiplayer</span>
+                </Link>
+              </Button>
+            )}
             <Button
               asChild
               variant={
@@ -133,7 +151,12 @@ export function Navigation() {
           </div>
         </div>
       )}
-      <div className={showEditorNavbar ? "hidden" : "ml-auto shrink-0"}>
+      <div
+        className={
+          showEditorNavbar ? "hidden" : "ml-auto flex shrink-0 items-center gap-1"
+        }
+      >
+        <SettingsMenu />
         <UserMenu />
       </div>
     </nav>

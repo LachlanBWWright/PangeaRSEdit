@@ -5,6 +5,8 @@ export interface MultiplayerLobbyPlayer {
   readonly playerIndex: number;
   readonly isHost: boolean;
   readonly isReady: boolean;
+  readonly region: string;
+  readonly pingMs: number;
   readonly joinedAt: string;
   readonly lastSeenAt: string;
 }
@@ -15,21 +17,79 @@ export interface MultiplayerLobbySummary {
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly maxPlayers: number;
+  readonly isPublic: boolean;
   readonly joinCode: string;
   readonly state: string;
   readonly playerCount: number;
   readonly createdAt: string;
   readonly expiresAt: string;
+  readonly canJoin: boolean;
 }
 
 /** Full lobby details including the current participant roster. */
+export interface MultiplayerMatchConfigPlayer {
+  readonly participantId: string;
+  readonly playerIndex: number;
+  readonly displayName: string;
+  readonly connectionState: string;
+}
+
+export interface MultiplayerMatchConfig {
+  readonly lobbyId: string;
+  readonly matchId: string;
+  readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly seed: number;
+  readonly tagDurationMinutes: number;
+  readonly hostPlayerIndex: number;
+  readonly maxPlayers: number;
+  readonly requiredProtocolVersion: number;
+  readonly requiredRuntimeVersion: string;
+  readonly requiredContentHash: string;
+  readonly hostParticipantId: string;
+  readonly players: readonly MultiplayerMatchConfigPlayer[];
+}
+
+export interface MultiplayerMatchResultPlayer {
+  readonly participantId: string;
+  readonly playerIndex: number;
+  readonly displayName: string;
+  readonly team: string;
+  readonly placement: number;
+  readonly finished: boolean;
+  readonly eliminated: boolean;
+  readonly score: number;
+  readonly timeMs: number;
+  readonly lapsCompleted: number;
+  readonly checkpoint: number;
+}
+
+export interface MultiplayerMatchResult {
+  readonly lobbyId: string;
+  readonly matchId: string;
+  readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly seed: number;
+  readonly endedAt: string;
+  readonly endReason: string;
+  readonly winnerPlayerIndex: number;
+  readonly winningTeam: string;
+  readonly placements: readonly number[];
+  readonly players: readonly MultiplayerMatchResultPlayer[];
+}
+
 export interface MultiplayerLobbyDetails {
   readonly id: string;
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly maxPlayers: number;
+  readonly isPublic: boolean;
   readonly hostParticipantId: string;
   readonly joinCode: string;
   readonly state: string;
@@ -37,6 +97,20 @@ export interface MultiplayerLobbyDetails {
   readonly expiresAt: string;
   readonly players: readonly MultiplayerLobbyPlayer[];
   readonly participantId: string;
+  readonly matchConfig?: MultiplayerMatchConfig | null;
+  readonly matchResult?: MultiplayerMatchResult | null;
+}
+
+export interface MultiplayerLobbyPreview {
+  readonly id: string;
+  readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
+  readonly maxPlayers: number;
+  readonly state: string;
+  readonly playerCount: number;
+  readonly canJoin: boolean;
 }
 
 /** Request body used when creating a new multiplayer lobby. */
@@ -44,8 +118,10 @@ export interface CreateLobbyInput {
   readonly gameId: string;
   readonly mode: string;
   readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
   readonly maxPlayers: number;
   readonly displayName: string;
+  readonly isPublic: boolean;
 }
 
 /** Request body used when joining an existing lobby. */
@@ -63,11 +139,28 @@ export interface SetReadyInput {
 /** Request body used to start a lobby. */
 export interface StartLobbyInput {
   readonly lobbyId: string;
+  readonly force: boolean;
 }
 
-/** Query input used when listing lobbies for a game. */
-export interface ListLobbiesInput {
+export interface UpdateLobbySelectionInput {
+  readonly lobbyId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
+}
+
+export interface RematchLobbyInput {
+  readonly lobbyId: string;
   readonly gameId: string;
+  readonly mode: string;
+  readonly trackOrLevel: string;
+  readonly tagDurationMinutes: number;
+  readonly force: boolean;
+}
+
+/** Query input used when listing open public lobbies. */
+export interface ListLobbiesInput {
+  readonly gameId?: string;
 }
 
 /** Standard error shape returned by the multiplayer API layer. */

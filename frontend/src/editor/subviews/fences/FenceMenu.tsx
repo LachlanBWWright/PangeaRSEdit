@@ -16,11 +16,18 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { Globals } from "@/data/globals/globals";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { SnappingToggle } from "../shared/SnappingToggle";
+import {
+  canFinalizeCreation,
+  finalizeFenceFromPoints,
+  popCreationPoint,
+} from "@/editor/creation/pendingCreationState";
 
 function FenceThumbnail({
   src,
@@ -61,6 +68,7 @@ export const FenceMenu = memo(function FenceMenu({
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
   const [selectedFenceNub, setSelectedFenceNub] = useAtom(SelectedFenceNub);
+  const [pendingCreation, setPendingCreation] = useAtom(PendingCreation);
 
   const fenceValues = useMemo(() => {
     const result = getFenceTypes(globals);
@@ -84,6 +92,59 @@ export const FenceMenu = memo(function FenceMenu({
 
   if (fenceDataObj === null || fenceDataObj === undefined) {
     const hasFences = fenceCount > 0;
+    const isPendingFenceCreation = pendingCreation?.kind === "fence";
+    const pendingPoints = isPendingFenceCreation ? pendingCreation.points : [];
+
+    if (isPendingFenceCreation) {
+      return (
+        <div className="flex h-full min-h-full w-full flex-col gap-3 p-4">
+          <p className="text-sm text-gray-200">
+            Click on the canvas to place fence nubs.
+          </p>
+          <p className="text-sm text-gray-300">
+            Points: {pendingPoints.length}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={!canFinalizeCreation("fence", pendingPoints, globals)}
+              onClick={() => {
+                setFenceData((draft) => {
+                  const createdFenceIndex = finalizeFenceFromPoints(
+                    draft,
+                    pendingPoints,
+                  );
+                  setSelectedFence(createdFenceIndex);
+                  setSelectedFenceNub(null);
+                });
+                setPendingCreation(null);
+              }}
+            >
+              Finalize New Fence
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pendingPoints.length === 0}
+              onClick={() => {
+                if (!pendingCreation) return;
+                setPendingCreation({
+                  ...pendingCreation,
+                  points: popCreationPoint(pendingCreation.points),
+                });
+              }}
+            >
+              Undo Last Point
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setPendingCreation(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <EmptyDataPrompt
         title={hasFences ? "No Fence Selected" : "No Fences"}
@@ -93,32 +154,7 @@ export const FenceMenu = memo(function FenceMenu({
             : "This level doesn't have any fences yet. Add your first fence to get started."
         }
         buttonText={hasFences ? "Add New Fence" : "Add First Fence"}
-        onInitialize={() => {
-          setFenceData((data) => {
-            const nextFenceIndex = data.Fenc[1000].obj.length;
-
-            data.Fenc[1000].obj.push({
-              fenceType: 0,
-              numNubs: MIN_NUBS,
-              junkNubListPtr: 0,
-              bbTop: 0,
-              bbBottom: 0,
-              bbLeft: 0,
-              bbRight: 0,
-            });
-
-            data.FnNb[nextFenceIndex + NUB_KEY_BASE] = {
-              name: "Fence Nub List",
-              obj: [
-                [0, 0],
-                [1000, 1000],
-              ],
-              order: 999,
-            };
-
-            setSelectedFence(nextFenceIndex);
-          });
-        }}
+        onInitialize={() => setPendingCreation({ kind: "fence", points: [] })}
         fillHeight
       />
     );
@@ -129,8 +165,9 @@ export const FenceMenu = memo(function FenceMenu({
       <p>
         Fence {selectedFence} ({numNubs} points)
       </p>
+      <SnappingToggle />
 
-      {/* Two-column layout: left = type + delete; right = preview (when available) */}
+      {/* Two-column layout: left = type + delete + nub controls; right = preview */}
       <div
         className={
           fencePreviewPath
@@ -154,7 +191,16 @@ export const FenceMenu = memo(function FenceMenu({
             >
               <SelectTrigger>
                 <SelectValue>
-                  {getFenceName(globals, fenceDataObj.fenceType)}
+                  <span className="flex items-center gap-2">
+                    {fencePreviewPath && (
+                      <FenceThumbnail
+                        src={fencePreviewPath}
+                        alt=""
+                        className="h-4 w-6 shrink-0 rounded-sm object-cover"
+                      />
+                    )}
+                    {getFenceName(globals, fenceDataObj.fenceType)}
+                  </span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -211,11 +257,134 @@ export const FenceMenu = memo(function FenceMenu({
               Delete Fence
             </Button>
           )}
+
+          {/* Nub coordinate editing and add/remove nubs */}
+          {selectedFence !== undefined &&
+            (() => {
+              const nubs =
+                fenceData.FnNb[selectedFence + NUB_KEY_BASE]?.obj ?? [];
+              const selectedNubCoords =
+                selectedFenceNub !== null ? nubs[selectedFenceNub] : null;
+              return (
+                <>
+                  {selectedNubCoords && selectedFenceNub !== null && (
+                    <>
+                      <p className="text-sm font-medium">
+                        Adjust Nub {selectedFenceNub} Position
+                      </p>
+                      <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+                        <label
+                          htmlFor="fenceNubX"
+                          className="text-sm font-medium"
+                        >
+                          X
+                        </label>
+                        <Input
+                          id="fenceNubX"
+                          type="number"
+                          value={selectedNubCoords[0]}
+                          onChange={(e) => {
+                            const newValue = parseInt(e.target.value);
+                            if (isNaN(newValue)) return;
+                            setFenceData((data) => {
+                              if (
+                                selectedFence === undefined ||
+                                selectedFenceNub === null
+                              )
+                                return;
+                              const nubEntry =
+                                data.FnNb[selectedFence + NUB_KEY_BASE];
+                              const nub = nubEntry?.obj?.[selectedFenceNub];
+                              if (nub) nub[0] = newValue;
+                            });
+                          }}
+                          placeholder="X"
+                        />
+                        <label
+                          htmlFor="fenceNubY"
+                          className="text-sm font-medium"
+                        >
+                          Y
+                        </label>
+                        <Input
+                          id="fenceNubY"
+                          type="number"
+                          value={selectedNubCoords[1]}
+                          onChange={(e) => {
+                            const newValue = parseInt(e.target.value);
+                            if (isNaN(newValue)) return;
+                            setFenceData((data) => {
+                              if (
+                                selectedFence === undefined ||
+                                selectedFenceNub === null
+                              )
+                                return;
+                              const nubEntry =
+                                data.FnNb[selectedFence + NUB_KEY_BASE];
+                              const nub = nubEntry?.obj?.[selectedFenceNub];
+                              if (nub) nub[1] = newValue;
+                            });
+                          }}
+                          placeholder="Y"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex w-full gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        setFenceData((data) => {
+                          if (selectedFence === undefined) return;
+                          const fence = data.Fenc[1000]?.obj?.[selectedFence];
+                          const nubEntry =
+                            data.FnNb[selectedFence + NUB_KEY_BASE];
+                          if (!fence || !nubEntry) return;
+                          const lastNub = nubEntry.obj[fence.numNubs - 1];
+                          if (!lastNub) return;
+                          nubEntry.obj.push([lastNub[0] + 50, lastNub[1] + 50]);
+                          fence.numNubs++;
+                        });
+                      }}
+                    >
+                      Add Nub
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      variant="destructive"
+                      disabled={
+                        selectedFenceNub === null || numNubs <= MIN_NUBS
+                      }
+                      onClick={() => {
+                        setFenceData((data) => {
+                          if (
+                            selectedFence === undefined ||
+                            selectedFenceNub === null
+                          )
+                            return;
+                          const fence = data.Fenc[1000]?.obj?.[selectedFence];
+                          const nubEntry =
+                            data.FnNb[selectedFence + NUB_KEY_BASE];
+                          if (!fence || !nubEntry || fence.numNubs <= MIN_NUBS)
+                            return;
+                          nubEntry.obj.splice(selectedFenceNub, 1);
+                          fence.numNubs--;
+                        });
+                        setSelectedFenceNub(null);
+                      }}
+                    >
+                      Remove Nub
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
         </div>
 
         {/* Right column: fence type preview image */}
         {fencePreviewPath && (
-          <div className="border border-gray-600 rounded bg-gray-800 p-2 flex items-center justify-center w-40 self-stretch">
+          <div className="flex w-48 self-stretch items-center justify-center rounded border border-gray-600 bg-gray-800 p-2">
             {fencePreviewImageSrc ? (
               <img
                 src={fencePreviewImageSrc}
@@ -233,102 +402,6 @@ export const FenceMenu = memo(function FenceMenu({
           </div>
         )}
       </div>
-
-      {/* Nub coordinate editing (nub selected by clicking in Konva view) */}
-      {selectedFence !== undefined && (() => {
-        const nubs = fenceData.FnNb[selectedFence + NUB_KEY_BASE]?.obj ?? [];
-        const selectedNubCoords =
-          selectedFenceNub !== null ? nubs[selectedFenceNub] : null;
-        return (
-          <>
-            {selectedNubCoords && selectedFenceNub !== null && (
-              <>
-                <p className="text-sm font-medium">
-                  Adjust Nub {selectedFenceNub} Position
-                </p>
-                <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
-                  <label htmlFor="fenceNubX" className="text-sm font-medium">
-                    X
-                  </label>
-                  <Input
-                    id="fenceNubX"
-                    type="number"
-                    value={selectedNubCoords[0]}
-                    onChange={(e) => {
-                      const newValue = parseInt(e.target.value);
-                      if (isNaN(newValue)) return;
-                      setFenceData((data) => {
-                        if (selectedFence === undefined || selectedFenceNub === null) return;
-                        const nubEntry = data.FnNb[selectedFence + NUB_KEY_BASE];
-                        const nub = nubEntry?.obj?.[selectedFenceNub];
-                        if (nub) nub[0] = newValue;
-                      });
-                    }}
-                    placeholder="X"
-                  />
-                  <label htmlFor="fenceNubY" className="text-sm font-medium">
-                    Y
-                  </label>
-                  <Input
-                    id="fenceNubY"
-                    type="number"
-                    value={selectedNubCoords[1]}
-                    onChange={(e) => {
-                      const newValue = parseInt(e.target.value);
-                      if (isNaN(newValue)) return;
-                      setFenceData((data) => {
-                        if (selectedFence === undefined || selectedFenceNub === null) return;
-                        const nubEntry = data.FnNb[selectedFence + NUB_KEY_BASE];
-                        const nub = nubEntry?.obj?.[selectedFenceNub];
-                        if (nub) nub[1] = newValue;
-                      });
-                    }}
-                    placeholder="Y"
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  setFenceData((data) => {
-                    if (selectedFence === undefined) return;
-                    const fence = data.Fenc[1000]?.obj?.[selectedFence];
-                    const nubEntry = data.FnNb[selectedFence + NUB_KEY_BASE];
-                    if (!fence || !nubEntry) return;
-                    const lastNub = nubEntry.obj[fence.numNubs - 1];
-                    if (!lastNub) return;
-                    nubEntry.obj.push([lastNub[0] + 50, lastNub[1] + 50]);
-                    fence.numNubs++;
-                  });
-                }}
-              >
-                Add Nub
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={
-                  selectedFenceNub === null || numNubs <= MIN_NUBS
-                }
-                onClick={() => {
-                  setFenceData((data) => {
-                    if (selectedFence === undefined || selectedFenceNub === null) return;
-                    const fence = data.Fenc[1000]?.obj?.[selectedFence];
-                    const nubEntry = data.FnNb[selectedFence + NUB_KEY_BASE];
-                    if (!fence || !nubEntry || fence.numNubs <= MIN_NUBS) return;
-                    nubEntry.obj.splice(selectedFenceNub, 1);
-                    fence.numNubs--;
-                  });
-                  setSelectedFenceNub(null);
-                }}
-              >
-                Remove Nub
-              </Button>
-            </div>
-          </>
-        );
-      })()}
     </div>
   );
 });

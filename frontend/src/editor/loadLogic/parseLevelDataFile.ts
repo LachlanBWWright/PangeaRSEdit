@@ -1,89 +1,257 @@
-import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { AtomicLevelData } from "@/data/utils/levelDataUtils";
+import { err, ok, ResultAsync, type Result } from "neverthrow";
 import type { GlobalsInterface } from "@/data/globals/globals";
-import { DataType } from "@/data/globals/globals";
-import { Result } from "neverthrow";
-import { parseNanosaurLevelFile } from "./parseNanosaurLevelFile";
-import { parseMightyMikeFile } from "./parseMightyMikeFile";
-import { parseRsrcLevelFile } from "./parseRsrcLevelFile";
+import { DataType, Game } from "@/data/globals/globals";
+import { mapErr } from "@/utils/mapErr";
+import { loadBorderPalette } from "./mightyMikeParseHelpers";
+import { getMightyMikeSceneFromPath } from "./mightyMikeParseHelpers";
+import { isLevelDataLike } from "@/data/utils/levelDataUtils";
 import {
-  extractTilesFromBuffer,
-  createCanvasFromTile,
-} from "@/data/processors/classicProprocessor";
-import { isRecord } from "./typeGuards";
+  imagePayloadsToCanvases,
+} from "@/data/level-io/terrainImageSnapshots";
+import { parseLevelWithWorker } from "@/data/level-io/levelIoWorkerClient";
+import type { LevelIoProgress } from "@/data/level-io/levelIoTypes";
+import type { LevelData } from "@/python/structSpecs/LevelTypes";
+import { gMightyMikePalette } from "@/utils/mightyMikePalette";
+import { clearItemImageCache } from "@/utils/mightyMikeShapeImageLoader";
 
-// The caller (parseRsrcLevelFile → rsrcdump-ts) guarantees hex strings produced by
-// Base16Converter are well-formed pairs of hex digits, so no additional validation needed.
-function hexToUint8Array(hexString: string): Uint8Array {
-  const bytes = new Uint8Array(hexString.length / 2);
-  for (let i = 0; i < hexString.length; i += 2) {
-    bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
-  }
-  return bytes;
+export interface ParsedLevelDataFile {
+  readonly levelData: LevelData;
+  readonly mapImages: readonly HTMLCanvasElement[];
+  readonly mapImagesFile?: File;
 }
 
-/**
- * Parse a level data file into an ottoMatic-compatible structure and set
- * the editor state by calling setData.
- * Also calls setMapImages for Mighty Mike levels (since tileset images aren't in AtomicLevelData)
- * and for RSRC_FORK (Bugdom 1) levels where tile images are embedded in the Timg resource.
- */
-export async function parseLevelDataFile(
-  file: Blob,
-  gameType: GlobalsInterface,
-  setData: (data: AtomicLevelData) => void,
-  fileUrl?: string,
-  setMapImages?: (images: HTMLCanvasElement[]) => void,
-): Promise<Result<LevelData, string>> {
-  // Dispatch to game-specific parsers that return Results
+export interface ParseLevelDataFileArgs {
+  readonly file: Blob;
+  readonly gameType: GlobalsInterface;
+  readonly fileUrl?: string;
+  readonly companionTextureFile?: File;
+  readonly onProgress?: (progress: LevelIoProgress) => void;
+}
 
-  // Nanosaur 1 (TRT files) uses classic preprocessor
-  // Use the specialized parser module
-  // Note: The helper parsers call setData and return Result
-  // choose which to call based on gameType
-  // Use numeric enum comparisons to avoid depending on the 'Game' import at runtime
-  // as a workaround for bundler ordering issues
-  // Nanosaur (TRT file style)
-  if (gameType.DATA_TYPE === DataType.TRT_FILE) {
-    return await parseNanosaurLevelFile(file, gameType, setData);
-  }
+interface MightyMikeCompanionData {
+  readonly tilesetBytes?: ArrayBuffer;
+  readonly paletteBytes?: ArrayBuffer;
+  readonly mapImagesFile?: File;
+  readonly sceneName?: string;
+}
 
-  // Mighty Mike (map/tile format)
-  // DataType.MIGHTY_MIKE is enum value 3, but check by DATA_TYPE since it's stable
-  if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    return await parseMightyMikeFile(file, setData, fileUrl, setMapImages);
-  }
+interface ParsedLevelPayload {
+  readonly levelData: LevelData;
+  readonly mapImages: readonly {
+    readonly width: number;
+    readonly height: number;
+    readonly rgbaBytes: ArrayBuffer;
+  }[];
+  readonly collisionImages: readonly {
+    readonly width: number;
+    readonly height: number;
+    readonly rgbaBytes: ArrayBuffer;
+  }[];
+  readonly nanosaurRawBytes?: ArrayBuffer;
+}
 
-  // All other standard games use the rsrcdump-ts flow
-  const result = await parseRsrcLevelFile(file, gameType, setData);
+function cloneArrayBuffer(buffer: Uint8Array): ArrayBuffer {
+  const clone = new Uint8Array(buffer.byteLength);
+  clone.set(buffer);
+  return clone.buffer;
+}
 
-  // For RSRC_FORK (Bugdom 1), tile images are embedded in the Timg resource.
-  // Extract them here so the editor always displays tiles after a file upload.
-  if (
-    result.isOk() &&
-    gameType.DATA_TYPE === DataType.RSRC_FORK &&
-    setMapImages
-  ) {
-    const levelData = result.value;
-    const timg = isRecord(levelData.Timg) ? levelData.Timg : undefined;
-    const timg1000 = timg && isRecord(timg["1000"]) ? timg["1000"] : undefined;
-    const imgHex =
-      typeof timg1000?.data === "string" ? timg1000.data : undefined;
-    if (imgHex) {
-      const imgBuffer = hexToUint8Array(imgHex);
-      const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
-      new Uint8Array(alignedBuffer).set(imgBuffer);
-      const tileCount = imgBuffer.byteLength / 2 / 32 / 32;
-      const tileView = new DataView(alignedBuffer);
-      const tiles = extractTilesFromBuffer(
-        tileView,
-        tileCount,
-        32,
-        32 * 32 * 2,
+async function loadMightyMikeCompanionData({
+  fileUrl,
+  companionTextureFile,
+}: {
+  readonly fileUrl?: string;
+  readonly companionTextureFile?: File;
+}): Promise<Result<MightyMikeCompanionData, string>> {
+  let tilesetBytes: ArrayBuffer | undefined;
+  let mapImagesFile: File | undefined;
+
+  if (companionTextureFile) {
+    const textureBytesResult = await ResultAsync.fromPromise(
+      companionTextureFile.arrayBuffer(),
+      mapErr,
+    );
+    if (textureBytesResult.isErr()) {
+      return err(`Failed to read Mighty Mike tileset: ${textureBytesResult.error}`);
+    }
+    tilesetBytes = textureBytesResult.value;
+    mapImagesFile = companionTextureFile;
+  } else if (fileUrl) {
+    const tilesetUrl = fileUrl.replace(/\.map-\d+$/i, ".tileset");
+    const fetchResult = await ResultAsync.fromPromise(fetch(tilesetUrl), mapErr);
+    if (fetchResult.isOk() && fetchResult.value.ok) {
+      const tilesetBytesResult = await ResultAsync.fromPromise(
+        fetchResult.value.arrayBuffer(),
+        mapErr,
       );
-      setMapImages(tiles.map(createCanvasFromTile));
+      if (tilesetBytesResult.isErr()) {
+        return err(
+          `Failed to read Mighty Mike tileset response: ${tilesetBytesResult.error}`,
+        );
+      }
+      tilesetBytes = tilesetBytesResult.value;
+      mapImagesFile = new File(
+        [tilesetBytesResult.value],
+        tilesetUrl.split("/").pop() ?? "tileset",
+      );
     }
   }
 
-  return result;
+  const paletteBytes = fileUrl ? await loadBorderPalette(fileUrl) : null;
+
+  return ok({
+    tilesetBytes,
+    paletteBytes: paletteBytes ? cloneArrayBuffer(paletteBytes) : undefined,
+    mapImagesFile,
+    sceneName: getMightyMikeSceneFromPath(fileUrl),
+  });
+}
+
+function attachCollisionImages(
+  levelData: LevelData,
+  collisionImages: readonly HTMLCanvasElement[],
+): LevelData {
+  if (!levelData.tileset) {
+    return levelData;
+  }
+  return {
+    ...levelData,
+    tileset: {
+      ...levelData.tileset,
+      collisionImages: [...collisionImages],
+    },
+  };
+}
+
+function attachNanosaurRawLevelBytes(
+  levelData: LevelData,
+  gameType: GlobalsInterface,
+  nanosaurRawBytes: ArrayBuffer | undefined,
+): LevelData {
+  if (gameType.GAME_TYPE !== Game.NANOSAUR || !nanosaurRawBytes) {
+    return levelData;
+  }
+
+  return {
+    ...levelData,
+    _metadata: {
+      ...levelData._metadata,
+      nanosaur1RawBytes: nanosaurRawBytes,
+    },
+  };
+}
+
+async function parseLevelPayloadForEditor({
+  levelBytes,
+  gameType,
+  file,
+  mightyMikeCompanionData,
+  onProgress,
+}: {
+  readonly levelBytes: ArrayBuffer;
+  readonly gameType: GlobalsInterface;
+  readonly file: Blob;
+  readonly mightyMikeCompanionData: MightyMikeCompanionData;
+  readonly onProgress?: (progress: LevelIoProgress) => void;
+}): Promise<Result<ParsedLevelPayload, string>> {
+  const workerResult = await parseLevelWithWorker(
+    {
+      globals: gameType,
+      fileName: file instanceof File ? file.name : "level",
+      levelBytes,
+      mightyMikeTilesetBytes: mightyMikeCompanionData.tilesetBytes,
+      mightyMikePaletteBytes: mightyMikeCompanionData.paletteBytes,
+      mightyMikeSceneName: mightyMikeCompanionData.sceneName,
+    },
+    onProgress,
+  );
+  if (workerResult.isErr()) {
+    return err(workerResult.error.message);
+  }
+
+  if (!isLevelDataLike(workerResult.value.levelData)) {
+    return err("Parsed level data is not valid LevelData");
+  }
+
+  return ok({
+    levelData: workerResult.value.levelData,
+    mapImages: workerResult.value.mapImages,
+    collisionImages: workerResult.value.collisionImages,
+    nanosaurRawBytes: workerResult.value.nanosaurRawBytes,
+  });
+}
+
+export async function parseLevelDataFile({
+  file,
+  gameType,
+  fileUrl,
+  companionTextureFile,
+  onProgress,
+}: ParseLevelDataFileArgs): Promise<Result<ParsedLevelDataFile, string>> {
+  const levelBytesResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
+  if (levelBytesResult.isErr()) {
+    return err(`Failed to read level file: ${levelBytesResult.error}`);
+  }
+
+  const mightyMikeCompanionResult =
+    gameType.DATA_TYPE === DataType.MIGHTY_MIKE
+      ? await loadMightyMikeCompanionData({ fileUrl, companionTextureFile })
+      : ok<MightyMikeCompanionData>({
+          tilesetBytes: undefined,
+          paletteBytes: undefined,
+          mapImagesFile: undefined,
+          sceneName: undefined,
+        });
+  if (mightyMikeCompanionResult.isErr()) {
+    return err(mightyMikeCompanionResult.error);
+  }
+
+  if (
+    gameType.DATA_TYPE === DataType.MIGHTY_MIKE &&
+    mightyMikeCompanionResult.value.paletteBytes
+  ) {
+    gMightyMikePalette.loadPaletteFromRGBA(
+      new Uint8Array(mightyMikeCompanionResult.value.paletteBytes),
+    );
+    clearItemImageCache();
+  }
+
+  const workerResult = await parseLevelPayloadForEditor({
+    levelBytes: levelBytesResult.value,
+    gameType,
+    file,
+    mightyMikeCompanionData: mightyMikeCompanionResult.value,
+    onProgress,
+  });
+  if (workerResult.isErr()) {
+    return err(workerResult.error);
+  }
+
+  if (!isLevelDataLike(workerResult.value.levelData)) {
+    return err("Parsed level data is not valid LevelData");
+  }
+
+  const mapImagesResult = imagePayloadsToCanvases(workerResult.value.mapImages);
+  if (mapImagesResult.isErr()) {
+    return err(mapImagesResult.error);
+  }
+
+  const collisionImagesResult = imagePayloadsToCanvases(
+    workerResult.value.collisionImages,
+  );
+  if (collisionImagesResult.isErr()) {
+    return err(collisionImagesResult.error);
+  }
+
+  const levelData = attachNanosaurRawLevelBytes(
+    workerResult.value.levelData,
+    gameType,
+    workerResult.value.nanosaurRawBytes,
+  );
+
+  return ok({
+    levelData: attachCollisionImages(levelData, collisionImagesResult.value),
+    mapImages: mapImagesResult.value,
+    mapImagesFile: mightyMikeCompanionResult.value.mapImagesFile,
+  });
 }

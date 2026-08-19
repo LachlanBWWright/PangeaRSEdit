@@ -1,13 +1,20 @@
 import { useAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Updater } from "use-immer";
 import { SplineData } from "@/python/structSpecs/LevelTypes";
 import {
   SelectedSpline,
   SelectedSplineItem,
 } from "../../../data/splines/splineAtoms";
-import { SPLINE_KEY_BASE } from "./splineUtils";
-import { getPoints } from "../../../utils/spline";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
+import {
+  canFinalizeCreation,
+  finalizeSplineFromPoints,
+  popCreationPoint,
+} from "@/editor/creation/pendingCreationState";
+import { Globals } from "@/data/globals/globals";
+import { Button } from "@/components/ui/button";
 
 export function AddNewSplineMenu({
   setSplineData,
@@ -18,6 +25,61 @@ export function AddNewSplineMenu({
 }) {
   const [, setSelectedSpline] = useAtom(SelectedSpline);
   const [, setSelectedSplineItem] = useAtom(SelectedSplineItem);
+  const globals = useAtomValue(Globals);
+  const pendingCreation = useAtomValue(PendingCreation);
+  const setPendingCreation = useSetAtom(PendingCreation);
+
+  const isPendingSplineCreation = pendingCreation?.kind === "spline";
+  const pendingPoints = isPendingSplineCreation ? pendingCreation.points : [];
+
+  if (isPendingSplineCreation) {
+    return (
+      <div className="flex h-full min-h-full w-full flex-col gap-3 p-4">
+        <p className="text-sm text-gray-200">
+          Click on the canvas to place spline nubs.
+        </p>
+        <p className="text-sm text-gray-300">Points: {pendingPoints.length}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!canFinalizeCreation("spline", pendingPoints, globals)}
+            onClick={() => {
+              setSplineData((splineData) => {
+                const newSplineIndex = finalizeSplineFromPoints(
+                  splineData,
+                  pendingPoints,
+                  globals,
+                );
+                setSelectedSpline(newSplineIndex);
+                setSelectedSplineItem(undefined);
+              });
+              setPendingCreation(null);
+            }}
+          >
+            Finalize New Spline
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={pendingPoints.length === 0}
+            onClick={() => {
+              if (!pendingCreation) return;
+              setPendingCreation({
+                ...pendingCreation,
+                points: popCreationPoint(pendingCreation.points),
+              });
+            }}
+          >
+            Undo Last Point
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setPendingCreation(null)}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <EmptyDataPrompt
@@ -28,39 +90,7 @@ export function AddNewSplineMenu({
           : "This level doesn't have any splines yet. Add your first spline to get started."
       }
       buttonText={hasSplines ? "Add New Spline" : "Add First Spline"}
-      onInitialize={() => {
-        setSplineData((splineData) => {
-          const nextSplineIndex = splineData.Spln[1000].obj.length;
-
-          splineData.Spln[1000].obj.push({
-            bbBottom: 200,
-            bbLeft: 100,
-            bbRight: 200,
-            bbTop: 100,
-            numItems: 0,
-            numNubs: 3,
-            numPoints: 200,
-          });
-          const splinePos = SPLINE_KEY_BASE + nextSplineIndex;
-
-          splineData.SpIt[splinePos] = { obj: [] };
-          splineData.SpNb[splinePos] = {
-            obj: [
-              { x: 100, z: 200 },
-              { x: 150, z: 100 },
-              { x: 200, z: 200 },
-              { x: 100, z: 200 },
-            ],
-          };
-
-          splineData.SpPt[splinePos] = {
-            obj: getPoints(splineData.SpNb[splinePos].obj),
-          };
-
-          setSelectedSpline(nextSplineIndex);
-          setSelectedSplineItem(undefined);
-        });
-      }}
+      onInitialize={() => setPendingCreation({ kind: "spline", points: [] })}
       fillHeight
     />
   );

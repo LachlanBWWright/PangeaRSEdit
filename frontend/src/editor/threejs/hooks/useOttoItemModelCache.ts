@@ -19,35 +19,42 @@ import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
-import { getParamByIndex } from "@/data/items/standardParamTypes";
-import { type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { extractSubgroupByIndex, loadFileGltf } from "./itemModelLoaderUtils";
+import type { ItemModelKind } from "@/data/items/itemModelTypes";
+import { Group } from "three";
+import {
+  cloneGroupForItemRendering,
+  extractSubgroupByIndex,
+  loadFileGltf,
+} from "./itemModelLoaderUtils";
+import {
+  getItemModelCacheKey,
+  type ItemModelParams,
+} from "./itemModelCacheKey";
 
 interface CachedModel {
-  gltf: GLTF | null;
+  gltf: Group | null;
   loading: boolean;
   error?: string;
-}
-
-/**
- * Item parameters that can affect model selection
- */
-interface ItemParams {
-  p0: number;
-  p1: number;
-  p2: number;
-  p3: number;
 }
 
 interface UseItemModelCacheReturn {
   modelCache: Map<string, CachedModel>;
   loadModel: (
     itemType: number,
-    params?: ItemParams,
+    params?: ItemModelParams,
     levelNum?: number,
-  ) => Promise<GLTF | null>;
-  isLoading: (itemType: number, params?: ItemParams) => boolean;
-  hasError: (itemType: number, params?: ItemParams) => boolean;
+    kind?: ItemModelKind,
+  ) => Promise<Group | null>;
+  isLoading: (
+    itemType: number,
+    params?: ItemModelParams,
+    levelNum?: number,
+  ) => boolean;
+  hasError: (
+    itemType: number,
+    params?: ItemModelParams,
+    levelNum?: number,
+  ) => boolean;
 }
 
 /**
@@ -63,35 +70,6 @@ const GAME_BASE_PATHS: Record<Game, string> = {
   [Game.BILLY_FRONTIER]: "/PangeaRSEdit/games/billyfrontier",
   [Game.MIGHTY_MIKE]: "/PangeaRSEdit/games/mightymike",
 };
-
-/**
- * Generate a cache key that includes game, item type, and relevant params
- * Uses the mapper to determine which items are param-dependent or level-dependent
- */
-function getCacheKey(
-  game: Game,
-  itemType: number,
-  params?: ItemParams,
-  levelNum?: number,
-): string {
-  const mapper = getGameMapper(game);
-  const gamePrefix = `g${game}_`;
-
-  if (mapper?.isParamDependent?.(itemType) && params) {
-    const config = mapper.getParamDependentConfig?.(itemType);
-    if (config) {
-      const paramValue = getParamByIndex(params, config.paramIndex);
-      return `${gamePrefix}${itemType}_p${config.paramIndex}_${paramValue}`;
-    }
-    return `${gamePrefix}${itemType}_p1_${params.p1}`;
-  }
-
-  if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
-    return `${gamePrefix}${itemType}_lv${levelNum}`;
-  }
-
-  return `${gamePrefix}${itemType}`;
-}
 
 /**
  * Hook for managing item model loading and caching
@@ -128,10 +106,17 @@ export const useItemModelCache = (
   const loadModel = useCallback(
     async (
       itemType: number,
-      params?: ItemParams,
+      params?: ItemModelParams,
       levelNum?: number,
-    ): Promise<GLTF | null> => {
-      const cacheKey = getCacheKey(game, itemType, params, levelNum);
+      kind: ItemModelKind = "terrainItem",
+    ): Promise<Group | null> => {
+      const cacheKey = getItemModelCacheKey(
+        game,
+        itemType,
+        params,
+        levelNum,
+        kind,
+      );
 
       // Skip if already in-flight (avoids stale closure issues)
       if (inFlightRef.current.has(cacheKey)) {
@@ -147,7 +132,13 @@ export const useItemModelCache = (
 
       // Get mapping
       const mapper = getGameMapper(game);
-      const mapping = mapper?.getMapping(itemType, levelNum, params);
+      const mapping = mapper?.getMapping(
+        itemType,
+        levelNum,
+        params,
+        undefined,
+        kind,
+      );
       if (!mapping) {
         return null;
       }
@@ -198,7 +189,7 @@ export const useItemModelCache = (
       const fullGltf = fullGltfResult.value;
 
       // Extract the specific model for this item type
-      let finalGltf = fullGltf;
+      let finalGltf: Group;
       if (mapping.modelIndex !== undefined) {
         const extracted = extractSubgroupByIndex(
           fullGltf,
@@ -227,6 +218,8 @@ export const useItemModelCache = (
           inFlightRef.current.delete(cacheKey);
           return null;
         }
+      } else {
+        finalGltf = cloneGroupForItemRendering(fullGltf.scene);
       }
 
       // Cache the result
@@ -243,16 +236,16 @@ export const useItemModelCache = (
   );
 
   const isLoading = useCallback(
-    (itemType: number, params?: ItemParams) => {
-      const cacheKey = getCacheKey(game, itemType, params);
+    (itemType: number, params?: ItemModelParams, levelNum?: number) => {
+      const cacheKey = getItemModelCacheKey(game, itemType, params, levelNum);
       return modelCache.get(cacheKey)?.loading ?? false;
     },
     [game, modelCache],
   );
 
   const hasError = useCallback(
-    (itemType: number, params?: ItemParams) => {
-      const cacheKey = getCacheKey(game, itemType, params);
+    (itemType: number, params?: ItemModelParams, levelNum?: number) => {
+      const cacheKey = getItemModelCacheKey(game, itemType, params, levelNum);
       return !!modelCache.get(cacheKey)?.error;
     },
     [game, modelCache],

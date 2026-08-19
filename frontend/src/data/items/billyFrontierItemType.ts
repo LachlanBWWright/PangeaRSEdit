@@ -98,7 +98,7 @@ const billyFrontierItemTypeParamsSource: Record<
         lineNumber: 211,
       },
     },
-    p1: "Unknown",
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -133,7 +133,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.type = BUILDING_ObjType_Saloon + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 137,
+        lineNumber: 138,
       },
     },
     p1: {
@@ -156,7 +156,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.type = TOWN_ObjType_Headstone1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 194,
+        lineNumber: 195,
       },
     },
     p1: {
@@ -165,7 +165,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 202,
+        lineNumber: 203,
       },
     },
     p2: "Unknown",
@@ -201,7 +201,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.type = TOWN_ObjType_Coffin + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 267,
+        lineNumber: 268,
       },
     },
     p1: {
@@ -210,7 +210,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 275,
+        lineNumber: 276,
       },
     },
     p2: "Unknown",
@@ -302,7 +302,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 338,
+        lineNumber: 339,
       },
     },
     p2: {
@@ -312,21 +312,49 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "newObj->Kind = itemPtr->parm[2]; // what kind of contents are in this crate",
         fileName: "Source/Items/Items.c",
-        lineNumber: 349,
+        lineNumber: 352,
       },
     },
     p3: "Unknown",
   },
   [ItemType.HayBale]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Hay bale model variant",
+      codeSample: {
+        code: "gNewObjectDefinition.type = GLOBAL_ObjType_HayBale + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 927,
+      },
+    },
+    p1: {
+      type: "Rotation",
+      description: "Hay bale rotation (0-7, where each unit is 45 degrees)",
+      divisions: 8,
+      multiplier: "PI2/8",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 936,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.ShootoutSaloon]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Shootout saloon rotation in quarter turns",
+      divisions: 4,
+      multiplier: "PI2/4",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
+        fileName: "Source/System/Areas/Shootout.c",
+        lineNumber: 1044,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -355,7 +383,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 970,
+        lineNumber: 972,
       },
     },
     p2: "Unknown",
@@ -450,21 +478,64 @@ const billyFrontierItemTypeParamsSource: Record<
   },
   [ItemType.DeadTree]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1183,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Dead tree variant (0=upright, 1=fallen on side)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = TOWN_ObjType_DeadTree + itemPtr->parm[1];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1175,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Rock]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: {
+      type: "Integer",
+      description:
+        "Rock type (town: TallRock1/TallRock2/ShortRock1/ShortRock2; swamp: Large/Medium/Small/Tall)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1226,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1264,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.ElectricFence]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Electric fence rotation (0-7, where each unit is 45 degrees)",
+      divisions: 8,
+      multiplier: "PI2/8",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1514,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -484,7 +555,7 @@ const billyFrontierItemTypeParamsSource: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
         fileName: "Source/Enemy/Enemy_TremorGhost.c",
-        lineNumber: 70,
+        lineNumber: 72,
       },
     },
     p1: {
@@ -501,14 +572,34 @@ const billyFrontierItemTypeParamsSource: Record<
   },
   [ItemType.TeePee]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Teepee rotation (0-7, where each unit is 45 degrees)",
+      divisions: 8,
+      multiplier: "PI2/8",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1426,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.SwampCabin]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Rotation",
+      description: "Swamp cabin rotation (0-7, where each unit is 45 degrees)",
+      divisions: 8,
+      multiplier: "PI2/8",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 1453,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",

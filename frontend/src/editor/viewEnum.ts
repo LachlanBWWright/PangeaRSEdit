@@ -3,6 +3,10 @@ export enum View {
   water,
   items,
   splines,
+  scripts,
   tiles,
   supertiles,
+  animations,
+  vertexColors,
+  collisionPath,
 }

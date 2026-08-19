@@ -3,7 +3,6 @@
 import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
-import tsParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
 import functionalPlugin from "eslint-plugin-functional";
 import neverthrowPlugin from "eslint-plugin-neverthrow";
@@ -41,10 +40,11 @@ export default defineConfig(
       neverthrow: neverthrowPlugin,
     },
     languageOptions: {
-      parser: tsParser,
+      parser: tseslint.parser,
       parserOptions: {
-        projectService: true,
-        allowDefaultProject: true,
+        projectService: {
+          allowDefaultProject: ["scripts/*.mjs"],
+        },
         tsconfigRootDir: process.cwd(),
       },
     },

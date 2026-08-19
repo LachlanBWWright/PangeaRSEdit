@@ -1,5 +1,4 @@
 import { toast } from "sonner";
-import type { ChangeEvent } from "react";
 
 interface TextureLike {
   readonly name: string;
@@ -43,7 +42,12 @@ export function getNextPreviewState(
 }
 
 interface HandleFileInputArgs<Texture extends TextureLike> {
-  readonly event: ChangeEvent<HTMLInputElement>;
+  readonly event: {
+    readonly target: {
+      readonly files: ArrayLike<File> | null;
+      value: string;
+    };
+  };
   readonly selectedTexture: Texture | null;
   readonly handleReplaceTexture: (
     texture: Texture,

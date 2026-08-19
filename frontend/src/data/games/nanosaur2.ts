@@ -40,19 +40,25 @@ export const nanosaur2: GameInfo = {
       skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/worm.skeleton.rsrc",
       category: "Characters",
     },
+    {
+      name: "Wormhole",
+      bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/wormhole.bg3d",
+      skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/wormhole.skeleton.rsrc",
+      category: "Characters",
+    },
 
     {
-      name: "Forest Level",
+      name: "Forest",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/forest.bg3d",
       category: "Levels",
     },
     {
-      name: "Desert Level",
+      name: "Desert",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/desert.bg3d",
       category: "Levels",
     },
     {
-      name: "Swamp Level",
+      name: "Swamp",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/swamp.bg3d",
       category: "Levels",
     },
@@ -67,8 +73,13 @@ export const nanosaur2: GameInfo = {
       category: "Objects",
     },
     {
-      name: "Global Models",
+      name: "Global",
       bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/global.bg3d",
+      category: "Objects",
+    },
+    {
+      name: "Level Intro",
+      bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/levelintro.bg3d",
       category: "Objects",
     },
   ],

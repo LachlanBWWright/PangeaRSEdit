@@ -1,3 +1,3 @@
-import { defineConfig } from "vitest/config";
+import frontendConfig from "./frontend/vitest.config";
 
-export default defineConfig({ root: import.meta.dirname });
+export default frontendConfig;

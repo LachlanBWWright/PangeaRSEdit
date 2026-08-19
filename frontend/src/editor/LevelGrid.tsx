@@ -5,11 +5,11 @@ interface ChildProps {
 }
 
 interface Props {
-  title: string;
+  title?: string;
   children?: React.ReactNode;
 }
 
-export function LevelGrid({ title, children }: Props) {
+export function LevelGrid({ children }: Props) {
   // Ensure children render as a vertical list of full-width items (Buttons)
   const childrenWithFullWidth = React.Children.map(children, (child) => {
     if (React.isValidElement<ChildProps>(child)) {
@@ -23,7 +23,6 @@ export function LevelGrid({ title, children }: Props) {
 
   return (
     <div className="flex flex-col gap-1 text-2xl min-w-40">
-      <p>{title}</p>
       <div>{childrenWithFullWidth}</div>
     </div>
   );

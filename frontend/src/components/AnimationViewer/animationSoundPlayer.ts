@@ -2,47 +2,7 @@ import decodeAiff from "@audio/decode-aiff";
 import { err, errAsync, ok, okAsync, Result, ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
 import type { ModelSourceKind } from "./animationEventUtils";
-
-const SOUND_EVENT_ASSET_PATHS_BY_GAME: Record<
-  string,
-  Record<number, string>
-> = {
-  "Bugdom 1": {
-    0: "games/pangea-ports/games/Bugdom-android/Data/Audio/Main.sounds/Kick.aiff",
-    1: "games/pangea-ports/games/Bugdom-android/Data/Audio/Pond.sounds/Waterbug.aiff",
-  },
-  "Nanosaur 1": {
-    0: "games/pangea-ports/games/Nanosaur-android/Data/Audio/SoundBank/Crunch.aiff",
-    1: "games/pangea-ports/games/Nanosaur-android/Data/Audio/SoundBank/Footstep.aiff",
-    2: "games/pangea-ports/games/Nanosaur-android/Data/Audio/SoundBank/DiloAttack.aiff",
-    3: "games/pangea-ports/games/Nanosaur-android/Data/Audio/SoundBank/WingFlap.aiff",
-    4: "games/pangea-ports/games/Nanosaur-android/Data/Audio/SoundBank/Footstep.aiff",
-  },
-  "Otto Matic": {
-    0: "games/pangea-ports/games/OttoMatic-Android/Data/Audio/Farm.sounds/OnionSwoosh.aiff",
-    3: "games/pangea-ports/games/OttoMatic-Android/Data/Audio/Main.sounds/LeftFoot.aiff",
-    4: "games/pangea-ports/games/OttoMatic-Android/Data/Audio/Main.sounds/RightFoot.aiff",
-    5: "games/pangea-ports/games/OttoMatic-Android/Data/Audio/Jungle.sounds/PitcherPuke.aiff",
-    6: "games/pangea-ports/games/OttoMatic-Android/Data/Audio/Jungle.sounds/Flytrap.aiff",
-  },
-  "Bugdom 2": {
-    0: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Garden/GnomeStep.aiff",
-    1: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Garden/GnomeStep.aiff",
-    2: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Fido/TickStep.aiff",
-    3: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Title/Stomp.aiff",
-    4: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Closet/Servo1.aiff",
-    5: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Closet/Servo2.aiff",
-    6: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Park/AntBite.aiff",
-    7: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Main/SnapTrap.aiff",
-    8: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Playroom/OttoFall.aiff",
-    9: "games/pangea-ports/games/Bugdom2-Android/Data/Audio/Main/Footstep.aiff",
-  },
-  "Billy Frontier": {
-    0: "games/pangea-ports/games/BillyFrontier-Android/Data/Audio/SoundBank/Spurs2.aiff",
-    1: "games/pangea-ports/games/BillyFrontier-Android/Data/Audio/SoundBank/WalkerCrash.aiff",
-    2: "games/pangea-ports/games/BillyFrontier-Android/Data/Audio/SoundBank/WalkerFootStep.aiff",
-  },
-};
+import { getAnimationSoundAssetPath } from "./animationSoundAssets";
 
 const decodedBufferCache = new Map<string, AudioBuffer>();
 let sharedAudioContext: AudioContext | null = null;
@@ -56,12 +16,18 @@ function resolveSoundAssetPath(
     return null;
   }
 
-  return SOUND_EVENT_ASSET_PATHS_BY_GAME[gameLabel]?.[value] ?? null;
+  return getAnimationSoundAssetPath(gameLabel, value);
 }
 
 function buildMountedAssetUrl(relativePath: string): string {
+  if (import.meta.env.DEV) {
+    return new URL(
+      `/games/pangea-ports/${relativePath}`,
+      window.location.origin,
+    ).toString();
+  }
   const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin);
-  return new URL(relativePath, appBaseUrl).toString();
+  return new URL(`generated/pangea-ports/audio/${relativePath}`, appBaseUrl).toString();
 }
 
 function ensureAudioContext(): Result<AudioContext, string> {

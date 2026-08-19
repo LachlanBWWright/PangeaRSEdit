@@ -13,6 +13,21 @@ import {
 import { normalizeGlbBuffer } from "@/modelParsers/gltfAnimationEvents";
 import { prepareSceneForAnimationExport } from "@/pages/ModelViewer/utils/prepareSceneForAnimationExport";
 
+interface DocumentSummary {
+  readonly sceneCount: number;
+  readonly nodeCount: number;
+  readonly meshCount: number;
+  readonly primitiveCount: number;
+  readonly materialCount: number;
+  readonly positionCount: number;
+  readonly skinCount: number;
+  readonly jointCount: number;
+  readonly uniqueJointNameCount: number;
+  readonly animationCount: number;
+  readonly animationChannelCount: number;
+  readonly auxiliaryNodeNames: readonly string[];
+}
+
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
@@ -32,7 +47,12 @@ const SKEL_PATH = join(
   __dirname,
   "../../public/games/ottomatic/skeletons/Otto.skeleton.rsrc",
 );
+const LEVEL_MODEL_PATH = join(
+  __dirname,
+  "../../public/games/ottomatic/models/level1_farm.bg3d",
+);
 const itWithOttoFiles = existsSync(BG3D_PATH) && existsSync(SKEL_PATH) ? it : it.skip;
+const itWithLevelModel = existsSync(LEVEL_MODEL_PATH) ? it : it.skip;
 
 async function loadThreeGltf(buffer: ArrayBuffer) {
   const loader = new GLTFLoader();
@@ -64,6 +84,81 @@ async function exportThreeScene(
       },
     );
   });
+}
+
+function summarizeDocument(
+  document: Awaited<ReturnType<NodeIO["readBinary"]>>,
+): DocumentSummary {
+  const root = document.getRoot();
+  const meshes = root.listMeshes();
+  const skins = root.listSkins();
+  const animations = root.listAnimations();
+
+  return {
+    sceneCount: root.listScenes().length,
+    nodeCount: root.listNodes().length,
+    meshCount: meshes.length,
+    primitiveCount: meshes.reduce(
+      (count, mesh) => count + mesh.listPrimitives().length,
+      0,
+    ),
+    materialCount: root.listMaterials().length,
+    positionCount: meshes.reduce(
+      (count, mesh) =>
+        count +
+        mesh
+          .listPrimitives()
+          .reduce(
+            (primitiveCount, primitive) =>
+              primitiveCount +
+              (primitive.getAttribute("POSITION")?.getCount() ?? 0),
+            0,
+          ),
+      0,
+    ),
+    skinCount: skins.length,
+    jointCount: skins.reduce(
+      (count, skin) => count + skin.listJoints().length,
+      0,
+    ),
+    uniqueJointNameCount: new Set(
+      skins.flatMap((skin) =>
+        skin.listJoints().map((joint) => joint.getName()),
+      ),
+    ).size,
+    animationCount: animations.length,
+    animationChannelCount: animations.reduce(
+      (count, animation) => count + animation.listChannels().length,
+      0,
+    ),
+    auxiliaryNodeNames: root
+      .listNodes()
+      .map((node) => node.getName())
+      .filter((name) => name.startsWith("AuxScene")),
+  };
+}
+
+async function runThreeExportCycles(
+  initialGlb: ArrayBuffer,
+  cycleCount: number,
+): Promise<readonly DocumentSummary[]> {
+  const io = new NodeIO();
+  const summaries: DocumentSummary[] = [];
+  let currentGlb = initialGlb;
+
+  for (let cycle = 0; cycle < cycleCount; cycle += 1) {
+    const threeGltf = await loadThreeGltf(currentGlb);
+    const exportScene = prepareSceneForAnimationExport(threeGltf.scene);
+    const exportedGlb = await exportThreeScene(
+      exportScene,
+      threeGltf.animations,
+    );
+    currentGlb = await normalizeGlbBuffer(exportedGlb);
+    const document = await io.readBinary(new Uint8Array(currentGlb));
+    summaries.push(summarizeDocument(document));
+  }
+
+  return summaries;
 }
 
 describe("Three.js exporter skeleton roundtrip", () => {
@@ -111,5 +206,68 @@ describe("Three.js exporter skeleton roundtrip", () => {
     expect(rightHip?.parentBone).toBe(0);
     expect(leftHip?.parentBone).toBe(0);
     expect(roundtrippedSkeleton.bones).toHaveLength(originalSkeleton.bones.length);
+  });
+
+  itWithOttoFiles("keeps Otto skeleton data stable across three viewer export cycles", async () => {
+    const skeleton = await parseSkeletonRsrc(bufferFromFile(SKEL_PATH));
+    const parsedResult = parseBG3D(bufferFromFile(BG3D_PATH), skeleton);
+    if (parsedResult.isErr()) {
+      expect.fail(`Failed to parse Otto skeleton input: ${parsedResult.error}`);
+    }
+
+    const io = new NodeIO();
+    const sourceGlb = await io.writeBinary(bg3dParsedToGLTF(parsedResult.value));
+    const summaries = await runThreeExportCycles(
+      toArrayBuffer(sourceGlb),
+      3,
+    );
+    const firstCycle = summaries[0];
+    expect(firstCycle).toBeDefined();
+    if (!firstCycle) return;
+
+    expect(firstCycle.skinCount).toBeGreaterThan(0);
+    expect(firstCycle.uniqueJointNameCount).toBe(
+      parsedResult.value.skeleton?.bones.length,
+    );
+    expect(firstCycle.animationCount).toBe(
+      parsedResult.value.skeleton?.animations.length,
+    );
+    expect(firstCycle.animationChannelCount).toBeGreaterThan(0);
+
+    for (const summary of summaries) {
+      expect(summary).toEqual(firstCycle);
+      expect(summary.sceneCount).toBe(1);
+      expect(summary.auxiliaryNodeNames).toEqual([]);
+    }
+  });
+
+  itWithLevelModel("keeps the level1_farm model set stable across three viewer export cycles", async () => {
+    const parsedResult = parseBG3D(bufferFromFile(LEVEL_MODEL_PATH));
+    if (parsedResult.isErr()) {
+      expect.fail(`Failed to parse level model input: ${parsedResult.error}`);
+    }
+
+    const io = new NodeIO();
+    const sourceGlb = await io.writeBinary(bg3dParsedToGLTF(parsedResult.value));
+    const summaries = await runThreeExportCycles(
+      toArrayBuffer(sourceGlb),
+      3,
+    );
+    const firstCycle = summaries[0];
+    expect(firstCycle).toBeDefined();
+    if (!firstCycle) return;
+
+    expect(firstCycle.meshCount).toBeGreaterThan(20);
+    expect(firstCycle.primitiveCount).toBeGreaterThan(20);
+    expect(firstCycle.positionCount).toBeGreaterThan(1_000);
+    expect(firstCycle.materialCount).toBeGreaterThanOrEqual(
+      parsedResult.value.materials.length,
+    );
+
+    for (const summary of summaries) {
+      expect(summary).toEqual(firstCycle);
+      expect(summary.sceneCount).toBe(1);
+      expect(summary.auxiliaryNodeNames).toEqual([]);
+    }
   });
 });

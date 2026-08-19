@@ -210,6 +210,156 @@ function serializeSection(writer: BinaryWriter, section: TunnelSection): void {
   serializeSectionMesh(writer, section.waterMesh, false);
 }
 
+function validateTexture(
+  texture: TunnelTexture,
+  textureName: string,
+): Result<null, string> {
+  if (texture.width <= 0 || texture.height <= 0) {
+    return err(
+      `Invalid ${textureName} dimensions: ${texture.width}x${texture.height}`,
+    );
+  }
+
+  const expectedSize = texture.width * texture.height * 4;
+  if (texture.data.length !== expectedSize) {
+    return err(
+      `Invalid ${textureName} data length: expected ${expectedSize}, got ${texture.data.length}`,
+    );
+  }
+
+  return ok(null);
+}
+
+function validateSectionMesh(
+  mesh: TunnelSectionMesh,
+  includeNormals: boolean,
+  sectionIndex: number,
+  meshName: "tunnel" | "water",
+): Result<null, string> {
+  if (mesh.points.length !== mesh.numPoints) {
+    return err(
+      `Section ${sectionIndex} ${meshName} point count mismatch: expected ${mesh.numPoints}, got ${mesh.points.length}`,
+    );
+  }
+
+  if (mesh.uvs.length !== mesh.numPoints) {
+    return err(
+      `Section ${sectionIndex} ${meshName} UV count mismatch: expected ${mesh.numPoints}, got ${mesh.uvs.length}`,
+    );
+  }
+
+  if (mesh.triangles.length !== mesh.numTriangles) {
+    return err(
+      `Section ${sectionIndex} ${meshName} triangle count mismatch: expected ${mesh.numTriangles}, got ${mesh.triangles.length}`,
+    );
+  }
+
+  const normalsLength = mesh.normals?.length ?? 0;
+  if (includeNormals && normalsLength !== mesh.numPoints) {
+    return err(
+      `Section ${sectionIndex} ${meshName} normal count mismatch: expected ${mesh.numPoints}, got ${normalsLength}`,
+    );
+  }
+
+  return ok(null);
+}
+
+function validateTunnelDataForSerialization(
+  data: TunnelData,
+): Result<null, string> {
+  if (data.header.numNubs !== data.nubs.length) {
+    return err(
+      `Header nub count mismatch: expected ${data.header.numNubs}, got ${data.nubs.length}`,
+    );
+  }
+
+  if (data.header.numSplinePoints !== data.splinePoints.length) {
+    return err(
+      `Header spline point count mismatch: expected ${data.header.numSplinePoints}, got ${data.splinePoints.length}`,
+    );
+  }
+
+  if (data.header.numSections !== data.sections.length) {
+    return err(
+      `Header section count mismatch: expected ${data.header.numSections}, got ${data.sections.length}`,
+    );
+  }
+
+  if (data.header.numItems !== data.items.length) {
+    return err(
+      `Header item count mismatch: expected ${data.header.numItems}, got ${data.items.length}`,
+    );
+  }
+
+  const tunnelTextureValidation = validateTexture(
+    data.tunnelTexture,
+    "tunnel texture",
+  );
+  if (tunnelTextureValidation.isErr()) {
+    return err(tunnelTextureValidation.error);
+  }
+
+  const waterTextureValidation = validateTexture(
+    data.waterTexture,
+    "water texture",
+  );
+  if (waterTextureValidation.isErr()) {
+    return err(waterTextureValidation.error);
+  }
+
+  for (
+    let sectionIndex = 0;
+    sectionIndex < data.sections.length;
+    sectionIndex++
+  ) {
+    const section = data.sections[sectionIndex];
+    if (!section) {
+      return err(`Missing section at index ${sectionIndex}`);
+    }
+
+    const tunnelMeshValidation = validateSectionMesh(
+      section.tunnelMesh,
+      true,
+      sectionIndex,
+      "tunnel",
+    );
+    if (tunnelMeshValidation.isErr()) {
+      return err(tunnelMeshValidation.error);
+    }
+
+    const waterMeshValidation = validateSectionMesh(
+      section.waterMesh,
+      false,
+      sectionIndex,
+      "water",
+    );
+    if (waterMeshValidation.isErr()) {
+      return err(waterMeshValidation.error);
+    }
+  }
+
+  for (let itemIndex = 0; itemIndex < data.items.length; itemIndex++) {
+    const item = data.items[itemIndex];
+    if (!item) {
+      return err(`Missing item at index ${itemIndex}`);
+    }
+
+    if (item.splineIndex < 0 || item.splineIndex >= data.splinePoints.length) {
+      return err(
+        `Item ${itemIndex} has invalid splineIndex ${item.splineIndex} (spline points=${data.splinePoints.length})`,
+      );
+    }
+
+    if (item.sectionNum < -1 || item.sectionNum >= data.sections.length) {
+      return err(
+        `Item ${itemIndex} has invalid sectionNum ${item.sectionNum} (valid range -1..${Math.max(-1, data.sections.length - 1)})`,
+      );
+    }
+  }
+
+  return ok(null);
+}
+
 /**
  * Serialize TunnelData to binary format
  *
@@ -219,6 +369,11 @@ function serializeSection(writer: BinaryWriter, section: TunnelSection): void {
 export function serializeTunnelFile(
   data: TunnelData,
 ): Result<ArrayBuffer, string> {
+  const validationResult = validateTunnelDataForSerialization(data);
+  if (validationResult.isErr()) {
+    return err(`Failed to serialize tunnel file: ${validationResult.error}`);
+  }
+
   const serializeResult = Result.fromThrowable(() => {
     const writer = new BinaryWriter();
 
@@ -233,8 +388,9 @@ export function serializeTunnelFile(
     writer.writeInt32(data.header.numItems);
     writer.writePadding(64); // reserved fields (16 * int32)
 
-    // Write alias data (empty for modern use)
-    writer.writeInt32(0); // alias size = 0
+    // Preserve legacy alias data for byte-safe roundtrips.
+    writer.writeInt32(data.aliasData.length);
+    writer.writeBytes(data.aliasData);
 
     // Write spline nubs
     for (const nub of data.nubs) serializeSplinePoint(writer, nub);
@@ -258,9 +414,7 @@ export function serializeTunnelFile(
   }, mapErr)();
 
   if (serializeResult.isErr()) {
-    return err(
-      `Failed to serialize tunnel file: ${serializeResult.error}`,
-    );
+    return err(`Failed to serialize tunnel file: ${serializeResult.error}`);
   }
 
   return ok(serializeResult.value);

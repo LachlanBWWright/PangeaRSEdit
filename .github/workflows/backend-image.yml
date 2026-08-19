@@ -1,0 +1,179 @@
+name: Backend Container
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "backend-v*"
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: backend-container-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ${{ vars.GCP_ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev
+  IMAGE_NAME: ${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/pangearsedit-api
+  IMAGE_URI: ${{ vars.GCP_ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/pangearsedit-api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore backend
+        run: dotnet restore backend/PangeaRSEdit.sln
+
+      - name: Build backend
+        run: dotnet build backend/PangeaRSEdit.sln --configuration Release --no-restore
+
+      - name: Test backend
+        run: dotnet test backend/PangeaRSEdit.sln --configuration Release --no-build
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_ARTIFACT_REGISTRY_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Sign in to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Publish image digest
+        run: echo "Published ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+  deploy:
+    needs: publish
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CLOUD_RUN_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Update database migration job
+        run: >-
+          gcloud run jobs deploy "${{ vars.GCP_CLOUD_RUN_MIGRATION_JOB }}"
+          --project="${{ vars.GCP_PROJECT_ID }}"
+          --region="${{ vars.GCP_CLOUD_RUN_REGION }}"
+          --image="${{ env.IMAGE_URI }}@${{ needs.publish.outputs.digest }}"
+          --args=--migrate
+          --service-account="${{ vars.GCP_CLOUD_RUN_RUNTIME_SERVICE_ACCOUNT }}"
+          --set-env-vars="ASPNETCORE_ENVIRONMENT=Production,Database__Provider=postgres"
+          --set-secrets="ConnectionStrings__Default=${{ vars.GCP_DATABASE_CONNECTION_STRING_SECRET }}:latest"
+          --set-cloudsql-instances="${{ vars.GCP_CLOUD_SQL_INSTANCE }}"
+          --max-retries=1
+          --task-timeout=10m
+          --quiet
+
+      - name: Apply database migrations
+        run: >-
+          gcloud run jobs execute "${{ vars.GCP_CLOUD_RUN_MIGRATION_JOB }}"
+          --project="${{ vars.GCP_PROJECT_ID }}"
+          --region="${{ vars.GCP_CLOUD_RUN_REGION }}"
+          --wait
+          --quiet
+
+      - name: Deploy immutable Cloud Run revision
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          region: ${{ vars.GCP_CLOUD_RUN_REGION }}
+          service: ${{ vars.GCP_CLOUD_RUN_SERVICE }}
+          image: ${{ env.IMAGE_URI }}@${{ needs.publish.outputs.digest }}
+          env_vars: |-
+            ASPNETCORE_ENVIRONMENT=Production
+            Database__Provider=postgres
+            Frontend__BaseUrl=${{ vars.PRODUCTION_FRONTEND_URL }}
+            Cors__AllowedOrigins__0=${{ vars.PRODUCTION_FRONTEND_ORIGIN }}
+            Multiplayer__StunUrl=${{ vars.MULTIPLAYER_STUN_URL }}
+            Multiplayer__TurnUrl=${{ vars.MULTIPLAYER_TURN_URL }}
+            Multiplayer__Topology=single-instance
+            Multiplayer__RequiredContentHash=${{ github.sha }}
+          secrets: |-
+            ConnectionStrings__Default=${{ vars.GCP_DATABASE_CONNECTION_STRING_SECRET }}:latest
+            Multiplayer__TurnSharedSecret=${{ vars.GCP_TURN_SHARED_SECRET }}:latest
+            Multiplayer__ParticipantSigningKey=${{ vars.GCP_PARTICIPANT_SIGNING_KEY_SECRET }}:latest
+          flags: >-
+            --service-account=${{ vars.GCP_CLOUD_RUN_RUNTIME_SERVICE_ACCOUNT }}
+            --add-cloudsql-instances=${{ vars.GCP_CLOUD_SQL_INSTANCE }}
+            --min-instances=0
+            --max-instances=1
+            --concurrency=80
+            --timeout=3600
+            --cpu=1
+            --memory=512Mi
+            --session-affinity
+
+      - name: Verify deployed API
+        run: curl --fail --retry 8 --retry-all-errors --retry-delay 5 "${{ steps.deploy.outputs.url }}/healthz"
+
+      - name: Publish deployed revision
+        run: echo "Deployed ${{ env.IMAGE_URI }}@${{ needs.publish.outputs.digest }} to ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"

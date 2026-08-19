@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { prepareDownloadData } from "@/editor/utils/introPromptUtils";
 import { createBlankLevel } from "@/data/levelTemplates";
 import { combineLevelData } from "@/data/utils/levelDataUtils";
-import { OttoGlobals } from "@/data/globals/globals";
+import { NanosaurGlobals, OttoGlobals } from "@/data/globals/globals";
 
 function deepFreeze(value: unknown): void {
   if (typeof value !== "object" || value === null) {
@@ -65,5 +65,25 @@ describe("prepareDownloadData", () => {
     expect(updated).not.toBe(frozen);
     expect(updated.Hedr[1000].obj.numItems).toBe(1);
     expect(frozen.Hedr[1000].obj.numItems).toBe(0);
+  });
+
+  it("preserves Nanosaur raw bytes metadata for download", () => {
+    const rawBytes = new ArrayBuffer(4);
+    const blankResult = createBlankLevel(NanosaurGlobals.GAME_TYPE, {
+      width: 20,
+      height: 20,
+    });
+    if (blankResult.isErr()) {
+      expect.fail(String(blankResult.error));
+    }
+    const combinedResult = combineLevelData(blankResult.value);
+    if (combinedResult.isErr()) {
+      expect.fail(String(combinedResult.error));
+    }
+    const level = structuredClone(combinedResult.value);
+    level._metadata.nanosaur1RawBytes = rawBytes;
+
+    const prepared = prepareDownloadData(level, NanosaurGlobals);
+    expect(prepared._metadata.nanosaur1RawBytes).toEqual(rawBytes);
   });
 });

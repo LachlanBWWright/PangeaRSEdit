@@ -1,4 +1,38 @@
-import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
+import {
+  ItemParams,
+  ItemParamsSource,
+  ParamDescriptionSource,
+  defineItemParams,
+} from "./itemParams";
+
+function sourceInteger(
+  description: string,
+  fileName: string,
+  lineNumber: number,
+  code: string,
+): ParamDescriptionSource {
+  return {
+    type: "Integer",
+    description,
+    codeSample: { code, fileName, lineNumber },
+  };
+}
+
+function sourceFlag(
+  description: string,
+  fileName: string,
+  lineNumber: number,
+  code: string,
+): ParamDescriptionSource {
+  return {
+    type: "Bit Flags",
+    flags: [{
+      index: 0,
+      description,
+      codeSample: { code, fileName, lineNumber },
+    }],
+  };
+}
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -152,7 +186,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: "p = itemPtr[i].parm[0]; // player # is in parm 0",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 246,
+        lineNumber: 248,
       },
     },
     p1: {
@@ -161,7 +195,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: "gPlayerInfo[p].startRotY = PI2 * ((float)itemPtr[i].parm[1] * (1.0f/16.0f));",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 253,
+        lineNumber: 255,
       },
     },
     p2: "Unknown",
@@ -172,9 +206,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
           index: 0,
           description: "Capture the flag mode flag",
           codeSample: {
-            code: "if (gGameMode ==GAME_MODE_CAPTUREFLAG) {\n    if (!(itemPtr[i].parm[3] & 1))\n        continue;\n}",
+            code: "if (gGameMode ==GAME_MODE_CAPTUREFLAG)\n{\n\tif (!(itemPtr[i].parm[3] & 1))\n\t\tcontinue;\n}\nelse\n{\n\tif (itemPtr[i].parm[3] & 1)\n\t\tcontinue;\n}",
             fileName: "Source/Terrain/Terrain2.c",
-            lineNumber: 234,
+            lineNumber: 236,
           },
         },
       ],
@@ -211,7 +245,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: "y = gWaterHeights[gTrackNum][itemPtr->parm[0]];",
         fileName: "Source/Terrain/Liquids.c",
-        lineNumber: 115,
+        lineNumber: 118,
       },
     },
     p1: "Unknown",
@@ -239,7 +273,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: ".type = GLOBAL_ObjType_Sign_Fire + itemPtr->parm[0],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 796,
+        lineNumber: 797,
       },
     },
     p1: {
@@ -248,7 +282,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: ".rot = PI2 * ((float)itemPtr->parm[1] * (1.0f/8.0f)),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 801,
+        lineNumber: 804,
       },
     },
     p2: "Unknown",
@@ -276,16 +310,16 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
           codeSample: {
             code: "Boolean isSolid = itemPtr->parm[3] & 1;",
             fileName: "Source/Items/Items.c",
-            lineNumber: 325,
+              lineNumber: 329,
           },
         },
         {
           index: 1,
           description: "Bump up position (+500 units)",
           codeSample: {
-            code: "def.coord.y += 500.0f;",
+            code: "if (itemPtr->parm[3] & (1<<1))",
             fileName: "Source/Items/Items.c",
-            lineNumber: 354,
+              lineNumber: 353,
           },
         },
       ],
@@ -306,9 +340,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "Height offset multiplier (×400 units)",
       codeSample: {
-        code: "heightOff = (float)itemPtr->parm[1] * 400.0f;\nwhere.y = GetTerrainY(x,z) + heightOff;",
+        code: "heightOff = (float)itemPtr->parm[1] * 400.0f;",
         fileName: "Source/Items/Triggers.c",
-        lineNumber: 203,
+        lineNumber: 204,
       },
     },
     p2: "Unknown",
@@ -316,7 +350,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.FinishLine]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Finish-line rotation", "Source/Items/Items.c", 139, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -329,7 +363,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: ".rot = (float)(itemPtr->parm[0]) / 8.0f * PI2,",
         fileName: "Source/Items/Triggers.c",
-        lineNumber: 1454,
+        lineNumber: 1456,
       },
     },
     p1: "Unknown",
@@ -345,15 +379,15 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.FlagPole]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Flag-pole rotation", "Source/Items/Items.c", 1452, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Waterfall]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Waterfall rotation (0-15)", "Source/Terrain/Liquids.c", 238, "rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/16.0f));"),
+    p1: sourceInteger("Waterfall scale increment", "Source/Terrain/Liquids.c", 239, "scale = 2.0f + ((float)itemPtr->parm[1] * .3f);"),
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -380,7 +414,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.EasterHead]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Easter-head rotation", "Source/Items/Items.c", 425, ".rot = (float)itemPtr->parm[0] / 8.0f * PI2,"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -394,7 +428,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.SnoMan]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Snowman rotation", "Source/Items/Triggers.c", 926, ".rot = (float)(itemPtr->parm[0]) / 8.0f * PI2,"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -422,10 +456,10 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.Pillar]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Pillar model variant", "Source/Items/Items.c", 547, "short type = itemPtr->parm[0];"),
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: sourceFlag("Disable solid collision", "Source/Items/Items.c", 546, "Boolean notSolid = itemPtr->parm[3] & 1;"),
   },
   [ItemType.Pylon]: {
     flags: "Unknown",
@@ -436,8 +470,8 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.Boat]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Water-height table index", "Source/Items/Items.c", 639, "def.coord.y = gWaterHeights[gTrackNum][itemPtr->parm[0]];"),
+    p1: sourceInteger("Boat rotation", "Source/Items/Items.c", 631, ".rot = PI2 * ((float)itemPtr->parm[1] * (1.0f/8.0f)),"),
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -457,7 +491,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: ".type = types[gTrackNum][itemPtr->parm[0]],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 715,
+        lineNumber: 719,
       },
     },
     p1: {
@@ -466,7 +500,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: ".rot = itemPtr->parm[1] * (PI/4),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 722,
+        lineNumber: 725,
       },
     },
     p2: "Unknown",
@@ -474,22 +508,22 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.Sphinx]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Sphinx rotation in quarter turns", "Source/Items/Items.c", 765, ".rot = itemPtr->parm[0] * (PI/2),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.TeamTorch]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Torch team", "Source/Items/Triggers.c", 1184, "newObj->TorchTeam = itemPtr->parm[0];"),
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.TeamBase]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Team-base color/team", "Source/Items/Triggers.c", 1341, ".type = GLOBAL_ObjType_TeamBaseRed + itemPtr->parm[0],"),
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -515,7 +549,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: ".type = GLOBAL_ObjType_GreyRock + itemPtr->parm[0],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 976,
+        lineNumber: 977,
       },
     },
     p1: "Unknown",
@@ -524,28 +558,28 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.BrontoNeck]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Brontosaurus-neck rotation", "Source/Items/Items.c", 1020, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.RockOverhang]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Rock-overhang rotation", "Source/Items/Items.c", 1062, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
+    p1: sourceInteger("Rock-overhang model variant", "Source/Items/Items.c", 1069, "def.type = DESERT_ObjType_RockOverhang + itemPtr->parm[1];"),
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Vine]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Vine rotation", "Source/Items/Items.c", 396, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.AztecHead]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Aztec-head rotation", "Source/Items/Items.c", 1143, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -559,21 +593,21 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.CastleTower]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Castle-tower model variant", "Source/Items/Items.c", 1174, ".type = EUROPE_ObjType_CastleTower + itemPtr->parm[0],"),
+    p1: "Unused",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: sourceFlag("Enable solid collision", "Source/Items/Items.c", 1169, "Boolean isSolid = itemPtr->parm[3] & 1;"),
   },
   [ItemType.Catapult]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Catapult rotation", "Source/Items/Traps.c", 613, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Gong]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Gong rotation in quarter turns", "Source/Items/Triggers.c", 1675, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/4.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -584,9 +618,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "House type (varies by track: hut, cabin, dome, etc.)",
       codeSample: {
-        code: ".type 		= info[gTrackNum].type[type],",
+        code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 1295,
+        lineNumber: 1290,
       },
     },
     p1: {
@@ -595,7 +629,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       codeSample: {
         code: ".rot = PI2 * ((float)itemPtr->parm[1] * (1.0f/8.0f)),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 1295,
+        lineNumber: 1298,
       },
     },
     p2: "Unknown",
@@ -608,7 +642,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
           codeSample: {
             code: "Boolean notSolid = itemPtr->parm[3] & 1;",
             fileName: "Source/Items/Items.c",
-            lineNumber: 1286,
+              lineNumber: 1289,
           },
         },
       ],
@@ -651,8 +685,8 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.StoneHenge]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Stonehenge model variant", "Source/Items/Items.c", 1484, "short type = itemPtr->parm[0];"),
+    p1: sourceInteger("Stonehenge rotation (0-63)", "Source/Items/Items.c", 1494, ".rot = PI2 * ((float)itemPtr->parm[1] * (1.0f/64.0f)),"),
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -672,14 +706,14 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.Baracade]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
+    p0: sourceInteger("Barricade model variant", "Source/Items/Items.c", 941, ".type = SCANDINAVIA_ObjType_Baracade1 + itemPtr->parm[0],"),
+    p1: sourceInteger("Barricade rotation", "Source/Items/Items.c", 946, ".rot = PI2 * ((float)itemPtr->parm[1] * (1.0f/4.0f)),"),
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.VikingFlag]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Viking-flag rotation", "Source/Items/Items.c", 879, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -693,7 +727,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.Cannon]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Cannon rotation", "Source/Items/Traps.c", 1074, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -721,7 +755,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.WeaponsRack]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Weapons-rack rotation in quarter turns", "Source/Items/Items.c", 912, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/4.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -735,7 +769,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.SeaMine]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Sea-mine height offset", "Source/Items/Triggers.c", 1849, ".coord.y = GetTerrainY(x,z) + 300.0f + (float)itemPtr->parm[0] * 15.0f,"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -749,14 +783,14 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   },
   [ItemType.Dragon]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Dragon rotation", "Source/Items/Traps.c", 1848, ".rot = PI2 * ((float)itemPtr->parm[0] * (1.0f/8.0f)),"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.TarPatch]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: sourceInteger("Tar-patch scale increment", "Source/Terrain/Liquids.c", 342, ".scale = 1.0 + (float)(itemPtr->parm[0]) * .5f"),
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",

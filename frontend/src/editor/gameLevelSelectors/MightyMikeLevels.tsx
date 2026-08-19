@@ -12,7 +12,6 @@ export function MightyMikeLevels({
 }) {
   return (
     <div className="flex flex-col gap-1 min-w-40">
-      <p className="text-2xl">Mighty Mike Levels</p>
       <div className="flex flex-col gap-1">
         {OpenFileButtons({
           levels: MIGHTYMIKE_LEVELS,

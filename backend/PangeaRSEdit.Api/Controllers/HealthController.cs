@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace PangeaRSEdit.Api.Controllers;
 
 [ApiController]
-[Route("healthz")]
+[Route("livez")]
 public sealed class HealthController : ControllerBase
 {
     [HttpGet]

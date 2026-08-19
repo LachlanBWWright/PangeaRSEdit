@@ -44,6 +44,7 @@ import {
   updateSelectedMightyMikeItemPosition,
   updateSelectedMightyMikeItemType,
 } from "@/editor/subviews/items/mightyMikeItemMenuState";
+import { MapItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -51,6 +52,7 @@ export const ShowMightyMikeItemImages = atom(true);
 export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   itemData,
   setItemData,
+  headerData: _headerData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -102,7 +104,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   if (itemData.Itms === undefined) return null;
 
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex min-h-full flex-col gap-2">
       {/* Global Toggle for Item Images */}
       <Button
         size="sm"
@@ -163,7 +165,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 flex-1 min-h-0">
+      <div className="flex flex-col gap-2">
         {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select
@@ -181,7 +183,10 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             >
               <SelectTrigger>
                 <SelectValue>
-                  {getItemName(globals, selectedItemData.type)}
+                  <MightyMikeItemSelectLabel
+                    itemType={selectedItemData.type}
+                    scene={currentScene}
+                  />
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -191,17 +196,21 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                     className="text-white"
                     value={key.toString()}
                   >
-                    {getItemName(globals, key)}
+                    <MightyMikeItemSelectLabel
+                      itemType={key}
+                      scene={currentScene}
+                    />
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
+            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-baseline">
               {/* X/Z position (editable for precision placement; drag in canvas for quick placement) */}
               <label className="text-sm font-medium">X</label>
               <Input
                 type="number"
+                className="h-7 text-xs"
                 value={selectedItemData.x.toString()}
                 onChange={(e) => {
                   const v = parseInt(e.target.value);
@@ -214,6 +223,24 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                         v,
                       );
                     });
+
+                    <MapItemScriptSection
+                      selectionLabel={getItemName(globals, selectedItemData.type)}
+                      signature={{
+                        itemType: selectedItemData.type,
+                        position: {
+                          x: selectedItemData.x,
+                          y: selectedItemData.z,
+                        },
+                        params: [
+                          selectedItemData.p0,
+                          selectedItemData.p1,
+                          selectedItemData.p2,
+                          selectedItemData.p3,
+                        ],
+                        sceneName: currentScene,
+                      }}
+                    />
                   }
                 }}
               />
@@ -221,6 +248,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               <label className="text-sm font-medium">Z</label>
               <Input
                 type="number"
+                className="h-7 text-xs"
                 value={selectedItemData.z.toString()}
                 onChange={(e) => {
                   const v = parseInt(e.target.value);
@@ -278,6 +306,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   <Input
                     key={`input-${i}`}
                     type="number"
+                    className="h-7 text-xs"
                     value={value.toString()}
                     onChange={(e) => setValue(parseU8(e.target.value))}
                   />,
@@ -286,6 +315,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             </div>
 
             <Button
+              size="sm"
               variant="destructive"
               disabled={selectedItem === undefined}
               onClick={() => {
@@ -308,6 +338,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
 function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
+  const currentScene = useAtomValue(CurrentScene);
 
   const itemValues = useMemo(() => {
     return getMightyMikeItemValues(globals);
@@ -324,7 +355,12 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
           }}
         >
           <SelectTrigger>
-            <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
+            <SelectValue>
+              <MightyMikeItemSelectLabel
+                itemType={clickToAddItem}
+                scene={currentScene}
+              />
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {itemValues.map((key) => (
@@ -333,7 +369,10 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
                 className="text-white"
                 value={key.toString()}
               >
-                {getItemName(globals, key)}
+                <MightyMikeItemSelectLabel
+                  itemType={key}
+                  scene={currentScene}
+                />
               </SelectItem>
             ))}
           </SelectContent>
@@ -363,3 +402,50 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     />
   );
 }
+
+const MightyMikeItemSelectLabel = memo(function MightyMikeItemSelectLabel({
+  itemType,
+  scene,
+}: {
+  itemType: number;
+  scene: string | null | undefined;
+}) {
+  const globals = useAtomValue(Globals);
+  const [previewImage, setPreviewImage] = useState<ItemFrameImage | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPreviewImage = async () => {
+      const loadResult = await ResultAsync.fromPromise(
+        loadItemImage(itemType, scene ?? undefined),
+        mapErr,
+      );
+      if (cancelled || loadResult.isErr()) {
+        return;
+      }
+
+      const result = loadResult.value;
+      if (result.isOk()) {
+        setPreviewImage(result.value);
+        return;
+      }
+
+      setPreviewImage(null);
+    };
+
+    void loadPreviewImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [itemType, scene]);
+
+  return (
+    <div className="flex items-center gap-2">
+      {previewImage ? (
+        <TileCanvas image={previewImage.canvas} size={24} />
+      ) : null}
+      <span>{getItemName(globals, itemType)}</span>
+    </div>
+  );
+});

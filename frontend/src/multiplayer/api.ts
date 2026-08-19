@@ -1,8 +1,10 @@
 import { err, ok, type Result } from "neverthrow";
-import { buildApiPath } from "@/api/apiBase";
+import { buildApiUrl } from "@/api/apiBase";
+import { z } from "zod";
 import {
   MultiplayerLobbyDetailsSchema,
   MultiplayerLobbyListSchema,
+  MultiplayerLobbyPreviewSchema,
 } from "./schemas";
 import type {
   CreateLobbyInput,
@@ -10,12 +12,63 @@ import type {
   ListLobbiesInput,
   MultiplayerApiError,
   MultiplayerLobbyDetails,
+  MultiplayerMatchResult,
+  MultiplayerLobbyPreview,
   MultiplayerLobbySummary,
+  RematchLobbyInput,
   SetReadyInput,
   StartLobbyInput,
+  UpdateLobbySelectionInput,
 } from "./types";
 
-const BASE_PATH = buildApiPath("/api/multiplayer/lobbies");
+const BASE_PATH = buildApiUrl("/api/multiplayer/lobbies");
+const PARTICIPANT_HEADER_NAME = "X-Participant-Id";
+const PARTICIPANT_TOKEN_HEADER_NAME = "X-Participant-Token";
+
+let currentParticipantId: string | null = null;
+let currentParticipantToken: string | null = null;
+
+function withParticipantHeader(headers: RequestInit["headers"]): Headers {
+  const resolvedHeaders = new Headers(headers);
+  if (currentParticipantId !== null) {
+    resolvedHeaders.set(PARTICIPANT_HEADER_NAME, currentParticipantId);
+  }
+  if (currentParticipantToken !== null) {
+    resolvedHeaders.set(PARTICIPANT_TOKEN_HEADER_NAME, currentParticipantToken);
+  }
+  return resolvedHeaders;
+}
+
+function updateParticipantIdFromResponse(response: Response): void {
+  const parsedParticipantId = z
+    .string()
+    .min(1)
+    .safeParse(response.headers.get(PARTICIPANT_HEADER_NAME));
+  if (parsedParticipantId.success) {
+    currentParticipantId = parsedParticipantId.data;
+  }
+
+  const parsedParticipantToken = z
+    .string()
+    .min(1)
+    .safeParse(response.headers.get(PARTICIPANT_TOKEN_HEADER_NAME));
+  if (parsedParticipantToken.success) {
+    currentParticipantToken = parsedParticipantToken.data;
+  }
+}
+
+export function getParticipantToken(): string {
+  return currentParticipantToken ?? "";
+}
+
+function updateParticipantIdFromPayload(payload: unknown): void {
+  const parsedPayload = z
+    .object({ participantId: z.string().min(1) })
+    .safeParse(payload);
+  if (parsedPayload.success) {
+    currentParticipantId = parsedPayload.data.participantId;
+  }
+}
 
 function parseError(status: number, payload: unknown): MultiplayerApiError {
   if (typeof payload === "object" && payload !== null) {
@@ -46,9 +99,15 @@ async function fetchJson(
     MultiplayerApiError
   >
 > {
-  return fetch(input, init)
+  return fetch(input, {
+    ...init,
+    credentials: "include",
+    headers: withParticipantHeader(init.headers),
+  })
     .then(async (response) => {
+      updateParticipantIdFromResponse(response);
       const data = (await response.json().catch(() => null)) as unknown;
+      updateParticipantIdFromPayload(data);
       if (!response.ok) {
         return err(parseError(response.status, data));
       }
@@ -80,9 +139,12 @@ export async function createLobby(
 
   const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return err({
       code: "schema.invalid",
-      message: "Invalid lobby response format.",
+      message: issue
+        ? `Invalid lobby response format: ${issue.path.join(".") || "root"} ${issue.message}`
+        : "Invalid lobby response format.",
       status: response.value.status,
     });
   }
@@ -93,8 +155,11 @@ export async function createLobby(
 export async function listLobbies(
   input: ListLobbiesInput,
 ): Promise<Result<readonly MultiplayerLobbySummary[], MultiplayerApiError>> {
+  const query = input.gameId
+    ? `?gameId=${encodeURIComponent(input.gameId)}`
+    : "";
   const response = await fetchJson(
-    `${BASE_PATH}?gameId=${encodeURIComponent(input.gameId)}`,
+    `${BASE_PATH}${query}`,
     {
       method: "GET",
       headers: {
@@ -108,9 +173,12 @@ export async function listLobbies(
 
   const parsed = MultiplayerLobbyListSchema.safeParse(response.value.data);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return err({
       code: "schema.invalid",
-      message: "Invalid lobby list response format.",
+      message: issue
+        ? `Invalid lobby list response format: ${issue.path.join(".") || "root"} ${issue.message}`
+        : "Invalid lobby list response format.",
       status: response.value.status,
     });
   }
@@ -136,9 +204,43 @@ export async function getLobby(
 
   const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return err({
       code: "schema.invalid",
-      message: "Invalid lobby response format.",
+      message: issue
+        ? `Invalid lobby response format: ${issue.path.join(".") || "root"} ${issue.message}`
+        : "Invalid lobby response format.",
+      status: response.value.status,
+    });
+  }
+
+  return ok(parsed.data);
+}
+
+export async function getLobbyPreview(
+  lobbyId: string,
+): Promise<Result<MultiplayerLobbyPreview, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(lobbyId)}/preview`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+  if (response.isErr()) {
+    return err(response.error);
+  }
+
+  const parsed = MultiplayerLobbyPreviewSchema.safeParse(response.value.data);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return err({
+      code: "schema.invalid",
+      message: issue
+        ? `Invalid lobby preview response format: ${issue.path.join(".") || "root"} ${issue.message}`
+        : "Invalid lobby preview response format.",
       status: response.value.status,
     });
   }
@@ -165,9 +267,12 @@ export async function joinLobby(
 
   const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return err({
       code: "schema.invalid",
-      message: "Invalid lobby response format.",
+      message: issue
+        ? `Invalid lobby response format: ${issue.path.join(".") || "root"} ${issue.message}`
+        : "Invalid lobby response format.",
       status: response.value.status,
     });
   }
@@ -194,9 +299,12 @@ export async function setLobbyReady(
 
   const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return err({
       code: "schema.invalid",
-      message: "Invalid lobby response format.",
+      message: issue
+        ? `Invalid lobby response format: ${issue.path.join(".") || "root"} ${issue.message}`
+        : "Invalid lobby response format.",
       status: response.value.status,
     });
   }
@@ -214,6 +322,107 @@ export async function startLobby(
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({ force: input.force }),
+    },
+  );
+  if (response.isErr()) {
+    return err(response.error);
+  }
+
+  const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return err({
+      code: "schema.invalid",
+      message: issue
+        ? `Invalid lobby response format: ${issue.path.join(".") || "root"} ${issue.message}`
+        : "Invalid lobby response format.",
+      status: response.value.status,
+    });
+  }
+
+  return ok(parsed.data);
+}
+
+export async function rematchLobby(
+  input: RematchLobbyInput,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/rematch`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        gameId: input.gameId,
+        mode: input.mode,
+        trackOrLevel: input.trackOrLevel,
+        tagDurationMinutes: input.tagDurationMinutes,
+        force: input.force,
+      }),
+    },
+  );
+  if (response.isErr()) {
+    return err(response.error);
+  }
+
+  const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
+  if (!parsed.success) {
+    return err({
+      code: "schema.invalid",
+      message: "Invalid lobby response format.",
+      status: response.value.status,
+    });
+  }
+
+  return ok(parsed.data);
+}
+
+export async function updateLobbySelection(
+  input: UpdateLobbySelectionInput,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(input.lobbyId)}/selection`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: input.mode,
+        trackOrLevel: input.trackOrLevel,
+        tagDurationMinutes: input.tagDurationMinutes,
+      }),
+    },
+  );
+  if (response.isErr()) {
+    return err(response.error);
+  }
+
+  const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
+  if (!parsed.success) {
+    return err({
+      code: "schema.invalid",
+      message: "Invalid lobby response format.",
+      status: response.value.status,
+    });
+  }
+
+  return ok(parsed.data);
+}
+
+export async function endLobbyMatch(
+  lobbyId: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(lobbyId)}/end-match`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ detail: "host-ended-match" }),
     },
   );
   if (response.isErr()) {
@@ -249,4 +458,128 @@ export async function leaveLobby(
   }
 
   return ok(true);
+}
+
+async function postLobbyReport(
+  lobbyId: string,
+  reportPath: string,
+  detail?: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(lobbyId)}/report/${reportPath}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ detail: detail ?? "" }),
+    },
+  );
+  if (response.isErr()) {
+    return err(response.error);
+  }
+
+  const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
+  if (!parsed.success) {
+    return err({
+      code: "schema.invalid",
+      message: "Invalid lobby response format.",
+      status: response.value.status,
+    });
+  }
+
+  return ok(parsed.data);
+}
+
+export async function heartbeatLobby(
+  lobbyId: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(lobbyId)}/heartbeat`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+  if (response.isErr()) {
+    return err(response.error);
+  }
+
+  const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
+  if (!parsed.success) {
+    return err({
+      code: "schema.invalid",
+      message: "Invalid lobby response format.",
+      status: response.value.status,
+    });
+  }
+
+  return ok(parsed.data);
+}
+
+export function reportMatchEnded(
+  lobbyId: string,
+  detail?: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  return postLobbyReport(lobbyId, "match-ended", detail);
+}
+
+export async function reportMatchResult(
+  lobbyId: string,
+  result: MultiplayerMatchResult,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  const response = await fetchJson(
+    `${BASE_PATH}/${encodeURIComponent(lobbyId)}/report/match-result`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(result),
+    },
+  );
+  if (response.isErr()) {
+    return err(response.error);
+  }
+
+  const parsed = MultiplayerLobbyDetailsSchema.safeParse(response.value.data);
+  if (!parsed.success) {
+    return err({
+      code: "schema.invalid",
+      message: "Invalid lobby response format.",
+      status: response.value.status,
+    });
+  }
+
+  return ok(parsed.data);
+}
+
+export function reportParticipantDisconnected(
+  lobbyId: string,
+  detail?: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  return postLobbyReport(lobbyId, "participant-disconnected", detail);
+}
+
+export function reportHostDisconnected(
+  lobbyId: string,
+  detail?: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  return postLobbyReport(lobbyId, "host-disconnected", detail);
+}
+
+export function reportDesync(
+  lobbyId: string,
+  detail?: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  return postLobbyReport(lobbyId, "desync", detail);
+}
+
+export function reportTimeout(
+  lobbyId: string,
+  detail?: string,
+): Promise<Result<MultiplayerLobbyDetails, MultiplayerApiError>> {
+  return postLobbyReport(lobbyId, "timeout", detail);
 }

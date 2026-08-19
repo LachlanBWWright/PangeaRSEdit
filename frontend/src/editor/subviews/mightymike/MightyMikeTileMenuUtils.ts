@@ -2,14 +2,17 @@ import { toast } from "sonner";
 import type { ChangeEvent } from "react";
 import type { Updater } from "use-immer";
 import type { TerrainData } from "@/python/structSpecs/LevelTypes";
+import { syncMightyMikeTileValuesFromLayer } from "@/data/game/mightyMikeTileValueUtils";
 import {
   plainObjectSchema,
   unknownArraySchema,
   booleanSchema,
   numberSchema,
 } from "@/schemas/common";
+import { removeMightyMikePaletteTileIndices } from "./mightyMikePaletteTileState";
 
 export const TILE_SIZE = 32;
+export type TileImageTransform = "rotate" | "flipX" | "flipY";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return plainObjectSchema.safeParse(value).success;
@@ -206,7 +209,7 @@ export async function saveEditedImage(
 }
 
 export function isPaletteTileInUse(
-  layr: number[],
+  _layr: number[],
   selectedPaletteTile: number,
   xlatTable: unknown[] | undefined,
 ): boolean {
@@ -221,8 +224,7 @@ export function isPaletteTileInUse(
     matchingLogicalIndices.add(selectedPaletteTile);
   }
 
-  if (matchingLogicalIndices.size === 0) return false;
-  return layr.some((tileIndex) => matchingLogicalIndices.has(tileIndex));
+  return matchingLogicalIndices.size > 0;
 }
 
 export function removePaletteTile(
@@ -237,31 +239,62 @@ export function removePaletteTile(
     const xlat = data.Xlat?.[1000]?.obj;
     if (!xlat) return;
 
-    const keptEntries = xlat
-      .map((entry, logicalIndex) => ({ entry, logicalIndex }))
-      .filter(({ entry }) => getXlatEntryIndex(entry) !== selectedPaletteTile);
-
-    const logicalIndexMap = new Map<number, number>();
-    keptEntries.forEach(({ logicalIndex }, nextLogicalIndex) => {
-      logicalIndexMap.set(logicalIndex, nextLogicalIndex);
-    });
-
     const xlatEntry = data.Xlat?.[1000];
     if (!xlatEntry) return;
 
-    xlatEntry.obj = keptEntries.map(({ entry }) => {
+    xlatEntry.obj = xlat.map((entry) => {
       const idx = getXlatEntryIndex(entry);
       const newIdx =
         idx !== null && idx > selectedPaletteTile ? idx - 1 : getNumber(idx);
       return { idx: newIdx };
     });
 
-    const layrEntry = data.Layr?.[1000];
-    if (!layrEntry) return;
-    layrEntry.obj = layrEntry.obj.map(
-      (logicalIndex) => logicalIndexMap.get(logicalIndex) ?? logicalIndex,
-    );
+    if (isRecord(data.tileset) && isArray(data.tileset.xlateTable)) {
+      data.tileset.xlateTable = data.tileset.xlateTable.map((entry) => {
+        const idx = getNumber(entry);
+        return idx > selectedPaletteTile ? idx - 1 : idx;
+      });
+    }
+    removeMightyMikePaletteTileIndices(data, selectedPaletteTile);
+    syncMightyMikeTileValuesFromLayer(data);
   });
+}
+
+export function createTransformedTileCanvas(
+  sourceCanvas: HTMLCanvasElement,
+  transform: TileImageTransform,
+): HTMLCanvasElement | null {
+  const canvas = document.createElement("canvas");
+  canvas.width = TILE_SIZE;
+  canvas.height = TILE_SIZE;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return null;
+  }
+
+  context.save();
+  context.translate(TILE_SIZE / 2, TILE_SIZE / 2);
+  if (transform === "rotate") {
+    context.rotate(Math.PI / 2);
+  } else if (transform === "flipX") {
+    context.scale(-1, 1);
+  } else {
+    context.scale(1, -1);
+  }
+  context.drawImage(sourceCanvas, -TILE_SIZE / 2, -TILE_SIZE / 2);
+  context.restore();
+  return canvas;
+}
+
+export function findMatchingTileCanvasIndex(
+  mapImages: HTMLCanvasElement[],
+  candidate: HTMLCanvasElement,
+): number | null {
+  const candidateSignature = candidate.toDataURL("image/png");
+  const matchingIndex = mapImages.findIndex(
+    (image) => image.toDataURL("image/png") === candidateSignature,
+  );
+  return matchingIndex >= 0 ? matchingIndex : null;
 }
 
 export function downloadCanvasAsPng(

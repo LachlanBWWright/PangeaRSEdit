@@ -1,6 +1,13 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
 
+const broadInclude = [
+  "src/**/*.test.ts",
+  "src/**/*.test.tsx",
+  "tests/**/*.test.ts",
+  "tests/**/*.test.tsx",
+];
+
 export default defineConfig({
   root: import.meta.dirname,
   resolve: {
@@ -11,40 +18,20 @@ export default defineConfig({
   test: {
     dir: import.meta.dirname,
     testTimeout: 120000,
-    include: [
-      "tests/roundtrip/allGamesRoundtripNew.test.ts",
-      "tests/roundtrip/nanosaurBinaryRoundtrip.test.ts",
-      "tests/roundtrip/bugdomSpecsRoundtrip.test.ts",
-      "tests/roundtrip/bugdomNanosaurParsing.test.ts",
-      "tests/mapRoundtrip/bugdom.test.ts",
-      "tests/mapRoundtrip/nanosaur.test.ts",
-      "tests/mapRoundtrip/mightyMike.test.ts",
-      "tests/modelRoundtrip/**/*.test.ts",
-      "tests/tunnel/**/*.test.ts",
-      "tests/levelEdit/**/*.test.ts",
-      "tests/levelTemplates/**/*.test.ts",
-      "tests/tiles/**/*.test.ts",
-      "tests/items/**/*.test.ts",
-      "tests/validation/**/*.test.ts",
-      "tests/splines/**/*.test.ts",
-      "tests/utils/**/*.test.ts",
-      "src/types/*.test.ts",
-      "src/data/utils/*.test.ts",
-      "src/data/selectors/*.test.ts",
-      "src/editor/utils/*.test.ts",
-    ],
+    include: broadInclude,
     exclude: [
       "tests/e2e/**",
-      "src/modelParsers/**/parseMightyMikeRoundtrip.test.ts",
-      "src/modelParsers/**/skeletonValueValidation.test.ts",
-      "src/utils/gltfAnalyzer.test.ts",
-      "src/utils/lzss.test.ts",
-      "src/validation/levelDataSchemas.test.ts",
-      "tests/mapRoundtrip/levels/**",
+      "tests/**/levels/**",
+      "src/modelParsers/parseMightyMikeRoundtrip.test.ts",
+      "src/modelParsers/skeletonValueValidation.test.ts",
       "src/modelParsers/bg3dSkeleton.test.ts",
       "src/modelParsers/bg3dSkeletonRoundTrip.test.ts",
       "src/modelParsers/mightyMikePaletteCompare.test.ts",
       "src/modelParsers/multiRoundtripComparison.test.ts",
+      "src/validation/levelDataSchemas.test.ts",
+      "**/node_modules/**",
+      "**/dist/**",
+      "coverage/**",
     ],
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
@@ -67,10 +54,23 @@ export default defineConfig({
 
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "json"],
+      reporter: ["text", "html", "json", "json-summary", "lcov"],
       enabled: true,
+      clean: true,
       include: ["src/**/*.{js,ts,jsx,tsx}"],
-      exclude: ["**/node_modules/**", "**/dist/**", "tests/**"],
+      exclude: [
+        "**/*.test.*",
+        "**/*.stories.*",
+        "**/*.generated.*",
+        "**/*.d.ts",
+        "**/coverage/**",
+        "**/dist/**",
+        "**/node_modules/**",
+        "**/fixtures/**",
+        "**/__fixtures__/**",
+        "editor/subviews/mightymike/mightyMikeTrackSegments.ts",
+        "tests/**",
+      ],
     },
   },
 });

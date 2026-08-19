@@ -13,14 +13,21 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
+import {
+  MapResizeEdgeControls,
+  type MapResizeDirection,
+} from "./MapResizeEdgeControls";
 import Konva from "konva";
 import { Updater } from "use-immer";
 import { SelectedFence } from "@/data/fences/fenceAtoms";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
+import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
+import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
+import { PendingCreationOverlay } from "../subviews/shared/PendingCreationOverlay";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
 import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { Tiles } from "../subviews/Tiles";
@@ -36,10 +43,10 @@ import { Globals, Game } from "@/data/globals/globals";
 import { TileBrushPreviewLayer } from "../subviews/tileBrushes/TileBrushPreviewLayer";
 import { TileBrushCaptureLayer } from "../subviews/tileBrushes/TileBrushCaptureLayer";
 import {
-  tileBrushModeAtom,
+  getTileBrushModeAtom,
   tileBrushPreviewAtom,
-  selectedTileBrushIdAtom,
-  tileBrushAnchorAtom,
+  bugdomSelectedTileBrushIdAtom,
+  getTileBrushAnchorAtom,
   tileBrushesAtom,
   tileBrushActiveLayerAtom,
 } from "@/data/tileBrushes/tileBrushAtoms";
@@ -48,6 +55,11 @@ import {
   createTileBrushFromRegion,
 } from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
+import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
+import { BugdomVertexColorOverlay } from "../subviews/bugdom/BugdomVertexColorOverlay";
+import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
+import { computeWheelZoomStage } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -69,6 +81,7 @@ interface Bugdom1KonvaViewProps {
   view: View;
   stage: StageData;
   setStage: Updater<StageData>;
+  onResize: (direction: MapResizeDirection, amount: number) => Promise<void>;
 }
 
 export function Bugdom1KonvaView({
@@ -85,17 +98,23 @@ export function Bugdom1KonvaView({
   view,
   stage,
   setStage,
+  onResize,
 }: Bugdom1KonvaViewProps) {
   const setSelectedFence = useSetAtom(SelectedFence);
   const setSelectedItem = useSetAtom(SelectedItem);
   const setSelectedSpline = useSetAtom(SelectedSpline);
+  const pendingCreation = useAtomValue(PendingCreation);
+  const setPendingCreation = useSetAtom(PendingCreation);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const customObjectPlacement = useCustomObjectPlacement();
   const globals = useAtomValue(Globals);
-
-  const tileBrushMode = useAtomValue(tileBrushModeAtom);
+  const showRoof = useAtomValue(ShowRoofInTopology);
+  const tileBrushMode = useAtomValue(getTileBrushModeAtom("bugdom1"));
+  const setTileBrushMode = useSetAtom(getTileBrushModeAtom("bugdom1"));
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
-  const selectedBrushId = useAtomValue(selectedTileBrushIdAtom);
-  const tileBrushAnchor = useAtomValue(tileBrushAnchorAtom);
+  const selectedBrushId = useAtomValue(bugdomSelectedTileBrushIdAtom);
+  const setSelectedBrushId = useSetAtom(bugdomSelectedTileBrushIdAtom);
+  const tileBrushAnchor = useAtomValue(getTileBrushAnchorAtom("bugdom1"));
   const tileBrushes = useAtomValue(tileBrushesAtom);
   const activeLayer = useAtomValue(tileBrushActiveLayerAtom);
   const setTileBrushes = useSetAtom(tileBrushesAtom);
@@ -167,7 +186,7 @@ export function Bugdom1KonvaView({
       const game = globals.GAME_TYPE === Game.BUGDOM ? "bugdom1" : "nanosaur1";
       const result = createTileBrushFromRegion({
         id: crypto.randomUUID(),
-        name: `Brush ${new Date().toLocaleTimeString()}`,
+        name: `Stamp ${new Date().toLocaleTimeString()}`,
         game,
         terrainData,
         layer: activeLayer,
@@ -181,7 +200,9 @@ export function Bugdom1KonvaView({
       result.match(
         (brush) => {
           setTileBrushes((prev) => [...prev, brush]);
-          toast.success(`Captured brush "${brush.name}" (${width}×${height})`);
+          setSelectedBrushId(brush.id);
+          setTileBrushMode("stamp");
+          toast.success(`Captured stamp (${width}×${height})`);
         },
         (err) => toast.error(`Capture failed: ${err}`),
       );
@@ -193,6 +214,8 @@ export function Bugdom1KonvaView({
       mapWidth,
       mapHeight,
       setTileBrushes,
+      setSelectedBrushId,
+      setTileBrushMode,
     ],
   );
 
@@ -235,13 +258,36 @@ export function Bugdom1KonvaView({
         handleStampClick(e);
         return;
       }
-      if (clickToAddItem === undefined) return;
-      const stageRef = e.target.getStage();
 
+      if (pendingCreation) {
+        const stageRef = e.target.getStage();
+        const pos = stageRef?.getRelativePointerPosition();
+        if (!pos) return;
+        setPendingCreation({
+          ...pendingCreation,
+          points: [
+            ...pendingCreation.points,
+            { x: Math.round(pos.x), z: Math.round(pos.y) },
+          ],
+        });
+        return;
+      }
+
+      const stageRef = e.target.getStage();
       const pos = stageRef?.getRelativePointerPosition();
       if (!pos) return;
       const x = Math.round(pos.x);
       const z = Math.round(pos.y);
+
+      if (customObjectPlacement.objectId !== null) {
+        customObjectPlacement.placeAt(
+          x,
+          headerData.Hedr[1000].obj.minY ?? 0,
+          z,
+        );
+        return;
+      }
+      if (clickToAddItem === undefined) return;
 
       setItemDataNotNull((itemData) => {
         itemData.Itms[1000].obj.push({
@@ -256,7 +302,14 @@ export function Bugdom1KonvaView({
         });
       });
     },
-    [tileBrushMode, handleStampClick, clickToAddItem, setItemDataNotNull],
+    [
+      tileBrushMode,
+      handleStampClick,
+      pendingCreation,
+      clickToAddItem,
+      setPendingCreation,
+      setItemDataNotNull,
+    ],
   );
 
   const handleStageDblClick = useCallback(() => {
@@ -267,28 +320,8 @@ export function Bugdom1KonvaView({
 
   const handleStageWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
-      e.evt.preventDefault();
-
-      const scaleBy = 1.05;
-      const stage = e.target.getStage();
-      if (!stage) return;
-      const oldScale = stage.scaleX();
-      const pointerPosition = stage.getPointerPosition();
-      if (!pointerPosition) return;
-
-      const mousePointTo = {
-        x: pointerPosition.x / oldScale - stage.x() / oldScale,
-        y: pointerPosition.y / oldScale - stage.y() / oldScale,
-      };
-
-      const newScale =
-        e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-      setStage({
-        scale: newScale,
-        x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-        y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-      });
+      const nextStage = computeWheelZoomStage(e);
+      if (nextStage) setStage(nextStage);
     },
     [setStage],
   );
@@ -302,7 +335,10 @@ export function Bugdom1KonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={tileBrushMode !== "stamp" && tileBrushMode !== "capture"}
+        draggable={
+          tileBrushMode !== "stamp" &&
+          tileBrushMode !== "capture"
+        }
         onClick={handleStageClick}
         onDblClick={handleStageDblClick}
         onWheel={handleStageWheel}
@@ -354,6 +390,16 @@ export function Bugdom1KonvaView({
             headerData={headerData}
             terrainData={terrainData}
             mapImages={mapImages}
+          />
+        )}
+
+        {view === View.vertexColors && terrainData.Vcol?.[1000] && (
+          <BugdomVertexColorOverlay
+            headerData={headerData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            tileSize={tileSize}
+            layerKey={showRoof && terrainData.Vcol[1001] ? 1001 : 1000}
           />
         )}
 
@@ -429,11 +475,13 @@ export function Bugdom1KonvaView({
                 setSplineData={setSplineDataNotNull}
               />
             )}
+            <CustomScriptPlacements />
           </>
         )}
 
         {/* Tile brush preview (stamp mode) */}
         <TileBrushPreviewLayer
+          game="bugdom1"
           tileSize={tileSize}
           mapWidth={mapWidth}
           mapHeight={mapHeight}
@@ -447,6 +495,16 @@ export function Bugdom1KonvaView({
             captureEnd={captureEnd}
           />
         )}
+        <PendingCreationOverlay />
+        {/* Hover tag overlay — always rendered last so name tags appear above all layers */}
+        <HoverTagOverlayLayer />
+        <MapResizeEdgeControls
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+          tileSize={tileSize}
+          tilesPerUnit={globals.TILES_PER_SUPERTILE}
+          onResize={onResize}
+        />
       </Stage>
     </div>
   );

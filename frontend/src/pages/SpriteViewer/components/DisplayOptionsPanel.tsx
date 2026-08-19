@@ -1,5 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { EditorField, EditorPanel } from "./EditorPanel";
 
 export interface DisplayOptions {
   zoomLevel: number;
@@ -20,125 +21,107 @@ export function DisplayOptionsPanel({
   showSpriteOptions = false,
 }: DisplayOptionsPanelProps) {
   return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white text-sm">Display Options</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Zoom Controls */}
-        <div>
-          <label className="text-sm text-gray-400 block mb-2">
-            Zoom: {options.zoomLevel.toFixed(1)}x
+    <EditorPanel title="Display Options">
+      <EditorField label={`Zoom: ${options.zoomLevel.toFixed(1)}x`}>
+        <div className="flex gap-2 w-full">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-white flex-1"
+            onClick={() =>
+              onOptionsChange({
+                ...options,
+                zoomLevel: Math.max(0.5, options.zoomLevel - 0.5),
+              })
+            }
+          >
+            -
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-white flex-1"
+            onClick={() => onOptionsChange({ ...options, zoomLevel: 1 })}
+          >
+            1x
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-white flex-1"
+            onClick={() => onOptionsChange({ ...options, zoomLevel: 4 })}
+          >
+            4x
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-white flex-1"
+            onClick={() =>
+              onOptionsChange({
+                ...options,
+                zoomLevel: options.zoomLevel + 0.5,
+              })
+            }
+          >
+            +
+          </Button>
+        </div>
+      </EditorField>
+
+      {showSpriteOptions && (
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
+            <Switch
+              checked={options.showGrid}
+              onCheckedChange={(checked) =>
+                onOptionsChange({
+                  ...options,
+                  showGrid: checked === true,
+                })
+              }
+            />
+            <span className="text-white">Show Grid</span>
           </label>
-          <div className="flex gap-2 w-full">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-white flex-1"
-              onClick={() =>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
+            <Switch
+              checked={options.showBounds}
+              onCheckedChange={(checked) =>
                 onOptionsChange({
                   ...options,
-                  zoomLevel: Math.max(0.5, options.zoomLevel - 0.5),
+                  showBounds: checked === true,
                 })
               }
-            >
-              −
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-white flex-1"
-              onClick={() => onOptionsChange({ ...options, zoomLevel: 1 })}
-            >
-              1x
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-white flex-1"
-              onClick={() => onOptionsChange({ ...options, zoomLevel: 4 })}
-            >
-              4x
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-white flex-1"
-              onClick={() =>
-                onOptionsChange({
-                  ...options,
-                  zoomLevel: options.zoomLevel + 0.5,
-                })
-              }
-            >
-              +
-            </Button>
-          </div>
+            />
+            <span className="text-white">Show Bounds</span>
+          </label>
         </div>
+      )}
 
-        {/* Sprite-specific options */}
-        {showSpriteOptions && (
-          <>
-            <div>
-              <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
-                <input
-                  type="checkbox"
-                  checked={options.showGrid}
-                  onChange={(e) =>
-                    onOptionsChange({
-                      ...options,
-                      showGrid: e.target.checked,
-                    })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="text-white">Show Grid</span>
-              </label>
-            </div>
-
-            <div>
-              <label className="flex items-center gap-2 text-sm cursor-pointer text-white">
-                <input
-                  type="checkbox"
-                  checked={options.showBounds}
-                  onChange={(e) =>
-                    onOptionsChange({
-                      ...options,
-                      showBounds: e.target.checked,
-                    })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="text-white">Show Bounds</span>
-              </label>
-            </div>
-          </>
-        )}
-
-        {/* Background Color */}
-        <div>
-          <label className="text-sm text-gray-400 block mb-2">Background</label>
-          <div className="flex gap-2 w-full">
-            {["#1a1a2e", "#000000", "#ffffff", "#ff00ff"].map((color) => (
-              <button
-                key={color}
-                className="flex-1 h-8 rounded border-2"
-                style={{
+      <EditorField label="Background">
+        <div className="flex gap-2 w-full">
+          {["#1a1a2e", "#000000", "#ffffff", "#ff00ff"].map((color) => (
+            <Button
+              key={color}
+              variant="swatch"
+              size="sm"
+              aria-label={`Use ${color} background`}
+              aria-pressed={options.backgroundColor === color}
+              className="h-8 flex-1"
+              style={{
+                backgroundColor: color,
+              }}
+              onClick={() =>
+                onOptionsChange({
+                  ...options,
                   backgroundColor: color,
-                  borderColor:
-                    options.backgroundColor === color ? "#00ff00" : "transparent",
-                }}
-                onClick={() =>
-                  onOptionsChange({
-                    ...options,
-                    backgroundColor: color,
-                  })
-                }
-              />
-            ))}
-          </div>
+                })
+              }
+            />
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      </EditorField>
+    </EditorPanel>
   );
 }

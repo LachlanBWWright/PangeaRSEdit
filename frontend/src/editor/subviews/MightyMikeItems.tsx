@@ -2,10 +2,11 @@ import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { MightyMikeItem } from "./items/MightyMikeItem";
-import { memo, useState, useCallback } from "react";
+import { memo, useEffect } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { selectItems } from "../../data/selectors";
-import { HoverNameTag } from "./shared/nodeVisuals";
-import type { HoverTagInfo } from "./shared/nodeVisuals";
+import { ActiveHoverTag } from "@/data/globals/hoverTagAtom";
+import { SelectedItem } from "@/data/items/itemAtoms";
 
 export const MightyMikeItems = memo(
   ({
@@ -16,11 +17,13 @@ export const MightyMikeItems = memo(
     setItemData: Updater<ItemData>;
   }) => {
     const items = selectItems({ Itms: itemData.Itms });
-    const [hoveredTag, setHoveredTag] = useState<HoverTagInfo | null>(null);
+    const setActiveHoverTag = useSetAtom(ActiveHoverTag);
+    const selectedItem = useAtomValue(SelectedItem);
 
-    const handleHoverChange = useCallback((tag: HoverTagInfo | null) => {
-      setHoveredTag(tag);
-    }, []);
+    // Clear the hover tag when this layer unmounts (e.g. view switch).
+    useEffect(() => {
+      return () => setActiveHoverTag(null);
+    }, [setActiveHoverTag]);
 
     if (items.length === 0) return <></>;
 
@@ -33,19 +36,10 @@ export const MightyMikeItems = memo(
             itemData={itemData}
             setItemData={setItemData}
             itemIdx={itemIdx}
-            onHoverChange={handleHoverChange}
+            selected={selectedItem === itemIdx}
+            onHoverChange={setActiveHoverTag}
           />
         ))}
-        {/* Render hover tag last so it always appears above all items */}
-        {hoveredTag && (
-          <HoverNameTag
-            x={hoveredTag.x}
-            y={hoveredTag.y}
-            text={hoveredTag.text}
-            fill={hoveredTag.fill}
-            textColor={hoveredTag.textColor}
-          />
-        )}
       </Layer>
     );
   },

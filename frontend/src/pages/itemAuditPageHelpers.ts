@@ -92,6 +92,18 @@ interface PreviewMapping {
   scaleY?: number;
   rotationY?: number;
   positionOffset?: [number, number, number];
+  modelParts?: readonly {
+    partId: string;
+    modelFile: string;
+    modelPath: "models" | "skeletons";
+    modelIndex: number;
+    groupSize?: number;
+    scale?: number;
+    scaleXZ?: number;
+    scaleY?: number;
+    rotationY?: number;
+    positionOffset?: [number, number, number];
+  }[];
 }
 
 interface PreviewConfig {
@@ -117,90 +129,117 @@ export async function loadPreviewScene(
   if (
     !currentEntry ||
     !currentConfig ||
-    !previewMapping?.modelFile ||
-    !previewMapping?.modelPath
+    !previewMapping
   ) {
     return finish(null, null);
   }
 
-  const modelUrl = `${currentConfig.basePath}/${previewMapping.modelPath}/${previewMapping.modelFile}`;
-  const responseResult = await ResultAsync.fromPromise(fetch(modelUrl), mapErr);
-  if (responseResult.isErr()) {
-    return finish(null, responseResult.error);
-  }
+  const previewParts =
+    previewMapping.modelParts && previewMapping.modelParts.length > 0
+      ? previewMapping.modelParts
+      : [
+          {
+            partId: "primary",
+            modelFile: previewMapping.modelFile ?? "",
+            modelPath:
+              previewMapping.modelPath === "skeletons" ? "skeletons" : "models",
+            modelIndex: previewMapping.modelIndex ?? currentEntry.modelIndex ?? 0,
+            groupSize: previewMapping.groupSize ?? currentEntry.modelGroupSize,
+            scale: previewMapping.scale,
+            scaleXZ: previewMapping.scaleXZ,
+            scaleY: previewMapping.scaleY,
+            rotationY: previewMapping.rotationY,
+            positionOffset: previewMapping.positionOffset,
+          },
+        ];
 
-  const response = responseResult.value;
-  if (!response.ok) {
-    return finish(null, `Failed to load model (${response.status})`);
-  }
+  const previewRoot = new Group();
 
-  const arrayBufferResult = await ResultAsync.fromPromise(
-    response.arrayBuffer(),
-    mapErr,
-  );
-  if (arrayBufferResult.isErr()) {
-    return finish(null, arrayBufferResult.error);
-  }
-  const arrayBuffer = arrayBufferResult.value;
+  for (const previewPart of previewParts) {
+    if (!previewPart.modelFile) {
+      continue;
+    }
 
-  const workerResult = await ResultAsync.fromPromise(
-    new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
-      worker.onmessage = (event) => resolve(event.data);
-      worker.onerror = (event) =>
-        reject(new Error(event.message ?? "Model conversion worker failed"));
-      worker.postMessage({ type: "bg3d-to-glb", buffer: arrayBuffer }, [
-        arrayBuffer,
-      ]);
-    }),
-    mapErr,
-  );
-  if (workerResult.isErr()) {
-    return finish(null, workerResult.error);
-  }
+    const modelUrl = `${currentConfig.basePath}/${previewPart.modelPath}/${previewPart.modelFile}`;
+    const responseResult = await ResultAsync.fromPromise(fetch(modelUrl), mapErr);
+    if (responseResult.isErr()) {
+      return finish(null, responseResult.error);
+    }
 
-  const converted = workerResult.value;
-  if (converted.type !== "bg3d-to-glb") {
-    const message =
-      converted.type === "error"
-        ? converted.error
-        : "Unexpected model conversion result";
-    return finish(null, message);
-  }
+    const response = responseResult.value;
+    if (!response.ok) {
+      return finish(null, `Failed to load model (${response.status})`);
+    }
 
-  const glbBlob = new Blob([converted.result], { type: "model/gltf-binary" });
-  const glbUrl = URL.createObjectURL(glbBlob);
-  const loader = new GLTFLoader();
-  const gltfResult = await ResultAsync.fromPromise(
-    loader.loadAsync(glbUrl),
-    mapErr,
-  );
-  URL.revokeObjectURL(glbUrl);
-  if (gltfResult.isErr()) {
-    return finish(null, gltfResult.error);
-  }
-
-  const modelIndex = previewMapping.modelIndex ?? currentEntry.modelIndex ?? 0;
-  const extracted = extractSubgroupByIndex(
-    gltfResult.value,
-    modelIndex,
-    previewMapping.groupSize ?? currentEntry.modelGroupSize,
-  );
-  const previewRoot = (extracted ?? gltfResult.value.scene).clone(true);
-  const uniformScale = previewMapping.scale ?? 1;
-  const scaleXZ = previewMapping.scaleXZ ?? 1;
-  const scaleY = previewMapping.scaleY ?? 1;
-  previewRoot.scale.set(
-    uniformScale * scaleXZ,
-    uniformScale * scaleY,
-    uniformScale * scaleXZ,
-  );
-  previewRoot.rotation.y = previewMapping.rotationY ?? 0;
-  if (previewMapping.positionOffset) {
-    previewRoot.position.set(
-      previewMapping.positionOffset[0],
-      previewMapping.positionOffset[1],
-      previewMapping.positionOffset[2],
+    const arrayBufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      mapErr,
     );
+    if (arrayBufferResult.isErr()) {
+      return finish(null, arrayBufferResult.error);
+    }
+    const arrayBuffer = arrayBufferResult.value;
+
+    const workerResult = await ResultAsync.fromPromise(
+      new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
+        worker.onmessage = (event) => resolve(event.data);
+        worker.onerror = (event) =>
+          reject(new Error(event.message ?? "Model conversion worker failed"));
+        worker.postMessage({ type: "bg3d-to-glb", buffer: arrayBuffer }, [
+          arrayBuffer,
+        ]);
+      }),
+      mapErr,
+    );
+    if (workerResult.isErr()) {
+      return finish(null, workerResult.error);
+    }
+
+    const converted = workerResult.value;
+    if (converted.type !== "bg3d-to-glb") {
+      const message =
+        converted.type === "error"
+          ? converted.error
+          : "Unexpected model conversion result";
+      return finish(null, message);
+    }
+
+    const glbBlob = new Blob([converted.result], { type: "model/gltf-binary" });
+    const glbUrl = URL.createObjectURL(glbBlob);
+    const loader = new GLTFLoader();
+    const gltfResult = await ResultAsync.fromPromise(
+      loader.loadAsync(glbUrl),
+      mapErr,
+    );
+    URL.revokeObjectURL(glbUrl);
+    if (gltfResult.isErr()) {
+      return finish(null, gltfResult.error);
+    }
+
+    const extracted = extractSubgroupByIndex(
+      gltfResult.value,
+      previewPart.modelIndex,
+      previewPart.groupSize ?? 1,
+    );
+    const partRoot = (extracted ?? gltfResult.value.scene).clone(true);
+    const uniformScale = previewPart.scale ?? 1;
+    const scaleXZ = previewPart.scaleXZ ?? 1;
+    const scaleY = previewPart.scaleY ?? 1;
+    partRoot.scale.set(
+      uniformScale * scaleXZ,
+      uniformScale * scaleY,
+      uniformScale * scaleXZ,
+    );
+    partRoot.rotation.y = previewPart.rotationY ?? 0;
+    if (previewPart.positionOffset) {
+      partRoot.position.set(
+        previewPart.positionOffset[0],
+        previewPart.positionOffset[1],
+        previewPart.positionOffset[2],
+      );
+    }
+    previewRoot.add(partRoot);
   }
-  return finish(previewRoot, null);
+
+  return finish(previewRoot.children.length > 0 ? previewRoot : null, null);
 }

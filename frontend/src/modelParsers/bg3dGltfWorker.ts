@@ -2,10 +2,14 @@ import { bg3dParsedToBG3D, parseBG3D, type BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { parse3DMF } from "./parse3dmf";
-import { Document, WebIO } from "@gltf-transform/core";
+import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import type { Result } from "neverthrow";
+import { Result } from "neverthrow";
 import { arrayBufferSchema } from "../schemas/common";
+import {
+  normalizeGltfAsset,
+  type GltfCompatibilityWarning,
+} from "./gltfCompatibility";
 
 function toExactArrayBuffer(data: ArrayBuffer | Uint8Array): ArrayBuffer {
   const parseResult = arrayBufferSchema.safeParse(data);
@@ -40,44 +44,6 @@ function parseModelBuffer(
   return parseBG3D(buffer);
 }
 
-function collectGlbCompatibilityWarnings(doc: Document): string[] {
-  const droppedFeatures = new Set<string>();
-
-  doc
-    .getRoot()
-    .listMaterials()
-    .forEach((material) => {
-      if (material.getNormalTexture()) {
-        droppedFeatures.add("normal maps");
-      }
-      if (material.getEmissiveTexture()) {
-        droppedFeatures.add("emissive maps");
-      }
-      if (material.getOcclusionTexture()) {
-        droppedFeatures.add("occlusion maps");
-      }
-      if (material.getMetallicRoughnessTexture()) {
-        droppedFeatures.add("metallic/roughness maps");
-      }
-      if (
-        material.getMetallicFactor() !== 1 ||
-        material.getRoughnessFactor() !== 1
-      ) {
-        droppedFeatures.add("metallic/roughness factors");
-      }
-    });
-
-  if (droppedFeatures.size === 0) {
-    return [];
-  }
-
-  return [
-    `GLB import keeps base-color textures but drops unsupported material features: ${Array.from(
-      droppedFeatures,
-    ).join(", ")}.`,
-  ];
-}
-
 // Message types
 export type BG3DGltfWorkerMessage =
   | {
@@ -88,11 +54,13 @@ export type BG3DGltfWorkerMessage =
   | {
       type: "glb-to-bg3d";
       buffer: ArrayBuffer;
+      fileName?: string;
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       buffer: ArrayBuffer;
+      fileName?: string;
       requestId?: string;
     }
   | {
@@ -129,17 +97,19 @@ export type BG3DGltfWorkerResponse =
   | {
       type: "glb-to-bg3d";
       result: ArrayBuffer;
+      normalizedGlb?: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
-      warnings?: string[];
+      warnings?: readonly GltfCompatibilityWarning[];
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
+      normalizedGlb?: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
-      warnings?: string[];
+      warnings?: readonly GltfCompatibilityWarning[];
       requestId?: string;
     }
   | {
@@ -280,35 +250,109 @@ self.onmessage = (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d") {
-      const io = new WebIO();
-      const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const warnings = collectGlbCompatibilityWarnings(doc);
-      const parsedBg3d = gltfToBG3D(doc);
-      const bg3d = bg3dParsedToBG3D(parsedBg3d);
+      const compatibleResult = await normalizeGltfAsset(
+        msg.fileName ?? "model.glb",
+        msg.buffer,
+      );
+      if (compatibleResult.isErr()) {
+        const response = {
+          type: "error",
+          error: compatibleResult.error.message,
+          requestId,
+        } satisfies BG3DGltfWorkerResponse;
+        self.postMessage(response);
+        return;
+      }
+      const parsedResult = Result.fromThrowable(
+        () => gltfToBG3D(compatibleResult.value.document),
+        (error: unknown) => String(error),
+      )();
+      if (parsedResult.isErr()) {
+        const response = {
+          type: "error",
+          error: parsedResult.error,
+          requestId,
+        } satisfies BG3DGltfWorkerResponse;
+        self.postMessage(response);
+        return;
+      }
+      const bg3dResult = Result.fromThrowable(
+        () => bg3dParsedToBG3D(parsedResult.value),
+        (error: unknown) => String(error),
+      )();
+      if (bg3dResult.isErr()) {
+        const response = {
+          type: "error",
+          error: bg3dResult.error,
+          requestId,
+        } satisfies BG3DGltfWorkerResponse;
+        self.postMessage(response);
+        return;
+      }
 
       const response = {
         type: "glb-to-bg3d",
-        result: bg3d,
-        parsed: parsedBg3d,
-        warnings,
+        result: bg3dResult.value,
+        normalizedGlb: compatibleResult.value.normalizedGlb,
+        parsed: parsedResult.value,
+        warnings: compatibleResult.value.warnings,
         requestId,
       } satisfies BG3DGltfWorkerResponse;
-      self.postMessage.call(self, response);
+      self.postMessage.call(self, response, {
+        transfer: [compatibleResult.value.normalizedGlb],
+      });
     } else if (msg.type === "glb-to-bg3d-with-skeleton") {
-      const io = new WebIO();
-      const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const warnings = collectGlbCompatibilityWarnings(doc);
-      const parsedBg3d = gltfToBG3D(doc);
-      const bg3d = bg3dParsedToBG3D(parsedBg3d);
+      const compatibleResult = await normalizeGltfAsset(
+        msg.fileName ?? "model.glb",
+        msg.buffer,
+      );
+      if (compatibleResult.isErr()) {
+        const response = {
+          type: "error",
+          error: compatibleResult.error.message,
+          requestId,
+        } satisfies BG3DGltfWorkerResponse;
+        self.postMessage(response);
+        return;
+      }
+      const parsedResult = Result.fromThrowable(
+        () => gltfToBG3D(compatibleResult.value.document),
+        (error: unknown) => String(error),
+      )();
+      if (parsedResult.isErr()) {
+        const response = {
+          type: "error",
+          error: parsedResult.error,
+          requestId,
+        } satisfies BG3DGltfWorkerResponse;
+        self.postMessage(response);
+        return;
+      }
+      const bg3dResult = Result.fromThrowable(
+        () => bg3dParsedToBG3D(parsedResult.value),
+        (error: unknown) => String(error),
+      )();
+      if (bg3dResult.isErr()) {
+        const response = {
+          type: "error",
+          error: bg3dResult.error,
+          requestId,
+        } satisfies BG3DGltfWorkerResponse;
+        self.postMessage(response);
+        return;
+      }
 
       const response = {
         type: "glb-to-bg3d-with-skeleton",
-        bg3dResult: bg3d,
-        parsed: parsedBg3d,
-        warnings,
+        bg3dResult: bg3dResult.value,
+        normalizedGlb: compatibleResult.value.normalizedGlb,
+        parsed: parsedResult.value,
+        warnings: compatibleResult.value.warnings,
         requestId,
       } satisfies BG3DGltfWorkerResponse;
-      self.postMessage.call(self, response);
+      self.postMessage.call(self, response, {
+        transfer: [compatibleResult.value.normalizedGlb],
+      });
     } else {
       const response = {
         type: "error",

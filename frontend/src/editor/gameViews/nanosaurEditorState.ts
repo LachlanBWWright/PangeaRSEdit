@@ -29,8 +29,8 @@ export function resizeNanosaurSupertiles({
   setTerrainData,
   direction,
   supertileCount,
-}: ResizeNanosaurArgs): void {
-  resizeEditorAtomicSupertiles({
+}: ResizeNanosaurArgs): Promise<void> {
+  return resizeEditorAtomicSupertiles({
     headerData,
     itemData,
     liquidData: null,

@@ -18,6 +18,7 @@ import type { SkeletonResource } from "@/python/structSpecs/skeleton/skeletonInt
 import type { Texture } from "../types";
 import { err, ok, type Result } from "neverthrow";
 import { errorSchema } from "@/schemas/common";
+import { formatGltfCompatibilityWarnings } from "@/modelParsers/gltfCompatibility";
 import {
   createDisplayFileName,
   loadOptionalSkeleton,
@@ -95,15 +96,19 @@ function getWorkerErrorMessage(error: unknown): string {
   return parseResult.success ? parseResult.data : String(error);
 }
 
-function createGlbToBg3dMessage(buffer: ArrayBuffer): BG3DGltfWorkerMessage {
+function createGlbToBg3dMessage(
+  fileName: string,
+  buffer: ArrayBuffer,
+): BG3DGltfWorkerMessage {
   return {
     type: "glb-to-bg3d",
     buffer,
+    fileName,
   };
 }
 
 function createModelToGlbMessage(
-  kind: Exclude<ModelUploadKind, "glb">,
+  kind: Exclude<ModelUploadKind, "gltf">,
   modelBuffer: ArrayBuffer,
   skeletonData?: SkeletonResource,
 ): BG3DGltfWorkerMessage {
@@ -134,26 +139,26 @@ export async function parseGlbImportResult(
   return ok(fallback.value);
 }
 
-async function handleGlbUpload(
+async function handleGltfUpload(
   runtime: UseFileUploadOptions,
   bg3dFile: File,
 ): Promise<Result<void, string>> {
-  const glbBufferResult = await readFileBuffer(bg3dFile, "GLB file");
-  if (glbBufferResult.isErr()) {
-    return failUpload(runtime, glbBufferResult.error);
+  const gltfBufferResult = await readFileBuffer(bg3dFile, "glTF/GLB file");
+  if (gltfBufferResult.isErr()) {
+    return failUpload(runtime, gltfBufferResult.error);
   }
 
   const workerResult = await runWorkerMessage(
-    createGlbToBg3dMessage(glbBufferResult.value),
+    createGlbToBg3dMessage(bg3dFile.name, gltfBufferResult.value),
   );
   if (workerResult.isErr()) {
-    const message = `Failed to convert GLB to BG3D: ${getWorkerErrorMessage(workerResult.error)}`;
+    const message = `Failed to convert glTF/GLB to BG3D: ${getWorkerErrorMessage(workerResult.error)}`;
     return failUpload(runtime, message);
   }
 
   const responseResult = getGlbToBg3dWorkerResponse(
     workerResult.value,
-    "convert GLB to BG3D",
+    "convert glTF/GLB to BG3D",
   );
   if (responseResult.isErr()) {
     return failUpload(runtime, responseResult.error);
@@ -161,12 +166,14 @@ async function handleGlbUpload(
 
   const parsedResult = await parseGlbImportResult(responseResult.value);
   if (parsedResult.isErr()) {
-    const message = `Failed to load BG3D from GLB: ${parsedResult.error}`;
+    const message = `Failed to load BG3D from glTF/GLB: ${parsedResult.error}`;
     return failUpload(runtime, message);
   }
 
   const parsed = parsedResult.value;
-  runtime.onGltfBufferChange(glbBufferResult.value);
+  const normalizedGlb =
+    responseResult.value.normalizedGlb ?? gltfBufferResult.value;
+  runtime.onGltfBufferChange(normalizedGlb);
   runtime.onBg3dParsedChange(parsed);
   const textures = await extractTexturesFromBG3D(parsed);
   runtime.onTexturesChange(textures);
@@ -175,12 +182,14 @@ async function handleGlbUpload(
     responseResult.value.warnings &&
     responseResult.value.warnings.length > 0
   ) {
-    toast.warning("GLB compatibility adjustments applied", {
-      description: responseResult.value.warnings.join(" "),
+    toast.warning("glTF compatibility adjustments applied", {
+      description: formatGltfCompatibilityWarnings(
+        responseResult.value.warnings,
+      ).join(" "),
     });
   }
 
-  const glbBlob = new Blob([glbBufferResult.value], {
+  const glbBlob = new Blob([normalizedGlb], {
     type: "model/gltf-binary",
   });
   runtime.onGltfUrlChange(URL.createObjectURL(glbBlob));
@@ -193,7 +202,7 @@ async function handleGlbUpload(
 
 async function handleModelUpload(
   runtime: UploadRuntime,
-  kind: Exclude<ModelUploadKind, "glb">,
+  kind: Exclude<ModelUploadKind, "gltf">,
   modelFile: File,
   skeletonFile?: File,
 ): Promise<Result<void, string>> {
@@ -297,8 +306,8 @@ export function useFileUpload(options: UseFileUploadOptions) {
       const selection = selectionResult.value;
       const runtime = createUploadRuntime(options, finalizeModelLoad);
 
-      if (selection.kind === "glb")
-        return handleGlbUpload(options, selection.bg3dFile);
+       if (selection.kind === "gltf")
+         return handleGltfUpload(options, selection.bg3dFile);
 
       return handleModelUpload(
         runtime,

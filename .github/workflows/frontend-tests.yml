@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      VITE_MULTIPLAYER_CONTENT_HASH: ${{ github.sha }}
     defaults:
       run:
         working-directory: ./frontend
@@ -19,25 +21,70 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "./frontend/package.json"
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: "./pnpm-lock.yaml"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
 
       - name: Build game WASM bundles
         run: npm run build:games
 
-      - name: Run tests
-        run: npm test -- --run
+      - name: Verify frontend test discovery
+        run: pnpm run test:discovery
+
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm exec playwright install chromium
+
+      - name: Run unit and Storybook tests with combined coverage
+        run: pnpm run test:coverage:combined
+
+      - name: Upload frontend coverage reports
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: |
+            frontend/coverage
+            frontend/coverage-storybook
+            frontend/coverage-combined
+          if-no-files-found: error
+
+      - name: Audit item parameter citations
+        run: pnpm run audit:item-citations
 
       - name: Build project
         if: success()
-        run: npm run build
+        run: pnpm run build
+
+      - name: Run real-WASM multiplayer browser smoke tests
+        if: success()
+        continue-on-error: true
+        env:
+          VITE_MULTIPLAYER_ENABLED: "true"
+          VITE_SCRIPTING_ENABLED: "false"
+        run: pnpm exec playwright test tests/e2e/multiplayerGameLaunch.spec.ts tests/e2e/multiplayerShell.spec.ts --project=chromium --workers=1
 
       - name: Report test results
         if: always()

@@ -1,12 +1,24 @@
-import { ResultAsync } from "neverthrow";
+import { Result, ResultAsync, ok } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
+import {
+  createManagedMultiplayerRuntimeBridge,
+  createMultiplayerRuntimeBridge,
+  installMultiplayerRuntimeBridge,
+  type MultiplayerRuntimeManagedTransport,
+} from "@/multiplayer/runtimeBridge";
+import type { MultiplayerMatchConfig } from "@/multiplayer/types";
+import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
+import { resolveLocalPlayerIndex } from "@/multiplayer/participantIndex";
 import {
   applyPreviewGlobals,
   buildPreviewAssetBaseUrls,
   createPreviewModule,
   getPreviewTerrainPaths,
   loadPreviewRuntime,
+  type MultiplayerRuntimeEvent,
+  type PreviewVfsFile,
   type PreviewRuntimeModule,
+  type StartNetworkMatchFn,
 } from "./gamePreviewRuntime";
 import { mapErr } from "../../utils/mapErr";
 
@@ -18,8 +30,15 @@ interface StartGamePreviewOptions {
   readonly terrainDataBytes: Uint8Array | null;
   readonly terrainRsrcBytes: Uint8Array | null;
   readonly terrainTextureBytes: Uint8Array | null;
+  readonly customFiles?: readonly PreviewVfsFile[];
   readonly runToken: number;
   readonly normalLaunch: boolean;
+  readonly networkMatchConfig?: MultiplayerMatchConfig | null;
+  readonly localParticipantId?: string | null;
+  readonly networkRuntimeTransport?: MultiplayerRuntimeManagedTransport | null;
+  readonly deferNetworkStart?: boolean;
+  readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
+  readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
 }
@@ -40,7 +59,83 @@ function triggerResizePulse(timerIds: Set<number>): void {
   timerIds.add(timerId);
 }
 
-function restorePreviewModule(previousModule: PreviewRuntimeModule | undefined): void {
+function applyRuntimeCanvasSize(
+  module: PreviewRuntimeModule,
+  width: number,
+  height: number,
+): void {
+  if (module.setCanvasSize) {
+    Result.fromThrowable(
+      () => {
+        module.setCanvasSize?.(width, height);
+      },
+      (e) => mapErr(e),
+    )();
+    return;
+  }
+
+  if (module.canvas.width !== width || module.canvas.height !== height) {
+    module.canvas.width = width;
+    module.canvas.height = height;
+  }
+}
+
+function syncRuntimeCanvasSize(module: PreviewRuntimeModule): void {
+  const width = Math.round(module.canvas.clientWidth);
+  const height = Math.round(module.canvas.clientHeight);
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  applyRuntimeCanvasSize(module, width, height);
+}
+
+function scheduleStartupCanvasSync(
+  module: PreviewRuntimeModule,
+  frameIds: Set<number>,
+): void {
+  const startedAt = performance.now();
+  const minimumRunTimeMs = 1_000;
+  const maximumRunTimeMs = 3_000;
+  let consecutiveMatchingFrames = 0;
+
+  const sync = (): void => {
+    syncRuntimeCanvasSize(module);
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  const requestSyncFrame = (): void => {
+    const frameId = window.requestAnimationFrame(() => {
+      frameIds.delete(frameId);
+      sync();
+
+      const width = Math.round(module.canvas.clientWidth);
+      const height = Math.round(module.canvas.clientHeight);
+      const matchesLayout =
+        width > 0 &&
+        height > 0 &&
+        module.canvas.width === width &&
+        module.canvas.height === height;
+      consecutiveMatchingFrames = matchesLayout
+        ? consecutiveMatchingFrames + 1
+        : 0;
+
+      const elapsedMs = performance.now() - startedAt;
+      const isStable =
+        elapsedMs >= minimumRunTimeMs && consecutiveMatchingFrames >= 8;
+      if (!isStable && elapsedMs < maximumRunTimeMs) {
+        requestSyncFrame();
+      }
+    });
+    frameIds.add(frameId);
+  };
+
+  sync();
+  requestSyncFrame();
+}
+
+function restorePreviewModule(
+  previousModule: PreviewRuntimeModule | undefined,
+): void {
   if (previousModule === undefined) {
     Reflect.deleteProperty(window, "Module");
     return;
@@ -54,6 +149,34 @@ function observeStableCanvasSize(
   isCancelled: () => boolean,
 ): () => void {
   let startTimer: number | undefined;
+  let fallbackTimer: number | undefined;
+  let frameId: number | undefined;
+  let sizeResolved = false;
+
+  const resolveSize = (width: number, height: number): void => {
+    if (sizeResolved || isCancelled()) {
+      return;
+    }
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    sizeResolved = true;
+    if (startTimer !== undefined) {
+      window.clearTimeout(startTimer);
+      startTimer = undefined;
+    }
+    if (fallbackTimer !== undefined) {
+      window.clearTimeout(fallbackTimer);
+      fallbackTimer = undefined;
+    }
+    if (frameId !== undefined) {
+      window.cancelAnimationFrame(frameId);
+      frameId = undefined;
+    }
+    observer.disconnect();
+    onStableSize(width, height);
+  };
+
   const observer = new ResizeObserver((entries) => {
     if (isCancelled()) return;
     const rect = entries[0]?.contentRect;
@@ -65,15 +188,38 @@ function observeStableCanvasSize(
 
     if (startTimer !== undefined) window.clearTimeout(startTimer);
     startTimer = window.setTimeout(() => {
-      if (isCancelled()) return;
-      observer.disconnect();
-      onStableSize(width, height);
+      resolveSize(width, height);
     }, 150);
   });
   observer.observe(canvas);
 
+  const pollCanvasSize = () => {
+    if (isCancelled() || sizeResolved) {
+      return;
+    }
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (width > 0 && height > 0) {
+      resolveSize(width, height);
+      return;
+    }
+    frameId = window.requestAnimationFrame(pollCanvasSize);
+  };
+  frameId = window.requestAnimationFrame(pollCanvasSize);
+  fallbackTimer = window.setTimeout(() => {
+    resolveSize(800, 600);
+  }, 2_000);
+
   return () => {
-    if (startTimer !== undefined) window.clearTimeout(startTimer);
+    if (startTimer !== undefined) {
+      window.clearTimeout(startTimer);
+    }
+    if (fallbackTimer !== undefined) {
+      window.clearTimeout(fallbackTimer);
+    }
+    if (frameId !== undefined) {
+      window.cancelAnimationFrame(frameId);
+    }
     observer.disconnect();
   };
 }
@@ -87,15 +233,25 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
+    customFiles,
     runToken,
     normalLaunch,
+    networkMatchConfig,
+    localParticipantId,
+    networkRuntimeTransport,
+    deferNetworkStart = false,
+    onRuntimeEvent,
+    onStartNetworkMatchReady,
     onStatus,
     onError,
   } = options;
 
   let cancelled = false;
   let stopGame: (() => void) | null = null;
+  let uninstallRuntimeBridge: (() => void) | null = null;
+  let disposeRuntimeTransportSubscription: (() => void) | null = null;
   const resizePulseTimerIds = new Set<number>();
+  const resizePulseFrameIds = new Set<number>();
   const previousModule = window.Module;
   const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
   const cleanupGlobals = applyPreviewGlobals(
@@ -107,6 +263,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
   );
   const assetBaseUrls = buildPreviewAssetBaseUrls(config);
   const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
+  onStatus("Waiting for game canvas...");
 
   const handleFullscreenChange = () => {
     if (cancelled) return;
@@ -119,6 +276,53 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
 
   const startGame = (width: number, height: number): void => {
     if (cancelled) return;
+
+    if (networkMatchConfig && !normalLaunch && !uninstallRuntimeBridge) {
+      const localPlayerIndexResult = resolveLocalPlayerIndex(
+        networkMatchConfig,
+        localParticipantId,
+      );
+      if (localPlayerIndexResult.isErr()) {
+        onError(localPlayerIndexResult.error);
+        return;
+      }
+      const localPlayerIndex = localPlayerIndexResult.value;
+      const matchIdPair = deriveRuntimeMatchIdPair(
+        networkMatchConfig.matchId,
+        networkMatchConfig.seed,
+      );
+      const bridgeConfig = {
+        isHost: localParticipantId === networkMatchConfig.hostParticipantId,
+        localPlayerIndex,
+        playerCount: networkMatchConfig.players.length,
+        matchSeed: networkMatchConfig.seed,
+        hostPlayerIndex: networkMatchConfig.hostPlayerIndex,
+        matchIdLow: matchIdPair.low,
+        matchIdHigh: matchIdPair.high,
+      };
+      if (networkRuntimeTransport) {
+        const managedBridge = createManagedMultiplayerRuntimeBridge(
+          bridgeConfig,
+          networkRuntimeTransport,
+        );
+        disposeRuntimeTransportSubscription = managedBridge.dispose;
+        uninstallRuntimeBridge = installMultiplayerRuntimeBridge(
+          window,
+          managedBridge.bridge,
+        );
+      } else {
+        const bridge = createMultiplayerRuntimeBridge(bridgeConfig, {
+          sendReliable: () => ok(undefined),
+          sendUnreliable: () => ok(undefined),
+          reportDesync: () => undefined,
+          reportMatchEnded: () => undefined,
+        });
+        uninstallRuntimeBridge = installMultiplayerRuntimeBridge(
+          window,
+          bridge,
+        );
+      }
+    }
 
     canvas.width = width;
     canvas.height = height;
@@ -141,17 +345,25 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           terrainDataBytes,
           terrainRsrcBytes,
           terrainTextureBytes,
+          customFiles,
           terrainPaths,
+          networkMatchConfig,
+          localParticipantId,
+          deferNetworkStart,
+          onRuntimeEvent,
+          onStartNetworkMatchReady,
           normalLaunch,
           onStatus,
           onError,
         });
+        syncRuntimeCanvasSize(activeModule);
 
         window.Module = activeModule;
         const scriptUrl =
           new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
+        onStatus("Loading runtime script...");
         const stopOrErr = await ResultAsync.fromPromise(
-          loadPreviewRuntime(activeModule, scriptUrl),
+          loadPreviewRuntime(activeModule, scriptUrl, () => cancelled),
           (e) => mapErr(e),
         );
         if (cancelled) {
@@ -169,7 +381,10 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           return;
         }
         stopGame = stopOrErr.value;
-        triggerResizePulse(resizePulseTimerIds);
+        scheduleStartupCanvasSync(
+          activeModule,
+          resizePulseFrameIds,
+        );
         return;
       }
     })();
@@ -189,9 +404,17 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     for (const timerId of resizePulseTimerIds) {
       window.clearTimeout(timerId);
     }
+    for (const frameId of resizePulseFrameIds) {
+      window.cancelAnimationFrame(frameId);
+    }
     resizePulseTimerIds.clear();
+    resizePulseFrameIds.clear();
     document.removeEventListener("fullscreenchange", handleFullscreenChange);
     cleanupGlobals();
+    disposeRuntimeTransportSubscription?.();
+    disposeRuntimeTransportSubscription = null;
+    uninstallRuntimeBridge?.();
+    uninstallRuntimeBridge = null;
     restorePreviewModule(previousModule);
   };
 }

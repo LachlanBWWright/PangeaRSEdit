@@ -28,8 +28,24 @@ export class Nanosaur1ItemMapper implements GameItemModelMapper {
    */
   getMapping(
     itemType: number,
+    _levelNum?: number,
+    params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
-    return NANOSAUR_ITEM_MODEL_MAPPINGS[itemType];
+    const mapping = NANOSAUR_ITEM_MODEL_MAPPINGS[itemType];
+    if (!mapping) {
+      return undefined;
+    }
+
+    const variantIndex = params?.p0 ?? 0;
+    if (!mapping.variants || mapping.variants[variantIndex] === undefined) {
+      return mapping;
+    }
+
+    return {
+      ...mapping,
+      modelFile: mapping.variants[variantIndex]?.modelFile ?? mapping.modelFile,
+      modelIndex: mapping.variants[variantIndex]?.modelIndex ?? mapping.modelIndex,
+    };
   }
 
   /**

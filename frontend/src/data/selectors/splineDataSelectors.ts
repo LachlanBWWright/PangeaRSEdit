@@ -1,10 +1,10 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { 
-  SplineData, 
-  Spline, 
-  SplineNub, 
-  SplinePoint, 
-  SplineItem 
+import {
+  SplineData,
+  Spline,
+  SplineNub,
+  SplinePoint,
+  SplineItem,
 } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 
@@ -12,13 +12,14 @@ import { Updater } from "use-immer";
  * Selects spline data from the full level data
  */
 export function selectSplineData(levelData: LevelData): SplineData | null {
-  if (!levelData.Spln || !levelData.SpNb || !levelData.SpPt || !levelData.SpIt) return null;
-  
+  if (!levelData.Spln || !levelData.SpNb || !levelData.SpPt || !levelData.SpIt)
+    return null;
+
   return {
     Spln: levelData.Spln,
     SpNb: levelData.SpNb,
     SpPt: levelData.SpPt,
-    SpIt: levelData.SpIt
+    SpIt: levelData.SpIt,
   };
 }
 
@@ -32,28 +33,40 @@ export function selectSplines(levelData: LevelData): Spline[] {
 /**
  * Gets spline nubs for a specific spline ID
  */
-export function selectSplineNubs(levelData: SplineData, splineId: number): SplineNub[] {
+export function selectSplineNubs(
+  levelData: SplineData,
+  splineId: number,
+): SplineNub[] {
   return levelData.SpNb?.[splineId]?.obj || [];
 }
 
 /**
  * Gets spline points for a specific spline ID
  */
-export function selectSplinePoints(levelData: SplineData, splineId: number): SplinePoint[] {
+export function selectSplinePoints(
+  levelData: SplineData,
+  splineId: number,
+): SplinePoint[] {
   return levelData.SpPt?.[splineId]?.obj || [];
 }
 
 /**
  * Gets spline items for a specific spline ID
  */
-export function selectSplineItems(levelData: SplineData, splineId: number): SplineItem[] {
+export function selectSplineItems(
+  levelData: SplineData,
+  splineId: number,
+): SplineItem[] {
   return levelData.SpIt?.[splineId]?.obj || [];
 }
 
 /**
  * Gets a specific spline by index
  */
-export function selectSpline(levelData: LevelData, splineIdx: number): Spline | null {
+export function selectSpline(
+  levelData: LevelData,
+  splineIdx: number,
+): Spline | null {
   const splines = selectSplines(levelData);
   return splines[splineIdx] || null;
 }
@@ -64,7 +77,7 @@ export function selectSpline(levelData: LevelData, splineIdx: number): Spline | 
 export function updateSpline(
   setLevelData: Updater<LevelData>,
   splineIdx: number,
-  splineUpdate: Partial<Spline>
+  splineUpdate: Partial<Spline>,
 ): void {
   setLevelData((draft) => {
     if (draft.Spln?.[1000]?.obj?.[splineIdx]) {
@@ -79,7 +92,7 @@ export function updateSpline(
 export function updateSplineNubs(
   setLevelData: Updater<SplineData>,
   splineId: number,
-  nubsUpdate: SplineNub[]
+  nubsUpdate: SplineNub[],
 ): void {
   setLevelData((draft) => {
     if (draft.SpNb?.[splineId]) {
@@ -98,11 +111,12 @@ export function updateSplineNubs(
 export function updateSplinePoints(
   setLevelData: Updater<SplineData>,
   splineId: number,
-  pointsUpdate: SplinePoint[]
+  pointsUpdate: SplinePoint[],
 ): void {
   setLevelData((draft) => {
-    if (draft.SpPt?.[splineId]) {
-      draft.SpPt[splineId].obj = pointsUpdate;
+    const splineKey = 1000 + splineId;
+    if (draft.SpPt?.[splineKey]) {
+      draft.SpPt[splineKey].obj = pointsUpdate;
       // Update the spline's numPoints count
       if (draft.Spln?.[1000]?.obj?.[splineId]) {
         draft.Spln[1000].obj[splineId].numPoints = pointsUpdate.length;
@@ -117,11 +131,12 @@ export function updateSplinePoints(
 export function updateSplineItems(
   setLevelData: Updater<LevelData>,
   splineId: number,
-  itemsUpdate: SplineItem[]
+  itemsUpdate: SplineItem[],
 ): void {
   setLevelData((draft) => {
-    if (draft.SpIt?.[splineId]) {
-      draft.SpIt[splineId].obj = itemsUpdate;
+    const splineKey = 1000 + splineId;
+    if (draft.SpIt?.[splineKey]) {
+      draft.SpIt[splineKey].obj = itemsUpdate;
       // Update the spline's numItems count
       if (draft.Spln?.[1000]?.obj?.[splineId]) {
         draft.Spln[1000].obj[splineId].numItems = itemsUpdate.length;
@@ -138,39 +153,40 @@ export function addSpline(
   newSpline: Spline,
   nubs: SplineNub[] = [],
   points: SplinePoint[] = [],
-  items: SplineItem[] = []
+  items: SplineItem[] = [],
 ): void {
   setLevelData((draft) => {
     if (draft.Spln?.[1000]?.obj && draft.SpNb && draft.SpPt && draft.SpIt) {
       const splineIdx = draft.Spln[1000].obj.length;
-      
+      const splineKey = 1000 + splineIdx;
+
       // Add the spline with correct counts
       draft.Spln[1000].obj.push({
         ...newSpline,
         numNubs: nubs.length,
         numPoints: points.length,
-        numItems: items.length
+        numItems: items.length,
       });
-      
+
       // Add associated data with the spline index as ID
-      draft.SpNb[splineIdx] = {
+      draft.SpNb[splineKey] = {
         name: "Spline Nub List",
         obj: nubs,
-        order: splineIdx
+        order: splineKey,
       };
-      
-      draft.SpPt[splineIdx] = {
+
+      draft.SpPt[splineKey] = {
         name: "Spline Point List",
         obj: points,
-        order: splineIdx
+        order: splineKey,
       };
-      
-      draft.SpIt[splineIdx] = {
+
+      draft.SpIt[splineKey] = {
         name: "Spline Item List",
         obj: items,
-        order: splineIdx
+        order: splineKey,
       };
-      
+
       // Update header count
       if (draft.Hedr?.[1000]?.obj) {
         draft.Hedr[1000].obj.numSplines = draft.Spln[1000].obj.length;
@@ -184,23 +200,28 @@ export function addSpline(
  */
 export function removeSpline(
   setLevelData: Updater<LevelData>,
-  splineIdx: number
+  splineIdx: number,
 ): void {
   setLevelData((draft) => {
-    if (draft.Spln?.[1000]?.obj && splineIdx >= 0 && splineIdx < draft.Spln[1000].obj.length) {
+    if (
+      draft.Spln?.[1000]?.obj &&
+      splineIdx >= 0 &&
+      splineIdx < draft.Spln[1000].obj.length
+    ) {
       draft.Spln[1000].obj.splice(splineIdx, 1);
-      
+      const splineKey = 1000 + splineIdx;
+
       // Remove associated data using Reflect for computed key deletion
-      if (draft.SpNb && splineIdx in draft.SpNb) {
-        Reflect.deleteProperty(draft.SpNb, splineIdx);
+      if (draft.SpNb && splineKey in draft.SpNb) {
+        Reflect.deleteProperty(draft.SpNb, splineKey);
       }
-      if (draft.SpPt && splineIdx in draft.SpPt) {
-        Reflect.deleteProperty(draft.SpPt, splineIdx);
+      if (draft.SpPt && splineKey in draft.SpPt) {
+        Reflect.deleteProperty(draft.SpPt, splineKey);
       }
-      if (draft.SpIt && splineIdx in draft.SpIt) {
-        Reflect.deleteProperty(draft.SpIt, splineIdx);
+      if (draft.SpIt && splineKey in draft.SpIt) {
+        Reflect.deleteProperty(draft.SpIt, splineKey);
       }
-      
+
       // Update header count
       if (draft.Hedr?.[1000]?.obj) {
         draft.Hedr[1000].obj.numSplines = draft.Spln[1000].obj.length;
@@ -214,12 +235,12 @@ export function removeSpline(
  */
 export function createSplineUpdater(
   setLevelData: Updater<LevelData>,
-  splineIdx: number
+  splineIdx: number,
 ): Updater<Spline> {
   return (splineUpdater) => {
     setLevelData((draft) => {
       if (draft.Spln?.[1000]?.obj?.[splineIdx]) {
-        if (typeof splineUpdater === 'function') {
+        if (typeof splineUpdater === "function") {
           splineUpdater(draft.Spln[1000].obj[splineIdx]);
         } else {
           draft.Spln[1000].obj[splineIdx] = splineUpdater;

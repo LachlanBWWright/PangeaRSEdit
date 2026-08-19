@@ -1,6 +1,6 @@
 /**
  * Simple roundtrip check - can be run with ts-node to debug skeleton roundtrip issues
- * Usage: npx ts-node --esm src/modelParsers/simpleRoundtripCheck.ts
+ * Usage: pnpm exec ts-node --esm src/modelParsers/simpleRoundtripCheck.ts
  */
 
 import { readFileSync } from "fs";

@@ -1,4 +1,5 @@
 import { Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface EditorCanvasControlsProps {
   undoData: () => void;
@@ -8,9 +9,6 @@ interface EditorCanvasControlsProps {
   dataHistoryIndex: number;
   dataHistoryLength: number;
 }
-
-const buttonClassName =
-  "p-2 rounded transition-colors bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50 disabled:cursor-not-allowed";
 
 export function EditorCanvasControls({
   undoData,
@@ -22,40 +20,48 @@ export function EditorCanvasControls({
 }: EditorCanvasControlsProps) {
   return (
     <div className="flex gap-2">
-      <button
+      <Button
+        type="button"
+        variant="icon"
+        size="icon"
         onClick={undoData}
-        className={buttonClassName}
         aria-label="Undo"
         title="Undo"
         disabled={dataHistoryIndex === 0}
       >
         <Undo2 className="w-5 h-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        type="button"
+        variant="icon"
+        size="icon"
         onClick={redoData}
-        className={buttonClassName}
         aria-label="Redo"
         title="Redo"
         disabled={dataHistoryIndex === dataHistoryLength - 1}
       >
         <Redo2 className="w-5 h-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        type="button"
+        variant="icon"
+        size="icon"
         onClick={zoomOut}
-        className={buttonClassName}
         aria-label="Zoom out"
         title="Zoom out"
       >
         <ZoomOut className="w-5 h-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        type="button"
+        variant="icon"
+        size="icon"
         onClick={zoomIn}
-        className={buttonClassName}
         aria-label="Zoom in"
         title="Zoom in"
       >
         <ZoomIn className="w-5 h-5" />
-      </button>
+      </Button>
     </div>
   );
 }

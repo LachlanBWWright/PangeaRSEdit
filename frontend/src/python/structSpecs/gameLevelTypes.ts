@@ -20,6 +20,22 @@ export interface BaseSplinePoint {
   x: number;
   z: number;
 }
+export interface CroMagPathDefinition {
+  flags: number;
+  p0: number;
+  p1: number;
+  p2: number;
+  numNubs: number;
+  numPoints: number;
+  bbTop: number;
+  bbLeft: number;
+  bbBottom: number;
+  bbRight: number;
+}
+export interface CroMagPathPoint {
+  x: number;
+  z: number;
+}
 export interface BaseSplineNub {
   x: number;
   z: number;
@@ -314,6 +330,12 @@ export interface CheckpointSection<TCheckpoint = Bugdom2Checkpoint> {
     1000: ResourceEntry<TCheckpoint[]>;
   };
 }
+export interface CroMagPathSection {
+  Path?: {
+    1000: ResourceEntry<CroMagPathDefinition[]>;
+  };
+  PaPt?: Record<number, ResourceEntry<CroMagPathPoint[]>>;
+}
 export type OttoMaticLevelData = BaseLevelData &
   HeaderSection<OttoMaticHeader> &
   TerrainSection<BaseTileAttribute, OttoMaticSupertileGrid> &
@@ -350,7 +372,9 @@ export type CroMagLevelData = BaseLevelData &
   ItemSection<CroMagItem> &
   SplineSection &
   FenceSection &
-  LiquidSection;
+  LiquidSection &
+  CheckpointSection<Bugdom2Checkpoint> &
+  CroMagPathSection;
 export type BillyFrontierLevelData = BaseLevelData &
   HeaderSection<BillyFrontierHeader> &
   TerrainSection<BaseTileAttribute, BillyFrontierSupertileGrid> &

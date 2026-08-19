@@ -7,11 +7,28 @@
  */
 
 import { mapErr } from "@/utils/mapErr";
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  type ComponentRef,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
-import { Group, Mesh, BufferGeometry, Box3, Vector3, MathUtils } from "three";
+import {
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+  DoubleSide,
+  BufferGeometry,
+  Box3,
+  Vector3,
+  MathUtils,
+} from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import {
@@ -42,10 +60,14 @@ import {
 } from "@/data/globals/globals";
 import { getGameMapper } from "@/data/items/mappers";
 import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
-import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
+import type {
+  ItemModelKind,
+  UniversalItemModelMapping,
+} from "@/data/items/itemModelTypes";
 import { getCitationPermalink } from "@/data/items/itemModelTypes";
 import { ResultAsync, err, ok, type Result } from "neverthrow";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+
+type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
 
 /**
  * Camera configuration for optimal model viewing
@@ -262,7 +284,7 @@ interface ItemInfo {
   name: string;
   hasMapping: boolean;
   mapping: UniversalItemModelMapping | undefined;
-  isSplineItem: boolean;
+  kind: ItemModelKind;
   isParamDependent?: boolean; // True if this item's model depends on params
 }
 
@@ -273,7 +295,7 @@ interface ItemInfo {
  */
 function formatItemDisplay(item: ItemInfo): string {
   const modelIndicator = item.hasMapping ? " ✓" : "";
-  const splineIndicator = item.isSplineItem ? " ↺" : "";
+  const splineIndicator = item.kind === "splineItem" ? " ↺" : "";
   const paramIndicator = item.isParamDependent ? " ⚙" : "";
   return `${item.type}: ${item.name}${modelIndicator}${splineIndicator}${paramIndicator}`;
 }
@@ -373,11 +395,65 @@ function extractSubgroupByIndex(
   return newScene;
 }
 
+function applyLightingMode(
+  cloned: Group,
+  lightingMode: "unlit" | undefined,
+): void {
+  if (lightingMode !== "unlit") {
+    return;
+  }
+
+  cloned.traverse((node) => {
+    if (!(node instanceof Mesh) || !node.material) {
+      return;
+    }
+
+    const originalMaterials = Array.isArray(node.material)
+      ? node.material
+      : [node.material];
+    const unlitMaterials = originalMaterials.map((material) => {
+      if (material instanceof MeshBasicMaterial) {
+        material.side = DoubleSide;
+        material.toneMapped = false;
+        material.needsUpdate = true;
+        return material;
+      }
+
+      if (
+        material instanceof MeshStandardMaterial ||
+        material instanceof MeshPhysicalMaterial
+      ) {
+        const unlitMaterial = new MeshBasicMaterial({
+          map: material.map,
+          color: material.color,
+          transparent: material.transparent,
+          alphaTest: material.alphaTest,
+          side: DoubleSide,
+          opacity: material.opacity,
+          vertexColors: material.vertexColors,
+        });
+        unlitMaterial.name = material.name;
+        unlitMaterial.depthWrite = material.depthWrite;
+        unlitMaterial.toneMapped = false;
+        return unlitMaterial;
+      }
+
+      return material;
+    });
+
+    node.material = Array.isArray(node.material)
+      ? unlitMaterials
+      : (unlitMaterials[0] ?? node.material);
+  });
+}
+
 export function ItemModelViewer() {
   const [searchParams] = useSearchParams();
   const isCaptureMode = searchParams.get("capture") === "1";
   const [selectedGameId, setSelectedGameId] = useState<Game | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<number | null>(null);
+  const [selectedItemKind, setSelectedItemKind] =
+    useState<ItemModelKind>("terrainItem");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [gltfScene, setGltfScene] = useState<Group | null>(null);
@@ -466,8 +542,14 @@ export function ItemModelViewer() {
   // Get current mapping based on params
   const currentMapping = useMemo(() => {
     if (selectedItemType === null || !mapper) return undefined;
-    return mapper.getMapping(selectedItemType, undefined, itemParams);
-  }, [selectedItemType, mapper, itemParams]);
+    return mapper.getMapping(
+      selectedItemType,
+      undefined,
+      itemParams,
+      undefined,
+      selectedItemKind,
+    );
+  }, [selectedItemType, selectedItemKind, mapper, itemParams]);
 
   // Get all items for the selected game with their mapping status
   const gameItems = useMemo<ItemInfo[]>(() => {
@@ -482,12 +564,13 @@ export function ItemModelViewer() {
       const type = parseInt(typeStr);
       if (isNaN(type)) continue;
 
-      // Use hasModel which accounts for param-dependent items
-      const hasMapping = mapper?.hasModel(type) ?? false;
-      const mapping = mapper?.getMapping(type);
-      // Check if this item type can be used as a spline item
-      const isSplineItem =
-        splineItemTypes !== undefined && type in splineItemTypes;
+      const mapping = mapper?.getMapping(
+        type,
+        undefined,
+        undefined,
+        undefined,
+        "terrainItem",
+      );
       // Check if this is a param-dependent item using the Otto mapper
       const isParamDependent = isOttoMatic
         ? ottoItemMapper.isParamDependent(type)
@@ -496,25 +579,51 @@ export function ItemModelViewer() {
       items.push({
         type,
         name,
-        hasMapping,
+        hasMapping: mapping !== undefined,
         mapping,
-        isSplineItem,
+        kind: "terrainItem",
         isParamDependent,
       });
     }
 
+    for (const [typeStr, name] of Object.entries(splineItemTypes ?? {})) {
+      const type = parseInt(typeStr);
+      if (isNaN(type)) continue;
+
+      const mapping = mapper?.getMapping(
+        type,
+        undefined,
+        undefined,
+        undefined,
+        "splineItem",
+      );
+      items.push({
+        type,
+        name,
+        hasMapping: mapping !== undefined,
+        mapping,
+        kind: "splineItem",
+        isParamDependent: false,
+      });
+    }
+
     // Sort by type number
-    items.sort((a, b) => a.type - b.type);
+    items.sort((a, b) => a.type - b.type || a.kind.localeCompare(b.kind));
 
     return items;
   }, [selectedGame, mapper]);
 
   // Get the selected item info
-  const selectedItem = gameItems.find((i) => i.type === selectedItemType);
+  const selectedItem = gameItems.find(
+    (item) =>
+      item.type === selectedItemType && item.kind === selectedItemKind,
+  );
 
   // Count items with mappings and spline items
   const mappedItemCount = gameItems.filter((i) => i.hasMapping).length;
-  const splineItemCount = gameItems.filter((i) => i.isSplineItem).length;
+  const splineItemCount = gameItems.filter(
+    (item) => item.kind === "splineItem",
+  ).length;
 
   // Initialize worker
   const getWorker = useCallback(() => {
@@ -532,6 +641,7 @@ export function ItemModelViewer() {
     }
     setSelectedGameId(gameId);
     setSelectedItemType(null);
+    setSelectedItemKind("terrainItem");
     setGltfScene(null);
     setModelStats(null);
     setSceneBounds(null);
@@ -544,9 +654,16 @@ export function ItemModelViewer() {
 
   // Handle item selection
   const handleItemChange = useCallback(
-    (itemTypeStr: string) => {
-      const itemType = parseInt(itemTypeStr);
+    (itemKey: string) => {
+      const match = /^(terrainItem|splineItem):(-?\d+)$/u.exec(itemKey);
+      if (!match) return;
+      const rawItemType = match[2];
+      if (rawItemType === undefined) return;
+
+      const kind = match[1] === "splineItem" ? "splineItem" : "terrainItem";
+      const itemType = parseInt(rawItemType);
       setSelectedItemType(itemType);
+      setSelectedItemKind(kind);
       setGltfScene(null);
       setModelStats(null);
       setSceneBounds(null);
@@ -555,7 +672,10 @@ export function ItemModelViewer() {
       setError(null);
       setItemParams({ p0: 0, p1: 0, p2: 0, p3: 0 }); // Reset params
 
-      const item = gameItems.find((i) => i.type === itemType);
+      const item = gameItems.find(
+        (candidate) =>
+          candidate.type === itemType && candidate.kind === kind,
+      );
       if (item) {
         if (item.hasMapping || item.isParamDependent) {
           setStatus(`Selected: ${item.name} - Click "Load Model" to view`);
@@ -759,16 +879,20 @@ export function ItemModelViewer() {
     const sy = baseScale * (mapping.scaleY ?? 1);
     const sz = baseScale * (mapping.scaleXZ ?? 1);
     extracted.scale.set(sx, sy, sz);
+    applyLightingMode(extracted, mapping.lightingMode);
 
     if (mapping.rotationY) {
       extracted.rotateY(mapping.rotationY);
     }
+    const yOff = mapping.yOffset ?? 0;
     if (mapping.positionOffset) {
       extracted.position.set(
         mapping.positionOffset[0],
-        mapping.positionOffset[1],
+        mapping.positionOffset[1] + yOff,
         mapping.positionOffset[2],
       );
+    } else if (yOff !== 0) {
+      extracted.position.set(0, yOff, 0);
     }
 
     setGltfScene(extracted);
@@ -833,7 +957,9 @@ export function ItemModelViewer() {
               </Label>
               <Select
                 value={
-                  selectedItemType !== null ? String(selectedItemType) : ""
+                  selectedItemType !== null
+                    ? `${selectedItemKind}:${String(selectedItemType)}`
+                    : ""
                 }
                 onValueChange={handleItemChange}
               >
@@ -846,13 +972,25 @@ export function ItemModelViewer() {
                 <SelectContent className="bg-gray-700 border-gray-600 max-h-80">
                   {gameItems.map((item) => (
                     <SelectItem
-                      key={item.type}
-                      value={String(item.type)}
+                      key={`${item.kind}:${String(item.type)}`}
+                      value={`${item.kind}:${String(item.type)}`}
+                      data-item-type={String(item.type)}
+                      data-item-name={item.name}
+                      data-item-spline={item.kind === "splineItem" ? "1" : "0"}
+                      data-item-mapped={item.hasMapping ? "1" : "0"}
                       className={`text-white hover:bg-gray-600 ${
                         item.hasMapping ? "text-green-300" : "text-gray-400"
                       }`}
                     >
-                      {formatItemDisplay(item)}
+                      <ItemThumbnail
+                        game={selectedGame.id}
+                        kind={item.kind}
+                        itemType={item.type}
+                        label={formatItemDisplay(item)}
+                        badgeLabel={item.name}
+                        params={itemParams}
+                        compact
+                      />
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -901,12 +1039,20 @@ export function ItemModelViewer() {
           )}
 
           {/* Selected Item Info */}
-          {selectedItem && (
+          {selectedItem && selectedGame && (
             <div className="p-3 bg-gray-700/50 rounded text-sm space-y-1">
-              <div className="text-white font-medium">{selectedItem.name}</div>
+              <ItemThumbnail
+                game={selectedGame.id}
+                kind={selectedItem.kind}
+                itemType={selectedItem.type}
+                label={selectedItem.name}
+                params={itemParams}
+                className="mb-2"
+                metadata={`Type ${String(selectedItem.type)}`}
+              />
               <div className="text-gray-400">Type: {selectedItem.type}</div>
-              {selectedItem.isSplineItem && (
-                <div className="text-cyan-300">↺ Can be a spline item</div>
+              {selectedItem.kind === "splineItem" && (
+                <div className="text-cyan-300">↺ Spline item</div>
               )}
               {selectedItem.isParamDependent && (
                 <div className="text-purple-300">

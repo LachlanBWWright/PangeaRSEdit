@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Redo, Undo, ZoomIn, ZoomOut } from "lucide-react";
+import { Redo, Undo } from "lucide-react";
 import { Image, Layer, Line, Stage } from "react-konva";
 import type Konva from "konva";
 import type { RefObject } from "react";
@@ -9,6 +9,7 @@ import {
   getLineCap,
   getLineJoin,
 } from "@/components/ImageEditor/imageEditorCanvasState";
+import { EditorZoomControls } from "@/components/editor/EditorZoomControls";
 
 interface ImageEditorCanvasProps {
   image: HTMLImageElement;
@@ -26,6 +27,7 @@ interface ImageEditorCanvasProps {
   handleMouseDown: () => void;
   handleMouseMove: () => void;
   handleMouseUp: () => void;
+  handleWheel: (event: Konva.KonvaEventObject<WheelEvent>) => void;
   selectedColorHighlightCanvas: HTMLCanvasElement | null;
   strokes: BrushStroke[];
   currentStroke: BrushStroke | null;
@@ -47,6 +49,7 @@ export function ImageEditorCanvas({
   handleMouseDown,
   handleMouseMove,
   handleMouseUp,
+  handleWheel,
   selectedColorHighlightCanvas,
   strokes,
   currentStroke,
@@ -82,34 +85,12 @@ export function ImageEditorCanvas({
             <Redo className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
-            onClick={zoomOut}
-            title="Zoom out"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
-            onClick={zoomIn}
-            title="Zoom in"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-12"
-            onClick={resetZoom}
-          >
-            {Math.round(scale * 100)}%
-          </Button>
-        </div>
+        <EditorZoomControls
+          zoomLabel={`${Math.round(scale * 100)}%`}
+          onZoomOut={zoomOut}
+          onResetZoom={resetZoom}
+          onZoomIn={zoomIn}
+        />
       </div>
 
       <div
@@ -133,6 +114,7 @@ export function ImageEditorCanvas({
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onWheel={handleWheel}
             >
               <Layer ref={layerRef} scaleX={scale} scaleY={scale}>
                 <Image image={image} />

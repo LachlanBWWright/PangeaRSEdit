@@ -36,7 +36,7 @@ If this file is present (and the response is `Content-Type: application/javascri
 
    ```bash
    cd frontend
-   npm run build:games
+   pnpm run build:games
    ```
 
    From the monorepo root, the equivalent shell command is `scripts/build-pangea-ports.sh`.
@@ -45,7 +45,7 @@ If this file is present (and the response is `Content-Type: application/javascri
 
    ```bash
    cd frontend
-   npm run dev
+   pnpm run dev
    ```
 
 3. Open the editor, load a level, and use the **Test in Game** button. The dialog will detect the bundled launcher automatically.

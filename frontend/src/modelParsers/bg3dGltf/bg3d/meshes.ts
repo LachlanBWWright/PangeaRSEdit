@@ -33,7 +33,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // Type guard for bounding box
-function isValidBoundingBox(value: unknown): value is { min: [number, number, number]; max: [number, number, number] } {
+function isValidBoundingBox(
+  value: unknown,
+): value is { min: [number, number, number]; max: [number, number, number] } {
   return boundingBoxSchema.safeParse(value).success;
 }
 
@@ -81,6 +83,7 @@ export function bg3dMeshesToGltf(
       ? doc
           .createAccessor()
           .setType("VEC4")
+          .setNormalized(true)
           .setArray(new Uint8Array(geom.colors.flat()))
           .setBuffer(baseBuffer)
       : null;
@@ -104,43 +107,26 @@ export function bg3dMeshesToGltf(
 
       // All arrays initialized to 0 (no bone influences by default)
 
-      // Apply bone influences based on Otto's point indices
-      // Each vertex can be influenced by multiple bones - we track all influences
+      // Pangea points are rigidly attached. Preserve the lowest bone index if
+      // malformed source data lists the same point under multiple bones.
       parsedSkeleton.bones.forEach((bone: BG3DBone, boneIndex: number) => {
         if (bone.pointIndices) {
           bone.pointIndices.forEach((vertexIndex: number) => {
             if (vertexIndex < numVertices) {
               const offset = vertexIndex * 4;
-
-              // Find empty slot for this influence (skip slots already used)
-              for (let slot = 0; slot < 4; slot++) {
-                if (weights[offset + slot] === 0) {
-                  joints[offset + slot] = boneIndex;
-                  weights[offset + slot] = 1.0;
-                  break;
-                }
+              if (weights[offset] === 0) {
+                joints[offset] = boneIndex;
+                weights[offset] = 1.0;
               }
             }
           });
         }
       });
 
-      // Normalize weights for each vertex
-      // If a vertex has no bone influences, assign it to root bone (bone 0)
+      // If a vertex has no bone influence, assign it to the root bone.
       for (let i = 0; i < numVertices; i++) {
         const offset = i * 4;
-        let totalWeight = 0;
-        for (let j = 0; j < 4; j++) {
-          totalWeight += weights[offset + j] ?? 0;
-        }
-
-        if (totalWeight > 0) {
-          // Normalize existing weights
-          for (let j = 0; j < 4; j++) {
-            weights[offset + j] = (weights[offset + j] ?? 0) / totalWeight;
-          }
-        } else {
-          // No bone influences - assign to root bone
+        if (weights[offset] === 0) {
           joints[offset] = 0;
           weights[offset] = 1.0;
         }
@@ -277,7 +263,11 @@ export function gltfMeshesToBg3d(
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
       const rawArr = idxAcc.getArray();
-      if (rawArr && (uint32ArraySchema.safeParse(rawArr).success || uint16ArraySchema.safeParse(rawArr).success)) {
+      if (
+        rawArr &&
+        (uint32ArraySchema.safeParse(rawArr).success ||
+          uint16ArraySchema.safeParse(rawArr).success)
+      ) {
         const arr = Array.from(rawArr);
         triangles = [];
         for (let i = 0; i < arr.length; i += 3) {
@@ -302,7 +292,9 @@ export function gltfMeshesToBg3d(
       triangles,
       layerMaterialNum: [materialIndex, 0, 0, 0], // BG3D expects array format
       flags: getNumberField(extras, "flags", 0),
-      boundingBox: isValidBoundingBox(extras.boundingBox) ? extras.boundingBox : undefined,
+      boundingBox: isValidBoundingBox(extras.boundingBox)
+        ? extras.boundingBox
+        : undefined,
       numMaterials: 1,
       type: getNumberField(extras, "type", 0),
       numPoints: vertices ? vertices.length : 0,
@@ -318,7 +310,7 @@ export function gltfMeshesToBg3d(
 // Type guard for BG3DGroup
 function isBG3DGroup(value: unknown): value is BG3DGroup {
   if (!isRecord(value)) return false;
-  return 'children' in value || 'materialNum' in value;
+  return "children" in value || "materialNum" in value;
 }
 
 /**
@@ -351,9 +343,9 @@ export function gltfSceneToBg3dGroups(
   }
 
   // Process scene hierarchy
-  const groups: BG3DGroup[] = sceneNodes.map((node) =>
-    processNode(node),
-  ).filter(isBG3DGroup);
+  const groups: BG3DGroup[] = sceneNodes
+    .map((node) => processNode(node))
+    .filter(isBG3DGroup);
 
   return groups;
 }
