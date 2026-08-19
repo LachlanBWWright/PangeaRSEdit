@@ -84,14 +84,14 @@ export function LevelActionMenu({
             Preview in Game (scripts)
           </Button>
         )}
-        <Button
+        <button
           type="button"
-          variant="menu"
+          className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
           onClick={() => closeAndRun(onDownload)}
         >
           <Download className="h-4 w-4" />
           Download Level
-        </Button>
+        </button>
         {ENABLE_SCRIPTS && hasScripts && onDownloadExtendedPackage && (
           <Button
             type="button"

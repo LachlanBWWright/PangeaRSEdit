@@ -50,6 +50,7 @@ jobs:
           VITE_API_BASE_PATH: ""
           VITE_MULTIPLAYER_ENABLED: "false"
           VITE_SCRIPTING_ENABLED: "false"
+          VITE_GAME_ASSET_VERSION: ${{ github.sha }}
         run: pnpm --dir frontend run build
 
       - name: Remove non-Pages build artifacts

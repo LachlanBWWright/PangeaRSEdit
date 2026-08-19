@@ -27,6 +27,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_ROOT="$REPO_ROOT/frontend"
 PANGEA_PORTS="$REPO_ROOT/games/pangea-ports"
 WASM_OUT="$FRONTEND_ROOT/public/generated/pangea-ports/wasm"
+EMSCRIPTEN_VERSION="${EMSCRIPTEN_VERSION:-3.1.74}"
 
 GAME_FILTER=""
 TARGET="wasm"
@@ -193,8 +194,8 @@ if [[ "$TARGET" == "wasm" && "$DRY_RUN" -eq 0 ]] && ! command -v emcc &>/dev/nul
     git clone --depth=1 https://github.com/emscripten-core/emsdk.git "$EMSDK"
   fi
   cd "$EMSDK"
-  ./emsdk install latest
-  ./emsdk activate latest
+  ./emsdk install "$EMSCRIPTEN_VERSION"
+  ./emsdk activate "$EMSCRIPTEN_VERSION"
   # shellcheck disable=SC1091
   source ./emsdk_env.sh
   cd "$REPO_ROOT"

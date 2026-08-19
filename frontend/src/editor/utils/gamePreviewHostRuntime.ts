@@ -262,7 +262,8 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     normalLaunch,
   );
   const assetBaseUrls = buildPreviewAssetBaseUrls(config);
-  const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
+  const assetVersion = import.meta.env.VITE_GAME_ASSET_VERSION ?? "development";
+  const cacheBustToken = `${assetVersion}-${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
   onStatus("Waiting for game canvas...");
 
   const handleFullscreenChange = () => {
