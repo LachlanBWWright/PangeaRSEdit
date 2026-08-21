@@ -9,6 +9,7 @@ import { Game } from "../../globals/globals";
 import {
   type GameItemModelMapper,
   type ItemModelKind,
+  type ModelPartMapping,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
 import {
@@ -42,6 +43,27 @@ const BUGDOM2_DOOR_PARAM_OPTIONS = {
     2: "Blue door",
   },
 };
+
+function sprinklerParts(modelFile: string): readonly ModelPartMapping[] {
+  const partIds: readonly string[] = ["base", "post"];
+  return [1, 2].map((modelIndex, index) => {
+    const partId = partIds[index] ?? "post";
+    return {
+      partId,
+      modelFile,
+      modelPath: "models",
+      modelIndex,
+      scale: 2.5,
+      citations: [{
+        file: "Source/Items/Traps.c",
+        line: 89,
+        description: "AddSprinklerHead creates the level-specific base and post at scale 2.5.",
+        proves: "model-index",
+        partId,
+      }],
+    };
+  });
+}
 
 function getBugdom2SplineSpecificMapping(
   itemType: number,
@@ -249,21 +271,40 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
 
   private getScarecrowMapping(
     params?: { p0: number; p1: number; p2: number; p3: number },
+    flags?: number,
   ): UniversalItemModelMapping {
-    return (params?.p0 ?? 0) === 0
-      ? {
+    if ((params?.p0 ?? 0) !== 0) {
+      return {
+        modelFile: "Level1_Garden.bg3d",
+        modelPath: "models",
+        modelIndex: 10,
+        scale: 1.1,
+      };
+    }
+    const base = BUGDOM2_ITEM_MODEL_MAPPINGS[ItemType.Scarecrow] ?? {
           modelFile: "Level1_Garden.bg3d",
           modelPath: "models",
           modelIndex: 8,
-          groupSize: 2,
-          scale: 1.1,
-        }
-      : {
-          modelFile: "Level1_Garden.bg3d",
-          modelPath: "models",
-          modelIndex: 10,
           scale: 1.1,
         };
+    if ((flags ?? 0) & 2) {
+      return {
+        ...base,
+        modelParts: [
+          ...(base.modelParts ?? []),
+          {
+            partId: "head",
+            modelFile: "Level1_Garden.bg3d",
+            modelPath: "models",
+            modelIndex: 10,
+            scale: 1.1,
+            positionAnchor: "primary-top",
+            citations: [{ file: "Source/Items/Snails.c", line: 869, description: "Completed scarecrows attach the head at the body collision top.", proves: "position", partId: "head" }],
+          },
+        ],
+      };
+    }
+    return base;
   }
 
   private getPuzzleMapping(
@@ -356,6 +397,19 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
       modelIndex: (flags ?? 0) === 0 ? 25 : 26,
     };
   }
+
+  private getSprinklerMapping(levelNum?: number): UniversalItemModelMapping {
+    const isSidewalk = levelNum === 1;
+    const modelFile = isSidewalk ? "Level2_Sidewalk.bg3d" : "Level1_Garden.bg3d";
+    return {
+      modelFile,
+      modelPath: "models",
+      modelIndex: 1,
+      scale: 2.5,
+      modelParts: sprinklerParts(modelFile),
+      rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+    };
+  }
   
   getMapping(
     itemType: number,
@@ -364,7 +418,13 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
     flags?: number,
     kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
-    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
+    if (
+      kind !== "splineItem" &&
+      isSplineOnlyItemType(this.game, itemType) &&
+      itemType !== ItemType.SlotCar &&
+      itemType !== ItemType.Vaccum &&
+      itemType !== 63
+    ) {
       return undefined;
     }
     if (
@@ -374,10 +434,7 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
       return undefined;
     }
 
-    const splineMapping =
-      kind === "splineItem"
-        ? getBugdom2SplineSpecificMapping(itemType, params)
-        : undefined;
+    const splineMapping = getBugdom2SplineSpecificMapping(itemType, params);
     if (splineMapping) {
       return splineMapping;
     }
@@ -399,7 +456,7 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
     }
 
     if (itemType === ItemType.Scarecrow) {
-      return this.getScarecrowMapping(params);
+      return this.getScarecrowMapping(params, flags);
     }
 
     if (itemType === ItemType.Puzzle) {
@@ -436,6 +493,10 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
 
     if (itemType === ItemType.SquishBerry) {
       return this.getSquishBerryMapping(flags);
+    }
+
+    if (itemType === ItemType.SprinklerHead) {
+      return this.getSprinklerMapping(levelNum);
     }
 
     if (itemType === ItemType.Enemy_Moth && ((params?.p3 ?? 0) & 1) !== 0) {

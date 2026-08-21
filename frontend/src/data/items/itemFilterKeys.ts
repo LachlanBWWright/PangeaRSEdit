@@ -42,5 +42,5 @@ export function getFilterableItemKindLabel(kind: FilterableItemKind): string {
 }
 
 export function getFilterableItemLabel(parts: FilterableItemKeyParts, name: string): string {
-  return `${getFilterableItemKindLabel(parts.kind)}: ${name}`;
+  return `${getFilterableItemKindLabel(parts.kind)}: ${name} (${parts.type})`;
 }

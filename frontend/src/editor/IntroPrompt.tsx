@@ -61,13 +61,13 @@ import { currentAuthUserAtom } from "@/data/globals/authState";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import type { PreviewVfsFile } from "./utils/gamePreviewRuntimeTypes";
 import {
-  buildPreviewScriptFiles,
-  buildScriptPackageFiles,
-  buildScriptPackageZip,
+  buildPreviewScriptFilesAsync,
+  buildScriptPackageFilesAsync,
+  buildScriptPackageZipAsync,
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
   getScriptWorkspaceId,
-  importScriptPackageZip,
+  importScriptPackageZipAsync,
   replaceScriptWorkspace,
   retargetScriptWorkspace,
   scriptWorkspaceStoreAtom,
@@ -645,8 +645,10 @@ export function IntroPrompt() {
     prepareTestLevel(undefined);
   }, [prepareTestLevel]);
 
-  const handlePreviewWithScripts = useCallback(() => {
-    const previewFilesResult = buildPreviewScriptFiles(scriptWorkspace);
+  const handlePreviewWithScripts = useCallback(async () => {
+    const previewFilesResult = await buildPreviewScriptFilesAsync(
+      scriptWorkspace,
+    );
     if (previewFilesResult.isErr()) {
       toast.error("Preview failed", {
         description: previewFilesResult.error,
@@ -657,8 +659,8 @@ export function IntroPrompt() {
     prepareTestLevel(previewFilesResult.value);
   }, [prepareTestLevel, scriptWorkspace]);
 
-  const handleDownloadScriptPackage = useCallback(() => {
-    const zipResult = buildScriptPackageZip(scriptWorkspace);
+  const handleDownloadScriptPackage = useCallback(async () => {
+    const zipResult = await buildScriptPackageZipAsync(scriptWorkspace);
     if (zipResult.isErr()) {
       toast.error("Script package failed", {
         description: zipResult.error,
@@ -679,7 +681,9 @@ export function IntroPrompt() {
       return;
     }
 
-    const scriptFilesResult = buildScriptPackageFiles(scriptWorkspace);
+    const scriptFilesResult = await buildScriptPackageFilesAsync(
+      scriptWorkspace,
+    );
     if (scriptFilesResult.isErr()) {
       toast.error("Extended package failed", {
         description: scriptFilesResult.error,
@@ -718,8 +722,8 @@ export function IntroPrompt() {
 
       void file
         .arrayBuffer()
-        .then((buffer) => {
-          const importResult = importScriptPackageZip(
+        .then(async (buffer) => {
+          const importResult = await importScriptPackageZipAsync(
             new Uint8Array(buffer),
             previewScriptContext,
           );

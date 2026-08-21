@@ -7,7 +7,9 @@ import {
   DEFAULT_FILTER_STATE,
 } from "@/data/items/itemFilterAtoms";
 import { Globals } from "@/data/globals/globals";
+import type { ItemData, SplineData } from "@/python/structSpecs/LevelTypes";
 import {
+  countItemAppearances,
   createHideAllFilterState,
   filterItemTypesBySearch,
   isFilterTypeVisible,
@@ -18,6 +20,8 @@ import {
 interface ItemFilterPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  itemData: ItemData;
+  splineData: SplineData | null;
 }
 
 /**
@@ -27,6 +31,8 @@ interface ItemFilterPanelProps {
 export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
   isOpen,
   onClose,
+  itemData,
+  splineData,
 }) => {
   const [filter, setFilter] = useAtom(itemFilterStateAtom);
   const globals = useAtomValue(Globals);
@@ -39,6 +45,11 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
   const filteredTypes = useMemo(() => {
     return filterItemTypesBySearch(allItemTypes, search);
   }, [allItemTypes, search]);
+
+  const itemAppearanceCounts = useMemo(
+    () => countItemAppearances(itemData, splineData),
+    [itemData, splineData],
+  );
 
   const isTypeVisible = (itemType: (typeof allItemTypes)[number]): boolean => {
     return isFilterTypeVisible(filter, itemType);
@@ -134,7 +145,7 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
                   {itemType.label}
                 </span>
                 <span className="ml-auto text-xs text-gray-600 flex-none">
-                  {itemType.id}
+                  {itemAppearanceCounts.get(itemType.key) ?? 0}
                 </span>
               </label>
             );

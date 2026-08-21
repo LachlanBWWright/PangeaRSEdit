@@ -13,8 +13,54 @@
  */
 
 import { ItemType } from "./ottoItemType";
-import type { UniversalItemModelMapping } from "./itemModelTypes";
+import type { ModelPartMapping, UniversalItemModelMapping } from "./itemModelTypes";
 import { ROTATION_2_WAY, ROTATION_4_WAY, ROTATION_8_WAY, ROTATION_16_WAY, ROTATION_PI_STEP } from "./standardParamTypes";
+
+function ottoPart(
+  partId: string,
+  modelFile: string,
+  modelIndex: number,
+  sourceFile: string,
+  line: number,
+  positionOffset?: [number, number, number],
+  scale?: number,
+): ModelPartMapping {
+  return {
+    partId,
+    modelFile,
+    modelPath: "models",
+    modelIndex,
+    ...(positionOffset === undefined ? {} : { positionOffset }),
+    ...(scale === undefined ? {} : { scale }),
+    citations: [{
+      file: sourceFile,
+      line,
+      description: `Source creates the ${partId} child model.`,
+      proves: positionOffset ? "position" : "model-index",
+      partId,
+    }],
+  };
+}
+
+function ottoParts(
+  modelFile: string,
+  firstModelIndex: number,
+  count: number,
+  sourceFile: string,
+  line: number,
+  positionOffsets: readonly [number, number, number][] = [],
+): readonly ModelPartMapping[] {
+  return Array.from({ length: count }, (_, index) =>
+    ottoPart(
+      `part-${index}`,
+      modelFile,
+      firstModelIndex + index,
+      sourceFile,
+      line,
+      positionOffsets[index],
+    ),
+  );
+}
 
 /**
  * Comprehensive mapping of all Otto Matic item types to their 3D models
@@ -116,8 +162,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 31,
-    groupSize: 2,
     scale: 5.0,
+    modelParts: [
+      ottoPart("base", "global.bg3d", 31, "src/Items/Triggers.c", 691),
+      ottoPart("dish", "global.bg3d", 32, "src/Items/Triggers.c", 733),
+    ],
     citations: [{ file: "src/Items/Triggers.c", line: 691, description: "scale = 5.0" }],
   },
 
@@ -173,8 +222,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
     modelIndex: 11,
-    groupSize: 5,
     scale: 1.0,
+    modelParts: ottoParts("level1_farm.bg3d", 11, 5, "src/Enemies/Farm/Enemy_Tractor.c", 78),
     citations: [
       { file: "src/Enemies/Farm/Enemy_Tractor.c", line: 31, description: "#define TRACTOR_SCALE 1.0f" },
       { file: "src/Enemies/Farm/Enemy_Tractor.c", line: 78, description: "scale = TRACTOR_SCALE" },
@@ -213,8 +262,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
     modelIndex: 23,
-    groupSize: 2,
     scale: 4.0,
+    modelParts: [
+      ottoPart("base", "level1_farm.bg3d", 23, "src/Items/Items.c", 709),
+      ottoPart("propeller", "level1_farm.bg3d", 24, "src/Items/Items.c", 733, [0, 372, 53]),
+    ],
     rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [
       { file: "src/Items/Items.c", line: 44, description: "#define WINDMILL_SCALE 4.0f" },
@@ -227,8 +279,32 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 27,
-    groupSize: 2,
     scale: 0.8,
+    modelParts: [
+      {
+        partId: "rocket",
+        modelFile: "global.bg3d",
+        modelPath: "models",
+        modelIndex: 27,
+        scale: 0.8,
+        citations: [
+          { file: "src/Headers/mobjtypes.h", line: 62, description: "GLOBAL_ObjType_Rocket model group." , proves: "model-index", partId: "rocket" },
+          { file: "src/Player/Player.c", line: 530, description: "Exit rocket uses ROCKET_SCALE.", proves: "scale", partId: "rocket" },
+        ],
+      },
+      {
+        partId: "rocket-door",
+        modelFile: "global.bg3d",
+        modelPath: "models",
+        modelIndex: 28,
+        scale: 0.8,
+        positionOffset: [0, 444.688, 77.563],
+        citations: [
+          { file: "src/Headers/mobjtypes.h", line: 63, description: "GLOBAL_ObjType_RocketDoor model group.", proves: "model-index", partId: "rocket-door" },
+          { file: "src/Player/Player.c", line: 1569, endLine: 1571, description: "AlignRocketDoor positions the door relative to the rocket.", proves: "position", partId: "rocket-door" },
+        ],
+      },
+    ],
     citations: [
       { file: "src/Player/Player.c", line: 40, description: "#define ROCKET_SCALE .8f" },
       { file: "src/Player/Player.c", line: 604, description: "scale = ROCKET_SCALE" },
@@ -306,8 +382,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
     modelIndex: 21,
-    groupSize: 2,
     scale: 4.0,
+    modelParts: [
+      ottoPart("body", "level2_slime.bg3d", 21, "src/Items/Traps.c", 865),
+      ottoPart("propeller", "level2_slime.bg3d", 22, "src/Items/Traps.c", 913, [0, -19, 107]),
+    ],
     citations: [{ file: "src/Items/Traps.c", line: 865, description: "scale = 4.0" }],
   },
   [ItemType.FallingSlimePlatform]: {
@@ -321,8 +400,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
     modelIndex: 19,
-    groupSize: 2,
     scale: 2.0,
+    modelParts: ottoParts("level2_slime.bg3d", 19, 2, "src/Items/Traps.c", 440),
     rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [{ file: "src/Items/Traps.c", line: 440, description: "scale = 2.0; parm[0] * (PI2/4.0f) sets rotation (PI/2 per step)" }],
   },
@@ -330,8 +409,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
     modelIndex: 7,
-    groupSize: 2,
     scale: 2.5,
+    modelParts: ottoParts("level2_slime.bg3d", 7, 2, "src/Items/Items.c", 1161),
     rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [{ file: "src/Items/Items.c", line: 1161, description: "scale = s = 2.5f; parm[0] * (PI/2) sets rotation" }],
   },
@@ -349,9 +428,19 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     scale: 2.0,
     citations: [{ file: "src/Items/Items.c", line: 1602, description: "scale = s = 2.0" }],
   },
-  // MachineBoss (type 41): NilAdd in Terrain2.c — the blob boss machine is spawned internally
-  // by MakeBlobBossMachine(), never placed as a static terrain item
-  [ItemType.MachineBoss]: undefined,
+  // The terrain entry is a marker consumed by MakeBlobBossMachine(). Its visible
+  // central unit is the Base + Casing pair created at scale 6.0.
+  [ItemType.MachineBoss]: {
+    modelFile: "level3_blobboss.bg3d",
+    modelPath: "models",
+    modelIndex: 25,
+    scale: 6.0,
+    modelParts: ottoParts("level3_blobboss.bg3d", 25, 2, "src/Enemies/Slime/BlobBoss.c", 664),
+    citations: [
+      { file: "src/Enemies/Slime/BlobBoss.c", line: 97, description: "MakeBlobBossMachine resolves the terrain marker and builds the boss at its coordinates." },
+      { file: "src/Enemies/Slime/BlobBoss.c", line: 664, endLine: 683, description: "The central unit uses BLOBBOSS_ObjType_Base followed by BLOBBOSS_ObjType_Casing at scale 6.0." },
+    ],
+  },
 
   // 43-54: Cloud/Jungle/Apocalypse level items
   [ItemType.BlobBossTube]: {
@@ -383,8 +472,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
     modelIndex: 1,
-    groupSize: 3,
     scale: 5.0,
+    modelParts: ottoParts("level4_apocalypse.bg3d", 1, 2, "src/Items/Traps.c", 1204),
     rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [{ file: "src/Items/Traps.c", line: 1204, description: "scale = 5.0; parm[0] * (PI/2) sets rotation" }],
   },
@@ -480,8 +569,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
     modelIndex: 20,
-    groupSize: 2,
     scale: 1.5,
+    modelParts: ottoParts("level4_apocalypse.bg3d", 20, 1, "src/Items/ZipLine.c", 209),
     citations: [{ file: "src/Items/ZipLine.c", line: 209, description: "scale = 1.5" }],
   },
   [ItemType.Enemy_Mutant]: {
@@ -615,8 +704,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
     modelIndex: 19,
-    groupSize: 2,
     scale: 2.5,
+    modelParts: [
+      ottoPart("stem", "level6_jungle.bg3d", 19, "src/Enemies/Jungle/PitcherPlantBoss.c", 927),
+      ottoPart("pod", "level6_jungle.bg3d", 20, "src/Enemies/Jungle/PitcherPlantBoss.c", 948, [0, 336.7, 164.6]),
+    ],
     citations: [{ file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 935, description: "scale = 2.5f + Random" }],
   },
   [ItemType.TractorBeamPost]: {
@@ -630,8 +722,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
     modelIndex: 8,
-    groupSize: 2,
     scale: 1.9,
+    modelParts: ottoParts("level5_cloud.bg3d", 8, 2, "src/Items/HumanCannonball.c", 56),
     rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [
       { file: "src/Items/HumanCannonball.c", line: 25, description: "#define CANNON_SCALE 1.9f" },
@@ -682,8 +774,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
     modelIndex: 13, // CLOUD_ObjType_Generator (main post); GeneratorBumper (14) is a chain node
-    groupSize: 2,
     scale: 1.1,
+    modelParts: ottoParts("level5_cloud.bg3d", 13, 2, "src/Items/BumperCar.c", 936, [
+      [0, 0, 0], [0, 80, 0],
+    ]),
     citations: [{ file: "src/Items/BumperCar.c", line: 936, description: "scale = 1.1" }],
   },
   // Strongman enemy (type 81)
@@ -702,8 +796,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
     modelIndex: 6,
-    groupSize: 2,
     scale: 8.0,
+    modelParts: ottoParts("level5_cloud.bg3d", 6, 2, "src/Items/Items.c", 1778),
     rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [{ file: "src/Items/Items.c", line: 1778, description: "scale = 8.0; parm[0] * (PI/2) sets rotation" }],
   },
@@ -735,8 +829,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
     modelIndex: 10,
-    groupSize: 3,
     scale: 15.0,
+    modelParts: ottoParts("level8_fireice.bg3d", 10, 5, "src/Enemies/FireIce/Enemy_JawsBot.c", 116, [
+      [0, 0, 0], [0, 4.4, -10], [0, 3, -6], [0, 3, 0], [0, 3, 6],
+    ]),
     citations: [
       { file: "src/Enemies/FireIce/Enemy_JawsBot.c", line: 40, description: "#define JAWSBOT_SCALE 15.0f" },
       { file: "src/Enemies/FireIce/Enemy_JawsBot.c", line: 116, description: "scale = JAWSBOT_SCALE" },
@@ -746,8 +842,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
     modelIndex: 16,
-    groupSize: 3,
     scale: 2.5,
+    modelParts: ottoParts("level8_fireice.bg3d", 16, 3, "src/Enemies/FireIce/Enemy_HammerBot.c", 124),
     citations: [
       { file: "src/Enemies/FireIce/Enemy_HammerBot.c", line: 42, description: "#define HAMMERBOT_SCALE 2.5f" },
       { file: "src/Enemies/FireIce/Enemy_HammerBot.c", line: 124, description: "scale = HAMMERBOT_SCALE" },
@@ -757,8 +853,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
     modelIndex: 22,
-    groupSize: 3,
     scale: 1.5,
+    modelParts: ottoParts("level8_fireice.bg3d", 22, 4, "src/Enemies/FireIce/Enemy_DrillBot.c", 128, [
+      [0, 0, 0], [0, 59, 0], [0, 32, -45], [0, 32, 45],
+    ]),
     citations: [
       { file: "src/Enemies/FireIce/Enemy_DrillBot.c", line: 42, description: "#define DRILLBOT_SCALE 1.5f" },
       { file: "src/Enemies/FireIce/Enemy_DrillBot.c", line: 128, description: "scale = DRILLBOT_SCALE" },
@@ -768,8 +866,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
     modelIndex: 27,
-    groupSize: 5,
     scale: 1.0,
+    modelParts: ottoParts("level8_fireice.bg3d", 27, 6, "src/Enemies/FireIce/Enemy_SwingerBot.c", 123, [
+      [0, 0, 0], [0, 0, 0], [0, 65, -77], [0, 0, 0], [-140, 206, 0], [140, 206, 0],
+    ]),
     citations: [
       { file: "src/Enemies/FireIce/Enemy_SwingerBot.c", line: 41, description: "#define SWINGERBOT_SCALE 1.0f" },
       { file: "src/Enemies/FireIce/Enemy_SwingerBot.c", line: 123, description: "scale = SWINGERBOT_SCALE" },
@@ -792,8 +892,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
     modelIndex: 8,
-    groupSize: 2,
     scale: 1.0,
+    modelParts: [
+      ottoPart("base", "level9_saucer.bg3d", 8, "src/Items/items2.c", 383),
+      ottoPart("dish", "level9_saucer.bg3d", 9, "src/Items/items2.c", 404),
+    ],
     citations: [{ file: "src/Items/items2.c", line: 383, description: "scale = 1.0" }],
   },
   [ItemType.Beemer]: {
@@ -859,8 +962,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
     modelIndex: 6,
-    groupSize: 3,
     scale: 2.7,
+    modelParts: [
+      ottoPart("saucer", "level8_fireice.bg3d", 6, "src/Items/IceSaucer.c", 72),
+      ottoPart("hatch", "level8_fireice.bg3d", 7, "src/Items/IceSaucer.c", 91),
+      ottoPart("ice", "level8_fireice.bg3d", 8, "src/Items/IceSaucer.c", 112, [0, 300 / 2.7, 0], 20),
+    ],
     citations: [
       { file: "src/Items/IceSaucer.c", line: 29, description: "#define ICE_SAUCER_SCALE 2.7f" },
       { file: "src/Items/IceSaucer.c", line: 72, description: "scale = ICE_SAUCER_SCALE" },
@@ -879,8 +986,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
     modelIndex: 4,
-    groupSize: 2,
     scale: 1.0,
+    modelParts: ottoParts("level9_saucer.bg3d", 4, 2, "src/Items/Traps2.c", 204),
     citations: [
       { file: "src/Items/Traps2.c", line: 33, description: "#define RAIL_GUN_SCALE 1.0f" },
       { file: "src/Items/Traps2.c", line: 204, description: "scale = RAIL_GUN_SCALE" },
@@ -890,8 +997,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
     modelIndex: 6,
-    groupSize: 2,
     scale: 1.0,
+    modelParts: [
+      ottoPart("base", "level9_saucer.bg3d", 6, "src/Items/Traps2.c", 360),
+      ottoPart("turret", "level9_saucer.bg3d", 7, "src/Items/Traps2.c", 384, [0, 114, 0]),
+    ],
     citations: [
       { file: "src/Items/Traps2.c", line: 35, description: "#define TURRET_SCALE 1.0f" },
       { file: "src/Items/Traps2.c", line: 360, description: "scale = TURRET_SCALE" },
@@ -917,8 +1027,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
     modelIndex: 15,
-    groupSize: 2,
     scale: 3.5,
+    modelParts: ottoParts("level5_cloud.bg3d", 15, 2, "src/Items/BumperCar.c", 1240),
     citations: [{ file: "src/Items/BumperCar.c", line: 1240, description: "scale = 3.5" }],
   },
   

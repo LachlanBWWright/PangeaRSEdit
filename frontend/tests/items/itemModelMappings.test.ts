@@ -421,7 +421,7 @@ describe("item model mappings", () => {
         p1: 0,
         p2: 0,
         p3: 0,
-      }),
+      }, 0, "terrainItem"),
     ).toBeUndefined();
 
     expect(

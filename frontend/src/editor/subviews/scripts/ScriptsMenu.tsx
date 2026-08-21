@@ -63,8 +63,9 @@ import {
   addBehaviorDefinition,
   addScriptAsset,
   addScriptParam,
+  appendScriptDiagnostic,
   applyGlobalBehavior,
-  buildScriptPackageZip,
+  buildScriptPackageZipAsync,
   compileScriptWorkspace,
   createCustomObjectFromBehavior,
   updateCustomObjectDefinition,
@@ -73,15 +74,17 @@ import {
   getWorkspaceWarnings,
   getScriptSamples,
   getScriptWorkspaceId,
-  importScriptPackageZip,
+  importScriptPackageZipAsync,
   loadScriptSample,
   removeBindingById,
+  removeMapItemReplacement,
   removeTerrainItemReplacement,
   removeSplineItemReplacement,
   removeGlobalBehavior,
   removeScriptSourceFile,
   replaceScriptWorkspace,
   replaceTerrainItemWithCustomObject,
+  replaceMapItemWithCustomObject,
   replaceSplineItemWithCustomObject,
   saveScriptSourceFile,
   scriptWorkspaceStoreAtom,
@@ -89,51 +92,20 @@ import {
   updateScriptSourceContent,
   upsertScriptSourceFile,
   type ScriptHookId,
+  type ScriptDiagnostic,
   type ScriptCustomObjectDefinition,
   type ScriptTargetKind,
   type ScriptWorkspaceState,
 } from "./scriptWorkspaceState";
+import { validateUploadedScriptAssetAsync } from "./scriptAssetValidation";
+import { convertGltfAsset } from "./scriptAssetConversion";
+import {
+  applyUploadedAssetPath,
+  buildScriptAssetPaths,
+} from "./scriptAssetPaths";
+import { getNativeReplacementCompatibility } from "./scriptNativeAudit";
 
 type ScriptsTab = "overview" | "assignments" | "code" | "preview";
-
-function sanitizeAssetFileName(fileName: string): string {
-  return fileName.replace(/[^a-zA-Z0-9._-]+/g, "-");
-}
-
-function buildAssetPath(
-  definition: ScriptCustomObjectDefinition,
-  fileName: string,
-  role: "model" | "skeleton",
-): { readonly assetPath: string; readonly manifestPath: string } | null {
-  const sanitized = sanitizeAssetFileName(fileName);
-  if (role === "model") {
-    if (!sanitized.toLowerCase().endsWith(".bg3d")) return null;
-    const directory =
-      definition.visual.kind === "customSkeleton" ? "skeletons" : "models";
-    const path = `Data/Scripts/assets/${directory}/${sanitized}`;
-    return { assetPath: path, manifestPath: path };
-  }
-  if (!sanitized.toLowerCase().endsWith(".rsrc")) return null;
-  const baseName = sanitized.replace(/(?:\.skeleton)?\.rsrc$/i, "");
-  const manifestPath = `Data/Scripts/assets/skeletons/${baseName}.skeleton`;
-  return { assetPath: `${manifestPath}.rsrc`, manifestPath };
-}
-
-function applyUploadedAssetPath(
-  definition: ScriptCustomObjectDefinition,
-  path: string,
-  role: "model" | "skeleton",
-): ScriptCustomObjectDefinition {
-  if (definition.visual.kind === "customDisplayGroup" && role === "model") {
-    return { ...definition, visual: { ...definition.visual, modelPath: path } };
-  }
-  if (definition.visual.kind !== "customSkeleton") {
-    return definition;
-  }
-  return role === "model"
-    ? { ...definition, visual: { ...definition.visual, modelPath: path } }
-    : { ...definition, visual: { ...definition.visual, skeletonPath: path } };
-}
 
 interface ScriptsMenuProps {
   headerData: HeaderData;
@@ -169,6 +141,23 @@ function hasScriptSourceFile(
     return false;
   }
   return Boolean(workspace.sourceFiles[behavior.sourceFilePath]);
+}
+
+function createScriptDiagnostic(
+  category: ScriptDiagnostic["category"],
+  message: string,
+  code: string,
+  filePath: string,
+): ScriptDiagnostic {
+  return {
+    category,
+    severity: "error",
+    message,
+    code,
+    filePath,
+    line: 0,
+    column: 0,
+  };
 }
 
 export function ScriptsMenu({
@@ -265,6 +254,12 @@ export function ScriptsMenu({
     () => getScriptBehaviorOptions(workspace, "customObject"),
     [workspace],
   );
+  const effectiveCustomObjectBehaviorId =
+    customObjectBehaviors.some(
+      (behavior) => behavior.id === customObjectBehaviorId,
+    )
+      ? customObjectBehaviorId
+      : (customObjectBehaviors[0]?.id ?? "");
   const customObjectOptions = useMemo(
     () => getScriptCustomObjectOptions(workspace),
     [workspace],
@@ -274,6 +269,15 @@ export function ScriptsMenu({
       selectedItem === undefined
         ? null
         : (workspace.levels[workspace.context.levelKey]?.terrainReplacements.find(
+            (replacement) => replacement.itemIndex === selectedItem,
+          ) ?? null),
+    [selectedItem, workspace],
+  );
+  const selectedMapReplacement = useMemo(
+    () =>
+      selectedItem === undefined
+        ? null
+        : (workspace.levels[workspace.context.levelKey]?.mapReplacements.find(
             (replacement) => replacement.itemIndex === selectedItem,
           ) ?? null),
     [selectedItem, workspace],
@@ -288,6 +292,31 @@ export function ScriptsMenu({
               replacement.itemIndex === selectedSplineItem,
           ) ?? null),
     [selectedSpline, selectedSplineItem, workspace],
+  );
+  const terrainReplacementCompatibility = useMemo(
+    () =>
+      selectedItemData
+        ? getNativeReplacementCompatibility(context.gameId, selectedItemData.type, "terrain")
+        : null,
+    [context.gameId, selectedItemData],
+  );
+  const mapReplacementCompatibility = useMemo(
+    () =>
+      selectionTargetKind === "mapItem" && selectedItemData
+        ? getNativeReplacementCompatibility(context.gameId, selectedItemData.type, "map")
+        : null,
+    [context.gameId, selectedItemData, selectionTargetKind],
+  );
+  const splineReplacementCompatibility = useMemo(
+    () =>
+      selectedSplineItemData
+        ? getNativeReplacementCompatibility(
+          context.gameId,
+          selectedSplineItemData.type,
+          "spline",
+        )
+        : null,
+    [context.gameId, selectedSplineItemData],
   );
   const sourcePathOptions = useMemo(
     () => getScriptSourcePathOptions(workspace),
@@ -344,17 +373,6 @@ export function ScriptsMenu({
       ),
     );
   }, [context, setWorkspaceStore, workspaceId, workspaceStore]);
-
-  useEffect(() => {
-    if (
-      customObjectBehaviors.length > 0 &&
-      !customObjectBehaviors.some(
-        (behavior) => behavior.id === customObjectBehaviorId,
-      )
-    ) {
-      setCustomObjectBehaviorId(customObjectBehaviors[0]?.id ?? "");
-    }
-  }, [customObjectBehaviorId, customObjectBehaviors]);
 
   const persistWorkspace = (nextState: ScriptWorkspaceState) => {
     setWorkspaceStore((currentStore) =>
@@ -429,6 +447,17 @@ export function ScriptsMenu({
     setIsPreparingPreview(false);
 
     if (previewResult.isErr()) {
+      updateWorkspace((state) =>
+        appendScriptDiagnostic(state, {
+          category: "packaging",
+          severity: "error",
+          message: previewResult.error,
+          code: "package.preview",
+          filePath: "Data/Scripts/config",
+          line: 0,
+          column: 0,
+        }),
+      );
       toast.error(previewResult.error);
       return;
     }
@@ -443,9 +472,20 @@ export function ScriptsMenu({
     }
   };
 
-  const handleDownloadScriptPackage = () => {
-    const zipResult = buildScriptPackageZip(workspace);
+  const handleDownloadScriptPackage = async () => {
+    const zipResult = await buildScriptPackageZipAsync(workspace);
     if (zipResult.isErr()) {
+      updateWorkspace((state) =>
+        appendScriptDiagnostic(state, {
+          category: "packaging",
+          severity: "error",
+          message: zipResult.error,
+          code: "package.export",
+          filePath: "Data/Scripts/config",
+          line: 0,
+          column: 0,
+        }),
+      );
       toast.error(zipResult.error);
       return;
     }
@@ -467,6 +507,17 @@ export function ScriptsMenu({
       mapImages,
     });
     if (archiveResult.isErr()) {
+      updateWorkspace((state) =>
+        appendScriptDiagnostic(
+          state,
+          createScriptDiagnostic(
+            "packaging",
+            archiveResult.error,
+            "package.original-export",
+            "Data/Scripts/config",
+          ),
+        ),
+      );
       toast.error(archiveResult.error);
       return;
     }
@@ -497,6 +548,17 @@ export function ScriptsMenu({
       mapImages,
     });
     if (archiveResult.isErr()) {
+      updateWorkspace((state) =>
+        appendScriptDiagnostic(
+          state,
+          createScriptDiagnostic(
+            "packaging",
+            archiveResult.error,
+            "package.extended-export",
+            "Data/Scripts/config",
+          ),
+        ),
+      );
       toast.error(archiveResult.error);
       return;
     }
@@ -517,11 +579,22 @@ export function ScriptsMenu({
     }
 
     const buffer = await file.arrayBuffer();
-    const importResult = importScriptPackageZip(
+    const importResult = await importScriptPackageZipAsync(
       new Uint8Array(buffer),
       context,
     );
     if (importResult.isErr()) {
+      updateWorkspace((state) =>
+        appendScriptDiagnostic(state, {
+          category: "packaging",
+          severity: "error",
+          message: importResult.error,
+          code: "package.import",
+          filePath: file.name,
+          line: 0,
+          column: 0,
+        }),
+      );
       toast.error(importResult.error);
       return;
     }
@@ -567,7 +640,7 @@ export function ScriptsMenu({
 
   const handleCreateCustomObject = () => {
     if (
-      customObjectBehaviorId.length === 0 ||
+      effectiveCustomObjectBehaviorId.length === 0 ||
       customObjectLabel.trim().length === 0
     ) {
       return;
@@ -576,7 +649,7 @@ export function ScriptsMenu({
     updateWorkspace((state) =>
       createCustomObjectFromBehavior(
         state,
-        customObjectBehaviorId,
+        effectiveCustomObjectBehaviorId,
         generatedCustomObjectId,
         customObjectLabel.trim(),
       ),
@@ -589,16 +662,21 @@ export function ScriptsMenu({
     file: File,
     role: "model" | "skeleton",
   ) => {
+    const reportAssetFailure = (message: string, code: string) => {
+      updateWorkspace((state) =>
+        appendScriptDiagnostic(
+          state,
+          createScriptDiagnostic("source-validation", message, code, file.name),
+        ),
+      );
+      toast.error(message);
+    };
+
     if (file.size > 16 * 1024 * 1024) {
-      toast.error("Custom item assets are limited to 16 MiB each");
-      return;
-    }
-    const currentAssetBytes = Object.values(workspace.assets).reduce(
-      (total, asset) => total + asset.bytes.byteLength,
-      0,
-    );
-    if (currentAssetBytes + file.size > 64 * 1024 * 1024) {
-      toast.error("This script package has reached its 64 MiB asset budget");
+      reportAssetFailure(
+        "Custom item assets are limited to 16 MiB each",
+        "asset.size",
+      );
       return;
     }
     const bytesResult = await ResultAsync.fromPromise(
@@ -606,13 +684,53 @@ export function ScriptsMenu({
       () => `Could not read ${file.name}`,
     );
     if (bytesResult.isErr()) {
-      toast.error(bytesResult.error);
+      reportAssetFailure(bytesResult.error, "asset.read");
       return;
     }
 
-    const paths = buildAssetPath(definition, file.name, role);
+    const paths = buildScriptAssetPaths(definition, file.name, role);
     if (!paths) {
-      toast.error(role === "model" ? "Select a .bg3d model" : "Select a .rsrc skeleton resource");
+      reportAssetFailure(
+        role === "model"
+          ? "Select a .bg3d, .shapes, .gltf, or .glb model"
+          : "Select a .rsrc skeleton resource",
+        "asset.path",
+      );
+      return;
+    }
+    const sourceBytes = new Uint8Array(bytesResult.value);
+    const conversionResult = paths.sourcePath
+      ? await convertGltfAsset(file.name, sourceBytes)
+      : null;
+    if (conversionResult?.isErr()) {
+      reportAssetFailure(
+        `Could not convert ${file.name}: ${conversionResult.error}`,
+        "asset.gltf-conversion",
+      );
+      return;
+    }
+    const runtimeBytes = conversionResult?.isOk()
+      ? conversionResult.value.nativeBytes
+      : sourceBytes;
+    const currentAssetBytes = Object.values(workspace.assets).reduce(
+      (total, asset) => total + asset.bytes.byteLength,
+      0,
+    );
+    const addedAssetBytes = runtimeBytes.byteLength +
+      (paths.sourcePath ? sourceBytes.byteLength : 0);
+    if (currentAssetBytes + addedAssetBytes > 64 * 1024 * 1024) {
+      reportAssetFailure(
+        "This script package has reached its 64 MiB asset budget",
+        "asset.budget",
+      );
+      return;
+    }
+    const assetValidation = await validateUploadedScriptAssetAsync(paths.assetPath, runtimeBytes);
+    if (assetValidation.isErr()) {
+      reportAssetFailure(
+        `Could not add ${file.name}: ${assetValidation.error}`,
+        "asset.validation",
+      );
       return;
     }
     const nextDefinition = applyUploadedAssetPath(
@@ -620,17 +738,39 @@ export function ScriptsMenu({
       paths.manifestPath,
       role,
     );
-    updateWorkspace((state) =>
-      updateCustomObjectDefinition(
-        addScriptAsset(
-          state,
-          paths.assetPath,
-          new Uint8Array(bytesResult.value),
-          file.name,
-        ),
-        nextDefinition,
-      ),
-    );
+    const conversionWarnings: readonly ScriptDiagnostic[] = conversionResult?.isOk()
+      ? conversionResult.value.warnings.map((message, index): ScriptDiagnostic => ({
+          category: "source-validation",
+          severity: "warning",
+          message: `${file.name}: ${message}`,
+          code: `asset.gltf.compatibility.${String(index)}`,
+          filePath: paths.sourcePath ?? paths.assetPath,
+          line: 0,
+          column: 0,
+        }))
+      : [];
+    updateWorkspace((state) => {
+      const withRuntimeAsset = addScriptAsset(
+        state,
+        paths.assetPath,
+        runtimeBytes,
+        file.name,
+      );
+      const withSourceAsset = paths.sourcePath
+        ? addScriptAsset(withRuntimeAsset, paths.sourcePath, sourceBytes, file.name)
+        : withRuntimeAsset;
+      const nextState = updateCustomObjectDefinition(withSourceAsset, nextDefinition);
+      return conversionWarnings.length === 0
+        ? nextState
+        : {
+            ...nextState,
+            diagnostics: [...nextState.diagnostics, ...conversionWarnings].slice(-100),
+            statusLog: [
+              ...nextState.statusLog,
+              `Imported ${file.name} with ${String(conversionWarnings.length)} glTF compatibility warning(s)`,
+            ].slice(-20),
+          };
+    });
     toast.success(`Added ${file.name} to the scripted item package`);
   };
 
@@ -785,7 +925,7 @@ export function ScriptsMenu({
           <div className="grid gap-4">
             <ScriptCustomObjectsPanel
               gameId={context.gameId}
-              customObjectBehaviorId={customObjectBehaviorId}
+              customObjectBehaviorId={effectiveCustomObjectBehaviorId}
               onCustomObjectBehaviorIdChange={setCustomObjectBehaviorId}
               customObjectBehaviors={customObjectBehaviors}
               customObjectLabel={customObjectLabel}
@@ -802,7 +942,9 @@ export function ScriptsMenu({
                 void handleUploadCustomObjectAsset(definition, file, role);
               }}
               selectedTerrainItem={
-                selectedItem !== undefined && selectedItemData
+                selectionTargetKind === "terrainItem" &&
+                selectedItem !== undefined &&
+                selectedItemData
                   ? {
                       index: selectedItem,
                       type: selectedItemData.type,
@@ -811,11 +953,18 @@ export function ScriptsMenu({
                     }
                   : null
               }
+              terrainReplacementCompatibility={terrainReplacementCompatibility}
               replacementObjectId={
                 selectedTerrainReplacement?.customObjectId ?? null
               }
               onReplaceSelectedItem={(customObjectId) => {
-                if (selectedItem === undefined || !selectedItemData) return;
+                if (
+                  selectedItem === undefined ||
+                  !selectedItemData ||
+                  !terrainReplacementCompatibility?.allowed
+                ) {
+                  return;
+                }
                 updateWorkspace((state) =>
                   replaceTerrainItemWithCustomObject(state, {
                     id: `terrain-${String(selectedItem)}`,
@@ -834,11 +983,56 @@ export function ScriptsMenu({
                   removeTerrainItemReplacement(state, selectedItem),
                 );
               }}
-              selectedSplineItem={
-                selectedSpline !== undefined && selectedSplineItem !== undefined
-                  ? { splineNum: selectedSpline, itemIndex: selectedSplineItem }
+              selectedMapItem={
+                selectionTargetKind === "mapItem" &&
+                selectedItem !== undefined &&
+                selectedItemData
+                  ? {
+                      index: selectedItem,
+                      type: selectedItemData.type,
+                      x: selectedItemData.x,
+                      y: selectedItemData.z,
+                    }
                   : null
               }
+              mapReplacementCompatibility={mapReplacementCompatibility}
+              mapReplacementObjectId={selectedMapReplacement?.customObjectId ?? null}
+              onReplaceSelectedMapItem={(customObjectId) => {
+                if (
+                  selectedItem === undefined ||
+                  !selectedItemData ||
+                  !mapReplacementCompatibility?.allowed
+                ) {
+                  return;
+                }
+                updateWorkspace((state) =>
+                  replaceMapItemWithCustomObject(state, {
+                    id: `map-${String(selectedItem)}`,
+                    itemIndex: selectedItem,
+                    nativeType: selectedItemData.type,
+                    x: selectedItemData.x,
+                    y: selectedItemData.z,
+                    customObjectId,
+                    strict: false,
+                  }),
+                );
+              }}
+              onRestoreSelectedMapItem={() => {
+                if (selectedItem === undefined) return;
+                updateWorkspace((state) =>
+                  removeMapItemReplacement(state, selectedItem),
+                );
+              }}
+              selectedSplineItem={
+                selectedSpline !== undefined && selectedSplineItem !== undefined
+                  ? {
+                      splineNum: selectedSpline,
+                      itemIndex: selectedSplineItem,
+                      nativeType: selectedSplineItemData?.type ?? -1,
+                    }
+                  : null
+              }
+              splineReplacementCompatibility={splineReplacementCompatibility}
               splineReplacementObjectId={
                 selectedSplineReplacement?.customObjectId ?? null
               }
@@ -846,7 +1040,8 @@ export function ScriptsMenu({
                 if (
                   selectedSpline === undefined ||
                   selectedSplineItem === undefined ||
-                  !selectedSplineItemData
+                  !selectedSplineItemData ||
+                  !splineReplacementCompatibility?.allowed
                 ) return;
                 updateWorkspace((state) =>
                   replaceSplineItemWithCustomObject(state, {
@@ -964,6 +1159,7 @@ export function ScriptsMenu({
             ref={uploadInputRef}
             type="file"
             accept=".zip,application/zip"
+            aria-label="Upload Script Package"
             className="hidden"
             onChange={(event) => void handleUploadPackage(event)}
           />
@@ -974,6 +1170,7 @@ export function ScriptsMenu({
       </Dialog>
 
       <DefineBehaviorModal
+        key={`${String(defineBehaviorOpen)}-${creatingObjectTypeBehavior ? "object" : "default"}-${globalHookForNewBehavior ?? "none"}`}
         open={defineBehaviorOpen}
         onOpenChange={(open) => {
           setDefineBehaviorOpen(open);

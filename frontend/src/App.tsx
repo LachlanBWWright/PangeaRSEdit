@@ -27,7 +27,26 @@ export function App() {
               <Route path="/sprite-viewer" element={<SpriteViewer />} />
               <Route path="/download-levels" element={<DownloadLevels />} />
               <Route path="/test-models" element={<TestModelViewer />} />
-              <Route path="/item-models" element={<ItemModelViewer />} />
+              <Route
+                path="/item-model-mapping-preview"
+                element={
+                  featureFlags.itemModelMappingPreview ? (
+                    <ItemModelViewer />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
+              <Route
+                path="/item-models"
+                element={
+                  featureFlags.itemModelMappingPreview ? (
+                    <Navigate to="/item-model-mapping-preview" replace />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
               <Route path="/item-audit" element={<ItemAuditPage />} />
               <Route
                 path="/multiplayer"

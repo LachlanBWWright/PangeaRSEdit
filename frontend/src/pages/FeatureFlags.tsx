@@ -1,4 +1,4 @@
-import { Flag, Network } from "lucide-react";
+import { Boxes, Flag, Network } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -31,6 +31,14 @@ export function FeatureFlagsPage() {
 
     result.match(
       () => toast.success(enabled ? "Scripting enabled" : "Scripting disabled"),
+      (error) => toast.error(error.message),
+    );
+  };
+
+  const handleItemModelMappingPreviewChange = (enabled: boolean) => {
+    const result = setFeatureFlags({ ...featureFlags, itemModelMappingPreview: enabled });
+    result.match(
+      () => toast.success(enabled ? "Item mapping preview enabled" : "Item mapping preview disabled"),
       (error) => toast.error(error.message),
     );
   };
@@ -92,6 +100,25 @@ export function FeatureFlagsPage() {
               checked={featureFlags.scripting}
               onCheckedChange={handleScriptingChange}
               aria-label="Toggle scripting tools"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <div className="flex min-w-0 gap-3">
+              <Boxes className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />
+              <div>
+                <label htmlFor="item-model-mapping-preview-feature-flag" className="font-medium text-slate-100">
+                  Experimental item-to-model mapping preview
+                </label>
+                <p className="mt-1 text-sm leading-5 text-slate-400">
+                  Show the diagnostic page for inspecting terrain and spline item model mappings.
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="item-model-mapping-preview-feature-flag"
+              checked={featureFlags.itemModelMappingPreview}
+              onCheckedChange={handleItemModelMappingPreviewChange}
+              aria-label="Toggle experimental item-to-model mapping preview"
             />
           </div>
         </CardContent>

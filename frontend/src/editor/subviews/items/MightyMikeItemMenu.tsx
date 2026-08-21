@@ -23,12 +23,13 @@ import {
 import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { Image as ImageIcon, ImageOff } from "lucide-react";
+import { Toggle } from "@/components/ui/toggle";
 import { parseU8 } from "@/utils/numberParsers";
 import { atom } from "jotai";
 import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
 import { ParamTooltip } from "./ParamTooltip";
 import { getParamTooltip } from "./getParamTooltip";
-import { CurrentScene, MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
+import { CurrentScene } from "@/data/game/gameAtoms";
 import {
   loadItemImage,
   type ItemFrameImage,
@@ -52,7 +53,6 @@ export const ShowMightyMikeItemImages = atom(true);
 export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   itemData,
   setItemData,
-  headerData: _headerData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -62,106 +62,52 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const [showItemImages, setShowItemImages] = useAtom(ShowMightyMikeItemImages);
-  const [currentScene, setCurrentScene] = useAtom(CurrentScene);
-  const [previewImage, setPreviewImage] = useState<ItemFrameImage | null>(null);
+  const currentScene = useAtomValue(CurrentScene);
 
   const itemValues = useMemo(() => getMightyMikeItemValues(globals), [globals]);
 
   const selectedItemData = getSelectedMightyMikeItem(itemData, selectedItem);
   const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
 
-  useEffect(() => {
-    if (!selectedItemData) {
-      Promise.resolve().then(() => setPreviewImage(null));
-      return;
-    }
-
-    let cancelled = false;
-    const loadPreviewImage = async () => {
-      const loadResult = await ResultAsync.fromPromise(
-        loadItemImage(selectedItemData.type, currentScene),
-        mapErr,
-      );
-      if (cancelled) return;
-      if (loadResult.isErr()) {
-        setPreviewImage(null);
-        return;
-      }
-      const result = loadResult.value;
-      if (result.isOk()) {
-        setPreviewImage(result.value);
-      } else {
-        setPreviewImage(null);
-      }
-    };
-
-    void loadPreviewImage();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentScene, selectedItemData]);
-
   if (itemData.Itms === undefined) return null;
 
   return (
     <div className="flex min-h-full flex-col gap-2">
-      {/* Global Toggle for Item Images */}
-      <Button
-        size="sm"
-        variant={showItemImages ? "default" : "outline"}
-        onClick={() => setShowItemImages(!showItemImages)}
-        className="gap-2 w-full"
-      >
-        {showItemImages ? (
-          <>
-            <ImageIcon className="w-4 h-4" />
-            Hide Item Images
-          </>
-        ) : (
-          <>
-            <ImageOff className="w-4 h-4" />
-            Show Item Images
-          </>
-        )}
-      </Button>
-
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <label className="text-sm font-medium">Scene</label>
-        <Select
-          value={currentScene ?? ""}
-          onValueChange={(value) => setCurrentScene(value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select scene" />
-          </SelectTrigger>
-          <SelectContent>
-            {MIGHTY_MIKE_SCENES.map((scene) => (
-              <SelectItem key={scene} value={scene}>
-                {scene}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            window.open("#/sprite-viewer", "_blank", "noopener,noreferrer")
-          }
-        >
-          Sprite Viewer
-        </Button>
-      </div>
-
       {selectedItemData === null || selectedItemData === undefined ? (
-        <AddItemMenu hasItems={itemCount > 0} />
+        <>
+          <Toggle
+            pressed={showItemImages}
+            onClick={() => setShowItemImages(!showItemImages)}
+            className="w-full"
+          >
+            {showItemImages ? (
+              <>
+                <ImageIcon className="h-4 w-4" />
+                Item Images On
+              </>
+            ) : (
+              <>
+                <ImageOff className="h-4 w-4" />
+                Item Images Off
+              </>
+            )}
+          </Toggle>
+          <AddItemMenu hasItems={itemCount > 0} />
+        </>
       ) : (
-        <div className="flex items-center gap-3">
-          {previewImage && <TileCanvas image={previewImage.canvas} size={48} />}
-          <p className="text-xs text-gray-400">
-            Item {selectedItemData.type} ({selectedItemData.x},{" "}
-            {selectedItemData.z})
-          </p>
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-2 gap-y-1 text-sm">
+          <span className="text-gray-400">X</span>
+          <Input type="number" className="h-7 text-xs" value={selectedItemData.x} onChange={(e) => {
+            const value = parseInt(e.target.value);
+            if (Number.isNaN(value)) return;
+            setItemData((draft) => updateSelectedMightyMikeItemPosition(draft, selectedItem, "x", value));
+          }} />
+          <span className="text-gray-400">Z</span>
+          <Input type="number" className="h-7 text-xs" value={selectedItemData.z} onChange={(e) => {
+            const value = parseInt(e.target.value);
+            if (Number.isNaN(value)) return;
+            setItemData((draft) => updateSelectedMightyMikeItemPosition(draft, selectedItem, "z", value));
+          }} />
         </div>
       )}
 
@@ -182,12 +128,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               }}
             >
               <SelectTrigger>
-                <SelectValue>
-                  <MightyMikeItemSelectLabel
-                    itemType={selectedItemData.type}
-                    scene={currentScene}
-                  />
-                </SelectValue>
+                <SelectValue placeholder="Select an item" />
               </SelectTrigger>
               <SelectContent>
                 {itemValues.map((key) => (
@@ -205,66 +146,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               </SelectContent>
             </Select>
 
-            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-baseline">
-              {/* X/Z position (editable for precision placement; drag in canvas for quick placement) */}
-              <label className="text-sm font-medium">X</label>
-              <Input
-                type="number"
-                className="h-7 text-xs"
-                value={selectedItemData.x.toString()}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value);
-                  if (!isNaN(v)) {
-                    setItemData((itemData) => {
-                      updateSelectedMightyMikeItemPosition(
-                        itemData,
-                        selectedItem,
-                        "x",
-                        v,
-                      );
-                    });
-
-                    <MapItemScriptSection
-                      selectionLabel={getItemName(globals, selectedItemData.type)}
-                      signature={{
-                        itemType: selectedItemData.type,
-                        position: {
-                          x: selectedItemData.x,
-                          y: selectedItemData.z,
-                        },
-                        params: [
-                          selectedItemData.p0,
-                          selectedItemData.p1,
-                          selectedItemData.p2,
-                          selectedItemData.p3,
-                        ],
-                        sceneName: currentScene,
-                      }}
-                    />
-                  }
-                }}
-              />
-              {/* 'Z' is the vertical screen coordinate in MM (stored as TerrainItem.z) */}
-              <label className="text-sm font-medium">Z</label>
-              <Input
-                type="number"
-                className="h-7 text-xs"
-                value={selectedItemData.z.toString()}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value);
-                  if (!isNaN(v)) {
-                    setItemData((itemData) => {
-                      updateSelectedMightyMikeItemPosition(
-                        itemData,
-                        selectedItem,
-                        "z",
-                        v,
-                      );
-                    });
-                  }
-                }}
-              />
-
+            <div className="grid grid-cols-2 gap-2">
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
                 const value = selectedItemData[paramKey];
@@ -273,10 +155,6 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                 );
                 const param = itemParams[paramKey];
                 const tooltip = getParamTooltip(param);
-                const label =
-                  param && typeof param !== "string" && param.type === "Integer"
-                    ? param.description.split(" (")[0]
-                    : `Parameter ${i}`;
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
                     updateSelectedMightyMikeItemParam(
@@ -287,10 +165,13 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                     );
                   });
                 };
-                return [
+                return (
+                  <div
+                    key={paramKey}
+                    className="flex flex-col gap-2 rounded border border-gray-700 bg-gray-900/30 p-2"
+                  >
                   <ParamTooltip
-                    key={`label-${i}`}
-                    label={label}
+                    label={<span>{`Parameter ${i}`}</span>}
                     tooltip={tooltip}
                     defaultCitation={
                       param && typeof param !== "string"
@@ -302,17 +183,27 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                         ? param.additionalCitations
                         : undefined
                     }
-                  />,
+                  />
                   <Input
-                    key={`input-${i}`}
                     type="number"
                     className="h-7 text-xs"
                     value={value.toString()}
                     onChange={(e) => setValue(parseU8(e.target.value))}
-                  />,
-                ];
+                  />
+                  </div>
+                );
               })}
             </div>
+
+            <MapItemScriptSection
+              selectionLabel={getItemName(globals, selectedItemData.type)}
+              signature={{
+                itemType: selectedItemData.type,
+                position: { x: selectedItemData.x, y: selectedItemData.z },
+                params: [selectedItemData.p0, selectedItemData.p1, selectedItemData.p2, selectedItemData.p3],
+                sceneName: currentScene,
+              }}
+            />
 
             <Button
               size="sm"
@@ -348,19 +239,14 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     return (
       <>
         <Select
-          value={getItemName(globals, clickToAddItem)}
+          value={clickToAddItem.toString()}
           onValueChange={(e) => {
             const newItemType = parseInt(e);
             setClickToAddItem(newItemType);
           }}
         >
           <SelectTrigger>
-            <SelectValue>
-              <MightyMikeItemSelectLabel
-                itemType={clickToAddItem}
-                scene={currentScene}
-              />
-            </SelectValue>
+            <SelectValue placeholder="Select an item" />
           </SelectTrigger>
           <SelectContent>
             {itemValues.map((key) => (
@@ -421,7 +307,11 @@ const MightyMikeItemSelectLabel = memo(function MightyMikeItemSelectLabel({
         loadItemImage(itemType, scene ?? undefined),
         mapErr,
       );
-      if (cancelled || loadResult.isErr()) {
+      if (cancelled) {
+        return;
+      }
+      if (loadResult.isErr()) {
+        setPreviewImage(null);
         return;
       }
 
@@ -443,7 +333,9 @@ const MightyMikeItemSelectLabel = memo(function MightyMikeItemSelectLabel({
   return (
     <div className="flex items-center gap-2">
       {previewImage ? (
-        <TileCanvas image={previewImage.canvas} size={24} />
+        <span className="flex h-6 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border/60 bg-muted">
+          <TileCanvas image={previewImage.canvas} size={24} />
+        </span>
       ) : null}
       <span>{getItemName(globals, itemType)}</span>
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -279,23 +279,6 @@ export function DefineBehaviorModal({
     () => buildGeneratedSourceFilePath(target, label, existingSourcePaths),
     [existingSourcePaths, label, target],
   );
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    setTarget(initialTarget);
-    setLabel(getInitialScriptLabel(initialTarget, initialHooks));
-    setDescription("");
-    setSelectedObjectTypeId("");
-    setSelectedTags([]);
-    if (initialHooks && initialHooks.length > 0) {
-      setSelectedHooks(initialHooks);
-      return;
-    }
-    const defaultHook = getDefaultHook(initialTarget);
-    setSelectedHooks(defaultHook === null ? [] : [defaultHook]);
-  }, [initialHooks, initialTarget, open]);
 
   const handleTargetChange = (newTarget: BehaviorTarget) => {
     setTarget(newTarget);

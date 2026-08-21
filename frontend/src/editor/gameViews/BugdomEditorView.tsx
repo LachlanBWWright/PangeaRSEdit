@@ -18,7 +18,8 @@ import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
-import { IndividualTilesMenu } from "./IndividualTilesMenu";
+import { BugdomTerrainMenu } from "../subviews/bugdom/BugdomTerrainMenu";
+import { BugdomMetadataMenu } from "../subviews/bugdom/BugdomMetadataMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
 import { ThreeView } from "../threejs/Three";
@@ -55,7 +56,6 @@ import {
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
 import { applyLevelScale } from "../utils/applyLevelScale";
-import { BugdomVertexColorMenu } from "../subviews/bugdom/BugdomVertexColorMenu";
 
 export function BugdomEditorView({
   headerData,
@@ -198,10 +198,15 @@ export function BugdomEditorView({
             />
           ))}
         {view === View.tiles && (
-          <IndividualTilesMenu
+          <BugdomTerrainMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}
+          />
+        )}
+        {view === View.vertexColors && (
+          <BugdomMetadataMenu
+            headerData={headerData}
             onApplyLevelScale={(nextTileSize, mode) =>
               applyLevelScale({
                 previousTileSize: headerData.Hedr[1000].obj.tileSize,
@@ -227,9 +232,6 @@ export function BugdomEditorView({
             setMapImages={setMapImages}
           />
         )}
-        {view === View.vertexColors && (
-          <BugdomVertexColorMenu terrainData={terrainData} />
-        )}
       </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
@@ -241,7 +243,9 @@ export function BugdomEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
-          {itemData && <ItemFilterToggle />}
+          {itemData && (
+            <ItemFilterToggle itemData={itemData} splineData={splineData} />
+          )}
         </div>
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView

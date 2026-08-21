@@ -42,8 +42,25 @@ jobs:
       - name: Build game WASM bundles
         run: npm run build:games
 
+      - name: Verify staged scripting WASM artifacts
+        run: pnpm run check:scripting-wasm
+
+      - name: Run shared scripting native and WASM conformance tests
+        working-directory: .
+        run: |
+          cmake -S games/pangea-ports/shared/script -B build/pangea-script -DBUILD_TESTING=ON
+          cmake --build build/pangea-script --parallel 2
+          ctest --test-dir build/pangea-script --output-on-failure
+          source games/pangea-ports/.emsdk/emsdk_env.sh
+          emcmake cmake -S games/pangea-ports/shared/script -B build/pangea-script-wasm -DBUILD_TESTING=ON
+          cmake --build build/pangea-script-wasm --parallel 2
+          ctest --test-dir build/pangea-script-wasm --output-on-failure
+
       - name: Verify frontend test discovery
         run: pnpm run test:discovery
+
+      - name: Verify scripting contract drift
+        run: pnpm run check:scripting-contract
 
       - name: Cache Playwright Chromium
         id: playwright-cache

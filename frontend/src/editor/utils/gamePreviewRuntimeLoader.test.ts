@@ -1,11 +1,19 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
 import {
+  getPreviewTerrainPaths,
+  type PreviewRuntimeModule,
+} from "./gamePreviewRuntimeTypes";
+import {
   createPreviewModule,
   loadPreviewRuntime,
 } from "./gamePreviewRuntimeLoader";
+import { writeTerrainToVfs } from "./gamePreviewRuntimeVfs";
+import { SCRIPT_RUNTIME_ASSET_FIXTURES } from "./scriptRuntimeAssetFixtures";
 
 const launchPayloadSchema = z.object({
   lobbyId: z.string(),
@@ -45,6 +53,33 @@ const SCRIPT_PREVIEW_GAMES = [
   Game.BILLY_FRONTIER,
   Game.MIGHTY_MIKE,
 ] as const;
+
+function readPublicFixture(relativePath: string): Uint8Array {
+  return new Uint8Array(
+    readFileSync(join(__dirname, "../../../public", relativePath)),
+  );
+}
+
+function createVfsModule() {
+  const files = new Map<string, Uint8Array>();
+  const directories = new Set<string>();
+  const module: PreviewRuntimeModule = {
+    canvas: document.createElement("canvas"),
+    arguments: [],
+    preRun: [],
+    locateFile: (path) => path,
+    FS: {
+      writeFile: (path: string, data: Uint8Array) => {
+        files.set(path, data);
+      },
+      analyzePath: (path: string) => ({ exists: directories.has(path) }),
+      mkdir: (path: string) => {
+        directories.add(path);
+      },
+    },
+  };
+  return { files, module };
+}
 
 function buildValidMatchConfig(
   gameId: "cromagrally" | "nanosaur2",
@@ -278,6 +313,68 @@ describe("game preview runtime loader", () => {
       );
       expect(ccall).toHaveBeenCalledTimes(1);
       expect(onError).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(SCRIPT_RUNTIME_ASSET_FIXTURES)(
+    "injects a real terrain and custom asset fixture for $game",
+    ({
+      game,
+      terrainDataPath,
+      terrainRsrcPath,
+      terrainTexturePath,
+      customAssetPath,
+      customAssetSourcePath,
+    }) => {
+      const config = GAME_PORT_CONFIGS[game];
+      const level = config.levels[config.defaultLevel];
+      const terrainPaths = getPreviewTerrainPaths(level, config);
+      const { files, module } = createVfsModule();
+      const onError = vi.fn();
+      const terrainDataBytes = terrainDataPath
+        ? readPublicFixture(terrainDataPath)
+        : null;
+      const terrainRsrcBytes = terrainRsrcPath
+        ? readPublicFixture(terrainRsrcPath)
+        : null;
+      const terrainTextureBytes = terrainTexturePath
+        ? readPublicFixture(terrainTexturePath)
+        : null;
+      const customAssetBytes = readPublicFixture(customAssetSourcePath);
+      const scriptBytes = new Uint8Array(
+        Buffer.from("return { onLevelStart = function() end }", "utf8"),
+      );
+
+      expect(terrainPaths).not.toBeNull();
+      if (!terrainPaths) return;
+
+      writeTerrainToVfs(
+        module,
+        config,
+        level,
+        terrainPaths,
+        terrainDataBytes,
+        terrainRsrcBytes,
+        terrainTextureBytes,
+        [
+          { path: "Data/Scripts/dist/main.lua", data: scriptBytes },
+          { path: customAssetPath, data: customAssetBytes },
+        ],
+        onError,
+      );
+
+      expect(onError).not.toHaveBeenCalled();
+      if (terrainDataBytes) {
+        expect(files.get(terrainPaths.dataPath)).toEqual(terrainDataBytes);
+      }
+      if (terrainRsrcBytes && terrainPaths.rsrcPath) {
+        expect(files.get(terrainPaths.rsrcPath)).toEqual(terrainRsrcBytes);
+      }
+      if (terrainTextureBytes && terrainPaths.texturePath) {
+        expect(files.get(terrainPaths.texturePath)).toEqual(terrainTextureBytes);
+      }
+      expect(files.get("Data/Scripts/dist/main.lua")).toEqual(scriptBytes);
+      expect(files.get(customAssetPath)).toEqual(customAssetBytes);
     },
   );
 

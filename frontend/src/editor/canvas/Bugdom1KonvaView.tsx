@@ -59,6 +59,7 @@ import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 import { BugdomVertexColorOverlay } from "../subviews/bugdom/BugdomVertexColorOverlay";
 import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
+import { bugdomTerrainModeAtom } from "@/data/terrain/bugdomTerrainModeAtoms";
 import { computeWheelZoomStage } from "./konvaViewState";
 
 export interface StageData {
@@ -109,6 +110,7 @@ export function Bugdom1KonvaView({
   const customObjectPlacement = useCustomObjectPlacement();
   const globals = useAtomValue(Globals);
   const showRoof = useAtomValue(ShowRoofInTopology);
+  const terrainMode = useAtomValue(bugdomTerrainModeAtom);
   const tileBrushMode = useAtomValue(getTileBrushModeAtom("bugdom1"));
   const setTileBrushMode = useSetAtom(getTileBrushModeAtom("bugdom1"));
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
@@ -393,7 +395,9 @@ export function Bugdom1KonvaView({
           />
         )}
 
-        {view === View.vertexColors && terrainData.Vcol?.[1000] && (
+        {view === View.tiles &&
+          terrainMode === "vertex-colors" &&
+          terrainData.Vcol?.[1000] && (
           <BugdomVertexColorOverlay
             headerData={headerData}
             terrainData={terrainData}
@@ -403,7 +407,7 @@ export function Bugdom1KonvaView({
           />
         )}
 
-        {view !== View.tiles && (
+        {(view !== View.tiles || terrainMode === "vertex-colors") && (
           <AccessibilityMaskOverlay
             headerData={headerData}
             terrainData={terrainData}
@@ -411,7 +415,7 @@ export function Bugdom1KonvaView({
         )}
 
         {/* Topology / flag overlay (tiles view) */}
-        {view === View.tiles && (
+        {view === View.tiles && terrainMode === "topology" && (
           <Tiles
             headerData={headerData}
             terrainData={terrainData}
@@ -425,7 +429,7 @@ export function Bugdom1KonvaView({
         {/* All non-tiles views: render layers with stable keys so React preserves
             component instances when switching tabs. The primary view's layer is
             rendered last to ensure it appears on top (highest z-order). */}
-        {view !== View.tiles && (
+        {(view !== View.tiles || terrainMode === "vertex-colors") && (
           <>
             {/* Base layers - rendered first (below primary) */}
             {fenceData && view !== View.fences && (

@@ -194,10 +194,10 @@ export function GameModelSelector({
           Game
         </label>
         <Select value={selectedGameId} onValueChange={setSelectedGameId}>
-          <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a game" />
           </SelectTrigger>
-          <SelectContent className="bg-gray-700 border-gray-600">
+          <SelectContent>
             {GAMES_SORTED_BY_NAME.map((game) => (
               <SelectItem
                 key={game.id}
@@ -218,10 +218,10 @@ export function GameModelSelector({
             Category
           </label>
           <Select value={effectiveCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+          <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
-            <SelectContent className="bg-gray-700 border-gray-600">
+            <SelectContent>
               {availableCategories.map((category) => (
                 <SelectItem
                   key={category}
@@ -254,10 +254,10 @@ export function GameModelSelector({
               }}
               disabled={loading}
             >
-              <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectContent>
                 {availableModels.map((model) => (
                   <SelectItem
                     key={model.name}

@@ -171,7 +171,9 @@ function buildRockMapping(
             modelFile: "Lawn_Models2.3dmf",
             modelPath: "models" as const,
             modelIndex: 8 + params.p0,
-            scale: 4,
+            // Lawn rock meshes in the converted 3DMF retain expanded
+            // authoring units; this matches the original collision envelope.
+            scale: 0.1,
             rotationY: BUGDOM_RANDOMIZED_PROP_PREVIEW_ROTATION,
             citations: [
               cite(
@@ -553,10 +555,7 @@ function buildCloverMapping(
   );
 }
 
-function buildWeedMapping(
-  options: BugdomMappingOptions,
-): UniversalItemModelMapping {
-  const params = getParams(options);
+function buildWeedMapping(): UniversalItemModelMapping {
   const citations = [
     cite(
       "src/Items/Items.c",
@@ -568,7 +567,7 @@ function buildWeedMapping(
     cite(
       "src/Items/Items.c",
       262,
-      "Weed uses LAWN2_MObjType_Weed + parm[0]",
+      "Weed uses the LAWN2_MObjType_Weed model slot",
       "model-index",
       262,
     ),
@@ -588,20 +587,13 @@ function buildWeedMapping(
       lightingMode: "unlit",
       citations,
       semanticCitations: citations,
-      paramDomains: {
-        p0: {
-          kind: "integer",
-          summary: "Offsets the weed mesh index from LAWN2_MObjType_Weed.",
-          min: 0,
-        },
-      },
     },
     [
       {
         partId: "weed",
         modelFile: "Lawn_Models2.3dmf",
         modelPath: "models",
-        modelIndex: 2 + params.p0,
+        modelIndex: 2,
         scale: BUGDOM_WEED_SCALE,
         citations,
       },
@@ -1445,7 +1437,7 @@ export function getBugdomSourceDerivedMapping(
     case ItemType.Clover:
       return buildCloverMapping(options);
     case ItemType.Weed:
-      return buildWeedMapping(options);
+      return buildWeedMapping();
     case ItemType.SunFlower:
       return buildSunflowerMapping();
     case ItemType.Cosmo:

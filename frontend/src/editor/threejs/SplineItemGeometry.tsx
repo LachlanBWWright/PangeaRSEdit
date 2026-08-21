@@ -13,7 +13,9 @@ import { LevelNumber } from "@/data/globals/levelNumber";
 import { itemFilterStateAtom } from "@/data/items/itemFilterAtoms";
 import { isSplineItemVisible } from "@/data/items/itemFilterUtils";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
-import { useItemModelCache } from "./hooks/useOttoItemModelCache";
+import { useItemModelCache } from "./hooks/useItemModelCache";
+import { presentItemModel } from "./itemModelPresentation";
+import { DEFAULT_ITEM_MODEL_PARAMS } from "@/data/items/itemModelPreview";
 import { getItemModelCacheKey } from "./hooks/itemModelCacheKey";
 import { getGameMapper } from "@/data/items/mappers";
 import { mapErr } from "@/utils/mapErr";
@@ -100,7 +102,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
     uniqueSplineItemTypes.forEach((itemType) => {
       const triggerLoad = async () => {
         const result = await ResultAsync.fromPromise(
-          loadModel(itemType, undefined, levelNum, "splineItem"),
+          loadModel(itemType, DEFAULT_ITEM_MODEL_PARAMS, levelNum, "splineItem"),
           mapErr,
         );
         if (result.isErr()) {
@@ -119,7 +121,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
       const cacheKey = getItemModelCacheKey(
         currentGame,
         itemType,
-        undefined,
+        DEFAULT_ITEM_MODEL_PARAMS,
         isLevelDep ? levelNum : undefined,
         "splineItem",
       );
@@ -128,18 +130,16 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
         const mapping = mapper?.getMapping(
           itemType,
           levelNum,
-          undefined,
+          DEFAULT_ITEM_MODEL_PARAMS,
           undefined,
           "splineItem",
         );
         if (mapping && cachedModel.gltf) {
-          const cloned = cachedModel.gltf.clone(true);
-          const baseScale = mapping.scale ?? 1;
-          const sx = baseScale * (mapping.scaleXZ ?? 1);
-          const sy = baseScale * (mapping.scaleY ?? 1);
-          const sz = baseScale * (mapping.scaleXZ ?? 1);
-          cloned.scale.set(sx, sy, sz);
-          if (mapping.rotationY) cloned.rotateY(mapping.rotationY);
+          const cloned = presentItemModel(
+            cachedModel.gltf,
+            mapping,
+            DEFAULT_ITEM_MODEL_PARAMS,
+          );
           scenes.set(itemType, cloned);
         }
       }
@@ -193,7 +193,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
             const cacheKey = getItemModelCacheKey(
               currentGame,
               item.type,
-              undefined,
+              DEFAULT_ITEM_MODEL_PARAMS,
               isLevelDep ? levelNum : undefined,
               "splineItem",
             );

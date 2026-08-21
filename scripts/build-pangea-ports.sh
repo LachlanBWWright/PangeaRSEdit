@@ -95,6 +95,16 @@ if [[ ! -f "$PANGEA_PORTS/scripts/ports.py" ]]; then
   exit 1
 fi
 
+activate_repo_emsdk() {
+  local emsdk_root="$PANGEA_PORTS/.emsdk"
+  if [[ -x "$emsdk_root/upstream/emscripten/emcc" && -f "$emsdk_root/emsdk_env.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "$emsdk_root/emsdk_env.sh" >/dev/null
+  fi
+}
+
+activate_repo_emsdk
+
 wasm_dir_for_port() {
   case "$1" in
     OttoMatic-Android) echo "ottomatic" ;;

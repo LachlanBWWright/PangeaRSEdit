@@ -336,16 +336,6 @@ export function IndividualTilesMenu({
             />
           )}
           <TopologyOpacityControl />
-          {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
-            canShowAccessibilityOverlay && (
-              <div className="col-span-2 flex items-center justify-between rounded border border-gray-700 px-3 py-2 sm:col-span-4">
-                <p>{getAccessibilityOverlayLabel()}</p>
-                <Switch
-                  checked={showAccessibilityOverlay}
-                  onCheckedChange={setShowAccessibilityOverlay}
-                />
-              </div>
-            )}
           {hasRoofLayer && (
             <>
               {layerEditMode === TopologyLayerEditMode.BOTH && (
@@ -385,7 +375,17 @@ export function IndividualTilesMenu({
               )}
             </>
           )}
-          <div className="flex flex-row justify-between gap-2 items-center col-span-2">
+          <div className="col-span-2 flex flex-wrap items-center justify-between gap-3 sm:col-span-4">
+            {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
+              canShowAccessibilityOverlay && (
+                <div className="flex items-center gap-2">
+                  <p>{getAccessibilityOverlayLabel()}</p>
+                  <Switch
+                    checked={showAccessibilityOverlay}
+                    onCheckedChange={setShowAccessibilityOverlay}
+                  />
+                </div>
+              )}
             <div className="flex items-center gap-2">
               <p>Show 3D View</p>
               <Switch

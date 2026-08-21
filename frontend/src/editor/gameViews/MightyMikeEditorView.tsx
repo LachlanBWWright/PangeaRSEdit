@@ -218,7 +218,7 @@ export function MightyMikeEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
-          {itemData && <ItemFilterToggle />}
+          {itemData && <ItemFilterToggle itemData={itemData} splineData={null} />}
         </div>
         {/* Mighty Mike is 2D only - no 3D view */}
         <MightyMikeKonvaView

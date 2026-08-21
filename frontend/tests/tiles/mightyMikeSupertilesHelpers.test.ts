@@ -3,6 +3,7 @@ import {
   buildCollisionCanvas,
   buildParamsCanvas,
 } from "@/editor/subviews/supertiles/mightyMikeSupertilesHelpers";
+import { parseTileImages } from "@/modelParsers/parseMightyMikeHelpers";
 
 function createFillRectSpy() {
   return vi.spyOn(CanvasRenderingContext2D.prototype, "fillRect");
@@ -13,6 +14,31 @@ afterEach(() => {
 });
 
 describe("Mighty Mike overlays", () => {
+  test("sprite-priority colors remain visible in the terrain background", () => {
+    const putImageDataSpy = vi.spyOn(
+      CanvasRenderingContext2D.prototype,
+      "putImageData",
+    );
+    const tileBytes = new Uint8Array(32 * 32).fill(17);
+    const palette = new Uint8Array(256 * 4);
+    palette.set([24, 48, 72, 255], 17 * 4);
+
+    parseTileImages(
+      tileBytes.buffer,
+      0,
+      1,
+      [17],
+      palette,
+    );
+    const terrainImageData = putImageDataSpy.mock.calls[0]?.[0];
+    const maskImageData = putImageDataSpy.mock.calls[1]?.[0];
+
+    expect(Array.from(terrainImageData?.data.slice(0, 4) ?? [])).toEqual([
+      24, 48, 72, 255,
+    ]);
+    expect(maskImageData?.data[3]).toBe(0);
+  });
+
   test("collision overlay still renders for logical tile zero when the mask flag is enabled", () => {
     const fillRectSpy = createFillRectSpy();
 

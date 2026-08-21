@@ -61,10 +61,10 @@ export function PaletteSelector({
   return (
     <EditorPanel title="Palettes" contentClassName="space-y-2">
       <Select value={selectedValue} onValueChange={handleValueChange}>
-          <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a palette" />
           </SelectTrigger>
-          <SelectContent className="bg-gray-700 border-gray-600">
+          <SelectContent>
             {!selectedBuiltin && !selectedCustom && (
               <SelectGroup>
                 <SelectLabel className="text-gray-400">Current</SelectLabel>

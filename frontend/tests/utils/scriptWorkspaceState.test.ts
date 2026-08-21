@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
+import { Document, WebIO } from "@gltf-transform/core";
 import {
   BillyFrontierGlobals,
   BugdomGlobals,
@@ -18,16 +21,21 @@ import {
   applyGlobalBehavior,
   applyTerrainBehavior,
   buildPreviewScriptFiles,
+  buildPreviewScriptFilesAsync,
   buildScriptPackageFiles,
   buildScriptPackageZip,
+  buildScriptPackageZipAsync,
   compileScriptWorkspace,
   createCustomObjectFromBehavior,
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
   importScriptPackageZip,
+  importScriptPackageZipAsync,
   loadScriptSample,
   placeCustomObject,
+  replaceMapItemWithCustomObject,
   removeCustomPlacement,
+  retargetScriptWorkspace,
   upsertScriptSourceFile,
   updateCustomObjectDefinition,
 } from "@/editor/subviews/scripts/scriptWorkspaceState";
@@ -40,8 +48,17 @@ import {
   summarizeScriptWorkspace,
 } from "@/editor/subviews/scripts/scriptWorkspaceSelectors";
 import { buildScriptTypeDeclarationFiles } from "@/editor/subviews/scripts/scriptTypeDeclarations";
-import { validateScriptPackage } from "@/editor/subviews/scripts/scriptPackageValidator";
-import { CAPABILITY_MATRIX } from "@/editor/subviews/scripts/scriptCapabilityMatrix";
+import {
+  SCRIPT_PACKAGE_MANIFEST_PATH,
+  validateScriptPackageForNetwork,
+  validateScriptPackage,
+} from "@/editor/subviews/scripts/scriptPackageValidator";
+import { scriptProjectSchema } from "@/editor/subviews/scripts/scriptWorkspaceStateTypes";
+import {
+  CAPABILITY_MATRIX,
+  getWorkspaceWarnings,
+} from "@/editor/subviews/scripts/scriptCapabilityMatrix";
+import { convertGltfAsset } from "@/editor/subviews/scripts/scriptAssetConversion";
 
 const PlacementsFileSchema = z.object({
   schemaVersion: z.literal(1),
@@ -55,6 +72,26 @@ function decodeJson(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
+async function createScriptFixtureGlb(): Promise<Uint8Array> {
+  const document = new Document();
+  const buffer = document.createBuffer();
+  const primitive = document
+    .createPrimitive()
+    .setAttribute(
+      "POSITION",
+      document
+        .createAccessor()
+        .setType("VEC3")
+        .setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]))
+        .setBuffer(buffer),
+    );
+  const mesh = document.createMesh().addPrimitive(primitive);
+  const node = document.createNode().setMesh(mesh);
+  const scene = document.createScene().addChild(node);
+  document.getRoot().setDefaultScene(scene);
+  return new Uint8Array(await new WebIO().writeBinary(document));
+}
+
 describe("scriptWorkspaceState", () => {
   it("advertises implemented core runtime capabilities for every game", () => {
     for (const capabilities of Object.values(CAPABILITY_MATRIX)) {
@@ -66,15 +103,83 @@ describe("scriptWorkspaceState", () => {
     }
   });
 
+  it("warns before preview when a custom object asset is missing", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const sample = loadScriptSample(context, "hover-beacon");
+    const definition = sample.customObjects[0];
+    expect(definition).toBeDefined();
+    if (!definition) return;
+
+    const state = updateCustomObjectDefinition(sample, {
+      ...definition,
+      visual: {
+        kind: "customDisplayGroup",
+        modelPath: "Data/Scripts/assets/models/missing.bg3d",
+        modelObject: 0,
+        scale: 1,
+        slot: 450,
+      },
+    });
+
+    expect(getWorkspaceWarnings(state)).toContain(
+      "Custom object 'Hover Beacon' requires asset 'Data/Scripts/assets/models/missing.bg3d' before preview/export.",
+    );
+  });
+
+  it("rejects malformed model assets before synchronous export", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const sample = loadScriptSample(context, "hover-beacon");
+    const definition = sample.customObjects[0];
+    expect(definition).toBeDefined();
+    if (!definition) return;
+
+    const modelPath = "Data/Scripts/assets/models/malformed.bg3d";
+    const withDefinition = updateCustomObjectDefinition(sample, {
+      ...definition,
+      visual: {
+        kind: "customDisplayGroup",
+        modelPath,
+        modelObject: 0,
+        scale: 1,
+        slot: 450,
+      },
+    });
+    const state = addScriptAsset(
+      withDefinition,
+      modelPath,
+      new Uint8Array([0x42, 0x47, 0x33, 0x44]),
+      "malformed.bg3d",
+    );
+
+    const result = buildScriptPackageFiles(state);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toContain("Custom asset validation failed");
+    }
+  });
+
   it("builds preview files for the Otto humans jump sample", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 3);
     const state = loadScriptSample(context, "otto-humans-jump");
 
     const previewFilesResult = buildPreviewScriptFiles(state);
+    const packageFilesResult = buildScriptPackageFiles(state);
 
     expect(previewFilesResult.isOk()).toBe(true);
+    expect(packageFilesResult.isOk()).toBe(true);
     if (previewFilesResult.isErr()) {
       return;
+    }
+    if (packageFilesResult.isErr()) {
+      return;
+    }
+
+    const packageFiles = new Map(
+      packageFilesResult.value.map((file) => [file.path, file.bytes]),
+    );
+    for (const previewFile of previewFilesResult.value) {
+      const packageFile = packageFiles.get(previewFile.path.slice(1));
+      expect(packageFile).toEqual(previewFile.data);
     }
 
     const filePaths = previewFilesResult.value.map((file) => file.path);
@@ -104,6 +209,7 @@ describe("scriptWorkspaceState", () => {
           itemOverrides: [],
           customObjects: [],
           terrainReplacements: [],
+          mapReplacements: [],
           splineReplacements: [],
           levelSettings: {},
         },
@@ -166,10 +272,25 @@ describe("scriptWorkspaceState", () => {
     }
 
     expect(runtimeDeclaration.content).toContain("---@class LevelContext");
+    expect(runtimeDeclaration.content).toContain("---@class CustomObjectBehavior");
+    expect(runtimeDeclaration.content).toContain(
+      '---@field onAnimationEvent fun(self: ObjectBehaviorSelf, ctx: AnimationMarkerObjectFrameContext)|nil',
+    );
+    expect(runtimeDeclaration.content).toContain(
+      '---@field onAnimationComplete fun(self: ObjectBehaviorSelf, ctx: AnimationCompleteObjectFrameContext)|nil',
+    );
+    expect(runtimeDeclaration.content).toContain('---@field eventValue nil');
+    expect(runtimeDeclaration.content).toContain(
+      "---@field onCheckpointReset fun(self: ObjectBehaviorSelf, ctx: ObjectFrameContext)|nil",
+    );
     expect(runtimeDeclaration.content).toContain("---@field levelNum number");
     expect(runtimeDeclaration.content).toContain("---@field playerMode string|nil");
     expect(runtimeDeclaration.content).toContain("---@field info fun(message: string)");
     expect(runtimeDeclaration.content).toContain("---@field position fun(handle: ObjectHandle): Vector3|nil");
+    expect(runtimeDeclaration.content).toContain("---@field setPositionResult fun(handle: ObjectHandle, position: Vector3): ObjectCommandResult");
+    expect(runtimeDeclaration.content).toContain("---@field deleteResult fun(handle: ObjectHandle): ObjectCommandResult");
+    expect(runtimeDeclaration.content).toContain("---@field source fun(handle: ObjectHandle): ObjectSource|nil");
+    expect(runtimeDeclaration.content).toContain("---@field kind \"terrain\"|\"spline\"|\"map\"");
     expect(runtimeDeclaration.content).toContain("---@class PangeaCapabilities");
     expect(runtimeDeclaration.content).toContain("---@field current fun(): integer");
     expect(runtimeDeclaration.content).toContain("---@field frame fun(): integer");
@@ -177,6 +298,8 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain("---@field diagnostics fun(): PangeaDiagnostics");
     expect(runtimeDeclaration.content).toContain("---@class PangeaPlayerSnapshot");
     expect(runtimeDeclaration.content).toContain("---@field get fun(playerNum: integer): PangeaPlayerSnapshot|nil");
+    expect(runtimeDeclaration.content).toContain("---@field player ObjectHandle|nil");
+    expect(runtimeDeclaration.content).toContain("---@field other ObjectHandle|nil");
     expect(runtimeDeclaration.content).toContain('---@field reason "ok"|"not-enabled"');
     expect(runtimeDeclaration.content).toContain(
       "---@alias NativeSpawnId",
@@ -305,7 +428,123 @@ describe("scriptWorkspaceState", () => {
     expect(importedResult.value.sampleId).toBe("hover-beacon");
   });
 
-  it("round-trips binary BG3D assets referenced by custom objects", () => {
+  it("round-trips bindings and placements for every authored level", () => {
+    const firstContext = createScriptWorkspaceContext(OttoGlobals, 1);
+    const secondContext = createScriptWorkspaceContext(OttoGlobals, 2);
+    let state = ensureScriptWorkspace({}, firstContext);
+    state = applyTerrainBehavior(
+      state,
+      "sample.item-trigger-logger",
+      "Level one item",
+      {
+        itemType: 12,
+        position: { x: 10, y: 0, z: 20 },
+        flags: 0,
+        params: [0, 0, 0, 0],
+      },
+    );
+    state = retargetScriptWorkspace(state, secondContext);
+    state = applyTerrainBehavior(
+      state,
+      "sample.item-trigger-logger",
+      "Level two item",
+      {
+        itemType: 12,
+        position: { x: 30, y: 0, z: 40 },
+        flags: 0,
+        params: [0, 0, 0, 0],
+      },
+    );
+    state = upsertScriptSourceFile(
+      state,
+      "Data/Scripts/src/bindings/item-trigger.lua",
+      "return {}",
+    );
+
+    const packageResult = buildScriptPackageZip(state);
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+    const importedResult = importScriptPackageZip(
+      packageResult.value,
+      firstContext,
+    );
+    expect(
+      importedResult.isOk(),
+      importedResult.isErr() ? importedResult.error : "",
+    ).toBe(true);
+    if (importedResult.isErr()) return;
+
+    expect(importedResult.value.levels["1"]?.terrainBindings).toHaveLength(1);
+    expect(importedResult.value.levels["2"]?.terrainBindings).toHaveLength(2);
+    expect(importedResult.value.levels["1"]?.terrainBindings[0]?.label).toBe(
+      "Level one item",
+    );
+    expect(
+      importedResult.value.levels["2"]?.terrainBindings.map((binding) => binding.label),
+    ).toEqual(expect.arrayContaining(["Level one item", "Level two item"]));
+  });
+
+  it("rejects a package that drops a declared level sidecar", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const packageResult = buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+
+    const files = Object.fromEntries(
+      packageResult.value.map((file) => [file.path, file.bytes]),
+    );
+    delete files["Data/Scripts/config/bindings/level-4.json"];
+
+    const validationResult = validateScriptPackage(files, context, {
+      assetsPrevalidated: true,
+    });
+    expect(validationResult.isErr()).toBe(true);
+    if (validationResult.isOk()) return;
+    expect(validationResult.error).toContain(
+      "Missing Data/Scripts/config/bindings/level-4.json",
+    );
+  });
+
+  it("rejects tampered packages using the deterministic package manifest", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const packageResult = buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+
+    const files: Record<string, Uint8Array> = Object.fromEntries(
+      packageResult.value.map((file) => [file.path, file.bytes]),
+    );
+    expect(files[SCRIPT_PACKAGE_MANIFEST_PATH]).toBeDefined();
+    const bundle = files["Data/Scripts/dist/main.lua"];
+    expect(bundle).toBeDefined();
+    if (!bundle) return;
+    files["Data/Scripts/dist/main.lua"] = Uint8Array.from([
+      ...bundle,
+      0x20,
+    ]);
+
+    const validationResult = validateScriptPackage(files, context);
+    expect(validationResult.isErr()).toBe(true);
+    if (validationResult.isOk()) return;
+    expect(validationResult.error).toContain("content hash mismatch");
+  });
+
+  it("keeps networked scripting behind an explicit deterministic-runtime gate", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const packageResult = buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+
+    const files: Record<string, Uint8Array> = Object.fromEntries(
+      packageResult.value.map((file) => [file.path, file.bytes]),
+    );
+    const validationResult = validateScriptPackageForNetwork(files, context);
+    expect(validationResult.isErr()).toBe(true);
+    if (validationResult.isOk()) return;
+    expect(validationResult.error).toContain("Networked scripting is disabled");
+  });
+
+  it("round-trips binary BG3D assets referenced by custom objects", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const sample = loadScriptSample(context, "hover-beacon");
     const definition = sample.customObjects[0];
@@ -326,19 +565,108 @@ describe("scriptWorkspaceState", () => {
     const state = addScriptAsset(
       withDefinition,
       modelPath,
-      new Uint8Array([0x42, 0x47, 0x33, 0x44]),
+      new Uint8Array(
+        readFileSync(
+          join(
+            __dirname,
+            "../../public/games/ottomatic/skeletons/GiantLizard.bg3d",
+          ),
+        ),
+      ),
       "beacon.bg3d",
     );
-    const zipResult = buildScriptPackageZip(state);
+    const sourcePath = "Data/Scripts/assets/source/beacon.glb";
+    const sourceBytes = await createScriptFixtureGlb();
+    const stateWithSource = addScriptAsset(
+      state,
+      sourcePath,
+      sourceBytes,
+      "beacon.glb",
+    );
+    const zipResult = await buildScriptPackageZipAsync(stateWithSource);
     expect(zipResult.isOk()).toBe(true);
     if (zipResult.isErr()) return;
 
-    const importedResult = importScriptPackageZip(zipResult.value, context);
+    const importedResult = await importScriptPackageZipAsync(
+      zipResult.value,
+      context,
+    );
     expect(importedResult.isOk()).toBe(true);
     if (importedResult.isErr()) return;
     expect(importedResult.value.assets[modelPath]?.bytes).toEqual(
-      new Uint8Array([0x42, 0x47, 0x33, 0x44]),
+      new Uint8Array(
+        readFileSync(
+          join(
+            __dirname,
+            "../../public/games/ottomatic/skeletons/GiantLizard.bg3d",
+          ),
+        ),
+      ),
     );
+    expect(importedResult.value.assets[sourcePath]?.bytes).toEqual(sourceBytes);
+  });
+
+  it("exports, previews, and asynchronously re-imports a converted glTF asset", async () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const sample = loadScriptSample(context, "hover-beacon");
+    const definition = sample.customObjects[0];
+    expect(definition).toBeDefined();
+    if (!definition) return;
+
+    const sourcePath = "Data/Scripts/assets/source/crate.glb";
+    const runtimePath = "Data/Scripts/assets/models/crate-glb.bg3d";
+    const sourceBytes = await createScriptFixtureGlb();
+    const conversion = await convertGltfAsset("crate.glb", sourceBytes);
+    expect(conversion.isOk()).toBe(true);
+    if (conversion.isErr()) return;
+
+    const withDefinition = updateCustomObjectDefinition(sample, {
+      ...definition,
+      visual: {
+        kind: "customDisplayGroup",
+        modelPath: runtimePath,
+        modelObject: 0,
+        scale: 1,
+        slot: 450,
+      },
+    });
+    const withRuntime = addScriptAsset(
+      withDefinition,
+      runtimePath,
+      conversion.value.nativeBytes,
+      "crate.glb",
+    );
+    const state = addScriptAsset(
+      withRuntime,
+      sourcePath,
+      sourceBytes,
+      "crate.glb",
+    );
+
+    const packageResult = await buildScriptPackageZipAsync(state);
+    if (packageResult.isErr()) {
+      expect.fail(packageResult.error);
+      return;
+    }
+
+    const previewResult = await buildPreviewScriptFilesAsync(state);
+    expect(previewResult.isOk()).toBe(true);
+    if (previewResult.isErr()) return;
+    const previewRuntime = previewResult.value.find(
+      (file) => file.path === `/${runtimePath}`,
+    );
+    expect(previewRuntime?.data).toEqual(conversion.value.nativeBytes);
+
+    const importedResult = await importScriptPackageZipAsync(
+      packageResult.value,
+      context,
+    );
+    expect(importedResult.isOk()).toBe(true);
+    if (importedResult.isErr()) return;
+    expect(importedResult.value.assets[runtimePath]?.bytes).toEqual(
+      conversion.value.nativeBytes,
+    );
+    expect(importedResult.value.assets[sourcePath]?.bytes).toEqual(sourceBytes);
   });
 
   it("rejects non-Lua source files from imported script packages", () => {
@@ -356,8 +684,26 @@ describe("scriptWorkspaceState", () => {
       return;
     }
     expect(importedResult.error).toContain(
-      "Script source files must be Lua",
+      "Legacy TypeScript/JavaScript package detected",
     );
+  });
+
+  it("reports the legacy migration path for TypeScript packages", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const zipBytes = zipSync({
+      "Data/Scripts/src/legacy.ts": strToU8(
+        "export function onLevelStart(): void {}",
+      ),
+    });
+
+    const importedResult = importScriptPackageZip(zipBytes, context);
+
+    expect(importedResult.isErr()).toBe(true);
+    if (importedResult.isOk()) return;
+    expect(importedResult.error).toContain(
+      "Legacy TypeScript/JavaScript package detected",
+    );
+    expect(importedResult.error).toContain("Lua 5.4");
   });
 
   it("marks custom-object workspaces as extended", () => {
@@ -410,7 +756,56 @@ describe("scriptWorkspaceState", () => {
         ?.content,
     ).toContain("pangea.object.setRotation");
     expect(bundle).toContain("handler({ handle = ctx.object }, ctx)");
-    expect(bundle).toContain("triggerEnter = 'onTriggerEnter'");
+    expect(bundle).toContain('["animationEvent"] = "onAnimationEvent"');
+    expect(bundle).toContain('["animationComplete"] = "onAnimationComplete"');
+    expect(bundle).toContain('["triggerEnter"] = "onTriggerEnter"');
+    expect(bundle).toContain('["activate"] = "onActivate"');
+    expect(bundle).toContain('["deactivate"] = "onDeactivate"');
+    expect(bundle).toContain('["streamIn"] = "onStreamIn"');
+    expect(bundle).toContain('["streamOut"] = "onStreamOut"');
+    expect(bundle).toContain('["checkpointReset"] = "onCheckpointReset"');
+  });
+
+  it("exports semantic collision bounds with custom objects", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const sample = loadScriptSample(context, "hover-beacon");
+    const definition = sample.customObjects[0];
+    expect(definition).toBeDefined();
+    if (!definition) return;
+
+    const state = updateCustomObjectDefinition(sample, {
+      ...definition,
+      collision: {
+        kind: "preset",
+        preset: "triggerBox",
+        bounds: { width: 2, height: 3, depth: 4 },
+      },
+    });
+    const packageResult = buildScriptPackageFiles(state);
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+
+    const levelsBytes = packageResult.value.find(
+      (file) => file.path === "Data/Scripts/config/levels.json",
+    )?.bytes;
+    expect(levelsBytes).toBeDefined();
+    if (!levelsBytes) return;
+    const levels = decodeJson(levelsBytes);
+    expect(levels).toMatchObject({
+      levels: {
+        "4": {
+          customObjects: [
+            {
+              collision: {
+                kind: "preset",
+                preset: "triggerBox",
+                bounds: { width: 2, height: 3, depth: 4 },
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 
   it("uses a visible Bugdom native model for the hover beacon", () => {
@@ -826,4 +1221,116 @@ describe("scriptWorkspaceState", () => {
       expect(validationResult.isOk()).toBe(true);
     },
   );
+
+  it("rejects replacements that reference missing objects", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 3);
+    const state = loadScriptSample(context, "otto-humans-jump");
+    const compileResult = compileScriptWorkspace(state);
+    expect(compileResult.isOk()).toBe(true);
+    if (compileResult.isErr()) return;
+
+    const packageFilesResult = buildScriptPackageFiles(compileResult.value);
+    expect(packageFilesResult.isOk()).toBe(true);
+    if (packageFilesResult.isErr()) return;
+
+    const filesMap: Record<string, Uint8Array> = {};
+    for (const file of packageFilesResult.value) filesMap[file.path] = file.bytes;
+    const projectBytes = filesMap["Data/Scripts/config/project.json"];
+    expect(projectBytes).toBeDefined();
+    if (!projectBytes) return;
+
+    const projectResult = scriptProjectSchema.safeParse(decodeJson(projectBytes));
+    expect(projectResult.success).toBe(true);
+    if (!projectResult.success) return;
+    const firstLevel = Object.entries(projectResult.data.editor.levels)[0];
+    expect(firstLevel).toBeDefined();
+    if (!firstLevel) return;
+    const [levelKey, levelState] = firstLevel;
+    const invalidProject = {
+      ...projectResult.data,
+      editor: {
+        ...projectResult.data.editor,
+        levels: {
+          ...projectResult.data.editor.levels,
+          [levelKey]: {
+            ...levelState,
+            terrainReplacements: [
+              ...levelState.terrainReplacements,
+              {
+                id: "invalid.terrain",
+                itemIndex: 1,
+                nativeType: 1,
+                x: 0,
+                z: 0,
+                customObjectId: "missing.object",
+                strict: false,
+              },
+            ],
+          },
+        },
+      },
+    };
+    filesMap["Data/Scripts/config/project.json"] = strToU8(JSON.stringify(invalidProject));
+
+    const validationResult = validateScriptPackage(filesMap, context);
+    expect(validationResult.isErr()).toBe(true);
+    if (validationResult.isOk()) return;
+    expect(validationResult.error).toContain("missing.object");
+  });
+
+  it("serializes Mighty Mike map replacements as map-scoped records", () => {
+    const context = createScriptWorkspaceContext(MightyMikeGlobals, 1);
+    const state = loadScriptSample(context, "mightymike-box-bob");
+    const withObject = createCustomObjectFromBehavior(
+      state,
+      "sample.hover-beacon",
+      "custom.map-box",
+      "Map Box",
+    );
+    const customObject = withObject.customObjects[0];
+    expect(customObject).toBeDefined();
+    if (!customObject) return;
+
+    const replaced = replaceMapItemWithCustomObject(withObject, {
+      id: "map-4",
+      itemIndex: 4,
+      nativeType: 9,
+      x: 12,
+      y: 24,
+      customObjectId: customObject.id,
+      strict: false,
+    });
+    const compileResult = compileScriptWorkspace(replaced);
+    expect(compileResult.isOk()).toBe(true);
+    if (compileResult.isErr()) return;
+    const packageResult = buildScriptPackageFiles(compileResult.value);
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+
+    const filesMap: Record<string, Uint8Array> = {};
+    for (const file of packageResult.value) filesMap[file.path] = file.bytes;
+    expect(validateScriptPackage(filesMap, context).isOk()).toBe(true);
+
+    const levelsFile = packageResult.value.find(
+      (file) => file.path === "Data/Scripts/config/levels.json",
+    );
+    expect(levelsFile).toBeDefined();
+    if (!levelsFile) return;
+    const levels = decodeJson(levelsFile.bytes);
+    expect(levels).toMatchObject({
+      levels: {
+        "1": {
+          mapReplacements: [
+            expect.objectContaining({
+              itemIndex: 4,
+              nativeType: 9,
+              x: 12,
+              y: 24,
+              customObjectId: customObject.id,
+            }),
+          ],
+        },
+      },
+    });
+  });
 });

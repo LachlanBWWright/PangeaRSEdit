@@ -4,12 +4,21 @@ import { itemFilterStateAtom, FilterMode } from "@/data/items/itemFilterAtoms";
 import { ItemFilterPanel } from "./ItemFilterPanel";
 import { Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { ItemData, SplineData } from "@/python/structSpecs/LevelTypes";
 
 /**
  * Toggle button that opens/closes the item filter panel.
  * The panel opens below-right, aligned with the button's right edge.
  */
-export const ItemFilterToggle: React.FC = () => {
+interface ItemFilterToggleProps {
+  itemData: ItemData;
+  splineData: SplineData | null;
+}
+
+export const ItemFilterToggle: React.FC<ItemFilterToggleProps> = ({
+  itemData,
+  splineData,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const filter = useAtomValue(itemFilterStateAtom);
 
@@ -32,7 +41,12 @@ export const ItemFilterToggle: React.FC = () => {
         )}
       </Button>
 
-      <ItemFilterPanel isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <ItemFilterPanel
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        itemData={itemData}
+        splineData={splineData}
+      />
     </div>
   );
 };

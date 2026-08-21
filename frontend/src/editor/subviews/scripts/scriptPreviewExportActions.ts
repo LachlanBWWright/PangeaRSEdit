@@ -16,8 +16,8 @@ import type {
 } from "@/python/structSpecs/LevelTypes";
 import { buildOriginalLevelFileName } from "./scriptWorkspaceHelpers";
 import {
-  buildPreviewScriptFiles,
-  buildScriptPackageFiles,
+  buildPreviewScriptFilesAsync,
+  buildScriptPackageFilesAsync,
   type ScriptWorkspaceState,
 } from "./scriptWorkspaceState";
 
@@ -111,7 +111,9 @@ export async function prepareScriptPreviewBundle(
 ): Promise<Result<ScriptPreviewBundle, string>> {
   let customFiles: readonly { readonly path: string; readonly data: Uint8Array }[] = [];
   if (params.compiledState) {
-    const previewFilesResult = buildPreviewScriptFiles(params.compiledState);
+    const previewFilesResult = await buildPreviewScriptFilesAsync(
+      params.compiledState,
+    );
     if (previewFilesResult.isErr()) {
       return err(previewFilesResult.error);
     }
@@ -177,7 +179,9 @@ export async function buildExtendedLevelArchive(
     return err(originalFilesResult.error);
   }
 
-  const scriptFilesResult = buildScriptPackageFiles(params.compiledState);
+  const scriptFilesResult = await buildScriptPackageFilesAsync(
+    params.compiledState,
+  );
   if (scriptFilesResult.isErr()) {
     return err(scriptFilesResult.error);
   }

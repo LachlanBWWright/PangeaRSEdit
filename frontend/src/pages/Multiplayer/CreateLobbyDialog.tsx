@@ -208,6 +208,7 @@ export function CreateLobbyDialog({
         <div className="flex justify-end">
           <Button
             type="button"
+            size="default"
             disabled={busy}
             onClick={onCreate}
           >

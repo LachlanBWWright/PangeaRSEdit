@@ -5,10 +5,13 @@ const FEATURE_FLAGS_STORAGE_KEY = "pangea-feature-flags";
 
 const multiplayerDefault = import.meta.env.VITE_MULTIPLAYER_ENABLED === "true";
 const scriptingDefault = import.meta.env.VITE_SCRIPTING_ENABLED === "true";
+const itemModelMappingPreviewDefault =
+  import.meta.env.VITE_ITEM_MODEL_MAPPING_PREVIEW_ENABLED === "true";
 
-const featureFlagsSchema = z.object({
+export const featureFlagsSchema = z.object({
   multiplayer: z.boolean().default(multiplayerDefault),
   scripting: z.boolean().default(scriptingDefault),
+  itemModelMappingPreview: z.boolean().default(itemModelMappingPreviewDefault),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
@@ -16,6 +19,7 @@ export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   multiplayer: multiplayerDefault,
   scripting: scriptingDefault,
+  itemModelMappingPreview: itemModelMappingPreviewDefault,
 };
 
 export let ENABLE_SCRIPTS = false;

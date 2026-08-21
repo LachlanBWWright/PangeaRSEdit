@@ -151,17 +151,17 @@ export function ToolsPanel({
             value={brushShape}
             onValueChange={(value: "circle" | "square") => setBrushShape(value)}
           >
-            <SelectTrigger className="w-full bg-gray-700 border-gray-600 h-9">
+            <SelectTrigger className="w-full h-9">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
-              <SelectItem value="circle" className="text-gray-200">
+            <SelectContent>
+              <SelectItem value="circle">
                 <div className="flex items-center space-x-2">
                   <Circle className="w-4 h-4" />
                   <span>Circle</span>
                 </div>
               </SelectItem>
-              <SelectItem value="square" className="text-gray-200">
+              <SelectItem value="square">
                 <div className="flex items-center space-x-2">
                   <Square className="w-4 h-4" />
                   <span>Square</span>

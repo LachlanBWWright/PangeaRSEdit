@@ -28,7 +28,7 @@ export function NetworkDebugControls({
         </div>
         <Button
           type="button"
-          size="sm"
+          size="default"
           variant="outline"
           onClick={onResetNetworkDebugOptions}
         >

@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const scriptHookIdSchema = z.enum([
+  "onGameStart",
+  "onGameShutdown",
   "onLevelLoad",
   "onLevelStart",
   "onFrame",
@@ -12,6 +14,11 @@ export const scriptHookIdSchema = z.enum([
   "onPickupCollected",
   "onWeaponHit",
   "onTriggerEnter",
+  "onDamage",
+  "onDamageApplied",
+  "onDeath",
+  "onPlayerSpawn",
+  "onPlayerRespawn",
   "onAreaLoad",
   "onAreaStart",
   "onAreaFrame",
@@ -39,6 +46,18 @@ const scriptTargetKindSchema = z.enum([
 export type ScriptTargetKind = z.infer<typeof scriptTargetKindSchema>;
 
 const scriptSeveritySchema = z.enum(["error", "warning"]);
+
+export const scriptDiagnosticCategorySchema = z.enum([
+  "source-validation",
+  "luals",
+  "packaging",
+  "runtime-traceback",
+  "native-adapter",
+]);
+
+export type ScriptDiagnosticCategory = z.infer<
+  typeof scriptDiagnosticCategorySchema
+>;
 
 export interface ScriptTagDefinition {
   readonly id: string;
@@ -248,7 +267,7 @@ const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
     kind: z.literal("customDisplayGroup"),
     modelPath: z
       .string()
-      .regex(/^Data\/Scripts\/assets\/models\/[a-zA-Z0-9._/-]+\.bg3d$/),
+      .regex(/^Data\/Scripts\/assets\/models\/[a-zA-Z0-9._/-]+\.(bg3d|shapes)$/),
     modelObject: z.number().int().nonnegative(),
     scale: z.number().positive().max(100),
     slot: z.number().int().min(0).max(32767),
@@ -279,11 +298,18 @@ const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const scriptCustomObjectCollisionBoundsSchema = z.object({
+  width: z.number().positive().max(1000),
+  height: z.number().positive().max(1000),
+  depth: z.number().positive().max(1000),
+});
+
 const scriptCustomObjectCollisionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("none") }),
   z.object({
     kind: z.literal("preset"),
     preset: z.enum(["solidBox", "triggerBox", "pickup", "enemy", "platform"]),
+    bounds: scriptCustomObjectCollisionBoundsSchema.optional(),
   }),
 ]);
 
@@ -337,6 +363,18 @@ export type ScriptTerrainReplacement = z.infer<
   typeof scriptTerrainReplacementSchema
 >;
 
+export const scriptMapReplacementSchema = z.object({
+  id: z.string().min(1),
+  itemIndex: z.number().int().nonnegative(),
+  nativeType: z.number().int().nonnegative(),
+  x: z.number().finite(),
+  y: z.number().finite(),
+  customObjectId: z.string().min(1),
+  strict: z.boolean().default(false),
+});
+
+export type ScriptMapReplacement = z.infer<typeof scriptMapReplacementSchema>;
+
 export const scriptSplineReplacementSchema = z.object({
   id: z.string().min(1),
   splineNum: z.number().int().nonnegative(),
@@ -368,6 +406,7 @@ export interface ScriptCompiledFile {
 }
 
 export interface ScriptDiagnostic {
+  readonly category: ScriptDiagnosticCategory;
   readonly severity: z.infer<typeof scriptSeveritySchema>;
   readonly message: string;
   readonly code: number | string;
@@ -377,6 +416,7 @@ export interface ScriptDiagnostic {
 }
 
 const scriptDiagnosticSchema = z.object({
+  category: scriptDiagnosticCategorySchema.default("source-validation"),
   severity: scriptSeveritySchema,
   message: z.string().min(1),
   code: z.union([z.number(), z.string()]),
@@ -398,6 +438,7 @@ export interface ScriptLevelState {
   readonly mapItemBindings: readonly ScriptMapItemBinding[];
   readonly customPlacements: readonly ScriptCustomObjectPlacement[];
   readonly terrainReplacements: readonly ScriptTerrainReplacement[];
+  readonly mapReplacements: readonly ScriptMapReplacement[];
   readonly splineReplacements: readonly ScriptSplineReplacement[];
 }
 
@@ -408,6 +449,7 @@ export const scriptLevelStateSchema = z.object({
   mapItemBindings: z.array(scriptMapItemBindingSchema),
   customPlacements: z.array(scriptCustomObjectPlacementSchema),
   terrainReplacements: z.array(scriptTerrainReplacementSchema).default([]),
+  mapReplacements: z.array(scriptMapReplacementSchema).default([]),
   splineReplacements: z.array(scriptSplineReplacementSchema).default([]),
 });
 
@@ -439,6 +481,7 @@ export interface ScriptWorkspaceState {
 
 export const scriptProjectSchema = z.object({
   schemaVersion: z.literal(1),
+  contractVersion: z.literal(1).default(1),
   gameId: z.string().min(1),
   entryCompiledPath: z.string().min(1),
   editor: z.object({
@@ -487,6 +530,7 @@ export const runtimeLevelConfigSchema = z.object({
     .default([]),
   customObjects: z.array(scriptCustomObjectDefinitionSchema).default([]),
   terrainReplacements: z.array(scriptTerrainReplacementSchema).default([]),
+  mapReplacements: z.array(scriptMapReplacementSchema).default([]),
   splineReplacements: z.array(scriptSplineReplacementSchema).default([]),
   levelSettings: z
     .object({

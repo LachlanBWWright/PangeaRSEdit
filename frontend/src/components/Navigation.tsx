@@ -28,7 +28,6 @@ export function Navigation() {
   const editorNavbarLeft = useAtomValue(editorNavbarLeftAtom);
   const editorNavbarActions = useAtomValue(editorNavbarActionsAtom);
   const editorNavbarTabs = useAtomValue(editorNavbarTabsAtom);
-  const showExperimentalLinks = false;
   const showEditorNavbar = location.pathname === "/" && editorNavbarOpen;
 
   return (
@@ -108,16 +107,16 @@ export function Navigation() {
                 <span>Custom Levels</span>
               </Link>
             </Button>
-            {showExperimentalLinks && (
+            {featureFlags.itemModelMappingPreview && (
               <>
                 <Button
                   asChild
                   variant={
-                    location.pathname === "/item-models" ? "default" : "ghost"
+                    location.pathname === "/item-model-mapping-preview" ? "default" : "ghost"
                   }
                   className="flex items-center gap-2"
                 >
-                  <Link to="/item-models" className="text-white">
+                  <Link to="/item-model-mapping-preview" className="text-white">
                     <Boxes className="w-4 h-4" />
                     <span>Item Models</span>
                   </Link>

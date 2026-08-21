@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { Group } from "three";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,9 +66,33 @@ export function ItemAuditPage() {
     }
     return mapper.getMapping(currentEntry.itemType, undefined, previewParams);
   }, [currentEntry, mapper, previewParams]);
+  const previewParamKeys = useMemo(() => {
+    if (!currentEntry || !mapper) {
+      return [] as typeof PARAM_KEYS;
+    }
+    const mappingKeys = PARAM_KEYS.filter(
+      (key) => previewMapping?.paramDomains?.[key] !== undefined,
+    );
+    const transformKeys = [
+      previewMapping?.rotationParam?.paramIndex,
+      previewMapping?.scaleParam?.paramIndex,
+    ]
+      .flatMap((index) =>
+        index === undefined ? [] : ([`p${index}`] as const),
+      );
+    const declaredKeys = [...new Set([...mappingKeys, ...transformKeys])];
+    if (declaredKeys.length > 0) {
+      return PARAM_KEYS.filter((key) => declaredKeys.includes(key));
+    }
+    const config = mapper.getParamDependentConfig?.(currentEntry.itemType);
+    return config ? [`p${config.paramIndex}` as const] : [];
+  }, [currentEntry, mapper, previewMapping]);
   const currentDecision = currentEntry
     ? (decisions[currentEntry.itemType] ?? createDecisionForEntry(currentEntry))
     : null;
+  const currentEntryComplete = currentDecision
+    ? isEntryFullyRated(currentDecision)
+    : false;
 
   useEffect(() => {
     let cancelled = false;
@@ -199,17 +222,16 @@ export function ItemAuditPage() {
   };
 
   return (
-    <div className="p-4 text-white bg-gray-900 min-h-full">
-      <Card className="bg-gray-800/90 border-gray-700 shadow-xl mb-4">
-        <CardHeader className="border-b border-gray-700">
-          <CardTitle className="text-xl">Item Model / Param Audit</CardTitle>
-          <p className="text-sm text-gray-300">
-            Mark each field as correct/incorrect to identify hallucinated
-            mappings.
+    <main className="min-h-full bg-gray-900 p-4 text-white lg:p-6">
+      <div className="mx-auto max-w-[1800px]">
+        <header className="mb-3 flex items-baseline gap-3">
+          <h1 className="text-lg font-semibold">Item Model / Param Audit</h1>
+          <p className="text-xs text-gray-400">
+            Rate each field to identify questionable mappings.
           </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4 bg-gray-900/60 rounded-lg border border-gray-700 p-3">
+        </header>
+        <div className="space-y-4">
+          <div className="grid gap-4 border-b border-gray-800 pb-4 md:grid-cols-2">
             <div>
               <Label>Game</Label>
               <Select
@@ -226,7 +248,7 @@ export function ItemAuditPage() {
                   }
                 }}
               >
-                <SelectTrigger className="bg-gray-900 border-gray-700 text-white">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -258,7 +280,7 @@ export function ItemAuditPage() {
 
           {currentEntry && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center rounded-lg border border-gray-700 bg-gray-900/60 p-3">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
                 <div className="flex items-center gap-3">
                   <ItemThumbnail
                     game={selectedGame}
@@ -300,9 +322,15 @@ export function ItemAuditPage() {
                   >
                     Previous
                   </Button>
-                  {currentDecision && isEntryFullyRated(currentDecision) && (
+                  <div className="flex items-center gap-2">
+                    {!currentEntryComplete && (
+                      <p className="max-w-56 text-right text-xs text-amber-300">
+                        Warning: this item still has unrated fields.
+                      </p>
+                    )}
                     <Button
                       variant="outline"
+                      disabled={currentIndex >= entries.length - 1}
                       onClick={() =>
                         setCurrentIndex((idx) =>
                           Math.min(entries.length - 1, idx + 1),
@@ -311,12 +339,13 @@ export function ItemAuditPage() {
                     >
                       Next
                     </Button>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 bg-gray-900/50 border border-gray-700 rounded-lg p-3">
-                {PARAM_KEYS.map((key) => (
+              {previewParamKeys.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 border-b border-gray-800 pb-4 md:grid-cols-4">
+                  {previewParamKeys.map((key) => (
                   <div key={`preview-${key}`} className="space-y-1">
                     <Label>{key.toUpperCase()} Preview</Label>
                     <Input
@@ -336,10 +365,11 @@ export function ItemAuditPage() {
                       }
                     />
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
-              <div className="h-64 rounded-lg border border-gray-700 overflow-hidden bg-black/30">
+              <div className="min-h-[28rem] h-[min(70vh,48rem)] overflow-hidden rounded-md bg-black/40 shadow-inner ring-1 ring-gray-800">
                 {previewScene ? (
                   <Canvas
                     camera={{
@@ -366,7 +396,7 @@ export function ItemAuditPage() {
               </div>
 
               {previewMapping && (
-                <div className="text-xs text-gray-300 grid md:grid-cols-3 gap-2 rounded border border-gray-700 bg-gray-900/60 p-3">
+                <div className="grid gap-x-4 gap-y-1 border-b border-gray-800 py-3 text-xs text-gray-300 md:grid-cols-3">
                   <p>Model Index: {previewMapping.modelIndex}</p>
                   <p>Group Size: {previewMapping.groupSize ?? 1}</p>
                   <p>Rotation Y: {previewMapping.rotationY ?? 0}</p>
@@ -377,7 +407,7 @@ export function ItemAuditPage() {
               )}
 
               {currentEntry.staticAnalysisIssues.length > 0 && (
-                <div className="space-y-2 rounded border border-amber-700/60 bg-amber-950/30 p-3">
+                <div className="space-y-2 border-l-2 border-amber-700/60 bg-amber-950/20 py-3 pl-3">
                   <Label>Static analysis</Label>
                   <ul className="list-disc pl-5 text-xs text-amber-100 space-y-1">
                     {currentEntry.staticAnalysisIssues.map((issue) => (
@@ -388,13 +418,13 @@ export function ItemAuditPage() {
               )}
 
               {currentEntry.modelCitations.length > 0 && (
-                <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-3">
+                <div className="space-y-2 border-b border-gray-800 py-3">
                   <Label>Model citations</Label>
                   <div className="space-y-2">
                     {currentEntry.modelCitations.map((citation, index) => (
                       <div
                         key={`${citation.file}:${citation.line}:${index}`}
-                        className="rounded border border-gray-700 bg-gray-900 p-2 text-xs"
+                        className="border-l border-gray-700 pl-2 text-xs"
                       >
                         <p className="font-medium">{citation.description}</p>
                         <p>
@@ -415,7 +445,7 @@ export function ItemAuditPage() {
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-3 rounded border border-gray-700 bg-gray-900/50 p-3">
+              <div className="grid gap-4 border-b border-gray-800 py-3 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Model correctness</Label>
                   <StatusSelect
@@ -450,7 +480,7 @@ export function ItemAuditPage() {
                       (citation, citationIndex) => (
                         <div
                           key={`${key}-${citation.fileName}-${citation.lineNumber}-${citationIndex}`}
-                          className="rounded border border-gray-700 bg-gray-900 p-2 text-xs"
+                          className="border-l border-gray-700 pl-2 text-xs"
                         >
                           <p>
                             {citation.fileName}:{citation.lineNumber}
@@ -465,7 +495,7 @@ export function ItemAuditPage() {
                 ))}
               </div>
 
-              <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-3">
+              <div className="space-y-2 border-b border-gray-800 py-3">
                 <Label>Notes</Label>
                 <textarea
                   className="w-full min-h-[80px] rounded border border-gray-700 bg-gray-900 p-2 text-white"
@@ -480,8 +510,8 @@ export function ItemAuditPage() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </div>
+    </main>
   );
 }

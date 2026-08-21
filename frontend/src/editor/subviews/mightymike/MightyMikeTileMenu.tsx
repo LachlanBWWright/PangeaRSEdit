@@ -1,4 +1,4 @@
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useMemo, useRef, useState } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import type { Updater } from "use-immer";
@@ -7,12 +7,8 @@ import { toast } from "sonner";
 import {
   MightyMikeCanvasEditMode,
   MightyMikeCollisionBrushModeValue,
-  MightyMikeFlagBrushBit,
-  MightyMikeFlagBrushModeValue,
   MightyMikeOverlayMode,
   type MightyMikeCanvasEditModeValue,
-  MightyMikeParamsOverlayFlagBit,
-  ParamBrushValue,
 } from "@/data/game/gameAtoms";
 import {
   createCloseEditorHandler,
@@ -54,12 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import {
-  getFlagLabel,
-  getTileInfoRows,
-  MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS,
-} from "./mightyMikeTileInspectorState";
+import { getTileInfoRows } from "./mightyMikeTileInspectorState";
 import { MightyMikeAltMapEditorPanel } from "./MightyMikeAltMapEditor";
 import { TileSelectionModePanel } from "../shared/TileSelectionModePanel";
 import {
@@ -76,17 +67,6 @@ import {
   replaceMightyMikePaletteTileIndices,
 } from "./mightyMikePaletteTileState";
 
-type OverlaySelectValue =
-  | "none"
-  | "collision"
-  | "solidEdges"
-  | "flagsAny"
-  | "p0"
-  | "p1"
-  | "p2"
-  | "altMap"
-  | `flagBit:${number}`;
-
 const EMPTY_PALETTE_ATTRIBUTES: Readonly<Record<string, number>> = {
   flags: 0,
   p0: 0,
@@ -95,30 +75,6 @@ const EMPTY_PALETTE_ATTRIBUTES: Readonly<Record<string, number>> = {
   p3: 0,
   p4: 0,
 };
-
-function getOverlayOptionValue(flagBit: number): OverlaySelectValue {
-  return `flagBit:${flagBit}`;
-}
-
-const overlayDropdownItems: readonly {
-  value: OverlaySelectValue;
-  label: string;
-}[] = [
-  { value: "none", label: "No Overlay" },
-  { value: "collision", label: "Collision Mask" },
-  { value: "solidEdges", label: "Solid Sides" },
-  { value: "flagsAny", label: "Any Gameplay Flag" },
-  ...MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS.filter(([bit]) => bit >= 4).map(
-    ([bit, label]) => ({
-      value: getOverlayOptionValue(bit),
-      label,
-    }),
-  ),
-  { value: "p0", label: "Extra Setting A" },
-  { value: "p1", label: "Extra Setting B" },
-  { value: "p2", label: "Extra Setting C" },
-  { value: "altMap", label: "Alt Map Directions" },
-];
 
 interface MightyMikeTileMenuProps {
   mode: "visual" | "behavior";
@@ -138,18 +94,10 @@ export function MightyMikeTileMenu({
   setMapImages,
 }: MightyMikeTileMenuProps) {
   const [selectedTile] = useAtom(SelectedTile);
-  const [overlayMode, setOverlayMode] = useAtom(MightyMikeOverlayMode);
+  const setOverlayMode = useSetAtom(MightyMikeOverlayMode);
   const [canvasEditMode, setCanvasEditMode] = useAtom(MightyMikeCanvasEditMode);
   const [collisionBrushValue, setCollisionBrushValue] = useAtom(
     MightyMikeCollisionBrushModeValue,
-  );
-  const [flagBrushBit, setFlagBrushBit] = useAtom(MightyMikeFlagBrushBit);
-  const [flagBrushModeValue, setFlagBrushModeValue] = useAtom(
-    MightyMikeFlagBrushModeValue,
-  );
-  const [paramBrushValue, setParamBrushValue] = useAtom(ParamBrushValue);
-  const [paramsOverlayFlagBit, setParamsOverlayFlagBit] = useAtom(
-    MightyMikeParamsOverlayFlagBit,
   );
 
   const [manualTilePaletteSelection, setManualTilePaletteSelection] = useState<{
@@ -498,35 +446,6 @@ export function MightyMikeTileMenu({
       effectiveSelectedTile,
     );
 
-  const overlayModeLabel = useMemo(() => {
-    switch (overlayMode) {
-      case "collision":
-        return "Collision Mask";
-      case "solidEdges":
-        return "Solid Sides";
-      case "flagsAny":
-        return "Any Gameplay Flag";
-      case "flagBit":
-        return `Gameplay Flag: ${getFlagLabel(paramsOverlayFlagBit)}`;
-      case "p0":
-        return "Extra Setting A";
-      case "p1":
-        return "Extra Setting B";
-      case "p2":
-        return "Extra Setting C";
-      case "altMap":
-        return "Alt Map Directions";
-      default:
-        return "No Overlay";
-    }
-  }, [overlayMode, paramsOverlayFlagBit]);
-
-  const overlaySelectValue = useMemo<OverlaySelectValue>(() => {
-    return overlayMode === "flagBit"
-      ? getOverlayOptionValue(paramsOverlayFlagBit)
-      : overlayMode;
-  }, [overlayMode, paramsOverlayFlagBit]);
-
   const tileInfoRows = useMemo(
     () =>
       getTileInfoRows({
@@ -551,61 +470,19 @@ export function MightyMikeTileMenu({
     ],
   );
 
-  const handleOverlayModeChange = (value: string) => {
-    if (value.startsWith("flagBit:")) {
-      const parsed = getNumber(value.split(":")[1], 4);
-      setParamsOverlayFlagBit(Math.max(0, Math.min(15, parsed)));
-      setOverlayMode("flagBit");
+  const handleBrushModeChange = (value: string) => {
+    if (value !== "select" && value !== "collision" && value !== "altMap") {
       return;
     }
-
-    if (
-      value === "none" ||
-      value === "collision" ||
-      value === "solidEdges" ||
-      value === "flagsAny" ||
-      value === "p0" ||
-      value === "p1" ||
-      value === "p2" ||
-      value === "altMap"
-    ) {
-      setOverlayMode(value);
-    }
-  };
-
-  const handleCanvasEditModeChange = (value: string) => {
-    if (
-      value === "select" ||
-      value === "collision" ||
-      value === "flags" ||
-      value === "p0" ||
-      value === "p1" ||
-      value === "p2" ||
-      value === "altMap"
-    ) {
-      const nextMode: MightyMikeCanvasEditModeValue = value;
-      setCanvasEditMode(nextMode);
-      if (nextMode === "collision" && overlayMode === "none") {
-        setOverlayMode("collision");
-      }
-      if (nextMode === "flags" && overlayMode === "none") {
-        if (flagBrushBit <= 3) {
-          setOverlayMode("solidEdges");
-        } else {
-          setOverlayMode("flagBit");
-          setParamsOverlayFlagBit(flagBrushBit);
-        }
-      }
-      if (
-        (nextMode === "p0" || nextMode === "p1" || nextMode === "p2") &&
-        overlayMode === "none"
-      ) {
-        setOverlayMode(nextMode);
-      }
-      if (nextMode === "altMap") {
-        setOverlayMode("altMap");
-      }
-    }
+    const nextMode: MightyMikeCanvasEditModeValue = value;
+    setCanvasEditMode(nextMode);
+    setOverlayMode(
+      nextMode === "collision"
+        ? "collision"
+        : nextMode === "altMap"
+          ? "altMap"
+          : "none",
+    );
   };
 
   const handleCollisionBrushValueChange = (value: string) => {
@@ -614,25 +491,6 @@ export function MightyMikeTileMenu({
     }
   };
 
-  const handleFlagBrushModeChange = (value: string) => {
-    if (value === "enabled" || value === "disabled") {
-      setFlagBrushModeValue(value);
-    }
-  };
-
-  const handleFlagBrushBitChange = (value: string) => {
-    const parsed = getNumber(value, 0);
-    const nextBit = Math.max(0, Math.min(15, parsed));
-    setFlagBrushBit(nextBit);
-    if (canvasEditMode === "flags") {
-      if (nextBit <= 3) {
-        setOverlayMode("solidEdges");
-      } else {
-        setParamsOverlayFlagBit(nextBit);
-        setOverlayMode("flagBit");
-      }
-    }
-  };
 
   if (totalTiles <= 0) {
     return (
@@ -720,104 +578,42 @@ export function MightyMikeTileMenu({
           </div>
         </div>
       ) : (
-        <div className="grid h-full min-h-0 gap-3 p-3 xl:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col gap-3 overflow-auto pr-1 text-sm">
-            <div>
-              <p className="font-bold text-sm">Canvas Tools</p>
-              <p className="text-xs text-gray-400">
-                Edit map-cell rendering masks and alt-map directions. Tile
-                definition flags stay with their artwork in Visual Tiles.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-[92px_1fr] gap-x-2 gap-y-2 items-center text-xs">
-              <label className="text-gray-300">Canvas Mode</label>
-              <Select
-                value={canvasEditMode}
-                onValueChange={handleCanvasEditModeChange}
-              >
-                <SelectTrigger className="h-8 text-xs">
+        <div className="h-full min-h-0 overflow-auto p-3">
+          <div className="grid min-h-0 gap-4 md:grid-cols-2">
+            <div className="flex min-h-0 flex-col gap-3">
+              <div>
+                <p className="font-bold text-sm">Brush</p>
+                <p className="text-xs text-gray-400">
+                  Choose what painting on the map changes.
+                </p>
+              </div>
+              <Select value={canvasEditMode} onValueChange={handleBrushModeChange}>
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="select">Select Tile</SelectItem>
-                  <SelectItem value="collision">Paint Rendering Mask</SelectItem>
-                  <SelectItem value="altMap">Paint Alt Map</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <label className="text-gray-300">Overlay</label>
-              <Select
-                value={overlaySelectValue}
-                onValueChange={handleOverlayModeChange}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="No Overlay" />
-                </SelectTrigger>
-                <SelectContent>
-                  {overlayDropdownItems
-                    .filter(
-                      (item) =>
-                        item.value === "none" ||
-                        item.value === "collision" ||
-                        item.value === "altMap",
-                    )
-                    .map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
+                  <SelectItem value="collision">Rendering Mask</SelectItem>
+                  <SelectItem value="altMap">Alt Map Directions</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="grid grid-cols-[84px_1fr] gap-x-2 gap-y-1.5 items-center text-xs border-t border-gray-700 pt-2.5">
-              <span className="text-gray-300">Preview</span>
-              <p className="text-gray-300">{overlayModeLabel}</p>
-
+            <div className="min-h-0">
+              {canvasEditMode === "select" && (
+                <p className="text-xs text-gray-400">
+                  Select a brush to see its painting controls.
+                </p>
+              )}
               {canvasEditMode === "collision" && (
-                <>
-                  <label className="text-gray-300">Mask</label>
+                <div className="flex flex-col gap-2">
+                  <p className="font-bold text-sm">Rendering Mask</p>
+                  <label className="text-xs text-gray-300">Paint</label>
                   <Select
                     value={collisionBrushValue}
                     onValueChange={handleCollisionBrushValueChange}
                   >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="enabled">Paint Enabled</SelectItem>
-                      <SelectItem value="disabled">Paint Disabled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-
-              {canvasEditMode === "flags" && (
-                <>
-                  <label className="text-gray-300">Flag Brush</label>
-                  <Select
-                    value={String(flagBrushBit)}
-                    onValueChange={handleFlagBrushBitChange}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MIGHTY_MIKE_ACTIVE_FLAG_OPTIONS.map(([bit, label]) => (
-                        <SelectItem key={bit} value={String(bit)}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <label className="text-gray-300">Paint</label>
-                  <Select
-                    value={flagBrushModeValue}
-                    onValueChange={handleFlagBrushModeChange}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -825,51 +621,17 @@ export function MightyMikeTileMenu({
                       <SelectItem value="disabled">Set Disabled</SelectItem>
                     </SelectContent>
                   </Select>
-                </>
+                </div>
               )}
-
-              {(canvasEditMode === "p0" || canvasEditMode === "p1") && (
-                <>
-                  <label className="text-gray-300">Brush Value</label>
-                  <Input
-                    type="number"
-                    className="h-8 text-xs"
-                    value={paramBrushValue}
-                    onChange={(event) =>
-                      setParamBrushValue(getNumber(event.target.value, 0))
-                    }
-                  />
-                </>
+              {canvasEditMode === "altMap" && (
+                <div className="flex flex-col gap-2">
+                  <p className="font-bold text-sm">Alt Map Directions</p>
+                  <MightyMikeAltMapEditorPanel />
+                </div>
               )}
             </div>
-
-            {canvasEditMode === "altMap" && (
-              <div className="border-t border-gray-700 pt-2.5">
-                <MightyMikeAltMapEditorPanel />
-              </div>
-            )}
           </div>
 
-          <div className="min-h-0 overflow-auto border-l border-gray-700 pl-3">
-            <MightyMikeTileInspectorPanel
-              showCellMask
-              showTileBehavior={false}
-              mapWidth={mapWidth}
-              mapHeight={mapHeight}
-              totalTiles={totalTiles}
-              mapImagesLength={mapImages.length}
-              effectiveSelectedTile={effectiveSelectedTile}
-              layr={layr}
-              currentImageIndex={currentImageIndex}
-              xlatTable={xlatTable}
-              collisionProps={collisionProps}
-              mightyMikeTileValuesArrayLength={mightyMikeTileValuesArray.length}
-              currentTileAttributes={null}
-              handleUpdateCollisionProperty={handleUpdateCollisionProperty}
-              handleUpdateTileAttribute={handleUpdateTileAttribute}
-              getNumber={getNumber}
-            />
-          </div>
         </div>
       )}
 

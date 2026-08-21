@@ -36,17 +36,12 @@ test("every Storybook story renders without runtime errors", async ({ page, requ
   expect(runtimeErrors).toEqual([]);
 });
 
-test("interactive stories complete their expected state transitions", async ({ page }) => {
-  await page.goto("/iframe.html?id=ui-form-controls--all-controls&viewMode=story");
-  await expect(page.getByLabel("Level name")).toHaveValue("Test level");
-  await expect(page.getByRole("combobox", { name: "Editor layer" })).toHaveText("Water");
+test("production stories complete their expected state transitions", async ({ page }) => {
+  await page.goto("/iframe.html?id=level-editor-common-controls--canvas-history-and-zoom&viewMode=story");
+  await expect(page.getByRole("button", { name: "Undo" })).toBeEnabled();
+  await page.getByRole("button", { name: "Zoom in" }).click();
 
-  await page.goto("/iframe.html?id=ui-overlays--popover-interaction&viewMode=story");
-  await expect(page.getByText("Duplicate or export this level.")).toBeVisible();
-
-  await page.goto("/iframe.html?id=ui-navigation-and-cards--tab-interaction&viewMode=story");
-  await expect(page.getByRole("tab", { name: "Terrain" })).toHaveAttribute("aria-selected", "true");
-
-  await page.goto("/iframe.html?id=ui-layout--carousel-and-resizable-panels&viewMode=story");
-  await expect(page.getByRole("button", { name: "Previous slide" })).toBeEnabled();
+  await page.goto("/iframe.html?id=multiplayer-lobby-browser--default&viewMode=story");
+  await page.getByRole("combobox", { name: "Game" }).click();
+  await expect(page.getByRole("option").first()).toBeVisible();
 });

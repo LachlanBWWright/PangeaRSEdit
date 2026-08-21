@@ -1,5 +1,6 @@
 import { FilterMode, type ItemFilterState } from "@/data/items/itemFilterAtoms";
 import type { GlobalsInterface } from "@/data/globals/globals";
+import type { ItemData, SplineData } from "@/python/structSpecs/LevelTypes";
 import {
   getFilterableItemKindLabel,
   getFilterableItemLabel,
@@ -14,6 +15,27 @@ export interface FilterableItemType extends FilterableItemKeyParts {
   readonly label: string;
   readonly id: number;
   readonly name: string;
+}
+
+export function countItemAppearances(
+  itemData: ItemData | null,
+  splineData: SplineData | null,
+): ReadonlyMap<FilterableItemKey, number> {
+  const counts = new Map<FilterableItemKey, number>();
+
+  for (const item of itemData?.Itms[1000].obj ?? []) {
+    const key = toFilterableItemKey({ kind: "item", type: item.type });
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  for (const itemList of Object.values(splineData?.SpIt ?? {})) {
+    for (const item of itemList.obj) {
+      const key = toFilterableItemKey({ kind: "splineItem", type: item.type });
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+
+  return counts;
 }
 
 function toFilterableItemType(

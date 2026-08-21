@@ -19,10 +19,7 @@ import {
   type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import {
-  hasVisibleSplineItemModel,
-  isSplineOnlyItemType,
-} from "../splineItemModelVisibility";
+import { hasVisibleSplineItemModel } from "../splineItemModelVisibility";
 import { ItemType } from "../billyFrontierItemType";
 import { ROTATION_4_WAY, ROTATION_8_WAY } from "../standardParamTypes";
 
@@ -377,9 +374,6 @@ export class BillyFrontierItemMapper implements GameItemModelMapper {
     _flags?: number,
     kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
-    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
-      return undefined;
-    }
     if (
       kind === "splineItem" &&
       !hasVisibleSplineItemModel(this.game, itemType)

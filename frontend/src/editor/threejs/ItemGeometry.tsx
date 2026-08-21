@@ -1,12 +1,5 @@
 import React, { useMemo, useEffect, useRef, useCallback } from "react";
-import {
-  Mesh,
-  Group,
-  DoubleSide,
-  MeshBasicMaterial,
-  MeshPhysicalMaterial,
-  MeshStandardMaterial,
-} from "three";
+import { DoubleSide, Group, Mesh } from "three";
 import { ResultAsync } from "neverthrow";
 import {
   ItemData,
@@ -19,7 +12,7 @@ import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
-import { useItemModelCache } from "./hooks/useOttoItemModelCache";
+import { useItemModelCache } from "./hooks/useItemModelCache";
 import { getItemModelCacheKey } from "./hooks/itemModelCacheKey";
 import { cloneGroupForItemRendering } from "./hooks/itemModelLoaderUtils";
 import { getGameMapper } from "@/data/items/mappers";
@@ -35,6 +28,7 @@ import {
 } from "@/data/items/liquidPatchItems";
 import { mapErr } from "@/utils/mapErr";
 import { sampleTerrainHeightForItemPlacement } from "./threeItemInteraction";
+import { presentItemModel } from "./itemModelPresentation";
 interface ItemGeometryProps {
   itemData: ItemData;
   headerData: HeaderData;
@@ -119,58 +113,6 @@ const LoadingCube: React.FC<{
     </mesh>
   );
 };
-
-function applyLightingMode(
-  cloned: Group,
-  lightingMode: "unlit" | undefined,
-): void {
-  if (lightingMode !== "unlit") {
-    return;
-  }
-
-  cloned.traverse((node) => {
-    if (!(node instanceof Mesh) || !node.material) {
-      return;
-    }
-
-    const originalMaterials = Array.isArray(node.material)
-      ? node.material
-      : [node.material];
-    const unlitMaterials = originalMaterials.map((material) => {
-      if (material instanceof MeshBasicMaterial) {
-        material.side = DoubleSide;
-        material.toneMapped = false;
-        material.needsUpdate = true;
-        return material;
-      }
-
-      if (
-        material instanceof MeshStandardMaterial ||
-        material instanceof MeshPhysicalMaterial
-      ) {
-        const unlitMaterial = new MeshBasicMaterial({
-          map: material.map,
-          color: material.color,
-          transparent: material.transparent,
-          alphaTest: material.alphaTest,
-          side: DoubleSide,
-          opacity: material.opacity,
-          vertexColors: material.vertexColors,
-        });
-        unlitMaterial.name = material.name;
-        unlitMaterial.depthWrite = material.depthWrite;
-        unlitMaterial.toneMapped = false;
-        return unlitMaterial;
-      }
-
-      return material;
-    });
-
-    node.material = Array.isArray(node.material)
-      ? unlitMaterials
-      : (unlitMaterials[0] ?? node.material);
-  });
-}
 
 const ItemModel: React.FC<{
   position: [number, number, number];
@@ -312,26 +254,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           firstItem.flags,
         );
         if (mapping && cachedModel.gltf) {
-          const cloned = cloneGroupForItemRendering(cachedModel.gltf);
-          const baseScale = mapping.scale ?? 1;
-          applyLightingMode(cloned, mapping.lightingMode);
-          const sx = baseScale * (mapping.scaleXZ ?? 1);
-          const sy = baseScale * (mapping.scaleY ?? 1);
-          const sz = baseScale * (mapping.scaleXZ ?? 1);
-          cloned.scale.set(sx, sy, sz);
-          if (mapping.rotationY) {
-            cloned.rotateY(mapping.rotationY);
-          }
-          const yOff = mapping.yOffset ?? 0;
-          if (mapping.positionOffset) {
-            cloned.position.set(
-              mapping.positionOffset[0],
-              mapping.positionOffset[1] + yOff,
-              mapping.positionOffset[2],
-            );
-          } else if (yOff !== 0) {
-            cloned.position.set(0, yOff, 0);
-          }
+          const cloned = presentItemModel(cachedModel.gltf, mapping, params);
           scenes.set(cacheKey, cloned);
         }
       }
@@ -352,7 +275,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         };
         const loadItemModel = async () => {
           const loadResult = await ResultAsync.fromPromise(
-            loadModel(firstItem.type, params, levelNum),
+            loadModel(firstItem.type, params, levelNum, "terrainItem", firstItem.flags),
             mapErr,
           );
           if (loadResult.isErr()) {

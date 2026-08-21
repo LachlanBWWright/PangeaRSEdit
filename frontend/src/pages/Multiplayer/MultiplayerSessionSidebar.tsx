@@ -126,7 +126,7 @@ export function MultiplayerSessionSidebar({
             <CardTitle className="text-base">Session</CardTitle>
             <Button
               variant="outline"
-              size="sm"
+              size="default"
               disabled={busy}
               onClick={onCopyLobbyId}
             >
@@ -333,6 +333,7 @@ export function MultiplayerSessionSidebar({
               />
               <Button
                 variant="secondary"
+                size="default"
                 disabled={chatDraft.trim().length === 0}
                 onClick={onSendChat}
               >

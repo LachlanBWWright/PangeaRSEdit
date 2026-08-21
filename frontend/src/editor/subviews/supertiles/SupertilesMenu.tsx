@@ -31,6 +31,11 @@ import { CheckpointPanel } from "../checkpoints/CheckpointPanel";
 import { getGameFeatures } from "@/editor/utils/gameFeatures";
 import { MenuEmptyState } from "../MenuEmptyState";
 import { CroMagPathPanel } from "../paths/CroMagPathPanel";
+import { LevelScaleControl } from "../tiles/LevelScaleControl";
+import {
+  supportsLevelScale,
+  type LevelScaleMode,
+} from "@/editor/utils/levelScaleState";
 
 /**
  * Standard Supertile Menu for games with STgd-based terrain
@@ -45,6 +50,7 @@ export function SupertileMenu({
   setTerrainData,
   mapImages,
   setMapImages,
+  onApplyLevelScale,
 }: {
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
@@ -52,6 +58,7 @@ export function SupertileMenu({
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
+  onApplyLevelScale: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
@@ -214,6 +221,20 @@ export function SupertileMenu({
             Edit whole map in texture editor
           </Button>
           <div className="flex-1" />
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={
+              selectedTile >= stgd.length ||
+              !stgd[selectedTile] ||
+              isSupertileEmpty(stgd[selectedTile])
+            }
+            onClick={() => {
+              setSelectedTileBlank(selectedTile, globals, setTerrainData);
+            }}
+          >
+            Set to Blank
+          </Button>
           <p>Download Selected Tile</p>
           <Button
             size="sm"
@@ -252,35 +273,33 @@ export function SupertileMenu({
               <p>Texture ID: {stgd[selectedTile]?.superTileId || 0}</p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={
-              selectedTile >= stgd.length ||
-              !stgd[selectedTile] ||
-              isSupertileEmpty(stgd[selectedTile])
-            }
-            onClick={() => {
-              setSelectedTileBlank(selectedTile, globals, setTerrainData);
-            }}
-          >
-            Set to Blank
-          </Button>
+          {supportsLevelScale(globals.GAME_TYPE) && (
+            <div className="border-t border-gray-600 pt-2">
+              <LevelScaleControl
+                tileSize={headerData.Hedr[1000].obj.tileSize}
+                onApply={onApplyLevelScale}
+              />
+            </div>
+          )}
           {supportsCheckpoints && (
-            <CheckpointPanel
-              headerData={headerData}
-              setHeaderData={setHeaderData}
-              terrainData={terrainData}
-              setTerrainData={setTerrainData}
-            />
+            <div className="border-t border-gray-600 pt-2">
+              <CheckpointPanel
+                headerData={headerData}
+                setHeaderData={setHeaderData}
+                terrainData={terrainData}
+                setTerrainData={setTerrainData}
+              />
+            </div>
           )}
           {supportsPaths && (
-            <CroMagPathPanel
-              headerData={headerData}
-              setHeaderData={setHeaderData}
-              terrainData={terrainData}
-              setTerrainData={setTerrainData}
-            />
+            <div className="border-t border-gray-600 pt-2">
+              <CroMagPathPanel
+                headerData={headerData}
+                setHeaderData={setHeaderData}
+                terrainData={terrainData}
+                setTerrainData={setTerrainData}
+              />
+            </div>
           )}
         </div>
       </div>

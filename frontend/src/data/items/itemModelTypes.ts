@@ -88,6 +88,7 @@ export interface ModelPartMapping {
   scaleY?: number;
   rotationY?: number;
   positionOffset?: [number, number, number];
+  positionAnchor?: "primary-top";
   citations: readonly ModelPartCitation[];
 }
 
@@ -163,6 +164,7 @@ export interface UniversalItemModelMapping {
   variants?: Record<number, {
     modelFile?: string;  // Optional different file
     modelIndex: number;  // Different subgroup
+    modelParts?: readonly ModelPartMapping[];
   }>;
   
   /** True if model requires skeleton data */

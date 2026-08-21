@@ -168,7 +168,7 @@ export function NanosaurEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
-          {itemData && <ItemFilterToggle />}
+          {itemData && <ItemFilterToggle itemData={itemData} splineData={null} />}
         </div>
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView

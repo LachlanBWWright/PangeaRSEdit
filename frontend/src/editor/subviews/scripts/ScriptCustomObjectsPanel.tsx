@@ -20,6 +20,7 @@ import type {
   ScriptBehaviorDefinition,
   ScriptCustomObjectDefinition,
 } from "./scriptWorkspaceState";
+import type { NativeReplacementCompatibility } from "./scriptNativeAudit";
 
 interface ScriptCustomObjectsPanelProps {
   gameId: string;
@@ -43,13 +44,26 @@ interface ScriptCustomObjectsPanelProps {
     readonly x: number;
     readonly z: number;
   } | null;
+  terrainReplacementCompatibility: NativeReplacementCompatibility | null;
   replacementObjectId: string | null;
   onReplaceSelectedItem: (customObjectId: string) => void;
   onRestoreSelectedItem: () => void;
+  selectedMapItem: {
+    readonly index: number;
+    readonly type: number;
+    readonly x: number;
+    readonly y: number;
+  } | null;
+  mapReplacementCompatibility: NativeReplacementCompatibility | null;
+  mapReplacementObjectId: string | null;
+  onReplaceSelectedMapItem: (customObjectId: string) => void;
+  onRestoreSelectedMapItem: () => void;
   selectedSplineItem: {
     readonly splineNum: number;
     readonly itemIndex: number;
+    readonly nativeType: number;
   } | null;
+  splineReplacementCompatibility: NativeReplacementCompatibility | null;
   splineReplacementObjectId: string | null;
   onReplaceSelectedSplineItem: (customObjectId: string) => void;
   onRestoreSelectedSplineItem: () => void;
@@ -123,6 +137,26 @@ function parseFiniteNumber(value: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function updateCollisionBounds(
+  definition: ScriptCustomObjectDefinition,
+  axis: "width" | "height" | "depth",
+  value: number,
+): ScriptCustomObjectDefinition {
+  if (definition.collision.kind !== "preset") return definition;
+  const bounds = definition.collision.bounds ?? {
+    width: 1,
+    height: 1,
+    depth: 1,
+  };
+  return {
+    ...definition,
+    collision: {
+      ...definition.collision,
+      bounds: { ...bounds, [axis]: value },
+    },
+  };
+}
+
 function updateNativeModelGroup(
   definition: ScriptCustomObjectDefinition,
   group: string,
@@ -163,6 +197,33 @@ function updateVisualScale(
   return { ...definition, visual: { ...visual, scale } };
 }
 
+function updateAnimation(
+  definition: ScriptCustomObjectDefinition,
+  animationName: string,
+): ScriptCustomObjectDefinition {
+  if (definition.visual.kind !== "customSkeleton") return definition;
+  if (definition.visual.animations[animationName] === undefined) {
+    return definition;
+  }
+  return {
+    ...definition,
+    visual: { ...definition.visual, initialAnimation: animationName },
+  };
+}
+
+function updateAnimationSpeed(
+  definition: ScriptCustomObjectDefinition,
+  animationSpeed: number,
+): ScriptCustomObjectDefinition {
+  if (
+    definition.visual.kind !== "nativeSkeleton" &&
+    definition.visual.kind !== "customSkeleton"
+  ) {
+    return definition;
+  }
+  return { ...definition, visual: { ...definition.visual, animationSpeed } };
+}
+
 export function ScriptCustomObjectsPanel({
   gameId,
   customObjectBehaviorId,
@@ -176,10 +237,17 @@ export function ScriptCustomObjectsPanel({
   onUpdateObject,
   onUploadAsset,
   selectedTerrainItem,
+  terrainReplacementCompatibility,
   replacementObjectId,
   onReplaceSelectedItem,
   onRestoreSelectedItem,
+  selectedMapItem,
+  mapReplacementCompatibility,
+  mapReplacementObjectId,
+  onReplaceSelectedMapItem,
+  onRestoreSelectedMapItem,
   selectedSplineItem,
+  splineReplacementCompatibility,
   splineReplacementObjectId,
   onReplaceSelectedSplineItem,
   onRestoreSelectedSplineItem,
@@ -303,7 +371,7 @@ export function ScriptCustomObjectsPanel({
               {objectDefinition.visual.kind === "customDisplayGroup" ? (
                 <Input
                   type="file"
-                  accept={usesShapeAssets ? ".shapes" : ".bg3d"}
+                  accept={usesShapeAssets ? ".shapes" : ".bg3d,.gltf,.glb"}
                   aria-label={`${objectDefinition.label} ${usesShapeAssets ? "shapes" : "BG3D"} model`}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
@@ -383,6 +451,65 @@ export function ScriptCustomObjectsPanel({
                   />
                 </>
               ) : null}
+              {objectDefinition.visual.kind === "customSkeleton" ? (
+                <>
+                  <Select
+                    value={objectDefinition.visual.initialAnimation}
+                    onValueChange={(animationName) =>
+                      onUpdateObject(updateAnimation(objectDefinition, animationName))
+                    }
+                  >
+                    <SelectTrigger
+                      aria-label={`${objectDefinition.label} initial animation`}
+                    >
+                      <SelectValue placeholder="Initial animation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(objectDefinition.visual.animations).map(
+                        (animationName) => (
+                          <SelectItem key={animationName} value={animationName}>
+                            {animationName}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    step="0.05"
+                    min="0.01"
+                    max="100"
+                    aria-label={`${objectDefinition.label} animation speed`}
+                    value={objectDefinition.visual.animationSpeed}
+                    onChange={(event) =>
+                      onUpdateObject(
+                        updateAnimationSpeed(
+                          objectDefinition,
+                          parseFiniteNumber(event.target.value, 1),
+                        ),
+                      )
+                    }
+                  />
+                </>
+              ) : null}
+              {objectDefinition.visual.kind === "nativeSkeleton" ? (
+                <Input
+                  type="number"
+                  step="0.05"
+                  min="0.01"
+                  max="100"
+                  aria-label={`${objectDefinition.label} animation speed`}
+                  value={objectDefinition.visual.animationSpeed}
+                  onChange={(event) =>
+                    onUpdateObject(
+                      updateAnimationSpeed(
+                        objectDefinition,
+                        parseFiniteNumber(event.target.value, 1),
+                      ),
+                    )
+                  }
+                />
+              ) : null}
               <Select
                 value={
                   objectDefinition.collision.kind === "none"
@@ -404,6 +531,10 @@ export function ScriptCustomObjectsPanel({
                               preset === "platform"
                                 ? preset
                                 : "solidBox",
+                            bounds:
+                              objectDefinition.collision.kind === "preset"
+                                ? objectDefinition.collision.bounds
+                                : { width: 1, height: 1, depth: 1 },
                           },
                   })
                 }
@@ -420,12 +551,82 @@ export function ScriptCustomObjectsPanel({
                   <SelectItem value="platform">Platform</SelectItem>
                 </SelectContent>
               </Select>
+              {objectDefinition.collision.kind === "preset" ? (
+                <>
+                  <Input
+                    type="number"
+                    min="0.01"
+                    max="1000"
+                    step="0.05"
+                    aria-label={`${objectDefinition.label} collision width`}
+                    value={objectDefinition.collision.bounds?.width ?? 1}
+                    onChange={(event) =>
+                      onUpdateObject(
+                        updateCollisionBounds(
+                          objectDefinition,
+                          "width",
+                          parseFiniteNumber(event.target.value, 1),
+                        ),
+                      )
+                    }
+                  />
+                  <Input
+                    type="number"
+                    min="0.01"
+                    max="1000"
+                    step="0.05"
+                    aria-label={`${objectDefinition.label} collision height`}
+                    value={objectDefinition.collision.bounds?.height ?? 1}
+                    onChange={(event) =>
+                      onUpdateObject(
+                        updateCollisionBounds(
+                          objectDefinition,
+                          "height",
+                          parseFiniteNumber(event.target.value, 1),
+                        ),
+                      )
+                    }
+                  />
+                  <Input
+                    type="number"
+                    min="0.01"
+                    max="1000"
+                    step="0.05"
+                    aria-label={`${objectDefinition.label} collision depth`}
+                    value={objectDefinition.collision.bounds?.depth ?? 1}
+                    onChange={(event) =>
+                      onUpdateObject(
+                        updateCollisionBounds(
+                          objectDefinition,
+                          "depth",
+                          parseFiniteNumber(event.target.value, 1),
+                        ),
+                      )
+                    }
+                  />
+                </>
+              ) : null}
             </div>
             {selectedTerrainItem ? (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 grid gap-2">
+                {terrainReplacementCompatibility ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusChip
+                      label={terrainReplacementCompatibility.label}
+                      tone={terrainReplacementCompatibility.tone}
+                    />
+                    <p className="text-xs text-slate-400">
+                      {terrainReplacementCompatibility.message}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   variant="secondary"
+                  disabled={
+                    terrainReplacementCompatibility?.allowed !== true
+                  }
                   onClick={() => onReplaceSelectedItem(objectDefinition.id)}
                 >
                   Replace selected native item
@@ -435,13 +636,27 @@ export function ScriptCustomObjectsPanel({
                     Restore native item
                   </Button>
                 ) : null}
+                </div>
               </div>
             ) : null}
             {selectedSplineItem ? (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 grid gap-2">
+                {splineReplacementCompatibility ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusChip
+                      label={splineReplacementCompatibility.label}
+                      tone={splineReplacementCompatibility.tone}
+                    />
+                    <p className="text-xs text-slate-400">
+                      {splineReplacementCompatibility.message}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   variant="secondary"
+                  disabled={splineReplacementCompatibility?.allowed !== true}
                   onClick={() => onReplaceSelectedSplineItem(objectDefinition.id)}
                 >
                   Replace selected spline item
@@ -451,6 +666,37 @@ export function ScriptCustomObjectsPanel({
                     Restore spline item
                   </Button>
                 ) : null}
+                </div>
+              </div>
+            ) : null}
+            {selectedMapItem ? (
+              <div className="mt-3 grid gap-2">
+                {mapReplacementCompatibility ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusChip
+                      label={mapReplacementCompatibility.label}
+                      tone={mapReplacementCompatibility.tone}
+                    />
+                    <p className="text-xs text-slate-400">
+                      {mapReplacementCompatibility.message}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={mapReplacementCompatibility?.allowed !== true}
+                    onClick={() => onReplaceSelectedMapItem(objectDefinition.id)}
+                  >
+                    Replace selected map item
+                  </Button>
+                  {mapReplacementObjectId === objectDefinition.id ? (
+                    <Button size="sm" variant="outline" onClick={onRestoreSelectedMapItem}>
+                      Restore map item
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>

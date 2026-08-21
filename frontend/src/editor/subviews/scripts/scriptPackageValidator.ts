@@ -1,4 +1,5 @@
 import { Result, ok, err } from "neverthrow";
+import { z } from "zod";
 import type {
   ScriptBehaviorDefinition,
   ScriptCustomObjectDefinition,
@@ -10,6 +11,7 @@ import {
   scriptPlacementsFileSchema,
   scriptObjectsFileSchema,
   scriptParamsFileSchema,
+  runtimeLevelsSchema,
 } from "./scriptWorkspaceStateTypes";
 import {
   getCapability,
@@ -17,10 +19,120 @@ import {
   getHookCapabilityKey,
   type ScriptCapabilityKey,
 } from "./scriptCapabilityMatrix";
+import {
+  SCRIPT_CONTRACT_VERSION,
+  SCRIPT_RUNTIME_VERSION,
+  SCRIPTING_CONTRACT,
+} from "./scriptContract";
+import { getNativeReplacementDecision } from "./scriptNativeAudit";
+import {
+  validateScriptAssetPath,
+  validateScriptPackageAssets,
+} from "./scriptAssetValidation";
+
+export const SCRIPT_PACKAGE_MANIFEST_PATH =
+  "Data/Scripts/config/manifest.json";
+
+const scriptPackageManifestSchema = z.object({
+  schemaVersion: z.literal(1),
+  contractVersion: z.literal(SCRIPT_CONTRACT_VERSION),
+  runtimeVersion: z.literal(SCRIPT_RUNTIME_VERSION),
+  contentHash: z.string().regex(/^[0-9a-f]{8}$/),
+  fileCount: z.number().int().positive(),
+  networkPolicy: z.literal("disabled"),
+});
+
+export type ScriptPackageManifest = z.infer<typeof scriptPackageManifestSchema>;
+
+const scriptPeerManifestSchema = z.object({
+  gameId: z.string().min(1),
+  manifest: scriptPackageManifestSchema,
+});
+
+export type ScriptPeerManifest = z.infer<typeof scriptPeerManifestSchema>;
+
+function updatePackageHash(hash: number, byte: number): number {
+  return Math.imul(hash ^ byte, 0x01000193) >>> 0;
+}
+
+function packageContentHash(
+  files: Readonly<Record<string, Uint8Array>>,
+): string {
+  const encoder = new TextEncoder();
+  let hash = 0x811c9dc5;
+  const paths = Object.keys(files)
+    .filter((path) => path !== SCRIPT_PACKAGE_MANIFEST_PATH)
+    .sort();
+  for (const path of paths) {
+    for (const byte of encoder.encode(path)) hash = updatePackageHash(hash, byte);
+    hash = updatePackageHash(hash, 0);
+    for (const byte of files[path] ?? []) hash = updatePackageHash(hash, byte);
+    hash = updatePackageHash(hash, 0xff);
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+export function buildScriptPackageManifest(
+  files: Readonly<Record<string, Uint8Array>>,
+): ScriptPackageManifest {
+  const fileCount = Object.keys(files).filter(
+    (path) => path !== SCRIPT_PACKAGE_MANIFEST_PATH,
+  ).length;
+  return {
+    schemaVersion: 1,
+    contractVersion: SCRIPT_CONTRACT_VERSION,
+    runtimeVersion: SCRIPT_RUNTIME_VERSION,
+    contentHash: packageContentHash(files),
+    fileCount,
+    networkPolicy: "disabled",
+  };
+}
+
+export function buildScriptPeerManifest(
+  files: Readonly<Record<string, Uint8Array>>,
+  gameId: string,
+): ScriptPeerManifest {
+  return {
+    gameId,
+    manifest: buildScriptPackageManifest(files),
+  };
+}
+
+export function compareScriptPeerManifests(
+  local: ScriptPeerManifest,
+  remote: unknown,
+): Result<true, string> {
+  const remoteParse = scriptPeerManifestSchema.safeParse(remote);
+  if (!remoteParse.success) return err("Peer scripting manifest is invalid");
+  const remoteManifest = remoteParse.data;
+  if (remoteManifest.gameId !== local.gameId) {
+    return err(
+      `Peer scripting game mismatch: expected '${local.gameId}', received '${remoteManifest.gameId}'`,
+    );
+  }
+  const fields: readonly (keyof ScriptPackageManifest)[] = [
+    "schemaVersion",
+    "contractVersion",
+    "runtimeVersion",
+    "contentHash",
+    "fileCount",
+    "networkPolicy",
+  ];
+  for (const field of fields) {
+    if (remoteManifest.manifest[field] !== local.manifest[field]) {
+      return err(`Peer scripting manifest mismatch: ${field}`);
+    }
+  }
+  return ok(true);
+}
 
 export interface PackageValidationError {
   readonly path?: string;
   readonly message: string;
+}
+
+export interface ScriptPackageValidationOptions {
+  readonly assetsPrevalidated?: boolean;
 }
 
 function parseJsonBytes(bytes: Uint8Array): Result<unknown, string> {
@@ -33,10 +145,18 @@ function parseJsonBytes(bytes: Uint8Array): Result<unknown, string> {
 export function validateScriptPackage(
   files: Record<string, Uint8Array>,
   context: ScriptWorkspaceContext,
+  options: ScriptPackageValidationOptions = {},
 ): Result<true, string> {
   const errors: string[] = [];
   const textDecoder = new TextDecoder();
   let totalAssetBytes = 0;
+
+  if (!options.assetsPrevalidated) {
+    const assetValidation = validateScriptPackageAssets(files);
+    if (assetValidation.isErr()) {
+      errors.push(`Custom asset validation failed: ${assetValidation.error}`);
+    }
+  }
 
   // 1. Path traversal & absolute paths & Lua source check
   for (const path of Object.keys(files)) {
@@ -51,10 +171,17 @@ export function validateScriptPackage(
     }
     if (path.startsWith("Data/Scripts/src/")) {
       if (!path.endsWith(".lua")) {
-        errors.push(`Script source files must be Lua: ${path}`);
+        const isLegacySource = /\.(?:ts|tsx|js)$/i.test(path);
+        errors.push(
+          isLegacySource
+            ? `Legacy TypeScript/JavaScript package detected at ${path}; convert the source to Lua 5.4 before importing.`
+            : `Script source files must be Lua: ${path}`,
+        );
       }
     }
     if (path.startsWith("Data/Scripts/assets/")) {
+      const assetPathResult = validateScriptAssetPath(path);
+      if (assetPathResult.isErr()) errors.push(assetPathResult.error);
       const size = files[path]?.byteLength ?? 0;
       totalAssetBytes += size;
       if (size > 16 * 1024 * 1024) {
@@ -84,10 +211,71 @@ export function validateScriptPackage(
   }
 
   const projectData = projectParse.data;
+  const apiGame = SCRIPTING_CONTRACT.api.games.find(
+    (game) => game.gameId === context.gameId,
+  );
+
+  const runtimeLevelsBytes = files["Data/Scripts/config/levels.json"];
+  if (!runtimeLevelsBytes) {
+    errors.push("Missing levels.json configuration file");
+  } else {
+    const runtimeLevelsJson = parseJsonBytes(runtimeLevelsBytes);
+    if (runtimeLevelsJson.isErr()) {
+      errors.push("Invalid levels.json: invalid JSON");
+    } else {
+      const runtimeLevelsParse = runtimeLevelsSchema.safeParse(runtimeLevelsJson.value);
+      if (!runtimeLevelsParse.success) {
+        errors.push("Invalid levels.json: schema validation failed");
+      } else {
+        for (const levelKey of Object.keys(projectData.editor.levels)) {
+          const levelNumber = levelKey === "current" ? null : Number(levelKey);
+          if (levelNumber !== null && runtimeLevelsParse.data.levels[String(levelNumber)] === undefined) {
+            errors.push(`Missing runtime level configuration for level '${levelKey}'`);
+          }
+        }
+      }
+    }
+  }
+
+  const manifestBytes = files[SCRIPT_PACKAGE_MANIFEST_PATH];
+  if (manifestBytes) {
+    const manifestJson = parseJsonBytes(manifestBytes);
+    if (manifestJson.isErr()) {
+      errors.push("Invalid package manifest: invalid JSON");
+    } else {
+      const manifestParse = scriptPackageManifestSchema.safeParse(
+        manifestJson.value,
+      );
+      if (!manifestParse.success) {
+        errors.push(`Invalid package manifest: ${manifestParse.error.message}`);
+      } else {
+        const manifest = manifestParse.data;
+        const actualFileCount = Object.keys(files).filter(
+          (path) => path !== SCRIPT_PACKAGE_MANIFEST_PATH,
+        ).length;
+        if (manifest.fileCount !== actualFileCount) {
+          errors.push(
+            `Package manifest file count mismatch: expected ${String(manifest.fileCount)}, received ${String(actualFileCount)}`,
+          );
+        }
+        const actualHash = packageContentHash(files);
+        if (manifest.contentHash !== actualHash) {
+          errors.push(
+            `Package content hash mismatch: expected ${manifest.contentHash}, received ${actualHash}`,
+          );
+        }
+      }
+    }
+  }
 
   // 3. Schema version check
   if (projectData.schemaVersion !== 1) {
     errors.push(`Unsupported schema version: ${projectData.schemaVersion}`);
+  }
+  if (projectData.contractVersion !== SCRIPT_CONTRACT_VERSION) {
+    errors.push(
+      `Unsupported scripting contract version: ${projectData.contractVersion}`,
+    );
   }
 
   // 4. Game ID check
@@ -120,9 +308,13 @@ export function validateScriptPackage(
   const objectById = new Map<string, ScriptCustomObjectDefinition>();
   if (objectsBytes) {
     const objectsJson = parseJsonBytes(objectsBytes);
-    if (objectsJson.isOk()) {
+    if (objectsJson.isErr()) {
+      errors.push("Invalid objects.json: invalid JSON");
+    } else {
       const parsedObjects = scriptObjectsFileSchema.safeParse(objectsJson.value);
-      if (parsedObjects.success) {
+      if (!parsedObjects.success) {
+        errors.push(`Invalid objects.json: ${parsedObjects.error.message}`);
+      } else {
         for (const obj of parsedObjects.data.objects) {
           if (objectIds.has(obj.id)) {
             errors.push(`Duplicate custom object ID: ${obj.id}`);
@@ -156,9 +348,13 @@ export function validateScriptPackage(
   const paramIds = new Set<string>();
   if (paramsBytes) {
     const paramsJson = parseJsonBytes(paramsBytes);
-    if (paramsJson.isOk()) {
+    if (paramsJson.isErr()) {
+      errors.push("Invalid params.json: invalid JSON");
+    } else {
       const parsedParams = scriptParamsFileSchema.safeParse(paramsJson.value);
-      if (parsedParams.success) {
+      if (!parsedParams.success) {
+        errors.push(`Invalid params.json: ${parsedParams.error.message}`);
+      } else {
         for (const param of parsedParams.data.params) {
           if (paramIds.has(param.id)) {
             errors.push(`Duplicate parameter ID: ${param.id}`);
@@ -231,11 +427,21 @@ export function validateScriptPackage(
               }
             }
           }
+        } else {
+          errors.push(`Invalid ${bindingsPath}: ${parsedBindings.error.message}`);
         }
+      } else {
+        errors.push(`Invalid ${bindingsPath}: invalid JSON`);
       }
     }
 
     const pBytes = files[placementsPath];
+    if (!bBytes) {
+      errors.push(`Missing ${bindingsPath}`);
+    }
+    if (!pBytes) {
+      errors.push(`Missing ${placementsPath}`);
+    }
     if (pBytes) {
       const placementsJson = parseJsonBytes(pBytes);
       if (placementsJson.isOk()) {
@@ -249,6 +455,119 @@ export function validateScriptPackage(
               );
             }
           }
+        } else {
+          errors.push(`Invalid ${placementsPath}: ${parsedPlacements.error.message}`);
+        }
+      } else {
+        errors.push(`Invalid ${placementsPath}: invalid JSON`);
+      }
+    }
+  }
+
+  // Replacement definitions are part of project.json and must resolve to the
+  // same object registry as standalone placement files.
+  for (const [levelKey, levelState] of Object.entries(projectData.editor.levels)) {
+    const terrainReplacements = levelState.terrainReplacements;
+    for (let index = 0; index < terrainReplacements.length; index += 1) {
+      const replacement = terrainReplacements[index];
+      if (!replacement) continue;
+      if (!objectIds.has(replacement.customObjectId)) {
+        errors.push(
+          `Terrain replacement '${replacement.id}' references non-existent custom object: ${replacement.customObjectId}`,
+        );
+      }
+      const nativeAudit = getNativeReplacementDecision(
+        context.gameId,
+        replacement.nativeType,
+        replacement.strict,
+        "terrain",
+      );
+      if (nativeAudit.isErr()) {
+        errors.push(`Terrain replacement '${replacement.id}': ${nativeAudit.error}`);
+      }
+      for (let previous = 0; previous < index; previous += 1) {
+        const prior = terrainReplacements[previous];
+        if (!prior) continue;
+        if (
+          prior.itemIndex === replacement.itemIndex &&
+          prior.nativeType === replacement.nativeType &&
+          Math.abs(prior.x - replacement.x) < 0.5 &&
+          Math.abs(prior.z - replacement.z) < 0.5
+        ) {
+          errors.push(
+            `Duplicate terrain replacement in level '${levelKey}' for item ${replacement.itemIndex} and native type ${replacement.nativeType}`,
+          );
+          break;
+        }
+      }
+    }
+
+    const splineReplacements = levelState.splineReplacements;
+    for (let index = 0; index < splineReplacements.length; index += 1) {
+      const replacement = splineReplacements[index];
+      if (!replacement) continue;
+      if (!objectIds.has(replacement.customObjectId)) {
+        errors.push(
+          `Spline replacement '${replacement.id}' references non-existent custom object: ${replacement.customObjectId}`,
+        );
+      }
+      const nativeAudit = getNativeReplacementDecision(
+        context.gameId,
+        replacement.nativeType,
+        replacement.strict,
+        "spline",
+      );
+      if (nativeAudit.isErr()) {
+        errors.push(`Spline replacement '${replacement.id}': ${nativeAudit.error}`);
+      }
+      for (let previous = 0; previous < index; previous += 1) {
+        const prior = splineReplacements[previous];
+        if (!prior) continue;
+        if (
+          prior.splineNum === replacement.splineNum &&
+          prior.itemIndex === replacement.itemIndex &&
+          prior.nativeType === replacement.nativeType &&
+          Math.abs(prior.placement - replacement.placement) < 0.0001
+        ) {
+          errors.push(
+            `Duplicate spline replacement in level '${levelKey}' for spline ${replacement.splineNum}, item ${replacement.itemIndex}, and native type ${replacement.nativeType}`,
+          );
+          break;
+        }
+      }
+    }
+
+    const mapReplacements = levelState.mapReplacements;
+    for (let index = 0; index < mapReplacements.length; index += 1) {
+      const replacement = mapReplacements[index];
+      if (!replacement) continue;
+      if (!objectIds.has(replacement.customObjectId)) {
+        errors.push(
+          `Map replacement '${replacement.id}' references non-existent custom object: ${replacement.customObjectId}`,
+        );
+      }
+      const nativeAudit = getNativeReplacementDecision(
+        context.gameId,
+        replacement.nativeType,
+        replacement.strict,
+        "map",
+      );
+      if (nativeAudit.isErr()) {
+        errors.push(`Map replacement '${replacement.id}': ${nativeAudit.error}`);
+      }
+      for (let previous = 0; previous < index; previous += 1) {
+        const prior = mapReplacements[previous];
+        if (!prior) continue;
+        if (
+          prior.itemIndex === replacement.itemIndex &&
+          prior.nativeType === replacement.nativeType &&
+          Math.abs(prior.x - replacement.x) < 0.5 &&
+          Math.abs(prior.y - replacement.y) < 0.5
+        ) {
+          errors.push(
+            `Duplicate map replacement in level '${levelKey}' for item ${replacement.itemIndex} and native type ${replacement.nativeType}`,
+          );
+          break;
         }
       }
     }
@@ -265,6 +584,11 @@ export function validateScriptPackage(
         : behavior.supportedHooks;
 
       for (const hook of hooksToValidate) {
+        if (apiGame && !apiGame.supportedHooks.includes(hook)) {
+          errors.push(
+            `Behavior '${behavior.label}' uses hook '${hook}' which is unavailable on game '${context.gameId}'`,
+          );
+        }
         const capKey = getHookCapabilityKey(hook);
         if (!isCapabilitySupported(context.gameId, capKey)) {
           errors.push(
@@ -358,6 +682,39 @@ export function validateScriptPackage(
   }
 
   return ok(true);
+}
+
+export function validateScriptPackageForNetwork(
+  files: Record<string, Uint8Array>,
+  context: ScriptWorkspaceContext,
+  remotePeerManifest?: unknown,
+): Result<true, string> {
+  const packageValidation = validateScriptPackage(files, context);
+  if (packageValidation.isErr()) return err(packageValidation.error);
+
+  const apiGame = SCRIPTING_CONTRACT.games[context.gameId];
+  if (!apiGame || apiGame.multiplayer !== "deterministic-only") {
+    return err(
+      `Networked scripting is disabled for game '${context.gameId}' until deterministic authority and synchronization are implemented`,
+    );
+  }
+
+  const manifestBytes = files[SCRIPT_PACKAGE_MANIFEST_PATH];
+  if (!manifestBytes) {
+    return err("Networked scripting requires a package manifest");
+  }
+  const manifestJson = parseJsonBytes(manifestBytes);
+  if (manifestJson.isErr()) return err("Networked package manifest is invalid");
+  const manifestParse = scriptPackageManifestSchema.safeParse(manifestJson.value);
+  if (!manifestParse.success) return err("Networked package manifest is invalid");
+  if (remotePeerManifest !== undefined) {
+    const peerAgreement = compareScriptPeerManifests(
+      buildScriptPeerManifest(files, context.gameId),
+      remotePeerManifest,
+    );
+    if (peerAgreement.isErr()) return err(peerAgreement.error);
+  }
+  return err("Networked scripting remains disabled pending peer agreement");
 }
 
 function validateLuaSyntax(content: string, filePath: string): string[] {

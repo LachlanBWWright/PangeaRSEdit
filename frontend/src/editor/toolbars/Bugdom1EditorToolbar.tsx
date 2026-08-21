@@ -36,7 +36,7 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
           : view === View.scripts
             ? "scripts"
           : view === View.vertexColors
-            ? "vertexColors"
+            ? "metadata"
           : view === View.tiles
             ? "tiles"
             : "supertiles";
@@ -46,7 +46,7 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
     else if (value === "items") setView(View.items);
     else if (value === "splines") setView(View.splines);
     else if (value === "scripts") setView(View.scripts);
-    else if (value === "vertexColors") setView(View.vertexColors);
+    else if (value === "metadata") setView(View.vertexColors);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -85,8 +85,8 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
           <TabsTrigger className="w-full" value="supertiles">
             Visual Tiles
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="vertexColors">
-            Vertex Colors
+          <TabsTrigger className="w-full" value="metadata">
+            Metadata
           </TabsTrigger>
         </TabsList>
       </Tabs>

@@ -15,10 +15,7 @@ import {
   type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import {
-  hasVisibleSplineItemModel,
-  isSplineOnlyItemType,
-} from "../splineItemModelVisibility";
+import { hasVisibleSplineItemModel } from "../splineItemModelVisibility";
 import { OTTO_ITEM_MODEL_MAPPINGS } from "../ottoItemModelMapping";
 import { ItemType } from "../ottoItemType";
 import { 
@@ -146,14 +143,11 @@ export class OttoItemMapper implements GameItemModelMapper {
   
   getMapping(
     itemType: number,
-    _levelNum?: number,
+    levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
     _flags?: number,
     kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
-    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
-      return undefined;
-    }
     if (
       kind === "splineItem" &&
       !hasVisibleSplineItemModel(this.game, itemType)
@@ -173,6 +167,38 @@ export class OttoItemMapper implements GameItemModelMapper {
       return getBumperCarMapping(params);
     }
 
+    if (itemType === ItemType.ZipLinePost) {
+      const apocalypse = levelNum === 3 || levelNum === undefined;
+      return {
+        modelFile: apocalypse ? "level4_apocalypse.bg3d" : "level8_fireice.bg3d",
+        modelPath: "models",
+        modelIndex: apocalypse ? 20 : 38,
+        scale: 1.5,
+        modelParts: [
+          {
+            partId: "post",
+            modelFile: apocalypse ? "level4_apocalypse.bg3d" : "level8_fireice.bg3d",
+            modelPath: "models",
+            modelIndex: apocalypse ? 20 : 38,
+            citations: [{
+              file: "src/Items/ZipLine.c",
+              line: 198,
+              description: apocalypse
+                ? "Apocalypse levels create APOCALYPSE_ObjType_ZipLinePost."
+                : "Non-apocalypse levels create FIREICE_ObjType_ZipLinePost.",
+              proves: "level-condition",
+              partId: "post",
+            }],
+          },
+        ],
+        citations: [{
+          file: "src/Items/ZipLine.c",
+          line: 198,
+          description: "The source selects the post model by level and uses scale 1.5.",
+        }],
+      };
+    }
+
     // Check for param-dependent items first
     const paramConfig = PARAM_DEPENDENT_ITEMS[itemType];
     if (paramConfig) {
@@ -181,6 +207,10 @@ export class OttoItemMapper implements GameItemModelMapper {
     
     // Standard mapping lookup — OTTO_ITEM_MODEL_MAPPINGS already uses UniversalItemModelMapping
     return OTTO_ITEM_MODEL_MAPPINGS[itemType];
+  }
+
+  isLevelDependent(itemType: number): boolean {
+    return itemType === ItemType.ZipLinePost;
   }
   
   /**

@@ -16,6 +16,7 @@ export function getItemModelCacheKey(
   params?: ItemModelParams,
   levelNum?: number,
   kind: ItemModelKind = "terrainItem",
+  flags?: number,
 ): string {
   const mapper = getGameMapper(game);
   const keyParts = [`g${game}_${kind}_${itemType}`];
@@ -30,6 +31,8 @@ export function getItemModelCacheKey(
     const paramValue = getParamByIndex(params, paramIndex);
     keyParts.push(`p${paramIndex}_${paramValue}`);
   }
+
+  if (flags !== undefined && flags !== 0) keyParts.push(`f${flags}`);
 
   return keyParts.join("_");
 }

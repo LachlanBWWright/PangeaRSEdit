@@ -19,9 +19,72 @@
  * - foliage.bg3d (FOLIAGE items)
  */
 
-import type { UniversalItemModelMapping } from "./itemModelTypes";
+import type { ModelPartMapping, UniversalItemModelMapping } from "./itemModelTypes";
 import { ROTATION_4_WAY, ROTATION_8_WAY } from "./standardParamTypes";
 import { ItemType } from "./bugdom2ItemType";
+
+function gardenPart(
+  partId: string,
+  modelIndex: number,
+  description: string,
+  positionOffset?: [number, number, number],
+): ModelPartMapping {
+  return {
+    partId,
+    modelFile: "Level1_Garden.bg3d",
+    modelPath: "models",
+    modelIndex,
+    scale: 1.1,
+    ...(positionOffset === undefined ? {} : { positionOffset }),
+    citations: [{
+      file: "Source/Items/Snails.c",
+      line: 818,
+      description,
+      proves: positionOffset ? "position" : "model-index",
+      partId,
+    }],
+  };
+}
+
+function sprinklerPart(partId: string, modelIndex: number): ModelPartMapping {
+  return {
+    partId,
+    modelFile: "Level1_Garden.bg3d",
+    modelPath: "models",
+    modelIndex,
+    scale: 2.5,
+    citations: [{
+      file: "Source/Items/Traps.c",
+      line: 89,
+      description: "AddSprinklerHead creates the sprinkler part at scale 2.5.",
+      proves: "model-index",
+      partId,
+    }],
+  };
+}
+
+function sidewalkPart(
+  partId: string,
+  modelIndex: number,
+  description: string,
+  positionOffset?: [number, number, number],
+): ModelPartMapping {
+  return {
+    partId,
+    modelFile: "Level2_Sidewalk.bg3d",
+    modelPath: "models",
+    modelIndex,
+    scale: 2,
+    ...(positionOffset === undefined ? {} : { positionOffset }),
+    citations: [{
+      file: "Source/Items/Traps.c",
+      line: 310,
+      description,
+      proves: positionOffset ? "position" : "model-index",
+      partId,
+    }],
+  };
+}
 
 /**
  * Comprehensive mapping of all Bugdom 2 item types to their 3D models
@@ -77,8 +140,21 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ShrubRoot]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 10 }, // FOLIAGE_ObjType_ShrubRoot = 10
 
   // Garden level items (Level1_Garden.bg3d)
-  [ItemType.SprinklerHead]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1, groupSize: 2, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GARDEN_ObjType_SprinklerBase = 1; parm[0] * (PI/2) sets rotation
-  [ItemType.Scarecrow]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8, scale: 1.1, groupSize: 3 }, // GARDEN_ObjType_ScarecrowBody = 8; scale = SCARECROW_SCALE = 1.1
+  [ItemType.SprinklerHead]: {
+    modelFile: "Level1_Garden.bg3d",
+    modelPath: "models",
+    modelIndex: 1,
+    scale: 2.5,
+    modelParts: [sprinklerPart("base", 1), sprinklerPart("post", 2)],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+  }, // GARDEN_ObjType_SprinklerBase = 1
+  [ItemType.Scarecrow]: {
+    modelFile: "Level1_Garden.bg3d",
+    modelPath: "models",
+    modelIndex: 8,
+    scale: 1.1,
+    modelParts: [gardenPart("body", 8, "Scarecrow body is created at SCARECROW_SCALE."), gardenPart("shirt", 9, "Scarecrow shirt is chained to the body at the same coordinate.")],
+  }, // GARDEN_ObjType_ScarecrowBody = 8; head is state-dependent and is handled separately
   [ItemType.Door]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5, scale: 1.8, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GARDEN_ObjType_RedDoor = 5
 
   // Sidewalk level items (Level2_Sidewalk.bg3d)
@@ -89,7 +165,17 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.PoolLeaf]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 16, scale: 2.0 }, // SIDEWALK_ObjType_PoolLeaf1 = 16
   // DogHouse: base rotation is PI (180°), offset + parm[0]*PI/2; use ROTATION_4_WAY with PI offset
   [ItemType.DogHouse]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27, scale: 2.0, rotationParam: { paramIndex: 0, rotationType: { type: "Rotation", divisions: 4, multiplier: "PI2/4", offset: Math.PI, description: "Dog house rotation (0-3, PI/2 per step, starting at 180°)" } } }, // SIDEWALK_ObjType_DogHouse = 27
-  [ItemType.Windmill]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28, groupSize: 2, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // SIDEWALK_ObjType_WindmillBase = 28
+  [ItemType.Windmill]: {
+    modelFile: "Level2_Sidewalk.bg3d",
+    modelPath: "models",
+    modelIndex: 28,
+    scale: 2,
+    modelParts: [
+      sidewalkPart("base", 28, "Windmill base uses WINDMILL_SCALE = 2."),
+      sidewalkPart("blades", 29, "Windmill blades use the rotated bladeOff offset.", [0, 1050, -560]),
+    ],
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
+  }, // SIDEWALK_ObjType_WindmillBase = 28
   [ItemType.TulipPot]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30, scale: 3.0 }, // SIDEWALK_ObjType_TulipPot = 30
   [ItemType.BeachBall]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 22, scale: 2.5 }, // SIDEWALK_ObjType_BeachBall = 22
   [ItemType.ChlorineFloat]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 23, scale: 3.0 }, // SIDEWALK_ObjType_ChlorineFloat = 23
@@ -101,6 +187,7 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
 
   // Playroom level items (Level5_Playroom.bg3d)
   [ItemType.BowlingMarble]: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 6 }, // PLAYROOM_ObjType_MarbleShell = 6
+  [ItemType.BowlingPins]: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 8, scale: 0.7 }, // PLAYROOM_ObjType_Battery = 8; AddBowlingPins scale = .7
   [ItemType.LetterBlock]: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 1 }, // PLAYROOM_ObjType_LetterBlock1 = 1
   [ItemType.Puzzle]: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 20 }, // PLAYROOM_ObjType_PuzzleMain = 20
   [ItemType.LegoWall]: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 24 }, // PLAYROOM_ObjType_LegoWall = 24
@@ -139,7 +226,31 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.FishingLure]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 9 }, // PARK_ObjType_Lure = 9
   [ItemType.Silverware]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 10 }, // PARK_ObjType_Fork = 10
   [ItemType.PicnicBasket]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 13 }, // PARK_ObjType_PicnicBasket = 13
-  [ItemType.BeeHive]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 25, groupSize: 2 }, // PARK_ObjType_Hive = 25
+  [ItemType.BeeHive]: {
+    modelFile: "Level10_Park.bg3d",
+    modelPath: "models",
+    modelIndex: 25,
+    scale: 2,
+    modelParts: [
+      {
+        partId: "hive",
+        modelFile: "Level10_Park.bg3d",
+        modelPath: "models",
+        modelIndex: 25,
+        scale: 2,
+        citations: [{ file: "Source/Items/BeeHive.c", line: 54, description: "AddBeeHive creates PARK_ObjType_Hive at scale 2.", proves: "model-index", partId: "hive" }],
+      },
+      {
+        partId: "door",
+        modelFile: "Level10_Park.bg3d",
+        modelPath: "models",
+        modelIndex: 26,
+        scale: 2,
+        positionOffset: [-135, 350, -50],
+        citations: [{ file: "Source/Items/BeeHive.c", line: 46, endLine: 80, description: "doorOff is transformed by the hive matrix before the hive door is created.", proves: "position", partId: "door" }],
+      },
+    ],
+  }, // PARK_ObjType_Hive = 25
   [ItemType.Kindling]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 23 }, // PARK_ObjType_Leaf = 23
 
   // Global items (Global.bg3d)

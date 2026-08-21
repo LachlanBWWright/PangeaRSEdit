@@ -25,8 +25,8 @@ export function LevelScaleControl({
   const valid = Number.isFinite(parsed) && parsed > 0;
 
   return (
-    <div className="col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded border border-gray-700 p-2 sm:col-span-4">
-      <p className="font-medium">Level scale</p>
+    <div className="col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:col-span-4">
+      <p className="text-sm font-medium">Level scale</p>
       <Input
         type="number"
         min={0.001}
@@ -35,7 +35,7 @@ export function LevelScaleControl({
         onChange={(event) => setValue(event.currentTarget.value)}
         aria-label="Tile world size"
       />
-      <p className="text-sm text-gray-400">Placement behavior</p>
+      <p className="text-sm font-medium">Placement behavior</p>
       <Select
         value={mode}
         onValueChange={(next) => {

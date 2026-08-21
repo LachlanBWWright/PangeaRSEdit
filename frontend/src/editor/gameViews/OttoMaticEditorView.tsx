@@ -223,6 +223,16 @@ export function OttoMaticEditorView({
           <OttoMaticTilesMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
+          />
+        )}
+        {view === View.supertiles && showSupertileMenu && (
+          <SupertileMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            mapImages={mapImages}
+            setMapImages={setMapImages}
             onApplyLevelScale={(nextTileSize, mode) =>
               applyLevelScale({
                 previousTileSize: headerData.Hedr[1000].obj.tileSize,
@@ -238,16 +248,6 @@ export function OttoMaticEditorView({
             }
           />
         )}
-        {view === View.supertiles && showSupertileMenu && (
-          <SupertileMenu
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-            terrainData={terrainData}
-            setTerrainData={setTerrainData}
-            mapImages={mapImages}
-            setMapImages={setMapImages}
-          />
-        )}
       </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
@@ -259,7 +259,9 @@ export function OttoMaticEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
-          {itemData && <ItemFilterToggle />}
+          {itemData && (
+            <ItemFilterToggle itemData={itemData} splineData={splineData} />
+          )}
         </div>
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView

@@ -16,6 +16,14 @@ export type ScriptCapabilityKey =
   | "splineItemHooks"
   | "mapItemHooks"
   | "objectFrameHooks"
+  | "objectTriggerEvents"
+  | "objectAnimationCompletionEvents"
+  | "objectAnimationMarkerEvents"
+  | "checkpointEvents"
+  | "damageEvents"
+  | "playerLifecycleEvents"
+  | "pickupEvents"
+  | "weaponHitEvents"
   | "nativeSpawn"
   | "scriptedSpawn"
   | "playerLookup"
@@ -32,6 +40,14 @@ export interface GameCapabilityRow {
   readonly splineItemHooks: ScriptCapabilityStatus;
   readonly mapItemHooks: ScriptCapabilityStatus;
   readonly objectFrameHooks: ScriptCapabilityStatus;
+  readonly objectTriggerEvents: ScriptCapabilityStatus;
+  readonly objectAnimationCompletionEvents: ScriptCapabilityStatus;
+  readonly objectAnimationMarkerEvents: ScriptCapabilityStatus;
+  readonly checkpointEvents: ScriptCapabilityStatus;
+  readonly damageEvents: ScriptCapabilityStatus;
+  readonly playerLifecycleEvents: ScriptCapabilityStatus;
+  readonly pickupEvents: ScriptCapabilityStatus;
+  readonly weaponHitEvents: ScriptCapabilityStatus;
   readonly nativeSpawn: ScriptCapabilityStatus;
   readonly scriptedSpawn: ScriptCapabilityStatus;
   readonly playerLookup: ScriptCapabilityStatus;
@@ -50,6 +66,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "supported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "supported",
+    checkpointEvents: "supported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
+    pickupEvents: "supported",
+    weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -66,6 +90,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "supported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "supported",
+    checkpointEvents: "supported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
+    pickupEvents: "supported",
+    weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -82,6 +114,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "supported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "supported",
+    checkpointEvents: "supported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
+    pickupEvents: "supported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -98,6 +138,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "unsupported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "supported",
+    checkpointEvents: "supported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
+    pickupEvents: "supported",
+    weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -114,6 +162,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "supported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "supported",
+    checkpointEvents: "supported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
+    pickupEvents: "supported",
+    weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -130,6 +186,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "unsupported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "supported",
+    checkpointEvents: "unsupported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
+    pickupEvents: "supported",
+    weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -146,6 +210,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "supported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "supported",
+    checkpointEvents: "unsupported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
+    pickupEvents: "supported",
+    weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -162,6 +234,14 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     splineItemHooks: "unsupported",
     mapItemHooks: "supported",
     objectFrameHooks: "supported",
+    objectTriggerEvents: "supported",
+    objectAnimationCompletionEvents: "supported",
+    objectAnimationMarkerEvents: "unsupported",
+    checkpointEvents: "unsupported",
+    damageEvents: "unsupported",
+    playerLifecycleEvents: "unsupported",
+    pickupEvents: "supported",
+    weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
@@ -180,6 +260,14 @@ const DEFAULT_CAPABILITY_ROW: GameCapabilityRow = {
   splineItemHooks: "unsupported",
   mapItemHooks: "unsupported",
   objectFrameHooks: "unsupported",
+  objectTriggerEvents: "unsupported",
+  objectAnimationCompletionEvents: "unsupported",
+  objectAnimationMarkerEvents: "unsupported",
+  checkpointEvents: "unsupported",
+  damageEvents: "unsupported",
+  playerLifecycleEvents: "unsupported",
+  pickupEvents: "unsupported",
+  weaponHitEvents: "unsupported",
   nativeSpawn: "unsupported",
   scriptedSpawn: "unsupported",
   playerLookup: "unsupported",
@@ -215,10 +303,20 @@ export function getHookCapabilityKey(hookId: string): ScriptCapabilityKey {
     case "onMapItem":
       return "mapItemHooks";
     case "onObjectFrame":
-    case "onPickupCollected":
-    case "onWeaponHit":
-    case "onTriggerEnter":
       return "objectFrameHooks";
+    case "onPickupCollected":
+      return "pickupEvents";
+    case "onWeaponHit":
+      return "weaponHitEvents";
+    case "onTriggerEnter":
+      return "objectTriggerEvents";
+    case "onDamage":
+    case "onDamageApplied":
+      return "damageEvents";
+    case "onDeath":
+    case "onPlayerSpawn":
+    case "onPlayerRespawn":
+      return "playerLifecycleEvents";
     case "onFrame":
     case "onAreaFrame":
       return "globalFrameHooks";
@@ -232,6 +330,22 @@ export function getWorkspaceWarnings(
 ): readonly string[] {
   const warnings: string[] = [];
   const gameId = state.context.gameId;
+
+  for (const definition of state.customObjects) {
+    const requiredAssetPaths =
+      definition.visual.kind === "customDisplayGroup"
+        ? [definition.visual.modelPath]
+        : definition.visual.kind === "customSkeleton"
+          ? [definition.visual.modelPath, `${definition.visual.skeletonPath}.rsrc`]
+          : [];
+    for (const assetPath of requiredAssetPaths) {
+      if (!state.assets[assetPath]) {
+        warnings.push(
+          `Custom object '${definition.label}' requires asset '${assetPath}' before preview/export.`,
+        );
+      }
+    }
+  }
 
   const mpStatus = getCapability(gameId, "multiplayer");
   if (mpStatus === "unsafeInMultiplayer") {

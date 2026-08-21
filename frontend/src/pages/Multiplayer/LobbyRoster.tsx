@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { getPlayerReadyLabel } from "@/multiplayer/lobbyDisplay";
 import type { MultiplayerLobbyPlayer } from "@/multiplayer/types";
 
@@ -17,16 +17,7 @@ function RosterPill({
   readonly className?: string;
   readonly label: string;
 }) {
-  return (
-    <span
-      className={cn(
-        "rounded-full border px-2 py-0.5 text-xs font-medium",
-        className,
-      )}
-    >
-      {label}
-    </span>
-  );
+  return <Badge variant="outline" className={className}>{label}</Badge>;
 }
 
 export function LobbyRoster({
@@ -65,7 +56,7 @@ export function LobbyRoster({
           {isHost && !player.isHost ? (
             <Button
               type="button"
-              size="sm"
+              size="default"
               variant="outline"
               disabled={busy}
               onClick={() => {

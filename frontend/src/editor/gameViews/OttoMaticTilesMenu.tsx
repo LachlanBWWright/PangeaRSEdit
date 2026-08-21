@@ -44,17 +44,13 @@ import {
   shouldForceTwoDForTileView,
 } from "@/editor/gameViews/tilesMenuState";
 import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl";
-import { LevelScaleControl } from "../subviews/tiles/LevelScaleControl";
-import type { LevelScaleMode } from "../utils/levelScaleState";
 
 export function OttoMaticTilesMenu({
   headerData,
   setHeaderData,
-  onApplyLevelScale,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
-  onApplyLevelScale: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -172,10 +168,6 @@ export function OttoMaticTilesMenu({
           <Input type="number" value={minY} onChange={handleMinYChange} />
           <p>Max Height</p>
           <Input type="number" value={maxY} onChange={handleMaxYChange} />
-          <LevelScaleControl
-            tileSize={headerData.Hedr[1000].obj.tileSize}
-            onApply={onApplyLevelScale}
-          />
           <TopologyOpacityControl />
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">

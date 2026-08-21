@@ -17,7 +17,7 @@ export function NanosaurPathControls() {
   const [tile, setTile] = useAtom(nanosaurPathTileAtom);
 
   return (
-    <div className="grid grid-cols-[auto_1fr] items-center gap-2 rounded border border-gray-700 p-2 text-sm">
+    <div className="grid grid-cols-[auto_1fr] items-center gap-2 p-2 text-sm">
       <strong className="col-span-2">Collision and path layer</strong>
       <span>Show overlay</span>
       <Switch checked={shown} onCheckedChange={setShown} />

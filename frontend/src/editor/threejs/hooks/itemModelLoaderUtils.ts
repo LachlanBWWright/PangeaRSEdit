@@ -1,8 +1,8 @@
 import { mapErr } from "@/utils/mapErr";
-import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { ResultAsync } from "neverthrow";
 import { Group, Mesh, Object3D } from "three";
-import { errorSchema } from "@/schemas/common";
+import { arrayBufferSchema, errorSchema } from "@/schemas/common";
+import { z } from "zod";
 import {
   GLTFLoader,
   type GLTF,
@@ -12,6 +12,13 @@ import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 let requestIdCounter = 0;
 const fileGltfCache = new Map<string, Promise<GLTF>>();
 
+const workerResponseSchema = z.object({
+  type: z.string(),
+  requestId: z.string().optional(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+});
+
 export function convertBg3dToGltf(
   worker: Worker,
   buffer: ArrayBuffer,
@@ -19,15 +26,23 @@ export function convertBg3dToGltf(
   const requestId = `req_${++requestIdCounter}`;
   return new Promise<ArrayBuffer>((resolve, reject) => {
     let resolved = false;
-    const handleMessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
-      if (e.data.requestId !== requestId) return;
+    const handleMessage = (e: MessageEvent<unknown>) => {
+      const parsed = workerResponseSchema.safeParse(e.data);
+      if (!parsed.success || parsed.data.requestId !== requestId) return;
       resolved = true;
       worker.removeEventListener("message", handleMessage);
       worker.removeEventListener("error", handleError);
-      if (e.data.type === "error")
-        reject(new Error(`Worker error: ${e.data.error}`));
-      else if (e.data.type === "bg3d-with-skeleton-to-glb" && e.data.result)
-        resolve(e.data.result);
+      if (parsed.data.type === "error") {
+        reject(new Error(`Worker error: ${parsed.data.error ?? "Unknown worker error"}`));
+        return;
+      }
+      if (parsed.data.type !== "bg3d-with-skeleton-to-glb") {
+        reject(new Error(`Unexpected worker response: ${parsed.data.type}`));
+        return;
+      }
+      const result = arrayBufferSchema.safeParse(parsed.data.result);
+      if (result.success) resolve(result.data);
+      else reject(new Error("Worker returned an invalid GLB buffer."));
     };
     const handleError = (error: ErrorEvent) => {
       if (resolved) return;

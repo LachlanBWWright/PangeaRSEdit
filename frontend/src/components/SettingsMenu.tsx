@@ -1,4 +1,4 @@
-import { FlaskConical, Network, Settings } from "lucide-react";
+import { Boxes, FlaskConical, Network, Settings } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -70,6 +70,22 @@ export function SettingsMenu() {
             <span className="block font-medium">Show scripting</span>
             <span className="mt-0.5 block text-xs leading-4 text-slate-400">
               Show experimental scripting tools in the level editor.
+            </span>
+          </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={featureFlags.itemModelMappingPreview}
+          onCheckedChange={(itemModelMappingPreview) =>
+            saveFeatureFlags({ ...featureFlags, itemModelMappingPreview })
+          }
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <Boxes className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+          <span>
+            <span className="block font-medium">Show item model preview</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">
+              Show the experimental terrain and spline item mapping preview.
             </span>
           </span>
         </DropdownMenuCheckboxItem>

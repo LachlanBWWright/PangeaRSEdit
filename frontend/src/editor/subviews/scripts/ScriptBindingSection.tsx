@@ -133,6 +133,9 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
     [targetKind, workspace.behaviorCatalog],
   );
   const [behaviorId, setBehaviorId] = useState("");
+  const selectedBehaviorId = behaviors.some((behavior) => behavior.id === behaviorId)
+    ? behaviorId
+    : behaviors[0]?.id ?? "";
 
   useEffect(() => {
     if (workspaceStore[workspaceId]) {
@@ -142,12 +145,6 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
       replaceScriptWorkspace(currentStore, ensureScriptWorkspace(currentStore, context)),
     );
   }, [context, setWorkspaceStore, workspaceId, workspaceStore]);
-
-  useEffect(() => {
-    if (!behaviors.some((behavior) => behavior.id === behaviorId)) {
-      setBehaviorId(behaviors[0]?.id ?? "");
-    }
-  }, [behaviorId, behaviors]);
 
   const existingBinding = useMemo(() => {
     if (targetKind === "terrainItem") {
@@ -177,14 +174,14 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
   };
 
   const handleAttach = () => {
-    if (behaviorId.length === 0) {
+    if (selectedBehaviorId.length === 0) {
       return;
     }
     if (targetKind === "terrainItem") {
       updateWorkspace((current) =>
         applyTerrainBehavior(
           current,
-          behaviorId,
+          selectedBehaviorId,
           selectionLabel,
           props.signature,
         ),
@@ -194,7 +191,7 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
       updateWorkspace((current) =>
         applySplineBehavior(
           current,
-          behaviorId,
+          selectedBehaviorId,
           selectionLabel,
           props.signature,
         ),
@@ -204,7 +201,7 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
       updateWorkspace((current) =>
         applyMapItemBehavior(
           current,
-          behaviorId,
+          selectedBehaviorId,
           selectionLabel,
           props.signature,
         ),
@@ -237,7 +234,7 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
       <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto] md:items-end">
         <div className="grid gap-2">
           <Label>Select behavior</Label>
-          <Select value={behaviorId} onValueChange={setBehaviorId}>
+          <Select value={selectedBehaviorId} onValueChange={setBehaviorId}>
             <SelectTrigger>
               <SelectValue placeholder="Select a behavior" />
             </SelectTrigger>
@@ -250,7 +247,7 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={handleAttach} disabled={behaviorId.length === 0}>
+        <Button onClick={handleAttach} disabled={selectedBehaviorId.length === 0}>
           {existingBinding ? "Replace" : "Attach"}
         </Button>
         <Button variant="outline" onClick={handleEditCode} disabled={!existingBinding}>
