@@ -56,4 +56,14 @@ describe("scriptAssetPaths", () => {
       "Data/Scripts/assets/models/new.bg3d",
     );
   });
+
+  it("accepts native 3DMF models for legacy skeletal adapters", () => {
+    const definition = displayGroupDefinition();
+    const paths = buildScriptAssetPaths(definition, "FireFly.3dmf", "model");
+
+    expect(paths).toEqual({
+      assetPath: "Data/Scripts/assets/models/firefly.3dmf",
+      manifestPath: "Data/Scripts/assets/models/firefly.3dmf",
+    });
+  });
 });

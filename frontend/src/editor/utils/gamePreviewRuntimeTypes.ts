@@ -56,6 +56,7 @@ export interface PreviewRuntimeModule {
   requestQuitFn?: string;
   FS?: {
     writeFile: (path: string, data: Uint8Array) => void;
+    readFile?: (path: string) => Uint8Array;
     analyzePath?: (path: string) => { exists: boolean };
     mkdir?: (path: string) => void;
   };
@@ -76,12 +77,12 @@ export interface PreviewRuntimeModule {
     canRead: boolean,
     canWrite: boolean,
   ) => void;
-  ccall?: (
-    ident: string,
-    returnType: string | null,
-    argTypes: string[],
-    args: unknown[],
-  ) => unknown;
+  ccall?: {
+    (ident: string, returnType: "number", argTypes: string[], args: unknown[]): number;
+    (ident: string, returnType: "string", argTypes: string[], args: unknown[]): string;
+    (ident: string, returnType: "boolean", argTypes: string[], args: unknown[]): boolean;
+    (ident: string, returnType: string | null, argTypes: string[], args: unknown[]): unknown;
+  };
   setCanvasSize?: (width: number, height: number) => void;
   calledRun?: boolean;
 }
@@ -142,13 +143,15 @@ export function buildGameArguments(
     case Game.NANOSAUR:
       return ["--level", String(levelNumber), "--skip-menu"];
     case Game.BUGDOM:
-      return [];
+      return ["--level", String(levelNumber)];
     case Game.BUGDOM_2:
       return ["--level", String(levelNumber)];
     case Game.CRO_MAG:
       return ["--track", String(levelNumber), "--car", "1"];
     case Game.BILLY_FRONTIER:
-      return [];
+      return terrainPath
+        ? ["--level", String(levelNumber), "--terrain", terrainPath]
+        : ["--level", String(levelNumber)];
     case Game.MIGHTY_MIKE: {
       const levelArg = `${String(Math.floor(levelNumber / 3))}:${String(levelNumber % 3)}`;
       if (!terrainPath) {

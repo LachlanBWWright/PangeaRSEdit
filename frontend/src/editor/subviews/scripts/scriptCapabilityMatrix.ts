@@ -1,4 +1,5 @@
 import type { ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
+import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
 
 export type ScriptCapabilityStatus =
   | "supported"
@@ -20,17 +21,26 @@ export type ScriptCapabilityKey =
   | "objectAnimationCompletionEvents"
   | "objectAnimationMarkerEvents"
   | "checkpointEvents"
+  | "raceProgressEvents"
+  | "objectiveEvents"
   | "damageEvents"
   | "playerLifecycleEvents"
   | "pickupEvents"
+  | "pickupScoreEffects"
   | "weaponHitEvents"
   | "nativeSpawn"
   | "scriptedSpawn"
   | "playerLookup"
+  | "playerCommands"
+  | "playerInvulnerability"
+  | "raceMetadata"
+  | "objectiveMetadata"
+  | "objectCollision"
   | "levelMetadata"
   | "timeAPIs"
   | "logging"
   | "statusReporting"
+  | "persistence"
   | "multiplayer";
 
 export interface GameCapabilityRow {
@@ -44,17 +54,26 @@ export interface GameCapabilityRow {
   readonly objectAnimationCompletionEvents: ScriptCapabilityStatus;
   readonly objectAnimationMarkerEvents: ScriptCapabilityStatus;
   readonly checkpointEvents: ScriptCapabilityStatus;
+  readonly raceProgressEvents: ScriptCapabilityStatus;
+  readonly objectiveEvents: ScriptCapabilityStatus;
   readonly damageEvents: ScriptCapabilityStatus;
   readonly playerLifecycleEvents: ScriptCapabilityStatus;
   readonly pickupEvents: ScriptCapabilityStatus;
+  readonly pickupScoreEffects: ScriptCapabilityStatus;
   readonly weaponHitEvents: ScriptCapabilityStatus;
   readonly nativeSpawn: ScriptCapabilityStatus;
   readonly scriptedSpawn: ScriptCapabilityStatus;
   readonly playerLookup: ScriptCapabilityStatus;
+  readonly playerCommands: ScriptCapabilityStatus;
+  readonly playerInvulnerability: ScriptCapabilityStatus;
+  readonly raceMetadata: ScriptCapabilityStatus;
+  readonly objectiveMetadata: ScriptCapabilityStatus;
+  readonly objectCollision: ScriptCapabilityStatus;
   readonly levelMetadata: ScriptCapabilityStatus;
   readonly timeAPIs: ScriptCapabilityStatus;
   readonly logging: ScriptCapabilityStatus;
   readonly statusReporting: ScriptCapabilityStatus;
+  readonly persistence: ScriptCapabilityStatus;
   readonly multiplayer: ScriptCapabilityStatus;
 }
 
@@ -70,17 +89,26 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "supported",
+    raceProgressEvents: "unsupported",
+    objectiveEvents: "unsupported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
+    pickupScoreEffects: "unsupported",
     weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "supported",
+    raceMetadata: "unsupported",
+    objectiveMetadata: "unsupported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsupported",
   },
   "Bugdom-android": {
@@ -94,17 +122,26 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "supported",
+    raceProgressEvents: "unsupported",
+    objectiveEvents: "unsupported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    weaponHitEvents: "unsupported",
+    pickupScoreEffects: "unsupported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "supported",
+    raceMetadata: "unsupported",
+    objectiveMetadata: "unsupported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsupported",
   },
   "Bugdom2-Android": {
@@ -118,17 +155,26 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "supported",
+    raceProgressEvents: "unsupported",
+    objectiveEvents: "unsupported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
+    pickupScoreEffects: "unsupported",
     weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "supported",
+    raceMetadata: "unsupported",
+    objectiveMetadata: "unsupported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsupported",
   },
   "Nanosaur-android": {
@@ -142,17 +188,26 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "supported",
+    raceProgressEvents: "unsupported",
+    objectiveEvents: "unsupported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    weaponHitEvents: "unsupported",
+    pickupScoreEffects: "unsupported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "supported",
+    raceMetadata: "unsupported",
+    objectiveMetadata: "unsupported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsupported",
   },
   "Nanosaur2-Android": {
@@ -166,17 +221,26 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "supported",
+    raceProgressEvents: "supported",
+    objectiveEvents: "supported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    weaponHitEvents: "unsupported",
+    pickupScoreEffects: "unsupported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "supported",
+    raceMetadata: "supported",
+    objectiveMetadata: "supported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsafeInMultiplayer",
   },
   "CroMagRally-Android": {
@@ -189,18 +253,27 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectTriggerEvents: "supported",
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "supported",
-    checkpointEvents: "unsupported",
+    checkpointEvents: "supported",
+    raceProgressEvents: "supported",
+    objectiveEvents: "unsupported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
+    pickupScoreEffects: "unsupported",
     weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "unsupported",
+    raceMetadata: "supported",
+    objectiveMetadata: "unsupported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsafeInMultiplayer",
   },
   "BillyFrontier-Android": {
@@ -214,17 +287,26 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "unsupported",
+    raceProgressEvents: "unsupported",
+    objectiveEvents: "unsupported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
+    pickupScoreEffects: "supported",
     weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "supported",
+    raceMetadata: "unsupported",
+    objectiveMetadata: "unsupported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsupported",
   },
   "MightyMike-Android": {
@@ -238,17 +320,26 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationCompletionEvents: "supported",
     objectAnimationMarkerEvents: "unsupported",
     checkpointEvents: "unsupported",
-    damageEvents: "unsupported",
-    playerLifecycleEvents: "unsupported",
+    raceProgressEvents: "unsupported",
+    objectiveEvents: "unsupported",
+    damageEvents: "supported",
+    playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    weaponHitEvents: "unsupported",
+    pickupScoreEffects: "unsupported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerCommands: "supported",
+    playerInvulnerability: "supported",
+    raceMetadata: "unsupported",
+    objectiveMetadata: "unsupported",
+    objectCollision: "unsupported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
     statusReporting: "supported",
+    persistence: "supported",
     multiplayer: "unsupported",
   },
 };
@@ -264,17 +355,26 @@ const DEFAULT_CAPABILITY_ROW: GameCapabilityRow = {
   objectAnimationCompletionEvents: "unsupported",
   objectAnimationMarkerEvents: "unsupported",
   checkpointEvents: "unsupported",
+  raceProgressEvents: "unsupported",
+  objectiveEvents: "unsupported",
   damageEvents: "unsupported",
   playerLifecycleEvents: "unsupported",
   pickupEvents: "unsupported",
+  pickupScoreEffects: "unsupported",
   weaponHitEvents: "unsupported",
   nativeSpawn: "unsupported",
   scriptedSpawn: "unsupported",
   playerLookup: "unsupported",
+  playerCommands: "unsupported",
+  playerInvulnerability: "unsupported",
+  raceMetadata: "unsupported",
+  objectiveMetadata: "unsupported",
+  objectCollision: "unsupported",
   levelMetadata: "unsupported",
   timeAPIs: "unsupported",
   logging: "unsupported",
   statusReporting: "unsupported",
+  persistence: "unsupported",
   multiplayer: "unsupported",
 };
 
@@ -310,6 +410,13 @@ export function getHookCapabilityKey(hookId: string): ScriptCapabilityKey {
       return "weaponHitEvents";
     case "onTriggerEnter":
       return "objectTriggerEvents";
+    case "onCheckpointReached":
+      return "checkpointEvents";
+    case "onLapComplete":
+    case "onRaceFinish":
+      return "raceProgressEvents";
+    case "onObjectiveComplete":
+      return "objectiveEvents";
     case "onDamage":
     case "onDamageApplied":
       return "damageEvents";
@@ -380,32 +487,11 @@ export function getWorkspaceWarnings(
     }
   }
 
-  const checkApis: {
-    key: string;
-    capability: ScriptCapabilityKey;
-    name: string;
-  }[] = [
-    {
-      key: "pangea.spawn.native",
-      capability: "nativeSpawn",
-      name: "pangea.spawn.native",
-    },
-    {
-      key: "pangea.spawn.scripted",
-      capability: "scriptedSpawn",
-      name: "pangea.spawn.scripted",
-    },
-    {
-      key: "pangea.player.get",
-      capability: "playerLookup",
-      name: "pangea.player.get",
-    },
-    {
-      key: "pangea.level.current",
-      capability: "levelMetadata",
-      name: "pangea.level.current",
-    },
-  ];
+  const checkApis = AUTHORITATIVE_API_SCHEMA.apis.flatMap((api) =>
+    api.availabilityCapability === undefined
+      ? []
+      : [{ key: api.name, capability: api.availabilityCapability, name: api.name }],
+  );
 
   for (const file of Object.values(state.sourceFiles)) {
     if (file.path.startsWith("Data/Scripts/src/") && file.path !== "Data/Scripts/src/main.lua") {
@@ -419,6 +505,14 @@ export function getWorkspaceWarnings(
           } else if (capStatus === "unsupported") {
             warnings.push(`Script uses API '${api.name}' which is unsupported on this game.`);
           }
+        }
+      }
+      if (file.content.includes("scoreDelta")) {
+        const scoreStatus = getCapability(gameId, "pickupScoreEffects");
+        if (scoreStatus === "unsupported") {
+          warnings.push("Script returns pickup scoreDelta, but scripted pickup score effects are unsupported on this game.");
+        } else if (scoreStatus === "planned") {
+          warnings.push("Script returns pickup scoreDelta, but scripted pickup score effects are planned on this game.");
         }
       }
     }

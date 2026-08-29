@@ -88,7 +88,7 @@ export function ScriptCodeWorkspacePanel({
           </div>
           {diagnostics.length === 0 ? (
             <p className="text-xs text-slate-400">
-              No compile diagnostics yet.
+              No diagnostics yet.
             </p>
           ) : (
             diagnostics.map((diagnostic, index) => (

@@ -28,6 +28,7 @@ export interface NativeItemAudit {
   readonly streaming: NativeSpawnAudit["streaming"];
   readonly childObjects: NativeSpawnAudit["childObjects"];
   readonly saveBehavior: NativeSpawnAudit["saveBehavior"];
+  readonly runtimeVerification: NativeSpawnAudit["runtimeVerification"];
   readonly auditBasis: string;
   readonly supportedModes: readonly string[];
 }
@@ -37,6 +38,18 @@ export interface NativeReplacementCompatibility {
   readonly label: string;
   readonly message: string;
   readonly tone: "good" | "warning" | "danger";
+  readonly auditWarnings: readonly string[];
+}
+
+function getAuditWarnings(audit: NativeItemAudit): readonly string[] {
+  const warnings: string[] = [];
+  if (audit.modeAudit === "not-audited") warnings.push("mode coverage");
+  if (audit.childObjects === "not-audited") warnings.push("child-object ownership");
+  if (audit.saveBehavior === "not-audited") warnings.push("save/checkpoint behavior");
+  if (audit.streaming === "not-audited") warnings.push("streaming behavior");
+  if (audit.runtimeVerification === "not-verified") warnings.push("runtime verification");
+  if (audit.runtimeVerification === "constructor-probe") warnings.push("constructor-only runtime verification");
+  return warnings;
 }
 
 function supportedModesForGame(gameId: string): readonly string[] {
@@ -64,6 +77,7 @@ function buildAudit(): readonly NativeItemAudit[] {
         streaming: audit.streaming,
         childObjects: audit.childObjects,
         saveBehavior: audit.saveBehavior,
+        runtimeVerification: audit.runtimeVerification,
         auditBasis: audit.auditBasis,
         supportedModes: supportedModesForGame(game.gameId),
       };
@@ -72,6 +86,44 @@ function buildAudit(): readonly NativeItemAudit[] {
 }
 
 export const NATIVE_ITEM_AUDIT = buildAudit();
+
+export function validateNativeItemAuditCatalog(): Result<true, string> {
+  for (const audit of NATIVE_ITEM_AUDIT) {
+    if (audit.requiredAssets.length === 0) {
+      return err(`Native audit has no required assets: ${audit.gameId}/${audit.nativeId}`);
+    }
+    if (audit.auditBasis.trim().length === 0) {
+      return err(`Native audit has no audit basis: ${audit.gameId}/${audit.nativeId}`);
+    }
+    if (audit.nativeId.includes(".")) {
+      if (audit.modeAudit === "not-audited") {
+        return err(`Registered native family has no mode audit: ${audit.gameId}/${audit.nativeId}`);
+      }
+      if (audit.childObjects === "not-audited") {
+        return err(`Registered native family has no child-object audit: ${audit.gameId}/${audit.nativeId}`);
+      }
+      if (audit.saveBehavior === "not-audited") {
+        return err(`Registered native family has no save audit: ${audit.gameId}/${audit.nativeId}`);
+      }
+    }
+    if (audit.classification === "native-only") {
+      if (audit.replacementSurface !== "none" || audit.fallback !== "skip-replacement") {
+        return err(`Native-only audit has a replacement path: ${audit.gameId}/${audit.nativeId}`);
+      }
+      continue;
+    }
+    if (audit.replacementSurface === "none" || audit.fallback !== "native-initializer") {
+      return err(`Replaceable audit has no native fallback path: ${audit.gameId}/${audit.nativeId}`);
+    }
+    if (!audit.requiredCapabilities.includes("nativeSpawn")) {
+      return err(`Replaceable audit omits nativeSpawn capability: ${audit.gameId}/${audit.nativeId}`);
+    }
+    if (audit.modeAudit === "all-declared-modes" && audit.supportedModes.length === 0) {
+      return err(`All-mode audit has no declared modes: ${audit.gameId}/${audit.nativeId}`);
+    }
+  }
+  return ok(true);
+}
 
 export function getNativeReplacementDecision(
   gameId: string,
@@ -146,21 +198,28 @@ export function getNativeReplacementCompatibility(
         ? `Native type ${nativeType} is not registered for ${gameId}. Select a registered game object before creating a replacement.`
         : `Native type ${nativeType} has no ${replacementSurface} replacement path for ${gameId}. Select a compatible source surface before creating a replacement.`,
       tone: "danger",
+      auditWarnings: [],
     };
   }
+  const auditWarnings = getAuditWarnings(audit);
+  const auditSuffix = auditWarnings.length === 0
+    ? ""
+    : ` Audit still required for: ${auditWarnings.join(", ")}.`;
   if (audit.classification === "native-only") {
     return {
       allowed: true,
       label: "Native fallback",
-      message: `${audit.label} remains native when the scripted replacement cannot take ownership. The replacement is exported as non-strict.`,
+      message: `${audit.label} remains native when the scripted replacement cannot take ownership. The replacement is exported as non-strict.${auditSuffix}`,
       tone: "warning",
+      auditWarnings,
     };
   }
   return {
     allowed: true,
-    label: "Script replacement",
-    message: `${audit.label} has a registered scripted replacement path with native fallback available on failure.`,
-    tone: "good",
+    label: auditWarnings.length === 0 ? "Script replacement" : "Script replacement (audit pending)",
+    message: `${audit.label} has a registered scripted replacement path with native fallback available on failure.${auditSuffix}`,
+    tone: auditWarnings.length === 0 ? "good" : "warning",
+    auditWarnings,
   };
 }
 

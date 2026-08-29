@@ -55,6 +55,24 @@ vi.mock("@microsoft/signalr", () => {
         this.payloadHandler?.("not-json");
         return Promise.resolve(undefined);
       }
+      if (payload.includes('"method":"publish"')) {
+        this.payloadHandler?.(JSON.stringify({
+          jsonrpc: "2.0",
+          method: "textDocument/publishDiagnostics",
+          params: {
+            uri: "https://luals.test/workspace/main.lua",
+            diagnostics: [{
+              range: {
+                start: { line: 2, character: 4 },
+                end: { line: 2, character: 8 },
+              },
+              severity: 1,
+              message: "bad value",
+            }],
+          },
+        }));
+        return Promise.resolve(undefined);
+      }
 
       const id = /"id":(\d+)/.exec(payload)?.[1] ?? "0";
       const response = JSON.stringify({
@@ -261,5 +279,29 @@ describe("ScriptLspClient", () => {
     expect(client.clientUri("https://other.test/main.lua").toString()).toBe(
       "https://other.test/main.lua",
     );
+  });
+
+  it("publishes typed LuaLS diagnostics for the workspace state", async () => {
+    const { ScriptLspClient } = await import("./scriptLspClient");
+    const client = new ScriptLspClient();
+    const events: unknown[] = [];
+    client.subscribeDiagnostics((event) => events.push(event));
+    await client.connect(makeState());
+
+    const result = await client.notify("publish", {});
+
+    expect(result.isOk()).toBe(true);
+    expect(events).toEqual([{
+      filePath: "main.lua",
+      diagnostics: [{
+        category: "luals",
+        severity: "error",
+        message: "bad value",
+        code: "luals",
+        filePath: "main.lua",
+        line: 3,
+        column: 5,
+      }],
+    }]);
   });
 });

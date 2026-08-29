@@ -18,10 +18,10 @@ export function buildScriptAssetPaths(
   const sanitized = sanitizeAssetFileName(fileName);
   const lowerName = sanitized.toLowerCase();
   if (role === "model") {
-    const isNativeModel = lowerName.endsWith(".bg3d") || lowerName.endsWith(".shapes");
+    const isNativeModel = lowerName.endsWith(".bg3d") || lowerName.endsWith(".3dmf") || lowerName.endsWith(".shapes");
     const isModernModel = lowerName.endsWith(".gltf") || lowerName.endsWith(".glb");
     if (!isNativeModel && !isModernModel) return null;
-    if (definition.visual.kind === "customSkeleton" && !lowerName.endsWith(".bg3d")) {
+    if (definition.visual.kind === "customSkeleton" && !lowerName.endsWith(".bg3d") && !lowerName.endsWith(".3dmf")) {
       return null;
     }
     const directory = definition.visual.kind === "customSkeleton" ? "skeletons" : "models";

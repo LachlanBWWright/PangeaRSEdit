@@ -9,7 +9,8 @@ interface GameArtifact {
   readonly files: readonly string[];
   readonly entrypoint: string;
   readonly entrypointScript: string;
-  readonly scriptingApiMarker: string;
+  readonly scriptingApiMarkers: readonly string[];
+  readonly requiredExports: readonly string[];
 }
 
 const artifactRoot = "public/generated/pangea-ports/wasm";
@@ -20,56 +21,64 @@ const gameArtifacts: readonly GameArtifact[] = [
     files: ["billyfrontier/billyfrontier.wasm", "billyfrontier/billyfrontier.js", "billyfrontier/billyfrontier.data"],
     entrypoint: "billyfrontier/billyfrontier.html",
     entrypointScript: "billyfrontier.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: [],
   },
   {
     gameId: "Bugdom-android",
     files: ["bugdom/Bugdom.wasm", "bugdom/Bugdom.js", "bugdom/Bugdom.data"],
     entrypoint: "bugdom/game.html",
     entrypointScript: "Bugdom.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: [],
   },
   {
     gameId: "Bugdom2-Android",
     files: ["bugdom2/Bugdom2.wasm", "bugdom2/Bugdom2.js", "bugdom2/Bugdom2.data"],
     entrypoint: "bugdom2/Bugdom2.html",
     entrypointScript: "Bugdom2.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: ["Bugdom2Script_ProbeTerrainReplacementJS", "Bugdom2Script_ProbeDamageJS", "Bugdom2Script_ProbeFirstSplineJS", "Bugdom2Script_ProbeFirstSplineReplacementJS"],
   },
   {
     gameId: "CroMagRally-Android",
     files: ["cromagrally/CroMagRally.wasm", "cromagrally/CroMagRally.js", "cromagrally/CroMagRally.data"],
     entrypoint: "cromagrally/CroMagRally.html",
     entrypointScript: "CroMagRally.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: [],
   },
   {
     gameId: "MightyMike-Android",
     files: ["mightymike/MightyMike.wasm", "mightymike/MightyMike.js"],
     entrypoint: "mightymike/index.html",
     entrypointScript: "MightyMike.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: [],
   },
   {
     gameId: "Nanosaur-android",
     files: ["nanosaur/Nanosaur.wasm", "nanosaur/Nanosaur.js", "nanosaur/Nanosaur.data"],
     entrypoint: "nanosaur/index.html",
     entrypointScript: "Nanosaur.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: [],
   },
   {
     gameId: "Nanosaur2-Android",
     files: ["nanosaur2/Nanosaur2.wasm", "nanosaur2/Nanosaur2.js", "nanosaur2/Nanosaur2.data"],
     entrypoint: "nanosaur2/Nanosaur2.html",
     entrypointScript: "Nanosaur2.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: [],
   },
   {
     gameId: "OttoMatic-Android",
     files: ["ottomatic/OttoMatic.wasm", "ottomatic/OttoMatic.js", "ottomatic/OttoMatic.data"],
     entrypoint: "ottomatic/OttoMatic.html",
     entrypointScript: "OttoMatic.js",
-    scriptingApiMarker: "PangeaScript_IsEnabled",
+    scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
+    requiredExports: [],
   },
 ];
 
@@ -143,8 +152,15 @@ async function validateArtifacts(): Promise<Result<true, string>> {
       if (relativePath.endsWith(".js")) {
         const source = readTextArtifact(resolve(process.cwd(), artifactRoot, relativePath));
         if (source.isErr()) return err(`${game.gameId}: ${source.error}`);
-        if (!source.value.includes(game.scriptingApiMarker)) {
-          return err(`${game.gameId}: scripting API export is missing from ${relativePath}`);
+        const missingMarker = game.scriptingApiMarkers.find(
+          (marker) => !source.value.includes(marker),
+        );
+        if (missingMarker !== undefined) {
+          return err(`${game.gameId}: scripting API export is missing from ${relativePath}: ${missingMarker}`);
+        }
+        const missingExport = game.requiredExports.find((exportName) => !source.value.includes(exportName));
+        if (missingExport !== undefined) {
+          return err(`${game.gameId}: required game export is missing from ${relativePath}: ${missingExport}`);
         }
       }
     }
@@ -155,14 +171,21 @@ async function validateArtifacts(): Promise<Result<true, string>> {
     fixtureGames.add(gameId);
     const artifact = gameArtifacts.find((candidate) => candidate.gameId === gameId);
     if (!artifact) return err(`Production fixture has no staged artifact: ${gameId}`);
-    for (const path of [fixture.terrainDataPath, fixture.terrainRsrcPath, fixture.terrainTexturePath, fixture.customAssetSourcePath]) {
+    for (const path of [
+      fixture.terrainDataPath,
+      fixture.terrainRsrcPath,
+      fixture.terrainTexturePath,
+      ...fixture.customAssets.map((asset) => asset.sourcePath),
+    ]) {
       if (!path) continue;
       const bytes = readPublicFixture(path);
       if (bytes.isErr()) return err(`${gameId}: ${bytes.error}`);
       if (bytes.value.byteLength === 0) return err(`${gameId}: production fixture is empty: ${path}`);
     }
-    if (!fixture.customAssetPath.startsWith("Data/Scripts/assets/")) {
-      return err(`${gameId}: custom fixture is outside the scripting asset namespace`);
+    for (const asset of fixture.customAssets) {
+      if (!asset.path.startsWith("Data/Scripts/assets/")) {
+        return err(`${gameId}: custom fixture is outside the scripting asset namespace`);
+      }
     }
   }
   if (fixtureGames.size !== gameArtifacts.length) {

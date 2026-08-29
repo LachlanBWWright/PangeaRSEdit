@@ -9,6 +9,7 @@ import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { openFile } from "@/editor/loadLogic/openFile";
 import { View } from "@/editor/viewEnum";
+import { SelectedItem } from "@/data/items/itemAtoms";
 import { MenuSection } from "@/editor/gameViews/MenuSection";
 import { StandardEditorToolbar } from "@/editor/toolbars/StandardEditorToolbar";
 import { Bugdom1EditorToolbar } from "@/editor/toolbars/Bugdom1EditorToolbar";
@@ -317,7 +318,12 @@ function StoryPanel({
       setMapFile: () => undefined,
       setMapImagesFile: () => undefined,
       setMapImages,
-      setData: setLevel,
+      setData: (nextLevel) => {
+        if ((nextLevel.itemData.Itms[1000]?.obj.length ?? 0) > 0) {
+          store.set(SelectedItem, 0);
+        }
+        setLevel(nextLevel);
+      },
     });
   }, [config, store]);
 

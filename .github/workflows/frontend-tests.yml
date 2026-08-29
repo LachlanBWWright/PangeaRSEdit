@@ -45,6 +45,10 @@ jobs:
       - name: Verify staged scripting WASM artifacts
         run: pnpm run check:scripting-wasm
 
+      - name: Build supported native scripting adapters
+        working-directory: .
+        run: ./scripts/build-pangea-ports.sh --target native
+
       - name: Run shared scripting native and WASM conformance tests
         working-directory: .
         run: |
@@ -61,6 +65,13 @@ jobs:
 
       - name: Verify scripting contract drift
         run: pnpm run check:scripting-contract
+
+      - name: Verify deterministic scripting metadata generation
+        run: pnpm run generate:scripting-contract-metadata | diff -u ../games/pangea-ports/shared/script/pangea_script_contract.h -
+
+      - name: Verify deterministic scripting documentation generation
+        run: |
+          pnpm run generate:scripting-contract-documentation | diff -u <(sed -n '/<!-- BEGIN GENERATED SCRIPTING CONTRACT INDEX -->/,/<!-- END GENERATED SCRIPTING CONTRACT INDEX -->/p' ../games/pangea-ports/docs/lua-scripting.md) -
 
       - name: Cache Playwright Chromium
         id: playwright-cache
@@ -94,6 +105,10 @@ jobs:
       - name: Build project
         if: success()
         run: pnpm run build
+
+      - name: Run scripting WebAssembly launch matrix
+        if: success()
+        run: pnpm exec playwright test tests/e2e/scriptingRuntimeLaunch.spec.ts --project=chromium --workers=1
 
       - name: Run real-WASM multiplayer browser smoke tests
         if: success()

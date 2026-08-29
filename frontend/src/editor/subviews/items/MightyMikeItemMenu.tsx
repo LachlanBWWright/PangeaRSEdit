@@ -46,6 +46,8 @@ import {
   updateSelectedMightyMikeItemType,
 } from "@/editor/subviews/items/mightyMikeItemMenuState";
 import { MapItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
+import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -93,6 +95,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             )}
           </Toggle>
           <AddItemMenu hasItems={itemCount > 0} />
+          {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
         </>
       ) : (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-2 gap-y-1 text-sm">

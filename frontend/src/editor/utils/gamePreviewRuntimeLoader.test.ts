@@ -43,6 +43,50 @@ const launchPayloadSchema = z.object({
   matchIdHigh: z.number(),
 });
 
+type Ccall = NonNullable<PreviewRuntimeModule["ccall"]>;
+
+function createCcallAdapter(
+  spy: (ident: string, returnType: string | null, argTypes: string[], args: unknown[]) => unknown,
+  defaultNumber: number,
+): Ccall {
+  function ccall(
+    ident: string,
+    returnType: "number",
+    argTypes: string[],
+    args: unknown[],
+  ): number;
+  function ccall(
+    ident: string,
+    returnType: "string",
+    argTypes: string[],
+    args: unknown[],
+  ): string;
+  function ccall(
+    ident: string,
+    returnType: "boolean",
+    argTypes: string[],
+    args: unknown[],
+  ): boolean;
+  function ccall(
+    ident: string,
+    returnType: string | null,
+    argTypes: string[],
+    args: unknown[],
+  ): unknown;
+  function ccall(
+    ident: string,
+    returnType: string | null,
+    argTypes: string[],
+    args: unknown[],
+  ): unknown {
+    spy(ident, returnType, argTypes, args);
+    if (returnType === "string") return "";
+    if (returnType === "boolean") return false;
+    return defaultNumber;
+  }
+  return ccall;
+}
+
 const SCRIPT_PREVIEW_GAMES = [
   Game.OTTO_MATIC,
   Game.BUGDOM,
@@ -173,7 +217,7 @@ describe("game preview runtime loader", () => {
         buildValidMatchConfig(gameId, mode, trackOrLevel),
       );
 
-      module.ccall = ccall;
+      module.ccall = createCcallAdapter(ccall, 0);
       module.onRuntimeInitialized?.();
 
       expect(ccall).toHaveBeenNthCalledWith(
@@ -251,7 +295,7 @@ describe("game preview runtime loader", () => {
       onError,
     );
 
-    module.ccall = vi.fn();
+    module.ccall = createCcallAdapter(vi.fn(), 0);
     module.onRuntimeInitialized?.();
 
     expect(onError).toHaveBeenCalledWith(
@@ -267,7 +311,7 @@ describe("game preview runtime loader", () => {
       onError,
     );
 
-    module.ccall = vi.fn();
+    module.ccall = createCcallAdapter(vi.fn(), 0);
     module.onRuntimeInitialized?.();
 
     expect(onError).toHaveBeenCalledWith(
@@ -302,12 +346,12 @@ describe("game preview runtime loader", () => {
         normalLaunch: true,
       });
 
-      module.ccall = ccall;
+      module.ccall = createCcallAdapter(ccall, 0);
       module.onRuntimeInitialized?.();
 
       expect(ccall).toHaveBeenCalledWith(
         "PangeaScript_SetStartupScript",
-        null,
+        "number",
         ["string"],
         ["Data/Scripts/dist/main.lua"],
       );
@@ -316,6 +360,70 @@ describe("game preview runtime loader", () => {
     },
   );
 
+  it("surfaces a rejected startup-script status from the runtime", () => {
+    const onError = vi.fn();
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.BUGDOM_2],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      customFiles: [{
+        path: "Data/Scripts/dist/main.lua",
+        data: new Uint8Array([1]),
+      }],
+      onStatus: () => undefined,
+      onError,
+      normalLaunch: true,
+    });
+
+    module.ccall = createCcallAdapter(vi.fn(), 8);
+    module.onRuntimeInitialized?.();
+
+    expect(onError).toHaveBeenCalledWith(
+      "PangeaScript_SetStartupScript failed with status 8",
+    );
+  });
+
+  it("surfaces a failed level-jump call as a runtime load error", () => {
+    const onError = vi.fn();
+    const onRuntimeEvent = vi.fn();
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.OTTO_MATIC],
+      levelNumber: 0,
+      currentLevelInfo: GAME_PORT_CONFIGS[Game.OTTO_MATIC].levels[0],
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      onStatus: () => undefined,
+      onError,
+      onRuntimeEvent,
+    });
+
+    const ccall = vi.fn((...args: unknown[]) => {
+      const name = z.string().safeParse(args[0]);
+      if (name.success && name.data === "OttoMatic_SkipToLevel") return decodeURIComponent("%");
+      return 0;
+    });
+    module.ccall = createCcallAdapter(ccall, 0);
+    module.onRuntimeInitialized?.();
+
+    expect(onError).toHaveBeenCalledWith("URI malformed");
+    expect(onRuntimeEvent).toHaveBeenCalledWith({
+      type: "runtimeLoadFailed",
+      detail: "URI malformed",
+    });
+  });
+
   it.each(SCRIPT_RUNTIME_ASSET_FIXTURES)(
     "injects a real terrain and custom asset fixture for $game",
     ({
@@ -323,8 +431,7 @@ describe("game preview runtime loader", () => {
       terrainDataPath,
       terrainRsrcPath,
       terrainTexturePath,
-      customAssetPath,
-      customAssetSourcePath,
+      customAssets,
     }) => {
       const config = GAME_PORT_CONFIGS[game];
       const level = config.levels[config.defaultLevel];
@@ -340,7 +447,10 @@ describe("game preview runtime loader", () => {
       const terrainTextureBytes = terrainTexturePath
         ? readPublicFixture(terrainTexturePath)
         : null;
-      const customAssetBytes = readPublicFixture(customAssetSourcePath);
+      const customAssetFiles = customAssets.map((asset) => ({
+        path: asset.path,
+        data: readPublicFixture(asset.sourcePath),
+      }));
       const scriptBytes = new Uint8Array(
         Buffer.from("return { onLevelStart = function() end }", "utf8"),
       );
@@ -358,7 +468,7 @@ describe("game preview runtime loader", () => {
         terrainTextureBytes,
         [
           { path: "Data/Scripts/dist/main.lua", data: scriptBytes },
-          { path: customAssetPath, data: customAssetBytes },
+          ...customAssetFiles,
         ],
         onError,
       );
@@ -374,9 +484,56 @@ describe("game preview runtime loader", () => {
         expect(files.get(terrainPaths.texturePath)).toEqual(terrainTextureBytes);
       }
       expect(files.get("Data/Scripts/dist/main.lua")).toEqual(scriptBytes);
-      expect(files.get(customAssetPath)).toEqual(customAssetBytes);
+      for (const asset of customAssetFiles) {
+        expect(files.get(asset.path)).toEqual(asset.data);
+      }
     },
   );
+
+  it("injects scripting files when no terrain path is available", () => {
+    const { files, module } = createVfsModule();
+    const ccall = vi.fn();
+    const onError = vi.fn();
+    const scriptBytes = new Uint8Array([0x72, 0x65, 0x74, 0x75, 0x72, 0x6e]);
+    const assetBytes = new Uint8Array([1, 2, 3]);
+    const previewModule = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.MIGHTY_MIKE],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      customFiles: [
+        { path: "/Data/Scripts/dist/main.lua", data: scriptBytes },
+        {
+          path: "Data/Scripts/assets/models/converted.bg3d",
+          data: assetBytes,
+        },
+      ],
+      onStatus: () => undefined,
+      onError,
+    });
+    previewModule.FS = module.FS;
+    previewModule.ccall = createCcallAdapter(ccall, 0);
+
+    previewModule.onRuntimeInitialized?.();
+
+    expect(files.get("/Data/Scripts/dist/main.lua")).toEqual(scriptBytes);
+    expect(files.get("Data/Scripts/assets/models/converted.bg3d")).toEqual(
+      assetBytes,
+    );
+    expect(onError).not.toHaveBeenCalled();
+    expect(ccall).toHaveBeenCalledWith(
+      "PangeaScript_SetStartupScript",
+      "number",
+      ["string"],
+      ["Data/Scripts/dist/main.lua"],
+    );
+  });
 
   it("reports an error when ccall is unavailable for network launch", () => {
     const onError = vi.fn();
@@ -414,7 +571,7 @@ describe("game preview runtime loader", () => {
       onError,
     });
 
-    module.ccall = ccall;
+    module.ccall = createCcallAdapter(ccall, 0);
     module.onRuntimeInitialized?.();
 
     expect(ccall).not.toHaveBeenCalled();
@@ -454,10 +611,13 @@ describe("game preview runtime loader", () => {
       normalLaunch: true,
     });
 
-    const stopRuntime = await loadPreviewRuntime(
+    const stopResult = await loadPreviewRuntime(
       module,
       "https://example.com/runtime.js",
     );
+    expect(stopResult.isOk()).toBe(true);
+    if (stopResult.isErr()) return;
+    const stopRuntime = stopResult.value;
 
     editorInput.focus();
     editorInput.dispatchEvent(

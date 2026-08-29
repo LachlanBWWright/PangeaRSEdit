@@ -39,7 +39,9 @@ export function classifyUploadFile(
   if (isBugdom2 && lower.endsWith(".tun")) {
     return "tunnel";
   }
-  if (lower.endsWith(levelFileType)) {
+  const isMightyMikeMap =
+    levelFileType === ".map" && /\.map-\d+$/i.test(lower);
+  if (lower.endsWith(levelFileType) || isMightyMikeMap) {
     return "level";
   }
   if (textureFileType && lower.endsWith(textureFileType)) {

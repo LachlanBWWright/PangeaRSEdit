@@ -1,7 +1,11 @@
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { parseBG3D } from "@/modelParsers/parseBG3D";
+import { parse3DMF } from "@/modelParsers/parse3dmf";
+import { parseBG3DWithSkeletonResource } from "@/modelParsers/bg3dWithSkeleton";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { parseShapesFile } from "@/parsers/mightyMikeShapesParser";
+import type { SkeletonResource } from "@/python/structSpecs/skeleton/skeletonInterface";
+import type { BG3DGeometry, BG3DGroup, BG3DParseResult } from "@/modelParsers/parseBG3D";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
 import { convertGltfAsset } from "./scriptAssetConversion";
 import type {
@@ -12,11 +16,94 @@ import type {
 const MAX_ASSET_BYTES = 16 * 1024 * 1024;
 
 interface ParsedAsset {
-  readonly kind: "bg3d" | "shapes" | "skeleton" | "gltf";
+  readonly kind: "bg3d" | "3dmf" | "shapes" | "skeleton" | "gltf";
   readonly objectCount?: number;
   readonly animationCount?: number;
   readonly jointCount?: number;
   readonly limbCount?: number;
+  readonly skeletonResource?: SkeletonResource;
+}
+
+function validateGeometry(
+  geometry: BG3DGeometry,
+  materialCount: number,
+  path: string,
+): readonly string[] {
+  const errors: string[] = [];
+  for (const materialIndex of geometry.layerMaterialNum.slice(0, geometry.numMaterials)) {
+    if (
+      !Number.isInteger(materialIndex) ||
+      materialIndex < -1 ||
+      (materialIndex !== -1 && materialIndex >= materialCount)
+    ) {
+      errors.push(
+        `${path}: geometry references invalid material index ${String(materialIndex)} (available materials: ${String(materialCount)})`,
+      );
+    }
+  }
+  if (!geometry.vertices || !geometry.triangles) return errors;
+  for (const triangle of geometry.triangles) {
+    for (const vertexIndex of triangle) {
+      if (
+        !Number.isInteger(vertexIndex) ||
+        vertexIndex < 0 ||
+        vertexIndex >= geometry.vertices.length
+      ) {
+        errors.push(
+          `${path}: geometry references invalid vertex index ${String(vertexIndex)} (available vertices: ${String(geometry.vertices.length)})`,
+        );
+      }
+    }
+  }
+  return errors;
+}
+
+function validateGroup(
+  group: BG3DGroup,
+  materialCount: number,
+  path: string,
+): readonly string[] {
+  return group.children.flatMap((child, index) => {
+    const childPath = `${path}.child${String(index)}`;
+    if ("children" in child) {
+      return validateGroup(child, materialCount, childPath);
+    }
+    return validateGeometry(child, materialCount, childPath);
+  });
+}
+
+export function validateParsedNativeModel(
+  parsed: BG3DParseResult,
+  path: string,
+): readonly string[] {
+  const materialErrors = parsed.materials.flatMap((material, materialIndex) => {
+    const errors: string[] = [];
+    if ((material.flags & 1) !== 0 && material.textures.length === 0) {
+      errors.push(`${path}: material ${String(materialIndex)} is textured but has no texture data`);
+    }
+    for (const [textureIndex, texture] of material.textures.entries()) {
+      const texturePath = `${path}.material${String(materialIndex)}.texture${String(textureIndex)}`;
+      if (
+        !Number.isInteger(texture.width) ||
+        !Number.isInteger(texture.height) ||
+        texture.width <= 0 ||
+        texture.height <= 0
+      ) {
+        errors.push(`${texturePath}: texture dimensions must be positive integers`);
+      }
+      if (
+        !Number.isInteger(texture.bufferSize) ||
+        texture.bufferSize < 0 ||
+        texture.pixels.byteLength !== texture.bufferSize
+      ) {
+        errors.push(`${texturePath}: texture byte length does not match its declared buffer size`);
+      }
+    }
+    return errors;
+  });
+  return materialErrors.concat(parsed.groups.flatMap((group, index) =>
+    validateGroup(group, parsed.materials.length, `${path}.group${String(index)}`),
+  ));
 }
 
 export function validateScriptAssetPath(path: string): Result<true, string> {
@@ -37,9 +124,10 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return Uint8Array.from(bytes).buffer;
 }
 
-function assetKind(path: string): "bg3d" | "shapes" | "skeleton" | "gltf" | null {
+function assetKind(path: string): "bg3d" | "3dmf" | "shapes" | "skeleton" | "gltf" | null {
   const lowerPath = path.toLowerCase();
   if (lowerPath.endsWith(".bg3d")) return "bg3d";
+  if (lowerPath.endsWith(".3dmf")) return "3dmf";
   if (lowerPath.endsWith(".shapes")) return "shapes";
   if (lowerPath.endsWith(".skeleton") || lowerPath.endsWith(".skeleton.rsrc")) return "skeleton";
   if (lowerPath.endsWith(".gltf") || lowerPath.endsWith(".glb")) return "gltf";
@@ -62,13 +150,15 @@ function validateAssetBytes(path: string, bytes: Uint8Array): Result<ParsedAsset
     return err(`Skeleton resources require asynchronous validation preflight: ${path}`);
   }
 
-  if (kind === "bg3d") {
+  if (kind === "bg3d" || kind === "3dmf") {
     const parsed = Result.fromThrowable(
-      () => parseBG3D(buffer),
-      () => `Could not read BG3D asset: ${path}`,
+      () => kind === "bg3d" ? parseBG3D(buffer) : parse3DMF(buffer),
+      () => `Could not read ${kind === "3dmf" ? "3DMF" : "BG3D"} asset: ${path}`,
     )();
     if (parsed.isErr()) return err(parsed.error);
     if (parsed.value.isErr()) return err(`${path}: ${parsed.value.error}`);
+    const structuralErrors = validateParsedNativeModel(parsed.value.value, path);
+    if (structuralErrors.length > 0) return err(structuralErrors.join("; "));
     return ok({
       kind,
       objectCount: parsed.value.value.groups.length,
@@ -94,7 +184,24 @@ async function validateAssetBytesAsync(
   const kind = assetKind(path);
   if (kind === "gltf") {
     const converted = await convertGltfAsset(path, bytes);
-    return converted.map(() => ({ kind: "gltf" }));
+    if (converted.isErr()) return err(converted.error);
+    const parsedNative = Result.fromThrowable(
+      () => parseBG3D(toArrayBuffer(converted.value.nativeBytes)),
+      () => `Could not read converted BG3D asset: ${path}`,
+    )();
+    if (parsedNative.isErr()) return err(parsedNative.error);
+    if (parsedNative.value.isErr()) {
+      return err(`${path}: converted BG3D is invalid: ${parsedNative.value.error}`);
+    }
+    const structuralErrors = validateParsedNativeModel(parsedNative.value.value, path);
+    if (structuralErrors.length > 0) return err(structuralErrors.join("; "));
+    return ok({
+      kind: "gltf",
+      objectCount: parsedNative.value.value.groups.length,
+      animationCount: parsedNative.value.value.skeleton?.numAnims,
+      jointCount: parsedNative.value.value.skeleton?.numJoints,
+      limbCount: parsedNative.value.value.skeleton?.num3DMFLimbs,
+    });
   }
   if (kind !== "skeleton") {
     return validateAssetBytes(path, bytes);
@@ -137,6 +244,7 @@ async function validateAssetBytesAsync(
     animationCount: header.obj.numAnims,
     jointCount: header.obj.numJoints,
     limbCount: header.obj.num3DMFLimbs,
+    skeletonResource: parsed.value,
   });
 }
 
@@ -153,7 +261,7 @@ function referencedAssetPaths(
 function validateDefinitionAssets(
   definition: ScriptCustomObjectDefinition,
   assets: Readonly<Record<string, { readonly bytes: Uint8Array }>>,
-  allowedKinds: readonly ("bg3d" | "shapes" | "skeleton")[] | null,
+  allowedKinds: readonly ("bg3d" | "3dmf" | "shapes" | "skeleton")[] | null,
 ): readonly string[] {
   const errors: string[] = [];
   for (const path of referencedAssetPaths(definition)) {
@@ -193,7 +301,7 @@ function validateDefinitionAssets(
 async function validateDefinitionAssetsAsync(
   definition: ScriptCustomObjectDefinition,
   assets: Readonly<Record<string, { readonly bytes: Uint8Array }>>,
-  allowedKinds: readonly ("bg3d" | "shapes" | "skeleton")[] | null,
+  allowedKinds: readonly ("bg3d" | "3dmf" | "shapes" | "skeleton")[] | null,
 ): Promise<readonly string[]> {
   const errors: string[] = [];
   const parsedAssets = new Map<string, ParsedAsset>();
@@ -258,6 +366,23 @@ async function validateDefinitionAssetsAsync(
     const model = parsedAssets.get(modelPath);
     const skeleton = parsedAssets.get(skeletonPath);
     if (model && skeleton) {
+      const modelAsset = assets[modelPath];
+      const skeletonResource = skeleton.skeletonResource;
+      if (
+        modelAsset &&
+        skeletonResource &&
+        (model.kind === "bg3d" || model.kind === "3dmf")
+      ) {
+        const pairedParse = parseBG3DWithSkeletonResource(
+          toArrayBuffer(modelAsset.bytes),
+          skeletonResource,
+        );
+        if (pairedParse.isErr()) {
+          errors.push(
+            `Custom object '${definition.label}' cannot load model ${modelPath} with skeleton ${skeletonPath}: ${pairedParse.error}`,
+          );
+        }
+      }
       if (
         model.jointCount !== undefined &&
         skeleton.jointCount !== undefined &&

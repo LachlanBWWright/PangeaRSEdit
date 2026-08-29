@@ -25,6 +25,57 @@ The production topology is:
 
 Production startup fails closed unless PostgreSQL, CORS, TURN, `Multiplayer__Topology=single-instance`, and a deployment-specific `Multiplayer__RequiredContentHash` are configured. The topology declaration prevents accidentally deploying process-local signaling state across multiple replicas. The content hash must match `VITE_MULTIPLAYER_CONTENT_HASH` in the frontend build, preventing stale clients from joining a newer runtime. The application never creates or upgrades a production schema during normal startup.
 
+## Free Render and Supabase deployment
+
+The repository includes [`render.yaml`](../render.yaml), which deploys the backend
+container to a Render Free web service. The [`supabase/`](../supabase/) directory
+contains the SQL migration consumed by Supabase's GitHub integration. Supabase supplies the PostgreSQL database;
+do not use Render's free PostgreSQL service for this deployment because it expires
+after 30 days and has no backups.
+
+Create a Supabase project, connect the repository from Project Settings >
+Integrations > GitHub Integration, and set the working directory to `.`. Enable
+deploy-to-production after reviewing the initial migration. Then create a Render
+Blueprint from this repository. Enter the following values when Render
+prompts for the `sync: false` variables:
+
+| Variable | Value |
+| --- | --- |
+| `ConnectionStrings__Default` | Supabase connection string, including SSL mode such as `Ssl Mode=Require` |
+| `Frontend__BaseUrl` | Public frontend URL |
+| `Cors__AllowedOrigins__0` | Exact frontend origin, without a trailing slash |
+| `Multiplayer__StunUrl` | STUN service URL |
+| `Multiplayer__TurnUrl` | TURN service URL |
+| `Multiplayer__TurnSharedSecret` | TURN shared secret |
+| `Multiplayer__ParticipantSigningKey` | High-entropy participant signing key |
+| `Multiplayer__RequiredContentHash` | Same release hash compiled into the frontend |
+
+For the GitHub Pages frontend, set `PRODUCTION_API_ORIGIN` to the Render service
+URL. Set the optional repository variable `MULTIPLAYER_ENABLED` to `true` when the
+Render service has been configured. The Pages workflow now compiles the commit
+hash automatically; update Render's `Multiplayer__RequiredContentHash` to that same
+commit before enabling multiplayer for a release.
+
+The initial Supabase migration mirrors the existing EF Core migration history. For
+future schema changes, update the EF model and migration, generate the SQL migration
+script, and commit the resulting SQL under `supabase/migrations/`. Supabase's GitHub
+integration then applies it to the database before the Render service uses the new
+model. Do not run both Supabase SQL migrations and an independent Render migration
+job for the same change.
+
+If you are not using the GitHub integration yet, you can apply pending migrations
+manually with the Supabase CLI:
+
+```sh
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+The Render service is intentionally limited to one instance because multiplayer
+signaling state is process-local. Free services may sleep after inactivity, so this
+deployment is suitable for testing and small hobby sessions rather than guaranteed
+always-on production service.
+
 ## Database migrations
 
 EF Core migrations are stored in `PangeaRSEdit.Infrastructure/Persistence/Migrations`. Restore the pinned local tool and add migrations from the `backend` directory:

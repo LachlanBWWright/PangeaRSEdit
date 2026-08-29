@@ -234,6 +234,8 @@ start_backend() {
   (
     cd "$REPO_ROOT"
     exec setsid env \
+      ASPNETCORE_ENVIRONMENT=Development \
+      DOTNET_ENVIRONMENT=Development \
       Frontend__BaseUrl="$FRONTEND_ORIGIN" \
       Cors__AllowedOrigins__0="$FRONTEND_ORIGIN" \
       dotnet run \
@@ -256,10 +258,14 @@ start_frontend() {
 
   (
     cd "$REPO_ROOT/frontend"
+    env \
+      VITE_API_ORIGIN="$BACKEND_URL" \
+      VITE_API_BASE_PATH="" \
+      pnpm run predev
     exec setsid env \
       VITE_API_ORIGIN="$BACKEND_URL" \
       VITE_API_BASE_PATH="" \
-      pnpm run dev -- --host localhost --port "$FRONTEND_PORT" --strictPort
+      pnpm exec vite --host localhost --port "$FRONTEND_PORT" --strictPort
   ) >"$LOG_DIR/frontend.log" 2>&1 &
 
   FRONTEND_PID="$!"

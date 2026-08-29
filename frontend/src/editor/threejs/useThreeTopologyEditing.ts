@@ -394,6 +394,13 @@ export function useThreeTopologyEditing({
     setTopologyVersion((v) => v + 1);
   }, [setTerrainData]);
 
+  useEffect(() => {
+    if (!isEditing) return;
+
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => window.removeEventListener("pointerup", handlePointerUp);
+  }, [handlePointerUp, isEditing]);
+
   return {
     intersectionPoint,
     isEditing,

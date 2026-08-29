@@ -8,8 +8,10 @@ public sealed class PangeaRSEditDesignTimeDbContextFactory
 {
     public PangeaRSEditDbContext CreateDbContext(string[] args)
     {
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+            ?? "Host=localhost;Database=pangearsedit_design;Username=postgres;Password=postgres";
         var options = new DbContextOptionsBuilder<PangeaRSEditDbContext>()
-            .UseNpgsql("Host=localhost;Database=pangearsedit_design;Username=postgres;Password=postgres")
+            .UseNpgsql(connectionString)
             .Options;
 
         return new PangeaRSEditDbContext(options);

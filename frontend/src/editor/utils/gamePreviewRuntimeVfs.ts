@@ -161,6 +161,27 @@ function logPreviewRuntime(message: string, details?: unknown): void {
   console.info(`[GamePreview] ${message}`, details);
 }
 
+function writePreviewCustomFilesToVfs(
+  module: PreviewRuntimeModule,
+  customFiles: readonly PreviewVfsFile[],
+  onError: (text: string) => void,
+): void {
+  for (const file of customFiles) {
+    ensureParentDirectory(module, file.path);
+    const writeCustomResult = writeFileToVfs(module, file.path, file.data);
+    if (writeCustomResult.isErr()) {
+      onError(
+        `Failed to write preview override file ${file.path}: ${writeCustomResult.error}`,
+      );
+      return;
+    }
+    logPreviewRuntime("Injected preview override file", {
+      path: file.path,
+      byteLength: file.data.byteLength,
+    });
+  }
+}
+
 /**
  * Writes terrain bytes to the Emscripten VFS.
  * Runs in onRuntimeInitialized, before callMain, so the game reads the injected
@@ -316,20 +337,7 @@ function writeTerrainToVfs(
   }
 
   if (customFiles && customFiles.length > 0) {
-    for (const file of customFiles) {
-      ensureParentDirectory(module, file.path);
-      const writeCustomResult = writeFileToVfs(module, file.path, file.data);
-      if (writeCustomResult.isErr()) {
-        onError(
-          `Failed to write preview override file ${file.path}: ${writeCustomResult.error}`,
-        );
-        return;
-      }
-      logPreviewRuntime("Injected preview override file", {
-        path: file.path,
-        byteLength: file.data.byteLength,
-      });
-    }
+    writePreviewCustomFilesToVfs(module, customFiles, onError);
   }
 
   if (
@@ -368,4 +376,9 @@ function writeTerrainToVfs(
   }
 }
 
-export { ensurePreviewPrefsDirs, writeFileToVfs, writeTerrainToVfs };
+export {
+  ensurePreviewPrefsDirs,
+  writeFileToVfs,
+  writePreviewCustomFilesToVfs,
+  writeTerrainToVfs,
+};

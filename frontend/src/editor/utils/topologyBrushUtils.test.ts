@@ -90,4 +90,28 @@ describe("topologyBrushUtils", () => {
       pixels.some((pixel) => pixel.x === 1 && pixel.y === 0),
     ).toBe(true);
   });
+
+  it("uses the closest point on a line for square-brush falloff", () => {
+    const pixels = calculateBrushPixels({
+      centerX: 2,
+      centerY: 2,
+      radius: 1,
+      brushMode: TopologyBrushMode.SQUARE_BRUSH,
+      valueMode: TopologyValueMode.DELTA_WITH_DROPOFF,
+      value: 10,
+      header: testHeader,
+      globals: OttoGlobals,
+      tileSize: 1,
+      lineStart: { x: 0, y: 0 },
+      lineEnd: { x: 2, y: 0 },
+    });
+
+    expect(pixels).toContainEqual({
+      x: 1,
+      y: 0,
+      value: 10,
+      distance: 0,
+    });
+    expect(pixels.some((pixel) => pixel.x === 1 && pixel.y === 2)).toBe(false);
+  });
 });

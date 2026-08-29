@@ -12,6 +12,8 @@
     "build": "tsc -b && NODE_OPTIONS=--max-old-space-size=8192 vite build",
     "build:games": "../scripts/build-games.sh",
     "check:scripting-wasm": "tsx scripts/check-scripting-wasm-artifacts.ts",
+    "generate:scripting-contract-metadata": "tsx scripts/generate-scripting-contract-metadata.ts",
+    "generate:scripting-contract-documentation": "tsx scripts/generate-scripting-contract-documentation.ts",
     "build:terrain-codec": "wasm-pack build ../terrain-codec-rust --target web --out-dir pkg --no-opt",
     "lint": "eslint .",
     "pretest": "npm run build:terrain-codec && npm run build:games",

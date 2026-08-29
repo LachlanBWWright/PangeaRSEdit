@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { err, ok } from "neverthrow";
 import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
 import {
@@ -92,7 +93,7 @@ describe("startGamePreview", () => {
     const cleanupGlobals = vi.fn();
     const stopGame = vi.fn();
     vi.mocked(applyPreviewGlobals).mockReturnValueOnce(cleanupGlobals);
-    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(stopGame);
+    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(ok(stopGame));
     const options = startOptions(canvas);
 
     const cleanup = startGamePreview(options);
@@ -123,8 +124,8 @@ describe("startGamePreview", () => {
       "https://working.test/",
     ]);
     vi.mocked(loadPreviewRuntime)
-      .mockRejectedValueOnce(new Error("404 missing runtime"))
-      .mockRejectedValueOnce(new Error("runtime crashed"));
+      .mockResolvedValueOnce(err("404 missing runtime"))
+      .mockResolvedValueOnce(err("runtime crashed"));
     const options = startOptions(canvas);
 
     const cleanup = startGamePreview(options);
@@ -157,7 +158,7 @@ describe("startGamePreview", () => {
       configurable: true,
       get: () => fullscreenCanvas,
     });
-    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(() => undefined);
+    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(ok(() => undefined));
     const resizeSpy = vi.spyOn(window, "dispatchEvent");
     const cleanup = startGamePreview(startOptions(canvas));
     document.dispatchEvent(new Event("fullscreenchange"));

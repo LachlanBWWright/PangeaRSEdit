@@ -9,6 +9,8 @@ export const scriptHookIdSchema = z.enum([
   "onObjectFrame",
   "onLevelComplete",
   "onLevelUnload",
+  "onSave",
+  "onLoad",
   "onTerrainItem",
   "onSplineItem",
   "onPickupCollected",
@@ -19,6 +21,10 @@ export const scriptHookIdSchema = z.enum([
   "onDeath",
   "onPlayerSpawn",
   "onPlayerRespawn",
+  "onCheckpointReached",
+  "onLapComplete",
+  "onRaceFinish",
+  "onObjectiveComplete",
   "onAreaLoad",
   "onAreaStart",
   "onAreaFrame",
@@ -267,7 +273,7 @@ const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
     kind: z.literal("customDisplayGroup"),
     modelPath: z
       .string()
-      .regex(/^Data\/Scripts\/assets\/models\/[a-zA-Z0-9._/-]+\.(bg3d|shapes)$/),
+      .regex(/^Data\/Scripts\/assets\/models\/[a-zA-Z0-9._/-]+\.(bg3d|3dmf|shapes)$/),
     modelObject: z.number().int().nonnegative(),
     scale: z.number().positive().max(100),
     slot: z.number().int().min(0).max(32767),
@@ -284,7 +290,7 @@ const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
     kind: z.literal("customSkeleton"),
     modelPath: z
       .string()
-      .regex(/^Data\/Scripts\/assets\/skeletons\/[a-zA-Z0-9._/-]+\.bg3d$/),
+      .regex(/^Data\/Scripts\/assets\/skeletons\/[a-zA-Z0-9._/-]+\.(bg3d|3dmf)$/),
     skeletonPath: z
       .string()
       .regex(

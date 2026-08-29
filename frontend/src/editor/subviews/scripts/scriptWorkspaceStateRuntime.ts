@@ -41,6 +41,7 @@ import {
 } from "./scriptWorkspaceStateTypes";
 import { getDefaultHoverBeaconVisual } from "./scriptDefaultCustomVisuals";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
+import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
 import type {
   ScriptBehaviorDefinition,
@@ -112,7 +113,10 @@ function encodeText(value: string): Uint8Array {
 }
 
 function toEditorRelativePath(path: string): string {
-  return path.replace(/^Data\/Scripts\/src\//, "./");
+  return path
+    .replace(/^Data\/Scripts\/src\//, "")
+    .replace(/\.lua$/, "")
+    .replaceAll("/", ".");
 }
 
 function addStatusLog(
@@ -129,9 +133,32 @@ export function appendScriptDiagnostic(
   state: ScriptWorkspaceState,
   diagnostic: ScriptDiagnostic,
 ): ScriptWorkspaceState {
+  const isRuntimeDiagnostic = diagnostic.category === "runtime-traceback" ||
+    diagnostic.category === "native-adapter";
+  const isDuplicate = isRuntimeDiagnostic && state.diagnostics.some(
+    (existing) => existing.category === diagnostic.category &&
+      existing.code === diagnostic.code &&
+      existing.filePath === diagnostic.filePath &&
+      existing.message === diagnostic.message,
+  );
+  if (isDuplicate) return state;
   return {
     ...state,
     diagnostics: [...state.diagnostics, diagnostic].slice(-100),
+  };
+}
+
+export function replaceLuaLSDiagnostics(
+  state: ScriptWorkspaceState,
+  filePath: string,
+  diagnostics: readonly ScriptDiagnostic[],
+): ScriptWorkspaceState {
+  const retained = state.diagnostics.filter(
+    (diagnostic) => !(diagnostic.category === "luals" && diagnostic.filePath === filePath),
+  );
+  return {
+    ...state,
+    diagnostics: [...retained, ...diagnostics].slice(-100),
   };
 }
 
@@ -285,6 +312,9 @@ function getRaceHooks(): readonly ScriptHookId[] {
     "onObjectFrame",
     "onRaceComplete",
     "onRaceUnload",
+    "onLapComplete",
+    "onRaceFinish",
+    "onObjectiveComplete",
     "onTerrainItem",
     "onPickupCollected",
     "onWeaponHit",
@@ -669,13 +699,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 8) * getBobHeight(ctx.tags),",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -716,13 +744,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 6) * 20,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -765,13 +791,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 5) * 15,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -812,13 +836,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 7) * 25,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -859,13 +881,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 4) * 12,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -906,13 +926,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 6) * 18,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -953,13 +971,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 5) * 14,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -1000,13 +1016,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 5) * 16,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -1384,7 +1398,11 @@ function buildRequireDiagnostics(
 
   for (const match of output.matchAll(requirePattern)) {
     const requireTarget = match[1]?.slice(1, -1);
-    if (!requireTarget || requireTarget.startsWith("pangea")) {
+    if (
+      !requireTarget ||
+      requireTarget.startsWith("pangea") ||
+      sourcePath === GENERATED_ENTRY_PATH
+    ) {
       continue;
     }
 
@@ -2624,6 +2642,7 @@ function buildScriptPackageFilesUnchecked(
   }
 
   files.push(...buildScriptTypePackageFiles(compiled));
+  files.push(...buildScriptIdeSupportFiles(compiled));
 
   for (const sourceFile of Object.values(compiled.sourceFiles)) {
     if (sourceFile.path === GENERATED_ENTRY_PATH) {
@@ -2636,9 +2655,6 @@ function buildScriptPackageFilesUnchecked(
   }
 
   for (const compiledFile of Object.values(compiled.compiledFiles)) {
-    if (compiledFile.path !== BUNDLED_RUNTIME_PATH) {
-      continue;
-    }
     files.push({
       path: compiledFile.path,
       bytes: encodeText(compiledFile.content),

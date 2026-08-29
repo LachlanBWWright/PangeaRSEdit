@@ -81,9 +81,44 @@ export const ScriptingWorkflow: Story = {
     }
     await userEvent.click(dialog.getByRole("tab", { name: "Assignments" }));
     expect(dialog.getAllByText("Hover Beacon").length).toBeGreaterThan(0);
-    await userEvent.click(dialog.getByRole("combobox", { name: "Hover Beacon collision" }));
+    const objectScript = dialog.getByRole("combobox", { name: "Object script" });
+    await userEvent.click(objectScript);
+    const objectScriptOptions = within(document.body).getAllByRole("option");
+    const firstObjectScriptOption = objectScriptOptions[0];
+    if (firstObjectScriptOption) {
+      await userEvent.click(firstObjectScriptOption);
+    }
+    await userEvent.click(dialog.getByRole("button", { name: "Save Object" }));
+    expect(dialog.getAllByText("Hover Beacon").length).toBeGreaterThan(1);
+
+    const replaceButtons = dialog.getAllByRole("button", {
+      name: "Replace selected native item",
+    });
+    expect(replaceButtons.length).toBeGreaterThan(0);
+    const replaceButton = replaceButtons[0];
+    if (replaceButton) {
+      await userEvent.click(replaceButton);
+    }
+    expect(
+      dialog.getAllByRole("button", { name: "Restore native item" }).length,
+    ).toBeGreaterThan(0);
+
+    const collisionSelectors = dialog.getAllByRole("combobox", {
+      name: "Hover Beacon collision",
+    });
+    const collisionSelector = collisionSelectors[0];
+    if (collisionSelector) {
+      await userEvent.click(collisionSelector);
+    }
     await userEvent.click(dialog.getByRole("option", { name: "Trigger box" }));
-    const collisionWidth = dialog.getByLabelText("Hover Beacon collision width");
+    const collisionWidths = dialog.getAllByLabelText(
+      "Hover Beacon collision width",
+    );
+    const collisionWidth = collisionWidths[0];
+    expect(collisionWidth).toBeDefined();
+    if (!collisionWidth) {
+      return;
+    }
     await userEvent.clear(collisionWidth);
     await userEvent.type(collisionWidth, "2");
     expect(collisionWidth).toHaveValue(2);

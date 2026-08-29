@@ -18,7 +18,7 @@ export function NetworkDebugControls({
   onUpdateNetworkDebugOption,
 }: NetworkDebugControlsProps) {
   return (
-    <div className="max-h-56 overflow-y-auto rounded-md border border-emerald-800 bg-black/90 p-3 text-sm text-emerald-100">
+    <section className="max-h-56 overflow-y-auto border-t border-emerald-800 pt-3 text-sm text-emerald-100">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="font-semibold">Network Impairment</div>
@@ -111,6 +111,6 @@ export function NetworkDebugControls({
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

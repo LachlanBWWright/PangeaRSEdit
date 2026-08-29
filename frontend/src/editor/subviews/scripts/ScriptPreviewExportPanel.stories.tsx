@@ -41,13 +41,29 @@ export const ExtendedWorkspace: Story = {
     await userEvent.click(
       canvas.getByRole("button", { name: "Preview with Scripts" }),
     );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Preview in Game (No Scripts)" }),
+    );
     await userEvent.click(canvas.getByRole("button", { name: "Compile Bundle" }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Download Extended Package" }),
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Download Original-Compatible Level" }),
+    );
     await userEvent.click(
       canvas.getByRole("button", { name: "Download Script Package" }),
     );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Upload Script Package" }),
+    );
 
-    expect(args.onPreview).toHaveBeenCalledWith(true);
+    expect(args.onPreview).toHaveBeenNthCalledWith(1, true);
+    expect(args.onPreview).toHaveBeenNthCalledWith(2, false);
     expect(args.onCompile).toHaveBeenCalledTimes(1);
+    expect(args.onDownloadExtendedPackage).toHaveBeenCalledTimes(1);
+    expect(args.onDownloadOriginalCompatible).toHaveBeenCalledTimes(1);
     expect(args.onDownloadScriptPackage).toHaveBeenCalledTimes(1);
+    expect(args.onUploadScriptPackage).toHaveBeenCalledTimes(1);
   },
 };

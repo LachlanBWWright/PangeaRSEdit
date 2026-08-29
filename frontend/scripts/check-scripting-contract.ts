@@ -8,6 +8,15 @@ import {
   SCRIPTING_CONTRACT,
   validateScriptingContract,
 } from "../src/editor/subviews/scripts/scriptContract";
+import { validateNativeItemAuditCatalog } from "../src/editor/subviews/scripts/scriptNativeAudit";
+import {
+  renderScriptingContractCMetadata,
+  scriptingContractCapabilityMacros,
+} from "./scriptingContractCMetadata";
+import {
+  getScriptingContractResultShapes,
+  renderScriptingContractDocumentationIndex,
+} from "./scriptingContractDocumentation";
 
 interface RuntimeCommandDescriptor {
   readonly id: string;
@@ -38,12 +47,17 @@ interface RuntimeGameCapabilities {
   readonly terrainItems: boolean;
   readonly splineItems: boolean;
   readonly mapItems: boolean;
+  readonly pickupScoreEffects: boolean;
+  readonly objectCollision: boolean;
+  readonly playerCommands: boolean;
+  readonly playerInvulnerability: boolean;
 }
 
 interface RuntimeNativeItem {
   readonly id: string;
   readonly nativeType: number;
   readonly category: string;
+  readonly dependencySummary: string;
 }
 
 type AdapterCapabilityKey = "terrainItems" | "splineItems" | "mapItems";
@@ -87,13 +101,163 @@ const adapterHookCalls: Readonly<Record<string, string>> = {
   onDeath: "PangeaScript_CallPlayerEvent",
   onPlayerSpawn: "PangeaScript_CallPlayerEvent",
   onPlayerRespawn: "PangeaScript_CallPlayerEvent",
+  onCheckpointReached: "PangeaScript_CallPlayerEvent",
 };
+
+const adapterSaveLoadCallSites: readonly {
+  readonly gameId: string;
+  readonly sourcePath: string;
+  readonly saveCall: string;
+  readonly loadCall: string;
+}[] = [
+  {
+    gameId: "OttoMatic-Android",
+    sourcePath: "../games/pangea-ports/games/OttoMatic-Android/src/System/File.c",
+    saveCall: "OttoScript_OnSave(saveSlot);",
+    loadCall: "OttoScript_OnLoad(saveSlot);",
+  },
+  {
+    gameId: "Bugdom-android",
+    sourcePath: "../games/pangea-ports/games/Bugdom-android/src/System/File.c",
+    saveCall: "PangeaScript_CallNativeSaveHook(gRealLevel, slot, false)",
+    loadCall: "PangeaScript_CallNativeSaveHook(gRealLevel, slot, true)",
+  },
+  {
+    gameId: "Bugdom2-Android",
+    sourcePath: "../games/pangea-ports/games/Bugdom2-Android/Source/System/File.c",
+    saveCall: "PangeaScript_CallNativeSaveHook(gLevelNum, slot, false)",
+    loadCall: "PangeaScript_CallNativeSaveHook(gLevelNum, slot, true)",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/System/File.c",
+    saveCall: "PangeaScript_CallNativeSaveHook(gLevelNum, fileSlot, false)",
+    loadCall: "PangeaScript_CallNativeSaveHook(gLevelNum, gScriptLoadedSaveSlot, true)",
+  },
+  {
+    gameId: "BillyFrontier-Android",
+    sourcePath: "../games/pangea-ports/games/BillyFrontier-Android/Source/System/File.c",
+    saveCall: "PangeaScript_CallNativeSaveHook(0, fileSlot, false)",
+    loadCall: "PangeaScript_CallNativeSaveHook(0, gScriptLoadedSaveSlot, true)",
+  },
+  {
+    gameId: "MightyMike-Android",
+    sourcePath: "../games/pangea-ports/games/MightyMike-Android/src/Heart/Main.c",
+    saveCall: "PangeaScript_CallNativeSaveHook(gSceneNum, gameNum, false)",
+    loadCall: "PangeaScript_CallNativeSaveHook(gSceneNum, gameNum, true)",
+  },
+];
+
+const playerCommandBinding = (
+  gameId: string,
+  field: "setPlayerHealth" | "setPlayerInvulnerable" | "setPlayerPosition",
+  functionName: string,
+): {
+  readonly gameId: string;
+  readonly field: "setPlayerHealth" | "setPlayerInvulnerable" | "setPlayerPosition";
+  readonly functionName: string;
+} => ({ gameId, field, functionName });
+
+const adapterPlayerCommandBindings: readonly {
+  readonly gameId: string;
+  readonly field: "setPlayerHealth" | "setPlayerInvulnerable" | "setPlayerPosition";
+  readonly functionName: string;
+}[] = [
+  playerCommandBinding("OttoMatic-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("Bugdom-android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("Bugdom2-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("Nanosaur-android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("Nanosaur2-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("CroMagRally-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("BillyFrontier-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("OttoMatic-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
+  playerCommandBinding("Bugdom-android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
+  playerCommandBinding("Bugdom2-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
+  playerCommandBinding("Nanosaur-android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
+  playerCommandBinding("Nanosaur2-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
+  playerCommandBinding("BillyFrontier-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
+  playerCommandBinding("OttoMatic-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
+  playerCommandBinding("Bugdom-android", "setPlayerPosition", "SetScriptPlayerPosition"),
+  playerCommandBinding("Bugdom2-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
+  playerCommandBinding("Nanosaur-android", "setPlayerPosition", "SetScriptPlayerPosition"),
+  playerCommandBinding("Nanosaur2-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
+  playerCommandBinding("CroMagRally-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
+  playerCommandBinding("BillyFrontier-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
+];
 
 const adapterLifecycleCalls: readonly string[] = [
   "PangeaScript_CallFrameHook",
   "PangeaScript_CallLevelHook",
   "PangeaScript_CallObjectFrame",
   "PangeaScript_CallObjectEvent",
+];
+
+const nativeLifecycleCallSites: readonly {
+  readonly gameId: string;
+  readonly sourcePath: string;
+  readonly calls: readonly string[];
+}[] = [
+  {
+    gameId: "OttoMatic-Android",
+    sourcePath: "../games/pangea-ports/games/OttoMatic-Android/src/System/GameMain.c",
+    calls: ["OttoScript_OnLevelLoad", "OttoScript_OnLevelStart", "OttoScript_OnFrame", "OttoScript_OnLevelComplete", "OttoScript_OnLevelUnload"],
+  },
+  {
+    gameId: "Bugdom-android",
+    sourcePath: "../games/pangea-ports/games/Bugdom-android/src/System/Main.c",
+    calls: ["BugdomScript_OnLevelLoad", "BugdomScript_OnLevelStart", "BugdomScript_OnFrame", "BugdomScript_OnLevelComplete", "BugdomScript_OnLevelUnload"],
+  },
+  {
+    gameId: "Bugdom2-Android",
+    sourcePath: "../games/pangea-ports/games/Bugdom2-Android/Source/System/Main.c",
+    calls: ["Bugdom2Script_OnLevelLoad", "Bugdom2Script_OnLevelStart", "Bugdom2Script_OnFrame", "Bugdom2Script_OnLevelComplete", "Bugdom2Script_OnLevelUnload"],
+  },
+  {
+    gameId: "Nanosaur-android",
+    sourcePath: "../games/pangea-ports/games/Nanosaur-android/src/System/Main.c",
+    calls: ["NanosaurScript_OnLevelLoad", "NanosaurScript_OnLevelStart", "NanosaurScript_OnFrame", "NanosaurScript_OnLevelComplete", "NanosaurScript_OnLevelUnload"],
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/System/Main.c",
+    calls: ["Nanosaur2Script_OnLevelLoad", "Nanosaur2Script_OnLevelStart", "Nanosaur2Script_OnFrame", "Nanosaur2Script_OnLevelComplete", "Nanosaur2Script_OnLevelUnload"],
+  },
+  {
+    gameId: "CroMagRally-Android",
+    sourcePath: "../games/pangea-ports/games/CroMagRally-Android/Source/System/Main.c",
+    calls: ["CroMagScript_OnRaceLoad", "CroMagScript_OnRaceStart", "CroMagScript_OnRaceFrame", "CroMagScript_OnRaceComplete", "CroMagScript_OnRaceUnload"],
+  },
+  {
+    gameId: "BillyFrontier-Android",
+    sourcePath: "../games/pangea-ports/games/BillyFrontier-Android/Source/System/Areas/Stampede.c",
+    calls: ["BillyScript_OnAreaLoad", "BillyScript_OnAreaStart", "BillyScript_OnAreaFrame", "BillyScript_OnAreaComplete", "BillyScript_OnAreaUnload"],
+  },
+  {
+    gameId: "MightyMike-Android",
+    sourcePath: "../games/pangea-ports/games/MightyMike-Android/src/Heart/Main.c",
+    calls: ["MikeScript_OnAreaLoad", "MikeScript_OnAreaStart", "MikeScript_OnAreaFrame", "MikeScript_OnAreaComplete", "MikeScript_OnAreaUnload"],
+  },
+];
+
+const adapterAssetLoaders: readonly {
+  readonly gameId: string;
+  readonly modelLoader: string;
+  readonly assetKind: "bg3d" | "3dmf" | "shapes";
+  readonly hasSkeletonLoader: boolean;
+  readonly requiresAssetPreflight: boolean;
+  readonly assetPreflightMarker?: string;
+  readonly assetBoundaryMarker?: string;
+  readonly requiresDefinitionGuard: boolean;
+  readonly postLoadRegistryCheck: string;
+}[] = [
+  { gameId: "OttoMatic-Android", modelLoader: "PangeaScript_LoadCustomBG3D", assetKind: "bg3d", hasSkeletonLoader: true, requiresAssetPreflight: true, requiresDefinitionGuard: true, postLoadRegistryCheck: "gBG3DContainerList[group]" },
+  { gameId: "Bugdom-android", modelLoader: "BugdomScript_LoadCustom3DMF", assetKind: "3dmf", hasSkeletonLoader: true, requiresAssetPreflight: true, requiresDefinitionGuard: true, postLoadRegistryCheck: "gNumObjectsInGroupList[group]" },
+  { gameId: "Bugdom2-Android", modelLoader: "PangeaScript_LoadCustomBG3D", assetKind: "bg3d", hasSkeletonLoader: true, requiresAssetPreflight: true, requiresDefinitionGuard: true, postLoadRegistryCheck: "gBG3DContainerList[group]" },
+  { gameId: "Nanosaur-android", modelLoader: "NanosaurScript_LoadCustom3DMF", assetKind: "3dmf", hasSkeletonLoader: true, requiresAssetPreflight: true, requiresDefinitionGuard: true, postLoadRegistryCheck: "gNumObjectsInGroupList[group]" },
+  { gameId: "Nanosaur2-Android", modelLoader: "Nanosaur2Script_LoadCustomBG3D", assetKind: "bg3d", hasSkeletonLoader: true, requiresAssetPreflight: true, requiresDefinitionGuard: true, postLoadRegistryCheck: "gNumObjectsInBG3DGroupList[group]" },
+  { gameId: "CroMagRally-Android", modelLoader: "PangeaScript_LoadCustomBG3D", assetKind: "bg3d", hasSkeletonLoader: true, requiresAssetPreflight: true, requiresDefinitionGuard: true, postLoadRegistryCheck: "gBG3DContainerList[group]" },
+  { gameId: "BillyFrontier-Android", modelLoader: "PangeaScript_LoadCustomBG3D", assetKind: "bg3d", hasSkeletonLoader: true, requiresAssetPreflight: true, requiresDefinitionGuard: true, postLoadRegistryCheck: "gBG3DContainerList[group]" },
+  { gameId: "MightyMike-Android", modelLoader: "LoadShapeTable", assetKind: "shapes", hasSkeletonLoader: false, requiresAssetPreflight: true, assetPreflightMarker: "MightyMikeScript_OpenDataFile", assetBoundaryMarker: "gMightyMikeScriptAssetBoundaryActive", requiresDefinitionGuard: false, postLoadRegistryCheck: "gShapeTableHandle[group]" },
 ];
 
 const animationMarkerCallSites: readonly {
@@ -159,6 +323,30 @@ const playerIntegrationCallSites: readonly {
   readonly call: string;
 }[] = [
   {
+    gameId: "MightyMike-Android",
+    hook: "onPlayerSpawn",
+    sourcePath: "../games/pangea-ports/games/MightyMike-Android/src/Scripting/ScriptBindings.c",
+    call: "MikeScript_OnPlayerSpawn(playerObj);",
+  },
+  {
+    gameId: "MightyMike-Android",
+    hook: "onDeath",
+    sourcePath: "../games/pangea-ports/games/MightyMike-Android/src/MeAndMo/MyGuy.c",
+    call: "MikeScript_OnDeath(gMyNodePtr, 0);",
+  },
+  {
+    gameId: "MightyMike-Android",
+    hook: "onPlayerRespawn",
+    sourcePath: "../games/pangea-ports/games/MightyMike-Android/src/MeAndMo/MyGuy.c",
+    call: "MikeScript_OnPlayerRespawn(gMyNodePtr);",
+  },
+  {
+    gameId: "MightyMike-Android",
+    hook: "onWeaponHit",
+    sourcePath: "../games/pangea-ports/games/MightyMike-Android/src/MeAndMo/Enemy.c",
+    call: "MikeScript_OnWeaponHit(weapon, gThisNodePtr",
+  },
+  {
     gameId: "OttoMatic-Android",
     hook: "onPlayerSpawn",
     sourcePath: "../games/pangea-ports/games/OttoMatic-Android/src/Player/Player_Robot.c",
@@ -189,6 +377,12 @@ const playerIntegrationCallSites: readonly {
     call: "OttoScript_OnPlayerRespawn(player);",
   },
   {
+    gameId: "OttoMatic-Android",
+    hook: "onCheckpointReached",
+    sourcePath: "../games/pangea-ports/games/OttoMatic-Android/src/Items/Triggers.c",
+    call: "OttoScript_OnCheckpointReached(theNode->CheckpointNum);",
+  },
+  {
     gameId: "Bugdom-android",
     hook: "onPlayerSpawn",
     sourcePath: "../games/pangea-ports/games/Bugdom-android/src/Player/Player_Bug.c",
@@ -199,6 +393,12 @@ const playerIntegrationCallSites: readonly {
     hook: "onPlayerRespawn",
     sourcePath: "../games/pangea-ports/games/Bugdom-android/src/Player/MyGuy.c",
     call: "BugdomScript_OnPlayerRespawn(gPlayerObj);",
+  },
+  {
+    gameId: "Bugdom-android",
+    hook: "onCheckpointReached",
+    sourcePath: "../games/pangea-ports/games/Bugdom-android/src/Items/Triggers2.c",
+    call: "BugdomScript_OnCheckpointReached(num);",
   },
   {
     gameId: "Bugdom2-Android",
@@ -214,9 +414,21 @@ const playerIntegrationCallSites: readonly {
   },
   {
     gameId: "Bugdom2-Android",
+    hook: "onCheckpointReached",
+    sourcePath: "../games/pangea-ports/games/Bugdom2-Android/Source/Items/Powerups.c",
+    call: "Bugdom2Script_OnCheckpointReached(checkpoint->Special[0]);",
+  },
+  {
+    gameId: "Bugdom2-Android",
     hook: "onWeaponHit",
     sourcePath: "../games/pangea-ports/games/Bugdom2-Android/Source/Enemies/Enemy.c",
     call: "Bugdom2Script_OnWeaponHit(hitObj, theEnemy",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    hook: "onWeaponHit",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Enemies/Enemy.c",
+    call: "Nanosaur2Script_OnWeaponHit(hitObj, theEnemy",
   },
   {
     gameId: "Nanosaur-android",
@@ -231,6 +443,12 @@ const playerIntegrationCallSites: readonly {
     call: "NanosaurScript_OnPlayerRespawn(theNode);",
   },
   {
+    gameId: "Nanosaur-android",
+    hook: "onWeaponHit",
+    sourcePath: "../games/pangea-ports/games/Nanosaur-android/src/Enemies/Enemy.c",
+    call: "NanosaurScript_OnWeaponHit(theHurter, theEnemy",
+  },
+  {
     gameId: "Nanosaur2-Android",
     hook: "onPlayerSpawn",
     sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Player/Player_Terrain.c",
@@ -241,6 +459,54 @@ const playerIntegrationCallSites: readonly {
     hook: "onPlayerRespawn",
     sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Player/Player.c",
     call: "Nanosaur2Script_OnPlayerRespawn(player);",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    hook: "onCheckpointReached",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Player/Player_Race.c",
+    call: "Nanosaur2Script_OnCheckpointReached(p, newCheckpoint);",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    hook: "onRaceFinish",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Player/Player_Race.c",
+    call: "Nanosaur2Script_OnRaceFinish(playerNum, gPlayerInfo[playerNum].place);",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    hook: "onLapComplete",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Player/Player_Race.c",
+    call: "Nanosaur2Script_OnLapComplete(p, gPlayerInfo[p].lapNum);",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    hook: "onObjectiveComplete",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Items/Eggs.c",
+    call: "Nanosaur2Script_OnObjectiveComplete(0, 0);",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    hook: "onObjectiveComplete",
+    sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Player/Player.c",
+    call: "Nanosaur2Script_OnObjectiveComplete(playerNum, 1);",
+  },
+  {
+    gameId: "CroMagRally-Android",
+    hook: "onCheckpointReached",
+    sourcePath: "../games/pangea-ports/games/CroMagRally-Android/Source/Terrain/Checkpoints.c",
+    call: "CroMagScript_OnCheckpointReached(p, newCheckpoint);",
+  },
+  {
+    gameId: "CroMagRally-Android",
+    hook: "onRaceFinish",
+    sourcePath: "../games/pangea-ports/games/CroMagRally-Android/Source/Terrain/Checkpoints.c",
+    call: "CroMagScript_OnRaceFinish(playerNum, rankInScoreboard >= 0 ? rankInScoreboard : gPlayerInfo[playerNum].place);",
+  },
+  {
+    gameId: "CroMagRally-Android",
+    hook: "onLapComplete",
+    sourcePath: "../games/pangea-ports/games/CroMagRally-Android/Source/Terrain/Checkpoints.c",
+    call: "CroMagScript_OnLapComplete(p, gPlayerInfo[p].lapNum);",
   },
   {
     gameId: "OttoMatic-Android",
@@ -283,6 +549,23 @@ const playerIntegrationCallSites: readonly {
     hook: "onDeath",
     sourcePath: "../games/pangea-ports/games/BillyFrontier-Android/Source/System/Areas/Shootout.c",
     call: "BillyScript_OnDeath(player, 0);",
+  },
+];
+
+const indexedPlayerTriggerAdapters: readonly {
+  readonly gameId: string;
+  readonly call: string;
+  readonly playerTable: string;
+}[] = [
+  {
+    gameId: "CroMagRally-Android",
+    call: "PangeaScript_CallObjectTriggerWithOtherAndPlayer",
+    playerTable: "gPlayerInfo[index].objNode",
+  },
+  {
+    gameId: "Nanosaur2-Android",
+    call: "PangeaScript_CallObjectTriggerWithOtherAndPlayer",
+    playerTable: "gPlayerInfo[index].objNode",
   },
 ];
 
@@ -406,12 +689,14 @@ function parseContractHookList(source: string, macroName: string): Result<readon
 
 function compareLuaSupportedHooks(source: string, metadataSource: string): Result<true, string> {
   const generatedLists = [
-    "PANGEA_SCRIPT_LEVEL_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
+    "PANGEA_SCRIPT_OTTO_MATIC_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
+    "PANGEA_SCRIPT_BUGDOM_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
     "PANGEA_SCRIPT_BUGDOM2_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
-    "PANGEA_SCRIPT_RACE_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
-    "PANGEA_SCRIPT_AREA_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
-    "PANGEA_SCRIPT_MAP_AREA_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
     "PANGEA_SCRIPT_NANOSAUR_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
+    "PANGEA_SCRIPT_NANOSAUR2_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
+    "PANGEA_SCRIPT_CRO_MAG_RALLY_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
+    "PANGEA_SCRIPT_BILLY_FRONTIER_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
+    "PANGEA_SCRIPT_MIGHTY_MIKE_HOOK_LIST(PANGEA_SCRIPT_HOOK_NAME)",
   ];
   const missingGeneratedLists = generatedLists.filter((entry) => !source.includes(entry));
   if (missingGeneratedLists.length > 0) {
@@ -419,12 +704,14 @@ function compareLuaSupportedHooks(source: string, metadataSource: string): Resul
   }
 
   const macroByArrayName: Readonly<Record<string, string>> = {
-    levelHooks: "PANGEA_SCRIPT_LEVEL_HOOK_LIST",
+    ottoMaticHooks: "PANGEA_SCRIPT_OTTO_MATIC_HOOK_LIST",
+    bugdomHooks: "PANGEA_SCRIPT_BUGDOM_HOOK_LIST",
     bugdom2Hooks: "PANGEA_SCRIPT_BUGDOM2_HOOK_LIST",
-    raceHooks: "PANGEA_SCRIPT_RACE_HOOK_LIST",
-    areaHooks: "PANGEA_SCRIPT_AREA_HOOK_LIST",
-    mapAreaHooks: "PANGEA_SCRIPT_MAP_AREA_HOOK_LIST",
     nanosaurHooks: "PANGEA_SCRIPT_NANOSAUR_HOOK_LIST",
+    nanosaur2Hooks: "PANGEA_SCRIPT_NANOSAUR2_HOOK_LIST",
+    croMagRallyHooks: "PANGEA_SCRIPT_CRO_MAG_RALLY_HOOK_LIST",
+    billyFrontierHooks: "PANGEA_SCRIPT_BILLY_FRONTIER_HOOK_LIST",
+    mightyMikeHooks: "PANGEA_SCRIPT_MIGHTY_MIKE_HOOK_LIST",
   };
   const arrays = new Map<string, readonly string[]>();
   for (const arrayName of Object.keys(macroByArrayName)) {
@@ -435,17 +722,18 @@ function compareLuaSupportedHooks(source: string, metadataSource: string): Resul
     arrays.set(arrayName, hooks.value);
   }
   for (const game of SCRIPTING_CONTRACT.api.games) {
-    const arrayName = game.gameId === "Bugdom2-Android"
-      ? "bugdom2Hooks"
-      : game.gameId.includes("CroMag")
-      ? "raceHooks"
-      : game.gameId.includes("MightyMike")
-        ? "mapAreaHooks"
-        : game.gameId.includes("Billy")
-          ? "areaHooks"
-          : game.gameId.includes("Nanosaur-android")
-            ? "nanosaurHooks"
-            : "levelHooks";
+    const arrayNameByGameId: Readonly<Record<string, string>> = {
+      "OttoMatic-Android": "ottoMaticHooks",
+      "Bugdom-android": "bugdomHooks",
+      "Bugdom2-Android": "bugdom2Hooks",
+      "Nanosaur-android": "nanosaurHooks",
+      "Nanosaur2-Android": "nanosaur2Hooks",
+      "CroMagRally-Android": "croMagRallyHooks",
+      "BillyFrontier-Android": "billyFrontierHooks",
+      "MightyMike-Android": "mightyMikeHooks",
+    };
+    const arrayName = arrayNameByGameId[game.gameId];
+    if (arrayName === undefined) return err(`No hook array is configured for ${game.gameId}`);
     const actual = arrays.get(arrayName);
     if (
       !actual ||
@@ -460,23 +748,31 @@ function compareLuaSupportedHooks(source: string, metadataSource: string): Resul
 function parseAdapterCapabilities(
   source: string,
   path: string,
+  metadataSource: string,
 ): Result<RuntimeGameCapabilities, string> {
   const block = source.match(
     /const PangeaScriptGameInfo gameInfo\s*=\s*\{([\s\S]*?)\n\s*\};/,
   )?.[1];
   if (!block) return err(`Adapter is missing gameInfo declaration: ${path}`);
   const gameId = block.match(/\.gameId\s*=\s*"([^"]+)"/)?.[1];
-  const capabilities = block.match(
-    /\.capabilities\s*=\s*\{\s*\.terrainItems\s*=\s*(true|false)\s*,\s*\.splineItems\s*=\s*(true|false)\s*,\s*\.mapItems\s*=\s*(true|false)\s*\}/,
-  );
-  if (!gameId || !capabilities) {
+  const capabilityMacro = block.match(/\.capabilities\s*=\s*(PANGEA_SCRIPT_[A-Z0-9_]+_CAPABILITIES)\s*,/)?.[1];
+  const definition = scriptingContractCapabilityMacros.find((candidate) => candidate.gameId === gameId);
+  if (!gameId || !capabilityMacro || !definition || capabilityMacro !== definition.macro) {
     return err(`Adapter capability metadata is incomplete: ${path}`);
   }
+  const capabilityValues = metadataSource.match(
+    new RegExp(`#define\\s+${capabilityMacro}\\s+\\{\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*\\}`),
+  );
+  if (!capabilityValues) return err(`Generated capability metadata is missing: ${capabilityMacro}`);
   return ok({
     gameId,
-    terrainItems: capabilities[1] === "true",
-    splineItems: capabilities[2] === "true",
-    mapItems: capabilities[3] === "true",
+    terrainItems: capabilityValues[1] === "true",
+    splineItems: capabilityValues[2] === "true",
+    mapItems: capabilityValues[3] === "true",
+    pickupScoreEffects: capabilityValues[4] === "true",
+    objectCollision: capabilityValues[5] === "true",
+    playerCommands: source.includes(".setPlayerHealth =") || source.includes(".setPlayerInvulnerable =") || source.includes(".setPlayerPosition ="),
+    playerInvulnerability: source.includes(".setPlayerInvulnerable ="),
   });
 }
 
@@ -489,11 +785,12 @@ function parseAdapterNativeItems(
   )?.[1];
   if (!block) return err(`Adapter is missing native item metadata: ${path}`);
   const items = [...block.matchAll(
-    /\{\s*\.id\s*=\s*"([^"]+)"[\s\S]*?\.nativeType\s*=\s*(-?\d+)[\s\S]*?\.category\s*=\s*"([^"]+)"[\s\S]*?\.dependencySummary\s*=\s*"[^"]+"\s*,?\s*\}/g,
+    /\{\s*\.id\s*=\s*"([^"]+)"[\s\S]*?\.nativeType\s*=\s*(-?\d+)[\s\S]*?\.category\s*=\s*"([^"]+)"[\s\S]*?\.dependencySummary\s*=\s*"([^"]*)"\s*,?\s*\}/g,
   )].map((match) => ({
     id: match[1] ?? "",
     nativeType: Number(match[2] ?? "-1"),
     category: match[3] ?? "",
+    dependencySummary: match[4] ?? "",
   }));
   if (items.length === 0) return err(`Adapter has no readable native item metadata: ${path}`);
   return ok(items);
@@ -586,15 +883,66 @@ function validatePlayerIntegrationCallSites(): Result<true, string> {
       );
     }
   }
+  for (const adapter of indexedPlayerTriggerAdapters) {
+    const sourcePath = adapterPathsByGameId[adapter.gameId];
+    if (!sourcePath) return err(`Indexed player trigger has no adapter source path: ${adapter.gameId}`);
+    const source = readRuntimeSource(resolve(process.cwd(), sourcePath));
+    if (source.isErr()) return err(source.error);
+    if (!source.value.includes(adapter.call) || !source.value.includes(adapter.playerTable)) {
+      return err(`Indexed player number is not forwarded by ${adapter.gameId}`);
+    }
+  }
   return ok(true);
 }
 
-function validateAdapterCapabilities(): Result<true, string> {
+function validateAdapterSaveLoadCallSites(): Result<true, string> {
+  const auditedGames = new Set(adapterSaveLoadCallSites.map((callSite) => callSite.gameId));
+  for (const callSite of adapterSaveLoadCallSites) {
+    const source = readRuntimeSource(resolve(process.cwd(), callSite.sourcePath));
+    if (source.isErr()) return err(source.error);
+    if (!source.value.includes(callSite.saveCall)) {
+      return err(`Adapter save call site is missing: ${callSite.gameId}`);
+    }
+    if (!source.value.includes(callSite.loadCall)) {
+      return err(`Adapter load call site is missing: ${callSite.gameId}`);
+    }
+  }
+  for (const game of SCRIPTING_CONTRACT.api.games) {
+    const advertisesSaveLoad = game.supportedHooks.includes("onSave") || game.supportedHooks.includes("onLoad");
+    if (advertisesSaveLoad !== auditedGames.has(game.gameId)) {
+      return err(`Save/load capability does not match native boundaries: ${game.gameId}`);
+    }
+  }
+  return ok(true);
+}
+
+function validateAdapterPlayerCommandBindings(): Result<true, string> {
+  for (const binding of adapterPlayerCommandBindings) {
+    const sourcePath = adapterPathsByGameId[binding.gameId];
+    if (!sourcePath) return err(`Player command binding has no adapter source path: ${binding.gameId}`);
+    const source = readRuntimeSource(resolve(process.cwd(), sourcePath));
+    if (source.isErr()) return err(source.error);
+    if (!source.value.includes(`${binding.functionName}(`)) {
+      return err(`Player command implementation is missing: ${binding.gameId}/${binding.field}`);
+    }
+    if (!source.value.includes(`.${binding.field} = ${binding.functionName}`)) {
+      return err(`Player command callback is not registered: ${binding.gameId}/${binding.field}`);
+    }
+  }
+  return ok(true);
+}
+
+function validateAdapterCapabilities(metadataSource: string): Result<true, string> {
+  for (const definition of scriptingContractCapabilityMacros) {
+    if (!metadataSource.includes(`#define ${definition.macro} {`)) {
+      return err(`Generated capability metadata is missing: ${definition.macro}`);
+    }
+  }
   const runtimeCapabilities: RuntimeGameCapabilities[] = [];
   for (const relativePath of Object.values(adapterPathsByGameId)) {
     const source = readRuntimeSource(resolve(process.cwd(), relativePath));
     if (source.isErr()) return err(source.error);
-    const capabilities = parseAdapterCapabilities(source.value, relativePath);
+    const capabilities = parseAdapterCapabilities(source.value, relativePath, metadataSource);
     if (capabilities.isErr()) return err(capabilities.error);
     const requiredCalls = [
       { capability: "terrainItems", call: "PangeaScript_CallTerrainItemHook" },
@@ -737,6 +1085,9 @@ function validateAdapterCapabilities(): Result<true, string> {
       }
     }
     for (const actual of nativeItems.value) {
+      if (actual.dependencySummary.trim().length === 0) {
+        return err(`Adapter native item is missing dependency summary ${actual.id}: ${game.gameId}`);
+      }
       if (!expectedNativeItems.some((expected) => expected.id === actual.id)) {
         return err(`Adapter advertises uncontracted native item ${actual.id}: ${game.gameId}`);
       }
@@ -750,6 +1101,10 @@ function validateAdapterCapabilities(): Result<true, string> {
       terrainItems: contract.capabilities.terrainItemHooks === "supported",
       splineItems: contract.capabilities.splineItemHooks === "supported",
       mapItems: contract.capabilities.mapItemHooks === "supported",
+      pickupScoreEffects: contract.capabilities.pickupScoreEffects === "supported",
+      objectCollision: contract.capabilities.objectCollision === "supported",
+      playerCommands: contract.capabilities.playerCommands === "supported",
+      playerInvulnerability: contract.capabilities.playerInvulnerability === "supported",
     };
     if (JSON.stringify(capabilities) !== JSON.stringify(expected)) {
       return err(`Adapter capability metadata drift: ${capabilities.gameId}`);
@@ -763,6 +1118,76 @@ function validateAdapterCapabilities(): Result<true, string> {
   if (adapterLifecycleValidation.isErr()) return err(adapterLifecycleValidation.error);
   const playerIntegrationValidation = validatePlayerIntegrationCallSites();
   if (playerIntegrationValidation.isErr()) return err(playerIntegrationValidation.error);
+  const adapterAssetLoaderValidation = validateAdapterAssetLoaders();
+  if (adapterAssetLoaderValidation.isErr()) return err(adapterAssetLoaderValidation.error);
+  const staleHandleValidation = validateAdapterStaleHandleGuards();
+  if (staleHandleValidation.isErr()) return err(staleHandleValidation.error);
+  const nativeLifecycleValidation = validateNativeLifecycleCallSites();
+  if (nativeLifecycleValidation.isErr()) return err(nativeLifecycleValidation.error);
+  return ok(true);
+}
+
+function validateAdapterStaleHandleGuards(): Result<true, string> {
+  for (const [gameId, relativePath] of Object.entries(adapterPathsByGameId)) {
+    const source = readRuntimeSource(resolve(process.cwd(), relativePath));
+    if (source.isErr()) return err(source.error);
+    if (!source.value.includes("PangeaScript_ObjectExists(handle)")) {
+      return err(`Adapter object-frame boundary is missing stale-handle cleanup: ${gameId}`);
+    }
+  }
+  return ok(true);
+}
+
+function validateNativeLifecycleCallSites(): Result<true, string> {
+  for (const callSite of nativeLifecycleCallSites) {
+    const source = readRuntimeSource(resolve(process.cwd(), callSite.sourcePath));
+    if (source.isErr()) return err(source.error);
+    for (const call of callSite.calls) {
+      if (!source.value.includes(`${call}(`)) {
+        return err(`Native lifecycle call site is missing ${call}: ${callSite.gameId}`);
+      }
+    }
+  }
+  return ok(true);
+}
+
+function validateAdapterAssetLoaders(): Result<true, string> {
+  for (const adapter of adapterAssetLoaders) {
+    const sourcePath = adapterPathsByGameId[adapter.gameId];
+    if (!sourcePath) return err(`Missing adapter source path for asset loader: ${adapter.gameId}`);
+    const source = readRuntimeSource(resolve(process.cwd(), sourcePath));
+    if (source.isErr()) return err(source.error);
+    if (!source.value.includes(adapter.modelLoader)) {
+      return err(`Adapter asset loader drift for ${adapter.gameId}: expected ${adapter.modelLoader}`);
+    }
+    if (!source.value.includes(adapter.postLoadRegistryCheck)) {
+      return err(`Adapter post-load registry validation drift for ${adapter.gameId}`);
+    }
+    const assetPreflightMarker = adapter.assetPreflightMarker ?? "IsSafeCustomAsset";
+    if (adapter.requiresAssetPreflight && !source.value.includes(assetPreflightMarker)) {
+      return err(`Adapter asset preflight drift for ${adapter.gameId}`);
+    }
+    if (adapter.assetBoundaryMarker && !source.value.includes(adapter.assetBoundaryMarker)) {
+      return err(`Adapter asset failure boundary drift for ${adapter.gameId}`);
+    }
+    if (adapter.requiresDefinitionGuard &&
+      !source.value.includes("if (!definition || definition->modelPath[0] == '\\0' || definition->skeletonPath[0] == '\\0')")) {
+      return err(`Adapter custom skeleton input guard drift for ${adapter.gameId}`);
+    }
+    if (!source.value.includes("if (!modelPath || modelPath[0] == '\\0')")) {
+      return err(`Adapter custom model input guard drift for ${adapter.gameId}`);
+    }
+    const contract = SCRIPTING_CONTRACT.games[adapter.gameId];
+    if (!contract || !contract.assetKinds.includes(adapter.assetKind)) {
+      return err(`Contract asset-kind drift for ${adapter.gameId}: expected ${adapter.assetKind}`);
+    }
+    if (adapter.hasSkeletonLoader && !source.value.includes("LoadCustomSkeleton")) {
+      return err(`Adapter skeleton loader drift for ${adapter.gameId}`);
+    }
+    if (!adapter.hasSkeletonLoader && contract.assetKinds.includes("skeleton")) {
+      return err(`Contract advertises unsupported skeleton assets for ${adapter.gameId}`);
+    }
+  }
   return ok(true);
 }
 
@@ -782,23 +1207,16 @@ function validateDocumentation(): Result<true, string> {
     ...SCRIPT_FAILURE_CODES,
     ...SCRIPTING_CONTRACT.api.games.map((game) => game.gameId),
   ];
-  const resultShapes = [
-    "ItemSpawnResult",
-    "TriggerResult",
-    "PickupResult",
-    "WeaponHitResult",
-    "DamageResult",
-    "ObjectCommandResult",
-    "NativeSpawnResult",
-    "PangeaCapabilities",
-    "PangeaDiagnostics",
-    "PangeaPlayerSnapshot",
-  ];
+  const resultShapes = getScriptingContractResultShapes(SCRIPTING_CONTRACT);
   const missing = [...identifiers, ...resultShapes].filter(
     (identifier) => !documentation.value.includes(identifier),
   );
   if (missing.length > 0) {
     return err(`Lua scripting documentation is missing contract identifiers: ${missing.join(", ")}`);
+  }
+  const generatedIndex = renderScriptingContractDocumentationIndex(SCRIPTING_CONTRACT);
+  if (!documentation.value.includes(generatedIndex)) {
+    return err("Lua scripting documentation contract index is not generated from the validated scripting contract");
   }
   return ok(true);
 }
@@ -828,6 +1246,12 @@ function compareRuntimeContract(
   runtimeSource: string,
   metadataSource: string,
 ): Result<true, string> {
+  if (!headerSource.includes('#include "pangea_script_contract.h"')) {
+    return err("C runtime public header does not expose generated contract metadata");
+  }
+  if (metadataSource !== renderScriptingContractCMetadata(SCRIPTING_CONTRACT)) {
+    return err("C metadata header is not generated from the validated scripting contract");
+  }
   const generatedLists = [
     "PANGEA_SCRIPT_COMMAND_DESCRIPTOR_LIST(PANGEA_SCRIPT_COMMAND_DESCRIPTOR_ENTRY)",
     "PANGEA_SCRIPT_EVENT_DESCRIPTOR_LIST(PANGEA_SCRIPT_EVENT_DESCRIPTOR_ENTRY)",
@@ -923,6 +1347,11 @@ if (validation.isErr()) {
   console.error(luaBackendResult.error);
   process.exitCode = 1;
 } else {
+  const nativeAuditValidation = validateNativeItemAuditCatalog();
+  if (nativeAuditValidation.isErr()) {
+    console.error(`Native audit drift: ${nativeAuditValidation.error}`);
+    process.exitCode = 1;
+  } else {
   const runtimeValidation = compareRuntimeContract(
     headerResult.value,
     sourceResult.value,
@@ -945,11 +1374,21 @@ if (validation.isErr()) {
         console.error(`Lua hook metadata drift: ${luaHookValidation.error}`);
         process.exitCode = 1;
       } else {
-        const adapterValidation = validateAdapterCapabilities();
+        const adapterValidation = validateAdapterCapabilities(metadataResult.value);
         if (adapterValidation.isErr()) {
           console.error(`Adapter capability drift: ${adapterValidation.error}`);
           process.exitCode = 1;
         } else {
+          const saveLoadValidation = validateAdapterSaveLoadCallSites();
+          if (saveLoadValidation.isErr()) {
+            console.error(`Adapter save/load drift: ${saveLoadValidation.error}`);
+            process.exitCode = 1;
+          } else {
+          const playerCommandValidation = validateAdapterPlayerCommandBindings();
+          if (playerCommandValidation.isErr()) {
+            console.error(`Player command binding drift: ${playerCommandValidation.error}`);
+            process.exitCode = 1;
+          } else {
           const documentationValidation = validateDocumentation();
           if (documentationValidation.isErr()) {
             console.error(`Documentation contract drift: ${documentationValidation.error}`);
@@ -963,8 +1402,11 @@ if (validation.isErr()) {
               console.log("Scripting contract is internally consistent across frontend, C runtime, Lua bindings, adapters, and documentation.");
             }
           }
+          }
+          }
         }
       }
     }
+  }
   }
 }

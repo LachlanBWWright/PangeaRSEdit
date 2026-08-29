@@ -12,7 +12,12 @@ import {
 } from "@/editor/subviews/scripts/scriptAssetValidation";
 import { scriptHookIdSchema } from "@/editor/subviews/scripts/scriptWorkspaceStateTypes";
 import { AUTHORITATIVE_API_SCHEMA } from "@/editor/subviews/scripts/scriptApiSchema";
-import { CAPABILITY_MATRIX } from "@/editor/subviews/scripts/scriptCapabilityMatrix";
+import {
+  CAPABILITY_MATRIX,
+  getHookCapabilityKey,
+} from "@/editor/subviews/scripts/scriptCapabilityMatrix";
+import { renderScriptingContractCMetadata } from "../../scripts/scriptingContractCMetadata";
+import { getScriptingContractResultShapes, renderScriptingContractDocumentationIndex } from "../../scripts/scriptingContractDocumentation";
 import {
   getNativeReplacementCompatibility,
   getNativeReplacementDecision,
@@ -22,12 +27,49 @@ import {
 } from "@/editor/subviews/scripts/scriptNativeAudit";
 
 describe("scripting contract", () => {
+  it("renders the checked-in C metadata from the validated contract", () => {
+    const metadataPath = join(
+      process.cwd(),
+      "../games/pangea-ports/shared/script/pangea_script_contract.h",
+    );
+    expect(readFileSync(metadataPath, "utf8")).toBe(
+      renderScriptingContractCMetadata(SCRIPTING_CONTRACT),
+    );
+  });
+
   it("keeps API and capability metadata aligned for every adapter", () => {
     expect(validateScriptingContract().isOk()).toBe(true);
     expect(Object.keys(SCRIPTING_CONTRACT.games)).toHaveLength(8);
     expect(SCRIPTING_CONTRACT.contractVersion).toBe(1);
     expect(SCRIPTING_CONTRACT.apiVersion).toBe(1);
     expect(SCRIPTING_CONTRACT.persistentStorage).toEqual(SCRIPT_PERSISTENCE_LIMITS);
+  });
+
+  it("declares specialized editor completion behavior in the API contract", () => {
+    const nativeSpawn = AUTHORITATIVE_API_SCHEMA.apis.find(
+      (api) => api.name === "pangea.spawn.native",
+    );
+    expect(nativeSpawn?.completion).toBe("native-spawn");
+    expect(
+      AUTHORITATIVE_API_SCHEMA.apis.filter((api) => api.completion === "native-spawn"),
+    ).toHaveLength(1);
+  });
+
+  it("derives every documented result shape from the contract", () => {
+    expect(getScriptingContractResultShapes(SCRIPTING_CONTRACT)).toEqual(
+      expect.arrayContaining([
+        "ItemSpawnResult",
+        "ObjectCommandResult",
+        "PangeaDiagnostics",
+      ]),
+    );
+  });
+
+  it("renders API descriptions and signatures from the contract", () => {
+    const documentation = renderScriptingContractDocumentationIndex(SCRIPTING_CONTRACT);
+    expect(documentation).toContain("API reference:");
+    expect(documentation).toContain("pangea.object.setCollisionEnabled(handle: objectHandle, enabled: boolean): boolean");
+    expect(documentation).toContain("Enables or disables an object's native collision checks.");
   });
 
   it("declares bounded versioned persistence policy", () => {
@@ -45,6 +87,61 @@ describe("scripting contract", () => {
   it("represents game lifecycle hooks in editor state", () => {
     expect(scriptHookIdSchema.parse("onGameStart")).toBe("onGameStart");
     expect(scriptHookIdSchema.parse("onGameShutdown")).toBe("onGameShutdown");
+  });
+
+  it("classifies race and objective hooks against their adapter capabilities", () => {
+    expect(getHookCapabilityKey("onCheckpointReached")).toBe("checkpointEvents");
+    expect(getHookCapabilityKey("onLapComplete")).toBe("raceProgressEvents");
+    expect(getHookCapabilityKey("onRaceFinish")).toBe("raceProgressEvents");
+    expect(getHookCapabilityKey("onObjectiveComplete")).toBe("objectiveEvents");
+    expect(CAPABILITY_MATRIX["Nanosaur2-Android"]).toMatchObject({
+      checkpointEvents: "supported",
+      raceProgressEvents: "supported",
+      objectiveEvents: "supported",
+    });
+    expect(CAPABILITY_MATRIX["OttoMatic-Android"]).toMatchObject({
+      raceProgressEvents: "unsupported",
+      objectiveEvents: "unsupported",
+    });
+    expect(CAPABILITY_MATRIX["CroMagRally-Android"]).toMatchObject({
+      playerInvulnerability: "unsupported",
+    });
+    expect(CAPABILITY_MATRIX["MightyMike-Android"]).toMatchObject({
+      playerInvulnerability: "supported",
+    });
+    expect(CAPABILITY_MATRIX["Nanosaur2-Android"]).toMatchObject({
+      playerCommands: "supported",
+      levelMetadata: "supported",
+      raceMetadata: "supported",
+      objectiveMetadata: "supported",
+      pickupScoreEffects: "unsupported",
+    });
+    expect(CAPABILITY_MATRIX["CroMagRally-Android"]).toMatchObject({
+      raceMetadata: "supported",
+    });
+    expect(CAPABILITY_MATRIX["OttoMatic-Android"]).toMatchObject({
+      raceMetadata: "unsupported",
+    });
+    expect(CAPABILITY_MATRIX["Bugdom2-Android"]).toMatchObject({
+      objectiveMetadata: "unsupported",
+      objectCollision: "supported",
+    });
+    expect(CAPABILITY_MATRIX["BillyFrontier-Android"]).toMatchObject({
+      pickupScoreEffects: "supported",
+    });
+    expect(CAPABILITY_MATRIX["MightyMike-Android"]).toMatchObject({
+      objectCollision: "unsupported",
+    });
+  });
+
+  it("describes the native collision object command", () => {
+    const collisionCommand = AUTHORITATIVE_API_SCHEMA.apis.find(
+      (api) => api.name === "pangea.object.setCollisionEnabled",
+    );
+    expect(collisionCommand?.command).toMatchObject({
+      capability: "object-collision",
+      applicationPhase: "callback",
+    });
   });
 
   it("advertises Bugdom 2 player gameplay hooks only for its real adapter call sites", () => {
@@ -75,6 +172,7 @@ describe("scripting contract", () => {
       "Nanosaur2-Android",
       "CroMagRally-Android",
       "BillyFrontier-Android",
+      "MightyMike-Android",
     ]);
     expect(
       AUTHORITATIVE_API_SCHEMA.games
@@ -88,6 +186,7 @@ describe("scripting contract", () => {
       "Nanosaur2-Android",
       "CroMagRally-Android",
       "BillyFrontier-Android",
+      "MightyMike-Android",
     ]);
     expect(
       AUTHORITATIVE_API_SCHEMA.games
@@ -99,6 +198,7 @@ describe("scripting contract", () => {
       "Bugdom2-Android",
       "Nanosaur-android",
       "Nanosaur2-Android",
+      "MightyMike-Android",
     ]);
     expect(CAPABILITY_MATRIX["Bugdom2-Android"]).toMatchObject({
       damageEvents: "supported",
@@ -114,6 +214,7 @@ describe("scripting contract", () => {
         "Nanosaur2-Android",
         "CroMagRally-Android",
         "BillyFrontier-Android",
+        "MightyMike-Android",
       ].includes(game.gameId);
       const supportsDeath = [
         "OttoMatic-Android",
@@ -122,6 +223,7 @@ describe("scripting contract", () => {
         "Nanosaur2-Android",
         "CroMagRally-Android",
         "BillyFrontier-Android",
+        "MightyMike-Android",
       ].includes(game.gameId);
       expect(game.supportedHooks).toEqual(
         supportsDamage
@@ -144,7 +246,7 @@ describe("scripting contract", () => {
     const commands = SCRIPTING_CONTRACT.api.apis.filter(
       (api) => api.command !== undefined,
     );
-    expect(commands).toHaveLength(14);
+    expect(commands).toHaveLength(28);
     for (const command of commands) {
       expect(command.command?.capability).toBeTruthy();
       expect(command.command?.authority).toBe("disabled-network");
@@ -155,7 +257,7 @@ describe("scripting contract", () => {
 
   it("declares cleanup and handle policy for every object lifecycle event", () => {
     const events = SCRIPTING_CONTRACT.objectEvents;
-    expect(events).toHaveLength(12);
+    expect(events).toHaveLength(13);
     expect(events.find((event) => event.id === "checkpointReset")?.cleanup).toBe("owner-resources");
     expect(events.find((event) => event.id === "checkpointReset")?.statePolicy).toBe("preserve");
     expect(events.find((event) => event.id === "deactivate")?.statePolicy).toBe("clear");
@@ -181,28 +283,36 @@ describe("scripting contract", () => {
       expect(item.streaming).toBeTruthy();
       expect(item.childObjects).toBeTruthy();
       expect(item.saveBehavior).toBeTruthy();
+      expect(item.runtimeVerification).toBeTruthy();
     }
     expect(getNativeItemAuditForTest("OttoMatic-Android", 1)).toMatchObject({
       classification: "replaceable-with-native-hooks",
       replacementSurface: "terrain",
       streaming: "source-driven",
       modeAudit: "all-declared-modes",
-      childObjects: "not-audited",
-      saveBehavior: "not-audited",
+      childObjects: "none-observed",
+      saveBehavior: "not-persistent",
     });
     expect(getNativeItemAuditForTest("OttoMatic-Android", 4)).toMatchObject({
       classification: "native-only",
       replacementSurface: "none",
-      modeAudit: "not-audited",
+      modeAudit: "all-declared-modes",
       fallback: "skip-replacement",
     });
+    expect(getNativeItemAuditForTest("Bugdom2-Android", 35)?.runtimeVerification).toBe("constructor-probe");
+    expect(getNativeItemAuditForTest("Nanosaur-android", 5)?.runtimeVerification).toBe("constructor-probe");
+    expect(getNativeItemAuditForTest("MightyMike-Android", 3)?.runtimeVerification).toBe("constructor-probe");
     const terrainAudit = getNativeReplacementDecision("OttoMatic-Android", 1, false);
     expect(terrainAudit.isOk()).toBe(true);
     expect(getNativeReplacementDecision("OttoMatic-Android", 4, false).isOk()).toBe(true);
     expect(getNativeReplacementDecision("OttoMatic-Android", 4, true).isErr()).toBe(true);
     expect(
       getNativeReplacementCompatibility("OttoMatic-Android", 1),
-    ).toMatchObject({ allowed: true, tone: "good" });
+    ).toMatchObject({
+      allowed: true,
+      tone: "warning",
+      auditWarnings: ["runtime verification"],
+    });
     expect(
       getNativeReplacementCompatibility("OttoMatic-Android", 4),
     ).toMatchObject({ allowed: true, tone: "warning" });
@@ -211,7 +321,11 @@ describe("scripting contract", () => {
     ).toMatchObject({ allowed: false, tone: "danger" });
     expect(
       getNativeReplacementCompatibility("MightyMike-Android", 3, "map"),
-    ).toMatchObject({ allowed: true, tone: "good" });
+    ).toMatchObject({
+      allowed: true,
+      tone: "warning",
+      auditWarnings: ["runtime verification"],
+    });
     expect(
       getNativeReplacementCompatibility("MightyMike-Android", 3, "terrain"),
     ).toMatchObject({ allowed: false, tone: "danger" });

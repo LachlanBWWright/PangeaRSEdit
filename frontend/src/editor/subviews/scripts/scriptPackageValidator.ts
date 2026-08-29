@@ -17,7 +17,6 @@ import {
   getCapability,
   isCapabilitySupported,
   getHookCapabilityKey,
-  type ScriptCapabilityKey,
 } from "./scriptCapabilityMatrix";
 import {
   SCRIPT_CONTRACT_VERSION,
@@ -29,9 +28,12 @@ import {
   validateScriptAssetPath,
   validateScriptPackageAssets,
 } from "./scriptAssetValidation";
+import { SCRIPT_IDE_SUPPORT_PATHS } from "./scriptIdePackage";
 
 export const SCRIPT_PACKAGE_MANIFEST_PATH =
   "Data/Scripts/config/manifest.json";
+
+const scriptIdeSupportPaths = new Set<string>(SCRIPT_IDE_SUPPORT_PATHS);
 
 const scriptPackageManifestSchema = z.object({
   schemaVersion: z.literal(1),
@@ -166,7 +168,7 @@ export function validateScriptPackage(
     if (path.startsWith("/")) {
       errors.push(`Absolute path detected: ${path}`);
     }
-    if (!path.startsWith("Data/Scripts/")) {
+    if (!path.startsWith("Data/Scripts/") && !scriptIdeSupportPaths.has(path)) {
       errors.push(`File outside Data/Scripts/ directory: ${path}`);
     }
     if (path.startsWith("Data/Scripts/src/")) {
@@ -624,32 +626,11 @@ export function validateScriptPackage(
   }
 
   // 10. Unsupported API usage validation
-  const checkApis: {
-    key: string;
-    capability: ScriptCapabilityKey;
-    name: string;
-  }[] = [
-    {
-      key: "pangea.spawn.native",
-      capability: "nativeSpawn",
-      name: "pangea.spawn.native",
-    },
-    {
-      key: "pangea.spawn.scripted",
-      capability: "scriptedSpawn",
-      name: "pangea.spawn.scripted",
-    },
-    {
-      key: "pangea.player.get",
-      capability: "playerLookup",
-      name: "pangea.player.get",
-    },
-    {
-      key: "pangea.level.current",
-      capability: "levelMetadata",
-      name: "pangea.level.current",
-    },
-  ];
+  const checkApis = SCRIPTING_CONTRACT.api.apis.flatMap((api) =>
+    api.availabilityCapability === undefined
+      ? []
+      : [{ key: api.name, capability: api.availabilityCapability, name: api.name }],
+  );
 
   for (const [filePath, contentBytes] of Object.entries(files)) {
     if (

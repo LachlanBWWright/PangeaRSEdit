@@ -309,6 +309,8 @@ export function Bugdom1KonvaView({
       handleStampClick,
       pendingCreation,
       clickToAddItem,
+      customObjectPlacement,
+      headerData,
       setPendingCreation,
       setItemDataNotNull,
     ],

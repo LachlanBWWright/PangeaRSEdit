@@ -1,6 +1,7 @@
 import type {
   ScriptBehaviorDefinition,
   ScriptCustomObjectDefinition,
+  ScriptDiagnostic,
   ScriptHookId,
   ScriptParameterDefinition,
   ScriptTagDefinition,
@@ -18,12 +19,18 @@ export interface ScriptWorkspaceSummary {
   readonly previewReady: boolean;
 }
 
+function isBuildDiagnostic(diagnostic: ScriptDiagnostic): boolean {
+  return diagnostic.category === "source-validation" ||
+    diagnostic.category === "luals" ||
+    diagnostic.category === "packaging";
+}
+
 export function summarizeScriptWorkspace(
   state: ScriptWorkspaceState,
 ): ScriptWorkspaceSummary {
   const levelState = getLevelState(state);
   const buildErrorCount = state.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
+    (diagnostic) => diagnostic.severity === "error" && isBuildDiagnostic(diagnostic),
   ).length;
 
   const hasItemScripts =

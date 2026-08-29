@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,51 +21,17 @@ import {
   advancePreviewSession,
   type PreviewSession,
 } from "./utils/previewSessionState";
-import type { PreviewVfsFile } from "./utils/gamePreviewRuntime";
-
-interface PangeaScriptStatusJS {
-  enabled: boolean;
-  configLoaded: boolean;
-  bundleLoaded: boolean;
-  activeScriptPath: string;
-  lastError: string;
-  errorCount: number;
-  budgetExceededCount: number;
-  hooksCalledCount: number;
-  scriptsDisabled: boolean;
-}
-
-function queryActiveScriptingStatus(): PangeaScriptStatusJS | null {
-  const mod = (window as any).Module;
-  if (!mod || !mod.ccall) {
-    return null;
-  }
-  try {
-    const enabled = Boolean(mod.ccall("PangeaScript_GetStatusEnabled", "number", [], []));
-    const configLoaded = Boolean(mod.ccall("PangeaScript_GetStatusConfigLoaded", "number", [], []));
-    const bundleLoaded = Boolean(mod.ccall("PangeaScript_GetStatusBundleLoaded", "number", [], []));
-    const activeScriptPath = mod.ccall("PangeaScript_GetStatusActiveScriptPath", "string", [], []);
-    const lastError = mod.ccall("PangeaScript_GetStatusLastError", "string", [], []);
-    const errorCount = mod.ccall("PangeaScript_GetStatusErrorCount", "number", [], []);
-    const budgetExceededCount = mod.ccall("PangeaScript_GetStatusBudgetExceededCount", "number", [], []);
-    const hooksCalledCount = mod.ccall("PangeaScript_GetStatusHooksCalledCount", "number", [], []);
-    const scriptsDisabled = Boolean(mod.ccall("PangeaScript_GetStatusScriptsDisabled", "number", [], []));
-
-    return {
-      enabled,
-      configLoaded,
-      bundleLoaded,
-      activeScriptPath,
-      lastError,
-      errorCount,
-      budgetExceededCount,
-      hooksCalledCount,
-      scriptsDisabled,
-    };
-  } catch (_) {
-    return null;
-  }
-}
+import type {
+  MultiplayerRuntimeEvent,
+  PreviewRuntimeModule,
+  PreviewVfsFile,
+} from "./utils/gamePreviewRuntime";
+import {
+  getRuntimeDiagnosticMessage,
+  queryScriptingStatus,
+  selectScriptingStatusModule,
+  type PangeaScriptStatusJS,
+} from "./utils/scriptRuntimeStatus";
 
 interface Props {
   open: boolean;
@@ -77,6 +43,8 @@ interface Props {
   terrainRsrcBytes: Uint8Array | null | undefined;
   terrainTextureBytes: Uint8Array | null | undefined;
   customFiles?: readonly PreviewVfsFile[];
+  onScriptRuntimeDiagnostic?: (message: string) => void;
+  onPreviewRuntimeError?: (message: string) => void;
   /** When true, launch from the title screen without level selection or terrain injection. */
   normalLaunch?: boolean;
 }
@@ -92,6 +60,8 @@ export function TestGameDialog(props: Props) {
     terrainRsrcBytes,
     terrainTextureBytes,
     customFiles,
+    onScriptRuntimeDiagnostic,
+    onPreviewRuntimeError,
     normalLaunch = false,
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
@@ -112,22 +82,67 @@ export function TestGameDialog(props: Props) {
     : "";
 
   const [scriptStatus, setScriptStatus] = useState<PangeaScriptStatusJS | null>(null);
+  const [runtimeDiagnosticMessage, setRuntimeDiagnosticMessage] = useState<string | null>(null);
+  const [runtimeInitialized, setRuntimeInitialized] = useState(false);
+  const activePreviewModuleRef = useRef<PreviewRuntimeModule | null>(null);
+  const lastReportedScriptError = useRef("");
+  const lastReportedScriptErrorCount = useRef(0);
+  const handlePreviewRuntimeModule = useCallback(
+    (module: PreviewRuntimeModule | null): void => {
+      activePreviewModuleRef.current = module;
+    },
+    [],
+  );
+  const handlePreviewRuntimeError = useCallback(
+    (message: string): void => {
+      setRuntimeDiagnosticMessage(message);
+      onPreviewRuntimeError?.(message);
+    },
+    [onPreviewRuntimeError],
+  );
+  const handlePreviewRuntimeEvent = useCallback((event: MultiplayerRuntimeEvent): void => {
+    if (event.type === "runtimeInitialized") {
+      setRuntimeInitialized(true);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!previewStarted) {
-      setScriptStatus(null);
+    if (!previewStarted || !runtimeInitialized) {
+      lastReportedScriptError.current = "";
+      lastReportedScriptErrorCount.current = 0;
       return;
     }
     const interval = setInterval(() => {
-      const status = queryActiveScriptingStatus();
+      const status = queryScriptingStatus(
+        selectScriptingStatusModule(
+          activePreviewModuleRef.current,
+          window.Module ?? null,
+        ),
+      );
       setScriptStatus(status);
+      const runtimeError = status
+        ? getRuntimeDiagnosticMessage(status, lastReportedScriptErrorCount.current)
+        : null;
+      if (runtimeError && runtimeError !== lastReportedScriptError.current) {
+        lastReportedScriptError.current = runtimeError;
+        setRuntimeDiagnosticMessage(runtimeError);
+        onScriptRuntimeDiagnostic?.(runtimeError);
+      }
+      if (status) lastReportedScriptErrorCount.current = status.errorCount;
+      if (!runtimeError) {
+        lastReportedScriptError.current = "";
+      }
     }, 500);
     return () => clearInterval(interval);
-  }, [previewStarted]);
+  }, [onScriptRuntimeDiagnostic, previewStarted, runtimeInitialized]);
 
   const handleLevelChange = (value: string) => {
     onLevelNumberChange(Number(value));
     if (previewStarted) {
+      setRuntimeInitialized(false);
+      setScriptStatus(null);
+      setRuntimeDiagnosticMessage(null);
+      lastReportedScriptError.current = "";
       setPreviewSession((currentSession) =>
         advancePreviewSession(currentSession, gameType),
       );
@@ -135,6 +150,11 @@ export function TestGameDialog(props: Props) {
   };
 
   const handleLaunch = () => {
+    setRuntimeInitialized(false);
+    setScriptStatus(null);
+    setRuntimeDiagnosticMessage(null);
+    lastReportedScriptError.current = "";
+    lastReportedScriptErrorCount.current = 0;
     setPreviewSession((currentSession) =>
       advancePreviewSession(currentSession, gameType),
     );
@@ -225,6 +245,9 @@ export function TestGameDialog(props: Props) {
                 customFiles={normalLaunch ? undefined : customFiles}
                 runToken={runToken}
                 normalLaunch={normalLaunch}
+                onRuntimeError={handlePreviewRuntimeError}
+                onRuntimeEvent={handlePreviewRuntimeEvent}
+                onRuntimeModule={handlePreviewRuntimeModule}
               />
             )}
           </div>
@@ -317,14 +340,21 @@ export function TestGameDialog(props: Props) {
                     </div>
                   )}
 
-                  {scriptStatus.lastError && (
+                  {(scriptStatus.lastError || runtimeDiagnosticMessage) && (
                     <div className="border-t border-slate-800 pt-2 space-y-1">
                       <div className="text-red-400 font-medium">Last Error:</div>
                       <pre className="bg-slate-900 p-2 rounded text-[10px] text-red-200 overflow-x-auto whitespace-pre-wrap max-h-32">
-                        {scriptStatus.lastError}
+                        {scriptStatus.lastError || runtimeDiagnosticMessage}
                       </pre>
                     </div>
                   )}
+                </div>
+              ) : runtimeDiagnosticMessage ? (
+                <div className="border-t border-slate-800 pt-2 space-y-1">
+                  <div className="text-red-400 font-medium">Last Error:</div>
+                  <pre className="bg-slate-900 p-2 rounded text-[10px] text-red-200 overflow-x-auto whitespace-pre-wrap max-h-32">
+                    {runtimeDiagnosticMessage}
+                  </pre>
                 </div>
               ) : (
                 <div className="text-slate-500 italic text-center py-4">

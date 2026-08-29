@@ -115,11 +115,11 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
           )
         : Math.hypot(tileX - centerX, tileY - centerY);
 
-      if (brushMode === TopologyBrushMode.CIRCLE_BRUSH) {
-        if (radialDistance > radius) {
-          continue;
-        }
-      } else if (!hasLine) {
+      if (radialDistance > radius) {
+        continue;
+      }
+
+      if (brushMode === TopologyBrushMode.SQUARE_BRUSH && !hasLine) {
         const xDistance = Math.abs(tileX - centerX);
         const yDistance = Math.abs(tileY - centerY);
         if (xDistance > radius || yDistance > radius) {
@@ -131,7 +131,7 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
         brushMode === TopologyBrushMode.SQUARE_BRUSH && !hasLine
           ? Math.max(Math.abs(tileX - centerX), Math.abs(tileY - centerY)) /
             radius
-          : radialDistance / radius;
+          : Math.min(1, radialDistance / radius);
 
       pixelList.push({
         x: tileX,

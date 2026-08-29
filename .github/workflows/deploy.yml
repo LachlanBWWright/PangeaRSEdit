@@ -48,8 +48,9 @@ jobs:
         env:
           VITE_API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
           VITE_API_BASE_PATH: ""
-          VITE_MULTIPLAYER_ENABLED: "false"
+          VITE_MULTIPLAYER_ENABLED: ${{ vars.MULTIPLAYER_ENABLED || 'false' }}
           VITE_SCRIPTING_ENABLED: "false"
+          VITE_MULTIPLAYER_CONTENT_HASH: ${{ github.sha }}
           VITE_GAME_ASSET_VERSION: ${{ github.sha }}
         run: pnpm --dir frontend run build
 

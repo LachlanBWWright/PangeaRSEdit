@@ -371,7 +371,7 @@ export function ScriptCustomObjectsPanel({
               {objectDefinition.visual.kind === "customDisplayGroup" ? (
                 <Input
                   type="file"
-                  accept={usesShapeAssets ? ".shapes" : ".bg3d,.gltf,.glb"}
+                    accept={usesShapeAssets ? ".shapes" : ".bg3d,.3dmf,.gltf,.glb"}
                   aria-label={`${objectDefinition.label} ${usesShapeAssets ? "shapes" : "BG3D"} model`}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
@@ -383,7 +383,7 @@ export function ScriptCustomObjectsPanel({
                 <>
                   <Input
                     type="file"
-                    accept=".bg3d"
+                    accept=".bg3d,.3dmf"
                     aria-label={`${objectDefinition.label} skeleton model`}
                     onChange={(event) => {
                       const file = event.target.files?.[0];

@@ -33,7 +33,7 @@ export function HostStartControls({
     <div className="flex flex-wrap gap-2">
       <Button
         type="button"
-        size="default"
+        size="sm"
         disabled={busy || !hasLocalParticipant}
         onClick={onToggleReady}
       >
@@ -43,7 +43,7 @@ export function HostStartControls({
         <>
           <Button
             type="button"
-            size="default"
+            size="sm"
             disabled={busy || !canStart}
             onClick={onStart}
           >
@@ -52,7 +52,7 @@ export function HostStartControls({
           {canForceStart ? (
             <Button
               type="button"
-              size="default"
+              size="sm"
               variant="outline"
               disabled={busy}
               onClick={onStartAnyway}
@@ -63,7 +63,7 @@ export function HostStartControls({
           {canEndMatch ? (
             <Button
               type="button"
-              size="default"
+              size="sm"
               variant="destructive"
               disabled={busy}
               onClick={onEndMatch}
@@ -75,7 +75,7 @@ export function HostStartControls({
       ) : null}
       <Button
         type="button"
-        size="default"
+        size="sm"
         variant="outline"
         disabled={busy}
         onClick={onLeave}

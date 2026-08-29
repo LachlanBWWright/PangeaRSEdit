@@ -16,6 +16,7 @@ import {
 } from "@/data/globals/globals";
 import {
   addBehaviorDefinition,
+  appendScriptDiagnostic,
   addScriptAsset,
   addScriptParam,
   applyGlobalBehavior,
@@ -35,9 +36,11 @@ import {
   placeCustomObject,
   replaceMapItemWithCustomObject,
   removeCustomPlacement,
+  replaceLuaLSDiagnostics,
   retargetScriptWorkspace,
   upsertScriptSourceFile,
   updateCustomObjectDefinition,
+  type ScriptDiagnostic,
 } from "@/editor/subviews/scripts/scriptWorkspaceState";
 import {
   getScriptAllowedTags,
@@ -48,6 +51,7 @@ import {
   summarizeScriptWorkspace,
 } from "@/editor/subviews/scripts/scriptWorkspaceSelectors";
 import { buildScriptTypeDeclarationFiles } from "@/editor/subviews/scripts/scriptTypeDeclarations";
+import { SCRIPTING_CONTRACT } from "@/editor/subviews/scripts/scriptContract";
 import {
   SCRIPT_PACKAGE_MANIFEST_PATH,
   validateScriptPackageForNetwork,
@@ -59,6 +63,7 @@ import {
   getWorkspaceWarnings,
 } from "@/editor/subviews/scripts/scriptCapabilityMatrix";
 import { convertGltfAsset } from "@/editor/subviews/scripts/scriptAssetConversion";
+import { getAvailableApiFunctions } from "@/editor/subviews/scripts/scriptApiAvailability";
 
 const PlacementsFileSchema = z.object({
   schemaVersion: z.literal(1),
@@ -93,6 +98,64 @@ async function createScriptFixtureGlb(): Promise<Uint8Array> {
 }
 
 describe("scriptWorkspaceState", () => {
+  it("replaces LuaLS diagnostics per file without retaining stale findings", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 1);
+    const state = ensureScriptWorkspace({}, context);
+    const withDiagnostics = replaceLuaLSDiagnostics(state, "main.lua", [{
+      category: "luals",
+      severity: "error",
+      message: "bad value",
+      code: "luals",
+      filePath: "main.lua",
+      line: 3,
+      column: 5,
+    }]);
+    const cleared = replaceLuaLSDiagnostics(withDiagnostics, "main.lua", []);
+
+    expect(withDiagnostics.diagnostics).toHaveLength(1);
+    expect(cleared.diagnostics).toEqual([]);
+  });
+
+  it("does not treat post-build runtime findings as build errors", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 1);
+    const state = ensureScriptWorkspace({}, context);
+    const runtimeDiagnostic: ScriptDiagnostic = {
+      category: "runtime-traceback",
+      severity: "error",
+      message: "runtime failed",
+      code: "runtime.traceback",
+      filePath: "Data/Scripts/dist/main.lua",
+      line: 0,
+      column: 0,
+    };
+    const withRuntimeFinding = {
+      ...state,
+      diagnostics: [runtimeDiagnostic],
+    };
+
+    expect(summarizeScriptWorkspace(withRuntimeFinding).buildErrorCount).toBe(0);
+    expect(summarizeScriptWorkspace(withRuntimeFinding).previewReady).toBe(true);
+  });
+
+  it("deduplicates repeated runtime and native-adapter findings", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 1);
+    const state = ensureScriptWorkspace({}, context);
+    const diagnostic: ScriptDiagnostic = {
+      category: "native-adapter",
+      severity: "error",
+      message: "native adapter failed",
+      code: "runtime.native",
+      filePath: "runtime",
+      line: 0,
+      column: 0,
+    };
+    const withFinding = appendScriptDiagnostic(state, diagnostic);
+    const duplicated = appendScriptDiagnostic(withFinding, diagnostic);
+
+    expect(withFinding.diagnostics).toHaveLength(1);
+    expect(duplicated.diagnostics).toEqual(withFinding.diagnostics);
+  });
+
   it("advertises implemented core runtime capabilities for every game", () => {
     for (const capabilities of Object.values(CAPABILITY_MATRIX)) {
       expect(capabilities.nativeSpawn).toBe("supported");
@@ -123,6 +186,19 @@ describe("scriptWorkspaceState", () => {
 
     expect(getWorkspaceWarnings(state)).toContain(
       "Custom object 'Hover Beacon' requires asset 'Data/Scripts/assets/models/missing.bg3d' before preview/export.",
+    );
+  });
+
+  it("warns when pickup score effects are unsupported by the active adapter", () => {
+    const context = createScriptWorkspaceContext(Nanosaur2Globals, 1);
+    const state = upsertScriptSourceFile(
+      ensureScriptWorkspace({}, context),
+      "Data/Scripts/src/globals/pickup-score.lua",
+      "return { onPickupCollected = function() return { scoreDelta = 10 } end }",
+    );
+
+    expect(getWorkspaceWarnings(state)).toContain(
+      "Script returns pickup scoreDelta, but scripted pickup score effects are unsupported on this game.",
     );
   });
 
@@ -187,6 +263,16 @@ describe("scriptWorkspaceState", () => {
     expect(filePaths).toContain("/Data/Scripts/dist/main.lua");
     expect(filePaths).toContain("/Data/Scripts/types/pangea-runtime.lua");
     expect(filePaths).toContain("/Data/Scripts/types/pangea-games.lua");
+    const ideReadme = packageFiles.get("README.md");
+    const luaLsConfig = packageFiles.get(".luarc.json");
+    const starterExample = packageFiles.get("Data/Scripts/examples/hello.lua");
+    expect(ideReadme).toBeDefined();
+    expect(luaLsConfig).toBeDefined();
+    expect(starterExample).toBeDefined();
+    if (ideReadme === undefined || luaLsConfig === undefined || starterExample === undefined) return;
+    expect(new TextDecoder().decode(ideReadme)).toContain("Open this folder in VS Code");
+    expect(new TextDecoder().decode(luaLsConfig)).toContain("./Data/Scripts/types");
+    expect(new TextDecoder().decode(starterExample)).toContain("function entry.onLevelStart(ctx)");
     expect(filePaths).toContain(
       "/Data/Scripts/src/globals/otto-humans-jump.lua",
     );
@@ -228,9 +314,14 @@ describe("scriptWorkspaceState", () => {
     expect(bundleText).toContain("local entry = {}");
     expect(bundleText).toContain("otto_humans_jump");
     expect(bundleText).toContain(
-      'require("./globals/otto-humans-jump.lua")',
+      'require("globals.otto-humans-jump")',
     );
     expect(bundleText).not.toContain("local bundled =");
+    expect(
+      previewFilesResult.value.some(
+        (file) => file.path === "/Data/Scripts/dist/modules/user.lua",
+      ),
+    ).toBe(true);
 
     const humansJumpFile = previewFilesResult.value.find(
       (file) =>
@@ -279,6 +370,8 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain(
       '---@field onAnimationComplete fun(self: ObjectBehaviorSelf, ctx: AnimationCompleteObjectFrameContext)|nil',
     );
+    expect(runtimeDeclaration.content).toContain("---@alias ObjectiveOutcome 0|1|2");
+    expect(runtimeDeclaration.content).toContain("---@class ObjectiveEventContext : PlayerEventContext");
     expect(runtimeDeclaration.content).toContain('---@field eventValue nil');
     expect(runtimeDeclaration.content).toContain(
       "---@field onCheckpointReset fun(self: ObjectBehaviorSelf, ctx: ObjectFrameContext)|nil",
@@ -288,16 +381,25 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain("---@field info fun(message: string)");
     expect(runtimeDeclaration.content).toContain("---@field position fun(handle: ObjectHandle): Vector3|nil");
     expect(runtimeDeclaration.content).toContain("---@field setPositionResult fun(handle: ObjectHandle, position: Vector3): ObjectCommandResult");
+    expect(runtimeDeclaration.content).toContain("---@field setPositionOffset fun(handle: ObjectHandle, offset: Vector3): boolean");
     expect(runtimeDeclaration.content).toContain("---@field deleteResult fun(handle: ObjectHandle): ObjectCommandResult");
     expect(runtimeDeclaration.content).toContain("---@field source fun(handle: ObjectHandle): ObjectSource|nil");
     expect(runtimeDeclaration.content).toContain("---@field kind \"terrain\"|\"spline\"|\"map\"");
     expect(runtimeDeclaration.content).toContain("---@class PangeaCapabilities");
+    expect(runtimeDeclaration.content).toContain("---@field contractVersion integer");
+    expect(runtimeDeclaration.content).toContain("---@field runtimeFingerprint integer");
+    expect(runtimeDeclaration.content).toContain("---@field pickupScoreEffects boolean");
     expect(runtimeDeclaration.content).toContain("---@field current fun(): integer");
     expect(runtimeDeclaration.content).toContain("---@field frame fun(): integer");
     expect(runtimeDeclaration.content).toContain("---@field after fun(delaySeconds: number");
     expect(runtimeDeclaration.content).toContain("---@field diagnostics fun(): PangeaDiagnostics");
     expect(runtimeDeclaration.content).toContain("---@class PangeaPlayerSnapshot");
     expect(runtimeDeclaration.content).toContain("---@field get fun(playerNum: integer): PangeaPlayerSnapshot|nil");
+    expect(runtimeDeclaration.content).toContain("---@class PlayerCommandResult");
+    expect(runtimeDeclaration.content).toContain("---@field setHealthResult fun(playerNum: integer, health: number): PlayerCommandResult");
+    expect(runtimeDeclaration.content).toContain("---@field setPositionResult fun(playerNum: integer, position: Vector3): PlayerCommandResult");
+    expect(runtimeDeclaration.content).toContain("---@field setVelocity fun(playerNum: integer, velocity: Vector3): boolean");
+    expect(runtimeDeclaration.content).toContain("---@field setVelocityResult fun(playerNum: integer, velocity: Vector3): PlayerCommandResult");
     expect(runtimeDeclaration.content).toContain("---@field player ObjectHandle|nil");
     expect(runtimeDeclaration.content).toContain("---@field other ObjectHandle|nil");
     expect(runtimeDeclaration.content).toContain('---@field reason "ok"|"not-enabled"');
@@ -310,6 +412,32 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain(
       "---@overload fun(id: NativeSpawnId",
     );
+
+    for (const api of getAvailableApiFunctions("OttoMatic-Android", SCRIPTING_CONTRACT.api.apis)) {
+      if (!api.name.startsWith("pangea.") || api.name === "pangea.spawn.native") {
+        continue;
+      }
+      const apiPath = api.name.slice("pangea.".length);
+      const separator = apiPath.indexOf(".");
+      if (separator < 0) {
+        continue;
+      }
+      const methodName = apiPath.slice(separator + 1);
+      expect(runtimeDeclaration.content).toContain(`---@field ${methodName} fun(`);
+    }
+    expect(runtimeDeclaration.content).toContain(
+      "---@field setCollisionEnabled fun(handle: ObjectHandle, enabled: boolean): boolean",
+    );
+  });
+
+  it("omits unsupported object commands from LuaLS declarations", () => {
+    const context = createScriptWorkspaceContext(MightyMikeGlobals, 1);
+    const state = ensureScriptWorkspace({}, context);
+    const declaration = buildScriptTypeDeclarationFiles(state).find(
+      (file) => file.path === "Data/Scripts/types/pangea-runtime.lua",
+    );
+    expect(declaration).toBeDefined();
+    expect(declaration?.content).not.toContain("setCollisionEnabled");
   });
 
   it("emits documented native spawn IDs for every game", () => {
@@ -369,6 +497,12 @@ describe("scriptWorkspaceState", () => {
     if (packageFilesResult.isErr()) {
       return;
     }
+
+    expect(
+      packageFilesResult.value.some(
+        (file) => file.path === "Data/Scripts/dist/modules/user.lua",
+      ),
+    ).toBe(true);
 
     const bindingsFile = packageFilesResult.value.find((file) =>
       file.path.endsWith("Data/Scripts/config/bindings/level-2.json"),
@@ -931,7 +1065,7 @@ describe("scriptWorkspaceState", () => {
       objectType: "bugdom.player",
       sourceFilePath: "Data/Scripts/src/objects/player-frame.lua",
       sourceTemplate:
-        "local module = {}\nfunction module.onObjectFrame(ctx)\n  return { positionOffset = { x = 0, y = 1, z = 0 } }\nend\nreturn module",
+        "local module = {}\nfunction module.onObjectFrame(ctx)\n  pangea.object.setPositionOffset(ctx.object, { x = 0, y = 1, z = 0 })\nend\nreturn module",
     });
 
     const compileResult = compileScriptWorkspace(state);

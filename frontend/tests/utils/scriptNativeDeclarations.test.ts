@@ -20,6 +20,7 @@ describe("native spawn declarations", () => {
       streaming: "native-owned",
       childObjects: "not-audited",
       saveBehavior: "not-audited",
+      runtimeVerification: "not-verified",
       auditBasis: "test fixture",
     },
   }];

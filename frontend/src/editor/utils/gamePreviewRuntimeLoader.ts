@@ -1,5 +1,5 @@
-import { Result, ResultAsync, err } from "neverthrow";
-import { ZodError } from "zod";
+import { Result, ResultAsync, err, ok } from "neverthrow";
+import { z, ZodError } from "zod";
 import { MultiplayerMatchConfigSchema } from "@/multiplayer/schemas";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
 import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
@@ -15,6 +15,7 @@ import {
 } from "./gamePreviewRuntimeTypes";
 import {
   ensurePreviewPrefsDirs,
+  writePreviewCustomFilesToVfs,
   writeTerrainToVfs,
 } from "./gamePreviewRuntimeVfs";
 import { mapErr } from "../../utils/mapErr";
@@ -42,6 +43,7 @@ export interface PreviewModuleOptions {
   readonly deferNetworkStart?: boolean;
   readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
   readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
+  readonly onRuntimeModule?: (module: PreviewRuntimeModule) => void;
 }
 
 function formatSchemaError(error: ZodError): string {
@@ -90,7 +92,7 @@ function configureScriptingExports(
     () =>
       ccall(
         "PangeaScript_SetStartupScript",
-        null,
+        "number",
         ["string"],
         [scriptBundlePath],
       ),
@@ -98,6 +100,15 @@ function configureScriptingExports(
   )();
   if (startupResult.isErr()) {
     onError(startupResult.error);
+    return;
+  }
+  const statusResult = z.number().safeParse(startupResult.value);
+  if (!statusResult.success) {
+    onError("PangeaScript_SetStartupScript returned an invalid status");
+    return;
+  }
+  if (statusResult.data !== 0) {
+    onError(`PangeaScript_SetStartupScript failed with status ${statusResult.data}`);
   }
 }
 
@@ -191,6 +202,7 @@ export function createPreviewModule(
     deferNetworkStart = false,
     onRuntimeEvent,
     onStartNetworkMatchReady,
+    onRuntimeModule,
   } = options;
 
   let runtimeInitialized = false;
@@ -266,6 +278,7 @@ export function createPreviewModule(
       if (!module) {
         return;
       }
+      onRuntimeModule?.(module);
 
       if (terrainPaths && !normalLaunch) {
         // Emscripten invokes onRuntimeInitialized after preRun and before
@@ -281,6 +294,8 @@ export function createPreviewModule(
           customFiles,
           onError,
         );
+      } else if (!normalLaunch && customFiles && customFiles.length > 0) {
+        writePreviewCustomFilesToVfs(module, customFiles, onError);
       }
 
       configureScriptingExports(module, customFiles, onError);
@@ -288,16 +303,24 @@ export function createPreviewModule(
       if (!normalLaunch) {
         const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
         if (skipToLevel) {
-          Result.fromThrowable(
+          const skipResult = Result.fromThrowable(
             () =>
               module.ccall?.(
                 skipToLevel.fn,
                 skipToLevel.returnType,
                 skipToLevel.argTypes,
                 skipToLevel.args,
-              ),
+            ),
             (e) => mapErr(e),
           )();
+          if (skipResult.isErr()) {
+            onRuntimeEvent?.({
+              type: "runtimeLoadFailed",
+              detail: skipResult.error,
+            });
+            onError(skipResult.error);
+            return;
+          }
         }
       }
 
@@ -359,7 +382,8 @@ export async function loadPreviewRuntime(
   module: PreviewRuntimeModule,
   scriptUrl: string,
   isCancelled: () => boolean = () => false,
-): Promise<() => void> {
+  onRuntimeModule?: (module: PreviewRuntimeModule) => void,
+): Promise<Result<() => void, string>> {
   let stopped = false;
   let stopRequested = false;
   const pendingRafIds = new Set<number>();
@@ -676,7 +700,7 @@ export async function loadPreviewRuntime(
 
   if (isCancelled()) {
     restoreWindowGlobals();
-    return () => undefined;
+    return ok(() => undefined);
   }
 
   function restoreWindowGlobals(): void {
@@ -704,7 +728,7 @@ export async function loadPreviewRuntime(
   if (response.isErr() || !response.value.ok) {
     const status = response.isOk() ? response.value.status : 0;
     restoreWindowGlobals();
-    return Promise.reject(`Failed to load ${scriptUrl}: ${String(status)}`);
+    return err(`Failed to load ${scriptUrl}: ${String(status)}`);
   }
 
   const sourceResult = await ResultAsync.fromPromise(
@@ -713,13 +737,13 @@ export async function loadPreviewRuntime(
   );
   if (sourceResult.isErr()) {
     restoreWindowGlobals();
-    return Promise.reject(sourceResult.error);
+    return err(sourceResult.error);
   }
   const source = sourceResult.value;
 
   if (isCancelled()) {
     restoreWindowGlobals();
-    return () => undefined;
+    return ok(() => undefined);
   }
 
   const runner = Result.fromThrowable(
@@ -766,12 +790,12 @@ export async function loadPreviewRuntime(
 
   if (runner.isErr()) {
     restoreWindowGlobals();
-    return Promise.reject(runner.error);
+    return err(runner.error);
   }
 
   if (isCancelled()) {
     restoreWindowGlobals();
-    return () => undefined;
+    return ok(() => undefined);
   }
 
   const runResult = Result.fromThrowable(
@@ -788,10 +812,11 @@ export async function loadPreviewRuntime(
   )();
   if (runResult.isErr()) {
     restoreWindowGlobals();
-    return Promise.reject(runResult.error);
+    return err(runResult.error);
   }
+  onRuntimeModule?.(runResult.value);
 
-  return () => {
+  return ok(() => {
     if (stopRequested) {
       return;
     }
@@ -805,5 +830,5 @@ export async function loadPreviewRuntime(
       return;
     }
     finishStop(true);
-  };
+  });
 }

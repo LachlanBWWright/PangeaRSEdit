@@ -2,7 +2,10 @@ import { describe, expect, test, vi } from "vitest";
 import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
 import { getPreviewTerrainPaths } from "./gamePreviewRuntimeTypes";
-import { writeTerrainToVfs } from "./gamePreviewRuntimeVfs";
+import {
+  writePreviewCustomFilesToVfs,
+  writeTerrainToVfs,
+} from "./gamePreviewRuntimeVfs";
 
 describe("Mighty Mike preview terrain paths", () => {
   test("injects the edited tileset at the lowercase path used by the game", () => {
@@ -53,6 +56,30 @@ describe("Mighty Mike preview terrain paths", () => {
     expect(writeFile).toHaveBeenCalledWith(
       "/Data/Maps/jurassic.tileset",
       new Uint8Array([1, 2, 3]),
+    );
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  test("writes scripting files without terrain metadata", () => {
+    const writeFile = vi.fn();
+    const onError = vi.fn();
+    const scriptBytes = new Uint8Array([1, 2, 3]);
+
+    writePreviewCustomFilesToVfs(
+      {
+        canvas: document.createElement("canvas"),
+        arguments: [],
+        preRun: [],
+        locateFile: (path) => path,
+        FS: { writeFile },
+      },
+      [{ path: "Data/Scripts/dist/main.lua", data: scriptBytes }],
+      onError,
+    );
+
+    expect(writeFile).toHaveBeenCalledWith(
+      "Data/Scripts/dist/main.lua",
+      scriptBytes,
     );
     expect(onError).not.toHaveBeenCalled();
   });

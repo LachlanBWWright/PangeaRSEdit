@@ -29,6 +29,8 @@ import { ScriptCodeModal } from "./ScriptCodeModal";
 import { ScriptCodeWorkspacePanel } from "./ScriptCodeWorkspacePanel";
 import { ScriptCustomObjectsPanel } from "./ScriptCustomObjectsPanel";
 import { ScriptGlobalHooksPanel } from "./ScriptGlobalHooksPanel";
+import { ScriptGettingStartedPanel } from "./ScriptGettingStartedPanel";
+import { ScriptHookApiExplorer } from "./ScriptHookApiExplorer";
 import { ScriptNativeBindingsPanel } from "./ScriptNativeBindingsPanel";
 import { ScriptObjectTypeBehaviorsPanel } from "./ScriptObjectTypeBehaviorsPanel";
 import { ScriptOverviewPanel } from "./ScriptOverviewPanel";
@@ -82,6 +84,7 @@ import {
   removeSplineItemReplacement,
   removeGlobalBehavior,
   removeScriptSourceFile,
+  replaceLuaLSDiagnostics,
   replaceScriptWorkspace,
   replaceTerrainItemWithCustomObject,
   replaceMapItemWithCustomObject,
@@ -98,6 +101,7 @@ import {
   type ScriptWorkspaceState,
 } from "./scriptWorkspaceState";
 import { validateUploadedScriptAssetAsync } from "./scriptAssetValidation";
+import { scriptLspClient } from "./scriptLspClient";
 import { convertGltfAsset } from "./scriptAssetConversion";
 import {
   applyUploadedAssetPath,
@@ -373,6 +377,17 @@ export function ScriptsMenu({
       ),
     );
   }, [context, setWorkspaceStore, workspaceId, workspaceStore]);
+
+  useEffect(() => scriptLspClient.subscribeDiagnostics((event) => {
+    setWorkspaceStore((currentStore) => {
+      const currentWorkspace = currentStore[workspaceId];
+      if (currentWorkspace === undefined) return currentStore;
+      return replaceScriptWorkspace(
+        currentStore,
+        replaceLuaLSDiagnostics(currentWorkspace, event.filePath, event.diagnostics),
+      );
+    });
+  }), [setWorkspaceStore, workspaceId]);
 
   const persistWorkspace = (nextState: ScriptWorkspaceState) => {
     setWorkspaceStore((currentStore) =>
@@ -692,7 +707,7 @@ export function ScriptsMenu({
     if (!paths) {
       reportAssetFailure(
         role === "model"
-          ? "Select a .bg3d, .shapes, .gltf, or .glb model"
+          ? "Select a .bg3d, .3dmf, .shapes, .gltf, or .glb model"
           : "Select a .rsrc skeleton resource",
         "asset.path",
       );
@@ -803,6 +818,25 @@ export function ScriptsMenu({
         </TabsList>
 
         <TabsContent value="overview" className="grid gap-3">
+          <ScriptGettingStartedPanel
+            hasScripts={summary.hasScripts}
+            onCreateHook={() => {
+              const hookId = context.supportedHooks.includes("onLevelStart")
+                ? "onLevelStart"
+                : context.supportedHooks[0];
+              if (hookId === undefined) return;
+              setGlobalHookForNewBehavior(hookId);
+              setDefineBehaviorOpen(true);
+            }}
+            onOpenCode={() => {
+              setActiveTab("code");
+              if (activeCodeFile !== null) setCodeEditorOpen(true);
+            }}
+            onCompile={() => {
+              handleCompile();
+            }}
+            onOpenPreview={() => setActiveTab("preview")}
+          />
           <ScriptOverviewPanel
             globalHooksCount={levelState.globalHooks.length}
             itemBindingsCount={
@@ -816,6 +850,14 @@ export function ScriptsMenu({
             onLoadSample={(sampleId, sampleLabel) => {
               persistWorkspace(loadScriptSample(context, sampleId));
               toast.success(`Loaded ${sampleLabel}`);
+            }}
+          />
+          <ScriptHookApiExplorer
+            gameId={context.gameId}
+            supportedHooks={context.supportedHooks}
+            onCreateHook={(hookId) => {
+              setGlobalHookForNewBehavior(hookId);
+              setDefineBehaviorOpen(true);
             }}
           />
         </TabsContent>
@@ -1268,6 +1310,32 @@ export function ScriptsMenu({
         terrainRsrcBytes={previewRsrcBytes}
         terrainTextureBytes={previewTextureBytes}
         customFiles={previewCustomFiles}
+        onScriptRuntimeDiagnostic={(message) => {
+          updateWorkspace((state) =>
+            appendScriptDiagnostic(state, {
+              category: "runtime-traceback",
+              severity: "error",
+              message,
+              code: "runtime.traceback",
+              filePath: "Data/Scripts/dist/main.lua",
+              line: 0,
+              column: 0,
+            }),
+          );
+        }}
+        onPreviewRuntimeError={(message) => {
+          updateWorkspace((state) =>
+            appendScriptDiagnostic(state, {
+              category: "native-adapter",
+              severity: "error",
+              message,
+              code: "runtime.native",
+              filePath: "runtime",
+              line: 0,
+              column: 0,
+            }),
+          );
+        }}
       />
     </>
   );

@@ -41,7 +41,10 @@ export function getTextureFileType(
   isBugdom1: boolean,
   isNanosaur1: boolean,
 ): string | null {
-  if (isMightyMike || isBugdom1) {
+  if (isMightyMike) {
+    return ".tileset";
+  }
+  if (isBugdom1) {
     return null;
   }
   return isNanosaur1 ? ".trt" : ".ter";

@@ -2,7 +2,11 @@ import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import { startGamePreview } from "./gamePreviewHostRuntime";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
 import type { MultiplayerRuntimeManagedTransport } from "@/multiplayer/runtimeBridge";
-import type { PreviewVfsFile } from "./gamePreviewRuntime";
+import type {
+  MultiplayerRuntimeEvent,
+  PreviewRuntimeModule,
+  PreviewVfsFile,
+} from "./gamePreviewRuntime";
 
 export interface PreviewState {
   readonly runToken: number;
@@ -32,6 +36,8 @@ interface StartPreparedGamePreviewOptions extends PreviewTerrainBytes {
   readonly customFiles?: readonly PreviewVfsFile[];
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
+  readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
+  readonly onRuntimeModule?: (module: PreviewRuntimeModule | null) => void;
 }
 
 interface PreviewOverlayState {
@@ -69,6 +75,8 @@ export function startPreparedGamePreview({
   customFiles,
   onStatus,
   onError,
+  onRuntimeEvent,
+  onRuntimeModule,
 }: StartPreparedGamePreviewOptions): (() => void) | undefined {
   if (!canvas) {
     return undefined;
@@ -100,6 +108,8 @@ export function startPreparedGamePreview({
     networkRuntimeTransport,
     onStatus,
     onError,
+    onRuntimeEvent,
+    onRuntimeModule,
   });
 }
 

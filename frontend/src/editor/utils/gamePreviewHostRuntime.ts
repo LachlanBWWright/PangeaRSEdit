@@ -1,4 +1,4 @@
-import { Result, ResultAsync, ok } from "neverthrow";
+import { Result, ok } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   createManagedMultiplayerRuntimeBridge,
@@ -41,6 +41,7 @@ interface StartGamePreviewOptions {
   readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
+  readonly onRuntimeModule?: (module: PreviewRuntimeModule | null) => void;
 }
 
 function isScriptNotFoundError(error: string): boolean {
@@ -244,6 +245,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     onStartNetworkMatchReady,
     onStatus,
     onError,
+    onRuntimeModule,
   } = options;
 
   let cancelled = false;
@@ -327,6 +329,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
 
     canvas.width = width;
     canvas.height = height;
+    canvas.focus();
     triggerResizePulse(resizePulseTimerIds);
 
     void (async () => {
@@ -354,19 +357,25 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           onRuntimeEvent,
           onStartNetworkMatchReady,
           normalLaunch,
+          onRuntimeModule,
           onStatus,
           onError,
         });
         syncRuntimeCanvasSize(activeModule);
 
         window.Module = activeModule;
+        onRuntimeModule?.(activeModule);
         const scriptUrl =
           new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
         onStatus("Loading runtime script...");
-        const stopOrErr = await ResultAsync.fromPromise(
-          loadPreviewRuntime(activeModule, scriptUrl, () => cancelled),
-          (e) => mapErr(e),
-        );
+        const stopOrErr = onRuntimeModule
+          ? await loadPreviewRuntime(
+              activeModule,
+              scriptUrl,
+              () => cancelled,
+              onRuntimeModule,
+            )
+          : await loadPreviewRuntime(activeModule, scriptUrl, () => cancelled);
         if (cancelled) {
           if (stopOrErr.isOk()) stopOrErr.value();
           return;
@@ -382,6 +391,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           return;
         }
         stopGame = stopOrErr.value;
+        onRuntimeModule?.(window.Module ?? activeModule);
         scheduleStartupCanvasSync(
           activeModule,
           resizePulseFrameIds,
@@ -417,5 +427,6 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     uninstallRuntimeBridge?.();
     uninstallRuntimeBridge = null;
     restorePreviewModule(previousModule);
+    onRuntimeModule?.(null);
   };
 }

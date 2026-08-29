@@ -1,3 +1,31 @@
+import type { ApiFunction } from "./scriptApiSchema";
+
+function luaFieldType(field: ApiFunction["parameters"][number]): string {
+  if (field.type === "stringUnion" && field.unionValues !== undefined) {
+    return field.unionValues.map((value) => JSON.stringify(value)).join("|");
+  }
+  const types: Record<ApiFunction["parameters"][number]["type"], string> = {
+    string: "string",
+    number: "number",
+    boolean: "boolean",
+    vector2: "Vector2",
+    vector3: "Vector3",
+    objectHandle: "ObjectHandle",
+    stringUnion: "string",
+    table: "table",
+    function: "function",
+    unknown: "unknown",
+  };
+  return types[field.type];
+}
+
+export function buildApiSignature(api: ApiFunction): string {
+  const parameters = api.parameters
+    .map((parameter) => `${parameter.name}: ${luaFieldType(parameter)}${parameter.optional ? "?" : ""}`)
+    .join(", ");
+  return `${api.name}(${parameters}): ${api.returnType}`;
+}
+
 export function getContextualApiName(
   linePrefix: string,
   qualifiedName: string,
@@ -11,6 +39,16 @@ export function getContextualApiName(
     return parts.slice(1).join(".");
   }
   return qualifiedName;
+}
+
+export function buildApiCompletionInsertText(
+  api: ApiFunction,
+  contextualApiName: (qualifiedName: string) => string,
+): string {
+  const parameters = api.parameters
+    .map((parameter, index) => `\${${index + 1}:${parameter.name}}`)
+    .join(", ");
+  return `${contextualApiName(api.name)}(${parameters})`;
 }
 
 export function buildNativeIdSnippet(nativeSpawnIds: readonly string[]): string {

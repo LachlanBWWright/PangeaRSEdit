@@ -1,25 +1,25 @@
 import { BG3DParseResult } from "./parseBG3D";
 import { Document } from "@gltf-transform/core";
-import { err, type Result } from "neverthrow";
+import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
+import { ok, type Result } from "neverthrow";
 
 /**
- * Placeholder for converting a glTF Document to a parsed 3DMF (BG3DParseResult).
+ * Convert a glTF document to the parsed native model representation used by
+ * the 3DMF serializer. 3DMF and BG3D share this normalized intermediate form;
+ * the format-specific serializer remains responsible for writing the bytes.
  * @param doc Document
  * @returns Result<BG3DParseResult, string>
  */
 export function gltfToParsed3dmf(doc: Document): Result<BG3DParseResult, string> {
-  // TODO: Implement real conversion logic
-  console.log(doc);
-  return err("gltfToParsed3dmf is not yet implemented");
+  return ok(gltfToBG3D(doc));
 }
 
 /**
- * Placeholder for converting a parsed 3DMF (BG3DParseResult) to a glTF Document.
+ * Convert the normalized native model representation to glTF before the 3DMF
+ * serializer writes the format-specific metadata and resource fork.
  * @param parsed BG3DParseResult
  * @returns Result<Document, string>
  */
 export function parsed3dmfToGLTF(parsed: BG3DParseResult): Result<Document, string> {
-  // TODO: Implement real conversion logic
-  console.log(parsed);
-  return err("parsed3dmfToGLTF is not yet implemented");
+  return ok(bg3dParsedToGLTF(parsed));
 }

@@ -16,6 +16,37 @@ export const SCRIPT_CONTRACT_VERSION = 1;
 export const SCRIPT_API_VERSION = 1;
 export const SCRIPT_RUNTIME_VERSION = "lua-5.4";
 
+export const SCRIPT_RUNTIME_CAPABILITY_FIELDS = [
+  { name: "contractVersion", luaType: "integer" },
+  { name: "apiVersion", luaType: "integer" },
+  { name: "runtimeFingerprint", luaType: "integer" },
+  { name: "levelSettings", luaType: "boolean" },
+  { name: "objectMutation", luaType: "boolean" },
+  { name: "objectPosition", luaType: "boolean" },
+  { name: "spawnNative", luaType: "boolean" },
+  { name: "spawnScripted", luaType: "boolean" },
+  { name: "objectQueries", luaType: "boolean" },
+  { name: "timers", luaType: "boolean" },
+  { name: "tasks", luaType: "boolean" },
+  { name: "events", luaType: "boolean" },
+  { name: "persistence", luaType: "boolean" },
+  { name: "terrainItems", luaType: "boolean" },
+  { name: "splineItems", luaType: "boolean" },
+  { name: "mapItems", luaType: "boolean" },
+  { name: "pickupScoreEffects", luaType: "boolean" },
+  { name: "objectCollision", luaType: "boolean" },
+  { name: "playerCommands", luaType: "boolean" },
+  { name: "playerInvulnerability", luaType: "boolean" },
+  { name: "memoryLimitBytes", luaType: "integer" },
+  { name: "loadInstructionBudget", luaType: "integer" },
+  { name: "eventInstructionBudget", luaType: "integer" },
+  { name: "frameInstructionBudget", luaType: "integer" },
+  { name: "timerLimit", luaType: "integer" },
+  { name: "taskLimit", luaType: "integer" },
+  { name: "subscriptionLimit", luaType: "integer" },
+  { name: "playerLookup", luaType: "boolean" },
+] satisfies readonly { readonly name: string; readonly luaType: "boolean" | "integer" }[];
+
 const persistentStorageTypes = z.enum(["string", "boolean", "integer", "number"]);
 
 export const SCRIPT_PERSISTENCE_LIMITS = {
@@ -64,7 +95,7 @@ const eventContractSchema = z.object({
 const objectCapabilitySchema = z.object({
   id: z.string().min(1),
   description: z.string().min(1),
-  mutation: z.enum(["read-only", "transform", "motion", "animation", "delete"]),
+  mutation: z.enum(["read-only", "transform", "motion", "animation", "collision", "delete"]),
 });
 
 const objectEventSchema = z.object({
@@ -80,7 +111,7 @@ const gameContractSchema = z.object({
   gameId: z.string().min(1),
   modes: z.array(z.string().min(1)),
   capabilities: z.record(z.string(), z.string()),
-  assetKinds: z.array(z.enum(["bg3d", "shapes", "skeleton"])),
+  assetKinds: z.array(z.enum(["bg3d", "3dmf", "shapes", "skeleton"])),
   multiplayer: z.enum(["unsupported", "unsafe", "deterministic-only"]),
 });
 
@@ -125,8 +156,9 @@ function gameModes(gameId: string): readonly string[] {
   return ["single-player"];
 }
 
-function assetKinds(gameId: string): readonly ("bg3d" | "shapes" | "skeleton")[] {
+function assetKinds(gameId: string): readonly ("bg3d" | "3dmf" | "shapes" | "skeleton")[] {
   if (gameId === "MightyMike-Android") return ["shapes"];
+  if (gameId === "Bugdom-android" || gameId === "Nanosaur-android") return ["3dmf", "skeleton"];
   return ["bg3d", "skeleton"];
 }
 
@@ -207,6 +239,30 @@ export const SCRIPTING_CONTRACT: ScriptingContract = scriptingContractSchema.par
       applicationPhase: "callback",
     },
     {
+      id: "onCheckpointReached",
+      payload: { player: "ObjectHandle", eventValue: "integer", position: "Vector3" },
+      result: "nil",
+      applicationPhase: "callback",
+    },
+    {
+      id: "onLapComplete",
+      payload: { player: "ObjectHandle", eventValue: "integer", position: "Vector3" },
+      result: "nil",
+      applicationPhase: "callback",
+    },
+    {
+      id: "onRaceFinish",
+      payload: { player: "ObjectHandle", eventValue: "integer", position: "Vector3" },
+      result: "nil",
+      applicationPhase: "callback",
+    },
+    {
+      id: "onObjectiveComplete",
+      payload: { player: "ObjectHandle", eventValue: "integer", position: "Vector3" },
+      result: "nil",
+      applicationPhase: "callback",
+    },
+    {
       id: "animationComplete",
       payload: { object: "ObjectHandle" },
       result: "nil",
@@ -224,6 +280,7 @@ export const SCRIPTING_CONTRACT: ScriptingContract = scriptingContractSchema.par
     { id: "update", handler: "onUpdate", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
     { id: "triggerEnter", handler: "onTriggerEnter", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
     { id: "triggerStay", handler: "onTriggerStay", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
+    { id: "triggerExit", handler: "onTriggerExit", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
     { id: "animationEvent", handler: "onAnimationEvent", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
     { id: "animationComplete", handler: "onAnimationComplete", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
     { id: "activate", handler: "onActivate", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
@@ -239,6 +296,7 @@ export const SCRIPTING_CONTRACT: ScriptingContract = scriptingContractSchema.par
     { id: "rotation", description: "Set an object's Euler rotation.", mutation: "transform" },
     { id: "scale", description: "Set an object's uniform scale.", mutation: "transform" },
     { id: "animation", description: "Select an animation by index or declared name.", mutation: "animation" },
+    { id: "collision", description: "Enable or disable native collision checks when the adapter supports them.", mutation: "collision" },
     { id: "delete", description: "Request safe deletion of an object.", mutation: "delete" },
   ],
   persistentStorage: SCRIPT_PERSISTENCE_LIMITS,
@@ -286,7 +344,7 @@ export function validateScriptingContract(): Result<true, string> {
     commandMetadata.set(command.capability, signature);
   }
   const incompleteCommands = commandApis
-    .filter((api) => api.returnType !== "boolean" && api.returnType !== "ObjectCommandResult")
+    .filter((api) => api.returnType !== "boolean" && api.returnType !== "ObjectCommandResult" && api.returnType !== "PlayerCommandResult")
     .map((api) => api.name);
   if (incompleteCommands.length > 0) {
     return err(`Command APIs must return boolean or ObjectCommandResult: ${incompleteCommands.join(", ")}`);
@@ -388,17 +446,26 @@ export function validateScriptingContract(): Result<true, string> {
         "objectAnimationCompletionEvents",
         "objectAnimationMarkerEvents",
         "checkpointEvents",
+        "raceProgressEvents",
+        "objectiveEvents",
         "damageEvents",
         "playerLifecycleEvents",
         "pickupEvents",
+        "pickupScoreEffects",
         "weaponHitEvents",
         "nativeSpawn",
         "scriptedSpawn",
         "playerLookup",
+        "playerCommands",
+        "playerInvulnerability",
+        "raceMetadata",
+        "objectiveMetadata",
+        "objectCollision",
         "levelMetadata",
         "timeAPIs",
         "logging",
         "statusReporting",
+        "persistence",
         "multiplayer",
       ];
       return keys
