@@ -436,9 +436,23 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.PowerupPod]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
+      type: "TypeSelector",
       description:
         "Powerup type (0=StunPulse, 1=Health, 2=JumpJet, 3=Fuel, 4=SuperNova, 5=Freeze, 6=Magnet, 7=Growth, 8=Flame, 9=Flare, 10=Dart, 11=FreeLife)",
+      options: {
+        0: "Stun Pulse",
+        1: "Health",
+        2: "Jump Jet",
+        3: "Fuel",
+        4: "Super Nova",
+        5: "Freeze",
+        6: "Magnet",
+        7: "Growth",
+        8: "Flame",
+        9: "Flare",
+        10: "Dart",
+        11: "Free Life",
+      },
       codeSample: {
         code: "newObj->POWType = itemPtr->parm[0];",
         fileName: "Items/Powerups.c",

@@ -155,7 +155,7 @@ export function TopologyTiles({
       const pixels = mergeBrushPixels([
         previousStroke?.pixels ?? [],
         nextPixels,
-      ]);
+      ], globals.TILE_SIZE);
       const draft = applyTopologyBrushToSnapshot(
         baseFloor,
         baseRoof,

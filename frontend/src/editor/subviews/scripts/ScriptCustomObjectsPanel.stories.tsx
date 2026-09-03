@@ -26,6 +26,7 @@ function ScriptCustomObjectsPanelStory() {
   const [label, setLabel] = useState("Hover Beacon");
   const customObjectBehaviors = getScriptBehaviorOptions(workspace, "customObject");
   const customObjectOptions = getScriptCustomObjectOptions(workspace);
+  const currentLevel = workspace.levels[context.levelKey];
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
@@ -38,6 +39,26 @@ function ScriptCustomObjectsPanelStory() {
         onCustomObjectLabelChange={setLabel}
         generatedCustomObjectId="custom.hover-beacon"
         customObjectOptions={customObjectOptions}
+        customObjectPlacements={currentLevel?.customPlacements ?? []}
+        onRemoveCustomObjectPlacement={(placementId) => {
+          if (!currentLevel) return;
+          setWorkspace((current) => ({
+            ...current,
+            levels: {
+              ...current.levels,
+              [context.levelKey]: {
+                ...currentLevel,
+                customPlacements:
+                  currentLevel.customPlacements.filter(
+                    (placement) => placement.id !== placementId,
+                  ) ?? [],
+              },
+            },
+          }));
+        }}
+        onCreateObjectScript={() => undefined}
+        onExportDefinitions={() => undefined}
+        onImportDefinitions={() => undefined}
         onCreateObject={() => undefined}
         onUpdateObject={(definition) => {
           setWorkspace((current) => ({

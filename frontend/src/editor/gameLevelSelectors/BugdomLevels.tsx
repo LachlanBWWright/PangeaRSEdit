@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { LevelGrid } from "../LevelGrid";
 import { BugdomGlobals, type GlobalsInterface } from "@/data/globals/globals";
+import { ScriptItemDemoButton } from "./levelSelectorRender";
 
 export function BugdomLevels({
   openFile,
+  onCreateScriptItemDemoLevel,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
+  onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
   return (
     <LevelGrid title="Bugdom Levels">
@@ -79,6 +82,7 @@ export function BugdomLevels({
       >
         Level 10
       </Button>
+      <ScriptItemDemoButton globals={BugdomGlobals} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
     </LevelGrid>
   );
 }

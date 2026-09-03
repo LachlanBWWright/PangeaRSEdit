@@ -27,6 +27,7 @@ import {
   getStickyStageOffset,
   getTerrainContentSize,
   StageData,
+  isPointerWithinMap,
 } from "@/editor/canvas/konvaViewState";
 
 type View = CanvasViewMode;
@@ -202,7 +203,20 @@ export function KonvaView({
           scaleY={stage.scale}
           x={stageOffset.x}
           y={stageOffset.y}
-          draggable={!isTopologyMode}
+          draggable
+          onDragStart={(e) => {
+            if (
+              isTopologyMode &&
+              isPointerWithinMap(
+                e,
+                globals.TILE_SIZE,
+                headerData.Hedr[1000].obj.mapWidth,
+                headerData.Hedr[1000].obj.mapHeight,
+              )
+            ) {
+              e.target.getStage()?.stopDrag();
+            }
+          }}
           onClick={handleStageClick}
           onDblClick={handleStageDblClick}
           onWheel={handleStageWheel}

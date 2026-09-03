@@ -12,7 +12,7 @@ import {
 import { preprocessJson } from "../processors/ottoPreprocessor";
 import { fixNullToZero } from "../processors/nullToZeroFixer";
 import { DataType, GlobalsInterface } from "../globals/globals";
-import { err, ok, Result } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import { errorSchema, plainObjectSchema } from "../../schemas/common";
 
@@ -85,21 +85,25 @@ export async function parseLevelBuffer(
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   const bytes = new Uint8Array(buffer);
-  let parseResult: Awaited<ReturnType<typeof saveToJson>>;
-  try {
-    parseResult = await saveToJson(
+  const parseResult = await ResultAsync.fromPromise(
+    saveToJson(
       bytes,
       structSpecs || [],
       includeTypes,
       excludeTypes,
-    );
-  } catch (error) {
-    return err(String(error));
+    ),
+    (error) => {
+      const parsed = errorSchema.safeParse(error);
+      return parsed.success ? parsed.data : String(error);
+    },
+  );
+  if (parseResult.isErr()) {
+    return err(parseResult.error);
   }
 
-  const parsedJsonResult = parseResult.ok
-    ? ok(parseResult.value)
-    : err(parseResult.error);
+  const parsedJsonResult = parseResult.value.ok
+    ? ok(parseResult.value.value)
+    : err(parseResult.value.error);
 
   if (parsedJsonResult.isErr()) {
     return err(parsedJsonResult.error);

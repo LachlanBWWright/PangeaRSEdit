@@ -1,4 +1,4 @@
-import { Boxes, Flag, Network } from "lucide-react";
+import { Boxes, Flag, Network, ShieldCheck, WandSparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -39,6 +39,30 @@ export function FeatureFlagsPage() {
     const result = setFeatureFlags({ ...featureFlags, itemModelMappingPreview: enabled });
     result.match(
       () => toast.success(enabled ? "Item mapping preview enabled" : "Item mapping preview disabled"),
+      (error) => toast.error(error.message),
+    );
+  };
+
+  const handleScriptItemDemoLevelsChange = (enabled: boolean) => {
+    const result = setFeatureFlags({ ...featureFlags, scriptItemDemoLevels: enabled });
+    result.match(
+      () => toast.success(enabled ? "Script item demos enabled" : "Script item demos disabled"),
+      (error) => toast.error(error.message),
+    );
+  };
+
+  const handleLevelValidationChange = (enabled: boolean) => {
+    const result = setFeatureFlags({ ...featureFlags, levelValidation: enabled });
+    result.match(
+      () => toast.success(enabled ? "Level validation enabled" : "Level validation disabled"),
+      (error) => toast.error(error.message),
+    );
+  };
+
+  const handleLevelOutputCacheChange = (enabled: boolean) => {
+    const result = setFeatureFlags({ ...featureFlags, levelOutputCache: enabled });
+    result.match(
+      () => toast.success(enabled ? "Level output cache enabled" : "Level output cache disabled"),
       (error) => toast.error(error.message),
     );
   };
@@ -88,6 +112,42 @@ export function FeatureFlagsPage() {
           </div>
           <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
             <div>
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+              <label htmlFor="level-validation-feature-flag" className="font-medium text-slate-100">
+                Strict level validation
+              </label>
+              <p className="mt-1 text-sm leading-5 text-slate-400">
+                Block level playback and downloads when the level data fails validation.
+              </p>
+            </div>
+            <Switch
+              id="level-validation-feature-flag"
+              checked={featureFlags.levelValidation}
+              onCheckedChange={handleLevelValidationChange}
+              aria-label="Toggle strict level validation"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <div className="flex min-w-0 gap-3">
+              <Zap className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+              <div>
+                <label htmlFor="level-output-cache-feature-flag" className="font-medium text-slate-100">
+                  Level output cache
+                </label>
+                <p className="mt-1 text-sm leading-5 text-slate-400">
+                  Reuse unchanged generated level and texture files during preview and download.
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="level-output-cache-feature-flag"
+              checked={featureFlags.levelOutputCache}
+              onCheckedChange={handleLevelOutputCacheChange}
+              aria-label="Toggle level output cache"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <div>
               <label htmlFor="scripting-feature-flag-page" className="font-medium text-slate-100">
                 Scripting tools
               </label>
@@ -100,6 +160,25 @@ export function FeatureFlagsPage() {
               checked={featureFlags.scripting}
               onCheckedChange={handleScriptingChange}
               aria-label="Toggle scripting tools"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <div className="flex min-w-0 gap-3">
+              <WandSparkles className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+              <div>
+                <label htmlFor="script-item-demo-levels-feature-flag" className="font-medium text-slate-100">
+                  Script item demo levels
+                </label>
+                <p className="mt-1 text-sm leading-5 text-slate-400">
+                  Show mostly blank levels containing custom scripted model examples.
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="script-item-demo-levels-feature-flag"
+              checked={featureFlags.scriptItemDemoLevels}
+              onCheckedChange={handleScriptItemDemoLevelsChange}
+              aria-label="Toggle script item demo levels"
             />
           </div>
           <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">

@@ -319,7 +319,7 @@ function StoryPanel({
       setMapImagesFile: () => undefined,
       setMapImages,
       setData: (nextLevel) => {
-        if ((nextLevel.itemData.Itms[1000]?.obj.length ?? 0) > 0) {
+        if ((nextLevel.itemData?.Itms[1000]?.obj.length ?? 0) > 0) {
           store.set(SelectedItem, 0);
         }
         setLevel(nextLevel);

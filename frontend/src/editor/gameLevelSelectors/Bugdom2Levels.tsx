@@ -9,14 +9,16 @@ import {
   BUGDOM2_TUNNEL_LEVELS,
   LEVEL_SELECTOR_GLOBALS,
 } from "@/editor/gameLevelSelectors/levelSelectorData";
-import { OpenFileButtons } from "@/editor/gameLevelSelectors/levelSelectorRender";
+import { OpenFileButtons, ScriptItemDemoButton } from "@/editor/gameLevelSelectors/levelSelectorRender";
 
 export function Bugdom2Levels({
   openFile,
   onTunnelLoad,
+  onCreateScriptItemDemoLevel,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
   onTunnelLoad?: (data: TunnelData, fileName: string) => void;
+  onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
   const tunnelLoader = useCallback(
     (path: string, fileName: string) => {
@@ -59,6 +61,7 @@ export function Bugdom2Levels({
         globals: LEVEL_SELECTOR_GLOBALS.bugdom2,
         openFile,
       })}
+      <ScriptItemDemoButton globals={LEVEL_SELECTOR_GLOBALS.bugdom2} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
     </LevelGrid>
   );
 }

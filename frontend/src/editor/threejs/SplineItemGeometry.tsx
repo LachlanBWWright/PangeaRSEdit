@@ -7,6 +7,10 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
+import { useAtom } from "jotai";
+import { SelectedSpline, SelectedSplineItem } from "@/data/splines/splineAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { LevelNumber } from "@/data/globals/levelNumber";
@@ -19,6 +23,7 @@ import { DEFAULT_ITEM_MODEL_PARAMS } from "@/data/items/itemModelPreview";
 import { getItemModelCacheKey } from "./hooks/itemModelCacheKey";
 import { getGameMapper } from "@/data/items/mappers";
 import { mapErr } from "@/utils/mapErr";
+import { getSplineItemModelY } from "./ottoSplineItemPosition";
 
 interface SplineItemGeometryProps {
   splineData: SplineData;
@@ -44,12 +49,14 @@ const SPLINE_COLORS = [
 const SplineColorCube: React.FC<{
   position: [number, number, number];
   itemType: number;
-}> = ({ position, itemType }) => {
+  selected: boolean;
+  onSelect: (event: { stopPropagation: () => void }) => void;
+}> = ({ position, itemType, selected, onSelect }) => {
   const color = SPLINE_COLORS[itemType % SPLINE_COLORS.length];
   return (
-    <mesh position={position}>
+    <mesh position={position} onPointerDown={(event) => onSelect(event)}>
       <boxGeometry args={[SPLINE_ITEM_SIZE, SPLINE_ITEM_SIZE, SPLINE_ITEM_SIZE]} />
-      <meshStandardMaterial color={color} wireframe={false} emissive={color} emissiveIntensity={0.4} />
+      <meshStandardMaterial color={selected ? 0xffffff : color} wireframe={false} emissive={color} emissiveIntensity={0.4} />
     </mesh>
   );
 };
@@ -69,6 +76,9 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
   terrainData,
 }) => {
   const globals = useAtomValue(Globals);
+  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const [selectedSplineItem, setSelectedSplineItem] = useAtom(SelectedSplineItem);
+  const activeView = useAtomValue(ActiveView);
   const show3DItemModels = useAtomValue(Show3DItemModels);
   const levelNum = useAtomValue(LevelNumber);
   const itemFilterState = useAtomValue(itemFilterStateAtom);
@@ -185,8 +195,14 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
             terrainY = getTerrainHeightAtPoint(item.p0, item.p1, headerData, terrainData, globals);
           }
 
-          const position: [number, number, number] = [worldX, terrainY + SPLINE_HEIGHT_ABOVE_TERRAIN, worldZ];
+          const markerPosition: [number, number, number] = [worldX, terrainY + SPLINE_HEIGHT_ABOVE_TERRAIN, worldZ];
           const key = `spline-item-${splineIdx}-${itemIdx}`;
+          const isSelected = activeView === View.splines && selectedSpline === splineIdx && selectedSplineItem === itemIdx;
+          const selectItem = (event: { stopPropagation: () => void }) => {
+            event.stopPropagation();
+            setSelectedSpline(splineIdx);
+            setSelectedSplineItem(itemIdx);
+          };
 
           if (show3DItemModels) {
             const isLevelDep = mapper?.isLevelDependent?.(item.type) && levelNum !== undefined;
@@ -203,20 +219,45 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
               // Wireframe spinning cube while model loads
               const color = SPLINE_COLORS[item.type % SPLINE_COLORS.length];
               return (
-                <mesh key={key} position={position}>
+                <mesh key={key} position={markerPosition} onPointerDown={activeView === View.splines ? selectItem : undefined}>
                   <boxGeometry args={[SPLINE_ITEM_SIZE * 0.8, SPLINE_ITEM_SIZE * 0.8, SPLINE_ITEM_SIZE * 0.8]} />
-                  <meshStandardMaterial color={color} wireframe emissive={color} emissiveIntensity={0.5} />
+                  <meshStandardMaterial color={isSelected ? 0xffffff : color} wireframe emissive={color} emissiveIntensity={0.5} />
                 </mesh>
               );
             }
 
             const clonedScene = clonedScenesByType.get(item.type);
             if (clonedScene) {
-              return <SplineItemModel key={key} position={position} clonedScene={clonedScene} />;
+              const modelPosition: [number, number, number] = [
+                worldX,
+                getSplineItemModelY(currentGame, terrainY, item.type, clonedScene),
+                worldZ,
+              ];
+              return (
+                <group key={key} onPointerDown={activeView === View.splines ? selectItem : undefined}>
+                  <SplineItemModel position={modelPosition} clonedScene={clonedScene} />
+                  {isSelected && (
+                    <mesh position={modelPosition}>
+                      <sphereGeometry args={[SPLINE_ITEM_SIZE * 0.8, 10, 10]} />
+                      <meshBasicMaterial color={0xffffff} wireframe />
+                    </mesh>
+                  )}
+                </group>
+              );
             }
           }
 
-          return <SplineColorCube key={key} position={position} itemType={item.type} />;
+          return (
+            <group key={key} onPointerDown={activeView === View.splines ? selectItem : undefined}>
+              <SplineColorCube position={markerPosition} itemType={item.type} selected={isSelected} onSelect={selectItem} />
+              {isSelected && (
+                <mesh position={markerPosition}>
+                  <sphereGeometry args={[SPLINE_ITEM_SIZE * 0.8, 10, 10]} />
+                  <meshBasicMaterial color={0xffffff} wireframe />
+                </mesh>
+              )}
+            </group>
+          );
         });
       })}
     </group>

@@ -95,6 +95,20 @@ export function Navigation() {
                 </Link>
               </Button>
             )}
+            {featureFlags.scripting && (
+              <Button
+                asChild
+                variant={
+                  location.pathname === "/custom-objects" ? "default" : "ghost"
+                }
+                className="flex items-center gap-2"
+              >
+                <Link to="/custom-objects" className="text-white">
+                  <Boxes className="w-4 h-4" />
+                  <span>Custom Objects</span>
+                </Link>
+              </Button>
+            )}
             <Button
               asChild
               variant={

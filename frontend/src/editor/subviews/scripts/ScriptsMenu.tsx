@@ -2,19 +2,12 @@ import { useAtom, useAtomValue } from "jotai";
 import { ResultAsync } from "neverthrow";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Game, Globals } from "@/data/globals/globals";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline, SelectedSplineItem } from "@/data/splines/splineAtoms";
 import { TestGameDialog } from "@/editor/TestGameDialog";
-import { MenuEmptyState } from "@/editor/subviews/MenuEmptyState";
 import { getSelectedItem } from "@/editor/subviews/items/itemMenuState";
 import type {
   FenceData,
@@ -79,6 +72,7 @@ import {
   importScriptPackageZipAsync,
   loadScriptSample,
   removeBindingById,
+  removeCustomPlacement,
   removeMapItemReplacement,
   removeTerrainItemReplacement,
   removeSplineItemReplacement,
@@ -108,6 +102,10 @@ import {
   buildScriptAssetPaths,
 } from "./scriptAssetPaths";
 import { getNativeReplacementCompatibility } from "./scriptNativeAudit";
+import {
+  buildScriptDefinitionBundle,
+  importScriptDefinitionBundle,
+} from "./scriptDefinitionBundle";
 
 type ScriptsTab = "overview" | "assignments" | "code" | "preview";
 
@@ -207,11 +205,12 @@ export function ScriptsMenu({
   );
 
   const [activeTab, setActiveTab] = useState<ScriptsTab>("overview");
-  const [scriptsOpen, setScriptsOpen] = useState(false);
   const [defineBehaviorOpen, setDefineBehaviorOpen] = useState(false);
   const [globalHookForNewBehavior, setGlobalHookForNewBehavior] =
     useState<ScriptHookId | null>(null);
   const [creatingObjectTypeBehavior, setCreatingObjectTypeBehavior] =
+    useState(false);
+  const [creatingCustomObjectBehavior, setCreatingCustomObjectBehavior] =
     useState(false);
   const [codeEditorOpen, setCodeEditorOpen] = useState(false);
   const [customObjectBehaviorId, setCustomObjectBehaviorId] = useState("");
@@ -509,6 +508,46 @@ export function ScriptsMenu({
     toast.success("Downloaded script package");
   };
 
+  const handleExportDefinitions = () => {
+    const bundleResult = buildScriptDefinitionBundle(workspace);
+    if (bundleResult.isErr()) {
+      toast.error(bundleResult.error);
+      return;
+    }
+    downloadBytes(bundleResult.value, `${context.gameId}-definitions.zip`);
+    toast.success("Exported game custom-object definitions");
+  };
+
+  const handleImportDefinitions = async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    const bundleResult = importScriptDefinitionBundle(
+      new Uint8Array(buffer),
+      context,
+    );
+    if (bundleResult.isErr()) {
+      toast.error(bundleResult.error);
+      return;
+    }
+    updateWorkspace((state) => {
+      const importedIds = new Set(bundleResult.value.definitions.map((definition) => definition.id));
+      let nextState: ScriptWorkspaceState = {
+        ...state,
+        customObjects: [
+          ...state.customObjects.filter((definition) => !importedIds.has(definition.id)),
+          ...bundleResult.value.definitions,
+        ],
+      };
+      for (const [path, content] of Object.entries(bundleResult.value.sources)) {
+        nextState = upsertScriptSourceFile(nextState, path, content, "user");
+      }
+      for (const [path, bytes] of Object.entries(bundleResult.value.assets)) {
+        nextState = addScriptAsset(nextState, path, bytes, path.split("/").at(-1) ?? path);
+      }
+      return nextState;
+    });
+    toast.success(`Imported ${file.name} for ${context.gameLabel}`);
+  };
+
   const handleDownloadOriginalCompatible = async () => {
     const archiveResult = await buildOriginalCompatibleArchive({
       globals,
@@ -791,21 +830,7 @@ export function ScriptsMenu({
 
   return (
     <>
-      <MenuEmptyState
-        title="Scripts Workspace"
-        actionLabel="Open Scripts"
-        onAction={() => setScriptsOpen(true)}
-        fillHeight
-      />
-
-      <Dialog open={scriptsOpen} onOpenChange={setScriptsOpen}>
-        <DialogContent className="h-[90vh] w-[90vw] max-w-none grid-rows-[minmax(0,1fr)] overflow-hidden p-0">
-          <DialogTitle className="sr-only">Scripts</DialogTitle>
-          <DialogDescription className="sr-only">
-            Create, assign, edit, preview, and export Lua scripts for this level.
-          </DialogDescription>
-
-          <div className="overflow-y-auto p-6 pr-12 text-sm">
+      <div className="h-full overflow-y-auto p-6 pr-12 text-sm">
             <Tabs
               value={activeTab}
               onValueChange={(value) => setActiveTab(parseScriptsTab(value))}
@@ -974,6 +999,18 @@ export function ScriptsMenu({
               onCustomObjectLabelChange={setCustomObjectLabel}
               generatedCustomObjectId={generatedCustomObjectId}
               customObjectOptions={customObjectOptions}
+              customObjectPlacements={levelState.customPlacements}
+              onExportDefinitions={handleExportDefinitions}
+              onImportDefinitions={(file) => {
+                void handleImportDefinitions(file);
+              }}
+              onRemoveCustomObjectPlacement={(placementId) => {
+                updateWorkspace((state) => removeCustomPlacement(state, placementId));
+              }}
+              onCreateObjectScript={() => {
+                setCreatingCustomObjectBehavior(true);
+                setDefineBehaviorOpen(true);
+              }}
               onCreateObject={handleCreateCustomObject}
               onUpdateObject={(definition) => {
                 updateWorkspace((state) =>
@@ -1207,23 +1244,24 @@ export function ScriptsMenu({
           />
         </TabsContent>
             </Tabs>
-          </div>
-        </DialogContent>
-      </Dialog>
+      </div>
 
       <DefineBehaviorModal
-        key={`${String(defineBehaviorOpen)}-${creatingObjectTypeBehavior ? "object" : "default"}-${globalHookForNewBehavior ?? "none"}`}
+        key={`${String(defineBehaviorOpen)}-${creatingObjectTypeBehavior ? "object" : creatingCustomObjectBehavior ? "custom-object" : "default"}-${globalHookForNewBehavior ?? "none"}`}
         open={defineBehaviorOpen}
         onOpenChange={(open) => {
           setDefineBehaviorOpen(open);
           if (!open) {
             setGlobalHookForNewBehavior(null);
             setCreatingObjectTypeBehavior(false);
+            setCreatingCustomObjectBehavior(false);
           }
         }}
         initialTarget={
           creatingObjectTypeBehavior
             ? "objectType"
+            : creatingCustomObjectBehavior
+              ? "customObject"
             : globalHookForNewBehavior === null
               ? undefined
               : "global"

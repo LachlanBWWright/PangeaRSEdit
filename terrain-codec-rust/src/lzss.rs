@@ -91,6 +91,12 @@ pub fn lzss_decompress(compressed_bytes: &[u8], expected_output_size: usize) -> 
 pub fn lzss_compress(decompressed_bytes: &[u8]) -> TerrainCodecResult<Vec<u8>> {
     let mut output = vec![0u8];
     let mut ring_buffer = initialize_ring_buffer();
+    let mut byte_positions = [0u64; 256 * 64];
+    for offset in 0..(RING_BUFFER_SIZE - MAX_SIZE) {
+        byte_positions[usize::from(ring_buffer[offset]) * 64 + offset / 64] |=
+            1u64 << (offset % 64);
+    }
+
     let mut source_position = 0usize;
     let mut ring_position = RING_BUFFER_SIZE - MAX_SIZE;
     let mut flag_byte = 0u8;
@@ -106,25 +112,38 @@ pub fn lzss_compress(decompressed_bytes: &[u8]) -> TerrainCodecResult<Vec<u8>> {
             flag_count = 0;
         }
 
+        let maximum_length = MAX_SIZE.min(decompressed_bytes.len() - source_position);
         let mut best_length = 0usize;
         let mut best_offset = 0usize;
-
-        for candidate_offset in 0..(RING_BUFFER_SIZE - MAX_SIZE) {
-            let mut length = 0usize;
-            while length < MAX_SIZE
-                && source_position + length < decompressed_bytes.len()
-                && ring_buffer[(candidate_offset + length) & (RING_BUFFER_SIZE - 1)]
-                    == decompressed_bytes[source_position + length]
-            {
-                length += 1;
-                if length >= MAX_SIZE {
+        let first_byte = usize::from(decompressed_bytes[source_position]);
+        for word_index in 0..64 {
+            let mut candidates = byte_positions[first_byte * 64 + word_index];
+            while candidates != 0 {
+                let bit_index = candidates.trailing_zeros() as usize;
+                let candidate_offset = word_index * 64 + bit_index;
+                candidates &= candidates - 1;
+                if candidate_offset >= RING_BUFFER_SIZE - MAX_SIZE {
                     break;
                 }
-            }
 
-            if length > best_length {
-                best_length = length;
-                best_offset = candidate_offset;
+                let mut length = 0usize;
+                while length < maximum_length
+                    && ring_buffer[(candidate_offset + length) & (RING_BUFFER_SIZE - 1)]
+                        == decompressed_bytes[source_position + length]
+                {
+                    length += 1;
+                }
+
+                if length > best_length {
+                    best_length = length;
+                    best_offset = candidate_offset;
+                    if best_length == maximum_length {
+                        break;
+                    }
+                }
+            }
+            if best_length == maximum_length {
+                break;
             }
         }
 
@@ -140,7 +159,12 @@ pub fn lzss_compress(decompressed_bytes: &[u8]) -> TerrainCodecResult<Vec<u8>> {
 
             for offset in 0..best_length {
                 let byte = decompressed_bytes[source_position + offset];
-                ring_buffer[ring_position] = byte;
+                update_indexed_ring(
+                    &mut ring_buffer,
+                    &mut byte_positions,
+                    ring_position,
+                    byte,
+                );
                 ring_position = (ring_position + 1) & (RING_BUFFER_SIZE - 1);
             }
 
@@ -154,7 +178,12 @@ pub fn lzss_compress(decompressed_bytes: &[u8]) -> TerrainCodecResult<Vec<u8>> {
         output.push(literal);
         flag_byte |= 1 << flag_count;
         flag_count += 1;
-        ring_buffer[ring_position] = literal;
+        update_indexed_ring(
+            &mut ring_buffer,
+            &mut byte_positions,
+            ring_position,
+            literal,
+        );
         ring_position = (ring_position + 1) & (RING_BUFFER_SIZE - 1);
     }
 
@@ -163,6 +192,20 @@ pub fn lzss_compress(decompressed_bytes: &[u8]) -> TerrainCodecResult<Vec<u8>> {
     }
 
     Ok(output)
+}
+
+fn update_indexed_ring(
+    ring_buffer: &mut [u8],
+    byte_positions: &mut [u64; 256 * 64],
+    position: usize,
+    byte: u8,
+) {
+    if position < RING_BUFFER_SIZE - MAX_SIZE {
+        let old_byte = usize::from(ring_buffer[position]);
+        byte_positions[old_byte * 64 + position / 64] &= !(1u64 << (position % 64));
+        byte_positions[usize::from(byte) * 64 + position / 64] |= 1u64 << (position % 64);
+    }
+    ring_buffer[position] = byte;
 }
 
 #[cfg(test)]
@@ -183,4 +226,9 @@ mod tests {
         let result = lzss_decompress(&compressed, 32);
         assert!(result.is_err());
     }
+
 }
+
+#[cfg(test)]
+#[path = "performance_tests.rs"]
+mod performance_tests;

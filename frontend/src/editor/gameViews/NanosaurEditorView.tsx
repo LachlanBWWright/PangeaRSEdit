@@ -25,6 +25,8 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { CanvasViewToggle } from "../subviews/CanvasViewToggle";
+import { supportsThreeCanvas } from "../canvas/canvasViewState";
 import { MenuSection } from "./MenuSection";
 import {
   createNonNullUpdater,
@@ -112,7 +114,11 @@ export function NanosaurEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection key={view} scrollable={true}>
+      <MenuSection
+        key={view}
+        scrollable={true}
+        className={view === View.scripts ? "!h-full" : undefined}
+      >
         {view === View.items &&
           (itemData ? (
             <ItemMenu
@@ -158,7 +164,10 @@ export function NanosaurEditorView({
           <NanosaurCollisionPathMenu terrainData={terrainData} />
         )}
       </MenuSection>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
+      {view !== View.scripts && <div
+          className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative"
+      >
+        {supportsThreeCanvas(view) && <CanvasViewToggle />}
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -170,7 +179,7 @@ export function NanosaurEditorView({
           />
           {itemData && <ItemFilterToggle itemData={itemData} splineData={null} />}
         </div>
-        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
+        {canvasViewMode === CanvasView.THREE_D && supportsThreeCanvas(view) ? (
           <ThreeView
             headerData={headerData}
             fenceData={null}
@@ -179,6 +188,7 @@ export function NanosaurEditorView({
             splineData={null}
             terrainData={terrainData}
             mapImages={mapImages}
+            setItemData={setItemData}
             setTerrainData={setTerrainData}
           />
         ) : (
@@ -195,7 +205,7 @@ export function NanosaurEditorView({
             onResize={handleSupertileResize}
           />
         )}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -24,7 +24,6 @@ import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { Image as ImageIcon, ImageOff } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
-import { parseU8 } from "@/utils/numberParsers";
 import { atom } from "jotai";
 import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
 import { ParamTooltip } from "./ParamTooltip";
@@ -48,6 +47,7 @@ import {
 import { MapItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
+import { ParameterField } from "./ParameterField";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -187,11 +187,11 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                         : undefined
                     }
                   />
-                  <Input
-                    type="number"
-                    className="h-7 text-xs"
-                    value={value.toString()}
-                    onChange={(e) => setValue(parseU8(e.target.value))}
+                  <ParameterField
+                    paramIndex={i}
+                    param={param}
+                    value={value}
+                    onValueChange={setValue}
                   />
                   </div>
                 );

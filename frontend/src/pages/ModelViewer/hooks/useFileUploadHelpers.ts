@@ -1,4 +1,4 @@
-import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrcWithWorker } from "@/modelParsers/skeletonRsrc/skeletonWorkerClient";
 import type {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
@@ -85,9 +85,8 @@ export async function loadOptionalSkeleton(
     };
   }
 
-  const skeletonParseResult = await ResultAsync.fromPromise(
-    parseSkeletonRsrc(skeletonBufferResult.value),
-    mapErr,
+  const skeletonParseResult = await parseSkeletonRsrcWithWorker(
+    skeletonBufferResult.value,
   );
 
   if (skeletonParseResult.isErr()) {

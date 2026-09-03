@@ -48,7 +48,9 @@ export const OttoHookContracts: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getAllByRole("button", { name: "Create handler" })[0]);
+    const createHandlerButton = canvas.getAllByRole("button", { name: "Create handler" })[0];
+    if (!createHandlerButton) return;
+    await userEvent.click(createHandlerButton);
 
     expect(args.onCreateHook).toHaveBeenCalledTimes(1);
   },

@@ -1136,6 +1136,41 @@ describe("scriptWorkspaceState", () => {
     }
   });
 
+  it("materializes custom object exports and lifecycle handlers", () => {
+    const context = createScriptWorkspaceContext(Bugdom2Globals, 1);
+    let state = ensureScriptWorkspace({}, context);
+
+    state = addBehaviorDefinition(state, {
+      target: "customObject",
+      hooks: ["onObjectFrame"],
+      id: "test.custom-crate-behavior",
+      label: "Custom Crate Behavior",
+      description: "A custom crate behavior",
+      tags: [],
+      sourceFilePath: "Data/Scripts/src/objects/custom-crate-behavior.lua",
+      sourceTemplate:
+        "local object = {}\nfunction object.onUpdate(self, ctx)\nend\nreturn { __PANGEA_CUSTOM_OBJECT_EXPORT__ = object }",
+    });
+
+    state = createCustomObjectFromBehavior(
+      state,
+      "test.custom-crate-behavior",
+      "custom.crate",
+      "Custom Crate",
+    );
+
+    const source = state.sourceFiles["Data/Scripts/src/objects/custom-crate.lua"];
+    expect(source?.content).toContain("customCrate = object");
+    expect(source?.content).not.toContain("__PANGEA_CUSTOM_OBJECT_EXPORT__");
+
+    const compileResult = compileScriptWorkspace(state);
+    expect(compileResult.isOk()).toBe(true);
+    if (compileResult.isErr()) return;
+    const bundle = compileResult.value.compiledFiles["Data/Scripts/dist/main.lua"]?.content;
+    expect(bundle).toContain("customCrate");
+    expect(bundle).toContain("onUpdate");
+  });
+
   it("includes custom placements in exported sidecar files", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 1);
     let state = ensureScriptWorkspace({}, context);

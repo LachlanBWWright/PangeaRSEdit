@@ -62,6 +62,9 @@ const serializeDownloadRequestSchema = z.object({
   mapImagesFileName: z.string().optional(),
   levelData: z.unknown(),
   mapImages: z.array(levelIoImagePayloadSchema),
+  reuseLevelBytes: z.instanceof(Uint8Array).optional(),
+  reuseTextureBytes: z.instanceof(Uint8Array).optional(),
+  reuseCombinedBytes: z.instanceof(Uint8Array).optional(),
 });
 
 const preparePreviewRequestSchema = z.object({
@@ -70,6 +73,9 @@ const preparePreviewRequestSchema = z.object({
   globals: globalsSchema,
   levelData: z.unknown(),
   mapImages: z.array(levelIoImagePayloadSchema),
+  reuseLevelBytes: z.instanceof(Uint8Array).optional(),
+  reuseTextureBytes: z.instanceof(Uint8Array).optional(),
+  reuseCombinedBytes: z.instanceof(Uint8Array).optional(),
 });
 
 export const levelIoRequestSchema = z.discriminatedUnion("type", [

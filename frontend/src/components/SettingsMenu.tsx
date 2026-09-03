@@ -1,4 +1,4 @@
-import { Boxes, FlaskConical, Network, Settings } from "lucide-react";
+import { Boxes, FlaskConical, Network, Settings, ShieldCheck, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -41,6 +41,22 @@ export function SettingsMenu() {
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-slate-700" />
+        <DropdownMenuCheckboxItem
+          checked={featureFlags.levelValidation}
+          onCheckedChange={(levelValidation) =>
+            saveFeatureFlags({ ...featureFlags, levelValidation })
+          }
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <ShieldCheck className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+          <span>
+            <span className="block font-medium">Strict level validation</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">
+              Block playback and downloads when validation fails.
+            </span>
+          </span>
+        </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
           checked={featureFlags.multiplayer}
           onCheckedChange={(multiplayer) =>
@@ -86,6 +102,22 @@ export function SettingsMenu() {
             <span className="block font-medium">Show item model preview</span>
             <span className="mt-0.5 block text-xs leading-4 text-slate-400">
               Show the experimental terrain and spline item mapping preview.
+            </span>
+          </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={featureFlags.scriptItemDemoLevels}
+          onCheckedChange={(scriptItemDemoLevels) =>
+            saveFeatureFlags({ ...featureFlags, scriptItemDemoLevels })
+          }
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <WandSparkles className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+          <span>
+            <span className="block font-medium">Show script item demos</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">
+              Show mostly blank demo levels with custom scripted models.
             </span>
           </span>
         </DropdownMenuCheckboxItem>

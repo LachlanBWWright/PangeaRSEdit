@@ -2,10 +2,8 @@ import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { progressToast } from "@/toasts/progressToast";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
-import {
-  createCanvasFromTile,
-  parseNanosaurTerrainTextures,
-} from "@/data/processors/classicProprocessor";
+import { parseNanosaurTerrainWithWorker } from "@/data/level-io/nanosaurTerrainWorkerClient";
+import { imagePayloadsToCanvases } from "@/data/level-io/terrainImageSnapshots";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
 import { MightyMikePreview } from "./MightyMikePreview";
@@ -182,8 +180,8 @@ export function GameCard({
       const buffer = await textureFile.arrayBuffer();
 
       if (isNanosaur1) {
-        const tiles = parseNanosaurTerrainTextures(buffer);
-        if (tiles.length === 0) {
+        const tilesResult = await parseNanosaurTerrainWithWorker(buffer);
+        if (tilesResult.isErr() || tilesResult.value.length === 0) {
           progressToast.fail({
             id: toastId,
             title: "Failed to load textures",
@@ -198,8 +196,17 @@ export function GameCard({
           return;
         }
 
+        const canvasesResult = imagePayloadsToCanvases(tilesResult.value);
+        if (canvasesResult.isErr()) {
+          progressToast.fail({
+            id: toastId,
+            title: "Failed to materialize textures",
+            description: canvasesResult.error,
+          });
+          return;
+        }
         setMapImagesFile(textureFile);
-        setMapImages(tiles.map(createCanvasFromTile));
+        setMapImages(canvasesResult.value);
       } else {
         const mapImagesResult = await loadMapImages(
           new DataView(buffer),

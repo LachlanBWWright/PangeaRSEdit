@@ -23,6 +23,8 @@ export default defineConfig(
       "test-glb-export.ts",
       "dist/**",
       "coverage/**",
+      "coverage-*/**",
+      "storybook-static/**",
       "public/generated/**",
       "public/wasm/**",
     ],
@@ -43,7 +45,13 @@ export default defineConfig(
       parser: tseslint.parser,
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["scripts/*.mjs"],
+        allowDefaultProject: [
+          "scripts/*.mjs",
+          "scripts/dev/audit-item-citations.ts",
+          "scripts/dev/audit-level-param-coverage.ts",
+          "scripts/dev/build-item-screenshot-manifest.ts",
+          "scripts/dev/nanosaur-level-codec-node.ts",
+        ],
         },
         tsconfigRootDir: process.cwd(),
       },

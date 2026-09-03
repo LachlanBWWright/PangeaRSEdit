@@ -11,6 +11,7 @@
 import { Game, GlobalsInterface } from "../globals/globals";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { sampleTerrainHeightAtPoint } from "@/editor/subviews/water/liquidRenderingUtils";
+import { BugdomLevelType } from "@/editor/utils/levelType";
 
 /**
  * Types of liquid patches that can appear as items
@@ -193,6 +194,10 @@ const BUGDOM_LIQUID_Y_TABLE: Record<number, number[]> = {
  * Default Y offset for Bugdom 1 water when p2 is 0
  */
 const BUGDOM_WATER_DEFAULT_Y_OFFSET = 3.0;
+const BUGDOM_POND_WATER_Y = 0.0;
+const BUGDOM_ANTHILL_UNDERGROUND_WATER_Y_TABLE = [
+  -540, -540, -540, -540, -370, -540, -540, -540,
+];
 
 /**
  * Default Y offset for Bugdom 1 other liquids when p2 is 0
@@ -222,7 +227,8 @@ export function getLiquidPatchDimensions(
   p0: number,
   p1: number,
   p2: number,
-  p3: number
+  p3: number,
+  levelNumber?: number,
 ): LiquidPatchDimensions {
   // Calculate the coordinate scale factor
   const coordScale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
@@ -251,7 +257,22 @@ export function getLiquidPatchDimensions(
     if (itemType === 14) {
       // WaterPatch
       const indexedYMode = (p3 & (1 << 2)) !== 0;
-      if (indexedYMode) {
+      const isPondLevel = levelNumber === BugdomLevelType.Pond;
+      const usesUndergroundTable =
+        levelNumber !== undefined &&
+        levelNumber >= BugdomLevelType.AntHill &&
+        (p3 & (1 << 1)) !== 0;
+      if (isPondLevel) {
+        yValue3D = BUGDOM_POND_WATER_Y;
+        isAbsoluteY = true;
+      } else if (usesUndergroundTable) {
+        const index = Math.min(
+          p2,
+          BUGDOM_ANTHILL_UNDERGROUND_WATER_Y_TABLE.length - 1,
+        );
+        yValue3D = BUGDOM_ANTHILL_UNDERGROUND_WATER_Y_TABLE[index] ?? 0;
+        isAbsoluteY = true;
+      } else if (indexedYMode) {
         // Use Y lookup table - these are ABSOLUTE Y positions
         const yTable = BUGDOM_LIQUID_Y_TABLE[itemType];
         if (yTable) {
@@ -435,12 +456,21 @@ export function getLiquidPatchCanvas(
   p3: number,
   centerX: number,
   centerZ: number,
+  levelNumber?: number,
   texture: HTMLCanvasElement | null = null,
 ): LiquidPatchCanvas | null {
   const style = getLiquidPatchStyle(globals, itemType);
   if (!style) return null;
 
-  const dims = getLiquidPatchDimensions(globals, itemType, p0, p1, p2, p3);
+  const dims = getLiquidPatchDimensions(
+    globals,
+    itemType,
+    p0,
+    p1,
+    p2,
+    p3,
+    levelNumber,
+  );
   const width = Math.max(1, Math.round(dims.width2D));
   const height = Math.max(1, Math.round(dims.depth2D));
   const liquidSurfaceY = dims.isAbsoluteY
@@ -469,6 +499,7 @@ export function getLiquidPatchCanvas(
     Math.round(centerX),
     Math.round(centerZ),
     Math.round(liquidSurfaceY),
+    levelNumber ?? -1,
     texture ? "game-texture" : "fallback",
   ].join(":");
 

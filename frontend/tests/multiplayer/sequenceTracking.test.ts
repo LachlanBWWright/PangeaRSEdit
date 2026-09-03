@@ -4,7 +4,6 @@ import {
   HostAuthorityEnforcer,
   DisruptionDetector,
 } from "@/multiplayer/sequenceTracking";
-import type { MultiplayerPacketEnvelope } from "@/multiplayer/protocol";
 
 describe("GameplaySequenceTracker", () => {
   let tracker: GameplaySequenceTracker;
@@ -24,7 +23,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result1.isValid).toBe(true);
       expect(result1.isDuplicate).toBe(false);
@@ -38,7 +37,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 1,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result2.isValid).toBe(true);
       expect(result2.isDuplicate).toBe(false);
@@ -54,7 +53,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       const result = tracker.validate({
         protocolVersion: 1,
@@ -65,7 +64,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result.isValid).toBe(false);
       expect(result.isDuplicate).toBe(true);
@@ -81,7 +80,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       const result = tracker.validate({
         protocolVersion: 1,
@@ -92,7 +91,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 2,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result.isValid).toBe(true);
       expect(result.isGap).toBe(true);
@@ -109,7 +108,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 4,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       const result = tracker.validate({
         protocolVersion: 1,
@@ -120,7 +119,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 2,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result.isValid).toBe(false);
       expect(result.isDuplicate).toBe(false);
@@ -138,7 +137,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 2,
         senderPlayerIndex: 0,
         reliability: "ordered",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result1.isValid).toBe(true);
 
@@ -151,7 +150,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "ordered",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result2.isValid).toBe(true);
     });
@@ -166,7 +165,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "ordered",
-      } as MultiplayerPacketEnvelope);
+      });
 
       const result = tracker.validate({
         protocolVersion: 1,
@@ -177,7 +176,7 @@ describe("GameplaySequenceTracker", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "ordered",
-      } as MultiplayerPacketEnvelope);
+      });
 
       expect(result.isValid).toBe(false);
       expect(result.isDuplicate).toBe(true);
@@ -194,7 +193,7 @@ describe("GameplaySequenceTracker", () => {
       frameNumber: 0,
       senderPlayerIndex: 0,
       reliability: "ordered",
-    } as MultiplayerPacketEnvelope);
+    });
 
     expect(result.isValid).toBe(false);
     expect(result.reason).toContain("zero");
@@ -210,7 +209,7 @@ describe("GameplaySequenceTracker", () => {
       frameNumber: 10,
       senderPlayerIndex: 0,
       reliability: "ordered",
-    } as MultiplayerPacketEnvelope);
+    });
 
     expect(tracker.getLastValidSequence()).toBe(5);
     expect(tracker.getLastValidFrame()).toBe(10);
@@ -226,7 +225,7 @@ describe("GameplaySequenceTracker", () => {
       frameNumber: 10,
       senderPlayerIndex: 0,
       reliability: "ordered",
-    } as MultiplayerPacketEnvelope);
+    });
 
     tracker.reset();
 
@@ -243,7 +242,7 @@ describe("GameplaySequenceTracker", () => {
       frameNumber: 0,
       senderPlayerIndex: 0,
       reliability: "ordered",
-    } as MultiplayerPacketEnvelope);
+    });
 
     expect(result.isValid).toBe(true);
   });
@@ -267,7 +266,7 @@ describe("HostAuthorityEnforcer", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "ordered",
-      } as MultiplayerPacketEnvelope,
+      },
       "host-participant-id",
     );
 
@@ -286,7 +285,7 @@ describe("HostAuthorityEnforcer", () => {
         frameNumber: 0,
         senderPlayerIndex: 0,
         reliability: "strict",
-      } as MultiplayerPacketEnvelope,
+      },
       "client-participant-id",
     );
 
@@ -305,7 +304,7 @@ describe("HostAuthorityEnforcer", () => {
         frameNumber: 100,
         senderPlayerIndex: 0,
         reliability: "ordered",
-      } as MultiplayerPacketEnvelope,
+      },
       "client-participant-id",
     );
 
@@ -324,7 +323,7 @@ describe("HostAuthorityEnforcer", () => {
         frameNumber: 0,
         senderPlayerIndex: 1,
         reliability: "ordered",
-      } as MultiplayerPacketEnvelope,
+      },
       "client-participant-id",
     );
 

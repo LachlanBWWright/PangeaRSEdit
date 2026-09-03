@@ -19,7 +19,7 @@ import { useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Layer, Stage } from "react-konva";
 import Konva from "konva";
-import { computeWheelZoomStage } from "./konvaViewState";
+import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
@@ -229,6 +229,19 @@ export function OttoMaticKonvaView({
         x={stage.x}
         y={stage.y}
         draggable={true}
+        onDragStart={(e) => {
+          if (
+            view === View.tiles &&
+            isPointerWithinMap(
+              e,
+              globals.TILE_SIZE,
+              headerData.Hedr[1000].obj.mapWidth,
+              headerData.Hedr[1000].obj.mapHeight,
+            )
+          ) {
+            e.target.getStage()?.stopDrag();
+          }
+        }}
         onClick={handleStageClick}
         onDblClick={handleStageDblClick}
         onWheel={handleStageWheel}

@@ -5,6 +5,10 @@ import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
+  ItemData,
+  FenceData,
+  SplineData,
+  LiquidData,
   isSupertileEmpty,
 } from "@/python/structSpecs/LevelTypes";
 import { useRef, useState } from "react";
@@ -36,6 +40,7 @@ import {
   supportsLevelScale,
   type LevelScaleMode,
 } from "@/editor/utils/levelScaleState";
+import { buildTerrainEntityOverlay } from "./terrainEntityOverlay";
 
 /**
  * Standard Supertile Menu for games with STgd-based terrain
@@ -51,12 +56,20 @@ export function SupertileMenu({
   mapImages,
   setMapImages,
   onApplyLevelScale,
+  itemData,
+  fenceData,
+  splineData,
+  liquidData,
 }: {
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
+  itemData: ItemData | null;
+  fenceData: FenceData | null;
+  splineData: SplineData | null;
+  liquidData: LiquidData | null;
   setTerrainData: Updater<TerrainData>;
   onApplyLevelScale: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
@@ -75,6 +88,7 @@ export function SupertileMenu({
   const [tileEditorOpen, setTileEditorOpen] = useState(false);
   const [mapEditorOpen, setMapEditorOpen] = useState(false);
   const [mapEditorImageUrl, setMapEditorImageUrl] = useState("");
+  const [mapEditorOverlay, setMapEditorOverlay] = useState<HTMLCanvasElement | null>(null);
 
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {
@@ -215,6 +229,16 @@ export function SupertileMenu({
                 return;
               }
               setMapEditorImageUrl(imageDataUrl);
+              setMapEditorOverlay(
+                buildTerrainEntityOverlay({
+                  width: globals.SUPERTILE_TEXMAP_SIZE * (hedr.mapWidth / globals.TILES_PER_SUPERTILE),
+                  height: globals.SUPERTILE_TEXMAP_SIZE * (hedr.mapHeight / globals.TILES_PER_SUPERTILE),
+                  itemData,
+                  fenceData,
+                  splineData,
+                  liquidData,
+                }),
+              );
               setMapEditorOpen(true);
             }}
           >
@@ -326,9 +350,14 @@ export function SupertileMenu({
         }}
       />
       <ImageEditor
+        key={mapEditorOpen ? "open" : "closed"}
         isOpen={mapEditorOpen}
-        onClose={() => setMapEditorOpen(false)}
+        onClose={() => {
+          setMapEditorOpen(false);
+          setMapEditorOverlay(null);
+        }}
         imageUrl={mapEditorImageUrl}
+        overlayImage={mapEditorOverlay}
         imageName="Whole map texture"
         saveActions={[
           {

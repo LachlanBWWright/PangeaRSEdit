@@ -387,15 +387,6 @@ export function IndividualTilesMenu({
                 </div>
               )}
             <div className="flex items-center gap-2">
-              <p>Show 3D View</p>
-              <Switch
-                checked={canvasViewMode === CanvasView.THREE_D}
-                onCheckedChange={(e) =>
-                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)
-                }
-              />
-            </div>
-            <div className="flex items-center gap-2">
               <Button onClick={() => setExport3DScene((c) => c + 1)}>
                 Download 3D (GLB)
               </Button>

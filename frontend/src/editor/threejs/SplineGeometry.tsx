@@ -5,15 +5,23 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
+import { useAtom } from "jotai";
+import { SelectedSpline, SelectedSplineNub } from "@/data/splines/splineAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { Globals } from "@/data/globals/globals";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { Vector3, CatmullRomCurve3, TubeGeometry } from "three";
 import { detectSplineType, SplineType } from "@/data/splines/splineTypeDetection";
+import type { Ray } from "three";
+import type { ThreeEntityDragState } from "./threeEntityInteraction";
 
 interface SplineGeometryProps {
   splineData: SplineData;
   headerData: HeaderData;
   terrainData: TerrainData;
+  onNubPointerDown?: (kind: "spline", entityIndex: number, pointIndex: number, pointerId: number, startX: number, startZ: number, ray: Ray) => void;
+  draggingEntity?: ThreeEntityDragState | null;
 }
 
 const SPLINE_HEIGHT_ABOVE_TERRAIN = 10; // Slight offset above terrain
@@ -23,8 +31,13 @@ const SplineGeometryComponent: React.FC<SplineGeometryProps> = ({
   splineData,
   headerData,
   terrainData,
+  onNubPointerDown,
+  draggingEntity,
 }) => {
   const globals = useAtomValue(Globals);
+  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const [selectedSplineNub, setSelectedSplineNub] = useAtom(SelectedSplineNub);
+  const activeView = useAtomValue(ActiveView);
 
   const splines = splineData.Spln?.[1000]?.obj;
   const splinePointsBySplineIdx = splineData.SpPt;
@@ -50,6 +63,8 @@ const SplineGeometryComponent: React.FC<SplineGeometryProps> = ({
       const nubs = nubsData?.obj ?? [];
       const splineType = detectSplineType(nubs);
       const isCircular = splineType === SplineType.CIRCULAR;
+      const isSelected =
+        activeView === View.splines && selectedSpline === splineIdx;
 
       const linePoints: Vector3[] = []; 
 
@@ -79,12 +94,20 @@ const SplineGeometryComponent: React.FC<SplineGeometryProps> = ({
       );
 
       group.push(
-        <mesh key={`spline-line-${splineIdx}`} geometry={geometry}>
-          <meshStandardMaterial color={0x6dd5ed} emissive={0x2c3e50} />
+        <mesh
+          key={`spline-line-${splineIdx}`}
+          geometry={geometry}
+          onPointerDown={activeView === View.splines ? (event) => {
+            event.stopPropagation();
+            setSelectedSpline(splineIdx);
+            setSelectedSplineNub(null);
+          } : undefined}
+        >
+          <meshStandardMaterial color={isSelected ? 0xfacc15 : 0x6dd5ed} emissive={0x2c3e50} />
         </mesh>,
       );
 
-      if (nubsData && nubsData.obj) {
+      if (activeView === View.splines && nubsData && nubsData.obj) {
         nubsData.obj.forEach((nub, nubIdx) => {
             const worldX = nub.x * scale;
             const worldZ = nub.z * scale;
@@ -136,12 +159,18 @@ const SplineGeometryComponent: React.FC<SplineGeometryProps> = ({
                 key={`spline-nub-${splineIdx}-${nubIdx}`}
                 position={[worldX, posY, worldZ]}
                 rotation={[0, angle, 0]}
+                onPointerDown={activeView === View.splines ? (event) => {
+                  event.stopPropagation();
+                  setSelectedSpline(splineIdx);
+                  setSelectedSplineNub(nubIdx);
+                  onNubPointerDown?.("spline", splineIdx, nubIdx, event.pointerId, nub.x, nub.z, event.ray);
+                } : undefined}
               >
                 <mesh position={[0, 0, -20]}>
                   <boxGeometry args={[8, 8, 40]} />
                   <meshStandardMaterial
-                    color={0xff6b9d}
-                    emissive={0xff6b9d}
+                    color={draggingEntity?.kind === "spline" && draggingEntity.entityIndex === splineIdx && draggingEntity.pointIndex === nubIdx ? 0x22c55e : isSelected && selectedSplineNub === nubIdx ? 0xffffff : 0xff6b9d}
+                    emissive={isSelected && selectedSplineNub === nubIdx ? 0xffffff : 0xff6b9d}
                     emissiveIntensity={0.5}
                   />
                 </mesh>
@@ -160,7 +189,22 @@ const SplineGeometryComponent: React.FC<SplineGeometryProps> = ({
     });
 
     return group;
-  }, [hasValidData, splines, splinePointsBySplineIdx, splineData.SpNb, headerData, terrainData, globals]);
+  }, [
+    globals,
+    hasValidData,
+    headerData,
+    activeView,
+    draggingEntity,
+    onNubPointerDown,
+    selectedSpline,
+    selectedSplineNub,
+    setSelectedSpline,
+    setSelectedSplineNub,
+    splineData.SpNb,
+    splinePointsBySplineIdx,
+    splines,
+    terrainData,
+  ]);
 
   if (!hasValidData) {
     return null;

@@ -239,6 +239,9 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "buildings.bg3d",
     modelPath: "models",
     modelIndex: 0,
+    // Three.js items are rooted at terrainY + 25; native placement raises the
+    // saloon by -BBox.min.y (-(-441.2409668)), so the remaining offset is 416.2409668.
+    yOffset: 416.2409668,
   },
 
   // ---- SWAMP (swamp.bg3d) ----

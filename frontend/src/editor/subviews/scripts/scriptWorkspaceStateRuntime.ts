@@ -42,6 +42,7 @@ import {
 import { getDefaultHoverBeaconVisual } from "./scriptDefaultCustomVisuals";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
 import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
+import { materializeCustomObjectSourceTemplate } from "./scriptCustomObjectTemplate";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
 import type {
   ScriptBehaviorDefinition,
@@ -623,23 +624,13 @@ function buildBehaviorCatalog(
       ],
       template: [
         "local hoverBeacon = {}",
-        "local origins = {}",
         "",
         "function hoverBeacon.onUpdate(self, ctx)",
-        "  local current = pangea.object.position(self.handle)",
-        "  if not current then",
-        "    return",
-        "  end",
-        "  local origin = origins[self.handle.id]",
-        "  if not origin then",
-        "    origin = current",
-        "    origins[self.handle.id] = origin",
-        "  end",
         "  local wave = math.sin(ctx.levelTimeSeconds * 4) * 16",
-        "  pangea.object.setPosition(self.handle, {",
-        "    x = origin.x,",
-        "    y = origin.y + wave,",
-        "    z = origin.z,",
+        "  pangea.object.setPositionOffset(self.handle, {",
+        "    x = 0,",
+        "    y = wave,",
+        "    z = 0,",
         "  })",
         "  pangea.object.setRotation(self.handle, {",
         "    x = 0,",
@@ -649,7 +640,7 @@ function buildBehaviorCatalog(
         "end",
         "",
         "local module = {",
-        "  sampleHoverbeacon = hoverBeacon,",
+        "  sampleHoverBeacon = hoverBeacon,",
         "}",
         "return module",
         "",
@@ -1043,6 +1034,10 @@ export interface ScriptSampleDefinition {
 }
 
 function buildWorkspaceId(context: ScriptWorkspaceContext): string {
+  return context.gameId;
+}
+
+function buildLegacyWorkspaceId(context: ScriptWorkspaceContext): string {
   return `${context.gameId}:${context.levelKey}`;
 }
 
@@ -1721,7 +1716,13 @@ export function ensureScriptWorkspace(
   store: Readonly<Record<string, ScriptWorkspaceState>>,
   context: ScriptWorkspaceContext,
 ): ScriptWorkspaceState {
-  return store[buildWorkspaceId(context)] ?? createEmptyWorkspace(context);
+  const gameWorkspace = store[buildWorkspaceId(context)];
+  if (gameWorkspace) return retargetScriptWorkspace(gameWorkspace, context);
+
+  const legacyWorkspace = store[buildLegacyWorkspaceId(context)];
+  if (legacyWorkspace) return retargetScriptWorkspace(legacyWorkspace, context);
+
+  return createEmptyWorkspace(context);
 }
 
 export function replaceScriptWorkspace(
@@ -1748,8 +1749,7 @@ export function retargetScriptWorkspace(
     return state;
   }
 
-  const sourceLevel =
-    state.levels[state.context.levelKey] ?? defaultLevelState();
+  const sourceLevel = state.levels[context.levelKey] ?? defaultLevelState();
 
   return {
     ...state,
@@ -2243,7 +2243,10 @@ export function createCustomObjectFromBehavior(
     (_, letter: string) => letter.toUpperCase(),
   );
   const sourcePath = `Data/Scripts/src/objects/${slugify(objectId)}.lua`;
-  const sourceContent = behavior.template;
+  const sourceContent = materializeCustomObjectSourceTemplate(
+    behavior.template,
+    exportName,
+  );
   const existingObject = state.customObjects.find(
     (candidate) => candidate.id === objectId,
   );

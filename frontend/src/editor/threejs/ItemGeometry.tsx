@@ -1,5 +1,7 @@
-import React, { useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useMemo, useEffect, useRef, useCallback, useState } from "react";
+import type { Updater } from "use-immer";
 import { DoubleSide, Group, Mesh } from "three";
+import type { Ray } from "three";
 import { ResultAsync } from "neverthrow";
 import {
   ItemData,
@@ -8,7 +10,10 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
+import { TransformControls } from "@react-three/drei";
 import { Globals } from "@/data/globals/globals";
+import { Game } from "@/data/globals/globals";
+import { ItemType as OttoItemType } from "@/data/items/ottoItemType";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
@@ -29,6 +34,7 @@ import {
 import { mapErr } from "@/utils/mapErr";
 import { sampleTerrainHeightForItemPlacement } from "./threeItemInteraction";
 import { presentItemModel } from "./itemModelPresentation";
+import { getOttoSpinningPlatformY } from "./ottoSplineItemPosition";
 interface ItemGeometryProps {
   itemData: ItemData;
   headerData: HeaderData;
@@ -36,11 +42,11 @@ interface ItemGeometryProps {
   onItemPointerDown?: (
     itemIdx: number,
     pointerId: number,
-    worldX: number,
-    worldZ: number,
+    ray: Ray,
   ) => void;
   onItemPointerEnter?: (itemIdx: number | null) => void;
   onItemPointerLeave?: () => void;
+  setItemData?: Updater<ItemData | null>;
   hoveredItemIdx?: number | null;
   selectedItemIdx?: number | null;
   draggingItemIdx?: number | null;
@@ -49,7 +55,6 @@ interface ItemGeometryProps {
 const ITEM_SIZE = 50; // World units for item cube size
 const DRAG_HIGHLIGHT_COLOR = 0x00aaff;
 const DRAG_HIGHLIGHT_OPACITY = 0.4;
-const DRAG_HIGHLIGHT_SCALE = 0.8;
 const HOVER_HIGHLIGHT_COLOR = 0xfacc15;
 const SELECTED_HIGHLIGHT_COLOR = 0x22c55e;
 const ColoredCube: React.FC<{
@@ -119,7 +124,20 @@ const ItemModel: React.FC<{
   itemType: number;
   clonedScene: Group;
   extraRotationY?: number;
-}> = ({ position, clonedScene, extraRotationY }) => {
+  rotationGizmo?: {
+    divisions: number;
+    onChange: (value: number) => void;
+  };
+}> = ({ position, clonedScene, extraRotationY, rotationGizmo }) => {
+  const modelGroupRef = useRef<Group | null>(null);
+  const [modelGroup, setModelGroup] = useState<Group | undefined>(undefined);
+  const setModelGroupRef = useCallback(
+    (group: Group | null) => {
+      modelGroupRef.current = group;
+      setModelGroup(group ?? undefined);
+    },
+    [],
+  );
   const instanceScene = useMemo(() => {
     const clone = cloneGroupForItemRendering(clonedScene);
     if (extraRotationY !== undefined && extraRotationY !== 0) {
@@ -129,10 +147,28 @@ const ItemModel: React.FC<{
   }, [clonedScene, extraRotationY]);
   return (
     <group position={position}>
-      <primitive object={instanceScene} dispose={null} />
+      <group ref={setModelGroupRef}>
+        <primitive object={instanceScene} dispose={null} />
+      </group>
+      {rotationGizmo && modelGroup && (
+        <TransformControls
+          object={modelGroup}
+          mode="rotate"
+          onPointerDown={(event) => event.stopPropagation()}
+          onObjectChange={() => {
+            const currentGroup = modelGroupRef.current;
+            if (!currentGroup) return;
+            const step = (Math.PI * 2) / rotationGizmo.divisions;
+            const nextValue = Math.round(currentGroup.rotation.y / step);
+            currentGroup.rotation.y = 0;
+            rotationGizmo.onChange(nextValue);
+          }}
+        />
+      )}
     </group>
   );
 };
+
 const LiquidPatchPlane: React.FC<{
   position: [number, number, number];
   width: number;
@@ -189,6 +225,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   onItemPointerDown,
   onItemPointerEnter,
   onItemPointerLeave,
+  setItemData,
   hoveredItemIdx,
   selectedItemIdx,
   draggingItemIdx,
@@ -314,10 +351,12 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         );
         const position: [number, number, number] = [
           worldX,
-          terrainHeightResult.match(
-            (height) => height + ITEM_SIZE / 2,
-            () => terrainY + ITEM_SIZE / 2,
-          ),
+          currentGame === Game.OTTO_MATIC && item.type === OttoItemType.SpinningPlatform
+            ? getOttoSpinningPlatformY(terrainY, item.p2)
+            : terrainHeightResult.match(
+                (height) => height + ITEM_SIZE / 2,
+                () => terrainY + ITEM_SIZE / 2,
+              ),
           worldZ,
         ];
         const isDragging = draggingItemIdx === idx;
@@ -341,8 +380,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
                   onItemPointerDown(
                     idx,
                     e.nativeEvent.pointerId,
-                    e.point.x,
-                    e.point.z,
+                    e.ray,
                   );
                 }
               }}
@@ -350,11 +388,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
               {content}
               {isSelected && !isDragging ? (
                 <mesh position={[0, 0, 0]}>
-                  <sphereGeometry args={[ITEM_SIZE * 0.9, 10, 10]} />
-                  <meshBasicMaterial
-                    color={SELECTED_HIGHLIGHT_COLOR}
-                    wireframe
-                  />
+                  <boxGeometry args={[ITEM_SIZE * 1.35, ITEM_SIZE * 1.35, ITEM_SIZE * 1.35]} />
+                  <meshBasicMaterial color={SELECTED_HIGHLIGHT_COLOR} wireframe />
                 </mesh>
               ) : null}
               {isHovered && !isDragging ? (
@@ -370,9 +405,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
               ) : null}
               {isDragging && (
                 <mesh position={[0, 0, 0]}>
-                  <sphereGeometry
-                    args={[ITEM_SIZE * DRAG_HIGHLIGHT_SCALE, 8, 8]}
-                  />
+                  <boxGeometry args={[ITEM_SIZE * 1.45, ITEM_SIZE * 1.45, ITEM_SIZE * 1.45]} />
                   <meshBasicMaterial
                     color={DRAG_HIGHLIGHT_COLOR}
                     transparent
@@ -381,6 +414,24 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
                   />
                 </mesh>
               )}
+              {(isSelected || isDragging) &&
+                ([-1, 1] as const).flatMap((x) =>
+                  ([-1, 1] as const).map((z) => (
+                    <mesh
+                      key={`item-handle-${idx}-${x}-${z}`}
+                      position={[
+                        x * ITEM_SIZE * 0.68,
+                        ITEM_SIZE * 0.68,
+                        z * ITEM_SIZE * 0.68,
+                      ]}
+                    >
+                      <sphereGeometry args={[8, 12, 8]} />
+                      <meshBasicMaterial
+                        color={isDragging ? DRAG_HIGHLIGHT_COLOR : SELECTED_HIGHLIGHT_COLOR}
+                      />
+                    </mesh>
+                  )),
+                )}
             </group>
           ) : (
             <React.Fragment key={`item-frag-${idx}`}>{content}</React.Fragment>
@@ -394,6 +445,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             item.p1,
             item.p2,
             item.p3,
+            levelNum,
           );
           const tileSize = globals.TILE_SIZE;
           const snappedEditorX =
@@ -477,6 +529,35 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
                   clonedScene={clonedScene}
                   extraRotationY={
                     extraRotationY !== 0 ? extraRotationY : undefined
+                  }
+                  rotationGizmo={
+                    isSelected && !isDragging && setItemData && mapping?.rotationParam && isRotationParam(mapping.rotationParam.rotationType)
+                      ? {
+                          divisions: mapping.rotationParam.rotationType.divisions,
+                          onChange: (value) => {
+                            setItemData((draft) => {
+                              if (!draft) return draft;
+                              const currentItem = draft.Itms?.[1000]?.obj?.[idx];
+                              if (!currentItem) return draft;
+                              switch (mapping.rotationParam?.paramIndex) {
+                                case 0:
+                                  currentItem.p0 = value;
+                                  break;
+                                case 1:
+                                  currentItem.p1 = value;
+                                  break;
+                                case 2:
+                                  currentItem.p2 = value;
+                                  break;
+                                case 3:
+                                  currentItem.p3 = value;
+                                  break;
+                              }
+                              return draft;
+                            });
+                          },
+                        }
+                      : undefined
                   }
                 />,
               );

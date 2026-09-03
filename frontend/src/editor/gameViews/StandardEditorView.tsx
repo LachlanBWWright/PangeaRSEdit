@@ -25,6 +25,8 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { CanvasViewToggle } from "../subviews/CanvasViewToggle";
+import { supportsThreeCanvas } from "../canvas/canvasViewState";
 import { MenuSection } from "./MenuSection";
 import {
   EmptyFencePrompt,
@@ -157,7 +159,10 @@ export function StandardEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection scrollable={view !== View.supertiles}>
+      <MenuSection
+        scrollable={view !== View.supertiles}
+        className={view === View.scripts ? "!h-full" : undefined}
+      >
         {view === View.fences &&
           (fenceData ? (
             <FenceMenu
@@ -229,6 +234,10 @@ export function StandardEditorView({
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}
+            itemData={itemData}
+            fenceData={fenceData}
+            splineData={splineData}
+            liquidData={liquidData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
@@ -248,7 +257,10 @@ export function StandardEditorView({
           />
         )}
       </MenuSection>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
+      {view !== View.scripts && <div
+          className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative"
+      >
+        {supportsThreeCanvas(view) && <CanvasViewToggle />}
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -262,7 +274,7 @@ export function StandardEditorView({
             <ItemFilterToggle itemData={itemData} splineData={splineData} />
           )}
         </div>
-        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
+        {canvasViewMode === CanvasView.THREE_D && supportsThreeCanvas(view) ? (
           <ThreeView
             headerData={headerData}
             fenceData={fenceData}
@@ -272,6 +284,9 @@ export function StandardEditorView({
             terrainData={terrainData}
             mapImages={mapImages}
             setItemData={setItemData}
+            setFenceData={setFenceData}
+            setLiquidData={setLiquidData}
+            setSplineData={setSplineData}
             setTerrainData={setTerrainData}
           />
         ) : (
@@ -294,7 +309,7 @@ export function StandardEditorView({
             onResize={handleSupertileResize}
           />
         )}
-      </div>
+      </div>}
     </div>
   );
 }

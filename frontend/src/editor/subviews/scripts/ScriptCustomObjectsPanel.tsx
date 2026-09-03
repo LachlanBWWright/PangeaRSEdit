@@ -19,8 +19,10 @@ import { StatusChip } from "./ScriptSharedComponents";
 import type {
   ScriptBehaviorDefinition,
   ScriptCustomObjectDefinition,
+  ScriptCustomObjectPlacement,
 } from "./scriptWorkspaceState";
 import type { NativeReplacementCompatibility } from "./scriptNativeAudit";
+import { ScriptCustomObjectInstancesPanel } from "./ScriptCustomObjectInstancesPanel";
 
 interface ScriptCustomObjectsPanelProps {
   gameId: string;
@@ -31,6 +33,15 @@ interface ScriptCustomObjectsPanelProps {
   onCustomObjectLabelChange: (value: string) => void;
   generatedCustomObjectId: string;
   customObjectOptions: readonly ScriptCustomObjectDefinition[];
+  customObjectPlacements: readonly ScriptCustomObjectPlacement[];
+  onRemoveCustomObjectPlacement: (placementId: string) => void;
+  onExportDefinitions: () => void;
+  onImportDefinitions: (file: File) => void;
+  onCreateObjectScript?: () => void;
+  showCreateObjectScript?: boolean;
+  showLevelInstances?: boolean;
+  compact?: boolean;
+  showHeaderActions?: boolean;
   onCreateObject: () => void;
   onUpdateObject: (definition: ScriptCustomObjectDefinition) => void;
   onUploadAsset: (
@@ -233,6 +244,15 @@ export function ScriptCustomObjectsPanel({
   onCustomObjectLabelChange,
   generatedCustomObjectId,
   customObjectOptions,
+  customObjectPlacements,
+  onRemoveCustomObjectPlacement,
+  onExportDefinitions,
+  onImportDefinitions,
+  onCreateObjectScript,
+  showCreateObjectScript = true,
+  showLevelInstances = true,
+  compact = false,
+  showHeaderActions = true,
   onCreateObject,
   onUpdateObject,
   onUploadAsset,
@@ -254,15 +274,45 @@ export function ScriptCustomObjectsPanel({
 }: ScriptCustomObjectsPanelProps) {
   const usesShapeAssets = gameId === "MightyMike-Android";
   return (
-    <Card className="border-slate-800 bg-slate-950/70">
-      <CardHeader>
-        <CardTitle className="text-white">Custom Objects</CardTitle>
-        <CardDescription>
-          Create scripted item definitions. Add saved scripted items from the
-          Items menu.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+    <Card className={compact ? "border-0 bg-transparent shadow-none" : "border-slate-800 bg-slate-950/70"}>
+      {!compact || showHeaderActions ? <CardHeader className={compact ? "flex flex-wrap items-center justify-end gap-2 px-0 py-2" : undefined}>
+        <div className={compact ? "contents" : "flex flex-wrap items-start justify-between gap-3"}>
+          <div>
+            <CardTitle className={compact ? "sr-only" : "text-white"}>Custom Objects</CardTitle>
+            <CardDescription className={compact ? "sr-only" : undefined}>
+              Define reusable scripted object types, then place as many instances
+              as you need from the Items menu.
+            </CardDescription>
+          </div>
+          {showCreateObjectScript && onCreateObjectScript ? (
+            <Button variant="outline" onClick={onCreateObjectScript}>
+              Create Custom Object Script
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={onExportDefinitions}>
+            Export game definitions
+          </Button>
+          <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80">
+            Import definition bundle
+            <Input
+              type="file"
+              accept=".zip"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) onImportDefinitions(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+      </CardHeader> : null}
+      <CardContent className={compact ? "px-0" : "grid gap-3"}>
+        <div className={compact ? "grid gap-5 lg:grid-cols-[minmax(18rem,0.7fr)_minmax(0,1.8fr)]" : "grid gap-3"}>
+        <div className={compact ? "rounded-lg border border-slate-800 bg-slate-900/60 p-4" : "contents"}>
+        {compact ? <div className="mb-3"><p className="text-sm font-medium text-white">Create a definition</p><p className="mt-1 text-xs text-slate-400">Choose a behavior, name the reusable object, then configure its appearance on the right.</p></div> : null}
         <div className="grid gap-2">
           <Label htmlFor="custom-object-behavior">Object script</Label>
           <Select
@@ -317,6 +367,22 @@ export function ScriptCustomObjectsPanel({
             Save Object
           </Button>
         </div>
+        </div>
+        <div className="min-w-0">
+        {compact ? <div className="mb-3"><p className="text-sm font-medium text-white">Definitions</p><p className="mt-1 text-xs text-slate-400">Shared by every level in this game.</p></div> : null}
+        {showLevelInstances ? (
+          <ScriptCustomObjectInstancesPanel
+            placements={customObjectPlacements}
+            definitions={customObjectOptions}
+            onRemovePlacement={onRemoveCustomObjectPlacement}
+          />
+        ) : null}
+        {compact && customObjectOptions.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-4 py-8 text-center">
+            <p className="text-sm font-medium text-slate-300">No definitions yet</p>
+            <p className="mt-1 text-xs text-slate-500">Create one from the form on the left, or import a definition bundle.</p>
+          </div>
+        ) : null}
         {customObjectOptions.map((objectDefinition) => (
           <div
             key={objectDefinition.id}
@@ -701,6 +767,8 @@ export function ScriptCustomObjectsPanel({
             ) : null}
           </div>
         ))}
+        </div>
+        </div>
       </CardContent>
     </Card>
   );

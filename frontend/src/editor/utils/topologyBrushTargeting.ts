@@ -4,7 +4,11 @@ import {
   TopologyValueMode,
 } from "@/data/tiles/tileAtoms";
 import type { BrushParams, PixelType } from "./topologyBrushUtils";
-import { applyTopologyBrush, cloneHeightArray } from "./topologyBrushUtils";
+import {
+  applyTopologyBrush,
+  cloneHeightArray,
+  getTopologyBrushFalloff,
+} from "./topologyBrushUtils";
 
 const MIN_ROOF_FLOOR_DISTANCE = 10;
 const MIN_INT16 = -32768;
@@ -21,7 +25,7 @@ function getUpdatedBrushValue(
     case TopologyValueMode.DELTA_VALUE:
       return currentValue + pixel.value;
     case TopologyValueMode.DELTA_WITH_DROPOFF:
-      return currentValue + pixel.value * (1 - pixel.distance);
+      return currentValue + pixel.value * getTopologyBrushFalloff(pixel.distance);
     default:
       return currentValue;
   }
@@ -223,7 +227,7 @@ export function applyDualTopologyBrush(
         newCenter = centerElevation + pixel.value;
         break;
       case TopologyValueMode.DELTA_WITH_DROPOFF: {
-        const falloff = 1 - pixel.distance;
+        const falloff = getTopologyBrushFalloff(pixel.distance);
         newCenter = centerElevation + pixel.value * falloff;
         break;
       }

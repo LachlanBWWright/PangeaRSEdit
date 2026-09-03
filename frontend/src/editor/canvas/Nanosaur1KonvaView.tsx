@@ -50,7 +50,7 @@ import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 import { NanosaurPathLayer } from "../subviews/tiles/NanosaurPathLayer";
-import { computeWheelZoomStage } from "./konvaViewState";
+import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -102,6 +102,10 @@ export function Nanosaur1KonvaView({
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
+  const isPaintingCanvasMode =
+    view === View.tiles ||
+    tileBrushMode === "stamp" ||
+    tileBrushMode === "capture";
 
   const [captureStart, setCaptureStart] = useState<{
     x: number;
@@ -218,7 +222,15 @@ export function Nanosaur1KonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={tileBrushMode !== "stamp" && tileBrushMode !== "capture"}
+        draggable
+        onDragStart={(e) => {
+          if (
+            isPaintingCanvasMode &&
+            isPointerWithinMap(e, tileSize, mapWidth, mapHeight)
+          ) {
+            e.target.getStage()?.stopDrag();
+          }
+        }}
         onClick={(e) => {
           if (tileBrushMode === "stamp") {
             handleStampClick(e);

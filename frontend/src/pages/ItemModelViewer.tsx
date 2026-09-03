@@ -30,6 +30,7 @@ const ALL_GAMES: readonly GameOption[] = [
 ];
 const GAME_OPTIONS = ALL_GAMES.filter((game) => getGamesWithMappers().includes(game.id));
 const KINDS: readonly { value: ItemModelKind; label: string }[] = [{ value: "terrainItem", label: "Terrain item" }, { value: "splineItem", label: "Spline item" }];
+const ITEM_PARAMETER_KEYS: readonly ("p0" | "p1" | "p2" | "p3")[] = ["p0", "p1", "p2", "p3"];
 
 interface PreviewItem {
   readonly type: number;
@@ -82,7 +83,7 @@ function fitCamera(cameraLike: object, bounds: Bounds, aspect: number): void {
 
 function CameraFit({ bounds, version }: { bounds: Bounds | null; version: number }) {
   const { camera, size } = useThree();
-  const controls = useRef<{ target: Vector3; minDistance: number; maxDistance: number; update: () => void } | null>(null);
+  const controls = useRef<React.ElementRef<typeof OrbitControls>>(null);
   React.useEffect(() => {
     if (!bounds) return;
     const aspect = size.width / Math.max(size.height, 1);
@@ -106,11 +107,15 @@ function MappingSummary({ game, mapping, audit }: { game: Game; mapping: Univers
 
 function ParameterControls({ mapping, params, flags, onParam, onFlags }: { mapping: UniversalItemModelMapping | undefined; params: ItemModelParams; flags: number; onParam: (key: "p0" | "p1" | "p2" | "p3", value: number) => void; onFlags: (value: number) => void }) {
   return <div className="space-y-3">{getItemModelParameterControls(mapping, params, flags).map((control) => {
-    if (control.key === "flags" && control.domain.kind === "bitset") return <div className="space-y-2" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label>{control.domain.bits.map((bit) => <label className="flex items-center gap-2 text-sm text-slate-300" key={bit.index}><Checkbox checked={(flags & (1 << bit.index)) !== 0} onCheckedChange={(checked) => onFlags(setItemModelBit(flags, bit.index, checked === true))} />{bit.label}</label>)}</div>;
-    if (control.key === "flags") return null;
-    if (control.domain.kind === "enum") return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Select value={String(control.value)} onValueChange={(value) => onParam(control.key, Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{control.domain.values.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
+    if (control.key === "flags") {
+      if (control.domain.kind !== "bitset") return null;
+      return <div className="space-y-2" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label>{control.domain.bits.map((bit) => <label className="flex items-center gap-2 text-sm text-slate-300" key={bit.index}><Checkbox checked={(flags & (1 << bit.index)) !== 0} onCheckedChange={(checked) => onFlags(setItemModelBit(flags, bit.index, checked === true))} />{bit.label}</label>)}</div>;
+    }
+    const parameterKey = ITEM_PARAMETER_KEYS.find((key) => key === control.key);
+    if (!parameterKey) return null;
+    if (control.domain.kind === "enum") return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Select value={String(control.value)} onValueChange={(value) => onParam(parameterKey, Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{control.domain.values.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
     const min = control.domain.kind === "integer" ? control.domain.min : undefined; const max = control.domain.kind === "integer" ? control.domain.max : undefined;
-    return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Input type="number" min={min} max={max} value={control.value} onChange={(event) => onParam(control.key, Number(event.target.value))} /></div>;
+    return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Input type="number" min={min} max={max} value={control.value} onChange={(event) => onParam(parameterKey, Number(event.target.value))} /></div>;
   })}</div>;
 }
 

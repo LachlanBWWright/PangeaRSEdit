@@ -4,11 +4,14 @@ import {
   MIGHTYMIKE_LEVELS,
 } from "@/editor/gameLevelSelectors/levelSelectorData";
 import { OpenFileButtons } from "@/editor/gameLevelSelectors/levelSelectorRender";
+import { ScriptItemDemoButton } from "@/editor/gameLevelSelectors/levelSelectorRender";
 
 export function MightyMikeLevels({
   openFile,
+  onCreateScriptItemDemoLevel,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
+  onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
   return (
     <div className="flex flex-col gap-1 min-w-40">
@@ -19,6 +22,7 @@ export function MightyMikeLevels({
           openFile,
         })}
       </div>
+      <ScriptItemDemoButton globals={LEVEL_SELECTOR_GLOBALS.mightyMike} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
     </div>
   );
 }

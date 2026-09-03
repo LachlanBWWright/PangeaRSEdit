@@ -10,6 +10,7 @@ import {
   getLiquidPatchStyle,
   isLiquidPatchItem,
 } from "./liquidPatchItems";
+import { BugdomLevelType } from "@/editor/utils/levelType";
 
 describe("liquid patch item definitions", () => {
   it("recognizes supported Bugdom and Nanosaur patch types only", () => {
@@ -38,6 +39,37 @@ describe("liquid patch item definitions", () => {
     const honey = getLiquidPatchDimensions(BugdomGlobals, 27, 1, 1, 99, 1);
     expect(water).toMatchObject({ yValue3D: 950, isAbsoluteY: true });
     expect(honey).toMatchObject({ yValue3D: 0, isAbsoluteY: true });
+  });
+
+  it("uses Bugdom's level-specific Pond and Anthill water heights", () => {
+    expect(
+      getLiquidPatchDimensions(
+        BugdomGlobals,
+        14,
+        1,
+        1,
+        7,
+        0,
+        BugdomLevelType.Pond,
+      ),
+    ).toMatchObject({
+      yValue3D: 0,
+      isAbsoluteY: true,
+    });
+    expect(
+      getLiquidPatchDimensions(
+        BugdomGlobals,
+        14,
+        1,
+        1,
+        4,
+        1 << 1,
+        BugdomLevelType.AntHill,
+      ),
+    ).toMatchObject({
+      yValue3D: -370,
+      isAbsoluteY: true,
+    });
   });
 
   it("uses other Bugdom liquid defaults and indexed values", () => {

@@ -57,17 +57,18 @@ export function loadResolvedItemModel(
   const { mapping } = resolution.value;
   const sources = mapping.modelParts && mapping.modelParts.length > 0
     ? mapping.modelParts
-    : [mapping];
+    : [undefined];
   return ResultAsync.fromPromise(
     Promise.all(sources.map(async (source) => {
-      const url = `${GAME_BASE_PATHS[request.game]}/${source.modelPath}/${source.modelFile}`;
+      const modelSource = source ?? mapping;
+      const url = `${GAME_BASE_PATHS[request.game]}/${modelSource.modelPath}/${modelSource.modelFile}`;
       const gltf = await loadFileGltf(worker, url);
-      return extractSubgroupByIndex(gltf, source.modelIndex, source.groupSize ?? 1);
+      return extractSubgroupByIndex(gltf, modelSource.modelIndex, modelSource.groupSize ?? 1);
     })),
     (error): ItemModelLoadError => ({ kind: "conversion", message: errorMessage(error) }),
   ).andThen((parts) => {
     if (parts.some((part) => part === null)) {
-      return err({
+      return err<LoadedItemModel, ItemModelLoadError>({
         kind: "extraction",
         message: `Could not extract one or more model parts for ${mapping.modelFile}.`,
       });
@@ -91,6 +92,6 @@ export function loadResolvedItemModel(
       renderedParts.push(renderedPart);
       scene.add(renderedPart);
     });
-    return ok({ scene, resolved: resolution.value });
+    return ok<LoadedItemModel, ItemModelLoadError>({ scene, resolved: resolution.value });
   });
 }

@@ -315,6 +315,9 @@ export async function serializeLevelDownloadBytes(
     readonly mapImagesFileName?: string;
     readonly mapImages: readonly LevelIoImagePayload[];
     readonly strictRustNanosaur?: boolean;
+    readonly reuseLevelBytes?: Uint8Array;
+    readonly reuseTextureBytes?: Uint8Array;
+    readonly reuseCombinedBytes?: Uint8Array;
   },
   onProgress?: (progress: LevelIoProgress) => void,
 ): Promise<Result<readonly LevelIoSerializedFile[], LevelIoError>> {
@@ -330,15 +333,15 @@ export async function serializeLevelDownloadBytes(
   });
 
   if (options.globals.DATA_TYPE === DataType.TRT_FILE) {
-    const mapBytesResult = await serializePrimaryMapBytes(
-      levelData,
-      options.globals,
-      options.strictRustNanosaur ?? true,
-    );
+    const mapBytesResult = options.reuseLevelBytes
+      ? ok(options.reuseLevelBytes)
+      : await serializePrimaryMapBytes(levelData, options.globals, options.strictRustNanosaur ?? true);
     if (mapBytesResult.isErr()) {
       return err(mapBytesResult.error);
     }
-    const textureBytesResult = serializeNanosaurTileImages(options.mapImages);
+    const textureBytesResult = options.reuseTextureBytes
+      ? ok(options.reuseTextureBytes.buffer)
+      : serializeNanosaurTileImages(options.mapImages);
     if (textureBytesResult.isErr()) {
       return err(levelIoError("serialize.failed", textureBytesResult.error));
     }
@@ -357,11 +360,9 @@ export async function serializeLevelDownloadBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.RSRC_FORK) {
-    const resourceBytes = serializeResourceForkBytes(
-      levelData,
-      options.globals,
-      options.mapImages,
-    );
+    const resourceBytes = options.reuseCombinedBytes
+      ? ok(options.reuseCombinedBytes)
+      : serializeResourceForkBytes(levelData, options.globals, options.mapImages);
     if (resourceBytes.isErr()) {
       return err(resourceBytes.error);
     }
@@ -375,18 +376,15 @@ export async function serializeLevelDownloadBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    const mapBytesResult = await serializePrimaryMapBytes(
-      levelData,
-      options.globals,
-      options.strictRustNanosaur ?? true,
-    );
+    const mapBytesResult = options.reuseLevelBytes
+      ? ok(options.reuseLevelBytes)
+      : await serializePrimaryMapBytes(levelData, options.globals, options.strictRustNanosaur ?? true);
     if (mapBytesResult.isErr()) {
       return err(mapBytesResult.error);
     }
-    const tilesetBytesResult = serializeMightyMikeTileset(
-      levelData,
-      options.mapImages,
-    );
+    const tilesetBytesResult = options.reuseTextureBytes
+      ? ok(options.reuseTextureBytes)
+      : serializeMightyMikeTileset(levelData, options.mapImages);
     if (tilesetBytesResult.isErr()) {
       return err(tilesetBytesResult.error);
     }
@@ -404,7 +402,9 @@ export async function serializeLevelDownloadBytes(
     ]);
   }
 
-  const resourceBytes = serializeResourceForkBytes(levelData, options.globals, []);
+  const resourceBytes = options.reuseLevelBytes
+    ? ok(options.reuseLevelBytes)
+    : serializeResourceForkBytes(levelData, options.globals, []);
   if (resourceBytes.isErr()) {
     return err(resourceBytes.error);
   }
@@ -418,8 +418,9 @@ export async function serializeLevelDownloadBytes(
   ];
 
   if (options.mapImages.length > 0) {
-    const textureBytes =
-      options.globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG
+    const textureBytes = options.reuseTextureBytes
+      ? ok(options.reuseTextureBytes)
+      : options.globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG
         ? await serializeJpegTerrainImages(options.mapImages, onProgress)
         : await serializeCompressedTerrainImages(options.mapImages, onProgress);
     if (textureBytes.isErr()) {
@@ -441,6 +442,9 @@ export async function preparePreviewLevelBytes(
     readonly globals: GlobalsInterface;
     readonly mapImages: readonly LevelIoImagePayload[];
     readonly strictRustNanosaur?: boolean;
+    readonly reuseLevelBytes?: Uint8Array;
+    readonly reuseTextureBytes?: Uint8Array;
+    readonly reuseCombinedBytes?: Uint8Array;
   },
   onProgress?: (progress: LevelIoProgress) => void,
 ): Promise<
@@ -459,11 +463,9 @@ export async function preparePreviewLevelBytes(
   const levelData = options.levelData;
 
   if (options.globals.DATA_TYPE === DataType.RSRC_FORK) {
-    const rsrcBytes = serializeResourceForkBytes(
-      levelData,
-      options.globals,
-      options.mapImages,
-    );
+    const rsrcBytes = options.reuseCombinedBytes
+      ? ok(options.reuseCombinedBytes)
+      : serializeResourceForkBytes(levelData, options.globals, options.mapImages);
     if (rsrcBytes.isErr()) {
       return err(levelIoError("preview.failed", rsrcBytes.error.message));
     }
@@ -475,16 +477,15 @@ export async function preparePreviewLevelBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.TRT_FILE) {
-    const mapBytes = await serializePrimaryMapBytes(
-      levelData,
-      options.globals,
-      options.strictRustNanosaur ?? true,
-    );
+    const mapBytes = options.reuseLevelBytes
+      ? ok(options.reuseLevelBytes)
+      : await serializePrimaryMapBytes(levelData, options.globals, options.strictRustNanosaur ?? true);
     if (mapBytes.isErr()) {
       return err(levelIoError("preview.failed", mapBytes.error.message));
     }
-    const textureBytes =
-      options.mapImages.length === 0
+    const textureBytes = options.reuseTextureBytes
+      ? ok(options.reuseTextureBytes.buffer)
+      : options.mapImages.length === 0
         ? ok<ArrayBuffer, string>(new ArrayBuffer(0))
         : serializeNanosaurTileImages(options.mapImages);
     if (textureBytes.isErr()) {
@@ -505,12 +506,15 @@ export async function preparePreviewLevelBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.STANDARD) {
-    const rsrcBytes = serializeResourceForkBytes(levelData, options.globals, []);
+    const rsrcBytes = options.reuseLevelBytes
+      ? ok(options.reuseLevelBytes)
+      : serializeResourceForkBytes(levelData, options.globals, []);
     if (rsrcBytes.isErr()) {
       return err(levelIoError("preview.failed", rsrcBytes.error.message));
     }
-    const dataBytes =
-      options.mapImages.length === 0
+    const dataBytes = options.reuseTextureBytes
+      ? ok(options.reuseTextureBytes)
+      : options.mapImages.length === 0
         ? ok<Uint8Array, LevelIoError>(new Uint8Array(0))
         : options.globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG
           ? await serializeJpegTerrainImages(options.mapImages, onProgress)
@@ -530,15 +534,15 @@ export async function preparePreviewLevelBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    const dataBytes = await serializePrimaryMapBytes(
-      levelData,
-      options.globals,
-      options.strictRustNanosaur ?? true,
-    );
+    const dataBytes = options.reuseLevelBytes
+      ? ok(options.reuseLevelBytes)
+      : await serializePrimaryMapBytes(levelData, options.globals, options.strictRustNanosaur ?? true);
     if (dataBytes.isErr()) {
       return err(levelIoError("preview.failed", dataBytes.error.message));
     }
-    const tilesetBytes = serializeMightyMikeTileset(levelData, options.mapImages);
+    const tilesetBytes = options.reuseTextureBytes
+      ? ok(options.reuseTextureBytes)
+      : serializeMightyMikeTileset(levelData, options.mapImages);
     if (tilesetBytes.isErr()) {
       return err(levelIoError("preview.failed", tilesetBytes.error.message));
     }

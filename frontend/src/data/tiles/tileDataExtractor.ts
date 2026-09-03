@@ -22,20 +22,6 @@ export interface TileInfo {
 }
 
 /**
- * Tile attribute from the Atrb array (Bugdom/Nanosaur style)
- */
-interface ExtendedTileAttribute {
-  bits?: number;
-  parm0?: number;
-  parm1?: number;
-  parm2?: number;
-  undefined?: number;
-  flags: number;
-  p0: number;
-  p1: number;
-}
-
-/**
  * Extract all unique tiles from terrain data
  */
 export function extractTileInfo(terrainData: TerrainData): TileInfo[] {
@@ -59,7 +45,7 @@ export function extractTileInfo(terrainData: TerrainData): TileInfo[] {
 
   // Build tile info for each unique tile
   for (let attrIndex = 0; attrIndex < atrb.length; attrIndex++) {
-    const attr = atrb[attrIndex] as ExtendedTileAttribute | undefined;
+    const attr = atrb[attrIndex];
     if (!attr) continue;
 
     // Get actual tile index from translation table if available
@@ -148,7 +134,7 @@ export function getTileAtPosition(
 
   if (attrIndex === undefined) return null;
 
-  const attr = atrb[attrIndex] as ExtendedTileAttribute | undefined;
+  const attr = atrb[attrIndex];
   if (!attr) return null;
 
   const xlatEntry = xlat?.[attrIndex];

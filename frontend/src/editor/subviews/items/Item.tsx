@@ -23,6 +23,8 @@ import {
 } from "@/editor/subviews/items/itemRenderState";
 import { useItemLiquidTexture } from "./useItemLiquidTexture";
 import { LevelNumber } from "@/data/globals/levelNumber";
+import { ShowItemThumbnailPreviews } from "@/data/canvasView/canvasDisplaySettingsAtoms";
+import { useCanvasItemThumbnail } from "../canvasItemThumbnail";
 
 export const Item = memo(function Item({
   itemData,
@@ -45,6 +47,7 @@ export const Item = memo(function Item({
   const setSelectedItem = useSetAtom(SelectedItem);
   const globals = useAtomValue(Globals);
   const levelNumber = useAtomValue(LevelNumber);
+  const showItemThumbnail = useAtomValue(ShowItemThumbnailPreviews);
   const itemType = item?.type ?? 0;
   const itemP0 = item?.p0 ?? 0;
   const itemP1 = item?.p1 ?? 0;
@@ -53,6 +56,13 @@ export const Item = memo(function Item({
   const itemPosX = item?.x ?? 0;
   const itemPosZ = item?.z ?? 0;
   const liquidTexture = useItemLiquidTexture(globals, itemType, levelNumber);
+  const thumbnail = useCanvasItemThumbnail({
+    game: globals.GAME_TYPE,
+    kind: "terrainItem",
+    itemType,
+    levelNum: levelNumber,
+    params: { p0: itemP0, p1: itemP1, p2: itemP2, p3: itemP3 },
+  });
 
   const handleMouseDown = useCallback(
     () => setSelectedItem(itemIdx),
@@ -82,10 +92,21 @@ export const Item = memo(function Item({
         itemP1,
         itemP2,
         itemP3,
+        levelNumber,
         itemPosX,
         itemPosZ,
       ),
-    [globals, itemType, itemP0, itemP1, itemP2, itemP3, itemPosX, itemPosZ],
+    [
+      globals,
+      itemType,
+      itemP0,
+      itemP1,
+      itemP2,
+      itemP3,
+      levelNumber,
+      itemPosX,
+      itemPosZ,
+    ],
   );
   const liquidPatchCanvas = useMemo(
     () =>
@@ -101,6 +122,7 @@ export const Item = memo(function Item({
             itemP3,
             itemPosX,
             itemPosZ,
+            levelNumber,
             liquidTexture,
           )
         : null,
@@ -116,6 +138,7 @@ export const Item = memo(function Item({
       itemPosX,
       itemPosZ,
       liquidPatchLayout,
+      levelNumber,
       liquidTexture,
     ],
   );
@@ -255,7 +278,35 @@ export const Item = memo(function Item({
         perfectDrawEnabled={false}
       />
 
-      <ItemTypeNumber x={0} y={0} value={item.type.toString()} fill="white" />
+      {showItemThumbnail && thumbnail ? (
+        <KonvaImage
+          image={thumbnail.image}
+          x={0}
+          y={0}
+          width={ITEM_BOX_SIZE}
+          height={ITEM_BOX_SIZE}
+          crop={{
+            x: thumbnail.width * 0.25,
+            y: thumbnail.height * 0.1,
+            width: thumbnail.width * 0.5,
+            height: thumbnail.height * 0.8,
+          }}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      ) : (
+        <ItemTypeNumber x={0} y={0} value={item.type.toString()} fill="white" />
+      )}
+      {showItemThumbnail && thumbnail && (
+        <Rect
+          width={ITEM_BOX_SIZE}
+          height={ITEM_BOX_SIZE}
+          stroke="black"
+          strokeWidth={1}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      )}
     </Group>
   );
 });

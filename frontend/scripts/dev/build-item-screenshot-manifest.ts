@@ -17,7 +17,7 @@ import { Game } from "../../src/data/globals/globals";
 
 type ItemScreenshotKind = "terrainItem" | "splineItem";
 
-type ManifestEntry = {
+interface ManifestEntry {
   game: Game;
   kind: ItemScreenshotKind;
   itemType: number;
@@ -30,7 +30,7 @@ type ManifestEntry = {
     modelIndex: number;
   };
   verificationStatus: "approximate";
-};
+}
 
 const captureManifestEntrySchema = z.object({
   game: z.string().min(1),

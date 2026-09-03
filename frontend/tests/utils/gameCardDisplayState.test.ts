@@ -26,7 +26,7 @@ describe("game card display state", () => {
     expect(getLevelFileType(true, DataType.STANDARD)).toBe(".map");
     expect(getLevelFileType(false, DataType.TRT_FILE)).toBe(".ter");
     expect(getLevelFileType(false, DataType.STANDARD)).toBe(".ter.rsrc");
-    expect(getTextureFileType(true, false, false)).toBeNull();
+    expect(getTextureFileType(true, false, false)).toBe(".tileset");
     expect(getTextureFileType(false, true, false)).toBeNull();
     expect(getTextureFileType(false, false, true)).toBe(".trt");
     expect(getTextureFileType(false, false, false)).toBe(".ter");

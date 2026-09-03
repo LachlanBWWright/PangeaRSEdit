@@ -60,7 +60,7 @@ import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPla
 import { BugdomVertexColorOverlay } from "../subviews/bugdom/BugdomVertexColorOverlay";
 import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
 import { bugdomTerrainModeAtom } from "@/data/terrain/bugdomTerrainModeAtoms";
-import { computeWheelZoomStage } from "./konvaViewState";
+import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -125,6 +125,11 @@ export function Bugdom1KonvaView({
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
+  const isPaintingCanvasMode =
+    (view === View.tiles &&
+      (terrainMode === "topology" || terrainMode === "vertex-colors")) ||
+    tileBrushMode === "stamp" ||
+    tileBrushMode === "capture";
 
   const [captureStart, setCaptureStart] = useState<{
     x: number;
@@ -339,10 +344,15 @@ export function Bugdom1KonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={
-          tileBrushMode !== "stamp" &&
-          tileBrushMode !== "capture"
-        }
+        draggable
+        onDragStart={(e) => {
+          if (
+            isPaintingCanvasMode &&
+            isPointerWithinMap(e, tileSize, mapWidth, mapHeight)
+          ) {
+            e.target.getStage()?.stopDrag();
+          }
+        }}
         onClick={handleStageClick}
         onDblClick={handleStageDblClick}
         onWheel={handleStageWheel}

@@ -63,13 +63,13 @@ export const ScriptingWorkflow: Story = {
     const canvas = within(canvasElement);
     await waitFor(() =>
       expect(
-        canvas.getByRole("button", { name: "Open Scripts" }),
+        canvas.getByRole("tab", { name: "Overview" }),
       ).toBeInTheDocument(),
       { timeout: 30_000 },
     );
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Open Scripts" }),
-    );
+    expect(canvas.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
+    expect(canvas.queryAllByRole("button", { name: "Open Scripts" })).toHaveLength(0);
+    expect(canvasElement.querySelectorAll("canvas")).toHaveLength(0);
 
     const dialog = within(document.body);
     await userEvent.click(dialog.getByRole("tab", { name: "Overview" }));
@@ -156,8 +156,10 @@ export const ScriptingWorkflow: Story = {
     if (packageResult.isErr()) {
       return;
     }
+    const packageBytes = new ArrayBuffer(packageResult.value.byteLength);
+    new Uint8Array(packageBytes).set(packageResult.value);
     const packageFile = new File(
-      [packageResult.value],
+      [packageBytes],
       "reopen-workflow.zip",
       { type: "application/zip" },
     );

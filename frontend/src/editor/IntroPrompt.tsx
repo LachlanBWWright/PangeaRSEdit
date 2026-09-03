@@ -73,6 +73,7 @@ import {
   scriptWorkspaceStoreAtom,
 } from "./subviews/scripts/scriptWorkspaceState";
 import { summarizeScriptWorkspace } from "./subviews/scripts/scriptWorkspaceSelectors";
+import { createScriptItemDemoWorkspace } from "./subviews/scripts/scriptItemDemoLevel";
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
   const match = MIGHTY_MIKE_LEVELS.find(
@@ -462,10 +463,13 @@ export function IntroPrompt() {
   }, [setAllAtomicData, setLevelNumber]);
 
   const handleCreateBlankLevel = useCallback(
-    (gameType: GlobalsInterface) => {
+    (gameType: GlobalsInterface, includePlayerStart = false) => {
       setGlobals(gameType);
       const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
-      const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
+      const result = createBlankLevel(gameType.GAME_TYPE, {
+        ...dimensions,
+        includePlayerStart,
+      });
       if (result.isErr()) {
         toast.error("Failed to create blank level", {
           description: result.error,
@@ -511,6 +515,24 @@ export function IntroPrompt() {
       setMapImages,
       setMapImagesFile,
     ],
+  );
+
+  const handleCreateScriptItemDemoLevel = useCallback(
+    (gameType: GlobalsInterface) => {
+      handleCreateBlankLevel(gameType, true);
+      void createScriptItemDemoWorkspace(gameType).match(
+        (workspace) => {
+          setScriptWorkspaceStore((store) =>
+            replaceScriptWorkspace(store, workspace),
+          );
+          toast.success("Script item demo level created");
+        },
+        (error) => toast.error("Could not create script item demo level", {
+          description: error,
+        }),
+      );
+    },
+    [handleCreateBlankLevel, setScriptWorkspaceStore],
   );
 
   const buildOriginalCompatibleFiles = useCallback(async () => {
@@ -909,6 +931,7 @@ export function IntroPrompt() {
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
         onCreateBlankLevel={handleCreateBlankLevel}
+        onCreateScriptItemDemoLevel={handleCreateScriptItemDemoLevel}
       />
     );
 

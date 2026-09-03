@@ -4,7 +4,7 @@ import type {
   SplineNub as SplineNubType,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
-import { Group, Line, Circle, Rect, Text } from "react-konva";
+import { Group, Image as KonvaImage, Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
@@ -19,6 +19,8 @@ import { ActiveView } from "@/data/globals/activeViewAtom";
 import { View } from "@/editor/viewEnum";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Globals } from "@/data/globals/globals";
+import { LevelNumber } from "@/data/globals/levelNumber";
+import { ShowItemThumbnailPreviews } from "@/data/canvasView/canvasDisplaySettingsAtoms";
 import {
   selectSplineNubs,
   // selectSplinePoints,
@@ -37,6 +39,7 @@ import {
   ItemTypeNumber,
 } from "../shared/nodeVisuals";
 import type { HoverTagInfo } from "../shared/nodeVisuals";
+import { useCanvasItemThumbnail } from "../canvasItemThumbnail";
 import {
   applySplineLineDrag,
   buildPreviewNubs,
@@ -320,12 +323,27 @@ const SplineItem = memo(
     onHoverChange: (tag: HoverTagInfo | null) => void;
   }) => {
     const globals = useAtomValue(Globals);
+    const levelNumber = useAtomValue(LevelNumber);
+    const showItemThumbnail = useAtomValue(ShowItemThumbnailPreviews);
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [selectedSplineItem, setSelectedSplineItem] =
       useAtom(SelectedSplineItem);
     const setActiveView = useSetAtom(ActiveView);
     const isSelected =
       selectedSpline === splineIdx && selectedSplineItem === itemIdx;
+    const thumbnail = useCanvasItemThumbnail({
+      game: globals.GAME_TYPE,
+      kind: "splineItem",
+      itemType: item.type,
+      levelNum: levelNumber,
+      params: {
+        p0: item.p0,
+        p1: item.p1,
+        p2: item.p2,
+        p3: item.p3,
+        flags: item.flags,
+      },
+    });
     const handleMouseOver = () => {
       onHoverChange({
         x: x - ITEM_BOX_OFFSET + ITEM_BOX_SIZE + ITEM_TAG_GAP,
@@ -358,12 +376,42 @@ const SplineItem = memo(
           onMouseDown={handleMouseDown}
           perfectDrawEnabled={false}
         />
-        <ItemTypeNumber
-          x={x - ITEM_BOX_OFFSET}
-          y={z - ITEM_BOX_OFFSET}
-          value={item.type.toString()}
-          fill="white"
-        />
+        {showItemThumbnail && thumbnail ? (
+          <KonvaImage
+            image={thumbnail.image}
+            x={x - ITEM_BOX_OFFSET}
+            y={z - ITEM_BOX_OFFSET}
+            width={ITEM_BOX_SIZE}
+            height={ITEM_BOX_SIZE}
+            crop={{
+              x: thumbnail.width * 0.25,
+              y: thumbnail.height * 0.1,
+              width: thumbnail.width * 0.5,
+              height: thumbnail.height * 0.8,
+            }}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        ) : (
+          <ItemTypeNumber
+            x={x - ITEM_BOX_OFFSET}
+            y={z - ITEM_BOX_OFFSET}
+            value={item.type.toString()}
+            fill="white"
+          />
+        )}
+        {showItemThumbnail && thumbnail && (
+          <Rect
+            x={x - ITEM_BOX_OFFSET}
+            y={z - ITEM_BOX_OFFSET}
+            width={ITEM_BOX_SIZE}
+            height={ITEM_BOX_SIZE}
+            stroke="black"
+            strokeWidth={1}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        )}
       </>
     );
   },

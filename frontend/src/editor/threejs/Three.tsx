@@ -39,6 +39,8 @@ import {
 import { useRef } from "react";
 import { Mesh, MOUSE } from "three";
 import type { Updater } from "use-immer";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { SceneExporter } from "./threeExportHelpers";
 import { useThreeTopologyEditing } from "./useThreeTopologyEditing";
 
@@ -51,6 +53,9 @@ export function ThreeView({
   terrainData,
   mapImages,
   setItemData,
+  setFenceData,
+  setLiquidData,
+  setSplineData,
   setTerrainData,
 }: {
   headerData: HeaderData;
@@ -61,9 +66,13 @@ export function ThreeView({
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
   setItemData?: Updater<ItemData | null>;
+  setFenceData?: Updater<FenceData | null>;
+  setLiquidData?: Updater<LiquidData | null>;
+  setSplineData?: Updater<SplineData | null>;
   setTerrainData?: Updater<TerrainData>;
 }) {
   const globals = useAtomValue(Globals);
+  const activeView = useAtomValue(ActiveView);
   const show3DSplines = useAtomValue(Show3DSplines);
   const show3DItems = useAtomValue(Show3DItems);
   const show3DFences = useAtomValue(Show3DFences);
@@ -81,7 +90,9 @@ export function ThreeView({
   const terrainMeshRef = useRef<Mesh>(null);
   const roofMeshRef = useRef<Mesh>(null);
 
-  const isEditingTopology = tileViewMode === TileViews.Topology;
+  const isEditingTopology =
+    activeView === View.tiles && tileViewMode === TileViews.Topology;
+  const isEditingItems = activeView === View.items;
 
   const header = headerData.Hedr[1000].obj;
 
@@ -97,6 +108,7 @@ export function ThreeView({
     isShiftHeld,
     topologyVersion,
     draggingItemIdx,
+    draggingEntity,
     hoveredItemIdx,
     selectedItemIdx,
     displacementMagnitude,
@@ -105,6 +117,7 @@ export function ThreeView({
     handlePointerDown,
     handlePointerUp,
     handleItemPointerDown,
+    handleEntityPointerDown,
     handleItemPointerEnter,
     handleItemPointerLeave,
   } = useThreeTopologyEditing({
@@ -112,8 +125,14 @@ export function ThreeView({
     header,
     terrainData,
     itemData,
+    fenceData,
+    liquidData,
+    splineData,
     setTerrainData,
     setItemData,
+    setFenceData,
+    setLiquidData,
+    setSplineData,
     isEditingTopology,
     brushMode,
     dualEditMode,
@@ -136,6 +155,7 @@ export function ThreeView({
       style={{ width: "100%", height: "100%" }}
       gl={{ logarithmicDepthBuffer: true }}
       onContextMenu={(event) => event.preventDefault()}
+      onPointerMove={handlePointerMove}
       camera={{
         fov: 60,
         near: 1,
@@ -153,7 +173,7 @@ export function ThreeView({
         // Make the controls the default camera controls
         makeDefault
         // Disable controls during editing
-        enabled={!isEditing && draggingItemIdx === null}
+        enabled={!isEditing && draggingItemIdx === null && draggingEntity === null}
         // Smooth movement
         enableDamping
         dampingFactor={0.08}
@@ -220,6 +240,8 @@ export function ThreeView({
           headerData={headerData}
           terrainData={terrainData}
           topologyVersion={topologyVersion}
+          onNubPointerDown={handleEntityPointerDown}
+          draggingEntity={draggingEntity}
         />
       )}
       {liquidData && show3DLiquid && (
@@ -227,6 +249,8 @@ export function ThreeView({
           liquidData={liquidData}
           headerData={headerData}
           terrainData={terrainData}
+          onNubPointerDown={handleEntityPointerDown}
+          draggingEntity={draggingEntity}
         />
       )}
       {itemData && show3DItems && (
@@ -234,9 +258,16 @@ export function ThreeView({
           itemData={itemData}
           headerData={headerData}
           terrainData={terrainData}
-          onItemPointerDown={setItemData ? handleItemPointerDown : undefined}
-          onItemPointerEnter={handleItemPointerEnter}
-          onItemPointerLeave={handleItemPointerLeave}
+          onItemPointerDown={
+            isEditingItems && setItemData ? handleItemPointerDown : undefined
+          }
+          onItemPointerEnter={
+            isEditingItems ? handleItemPointerEnter : undefined
+          }
+          onItemPointerLeave={
+            isEditingItems ? handleItemPointerLeave : undefined
+          }
+          setItemData={setItemData}
           hoveredItemIdx={hoveredItemIdx}
           selectedItemIdx={selectedItemIdx}
           draggingItemIdx={draggingItemIdx}
@@ -244,9 +275,9 @@ export function ThreeView({
         />
       )}
       {/* Drag plane: invisible mesh above terrain that captures pointer events during item drag */}
-      {draggingItemIdx !== null && (
+      {(draggingItemIdx !== null || draggingEntity !== null) && (
         <mesh
-          position={[unitsWide / 2, 1, unitsHigh / 2]}
+          position={[unitsWide / 2, 0, unitsHigh / 2]}
           rotation={[-Math.PI / 2, 0, 0]}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -260,6 +291,8 @@ export function ThreeView({
           splineData={splineData}
           headerData={headerData}
           terrainData={terrainData}
+          onNubPointerDown={handleEntityPointerDown}
+          draggingEntity={draggingEntity}
         />
       )}
       {splineData && show3DSplines && (

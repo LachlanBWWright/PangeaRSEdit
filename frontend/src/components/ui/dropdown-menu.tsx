@@ -4,6 +4,7 @@ import {
   Trigger as DropdownMenuTriggerRoot,
   Portal as DropdownMenuPortal,
   Content as DropdownMenuContentRoot,
+  Item as DropdownMenuItemRoot,
   CheckboxItem as DropdownMenuCheckboxItemRoot,
   ItemIndicator as DropdownMenuItemIndicator,
   Label as DropdownMenuLabelRoot,
@@ -15,6 +16,21 @@ import { cn } from "@/lib/utils";
 
 const DropdownMenu = DropdownMenuRoot;
 const DropdownMenuTrigger = DropdownMenuTriggerRoot;
+
+const DropdownMenuItem = React.forwardRef<
+  ElementRef<typeof DropdownMenuItemRoot>,
+  ComponentPropsWithoutRef<typeof DropdownMenuItemRoot>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuItemRoot
+    ref={ref}
+    className={cn(
+      "relative flex h-9 w-full cursor-default select-none items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium outline-none transition-colors focus:bg-slate-700 focus:text-white data-disabled:pointer-events-none data-disabled:opacity-50",
+      className,
+    )}
+    {...props}
+  />
+));
+DropdownMenuItem.displayName = DropdownMenuItemRoot.displayName;
 
 const DropdownMenuContent = React.forwardRef<
   ElementRef<typeof DropdownMenuContentRoot>,
@@ -85,6 +101,7 @@ export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,

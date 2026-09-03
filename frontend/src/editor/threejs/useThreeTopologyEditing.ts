@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { Ray } from "three";
 import type { Mesh } from "three";
 import type { Event } from "three";
 import type { Updater } from "use-immer";
 import { useAtom } from "jotai";
 import type {
+  FenceData,
   HeaderData,
   ItemData,
+  LiquidData,
+  SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import type { GlobalsInterface } from "@/data/globals/globals";
@@ -28,16 +32,29 @@ import { SelectedItem } from "@/data/items/itemAtoms";
 import {
   createThreeItemDragState,
   getDraggedItemPlacement,
+  getItemDragPlanePoint,
   updateTerrainItemPlacement,
 } from "./threeItemInteraction";
+import {
+  createThreeEntityDragState,
+  getDraggedEntityPlacement,
+  type ThreeEntityDragState,
+  type ThreeEntityKind,
+} from "./threeEntityInteraction";
 
 interface UseThreeTopologyEditingArgs {
   globals: GlobalsInterface;
   header: HeaderData["Hedr"][1000]["obj"];
   terrainData: TerrainData;
   itemData: ItemData | null;
+  fenceData: FenceData | null;
+  liquidData: LiquidData | null;
+  splineData: SplineData | null;
   setTerrainData?: Updater<TerrainData>;
   setItemData?: Updater<ItemData | null>;
+  setFenceData?: Updater<FenceData | null>;
+  setLiquidData?: Updater<LiquidData | null>;
+  setSplineData?: Updater<SplineData | null>;
   isEditingTopology: boolean;
   brushMode: number;
   dualEditMode: TopologyDualEditMode;
@@ -55,8 +72,14 @@ export function useThreeTopologyEditing({
   header,
   terrainData,
   itemData,
+  fenceData,
+  liquidData,
+  splineData,
   setTerrainData,
   setItemData,
+  setFenceData,
+  setLiquidData,
+  setSplineData,
   isEditingTopology,
   brushMode,
   dualEditMode,
@@ -84,6 +107,8 @@ export function useThreeTopologyEditing({
   const dragItemRef = useRef<ReturnType<typeof createThreeItemDragState> | null>(
     null,
   );
+  const dragEntityRef = useRef<ThreeEntityDragState | null>(null);
+  const [draggingEntity, setDraggingEntity] = useState<ThreeEntityDragState | null>(null);
   const topologyStrokeRef = useRef<{
     floorSnapshot: number[];
     roofSnapshot: number[] | undefined;
@@ -187,7 +212,7 @@ export function useThreeTopologyEditing({
       const pixels = mergeBrushPixels([
         previousStroke?.pixels ?? [],
         nextPixels,
-      ]);
+      ], globals.TILE_INGAME_SIZE);
       const draft = applyTopologyBrushToSnapshot(
         floorSnapshot,
         roofSnapshot,
@@ -261,6 +286,37 @@ export function useThreeTopologyEditing({
         return;
       }
 
+      if (dragEntityRef.current && hasPointProperty(event)) {
+        const drag = dragEntityRef.current;
+        const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
+        const placement = getDraggedEntityPlacement(drag, scale, event.ray);
+        if (!placement) return;
+        if (drag.kind === "fence" && setFenceData) {
+          setFenceData((data) => {
+            const nub = data?.FnNb[1000 + drag.entityIndex]?.obj[drag.pointIndex];
+            if (nub) { nub[0] = placement.x; nub[1] = placement.z; }
+          });
+        }
+        if (drag.kind === "water" && setLiquidData) {
+          setLiquidData((data) => {
+            const body = data?.Liqd[1000].obj[drag.entityIndex];
+            const nub = body?.nubs[drag.pointIndex];
+            if (nub) { nub[0] = placement.x; nub[1] = placement.z; }
+            if (body && drag.pointIndex === -1) {
+              body.hotSpotX = placement.x;
+              body.hotSpotZ = placement.z;
+            }
+          });
+        }
+        if (drag.kind === "spline" && setSplineData) {
+          setSplineData((data) => {
+            const nub = data?.SpNb[1000 + drag.entityIndex]?.obj[drag.pointIndex];
+            if (nub) { nub.x = placement.x; nub.z = placement.z; }
+          });
+        }
+        return;
+      }
+
       if (!isEditingTopology || !terrainMeshRef.current) return;
 
       if (hasPointProperty(event)) {
@@ -298,7 +354,10 @@ export function useThreeTopologyEditing({
       globals,
       isEditing,
       isEditingTopology,
+      setFenceData,
+      setLiquidData,
       setItemData,
+      setSplineData,
       terrainMeshRef,
       updateTopologyStroke,
     ],
@@ -351,27 +410,64 @@ export function useThreeTopologyEditing({
   );
 
   const handleItemPointerDown = useCallback(
-    (itemIdx: number, pointerId: number, worldX: number, worldZ: number) => {
+    (
+      itemIdx: number,
+      pointerId: number,
+      ray: Ray,
+    ) => {
       const item = itemData?.Itms?.[1000]?.obj?.[itemIdx];
       if (!setItemData || !item) return;
+      const dragPlanePoint = getItemDragPlanePoint(ray);
+      if (!dragPlanePoint) return;
       setSelectedItem(itemIdx);
       dragItemRef.current = createThreeItemDragState(
         itemIdx,
         pointerId,
         item.x,
         item.z,
-        worldX,
-        worldZ,
+        dragPlanePoint.x,
+        dragPlanePoint.z,
       );
       setDraggingItemIdx(itemIdx);
     },
     [itemData, setItemData, setSelectedItem],
   );
 
+  const handleEntityPointerDown = useCallback(
+    (
+      kind: ThreeEntityKind,
+      entityIndex: number,
+      pointIndex: number,
+      pointerId: number,
+      startX: number,
+      startZ: number,
+      ray: Ray,
+    ) => {
+      const canEdit =
+        (kind === "fence" && fenceData && setFenceData) ||
+        (kind === "water" && liquidData && setLiquidData) ||
+        (kind === "spline" && splineData && setSplineData);
+      if (!canEdit) return;
+      const drag = createThreeEntityDragState(
+        kind, entityIndex, pointIndex, pointerId, startX, startZ, ray,
+      );
+      if (!drag) return;
+      dragEntityRef.current = drag;
+      setDraggingEntity(drag);
+    },
+    [fenceData, liquidData, setFenceData, setLiquidData, setSplineData, splineData],
+  );
+
   const handlePointerUp = useCallback(() => {
     if (dragItemRef.current !== null) {
       dragItemRef.current = null;
       setDraggingItemIdx(null);
+      setTopologyVersion((v) => v + 1);
+      return;
+    }
+    if (dragEntityRef.current !== null) {
+      dragEntityRef.current = null;
+      setDraggingEntity(null);
       setTopologyVersion((v) => v + 1);
       return;
     }
@@ -415,6 +511,8 @@ export function useThreeTopologyEditing({
     handlePointerDown,
     handlePointerUp,
     handleItemPointerDown,
+    handleEntityPointerDown,
+    draggingEntity,
     handleItemPointerEnter: setHoveredItemIdx,
     handleItemPointerLeave: () => setHoveredItemIdx(null),
   };

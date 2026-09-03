@@ -47,7 +47,7 @@ import type Konva from "konva";
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
-import { computeWheelZoomStage } from "./konvaViewState";
+import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -95,6 +95,8 @@ export function MightyMikeKonvaView({
   const mapWidth = header.mapWidth;
   const layr = terrainData.Layr?.[1000]?.obj ?? [];
   const mapHeight = Math.ceil(layr.length / mapWidth);
+  const isPaintingCanvasMode =
+    tileBrushMode === "stamp" || tileBrushMode === "capture";
   const [captureStart, setCaptureStart] = useState<{
     x: number;
     y: number;
@@ -211,7 +213,15 @@ export function MightyMikeKonvaView({
         scaleY={stage.scale}
         x={stage.x}
         y={stage.y}
-        draggable={tileBrushMode !== "stamp" && tileBrushMode !== "capture"}
+        draggable
+        onDragStart={(e) => {
+          if (
+            isPaintingCanvasMode &&
+            isPointerWithinMap(e, TILE_SIZE, mapWidth, mapHeight)
+          ) {
+            e.target.getStage()?.stopDrag();
+          }
+        }}
         onMouseDown={(e) => {
           if (tileBrushMode !== "capture") {
             return;

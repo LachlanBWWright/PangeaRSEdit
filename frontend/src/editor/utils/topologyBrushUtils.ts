@@ -63,6 +63,11 @@ export function distanceToLineSegment(
   return Math.hypot(pointX - closestX, pointY - closestY);
 }
 
+/** Return a linear, non-negative influence for a normalized brush distance. */
+export function getTopologyBrushFalloff(normalizedDistance: number): number {
+  return Math.max(0, Math.min(1, 1 - normalizedDistance));
+}
+
 /**
  * Calculate which tiles/pixels should be affected by the brush
  */
@@ -145,18 +150,17 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
   return pixelList;
 }
 
-function getPixelKey(pixel: PixelType): string {
-  return `${String(pixel.x)},${String(pixel.y)}`;
-}
-
 export function mergeBrushPixels(
   pixelGroups: readonly (readonly PixelType[])[],
+  tileSize = 1,
 ): PixelType[] {
   const mergedPixels = new Map<string, PixelType>();
 
   pixelGroups.forEach((pixels) => {
     pixels.forEach((pixel) => {
-      const key = getPixelKey(pixel);
+      const key = `${String(Math.floor(pixel.x / tileSize))},${String(
+        Math.floor(pixel.y / tileSize),
+      )}`;
       const existingPixel = mergedPixels.get(key);
 
       if (!existingPixel || pixel.distance < existingPixel.distance) {
@@ -218,8 +222,7 @@ export function applyTopologyBrush(
         break;
 
       case TopologyValueMode.DELTA_WITH_DROPOFF: {
-        // Apply falloff: full effect at center (distance=0), no effect at edge (distance=1)
-        const falloff = 1 - pixel.distance;
+        const falloff = getTopologyBrushFalloff(pixel.distance);
         newValue = currentValue + pixel.value * falloff;
         break;
       }

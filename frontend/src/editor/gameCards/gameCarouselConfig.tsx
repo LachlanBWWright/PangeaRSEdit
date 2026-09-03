@@ -22,6 +22,7 @@ import type { TunnelData } from "@/data/tunnelParser/types";
 
 export interface LevelComponentProps {
   readonly openFile: (url: string, gameType: GlobalsInterface) => void;
+  readonly onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
   readonly onTunnelLoad?: (data: TunnelData, fileName: string) => void;
 }
 
@@ -30,32 +31,33 @@ interface GameConfig {
   readonly globals: GlobalsInterface;
 }
 
-const OttoLevelWrapper = ({ openFile }: LevelComponentProps) => (
-  <OttoLevels openFile={openFile} />
+const OttoLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
+  <OttoLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
-const BugdomLevelWrapper = ({ openFile }: LevelComponentProps) => (
-  <BugdomLevels openFile={openFile} />
+const BugdomLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
+  <BugdomLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
 const Bugdom2LevelWrapper = ({
   openFile,
+  onCreateScriptItemDemoLevel,
   onTunnelLoad,
 }: LevelComponentProps) => (
-  <Bugdom2Levels openFile={openFile} onTunnelLoad={onTunnelLoad} />
+  <Bugdom2Levels openFile={openFile} onTunnelLoad={onTunnelLoad} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
-const CroMagLevelWrapper = ({ openFile }: LevelComponentProps) => (
-  <CroMagLevels openFile={openFile} />
+const CroMagLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
+  <CroMagLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
-const NanosaurLevelWrapper = ({ openFile }: LevelComponentProps) => (
-  <NanosaurLevels openFile={openFile} />
+const NanosaurLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
+  <NanosaurLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
-const Nanosaur2LevelWrapper = ({ openFile }: LevelComponentProps) => (
-  <Nanosaur2Levels openFile={openFile} />
+const Nanosaur2LevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
+  <Nanosaur2Levels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
-const BillyFrontierLevelWrapper = ({ openFile }: LevelComponentProps) => (
-  <BillyFrontierLevels openFile={openFile} />
+const BillyFrontierLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
+  <BillyFrontierLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
-const MightyMikeLevelWrapper = ({ openFile }: LevelComponentProps) => (
-  <MightyMikeLevels openFile={openFile} />
+const MightyMikeLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
+  <MightyMikeLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
 );
 
 export const LEVEL_COMPONENTS_MAP: Record<

@@ -6,6 +6,7 @@ import type {
 } from "@/python/structSpecs/LevelTypes";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { getTerrainHeightAtPoint } from "@/editor/threejs/fenceUtils/getTerrainHeightAtPoint";
+import { Plane, Ray, Vector3 } from "three";
 
 export interface ThreeItemDragState {
   readonly itemIndex: number;
@@ -14,6 +15,15 @@ export interface ThreeItemDragState {
   readonly startItemZ: number;
   readonly startWorldX: number;
   readonly startWorldZ: number;
+}
+
+const ITEM_DRAG_PLANE = new Plane(new Vector3(0, 1, 0), 0);
+
+export function getItemDragPlanePoint(ray: Ray): { x: number; z: number } | null {
+  const point = new Vector3();
+  const intersection = ray.intersectPlane(ITEM_DRAG_PLANE, point);
+  if (!intersection) return null;
+  return { x: intersection.x, z: intersection.z };
 }
 
 export interface ThreeItemInteractionState {

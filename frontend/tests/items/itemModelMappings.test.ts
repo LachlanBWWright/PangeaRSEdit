@@ -468,6 +468,7 @@ describe("item model mappings", () => {
     ).toMatchObject({
       modelFile: "buildings.bg3d",
       modelIndex: 0,
+      yOffset: 416.2409668,
     });
   });
 });

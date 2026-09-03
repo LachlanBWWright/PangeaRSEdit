@@ -155,7 +155,10 @@ export function MightyMikeEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection scrollable={view !== View.animations}>
+      <MenuSection
+        scrollable={view !== View.animations}
+        className={view === View.scripts ? "h-full" : undefined}
+      >
         {view === View.items &&
           (itemData ? (
             <MightyMikeItemMenu
@@ -208,31 +211,33 @@ export function MightyMikeEditorView({
           />
         )}
       </MenuSection>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
-        <div className="absolute top-2 right-2 z-10 flex gap-2">
-          <EditorCanvasControls
-            undoData={undoData}
-            redoData={redoData}
-            zoomOut={zoomOut}
-            zoomIn={zoomIn}
-            dataHistoryIndex={dataHistory.index}
-            dataHistoryLength={dataHistory.items.length}
+      {view !== View.scripts && (
+        <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
+          <div className="absolute top-2 right-2 z-10 flex gap-2">
+            <EditorCanvasControls
+              undoData={undoData}
+              redoData={redoData}
+              zoomOut={zoomOut}
+              zoomIn={zoomIn}
+              dataHistoryIndex={dataHistory.index}
+              dataHistoryLength={dataHistory.items.length}
+            />
+            {itemData && <ItemFilterToggle itemData={itemData} splineData={null} />}
+          </div>
+          {/* Mighty Mike is 2D only - no 3D view */}
+          <MightyMikeKonvaView
+            headerData={headerData}
+            itemData={itemData}
+            setItemData={setItemData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            mapImages={mapImages}
+            stage={stage}
+            setStage={setStage}
+            onResize={handleResize}
           />
-          {itemData && <ItemFilterToggle itemData={itemData} splineData={null} />}
         </div>
-        {/* Mighty Mike is 2D only - no 3D view */}
-        <MightyMikeKonvaView
-          headerData={headerData}
-          itemData={itemData}
-          setItemData={setItemData}
-          terrainData={terrainData}
-          setTerrainData={setTerrainData}
-          mapImages={mapImages}
-          stage={stage}
-          setStage={setStage}
-          onResize={handleResize}
-        />
-      </div>
+      )}
     </div>
   );
 }

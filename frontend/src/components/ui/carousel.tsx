@@ -119,7 +119,7 @@ const Carousel = forwardRef<
         return;
       }
 
-      onSelect(api);
+      queueMicrotask(() => onSelect(api));
       api.on("reInit", onSelect);
       api.on("select", onSelect);
 

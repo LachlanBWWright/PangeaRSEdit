@@ -22,7 +22,7 @@ export function EditorCanvasControls({
     <div className="flex gap-2">
       <Button
         type="button"
-        variant="icon"
+        variant="selectable"
         size="icon"
         onClick={undoData}
         aria-label="Undo"
@@ -33,7 +33,7 @@ export function EditorCanvasControls({
       </Button>
       <Button
         type="button"
-        variant="icon"
+        variant="selectable"
         size="icon"
         onClick={redoData}
         aria-label="Redo"
@@ -44,7 +44,7 @@ export function EditorCanvasControls({
       </Button>
       <Button
         type="button"
-        variant="icon"
+        variant="selectable"
         size="icon"
         onClick={zoomOut}
         aria-label="Zoom out"
@@ -54,7 +54,7 @@ export function EditorCanvasControls({
       </Button>
       <Button
         type="button"
-        variant="icon"
+        variant="selectable"
         size="icon"
         onClick={zoomIn}
         aria-label="Zoom in"

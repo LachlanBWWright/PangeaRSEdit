@@ -44,6 +44,9 @@ export interface SerializeDownloadRequest {
   readonly mapImagesFileName?: string;
   readonly levelData: unknown;
   readonly mapImages: readonly LevelIoImagePayload[];
+  readonly reuseLevelBytes?: Uint8Array;
+  readonly reuseTextureBytes?: Uint8Array;
+  readonly reuseCombinedBytes?: Uint8Array;
 }
 
 export interface PreparePreviewRequest {
@@ -52,6 +55,9 @@ export interface PreparePreviewRequest {
   readonly globals: GlobalsInterface;
   readonly levelData: unknown;
   readonly mapImages: readonly LevelIoImagePayload[];
+  readonly reuseLevelBytes?: Uint8Array;
+  readonly reuseTextureBytes?: Uint8Array;
+  readonly reuseCombinedBytes?: Uint8Array;
 }
 
 export type LevelIoRequest =

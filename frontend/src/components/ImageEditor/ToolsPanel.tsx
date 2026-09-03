@@ -46,6 +46,9 @@ interface Props {
    * swatch color to a new CSS color string.
    */
   onReplacePaletteColor?: (index: number, newColor: string) => void;
+  hasOverlay?: boolean;
+  showOverlay?: boolean;
+  setShowOverlay?: (value: boolean) => void;
 }
 
 export function ToolsPanel({
@@ -60,6 +63,9 @@ export function ToolsPanel({
   onReplacePaletteColor,
   highlightSelectedColorUsage,
   setHighlightSelectedColorUsage,
+  hasOverlay = false,
+  showOverlay = false,
+  setShowOverlay,
 }: Props) {
   const isPaletteMode = paletteColors !== undefined && paletteColors.length > 0;
   const canEditPalette = onReplacePaletteColor !== undefined;
@@ -171,6 +177,25 @@ export function ToolsPanel({
           </Select>
         </div>
       </div>
+
+      {hasOverlay && setShowOverlay && (
+        <div className="space-y-3 pt-4 border-t border-gray-700">
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Map Overlay
+          </label>
+          <label className="flex items-center justify-between rounded bg-gray-900/50 px-2 py-2 text-sm text-gray-300">
+            <span>Show map elements</span>
+            <Switch
+              checked={showOverlay}
+              onCheckedChange={setShowOverlay}
+              aria-label="Show map elements overlay"
+            />
+          </label>
+          <p className="text-[10px] text-gray-500">
+            Shows positions captured when the editor opened.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-3 pt-4 border-t border-gray-700">
         <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">

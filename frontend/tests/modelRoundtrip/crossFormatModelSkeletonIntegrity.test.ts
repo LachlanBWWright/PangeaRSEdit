@@ -22,33 +22,33 @@ import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc
 import { eulerToQuaternion } from "@/modelParsers/rotationUtils";
 
 interface ModelPayload {
-  geometries: Array<{
+  geometries: {
     colors: number[][];
-    materials: Array<{
+    materials: {
       diffuseColor: number[];
       flags: number;
-      textureDimensions: Array<[number, number]>;
-    }>;
+      textureDimensions: [number, number][];
+    }[];
     normals: number[][];
     triangles: number[][];
     uvs: number[][];
     vertices: number[][];
-  }>;
+  }[];
 }
 
 interface SkeletonPayload {
-  bones: Array<{
+  bones: {
     coordinates: number[];
     name: string;
     pointAttachments: number[];
     parent: number;
-  }>;
-  animations: Array<{
-    events: Array<[number, number, number]>;
-    keyframes: Array<[string, number[][]]>;
+  }[];
+  animations: {
+    events: [number, number, number][];
+    keyframes: [string, number[][]][];
     name: string;
-  }>;
-  relativePoints: Array<[string, number[][]]>;
+  }[];
+  relativePoints: [string, number[][]][];
 }
 
 interface CrossFormatFixture {
