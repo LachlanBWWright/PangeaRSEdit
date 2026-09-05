@@ -11,6 +11,7 @@ import { WebIO, Document } from "@gltf-transform/core";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { UvMapEditor } from "@/components/TextureManager/UvMapEditor";
+import { MeshDataEditor } from "@/editor/tunnel/MeshDataEditor";
 import { tunnelTextureToDataUrl } from "@/data/tunnelParser/textureUtils";
 import type { TunnelData, TunnelSectionMesh } from "@/data/tunnelParser/types";
 import type { UvLayout } from "@/modelEditing/uv/uvTypes";
@@ -286,6 +287,9 @@ export function SectionInspector({
   const [uvEditorTarget, setUvEditorTarget] = useState<null | {
     meshType: "tunnel" | "water";
   }>(null);
+  const [meshEditorTarget, setMeshEditorTarget] = useState<null | {
+    meshType: "tunnel" | "water";
+  }>(null);
   const tunnelImportInputRef = useRef<HTMLInputElement | null>(null);
   const waterImportInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -355,7 +359,7 @@ export function SectionInspector({
 
   return (
     <div className="flex flex-col h-full bg-gray-800 p-4 rounded-lg">
-      <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h2 className="text-lg font-bold text-white">Geometry Sections</h2>
         {onAddSection && (
           <Button size="sm" onClick={() => onAddSection()}>
@@ -413,14 +417,14 @@ export function SectionInspector({
 
       {selectedStats && selectedSectionData && selectedSection !== null && (
         <div className="border-t border-gray-600 pt-4">
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h3 className="text-sm font-bold text-white">
               Section #{selectedSection} Details
             </h3>
           </div>
 
           {(onAddSection || onDeleteSection || onDuplicateSection) && (
-            <div className="flex gap-2 mb-3">
+            <div className="flex flex-wrap gap-2 mb-3">
               {onDuplicateSection && (
                 <Button
                   size="sm"
@@ -453,11 +457,11 @@ export function SectionInspector({
 
           <div className="space-y-3">
             <div className="bg-gray-700 p-3 rounded flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-medium text-white mb-1">
                   Tunnel Mesh
                 </div>
-                <div className="flex gap-1">
+                <div className="flex min-w-0 flex-wrap gap-1">
                   {onUpdateSectionMeshUv && (
                     <Button
                       size="sm"
@@ -465,6 +469,15 @@ export function SectionInspector({
                       onClick={() => setUvEditorTarget({ meshType: "tunnel" })}
                     >
                       Edit UVs
+                    </Button>
+                  )}
+                  {onReplaceSectionMesh && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMeshEditorTarget({ meshType: "tunnel" })}
+                    >
+                      Edit Data
                     </Button>
                   )}
                   <Button
@@ -514,11 +527,11 @@ export function SectionInspector({
             </div>
 
             <div className="bg-gray-700 p-3 rounded flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-medium text-white mb-1">
                   Water Mesh
                 </div>
-                <div className="flex gap-1">
+                <div className="flex min-w-0 flex-wrap gap-1">
                   {onUpdateSectionMeshUv && (
                     <Button
                       size="sm"
@@ -526,6 +539,15 @@ export function SectionInspector({
                       onClick={() => setUvEditorTarget({ meshType: "water" })}
                     >
                       Edit UVs
+                    </Button>
+                  )}
+                  {onReplaceSectionMesh && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMeshEditorTarget({ meshType: "water" })}
+                    >
+                      Edit Data
                     </Button>
                   )}
                   <Button
@@ -636,6 +658,39 @@ export function SectionInspector({
                       );
                     }
                     setUvEditorTarget(null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {meshEditorTarget && onReplaceSectionMesh && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="text-lg font-bold text-white">
+                    Mesh Data Editor
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMeshEditorTarget(null)}
+                  >
+                    Close
+                  </Button>
+                </div>
+                <MeshDataEditor
+                  mesh={
+                    meshEditorTarget.meshType === "tunnel"
+                      ? selectedSectionData.tunnelMesh
+                      : selectedSectionData.waterMesh
+                  }
+                  meshType={meshEditorTarget.meshType}
+                  onChange={(mesh) => {
+                    onReplaceSectionMesh(
+                      selectedSection,
+                      meshEditorTarget.meshType,
+                      mesh,
+                    );
                   }}
                 />
               </div>

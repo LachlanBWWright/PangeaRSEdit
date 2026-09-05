@@ -15,6 +15,7 @@ import {
   liquidSchema,
   supertileGridOttoSchema,
   tileAttributeSchema,
+  metadataResourceTypeSchema,
 } from "../levelDataSchemas";
 
 // Bugdom 1 level validation - uses Layr and tile images are
@@ -23,6 +24,7 @@ import {
 export const bugdomLevelSchema = z
   .object({
     _metadata: metadataSchema,
+    Meta: metadataResourceTypeSchema.optional(),
     Hedr: z.record(z.string(), resourceEntrySchema(headerBugdom1Schema)),
     Layr: z
       .record(z.string(), resourceEntrySchema(z.array(z.number())))

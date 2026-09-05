@@ -273,6 +273,18 @@ export const hexDataEntrySchema = z.object({
   order: z.number().optional(),
 });
 
+/** The four-character resource used for editable level behavior metadata. */
+export const metadataResourceSchema = z.object({
+  schemaVersion: z.literal(1),
+  game: z.string(),
+  identity: z.string(),
+  properties: z.record(z.string(), z.string()),
+});
+
+export const metadataResourceTypeSchema = z.object({
+  1000: resourceEntrySchema(metadataResourceSchema),
+});
+
 // ============================================================================
 // Level Data Schema helpers and notes
 //

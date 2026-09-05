@@ -13,6 +13,7 @@ import { memo } from "react";
 import { useAtom } from "jotai";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 interface Props {
   terrainHasSTgd?: boolean;
@@ -24,6 +25,7 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
   compact,
 }: Props) {
   const [view, setView] = useAtom(ActiveView);
+  const { levelMetadata } = useFeatureFlags();
   const currentValue =
     view === View.fences
       ? "fences"
@@ -35,6 +37,8 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
             ? "splines"
             : view === View.scripts
               ? "scripts"
+              : view === View.metadata && levelMetadata
+                ? "metadata"
             : view === View.tiles
               ? "tiles"
               : "supertiles";
@@ -45,6 +49,7 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
     else if (value === "items") setView(View.items);
     else if (value === "splines") setView(View.splines);
     else if (value === "scripts") setView(View.scripts);
+    else if (value === "metadata" && levelMetadata) setView(View.metadata);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -78,6 +83,11 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
           {ENABLE_SCRIPTS ? (
             <TabsTrigger className="w-full" value="scripts">
               Scripts
+            </TabsTrigger>
+          ) : null}
+          {levelMetadata ? (
+            <TabsTrigger className="w-full" value="metadata">
+              Metadata
             </TabsTrigger>
           ) : null}
           <TabsTrigger className="w-full" value="tiles">

@@ -55,3 +55,15 @@ describe("level output cache feature flag", () => {
     if (result.success) expect(result.data.levelOutputCache).toBe(false);
   });
 });
+
+describe("level metadata feature flag", () => {
+  it("is disabled by default", () => {
+    expect(DEFAULT_FEATURE_FLAGS.levelMetadata).toBe(false);
+  });
+
+  it("migrates stored flags that predate the setting", () => {
+    const result = featureFlagsSchema.safeParse({ multiplayer: false, scripting: false });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.levelMetadata).toBe(false);
+  });
+});

@@ -178,7 +178,7 @@ export function getPreviewTerrainPaths(
   if (config.game === Game.NANOSAUR) {
     return {
       dataPath: "/Data/Terrain/Level1.ter",
-      rsrcPath: null,
+      rsrcPath: "/Data/Terrain/Level1.Meta.rsrc",
       texturePath: "/Data/Terrain/Level1.trt",
     };
   }

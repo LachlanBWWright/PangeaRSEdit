@@ -16,19 +16,23 @@ vi.mock("@/editor/loadLogic/parseLevelDataFile", () => ({
   parseLevelDataFile: vi.fn(),
 }));
 
-vi.mock("@/data/processors/classicProprocessor", () => ({
-  parseNanosaurTerrainTextures: vi.fn(() => [new Uint16Array(32 * 32)]),
-  createCanvasFromTile: vi.fn(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 32;
-    canvas.height = 32;
-    return canvas;
-  }),
+vi.mock("@/data/level-io/nanosaurTerrainWorkerClient", () => ({
+  parseNanosaurTerrainWithWorker: vi.fn(() =>
+    Promise.resolve(
+      ok([
+        {
+          width: 32,
+          height: 32,
+          rgbaBytes: new ArrayBuffer(32 * 32 * 4),
+        },
+      ]),
+    ),
+  ),
 }));
 
 const { parseLevelDataFile } = await import("@/editor/loadLogic/parseLevelDataFile");
-const { parseNanosaurTerrainTextures, createCanvasFromTile } = await import(
-  "@/data/processors/classicProprocessor"
+const { parseNanosaurTerrainWithWorker } = await import(
+  "@/data/level-io/nanosaurTerrainWorkerClient"
 );
 
 const levelData = {
@@ -154,8 +158,7 @@ describe("openFile", () => {
         gameType: NanosaurGlobals,
       }),
     );
-    expect(parseNanosaurTerrainTextures).toHaveBeenCalledTimes(1);
-    expect(createCanvasFromTile).toHaveBeenCalledTimes(1);
+    expect(parseNanosaurTerrainWithWorker).toHaveBeenCalledTimes(1);
     expect(setGlobals).toHaveBeenCalledWith(NanosaurGlobals);
     expect(setMapImagesFile).toHaveBeenCalledWith(expect.any(File));
     expect(setMapImages).toHaveBeenCalledWith([expect.any(HTMLCanvasElement)]);

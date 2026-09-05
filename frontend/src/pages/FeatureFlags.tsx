@@ -67,6 +67,14 @@ export function FeatureFlagsPage() {
     );
   };
 
+  const handleLevelMetadataChange = (enabled: boolean) => {
+    const result = setFeatureFlags({ ...featureFlags, levelMetadata: enabled });
+    result.match(
+      () => toast.success(enabled ? "Level metadata enabled" : "Level metadata disabled"),
+      (error) => toast.error(error.message),
+    );
+  };
+
   return (
     <main className="w-full max-w-4xl mx-auto px-4 py-8 text-slate-100">
       <div className="mb-8 flex items-start gap-3">
@@ -144,6 +152,22 @@ export function FeatureFlagsPage() {
               checked={featureFlags.levelOutputCache}
               onCheckedChange={handleLevelOutputCacheChange}
               aria-label="Toggle level output cache"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <div>
+              <label htmlFor="level-metadata-feature-flag" className="font-medium text-slate-100">
+                Level metadata
+              </label>
+              <p className="mt-1 text-sm leading-5 text-slate-400">
+                Show and apply editable per-level behavior metadata. When disabled, levels use their original level-number behavior and metadata is not loaded or exported.
+              </p>
+            </div>
+            <Switch
+              id="level-metadata-feature-flag"
+              checked={featureFlags.levelMetadata}
+              onCheckedChange={handleLevelMetadataChange}
+              aria-label="Toggle level metadata"
             />
           </div>
           <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">

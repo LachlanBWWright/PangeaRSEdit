@@ -28,4 +28,36 @@ describe("game-card upload staging", () => {
       "invalid",
     );
   });
+
+  it("only accepts companion metadata when the feature is enabled", () => {
+    expect(
+      getUploadAcceptTypes({
+        isBugdom2: false,
+        isNanosaur1: true,
+        hasStagedLevel: false,
+        hasStagedTexture: false,
+        levelFileType: ".ter",
+        textureFileType: ".trt",
+        levelMetadataEnabled: false,
+      }),
+    ).toBe(".ter,.trt");
+    expect(
+      getUploadAcceptTypes({
+        isBugdom2: false,
+        isNanosaur1: false,
+        isMightyMike: true,
+        hasStagedLevel: false,
+        hasStagedTexture: false,
+        levelFileType: ".map",
+        textureFileType: ".tileset",
+        levelMetadataEnabled: true,
+      }),
+    ).toBe(".map,.tileset,.Meta.rsrc");
+    expect(
+      classifyUploadFile("level.Meta.rsrc", ".ter", ".trt", false, true, false),
+    ).toBe("invalid");
+    expect(
+      classifyUploadFile("level.Meta.rsrc", ".ter", ".trt", false, true, true),
+    ).toBe("metadata");
+  });
 });

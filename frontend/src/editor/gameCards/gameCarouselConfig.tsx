@@ -18,12 +18,16 @@ import { NanosaurLevels } from "@/editor/gameLevelSelectors/NanosaurLevels";
 import { Nanosaur2Levels } from "@/editor/gameLevelSelectors/Nanosaur2Levels";
 import { BillyFrontierLevels } from "@/editor/gameLevelSelectors/BillyFrontierLevels";
 import { MightyMikeLevels } from "@/editor/gameLevelSelectors/MightyMikeLevels";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 
 export interface LevelComponentProps {
   readonly openFile: (url: string, gameType: GlobalsInterface) => void;
   readonly onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
-  readonly onTunnelLoad?: (data: TunnelData, fileName: string) => void;
+  readonly onTunnelLoad?: (
+    data: TunnelData,
+    fileName: string,
+    levelKind: TunnelLevelKind,
+  ) => void;
 }
 
 interface GameConfig {

@@ -43,6 +43,7 @@ import {
 } from "@/editor/subviews/splines/editSplineItemMenuState";
 import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import { LevelNumber } from "@/data/globals/levelNumber";
+import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
 import { MenuEmptyState } from "../MenuEmptyState";
 
 export function EditSplineItemMenu({
@@ -155,7 +156,12 @@ export function EditSplineItemMenu({
                   game={globals.GAME_TYPE}
                   kind="splineItem"
                   itemType={key}
-                  label={getSplineItemName(globals, key)}
+                  label={`${getSplineItemName(globals, key)} — ${getItemLevelSupportLabel(
+                    globals.GAME_TYPE,
+                    "splineItem",
+                    key,
+                    levelNum,
+                  )}`}
                   levelNum={levelNum}
                   compact
                 />

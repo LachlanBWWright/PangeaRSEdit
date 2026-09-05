@@ -9,7 +9,7 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 import { Result } from "neverthrow";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 import {
   getCarouselGames,
   LEVEL_COMPONENTS_MAP,
@@ -25,6 +25,7 @@ export function GameCarousel({
   setMapImages,
   setTunnelData,
   setTunnelFileName,
+  setTunnelLevelKind,
   onCreateBlankLevel,
   onCreateScriptItemDemoLevel,
 }: {
@@ -34,12 +35,14 @@ export function GameCarousel({
     file: Blob,
     gameType: GlobalsInterface,
     companionTextureFile?: File,
+    companionMetadataFile?: File,
   ) => Promise<Result<ParsedLevelDataFile, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  setTunnelLevelKind: (kind: TunnelLevelKind) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
   onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
@@ -68,6 +71,7 @@ export function GameCarousel({
             setMapImages={setMapImages}
             setTunnelData={setTunnelData}
             setTunnelFileName={setTunnelFileName}
+            setTunnelLevelKind={setTunnelLevelKind}
             onCreateBlankLevel={onCreateBlankLevel}
             onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel}
           />
@@ -88,6 +92,7 @@ function GameCarouselItem({
   setMapImages,
   setTunnelData,
   setTunnelFileName,
+  setTunnelLevelKind,
   onCreateBlankLevel,
   onCreateScriptItemDemoLevel,
 }: {
@@ -97,12 +102,14 @@ function GameCarouselItem({
     file: Blob,
     gameType: GlobalsInterface,
     companionTextureFile?: File,
+    companionMetadataFile?: File,
   ) => Promise<Result<ParsedLevelDataFile, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  setTunnelLevelKind: (kind: TunnelLevelKind) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
   onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
@@ -111,11 +118,12 @@ function GameCarouselItem({
 
   // Create tunnel load handler
   const handleTunnelLoad = useCallback(
-    (data: TunnelData, fileName: string) => {
+    (data: TunnelData, fileName: string, levelKind: TunnelLevelKind) => {
       setTunnelFileName(fileName);
       setTunnelData(data);
+      setTunnelLevelKind(levelKind);
     },
-    [setTunnelData, setTunnelFileName],
+    [setTunnelData, setTunnelFileName, setTunnelLevelKind],
   );
 
   if (!LevelComponent) {
@@ -139,6 +147,7 @@ function GameCarouselItem({
         setMapImages={setMapImages}
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
+        setTunnelLevelKind={setTunnelLevelKind}
         onCreateBlankLevel={onCreateBlankLevel}
       >
         <LevelComponent

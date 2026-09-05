@@ -17,6 +17,7 @@ import { View } from "../viewEnum";
 import { useAtom } from "jotai";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 interface Props {
   compact?: boolean;
@@ -26,6 +27,7 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
   compact,
 }: Props) {
   const [view, setView] = useAtom(ActiveView);
+  const { levelMetadata } = useFeatureFlags();
   const currentValue =
     view === View.fences
       ? "fences"
@@ -35,8 +37,10 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
           ? "splines"
           : view === View.scripts
             ? "scripts"
-          : view === View.vertexColors
+          : view === View.metadata && levelMetadata
             ? "metadata"
+          : view === View.vertexColors
+            ? "level-scale"
           : view === View.tiles
             ? "tiles"
             : "supertiles";
@@ -46,7 +50,8 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
     else if (value === "items") setView(View.items);
     else if (value === "splines") setView(View.splines);
     else if (value === "scripts") setView(View.scripts);
-    else if (value === "metadata") setView(View.vertexColors);
+    else if (value === "metadata" && levelMetadata) setView(View.metadata);
+    else if (value === "level-scale") setView(View.vertexColors);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
   };
@@ -85,9 +90,14 @@ export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
           <TabsTrigger className="w-full" value="supertiles">
             Visual Tiles
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="metadata">
-            Metadata
+          <TabsTrigger className="w-full" value="level-scale">
+            Level Scale
           </TabsTrigger>
+          {levelMetadata ? (
+            <TabsTrigger className="w-full" value="metadata">
+              Metadata
+            </TabsTrigger>
+          ) : null}
         </TabsList>
       </Tabs>
       {!compact && <Separator />}

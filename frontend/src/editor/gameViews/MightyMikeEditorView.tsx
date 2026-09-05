@@ -39,10 +39,12 @@ import {
 } from "@/data/game/gameAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicTiles } from "@/editor/gameViews/editorResizeState";
 import { EmptyItemPrompt } from "../subviews/EmptyDataPrompts";
 import { createEmptyItemData } from "../utils/dataInitializers";
+import { LevelMetadataMenu } from "../subviews/metadata/LevelMetadataMenu";
 
 function getCurrentSceneFromTerrainData(
   terrainData: MightyMikeEditorViewProps["terrainData"],
@@ -80,12 +82,13 @@ export function MightyMikeEditorView({
   const setCanvasEditMode = useSetAtom(MightyMikeCanvasEditMode);
   const setOverlayMode = useSetAtom(MightyMikeOverlayMode);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const { levelMetadata } = useFeatureFlags();
   const [storedView, setView] = useAtom(ActiveView);
   const view = normalizeEditorView(
     storedView,
     ENABLE_SCRIPTS
-      ? [View.items, View.scripts, View.supertiles, View.tiles, View.animations]
-      : [View.items, View.supertiles, View.tiles, View.animations],
+      ? [View.items, View.scripts, View.supertiles, View.tiles, View.animations, ...(levelMetadata ? [View.metadata] : [])]
+      : [View.items, View.supertiles, View.tiles, View.animations, ...(levelMetadata ? [View.metadata] : [])],
     View.supertiles,
   );
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
@@ -157,7 +160,7 @@ export function MightyMikeEditorView({
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
       <MenuSection
         scrollable={view !== View.animations}
-        className={view === View.scripts ? "h-full" : undefined}
+        className={view === View.scripts || view === View.metadata ? "h-full" : undefined}
       >
         {view === View.items &&
           (itemData ? (
@@ -210,8 +213,11 @@ export function MightyMikeEditorView({
             mapImages={mapImages}
           />
         )}
+        {levelMetadata && view === View.metadata && (
+          <LevelMetadataMenu terrainData={terrainData} setTerrainData={setTerrainData} />
+        )}
       </MenuSection>
-      {view !== View.scripts && (
+      {view !== View.scripts && view !== View.metadata && (
         <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
           <div className="absolute top-2 right-2 z-10 flex gap-2">
             <EditorCanvasControls

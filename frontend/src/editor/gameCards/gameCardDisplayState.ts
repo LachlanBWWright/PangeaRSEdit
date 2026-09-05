@@ -54,8 +54,15 @@ export function getSupportedUploadTypes(
   levelFileType: string,
   textureFileType: string | null,
   isBugdom2: boolean,
+  metadataCompanionGame = false,
+  levelMetadataEnabled = false,
 ): string[] {
-  return [levelFileType, textureFileType, isBugdom2 ? ".tun" : null].filter(
+  return [
+    levelFileType,
+    textureFileType,
+    isBugdom2 ? ".tun" : null,
+    metadataCompanionGame && levelMetadataEnabled ? ".Meta.rsrc" : null,
+  ].filter(
     (type): type is string => type !== null,
   );
 }

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Download, Gamepad2 } from "lucide-react";
-import { getGamesByCategory, ALL_GAME_CONFIGS } from "@/data/levels";
+import {
+  getGamesByCategory,
+  ALL_GAME_CONFIGS,
+} from "@/data/levels";
 import { TestGameDialog } from "@/editor/TestGameDialog";
 import type { Game } from "@/data/globals/globals";
 import { GameLaunchCard } from "@/pages/DownloadLevels/GameLaunchCard";
@@ -70,6 +73,10 @@ export function DownloadLevels() {
           <p className="text-gray-400 text-sm mb-5">
             Launch any of the 8 Pangea ports directly in your browser from the
             title screen.
+          </p>
+          <p className="text-gray-400 text-sm mb-5">
+            Desktop and Android packages are rebuilt nightly. Choose a platform
+            on any game card to download its current build.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {ALL_GAME_CONFIGS.map((config) => (

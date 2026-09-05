@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useState } from "react";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 import { TunnelEditorView } from "./TunnelEditorView";
 import { TunnelUploadPrompt } from "./TunnelUploadPrompt";
 
@@ -19,6 +19,7 @@ export interface TunnelEditorProps {
   tunnelData?: TunnelData;
   fileName?: string;
   isPlumbing?: boolean;
+  tunnelLevelKind?: TunnelLevelKind;
   onUpdateTunnelData?: (data: TunnelData) => void;
   onClose?: () => void;
 }
@@ -27,6 +28,7 @@ export function TunnelEditor({
   tunnelData: externalTunnelData,
   fileName: externalFileName,
   isPlumbing: externalIsPlumbing,
+  tunnelLevelKind: externalTunnelLevelKind,
   onUpdateTunnelData: externalOnUpdate,
   onClose: externalOnClose,
 }: TunnelEditorProps = {}) {
@@ -34,12 +36,16 @@ export function TunnelEditor({
   const [internalTunnelData, setInternalTunnelData] =
     useState<TunnelData | null>(null);
   const [internalFileName, setInternalFileName] = useState<string>("");
-  const [internalIsPlumbing, setInternalIsPlumbing] = useState<boolean>(true);
+  const [internalTunnelLevelKind, setInternalTunnelLevelKind] =
+    useState<TunnelLevelKind>("plumbing");
 
   // Use external props if provided, otherwise use internal state
   const tunnelData = externalTunnelData ?? internalTunnelData;
   const fileName = externalFileName ?? internalFileName;
-  const isPlumbing = externalIsPlumbing ?? internalIsPlumbing;
+  const isPlumbing = externalTunnelLevelKind
+    ? externalTunnelLevelKind === "plumbing"
+    : externalIsPlumbing ??
+      (externalTunnelLevelKind ?? internalTunnelLevelKind) === "plumbing";
 
   const handleUpdate = useCallback(
     (data: TunnelData) => {
@@ -62,13 +68,13 @@ export function TunnelEditor({
   }, [externalOnClose]);
 
   const handleFileLoaded = useCallback(
-    (data: TunnelData, name: string, plumbing: boolean) => {
+    (data: TunnelData, name: string, levelKind: TunnelLevelKind) => {
       if (externalOnUpdate) {
         externalOnUpdate(data);
       } else {
         setInternalTunnelData(data);
         setInternalFileName(name);
-        setInternalIsPlumbing(plumbing);
+        setInternalTunnelLevelKind(levelKind);
       }
     },
     [externalOnUpdate],

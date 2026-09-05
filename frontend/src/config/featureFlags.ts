@@ -13,6 +13,8 @@ const levelValidationDefault =
   import.meta.env.VITE_LEVEL_VALIDATION_ENABLED === "true";
 const levelOutputCacheDefault =
   import.meta.env.VITE_LEVEL_OUTPUT_CACHE_ENABLED === "true";
+const levelMetadataDefault =
+  import.meta.env.VITE_LEVEL_METADATA_ENABLED === "true";
 
 export const featureFlagsSchema = z.object({
   multiplayer: z.boolean().default(multiplayerDefault),
@@ -21,6 +23,7 @@ export const featureFlagsSchema = z.object({
   scriptItemDemoLevels: z.boolean().default(scriptItemDemoLevelsDefault),
   levelValidation: z.boolean().default(levelValidationDefault),
   levelOutputCache: z.boolean().default(levelOutputCacheDefault),
+  levelMetadata: z.boolean().default(levelMetadataDefault),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
@@ -32,6 +35,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   scriptItemDemoLevels: scriptItemDemoLevelsDefault,
   levelValidation: levelValidationDefault,
   levelOutputCache: levelOutputCacheDefault,
+  levelMetadata: levelMetadataDefault,
 };
 
 export let ENABLE_SCRIPTS = false;

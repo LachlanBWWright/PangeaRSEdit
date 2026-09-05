@@ -242,7 +242,7 @@ export function TestGameDialog(props: Props) {
                 terrainDataBytes={normalLaunch ? null : terrainDataBytes}
                 terrainRsrcBytes={normalLaunch ? null : terrainRsrcBytes}
                 terrainTextureBytes={normalLaunch ? null : terrainTextureBytes}
-                customFiles={normalLaunch ? undefined : customFiles}
+                customFiles={customFiles}
                 runToken={runToken}
                 normalLaunch={normalLaunch}
                 onRuntimeError={handlePreviewRuntimeError}

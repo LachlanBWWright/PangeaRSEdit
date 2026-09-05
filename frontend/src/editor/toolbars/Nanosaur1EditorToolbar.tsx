@@ -15,6 +15,7 @@ import { View } from "../viewEnum";
 import { useAtom } from "jotai";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 interface Props {
   compact?: boolean;
@@ -24,11 +25,14 @@ export const Nanosaur1EditorToolbar = memo(function Nanosaur1EditorToolbar({
   compact,
 }: Props) {
   const [view, setView] = useAtom(ActiveView);
+  const { levelMetadata } = useFeatureFlags();
   const currentValue =
     view === View.items
       ? "items"
       : view === View.scripts
         ? "scripts"
+      : view === View.metadata && levelMetadata
+        ? "metadata"
       : view === View.collisionPath
         ? "collisionPath"
       : view === View.tiles
@@ -38,6 +42,7 @@ export const Nanosaur1EditorToolbar = memo(function Nanosaur1EditorToolbar({
   const handleValueChange = (value: string) => {
     if (value === "items") setView(View.items);
     else if (value === "scripts") setView(View.scripts);
+    else if (value === "metadata" && levelMetadata) setView(View.metadata);
     else if (value === "collisionPath") setView(View.collisionPath);
     else if (value === "tiles") setView(View.tiles);
     else if (value === "supertiles") setView(View.supertiles);
@@ -63,6 +68,7 @@ export const Nanosaur1EditorToolbar = memo(function Nanosaur1EditorToolbar({
               Scripts
             </TabsTrigger>
           ) : null}
+          {levelMetadata ? <TabsTrigger className="w-full" value="metadata">Metadata</TabsTrigger> : null}
           <TabsTrigger className="w-full" value="tiles">Terrain</TabsTrigger>
           <TabsTrigger className="w-full" value="supertiles">
             Visual Tiles

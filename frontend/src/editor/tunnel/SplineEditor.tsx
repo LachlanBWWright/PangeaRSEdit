@@ -7,7 +7,11 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
-import type { TunnelData, TunnelItem } from "@/data/tunnelParser/types";
+import type {
+  TunnelData,
+  TunnelItem,
+  TunnelSplinePoint,
+} from "@/data/tunnelParser/types";
 import {
   getPlumbingItemName,
   getGutterItemName,
@@ -31,6 +35,7 @@ interface SplineEditorProps {
   selectedItemIndex: number | null;
   onSelectItem: (index: number | null) => void;
   onUpdateItem: (index: number, item: TunnelItem) => void;
+  onUpdateSplinePoint: (index: number, point: TunnelSplinePoint) => void;
 }
 
 export function SplineEditor({
@@ -39,8 +44,10 @@ export function SplineEditor({
   selectedItemIndex,
   onSelectItem,
   onUpdateItem,
+  onUpdateSplinePoint,
 }: SplineEditorProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSplinePointIndex, setSelectedSplinePointIndex] = useState(0);
 
   const getItemName = isPlumbing ? getPlumbingItemName : getGutterItemName;
   const totalSplinePoints = tunnelData.splinePoints.length;
@@ -52,6 +59,19 @@ export function SplineEditor({
 
   const selectedItem =
     selectedItemIndex !== null ? tunnelData.items[selectedItemIndex] : null;
+  const selectedSplinePoint =
+    tunnelData.splinePoints[selectedSplinePointIndex] ?? null;
+
+  const updateSplinePointAxis = useCallback(
+    (component: "point" | "up", axis: "x" | "y" | "z", value: number) => {
+      if (!selectedSplinePoint || !Number.isFinite(value)) return;
+      onUpdateSplinePoint(selectedSplinePointIndex, {
+        ...selectedSplinePoint,
+        [component]: { ...selectedSplinePoint[component], [axis]: value },
+      });
+    },
+    [onUpdateSplinePoint, selectedSplinePoint, selectedSplinePointIndex],
+  );
 
   const handleSplineProgressChange = useCallback(
     (progress: number) => {
@@ -101,6 +121,70 @@ export function SplineEditor({
         <p className="text-xs text-gray-400 mt-1">
           Position items along the tunnel spline path
         </p>
+      </div>
+
+      <div className="mb-4 space-y-2 border-b border-gray-600 pb-4">
+        <div>
+          <h3 className="text-sm font-bold text-white">Spline Path Point</h3>
+          <p className="mt-1 text-xs text-gray-400">
+            Edit the runtime points used by player movement and item placement.
+          </p>
+        </div>
+        <Label className="text-xs text-gray-400">Point index</Label>
+        <Input
+          type="number"
+          min={0}
+          max={Math.max(0, totalSplinePoints - 1)}
+          value={selectedSplinePointIndex}
+          onChange={(event) => {
+            const value = Number.parseInt(event.target.value, 10);
+            if (
+              Number.isInteger(value) &&
+              value >= 0 &&
+              value < totalSplinePoints
+            ) {
+              setSelectedSplinePointIndex(value);
+            }
+          }}
+        />
+        {selectedSplinePoint && (
+          <div className="grid grid-cols-3 gap-2">
+            {(["x", "y", "z"] as const).map((axis) => (
+              <div key={axis}>
+                <Label className="text-xs text-gray-400">
+                  {axis.toUpperCase()}
+                </Label>
+                <Input
+                  type="number"
+                  step="1"
+                  value={selectedSplinePoint.point[axis]}
+                  onChange={(event) =>
+                    updateSplinePointAxis("point", axis, Number.parseFloat(event.target.value))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {selectedSplinePoint && (
+          <div className="grid grid-cols-3 gap-2">
+            {(["x", "y", "z"] as const).map((axis) => (
+              <div key={axis}>
+                <Label className="text-xs text-gray-400">
+                  Up {axis.toUpperCase()}
+                </Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={selectedSplinePoint.up[axis]}
+                  onChange={(event) =>
+                    updateSplinePointAxis("up", axis, Number.parseFloat(event.target.value))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Search */}

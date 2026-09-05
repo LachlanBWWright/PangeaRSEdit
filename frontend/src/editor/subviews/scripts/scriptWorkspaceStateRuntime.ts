@@ -1749,7 +1749,10 @@ export function retargetScriptWorkspace(
     return state;
   }
 
-  const sourceLevel = state.levels[context.levelKey] ?? defaultLevelState();
+  const sourceLevel = {
+    ...cloneLevelState(state.levels[state.context.levelKey] ?? defaultLevelState()),
+    customPlacements: [],
+  };
 
   return {
     ...state,

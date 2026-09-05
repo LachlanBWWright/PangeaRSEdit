@@ -14,6 +14,7 @@ import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
 import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 import { mapErr } from "@/utils/mapErr";
 import { resultSchema, plainResultSchema, getStringField } from "@/schemas/common";
+import { normalizeMetadataResourceFromFork } from "@/editor/subviews/metadata/metadataResource";
 
 export async function parseRsrcLevelFile(
   file: Blob,
@@ -70,7 +71,9 @@ export async function parseRsrcLevelFile(
   if (!isRecord(parsedUnknown)) {
     return err("Parsed level data is not an object");
   }
-  const result = parsedUnknown;
+  const metadataResult = normalizeMetadataResourceFromFork(parsedUnknown);
+  if (metadataResult.isErr()) return err(metadataResult.error);
+  const result = metadataResult.value;
 
   // Fix null values from rsrcdump-ts (safety net for backwards compatibility)
   // v1.0.6 should have fixed null/undefined bugs, but we keep this as a safety measure

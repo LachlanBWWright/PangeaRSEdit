@@ -2,10 +2,14 @@ import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 
 interface Bugdom2TunnelLoaderArgs {
-  readonly onTunnelLoad?: (data: TunnelData, fileName: string) => void;
+  readonly onTunnelLoad?: (
+    data: TunnelData,
+    fileName: string,
+    levelKind: TunnelLevelKind,
+  ) => void;
 }
 
 export function createBugdom2TunnelLoader({
@@ -13,8 +17,13 @@ export function createBugdom2TunnelLoader({
 }: Bugdom2TunnelLoaderArgs): (
   tunnelPath: string,
   fileName: string,
+  levelKind: TunnelLevelKind,
 ) => Promise<void> {
-  return async (tunnelPath: string, fileName: string) => {
+  return async (
+    tunnelPath: string,
+    fileName: string,
+    levelKind: TunnelLevelKind,
+  ) => {
     if (!onTunnelLoad) {
       return;
     }
@@ -55,6 +64,6 @@ export function createBugdom2TunnelLoader({
       return;
     }
 
-    onTunnelLoad(result.value, fileName);
+    onTunnelLoad(result.value, fileName, levelKind);
   };
 }

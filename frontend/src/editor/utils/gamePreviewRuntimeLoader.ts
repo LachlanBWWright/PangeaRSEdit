@@ -294,7 +294,7 @@ export function createPreviewModule(
           customFiles,
           onError,
         );
-      } else if (!normalLaunch && customFiles && customFiles.length > 0) {
+      } else if (customFiles && customFiles.length > 0) {
         writePreviewCustomFilesToVfs(module, customFiles, onError);
       }
 

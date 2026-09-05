@@ -285,12 +285,6 @@ export const Item = memo(function Item({
           y={0}
           width={ITEM_BOX_SIZE}
           height={ITEM_BOX_SIZE}
-          crop={{
-            x: thumbnail.width * 0.25,
-            y: thumbnail.height * 0.1,
-            width: thumbnail.width * 0.5,
-            height: thumbnail.height * 0.8,
-          }}
           listening={false}
           perfectDrawEnabled={false}
         />

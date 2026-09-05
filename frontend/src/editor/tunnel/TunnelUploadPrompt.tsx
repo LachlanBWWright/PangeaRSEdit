@@ -1,5 +1,5 @@
-import { useCallback, useRef } from "react";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import { useCallback, useRef, useState } from "react";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -10,10 +10,11 @@ export function TunnelUploadPrompt({
   onFileLoaded: (
     data: TunnelData,
     fileName: string,
-    isPlumbing: boolean,
+    levelKind: TunnelLevelKind,
   ) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [levelKind, setLevelKind] = useState<TunnelLevelKind>("plumbing");
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,10 +28,9 @@ export function TunnelUploadPrompt({
         });
         return;
       }
-      const isPlumbing = file.name.toLowerCase().includes("plumb");
-      onFileLoaded(result.value, file.name, isPlumbing);
+      onFileLoaded(result.value, file.name, levelKind);
     },
-    [onFileLoaded],
+    [levelKind, onFileLoaded],
   );
 
   return (
@@ -40,6 +40,17 @@ export function TunnelUploadPrompt({
         Edit Bugdom 2 tunnel levels (.tun files). Load a Plumbing.tun or
         Gutter.tun file to get started.
       </p>
+      <div className="flex gap-2" role="group" aria-label="Tunnel level">
+        {(["plumbing", "gutter"] as const).map((kind) => (
+          <Button
+            key={kind}
+            variant={levelKind === kind ? "default" : "outline"}
+            onClick={() => setLevelKind(kind)}
+          >
+            {kind === "plumbing" ? "Plumbing" : "Gutter"}
+          </Button>
+        ))}
+      </div>
       <input
         ref={fileInputRef}
         type="file"

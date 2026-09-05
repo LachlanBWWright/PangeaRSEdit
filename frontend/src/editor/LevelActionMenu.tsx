@@ -23,6 +23,8 @@ interface LevelActionMenuProps {
   hasScripts?: boolean;
   onPreviewInGame: () => void;
   onPreviewWithScripts?: () => void;
+  onPreviewFromMainMenu?: () => void;
+  onPreviewFromMainMenuWithScripts?: () => void;
   onDownload: () => void;
   onDownloadExtendedPackage?: () => void;
   onDownloadScriptPackage?: () => void;
@@ -36,6 +38,8 @@ export function LevelActionMenu({
   hasScripts = false,
   onPreviewInGame,
   onPreviewWithScripts,
+  onPreviewFromMainMenu,
+  onPreviewFromMainMenuWithScripts,
   onDownload,
   onDownloadExtendedPackage,
   onDownloadScriptPackage,
@@ -74,6 +78,21 @@ export function LevelActionMenu({
           <DropdownMenuItem onSelect={onPreviewWithScripts}>
             <Code className="h-4 w-4" />
             Preview in Game (scripts)
+          </DropdownMenuItem>
+        )}
+        {canPreviewInGame && onPreviewFromMainMenu && (
+          <DropdownMenuItem onSelect={onPreviewFromMainMenu}>
+            <Gamepad2 className="h-4 w-4" />
+            Preview from Main Menu
+          </DropdownMenuItem>
+        )}
+        {scriptingEnabled &&
+          canPreviewInGame &&
+          hasScripts &&
+          onPreviewFromMainMenuWithScripts && (
+          <DropdownMenuItem onSelect={onPreviewFromMainMenuWithScripts}>
+            <Code className="h-4 w-4" />
+            Preview from Main Menu (scripts)
           </DropdownMenuItem>
         )}
         <DropdownMenuItem onSelect={onDownload}>

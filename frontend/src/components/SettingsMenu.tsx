@@ -1,4 +1,12 @@
-import { Boxes, FlaskConical, Network, Settings, ShieldCheck, WandSparkles } from "lucide-react";
+import {
+  Boxes,
+  ClipboardList,
+  FlaskConical,
+  Network,
+  Settings,
+  ShieldCheck,
+  WandSparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -118,6 +126,22 @@ export function SettingsMenu() {
             <span className="block font-medium">Show script item demos</span>
             <span className="mt-0.5 block text-xs leading-4 text-slate-400">
               Show mostly blank demo levels with custom scripted models.
+            </span>
+          </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={featureFlags.levelMetadata}
+          onCheckedChange={(levelMetadata) =>
+            saveFeatureFlags({ ...featureFlags, levelMetadata })
+          }
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <ClipboardList className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+          <span>
+            <span className="block font-medium">Show level metadata</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">
+              Enable editable per-level behavior metadata and Meta resources.
             </span>
           </span>
         </DropdownMenuCheckboxItem>

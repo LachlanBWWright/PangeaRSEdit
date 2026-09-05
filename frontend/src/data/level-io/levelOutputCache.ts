@@ -3,6 +3,7 @@ import type {
   LevelIoImagePayload,
   LevelIoSerializedFile,
 } from "./levelIoTypes";
+import { getFeatureFlags } from "@/config/featureFlags";
 
 const CACHE_VERSION = "level-output-cache-v1";
 const MAX_CACHE_BYTES = 96 * 1024 * 1024;
@@ -85,11 +86,12 @@ export function getLevelOutputCacheKeys(
   mapImages: readonly LevelIoImagePayload[],
 ): LevelOutputCacheKeys {
   const format = formatIdentity(globals);
+  const metadataMode = getFeatureFlags().levelMetadata ? "metadata-on" : "metadata-off";
   const levelHash = contentHash(levelData);
   const textureHash = contentHash(imageContent(mapImages));
-  const level = `${CACHE_VERSION}:${format}:level:${levelHash}`;
-  const texture = `${CACHE_VERSION}:${format}:texture:${textureHash}`;
-  const combined = `${CACHE_VERSION}:${format}:combined:${levelHash}:${textureHash}`;
+  const level = `${CACHE_VERSION}:${format}:${metadataMode}:level:${levelHash}`;
+  const texture = `${CACHE_VERSION}:${format}:${metadataMode}:texture:${textureHash}`;
+  const combined = `${CACHE_VERSION}:${format}:${metadataMode}:combined:${levelHash}:${textureHash}`;
 
   if (globals.DATA_TYPE === DataType.RSRC_FORK) {
     return { level: combined, texture: combined, combined };

@@ -28,6 +28,7 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { initSplineItem } from "@/editor/subviews/splines/editSplineItemMenuState";
 import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import { LevelNumber } from "@/data/globals/levelNumber";
+import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
 
 const ADD_SPLINE_ITEM_VALUE = "AddSplineItem";
 const NO_SPLINE_ITEM_SELECTED_VALUE = "NoneSelected";
@@ -107,7 +108,12 @@ export const SplineMenu = memo(function SplineMenu({
               game={globals.GAME_TYPE}
               kind="splineItem"
               itemType={item.type}
-              label={getSplineItemName(globals, item.type)}
+              label={`${getSplineItemName(globals, item.type)} — ${getItemLevelSupportLabel(
+                globals.GAME_TYPE,
+                "splineItem",
+                item.type,
+                levelNum,
+              )}`}
               levelNum={levelNum}
               params={item}
               metadata={`#${itemIdx}`}

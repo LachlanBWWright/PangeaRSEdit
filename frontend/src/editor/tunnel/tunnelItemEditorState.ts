@@ -25,7 +25,8 @@ export function createDefaultItem(isPlumbing: boolean): TunnelItem {
   return {
     type: isPlumbing ? PlumbingItemType.RING : GutterItemType.LEAF,
     splineIndex: 0,
-    sectionNum: 0,
+    // The original tunnel runtime does not use this field for item placement.
+    sectionNum: -1,
     scale: 1,
     rot: { x: 0, y: 0, z: 0 },
     positionOffset: { x: 0, y: 0, z: 0 },

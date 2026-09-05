@@ -102,14 +102,8 @@ export function TunnelTexturesPanel({
         url: tunnelTextureToDataUrl(tunnelData.tunnelTexture),
         type: "diffuse",
       },
-      {
-        sourceName: "Water Texture",
-        name: `Water Texture (${tunnelData.waterTexture.width}x${tunnelData.waterTexture.height})`,
-        url: tunnelTextureToDataUrl(tunnelData.waterTexture),
-        type: "diffuse",
-      },
     ];
-  }, [tunnelData.tunnelTexture, tunnelData.waterTexture]);
+  }, [tunnelData.tunnelTexture]);
 
   const applyImageDataUpdate = async (
     textureName: string,
@@ -172,8 +166,8 @@ export function TunnelTexturesPanel({
       <div className="space-y-2 mb-4">
         <h3 className="text-sm font-semibold text-white">Embedded Textures</h3>
         <p className="text-xs text-gray-400">
-          Edit the texture baked into the .tun file. Replacements must keep the
-          original width and height.
+          Edit the tunnel texture baked into the .tun file. Replacements must
+          keep the original width and height.
         </p>
         <div className="grid grid-cols-1 gap-2 text-xs">
           <div className="rounded bg-gray-700 px-2 py-1 text-gray-200">
@@ -185,6 +179,10 @@ export function TunnelTexturesPanel({
             Water texture: {tunnelData.waterTexture.width}x
             {tunnelData.waterTexture.height} (
             {tunnelData.waterTexture.data.byteLength.toLocaleString()} bytes)
+            <div className="mt-1 text-amber-300">
+              Read-only: the original game uses animated level-specific water
+              materials instead of this embedded texture.
+            </div>
           </div>
         </div>
       </div>

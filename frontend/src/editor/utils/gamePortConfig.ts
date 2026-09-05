@@ -330,6 +330,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasSpeedMultiplier: false,
     terrain: {
       getDataPath: (f) => `/Data/Maps/${f}`,
+      getRsrcPath: (f) => `/Data/Maps/${f}.Meta.rsrc`,
       setPathFn: "Boot_SetCustomMapPath",
       getSetPathArg: (f) => `:Maps:${f}`,
     },

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Game } from "@/data/globals/globals";
 import { GAME_DISPLAY_NAMES } from "@/editor/utils/gamePreviewRuntime";
 import { GAME_PORT_CONFIGS } from "@/editor/utils/gamePortConfig";
+import { GameBuildDownloads } from "@/pages/DownloadLevels/GameBuildDownloads";
 
 interface GameLaunchCardProps {
   game: Game;
@@ -28,6 +29,10 @@ export function GameLaunchCard({ game, onPlayNormally }: GameLaunchCardProps) {
           <Play className="w-4 h-4" />
           Play in Browser
         </Button>
+        <div className="mt-3 border-t border-gray-700 pt-3">
+          <p className="mb-2 text-xs text-gray-400">Download game</p>
+          <GameBuildDownloads game={game} />
+        </div>
       </CardContent>
     </Card>
   );

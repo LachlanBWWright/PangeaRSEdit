@@ -1,5 +1,5 @@
 import type { LevelData } from "@/python/structSpecs/LevelTypes";
-import type { GlobalsInterface } from "@/data/globals/globals";
+import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import { snapshotCanvasImages } from "@/data/level-io/terrainImageSnapshots";
 import {
   preparePreviewWithWorker,
@@ -46,7 +46,11 @@ export async function buildPreviewTerrainBlobs(
     return null;
   }
 
-  if (getFeatureFlags().levelOutputCache) {
+  const hasCompanionMetadata =
+    getFeatureFlags().levelMetadata &&
+    (globals.GAME_TYPE === Game.NANOSAUR || globals.GAME_TYPE === Game.MIGHTY_MIKE) &&
+    data.Meta !== undefined;
+  if (getFeatureFlags().levelOutputCache && !hasCompanionMetadata) {
     const keys = getLevelOutputCacheKeys(
       data,
       globals,
@@ -139,7 +143,11 @@ export async function saveMap({
     return;
   }
 
-  const useCache = getFeatureFlags().levelOutputCache;
+  const useCache =
+    getFeatureFlags().levelOutputCache &&
+    !(getFeatureFlags().levelMetadata &&
+      (globals.GAME_TYPE === Game.NANOSAUR || globals.GAME_TYPE === Game.MIGHTY_MIKE) &&
+      data.Meta !== undefined);
   const cacheKeys = useCache
     ? getLevelOutputCacheKeys(data, globals, snapshotResult.value)
     : null;

@@ -16,12 +16,14 @@ import {
   resourceEntrySchema,
   hexDataEntrySchema,
   supertileGridOttoSchema,
+  metadataResourceTypeSchema,
 } from "../levelDataSchemas";
 
 // Otto Matic level schema - uses full header with numTilePages/numTiles and STgd with isEmpty flag
 export const LevelDataSchema = z
   .object({
     _metadata: metadataSchema,
+    Meta: metadataResourceTypeSchema.optional(),
     Hedr: z.record(z.string(), resourceEntrySchema(headerOttoMaticSchema)),
     Atrb: z.record(
       z.string(),

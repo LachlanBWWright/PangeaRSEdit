@@ -15,6 +15,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
@@ -44,6 +45,7 @@ import { EmptyItemPrompt } from "../subviews/EmptyDataPrompts";
 import { createEmptyItemData } from "../utils/dataInitializers";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import { NanosaurCollisionPathMenu } from "../subviews/tiles/NanosaurCollisionPathMenu";
+import { LevelMetadataMenu } from "../subviews/metadata/LevelMetadataMenu";
 
 export function NanosaurEditorView({
   headerData,
@@ -63,6 +65,7 @@ export function NanosaurEditorView({
   const storedView = useAtomValue(ActiveView);
   const setView = useSetAtom(ActiveView);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const { levelMetadata } = useFeatureFlags();
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -81,8 +84,8 @@ export function NanosaurEditorView({
   );
 
   const allowedViews = ENABLE_SCRIPTS
-    ? [View.items, View.scripts, View.tiles, View.supertiles, View.collisionPath]
-    : [View.items, View.tiles, View.supertiles, View.collisionPath];
+    ? [View.items, View.scripts, View.tiles, View.supertiles, View.collisionPath, ...(levelMetadata ? [View.metadata] : [])]
+    : [View.items, View.tiles, View.supertiles, View.collisionPath, ...(levelMetadata ? [View.metadata] : [])];
   const view = normalizeEditorView(
     storedView,
     allowedViews,
@@ -117,7 +120,7 @@ export function NanosaurEditorView({
       <MenuSection
         key={view}
         scrollable={true}
-        className={view === View.scripts ? "!h-full" : undefined}
+        className={view === View.scripts || view === View.metadata ? "!h-full" : undefined}
       >
         {view === View.items &&
           (itemData ? (
@@ -163,8 +166,11 @@ export function NanosaurEditorView({
         {view === View.collisionPath && (
           <NanosaurCollisionPathMenu terrainData={terrainData} />
         )}
+        {levelMetadata && view === View.metadata && (
+          <LevelMetadataMenu terrainData={terrainData} setTerrainData={setTerrainData} />
+        )}
       </MenuSection>
-      {view !== View.scripts && <div
+      {view !== View.scripts && view !== View.metadata && <div
           className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative"
       >
         {supportsThreeCanvas(view) && <CanvasViewToggle />}

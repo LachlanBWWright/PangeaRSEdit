@@ -46,6 +46,8 @@ describe("LevelActionMenu", () => {
           hasScripts
           onPreviewInGame={vi.fn()}
           onPreviewWithScripts={vi.fn()}
+          onPreviewFromMainMenu={vi.fn()}
+          onPreviewFromMainMenuWithScripts={vi.fn()}
           onDownload={vi.fn()}
           onSaveToCloud={vi.fn()}
         />,
@@ -63,6 +65,10 @@ describe("LevelActionMenu", () => {
     const restoreResult = setFeatureFlags(originalFlags);
     expect(restoreResult.isOk()).toBe(true);
     expect(document.body.textContent).toContain("Preview in Game (scripts)");
+    expect(document.body.textContent).toContain("Preview from Main Menu");
+    expect(document.body.textContent).toContain(
+      "Preview from Main Menu (scripts)",
+    );
     root.unmount();
     container.remove();
   });

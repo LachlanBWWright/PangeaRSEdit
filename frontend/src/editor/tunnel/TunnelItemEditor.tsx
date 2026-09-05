@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  canUseSectionNumber,
   canUseSplineIndex,
   createDefaultItem,
   filterTunnelItems,
@@ -29,6 +28,7 @@ import {
   parsePositiveScale,
   updateTunnelItemField,
 } from "@/editor/tunnel/tunnelItemEditorState";
+import { degToRad, radToDeg } from "@/editor/tunnel/splineEditorState";
 
 interface TunnelItemEditorProps {
   tunnelData: TunnelData;
@@ -73,7 +73,7 @@ export function TunnelItemEditor({
 
   return (
     <div className="flex flex-col h-full bg-gray-800 p-4 rounded-lg">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h2 className="text-lg font-bold text-white">Items</h2>
         <Button
           size="sm"
@@ -122,7 +122,7 @@ export function TunnelItemEditor({
       {/* Item details panel */}
       {selectedItem && selectedItemIndex !== null && (
         <div className="border-t border-gray-600 pt-4 space-y-3">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-white">Item Details</h3>
             <Button
               size="sm"
@@ -175,21 +175,16 @@ export function TunnelItemEditor({
             />
           </div>
 
-          {/* Section Number */}
+          {/* Section metadata is preserved, but is not used by the original runtime. */}
           <div>
-            <Label className="text-white">Section Number</Label>
-            <Input
-              type="number"
-              value={selectedItem.sectionNum}
-              onChange={(e) => {
-                const parsed = parseInt(e.target.value);
-                if (!isNaN(parsed) && canUseSectionNumber(parsed, tunnelData)) {
-                  handleUpdateField("sectionNum", parsed);
-                }
-              }}
-              min={-1}
-              max={tunnelData.sections.length - 1}
-            />
+            <Label className="text-white">Section Metadata</Label>
+            <div className="rounded bg-gray-700 px-2 py-1 text-sm text-gray-300">
+              {selectedItem.sectionNum}
+            </div>
+            <p className="text-xs text-gray-500">
+              Preserved for file compatibility; the game places items from the
+              spline index.
+            </p>
           </div>
 
           {/* Scale */}
@@ -253,17 +248,17 @@ export function TunnelItemEditor({
 
           {/* Rotation */}
           <div>
-            <Label className="text-white">Rotation (radians)</Label>
+            <Label className="text-white">Rotation (degrees)</Label>
             <div className="grid grid-cols-3 gap-2">
               <Input
                 type="number"
                 step="0.1"
                 placeholder="X"
-                value={selectedItem.rot.x}
+                  value={radToDeg(selectedItem.rot.x).toFixed(1)}
                 onChange={(e) =>
                   handleUpdateField("rot", {
                     ...selectedItem.rot,
-                    x: parseFloat(e.target.value) || 0,
+                    x: degToRad(parseFloat(e.target.value) || 0),
                   })
                 }
               />
@@ -271,11 +266,11 @@ export function TunnelItemEditor({
                 type="number"
                 step="0.1"
                 placeholder="Y"
-                value={selectedItem.rot.y}
+                  value={radToDeg(selectedItem.rot.y).toFixed(1)}
                 onChange={(e) =>
                   handleUpdateField("rot", {
                     ...selectedItem.rot,
-                    y: parseFloat(e.target.value) || 0,
+                    y: degToRad(parseFloat(e.target.value) || 0),
                   })
                 }
               />
@@ -283,11 +278,11 @@ export function TunnelItemEditor({
                 type="number"
                 step="0.1"
                 placeholder="Z"
-                value={selectedItem.rot.z}
+                  value={radToDeg(selectedItem.rot.z).toFixed(1)}
                 onChange={(e) =>
                   handleUpdateField("rot", {
                     ...selectedItem.rot,
-                    z: parseFloat(e.target.value) || 0,
+                    z: degToRad(parseFloat(e.target.value) || 0),
                   })
                 }
               />

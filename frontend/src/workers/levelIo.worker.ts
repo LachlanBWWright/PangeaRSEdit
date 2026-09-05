@@ -17,20 +17,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function stripWorkerOnlyMetadata(levelData: unknown, gameType: Game): unknown {
-  if (gameType !== Game.NANOSAUR || !isRecord(levelData)) {
+function stripLevelMetadata(
+  levelData: unknown,
+  gameType: Game,
+  levelMetadataEnabled: boolean,
+): unknown {
+  if (!isRecord(levelData)) {
     return levelData;
   }
 
-  const metadata = isRecord(levelData._metadata) ? levelData._metadata : null;
-  if (!metadata || !("nanosaur1RawLevel" in metadata)) {
-    return levelData;
+  const nextLevelData = levelMetadataEnabled
+    ? levelData
+    : (() => {
+        const withoutLevelMetadata = { ...levelData };
+        delete withoutLevelMetadata.Meta;
+        return withoutLevelMetadata;
+      })();
+  if (gameType !== Game.NANOSAUR) {
+    return nextLevelData;
   }
 
+  const metadata = isRecord(nextLevelData._metadata) ? nextLevelData._metadata : null;
+  if (!metadata || !("nanosaur1RawLevel" in metadata)) return nextLevelData;
   const nextMetadata = { ...metadata };
   delete nextMetadata.nanosaur1RawLevel;
   return {
-    ...levelData,
+    ...nextLevelData,
     _metadata: nextMetadata,
   };
 }
@@ -102,9 +114,10 @@ self.onmessage = (event: MessageEvent<unknown>) => {
         {
           requestId: request.requestId,
           type: "parsed-level",
-          levelData: stripWorkerOnlyMetadata(
+          levelData: stripLevelMetadata(
             parseResult.value.levelData,
             request.globals.GAME_TYPE,
+            request.levelMetadataEnabled,
           ),
           mapImages: parseResult.value.mapImages,
           collisionImages: parseResult.value.collisionImages,
@@ -126,6 +139,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
           reuseLevelBytes: request.reuseLevelBytes,
           reuseTextureBytes: request.reuseTextureBytes,
           reuseCombinedBytes: request.reuseCombinedBytes,
+          levelMetadataEnabled: request.levelMetadataEnabled,
           strictRustNanosaur: true,
         },
         notifyProgress,
@@ -164,6 +178,7 @@ self.onmessage = (event: MessageEvent<unknown>) => {
         reuseLevelBytes: request.reuseLevelBytes,
         reuseTextureBytes: request.reuseTextureBytes,
         reuseCombinedBytes: request.reuseCombinedBytes,
+        levelMetadataEnabled: request.levelMetadataEnabled,
         strictRustNanosaur: true,
       },
       notifyProgress,

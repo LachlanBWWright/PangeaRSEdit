@@ -261,6 +261,21 @@ function validateSectionMesh(
     );
   }
 
+  for (const [triangleIndex, triangle] of mesh.triangles.entries()) {
+    if (
+      triangle.a < 0 ||
+      triangle.b < 0 ||
+      triangle.c < 0 ||
+      triangle.a >= mesh.numPoints ||
+      triangle.b >= mesh.numPoints ||
+      triangle.c >= mesh.numPoints
+    ) {
+      return err(
+        `Section ${sectionIndex} ${meshName} triangle ${triangleIndex} has an out-of-range vertex index`,
+      );
+    }
+  }
+
   return ok(null);
 }
 

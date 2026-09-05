@@ -1,6 +1,10 @@
 import { err, ok, Result } from "neverthrow";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
-import type { LevelData } from "@/python/structSpecs/LevelTypes";
+import type {
+  LevelData,
+  LevelMetadataResource,
+  MetadataResource,
+} from "@/python/structSpecs/LevelTypes";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType, Game, TileImageFormat } from "@/data/globals/globals";
 import {
@@ -37,6 +41,7 @@ import {
   type MightyMikeTilesetPreservedData,
 } from "@/modelParsers/parseMightyMike";
 import { regenerateDerivedLevelData } from "@/data/saveMap/regenerateDerivedLevelData";
+import { metadataResourceSchema } from "@/validation/levelDataSchemas";
 
 function notify(
   onProgress: ((progress: LevelIoProgress) => void) | undefined,
@@ -49,6 +54,16 @@ function cloneUint8Array(bytes: Uint8Array): Uint8Array {
   const clone = new Uint8Array(bytes.byteLength);
   clone.set(bytes);
   return clone;
+}
+
+function withoutLevelMetadata(
+  levelData: LevelData,
+  metadataEnabled: boolean,
+): LevelData {
+  if (metadataEnabled) return levelData;
+  const withoutMetadata = { ...levelData };
+  delete withoutMetadata.Meta;
+  return withoutMetadata;
 }
 
 const preservedTilesetDataSchema = z.object({
@@ -198,8 +213,11 @@ function serializeResourceForkBytes(
   levelData: LevelData,
   globals: GlobalsInterface,
   mapImages: readonly LevelIoImagePayload[],
+  metadataEnabled: boolean,
 ): Result<Uint8Array, LevelIoError> {
-  const sanitized = sanitizeResourceForkJson(levelData);
+  const sanitized = prepareMetadataResourceForFork(
+    sanitizeResourceForkJson(withoutLevelMetadata(levelData, metadataEnabled)),
+  );
   const validation = validateResourceForkJson(sanitized);
   if (validation.isErr()) {
     return err(
@@ -242,6 +260,81 @@ function serializeResourceForkBytes(
     return err(levelIoError("serialize.failed", String(saveResult.value.error)));
   }
   return ok(cloneUint8Array(saveResult.value.value));
+}
+
+function metadataResourceToHex(resource: LevelMetadataResource): string {
+  const encoded = new TextEncoder().encode(JSON.stringify(resource));
+  let hex = "";
+  for (const byte of encoded) hex += byte.toString(16).padStart(2, "0");
+  return hex;
+}
+
+function prepareMetadataResourceForFork(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const metaContainer = data.Meta;
+  if (!isRecord(metaContainer)) return data;
+  const entry = metaContainer[1000];
+  if (!isRecord(entry) || !isRecord(entry.obj)) return data;
+  const metadataResourceResult = metadataResourceSchema.safeParse(entry.obj);
+  if (!metadataResourceResult.success) return data;
+  return {
+    ...data,
+    Meta: {
+      1000: {
+        name: typeof entry.name === "string" ? entry.name : "Level Metadata",
+        data: metadataResourceToHex(metadataResourceResult.data),
+        order: typeof entry.order === "number" ? entry.order : 0,
+      },
+    },
+  };
+}
+
+export function serializeMetadataResourceForkBytes(
+  metadataResource: MetadataResource,
+  globals: GlobalsInterface,
+): Result<Uint8Array, LevelIoError> {
+  const sanitized = {
+    _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
+    Meta: {
+      1000: {
+        name: "Level Metadata",
+        data: metadataResourceToHex(metadataResource[1000].obj),
+        order: metadataResource[1000].order,
+      },
+    },
+  };
+  const validation = validateResourceForkJson(sanitized);
+  if (validation.isErr()) {
+    return err(
+      levelIoError(
+        "serialize.failed",
+        `Invalid Meta resource: ${validation.error.message}`,
+      ),
+    );
+  }
+  const saveResult = Result.fromThrowable(
+    () => loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true),
+    mapErr,
+  )();
+  if (saveResult.isErr()) {
+    return err(levelIoError("serialize.failed", saveResult.error));
+  }
+  if (!saveResult.value.ok) {
+    return err(levelIoError("serialize.failed", String(saveResult.value.error)));
+  }
+  return ok(cloneUint8Array(saveResult.value.value));
+}
+
+export function getMetadataCompanionFilename(
+  fileName: string,
+  game: Game,
+): string {
+  if (game === Game.MIGHTY_MIKE) return `${fileName}.Meta.rsrc`;
+
+  const extensionIndex = fileName.lastIndexOf(".");
+  const baseName = extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName;
+  return `${baseName}.Meta.rsrc`;
 }
 
 async function serializePrimaryMapBytes(
@@ -304,7 +397,7 @@ async function serializePrimaryMapBytes(
     return ok(new Uint8Array(serializeResult.value));
   }
 
-  return Promise.resolve(serializeResourceForkBytes(levelData, globals, []));
+  return Promise.resolve(serializeResourceForkBytes(levelData, globals, [], true));
 }
 
 export async function serializeLevelDownloadBytes(
@@ -314,6 +407,7 @@ export async function serializeLevelDownloadBytes(
     readonly fileName: string;
     readonly mapImagesFileName?: string;
     readonly mapImages: readonly LevelIoImagePayload[];
+    readonly levelMetadataEnabled?: boolean;
     readonly strictRustNanosaur?: boolean;
     readonly reuseLevelBytes?: Uint8Array;
     readonly reuseTextureBytes?: Uint8Array;
@@ -324,8 +418,12 @@ export async function serializeLevelDownloadBytes(
   if (!isLevelDataLike(options.levelData)) {
     return err(levelIoError("serialize.failed", "Level data is not valid"));
   }
-  const levelData = structuredClone(options.levelData);
-  regenerateDerivedLevelData(levelData);
+  const clonedLevelData = structuredClone(options.levelData);
+  regenerateDerivedLevelData(clonedLevelData);
+  const levelData = withoutLevelMetadata(
+    clonedLevelData,
+    options.levelMetadataEnabled ?? true,
+  );
 
   notify(onProgress, {
     stage: "serialize.resource-fork",
@@ -345,7 +443,7 @@ export async function serializeLevelDownloadBytes(
     if (textureBytesResult.isErr()) {
       return err(levelIoError("serialize.failed", textureBytesResult.error));
     }
-    return ok([
+    const files: LevelIoSerializedFile[] = [
       {
         filename: options.fileName,
         extension: ".ter",
@@ -356,13 +454,33 @@ export async function serializeLevelDownloadBytes(
         extension: ".trt",
         bytes: new Uint8Array(textureBytesResult.value),
       },
-    ]);
+    ];
+    const metadataResult = levelData.Meta
+      ? serializeMetadataResourceForkBytes(levelData.Meta, options.globals)
+      : ok<Uint8Array | undefined, LevelIoError>(undefined);
+    if (metadataResult.isErr()) return err(metadataResult.error);
+    if (metadataResult.value) {
+      files.push({
+        filename: getMetadataCompanionFilename(
+          options.fileName,
+          options.globals.GAME_TYPE,
+        ),
+        extension: ".rsrc",
+        bytes: metadataResult.value,
+      });
+    }
+    return ok(files);
   }
 
   if (options.globals.DATA_TYPE === DataType.RSRC_FORK) {
-    const resourceBytes = options.reuseCombinedBytes
+    const resourceBytes = options.reuseCombinedBytes && (options.levelMetadataEnabled ?? true)
       ? ok(options.reuseCombinedBytes)
-      : serializeResourceForkBytes(levelData, options.globals, options.mapImages);
+      : serializeResourceForkBytes(
+          levelData,
+          options.globals,
+          options.mapImages,
+          options.levelMetadataEnabled ?? true,
+        );
     if (resourceBytes.isErr()) {
       return err(resourceBytes.error);
     }
@@ -388,7 +506,7 @@ export async function serializeLevelDownloadBytes(
     if (tilesetBytesResult.isErr()) {
       return err(tilesetBytesResult.error);
     }
-    return ok([
+    const files: LevelIoSerializedFile[] = [
       {
         filename: options.fileName,
         extension: ".map",
@@ -399,12 +517,32 @@ export async function serializeLevelDownloadBytes(
         extension: ".tileset",
         bytes: tilesetBytesResult.value,
       },
-    ]);
+    ];
+    const metadataResult = levelData.Meta
+      ? serializeMetadataResourceForkBytes(levelData.Meta, options.globals)
+      : ok<Uint8Array | undefined, LevelIoError>(undefined);
+    if (metadataResult.isErr()) return err(metadataResult.error);
+    if (metadataResult.value) {
+      files.push({
+        filename: getMetadataCompanionFilename(
+          options.fileName,
+          options.globals.GAME_TYPE,
+        ),
+        extension: ".rsrc",
+        bytes: metadataResult.value,
+      });
+    }
+    return ok(files);
   }
 
-  const resourceBytes = options.reuseLevelBytes
+  const resourceBytes = options.reuseLevelBytes && (options.levelMetadataEnabled ?? true)
     ? ok(options.reuseLevelBytes)
-    : serializeResourceForkBytes(levelData, options.globals, []);
+    : serializeResourceForkBytes(
+        levelData,
+        options.globals,
+        [],
+        options.levelMetadataEnabled ?? true,
+      );
   if (resourceBytes.isErr()) {
     return err(resourceBytes.error);
   }
@@ -441,6 +579,7 @@ export async function preparePreviewLevelBytes(
     readonly levelData: unknown;
     readonly globals: GlobalsInterface;
     readonly mapImages: readonly LevelIoImagePayload[];
+    readonly levelMetadataEnabled?: boolean;
     readonly strictRustNanosaur?: boolean;
     readonly reuseLevelBytes?: Uint8Array;
     readonly reuseTextureBytes?: Uint8Array;
@@ -460,12 +599,20 @@ export async function preparePreviewLevelBytes(
   if (!isLevelDataLike(options.levelData)) {
     return err(levelIoError("preview.failed", "Level data is not valid"));
   }
-  const levelData = options.levelData;
+  const levelData = withoutLevelMetadata(
+    options.levelData,
+    options.levelMetadataEnabled ?? true,
+  );
 
   if (options.globals.DATA_TYPE === DataType.RSRC_FORK) {
-    const rsrcBytes = options.reuseCombinedBytes
+    const rsrcBytes = options.reuseCombinedBytes && (options.levelMetadataEnabled ?? true)
       ? ok(options.reuseCombinedBytes)
-      : serializeResourceForkBytes(levelData, options.globals, options.mapImages);
+      : serializeResourceForkBytes(
+          levelData,
+          options.globals,
+          options.mapImages,
+          options.levelMetadataEnabled ?? true,
+        );
     if (rsrcBytes.isErr()) {
       return err(levelIoError("preview.failed", rsrcBytes.error.message));
     }
@@ -491,13 +638,19 @@ export async function preparePreviewLevelBytes(
     if (textureBytes.isErr()) {
       return err(levelIoError("preview.failed", textureBytes.error));
     }
+    const metadataResult = levelData.Meta
+      ? serializeMetadataResourceForkBytes(levelData.Meta, options.globals)
+      : ok<Uint8Array | undefined, LevelIoError>(undefined);
+    if (metadataResult.isErr()) {
+      return err(metadataResult.error);
+    }
     notify(onProgress, {
       stage: "preview.ready",
       message: "Preview bytes are ready",
     });
     return ok({
       dataBytes: mapBytes.value,
-      rsrcBytes: null,
+      rsrcBytes: metadataResult.value ?? null,
       textureBytes:
         textureBytes.value.byteLength > 0
           ? new Uint8Array(textureBytes.value)
@@ -506,9 +659,14 @@ export async function preparePreviewLevelBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.STANDARD) {
-    const rsrcBytes = options.reuseLevelBytes
+    const rsrcBytes = options.reuseLevelBytes && (options.levelMetadataEnabled ?? true)
       ? ok(options.reuseLevelBytes)
-      : serializeResourceForkBytes(levelData, options.globals, []);
+      : serializeResourceForkBytes(
+          levelData,
+          options.globals,
+          [],
+          options.levelMetadataEnabled ?? true,
+        );
     if (rsrcBytes.isErr()) {
       return err(levelIoError("preview.failed", rsrcBytes.error.message));
     }
@@ -557,7 +715,12 @@ export async function preparePreviewLevelBytes(
     });
   }
 
-  const rsrcBytes = serializeResourceForkBytes(levelData, options.globals, []);
+  const rsrcBytes = serializeResourceForkBytes(
+    levelData,
+    options.globals,
+    [],
+    options.levelMetadataEnabled ?? true,
+  );
   if (rsrcBytes.isErr()) {
     return err(levelIoError("preview.failed", rsrcBytes.error.message));
   }

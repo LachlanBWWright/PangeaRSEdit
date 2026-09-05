@@ -6,7 +6,7 @@ import { useAtom } from "jotai";
 import { AtomicLevelData, splitLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
 import { GameCarousel } from "./gameCards/GameCarousel";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 /* import { Separator } from "@/components/ui/separator";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
@@ -18,6 +18,7 @@ export function UploadPrompt({
   setData,
   setTunnelData,
   setTunnelFileName,
+  setTunnelLevelKind,
   onCreateBlankLevel,
   onCreateScriptItemDemoLevel,
 }: {
@@ -28,6 +29,7 @@ export function UploadPrompt({
   setData: (data: AtomicLevelData) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  setTunnelLevelKind: (kind: TunnelLevelKind) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
   onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
@@ -48,12 +50,14 @@ export function UploadPrompt({
     file: Blob,
     gameType: GlobalsInterface,
     companionTextureFile?: File,
+    companionMetadataFile?: File,
   ) => {
     setGlobals(gameType);
     const result = await parseLevelDataFile({
       file,
       gameType,
       companionTextureFile,
+      companionMetadataFile,
     });
     if (result.isErr()) {
       return result;
@@ -85,6 +89,7 @@ export function UploadPrompt({
             setMapImages={setMapImages}
             setTunnelData={setTunnelData}
             setTunnelFileName={setTunnelFileName}
+            setTunnelLevelKind={setTunnelLevelKind}
             onCreateBlankLevel={onCreateBlankLevel}
             onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel}
           />

@@ -186,6 +186,21 @@ export interface LevelMetadata {
   [key: string]: unknown;
 }
 
+export interface LevelMetadataResource {
+  schemaVersion: 1;
+  game: string;
+  identity: string;
+  properties: Record<string, string>;
+}
+
+export interface MetadataResource {
+  1000: {
+    name: "Level Metadata";
+    obj: LevelMetadataResource;
+    order: number;
+  };
+}
+
 export interface HeaderData<THeader = StandardHeader> {
   Hedr: {
     1000: {
@@ -371,7 +386,8 @@ export interface TerrainData<
     }
   >;
   _metadata: LevelMetadata;
-    tileset?: unknown;
+  Meta?: MetadataResource;
+  tileset?: unknown;
 }
 
 export interface Checkpoint {

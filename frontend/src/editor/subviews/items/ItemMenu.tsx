@@ -42,6 +42,7 @@ import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 import { ItemStateFlags } from "./ItemStateFlags";
 import { ParameterField } from "./ParameterField";
+import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -146,7 +147,12 @@ export const ItemMenu = memo(function ItemMenu({
                     game={globals.GAME_TYPE}
                     kind="terrainItem"
                     itemType={key}
-                    label={getItemName(globals, key)}
+                    label={`${getItemName(globals, key)} — ${getItemLevelSupportLabel(
+                      globals.GAME_TYPE,
+                      "terrainItem",
+                      key,
+                      levelNum,
+                    )}`}
                     levelNum={levelNum}
                     compact
                   />
@@ -272,6 +278,7 @@ export const ItemMenu = memo(function ItemMenu({
 function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
+  const levelNum = useAtomValue(LevelNumber);
 
   useEffect(() => {
     return () => setClickToAddItem(undefined);
@@ -305,7 +312,12 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
                   game={globals.GAME_TYPE}
                   kind="terrainItem"
                   itemType={key}
-                  label={getItemName(globals, key)}
+                  label={`${getItemName(globals, key)} — ${getItemLevelSupportLabel(
+                    globals.GAME_TYPE,
+                    "terrainItem",
+                    key,
+                    levelNum,
+                  )}`}
                   compact
                 />
               </SelectItem>

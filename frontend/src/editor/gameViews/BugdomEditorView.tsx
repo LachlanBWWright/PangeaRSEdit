@@ -13,6 +13,7 @@ import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
@@ -20,6 +21,7 @@ import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { BugdomTerrainMenu } from "../subviews/bugdom/BugdomTerrainMenu";
 import { BugdomMetadataMenu } from "../subviews/bugdom/BugdomMetadataMenu";
+import { LevelMetadataMenu } from "../subviews/metadata/LevelMetadataMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
 import { ThreeView } from "../threejs/Three";
@@ -79,6 +81,7 @@ export function BugdomEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const { levelMetadata } = useFeatureFlags();
   const storedView = useAtomValue(ActiveView);
   const setView = useSetAtom(ActiveView);
   const selectedTile = useAtomValue(SelectedTile);
@@ -110,8 +113,8 @@ export function BugdomEditorView({
   const view = normalizeEditorView(
     storedView,
     ENABLE_SCRIPTS
-      ? [View.fences, View.items, View.splines, View.scripts, View.tiles, View.supertiles, View.vertexColors]
-      : [View.fences, View.items, View.splines, View.tiles, View.supertiles, View.vertexColors],
+      ? [View.fences, View.items, View.splines, View.scripts, View.tiles, View.supertiles, View.vertexColors, ...(levelMetadata ? [View.metadata] : [])]
+      : [View.fences, View.items, View.splines, View.tiles, View.supertiles, View.vertexColors, ...(levelMetadata ? [View.metadata] : [])],
     View.supertiles,
   );
   useEffect(() => {
@@ -153,7 +156,7 @@ export function BugdomEditorView({
       <MenuSection
         key={view}
         scrollable={true}
-        className={view === View.scripts ? "!h-full" : undefined}
+        className={view === View.scripts || view === View.metadata ? "!h-full" : undefined}
       >
         {view === View.fences &&
           (fenceData ? (
@@ -227,6 +230,9 @@ export function BugdomEditorView({
             }
           />
         )}
+        {levelMetadata && view === View.metadata && (
+          <LevelMetadataMenu terrainData={terrainData} setTerrainData={setTerrainData} />
+        )}
         {view === View.supertiles && (
           <BugdomTileMenu
             key={selectedTile}
@@ -239,7 +245,7 @@ export function BugdomEditorView({
           />
         )}
       </MenuSection>
-      {view !== View.scripts && <div
+      {view !== View.scripts && view !== View.metadata && <div
           className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative"
       >
         {supportsThreeCanvas(view) && <CanvasViewToggle />}
