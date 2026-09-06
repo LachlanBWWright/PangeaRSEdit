@@ -47,6 +47,36 @@ describe("item-level bindings", () => {
     );
   });
 
+  it("restricts Bugdom 2 level-specific models to their source levels", () => {
+    expect(hasItemLevelBinding(Game.BUGDOM_2, "terrainItem", 17, 1)).toBe(
+      true,
+    );
+    expect(hasItemLevelBinding(Game.BUGDOM_2, "terrainItem", 17, 2)).toBe(
+      false,
+    );
+  });
+
+  it("restricts other games with level-specific model families", () => {
+    expect(hasItemLevelBinding(Game.OTTO_MATIC, "terrainItem", 76, 4)).toBe(
+      true,
+    );
+    expect(hasItemLevelBinding(Game.OTTO_MATIC, "terrainItem", 76, 3)).toBe(
+      false,
+    );
+    expect(hasItemLevelBinding(Game.NANOSAUR_2, "terrainItem", 27, 1)).toBe(
+      true,
+    );
+    expect(hasItemLevelBinding(Game.NANOSAUR_2, "terrainItem", 27, 0)).toBe(
+      false,
+    );
+    expect(hasItemLevelBinding(Game.CRO_MAG, "terrainItem", 24, 5)).toBe(
+      true,
+    );
+    expect(hasItemLevelBinding(Game.CRO_MAG, "terrainItem", 24, 1)).toBe(
+      false,
+    );
+  });
+
   it("covers every native type in the complete inventory", () => {
     expect(getItemLevelBindings(Game.BUGDOM_2, "terrainItem")).toHaveLength(
       Object.keys(bugdom2ItemTypeNames).length,

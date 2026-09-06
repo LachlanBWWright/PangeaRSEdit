@@ -15,11 +15,14 @@ import {
   getMetadataPropertyValue,
   getMetadataResource,
   getMetadataResourceMode,
+  hasMetadataProperty,
+  resetMetadataProperty,
   updateMetadataProperty,
 } from "./metadataResource";
 import { MetadataRuleEditor } from "./MetadataRuleEditor";
 import {
   getMetadataRuleValueLabel,
+  type MetadataRuleGroup,
   type MetadataRule,
 } from "./levelMetadataRules";
 import { getGitHubPermalink } from "@/validation/gameRepositories";
@@ -60,10 +63,16 @@ function SettingLabel({
   game,
   rule,
   value,
+  isOverridden,
+  isLockedByPreset,
+  presetLabel,
 }: {
   game: Game;
   rule: MetadataRule;
   value: string;
+  isOverridden: boolean;
+  isLockedByPreset: boolean;
+  presetLabel?: string;
 }) {
   const repositoryKey = metadataRepositoryKeys[game];
   return (
@@ -81,6 +90,12 @@ function SettingLabel({
         </TooltipTrigger>
         <TooltipContent className="max-w-sm space-y-2" side="right">
           <p>{rule.description}</p>
+          <p>
+            <span className="font-semibold text-slate-200">Status: </span>
+            {isLockedByPreset
+              ? `Determined by ${presetLabel ?? "the selected preset"}`
+              : isOverridden ? "Override active" : "Using original level behavior"}
+          </p>
           <p>
             <span className="font-semibold text-slate-200">Current value: </span>
             {getMetadataRuleValueLabel(rule, value)}
@@ -149,45 +164,144 @@ function SettingLabel({
   );
 }
 
+interface MetadataGroupState {
+  readonly group: MetadataRuleGroup;
+  readonly presetValue: string;
+  readonly presetLabel: string;
+  readonly isPresetSelected: boolean;
+}
+
+interface MetadataRuleSection {
+  readonly key: string;
+  readonly group?: MetadataRuleGroup;
+  readonly rules: readonly MetadataRule[];
+}
+
+function groupMetadataRules(rules: readonly MetadataRule[]): readonly MetadataRuleSection[] {
+  const sections: MetadataRuleSection[] = [];
+  rules.forEach((rule) => {
+    if (!rule.group) {
+      sections.push({ key: rule.key, rules: [rule] });
+      return;
+    }
+    const existingIndex = sections.findIndex((section) => section.key === rule.group?.id);
+    if (existingIndex === -1) {
+      sections.push({ key: rule.group.id, group: rule.group, rules: [rule] });
+      return;
+    }
+    const existing = sections[existingIndex];
+    if (!existing) return;
+    sections[existingIndex] = { ...existing, rules: [...existing.rules, rule] };
+  });
+  return sections;
+}
+
+function getMetadataGroupState(
+  rules: readonly MetadataRule[],
+  metadataResource: ReturnType<typeof getMetadataResource>,
+  group: MetadataRuleGroup,
+): MetadataGroupState | undefined {
+  const presetRule = rules.find((rule) => rule.key === group.presetKey);
+  if (!presetRule) return undefined;
+  const presetValue = getMetadataPropertyValue(
+    metadataResource,
+    presetRule.key,
+    presetRule.defaultValue ?? presetRule.value,
+  );
+  return {
+    group,
+    presetValue,
+    presetLabel: getMetadataRuleValueLabel(presetRule, presetValue),
+    isPresetSelected: presetValue !== "custom",
+  };
+}
+
+function getDeterminedValue(
+  rule: MetadataRule,
+  metadataResource: ReturnType<typeof getMetadataResource>,
+  groupState: MetadataGroupState | undefined,
+): string {
+  if (groupState?.isPresetSelected) {
+    return groupState.group.determinedValues[groupState.presetValue]?.[rule.key]
+      ?? rule.defaultValue
+      ?? rule.value;
+  }
+  return getMetadataPropertyValue(metadataResource, rule.key, rule.defaultValue ?? rule.value);
+}
+
 function MetadataSettingRow({
   game,
   identity,
-  levelIndex,
   metadataResource,
   rule,
+  groupState,
   setTerrainData,
 }: {
   game: Game;
   identity: string;
-  levelIndex: number;
   metadataResource: ReturnType<typeof getMetadataResource>;
   rule: MetadataRule;
+  groupState?: MetadataGroupState;
   setTerrainData: Updater<TerrainData>;
 }) {
-  const value = getMetadataPropertyValue(metadataResource, rule.key, rule.value);
   const defaultValue = rule.defaultValue ?? rule.value;
+  const isLockedByPreset = rule.groupRole === "determined" && groupState?.isPresetSelected === true;
+  const isOverridden = !isLockedByPreset && hasMetadataProperty(metadataResource, rule.key);
+  const value = getDeterminedValue(rule, metadataResource, groupState);
   return (
     <tr className="border-b border-slate-800 last:border-b-0">
       <td className="min-w-64 px-3 py-2 font-medium text-slate-200">
-        <SettingLabel game={game} rule={rule} value={value} />
-        <p className="mt-1 text-xs font-normal leading-relaxed text-slate-400">
-          {rule.description}
-        </p>
+        <SettingLabel
+          game={game}
+          isLockedByPreset={isLockedByPreset}
+          isOverridden={isOverridden}
+          presetLabel={groupState?.presetLabel}
+          rule={rule}
+          value={value}
+        />
       </td>
       <td className="px-3 py-2 text-slate-100">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <MetadataRuleEditor
+            disabled={isLockedByPreset}
+            isOverridden={isOverridden}
             rule={rule}
             value={value}
-            onChange={(nextValue) => updateMetadataProperty(
-              setTerrainData,
-              game,
-              identity,
-              levelIndex,
-              rule.key,
-              nextValue,
-            )}
+            onOverrideChange={(nextIsOverridden) => {
+              if (nextIsOverridden) {
+                updateMetadataProperty(
+                  setTerrainData,
+                  game,
+                  identity,
+                  rule.key,
+                  value,
+                );
+                return;
+              }
+              resetMetadataProperty(setTerrainData, rule.key);
+            }}
+            onChange={(nextValue) => {
+              if (nextValue === "source-default") {
+                resetMetadataProperty(setTerrainData, rule.key);
+                return;
+              }
+              updateMetadataProperty(setTerrainData, game, identity, rule.key, nextValue);
+            }}
           />
+          <button
+            aria-label={`Reset ${rule.label}`}
+            className="text-xs text-slate-400 underline underline-offset-2 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
+            disabled={!isOverridden || isLockedByPreset}
+            onClick={() => resetMetadataProperty(setTerrainData, rule.key)}
+            type="button"
+          >
+            Reset
+          </button>
+          {isLockedByPreset ? (
+            <span className="text-xs text-slate-500">
+              Determined by {groupState?.presetLabel ?? "the selected preset"}
+            </span>
+          ) : null}
         </div>
       </td>
       <td className="whitespace-nowrap px-3 py-2 text-sm text-slate-400">
@@ -210,7 +324,13 @@ function MetadataAuditRow({
   return (
     <tr className="border-b border-slate-800 last:border-b-0">
       <td className="px-3 py-2 font-medium text-slate-200">
-        <SettingLabel game={game} rule={rule} value={value} />
+        <SettingLabel
+          game={game}
+          isLockedByPreset={false}
+          isOverridden={false}
+          rule={rule}
+          value={value}
+        />
       </td>
       <td className="px-3 py-2 text-slate-100">{getMetadataRuleValueLabel(rule, value)}</td>
       <td className="px-3 py-2 text-xs text-slate-400">Read-only audit context</td>
@@ -227,11 +347,11 @@ export function LevelMetadataMenu({ terrainData, setTerrainData }: Props) {
     : config.levels.find((level) => getLevelIndex(level) === levelNumber);
   const details = getLevelMetadataDetails(globals.GAME_TYPE, levelNumber, levelInfo);
   const hasEditableRuntimeRules = details.runtimeRules.some((rule) => rule.editable);
-  const levelIndex = levelNumber ?? 0;
   const identity = details.identityValue;
-  const metadataResource = getMetadataResource(terrainData);
+  const metadataResource = getMetadataResource(terrainData, globals.GAME_TYPE);
   const resourceMode = getMetadataResourceMode(globals.GAME_TYPE);
   const editableRules = details.runtimeRules.filter((rule) => rule.editable);
+  const editableSections = groupMetadataRules(editableRules);
   const auditRules = details.runtimeRules.filter((rule) => !rule.editable);
   const auditRuleCount = details.runtimeRules.length - editableRules.length;
 
@@ -331,19 +451,40 @@ export function LevelMetadataMenu({ terrainData, setTerrainData }: Props) {
                 <th className="px-3 py-2">Original default</th>
               </tr>
             </thead>
-            <tbody>
-              {editableRules.map((runtimeRule) => (
-                <MetadataSettingRow
-                  game={globals.GAME_TYPE}
-                  identity={identity}
-                  key={runtimeRule.key}
-                  levelIndex={levelIndex}
-                  metadataResource={metadataResource}
-                  rule={runtimeRule}
-                  setTerrainData={setTerrainData}
-                />
-              ))}
-            </tbody>
+            {editableSections.map((section) => {
+              const groupState = section.group
+                ? getMetadataGroupState(editableRules, metadataResource, section.group)
+                : undefined;
+              return (
+                <tbody key={section.key}>
+                  {section.group ? (
+                    <tr className="border-y border-slate-700 bg-slate-900/60">
+                      <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" colSpan={3}>
+                        <div>{section.group.label}</div>
+                        {groupState ? (
+                          <div className="mt-0.5 normal-case tracking-normal text-slate-500">
+                            Preset: {groupState.presetLabel}. {groupState.isPresetSelected
+                              ? "The values below are determined by this preset."
+                              : "Individual values can be enabled and edited below."}
+                          </div>
+                        ) : null}
+                      </th>
+                    </tr>
+                  ) : null}
+                  {section.rules.map((runtimeRule) => (
+                    <MetadataSettingRow
+                      game={globals.GAME_TYPE}
+                      groupState={groupState}
+                      identity={identity}
+                      key={runtimeRule.key}
+                      metadataResource={metadataResource}
+                      rule={runtimeRule}
+                      setTerrainData={setTerrainData}
+                    />
+                  ))}
+                </tbody>
+              );
+            })}
           </table>
         </div> : <p className="border-y border-slate-700 p-3 text-sm text-slate-400">This game has no concrete editable runtime settings registered yet.</p>}
         <p className="mt-2 text-xs text-slate-400">

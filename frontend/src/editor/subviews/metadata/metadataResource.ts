@@ -9,7 +9,6 @@ import type {
   MetadataResource,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
-import { getRuntimeMetadataRules } from "./levelMetadataRules";
 import { metadataResourceSchema } from "@/validation/levelDataSchemas";
 import { mapErr } from "@/utils/mapErr";
 import { plainResultSchema } from "@/schemas/common";
@@ -77,30 +76,44 @@ function getMetadataGameId(game: Game): string {
   }
 }
 
-function createDefaultResource(
-  game: Game,
-  identity: string,
-  levelIndex: number,
-): LevelMetadataResource {
-  const properties: Record<string, string> = {};
-  getRuntimeMetadataRules(game, levelIndex)
-    .filter((runtimeRule) => runtimeRule.editable)
-    .forEach((runtimeRule) => {
-      properties[runtimeRule.key] = runtimeRule.value;
-    });
+function createEmptyResource(game: Game, identity: string): LevelMetadataResource {
   return {
     schemaVersion: 1,
     game: getMetadataGameId(game),
     identity,
-    properties,
+    properties: {},
+  };
+}
+
+export function updateMetadataResource(
+  current: LevelMetadataResource | undefined,
+  game: Game,
+  identity: string,
+  key: string,
+  value: string,
+): LevelMetadataResource {
+  const expectedGame = getMetadataGameId(game);
+  const resource = current?.game === expectedGame && current.identity === identity
+    ? current
+    : createEmptyResource(game, identity);
+  return {
+    ...resource,
+    game: expectedGame,
+    identity,
+    properties: { ...resource.properties, [key]: value },
   };
 }
 
 export function getMetadataResource(
   terrainData: TerrainData,
+  game: Game,
 ): LevelMetadataResource | undefined {
   if (!getFeatureFlags().levelMetadata) return undefined;
-  return terrainData.Meta?.[METADATA_RESOURCE_ID]?.obj;
+  const resource = terrainData.Meta?.[METADATA_RESOURCE_ID]?.obj;
+  const parsedResource = metadataResourceSchema.safeParse(resource);
+  if (!parsedResource.success) return undefined;
+  const expectedGame = getMetadataGameId(game);
+  return parsedResource.data.game === expectedGame ? parsedResource.data : undefined;
 }
 
 export function getMetadataPropertyValue(
@@ -109,6 +122,28 @@ export function getMetadataPropertyValue(
   fallback: string,
 ): string {
   return resource?.properties[key] ?? fallback;
+}
+
+export function hasMetadataProperty(
+  resource: LevelMetadataResource | undefined,
+  key: string,
+): boolean {
+  return resource !== undefined
+    && Object.prototype.hasOwnProperty.call(resource.properties, key);
+}
+
+export function resetMetadataResource(
+  current: LevelMetadataResource | undefined,
+  key: string,
+): LevelMetadataResource | undefined {
+  if (!current || !Object.prototype.hasOwnProperty.call(current.properties, key)) {
+    return current;
+  }
+
+  const properties = { ...current.properties };
+  Reflect.deleteProperty(properties, key);
+  if (Object.keys(properties).length === 0) return undefined;
+  return { ...current, properties };
 }
 
 function decodeMetadataHex(data: string): Result<string, string> {
@@ -156,22 +191,43 @@ export function updateMetadataProperty(
   setTerrainData: Updater<TerrainData>,
   game: Game,
   identity: string,
-  levelIndex: number,
   key: string,
   value: string,
 ): void {
   if (!getFeatureFlags().levelMetadata) return;
   setTerrainData((draft) => {
     const current = draft.Meta?.[METADATA_RESOURCE_ID]?.obj;
-    const resource = current ?? createDefaultResource(game, identity, levelIndex);
-    const properties = { ...resource.properties, [key]: value };
+    const resource = updateMetadataResource(current, game, identity, key, value);
     const metadata: MetadataResource = {
       1000: {
         name: "Level Metadata",
-        obj: { ...resource, game: getMetadataGameId(game), identity, properties },
+        obj: resource,
         order: current ? draft.Meta?.[METADATA_RESOURCE_ID]?.order ?? 0 : 0,
       },
     };
     draft.Meta = metadata;
+  });
+}
+
+export function resetMetadataProperty(
+  setTerrainData: Updater<TerrainData>,
+  key: string,
+): void {
+  if (!getFeatureFlags().levelMetadata) return;
+  setTerrainData((draft) => {
+    const current = draft.Meta?.[METADATA_RESOURCE_ID]?.obj;
+    const resource = resetMetadataResource(current, key);
+    if (!resource) {
+      Reflect.deleteProperty(draft, "Meta");
+      return;
+    }
+
+    draft.Meta = {
+      1000: {
+        name: "Level Metadata",
+        obj: resource,
+        order: draft.Meta?.[METADATA_RESOURCE_ID]?.order ?? 0,
+      },
+    };
   });
 }

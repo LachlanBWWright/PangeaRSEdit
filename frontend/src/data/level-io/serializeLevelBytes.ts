@@ -42,6 +42,7 @@ import {
 } from "@/modelParsers/parseMightyMike";
 import { regenerateDerivedLevelData } from "@/data/saveMap/regenerateDerivedLevelData";
 import { metadataResourceSchema } from "@/validation/levelDataSchemas";
+import { getFeatureFlags } from "@/config/featureFlags";
 
 function notify(
   onProgress: ((progress: LevelIoProgress) => void) | undefined,
@@ -64,6 +65,10 @@ function withoutLevelMetadata(
   const withoutMetadata = { ...levelData };
   delete withoutMetadata.Meta;
   return withoutMetadata;
+}
+
+function isMetadataEnabled(enabled: boolean | undefined): boolean {
+  return enabled ?? getFeatureFlags().levelMetadata;
 }
 
 const preservedTilesetDataSchema = z.object({
@@ -397,7 +402,9 @@ async function serializePrimaryMapBytes(
     return ok(new Uint8Array(serializeResult.value));
   }
 
-  return Promise.resolve(serializeResourceForkBytes(levelData, globals, [], true));
+  return Promise.resolve(
+    serializeResourceForkBytes(levelData, globals, [], getFeatureFlags().levelMetadata),
+  );
 }
 
 export async function serializeLevelDownloadBytes(
@@ -422,7 +429,7 @@ export async function serializeLevelDownloadBytes(
   regenerateDerivedLevelData(clonedLevelData);
   const levelData = withoutLevelMetadata(
     clonedLevelData,
-    options.levelMetadataEnabled ?? true,
+    isMetadataEnabled(options.levelMetadataEnabled),
   );
 
   notify(onProgress, {
@@ -473,13 +480,13 @@ export async function serializeLevelDownloadBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.RSRC_FORK) {
-    const resourceBytes = options.reuseCombinedBytes && (options.levelMetadataEnabled ?? true)
+    const resourceBytes = options.reuseCombinedBytes && isMetadataEnabled(options.levelMetadataEnabled)
       ? ok(options.reuseCombinedBytes)
       : serializeResourceForkBytes(
           levelData,
           options.globals,
           options.mapImages,
-          options.levelMetadataEnabled ?? true,
+          isMetadataEnabled(options.levelMetadataEnabled),
         );
     if (resourceBytes.isErr()) {
       return err(resourceBytes.error);
@@ -535,13 +542,13 @@ export async function serializeLevelDownloadBytes(
     return ok(files);
   }
 
-  const resourceBytes = options.reuseLevelBytes && (options.levelMetadataEnabled ?? true)
+  const resourceBytes = options.reuseLevelBytes && isMetadataEnabled(options.levelMetadataEnabled)
     ? ok(options.reuseLevelBytes)
     : serializeResourceForkBytes(
         levelData,
         options.globals,
         [],
-        options.levelMetadataEnabled ?? true,
+        isMetadataEnabled(options.levelMetadataEnabled),
       );
   if (resourceBytes.isErr()) {
     return err(resourceBytes.error);
@@ -601,17 +608,17 @@ export async function preparePreviewLevelBytes(
   }
   const levelData = withoutLevelMetadata(
     options.levelData,
-    options.levelMetadataEnabled ?? true,
+    isMetadataEnabled(options.levelMetadataEnabled),
   );
 
   if (options.globals.DATA_TYPE === DataType.RSRC_FORK) {
-    const rsrcBytes = options.reuseCombinedBytes && (options.levelMetadataEnabled ?? true)
+    const rsrcBytes = options.reuseCombinedBytes && isMetadataEnabled(options.levelMetadataEnabled)
       ? ok(options.reuseCombinedBytes)
       : serializeResourceForkBytes(
           levelData,
           options.globals,
           options.mapImages,
-          options.levelMetadataEnabled ?? true,
+          isMetadataEnabled(options.levelMetadataEnabled),
         );
     if (rsrcBytes.isErr()) {
       return err(levelIoError("preview.failed", rsrcBytes.error.message));
@@ -659,13 +666,13 @@ export async function preparePreviewLevelBytes(
   }
 
   if (options.globals.DATA_TYPE === DataType.STANDARD) {
-    const rsrcBytes = options.reuseLevelBytes && (options.levelMetadataEnabled ?? true)
+    const rsrcBytes = options.reuseLevelBytes && isMetadataEnabled(options.levelMetadataEnabled)
       ? ok(options.reuseLevelBytes)
       : serializeResourceForkBytes(
           levelData,
           options.globals,
           [],
-          options.levelMetadataEnabled ?? true,
+          isMetadataEnabled(options.levelMetadataEnabled),
         );
     if (rsrcBytes.isErr()) {
       return err(levelIoError("preview.failed", rsrcBytes.error.message));
@@ -704,13 +711,19 @@ export async function preparePreviewLevelBytes(
     if (tilesetBytes.isErr()) {
       return err(levelIoError("preview.failed", tilesetBytes.error.message));
     }
+    const metadataResult = levelData.Meta
+      ? serializeMetadataResourceForkBytes(levelData.Meta, options.globals)
+      : ok<Uint8Array | undefined, LevelIoError>(undefined);
+    if (metadataResult.isErr()) {
+      return err(metadataResult.error);
+    }
     notify(onProgress, {
       stage: "preview.ready",
       message: "Preview bytes are ready",
     });
     return ok({
       dataBytes: dataBytes.value,
-      rsrcBytes: null,
+      rsrcBytes: metadataResult.value ?? null,
       textureBytes: tilesetBytes.value,
     });
   }
@@ -719,7 +732,7 @@ export async function preparePreviewLevelBytes(
     levelData,
     options.globals,
     [],
-    options.levelMetadataEnabled ?? true,
+    isMetadataEnabled(options.levelMetadataEnabled),
   );
   if (rsrcBytes.isErr()) {
     return err(levelIoError("preview.failed", rsrcBytes.error.message));

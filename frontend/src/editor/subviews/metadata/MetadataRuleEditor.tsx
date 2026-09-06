@@ -17,18 +17,46 @@ import {
 interface Props {
   readonly rule: MetadataRule;
   readonly value: string;
+  readonly isOverridden: boolean;
+  readonly disabled?: boolean;
+  readonly onOverrideChange: (isOverridden: boolean) => void;
   readonly onChange: (value: string) => void;
 }
 
-export function MetadataRuleEditor({ rule, value, onChange }: Props) {
+export function MetadataRuleEditor({
+  rule,
+  value,
+  isOverridden,
+  disabled = false,
+  onOverrideChange,
+  onChange,
+}: Props) {
   const control: MetadataControl = rule.control;
+  const overrideControl = (
+    <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-slate-400">
+      <Checkbox
+        aria-label={`Override ${rule.label}`}
+        checked={isOverridden}
+        disabled={disabled}
+        onCheckedChange={(checked) => onOverrideChange(checked === true)}
+      />
+      Override
+    </label>
+  );
   if (control.kind === "checkbox") {
     return (
-      <Checkbox
-        aria-label={rule.label}
-        checked={value === "true"}
-        onCheckedChange={(checked) => onChange(checked === true ? "true" : "false")}
-      />
+      <div className="flex items-center gap-3">
+        {overrideControl}
+        <label className="flex items-center gap-1.5 text-xs text-slate-200">
+          <Checkbox
+            aria-label={rule.label}
+            checked={value === "true"}
+            disabled={disabled || !isOverridden}
+            onCheckedChange={(checked) => onChange(checked === true ? "true" : "false")}
+          />
+          Enabled
+        </label>
+      </div>
     );
   }
   if (control.kind === "slider") {
@@ -38,10 +66,12 @@ export function MetadataRuleEditor({ rule, value, onChange }: Props) {
       : control.min;
     return (
       <div className="flex min-w-56 items-center gap-3">
+        {overrideControl}
         <Slider
           aria-label={rule.label}
           max={control.max}
           min={control.min}
+          disabled={disabled || !isOverridden}
           onValueChange={(nextValue) => {
             const next = nextValue[0];
             if (next !== undefined) onChange(String(next));
@@ -55,26 +85,33 @@ export function MetadataRuleEditor({ rule, value, onChange }: Props) {
   }
   if (control.kind === "select") {
     return (
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger aria-label={rule.label} className="h-7 min-w-48 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {control.options.map((option) => (
-            <SelectItem key={option} value={option}>
-              {control.optionLabels?.[option] ?? getMetadataValueLabel(option, rule.key)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-3">
+        {overrideControl}
+        <Select disabled={disabled || !isOverridden} value={value} onValueChange={onChange}>
+          <SelectTrigger aria-label={rule.label} className="h-7 min-w-48 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {control.options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {control.optionLabels?.[option] ?? getMetadataValueLabel(option, rule.key)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     );
   }
   return (
-    <Input
-      aria-label={rule.label}
-      className="h-7 min-w-56 text-xs"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
+    <div className="flex items-center gap-3">
+      {overrideControl}
+      <Input
+        aria-label={rule.label}
+        className="h-7 min-w-56 text-xs"
+        disabled={disabled || !isOverridden}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
   );
 }

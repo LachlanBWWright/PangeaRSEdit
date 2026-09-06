@@ -15,6 +15,15 @@ describe("getItemLevelSupportLabel", () => {
     ).toBe("Unsupported level");
   });
 
+  it("uses the Otto model bundle for level-specific items", () => {
+    expect(
+      getItemLevelSupportLabel(Game.OTTO_MATIC, "terrainItem", 28, 0),
+    ).toBe("Unsupported level");
+    expect(
+      getItemLevelSupportLabel(Game.OTTO_MATIC, "terrainItem", 28, 1),
+    ).toBe("Supported level");
+  });
+
   it("labels an item as unsupported when the level is not known", () => {
     expect(
       getItemLevelSupportLabel(Game.BUGDOM, "splineItem", 0, undefined),

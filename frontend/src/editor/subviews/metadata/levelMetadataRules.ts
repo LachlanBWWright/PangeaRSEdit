@@ -11,6 +11,17 @@ export interface MetadataRule {
   readonly status: "resolved" | "derived" | "migration-needed";
   readonly editable: boolean;
   readonly control: MetadataControl;
+  readonly group?: MetadataRuleGroup;
+  readonly groupRole?: MetadataRuleGroupRole;
+}
+
+export type MetadataRuleGroupRole = "preset" | "determined";
+
+export interface MetadataRuleGroup {
+  readonly id: string;
+  readonly label: string;
+  readonly presetKey: string;
+  readonly determinedValues: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 export interface MetadataCitation {
@@ -80,6 +91,7 @@ const metadataValueLabels: Readonly<Record<string, string>> = {
   tar: "Tar",
   ice: "Ice",
   standard: "Standard",
+  custom: "Custom values",
   scandinavia: "Scandinavia",
   aztec: "Aztec",
   coliseum: "Coliseum",
@@ -286,16 +298,39 @@ function getNanosaur2Control(key: string, options: readonly string[]): MetadataC
   };
 }
 
+function getNanosaur2PresetControl(key: string, options: readonly string[]): MetadataControl {
+  const control = getNanosaur2Control(key, options);
+  if (control.kind !== "select") return control;
+  return {
+    ...control,
+    options: [...control.options, "custom"],
+    optionLabels: {
+      ...control.optionLabels,
+      custom: "Custom rendering values",
+    },
+    optionDescriptions: {
+      ...control.optionDescriptions,
+      custom: "Use the original environment as a starting point, then edit the individual rendering values below.",
+    },
+  };
+}
+
 export function getMetadataCitations(source: string): readonly MetadataCitation[] {
   return source.split(";").flatMap((part) => {
-    const match = part.trim().match(/^(.+?):(\d+)(?:-(\d+))?$/);
-    if (!match) return [];
-    const file = match[1]?.trim();
-    const line = Number.parseInt(match[2] ?? "", 10);
-    const endLineText = match[3];
-    const endLine = endLineText ? Number.parseInt(endLineText, 10) : undefined;
-    if (!file || !Number.isInteger(line)) return [];
-    return [{ file, line, ...(endLine ? { endLine } : {}) }];
+    const trimmedPart = part.trim();
+    const separatorIndex = trimmedPart.lastIndexOf(":");
+    if (separatorIndex <= 0) return [];
+    const file = trimmedPart.slice(0, separatorIndex).trim();
+    if (!file) return [];
+    return trimmedPart.slice(separatorIndex + 1).split(",").flatMap((range) => {
+      const match = range.trim().match(/^(\d+)(?:-(\d+))?$/);
+      if (!match) return [];
+      const line = Number.parseInt(match[1] ?? "", 10);
+      const endLineText = match[2];
+      const endLine = endLineText ? Number.parseInt(endLineText, 10) : undefined;
+      if (!Number.isInteger(line)) return [];
+      return [{ file, line, ...(endLine ? { endLine } : {}) }];
+    });
   });
 }
 
@@ -554,6 +589,90 @@ function getMetadataLabel(key: string): string {
     .replace(/^./, (letter) => letter.toUpperCase());
 }
 
+const metadataAuditLabels: Readonly<Record<string, string>> = {
+  "level.realId": "Level identity",
+  "level.id": "Level identity",
+  "level.mainDispatch": "Level dispatch and transitions",
+  "level.tunnelStart": "Tunnel entry point",
+  "level.sentinel": "Level-table safety check",
+  "level.fileBounds": "Level-file safety check",
+  "track.id": "Track identity",
+  "track.liquids": "Water and liquid behavior",
+  "track.triggers": "Track-specific triggers",
+  "track.objects": "Track object behavior",
+  "track.player": "Track-specific player behavior",
+  "track.vehicleSelection": "Vehicle-selection restrictions",
+  "track.progression": "Track progression",
+  "track.presentation": "Track presentation",
+  "track.raceRecords": "Race records",
+  "track.modeRules": "Game-mode rules",
+  "track.loader": "Track resources",
+  "track.bounds": "Track-file safety check",
+  "scene.id": "Scene identity",
+  "area.id": "Area identity",
+  "scene.map": "Scene and area map",
+  "scene.tables": "Scene and area tables",
+  "area.tables": "Area tables",
+  "identity.bounds": "Scene and area safety check",
+  "family.pond": "Pond behavior coverage",
+  "family.forest": "Forest behavior coverage",
+  "family.hive": "Hive behavior coverage",
+  "family.night": "Night behavior coverage",
+  "family.lawn": "Lawn behavior coverage",
+  "family.anthill": "Anthill behavior coverage",
+  "family.indexedTables": "Family-indexed game tables",
+  "family.fenceAvailability": "Fence availability",
+  "family.liquidAvailability": "Liquid availability",
+  "family.itemMotion": "Family-specific item behavior",
+  "family.enemyTypes": "Family-specific enemy behavior",
+  "family.rendering": "Family-specific rendering",
+  "family.camera": "Family-specific camera behavior",
+  "level.persistence": "Level file and save identity",
+  "level.bounds": "Level bounds check",
+};
+
+const metadataAuditDescriptions: Readonly<Record<string, string>> = {
+  "level.realId": "The original level identity used for indexed resources and progression. It is shown as context and remains tied to the opened level.",
+  "level.id": "The original level identity used for indexed resources and progression. It is shown as context and is not an editable behavior setting.",
+  "level.mainDispatch": "The original level dispatch selects the main loop, transition, and special level lifecycle. Individual supported behavior overrides appear above where they have an independent user-facing effect.",
+  "level.tunnelStart": "Tunnel entry coordinates are derived from the selected tunnel level and authored loading data. They are not an independent metadata setting.",
+  "level.sentinel": "This safety branch protects title-screen and table lookups from a non-gameplay sentinel value. It is not gameplay behavior.",
+  "level.fileBounds": "This safety check prevents an out-of-range level from being used as an indexed resource. It is not an editable level property.",
+  "track.id": "The opened track identity selects authored geometry, resources, records, and progression. Track behavior overrides are listed separately where safe.",
+  "track.liquids": "Water heights, liquid resources, and liquid behavior remain coupled to the authored track resource; only supported water behavior controls are editable above.",
+  "track.triggers": "Some triggers depend on authored track objects and resources. They remain read-only unless a distinct safe behavior is exposed above.",
+  "track.objects": "Track objects use authored tables and item parameters. Their resource identity and table indices remain fixed to prevent mismatched geometry and models.",
+  "track.player": "Some player behavior depends on authored vehicle, liquid, and track resources. Independently supported vehicle behavior is exposed above.",
+  "track.vehicleSelection": "The original track can restrict vehicle choices. This remains tied to track identity and is not an independent player-vehicle setting.",
+  "track.progression": "Track progression and startup state remain tied to the authored track and game mode. Presentation-only controls are listed separately.",
+  "track.presentation": "Track names, maps, and records use authored identity tables. They are shown as context rather than exposed as unsafe resource selectors.",
+  "track.raceRecords": "Race records are indexed by the original track identity and remain attached to that track’s saved data.",
+  "track.modeRules": "Game-mode rules depend on the selected mode, track geometry, and multiplayer state. Only independently supported mode behavior is editable above.",
+  "track.loader": "The track loader selects authored terrain and model resources. Resource identity is read-only to prevent incompatible item and geometry combinations.",
+  "track.bounds": "This safety check prevents an out-of-range track from being used as an indexed resource. It is not an editable track property.",
+  "scene.id": "The original scene identity selects authored Mighty Mike scene resources and progression. Scene behavior overrides are listed separately.",
+  "area.id": "The original area identity selects the opened map and area data. It remains fixed while supported scene and area behaviors can be overridden above.",
+  "scene.map": "The scene and area map resource is authored data and remains fixed so collision, coordinates, and item placement stay compatible.",
+  "scene.tables": "Scene and area coordinate and bunny-count tables are authored data. Their resource identity remains fixed; supported presentation and behavior overrides are listed above.",
+  "area.tables": "Area-specific shape, coordinate, and bunny-count tables are authored data and remain fixed to the opened map.",
+  "identity.bounds": "This safety check keeps scene and area indices within their valid table ranges.",
+  "family.pond": "Pond levels use water-bug movement, mosquito behavior, liquid geometry, and pond-specific item rules. The row documents the original family coverage; use the individual controls above for supported overrides.",
+  "family.forest": "Forest levels use forest traps, items, Dragonfly behavior, and camera framing. The row documents the original family coverage; use the individual controls above for supported overrides.",
+  "family.hive": "Hive levels use bee, hive-item, trap, trigger, and player rules. The row documents the original family coverage; use the individual controls above for supported overrides.",
+  "family.night": "Night levels use firefly, night-item, trigger, and camera rules. The row documents the original family coverage; use the individual controls above for supported overrides.",
+  "family.lawn": "Lawn levels use the ordinary item, trigger, and renderer rules. The row documents the original family coverage; use the individual controls above for supported overrides.",
+  "family.anthill": "Anthill levels use ant, roach, liquid, and trigger rules. The row documents the original family coverage; use the individual controls above for supported overrides.",
+  "family.indexedTables": "The original family selects indexed file, introduction, player, item, fence, and liquid tables. These resources stay tied to level identity to avoid incompatible assets.",
+  "family.fenceAvailability": "Fence availability is selected by the original terrain family and controls which fence types can be created. It is not an independent behavior setting.",
+  "family.liquidAvailability": "Liquid availability, textures, tessellation, and heights are selected by the original terrain family. They stay coupled to the terrain resource.",
+  "family.itemMotion": "Family-specific item movement and type tables are selected by the original terrain family. Independent item behaviors appear above when they are safe to override.",
+  "family.enemyTypes": "Family-indexed enemy object types are selected by the original terrain family. The row is context for the supported enemy controls above.",
+  "family.rendering": "Cyclorama, lens flare, ceiling, light, fog, and active-range setup is selected by the original terrain family. Supported presentation controls appear above.",
+  "family.camera": "Night and forest camera behavior is selected by the original terrain family. Supported camera behavior appears above when it has an independent effect.",
+  "level.persistence": "The original level identity determines the level file and save-data slot. This remains fixed so edited behavior does not accidentally load or overwrite another level's data.",
+  "level.bounds": "This safety check prevents an out-of-range level value from indexing level resources. It is not gameplay behavior and cannot be overridden.",
+};
+
 function isReadOnlyMetadataKey(key: string): boolean {
   const bugdomAuditOnlyKeys = new Set([
     "family.pond", "family.forest", "family.hive", "family.night",
@@ -605,12 +724,14 @@ const rule = (
   key: string,
   value: string,
   source: string,
-  status: MetadataRule["status"] = "migration-needed",
+  status: MetadataRule["status"] = "derived",
 ): MetadataRule => ({
   key,
-  label: getMetadataLabel(key),
+  label: isReadOnlyMetadataKey(key)
+    ? metadataAuditLabels[key] ?? getMetadataLabel(key)
+    : getMetadataLabel(key),
   description: isReadOnlyMetadataKey(key)
-    ? "Read-only audit information. This row documents a source-code branch that is kept fixed for level identity, file compatibility, or game safety."
+    ? metadataAuditDescriptions[key] ?? "This read-only row documents an authored or derived runtime value. It remains fixed because it has no safe independent user-facing override."
     : `Selects the ${getMetadataLabel(key).toLowerCase()} used by this level.`,
   value: isReadOnlyMetadataKey(key) ? value : "source-default",
   source,
@@ -628,6 +749,8 @@ const editableRule = (
   source: string,
   control: MetadataControl,
   defaultValue = value,
+  group?: MetadataRuleGroup,
+  groupRole?: MetadataRuleGroupRole,
 ): MetadataRule => ({
   key,
   label,
@@ -638,6 +761,8 @@ const editableRule = (
   citations: getMetadataCitations(source),
   status: "resolved",
   editable: true,
+  ...(group ? { group } : {}),
+  ...(groupRole ? { groupRole } : {}),
   control: control.kind === "select" && control.optionDescriptions === undefined
     ? { ...control, optionDescriptions: getOptionDescriptionsForKey(key) }
     : control,
@@ -686,6 +811,490 @@ function getOttoEnvironmentProfile(levelIndex: number): string {
     case 9: return "brain-boss";
     default: return "standard";
   }
+}
+
+interface OttoEnvironmentDefaults {
+  readonly viewDistance: number;
+  readonly background: readonly [number, number, number];
+  readonly lensFlare: boolean;
+}
+
+function getOttoEnvironmentDefaults(levelIndex: number): OttoEnvironmentDefaults {
+  return getOttoEnvironmentDefaultsForProfile(getOttoEnvironmentProfile(levelIndex));
+}
+
+function getOttoEnvironmentDefaultsForProfile(profile: string): OttoEnvironmentDefaults {
+  switch (profile) {
+    case "blob": return { viewDistance: 0.6, background: [0.8, 0.6, 0.8], lensFlare: true };
+    case "blob-boss": return { viewDistance: 1, background: [0.17, 0.05, 0.29], lensFlare: false };
+    case "apocalypse": return { viewDistance: 1, background: [0, 0, 0], lensFlare: false };
+    case "cloud": return { viewDistance: 1, background: [0.686, 0.137, 0.431], lensFlare: false };
+    case "jungle": return { viewDistance: 1, background: [0.6, 0.6, 0.3], lensFlare: false };
+    case "fire-ice": return { viewDistance: 1, background: [0, 0, 0], lensFlare: false };
+    case "saucer": return { viewDistance: 0.8, background: [0.2, 0.4, 0.7], lensFlare: false };
+    case "brain-boss": return { viewDistance: 0.7, background: [0.1, 0, 0], lensFlare: false };
+    default: return { viewDistance: 1, background: [0.1, 0.5, 0.1], lensFlare: true };
+  }
+}
+
+interface OttoLightingDefaults {
+  readonly sunDirection: readonly [number, number, number];
+  readonly ambient: readonly [number, number, number];
+  readonly fillColor: readonly [number, number, number];
+}
+
+function getOttoLightingDefaults(levelIndex: number): OttoLightingDefaults {
+  return getOttoLightingDefaultsForProfile(getOttoLightingProfile(levelIndex));
+}
+
+function getOttoLightingDefaultsForProfile(profile: string): OttoLightingDefaults {
+  switch (profile) {
+    case "blob-boss": return { sunDirection: [0.5, -0.35, 0.8], ambient: [0.2, 0.2, 0.2], fillColor: [0.9, 0.9, 0.85] };
+    case "apocalypse": return { sunDirection: [0.5, -0.6, 0.8], ambient: [0.2, 0.2, 0.2], fillColor: [0.6, 0.6, 0.7] };
+    case "jungle": return { sunDirection: [0.5, -0.8, 0.8], ambient: [0.3, 0.3, 0.3], fillColor: [0.9, 0.9, 0.85] };
+    case "jungle-boss": return { sunDirection: [0.1, -0.5, -1], ambient: [0.3, 0.3, 0.3], fillColor: [0.9, 0.9, 0.85] };
+    case "fire-ice": return { sunDirection: [0.5, -1, 0], ambient: [0.3, 0.3, 0.2], fillColor: [0.7, 0.6, 0.6] };
+    case "saucer": return { sunDirection: [0.5, -0.35, -0.8], ambient: [0.3, 0.25, 0.25], fillColor: [0.9, 0.9, 0.85] };
+    case "brain-boss": return { sunDirection: [-0.5, -0.7, 0.8], ambient: [0.3, 0.3, 0.3], fillColor: [0.9, 0.9, 0.85] };
+    default: return { sunDirection: [0.5, -0.35, 0.8], ambient: [0.4, 0.4, 0.36], fillColor: [0.9, 0.9, 0.85] };
+  }
+}
+
+function getOttoEnvironmentDeterminedValues(
+  profile: string,
+): Readonly<Record<string, string>> {
+  const defaults = getOttoEnvironmentDefaultsForProfile(profile);
+  return {
+    "level.environmentViewDistance": String(defaults.viewDistance),
+    "level.environmentBackgroundR": String(defaults.background[0]),
+    "level.environmentBackgroundG": String(defaults.background[1]),
+    "level.environmentBackgroundB": String(defaults.background[2]),
+    "level.environmentLensFlare": String(defaults.lensFlare),
+  };
+}
+
+function getOttoLightingDeterminedValues(
+  profile: string,
+): Readonly<Record<string, string>> {
+  const defaults = getOttoLightingDefaultsForProfile(profile);
+  return {
+    "level.lightingSunX": String(defaults.sunDirection[0]),
+    "level.lightingSunY": String(defaults.sunDirection[1]),
+    "level.lightingSunZ": String(defaults.sunDirection[2]),
+    "level.lightingAmbientR": String(defaults.ambient[0]),
+    "level.lightingAmbientG": String(defaults.ambient[1]),
+    "level.lightingAmbientB": String(defaults.ambient[2]),
+    "level.lightingFillR": String(defaults.fillColor[0]),
+    "level.lightingFillG": String(defaults.fillColor[1]),
+    "level.lightingFillB": String(defaults.fillColor[2]),
+  };
+}
+
+const ottoEnvironmentGroup: MetadataRuleGroup = {
+  id: "otto-environment",
+  label: "Environment",
+  presetKey: "level.environment",
+  determinedValues: {
+    standard: getOttoEnvironmentDeterminedValues("standard"),
+    blob: getOttoEnvironmentDeterminedValues("blob"),
+    "blob-boss": getOttoEnvironmentDeterminedValues("blob-boss"),
+    apocalypse: getOttoEnvironmentDeterminedValues("apocalypse"),
+    cloud: getOttoEnvironmentDeterminedValues("cloud"),
+    jungle: getOttoEnvironmentDeterminedValues("jungle"),
+    "fire-ice": getOttoEnvironmentDeterminedValues("fire-ice"),
+    saucer: getOttoEnvironmentDeterminedValues("saucer"),
+    "brain-boss": getOttoEnvironmentDeterminedValues("brain-boss"),
+  },
+};
+
+const ottoLightingGroup: MetadataRuleGroup = {
+  id: "otto-lighting",
+  label: "Lighting",
+  presetKey: "level.lighting",
+  determinedValues: {
+    standard: getOttoLightingDeterminedValues("standard"),
+    "blob-boss": getOttoLightingDeterminedValues("blob-boss"),
+    apocalypse: getOttoLightingDeterminedValues("apocalypse"),
+    jungle: getOttoLightingDeterminedValues("jungle"),
+    "jungle-boss": getOttoLightingDeterminedValues("jungle-boss"),
+    "fire-ice": getOttoLightingDeterminedValues("fire-ice"),
+    saucer: getOttoLightingDeterminedValues("saucer"),
+    "brain-boss": getOttoLightingDeterminedValues("brain-boss"),
+  },
+};
+
+interface Bugdom2RenderingDefaults {
+  readonly background: readonly [number, number, number];
+  readonly fog: boolean;
+  readonly fogStart: number;
+  readonly fogEnd: number;
+  readonly lensFlare: boolean;
+  readonly terrainScale: number;
+  readonly fieldOfView: number;
+}
+
+interface MetadataPresetProfile {
+  readonly key: string;
+  readonly label: string;
+}
+
+function getPresetSliderControl<T>(
+  profiles: readonly MetadataPresetProfile[],
+  getDefaults: (profile: string) => T,
+  getValue: (defaults: T) => number,
+  min: number,
+  max: number,
+  step: number,
+): MetadataControl {
+  return {
+    kind: "slider",
+    min,
+    max,
+    step,
+    gameValues: profiles.map((profile) => ({
+      value: getValue(getDefaults(profile.key)),
+      label: profile.label,
+    })),
+  };
+}
+
+function getBugdom2RenderingDefaults(profile: string): Bugdom2RenderingDefaults {
+  switch (profile) {
+    case "sidewalk": return { background: [0.9, 0.9, 0.9], fog: true, fogStart: 0.5, fogEnd: 1.2, lensFlare: true, terrainScale: 1, fieldOfView: 1.2 };
+    case "fido": return { background: [0.12, 0.08, 0.08], fog: true, fogStart: 0.1, fogEnd: 0.95, lensFlare: false, terrainScale: 1, fieldOfView: 1.2 };
+    case "playroom": return { background: [0, 0, 0], fog: false, fogStart: 0, fogEnd: 0.7, lensFlare: false, terrainScale: 1, fieldOfView: 1.2 };
+    case "closet": return { background: [0, 0, 0.1], fog: true, fogStart: 0.2, fogEnd: 0.95, lensFlare: false, terrainScale: 1, fieldOfView: 1.2 };
+    case "garbage": return { background: [0.1, 0.2, 0.1], fog: true, fogStart: 0.7, fogEnd: 1.1, lensFlare: true, terrainScale: 1, fieldOfView: 1.2 };
+    case "balsa": return { background: [0, 0, 0], fog: false, fogStart: 0, fogEnd: 1, lensFlare: false, terrainScale: 1.6, fieldOfView: 0.9 };
+    case "park": return { background: [1, 1, 1], fog: true, fogStart: 0, fogEnd: 1, lensFlare: true, terrainScale: 1, fieldOfView: 1.2 };
+    default: return { background: [0, 0.4, 0], fog: true, fogStart: 0.7, fogEnd: 1, lensFlare: true, terrainScale: 1, fieldOfView: 1.2 };
+  }
+}
+
+interface Bugdom2LightingDefaults {
+  readonly ambient: readonly [number, number, number];
+  readonly fillDirection1: readonly [number, number, number];
+  readonly fillColor1: readonly [number, number, number];
+  readonly fillDirection2: readonly [number, number, number];
+  readonly fillColor2: readonly [number, number, number];
+  readonly fillCount: "one" | "two";
+}
+
+function getBugdom2LightingDefaults(profile: string): Bugdom2LightingDefaults {
+  switch (profile) {
+    case "fido": return { ambient: [0.2, 0.1, 0.1], fillDirection1: [-0.5, -0.2, 0.5], fillColor1: [1, 1, 0.8], fillDirection2: [0.4, -0.1, -0.5], fillColor2: [0.5, 0.5, 0.4], fillCount: "two" };
+    case "sidewalk": return { ambient: [0.4, 0.4, 0.3], fillDirection1: [0.8, -0.5, -0.8], fillColor1: [0.9, 0.9, 0.85], fillDirection2: [0, 0, 0], fillColor2: [0, 0, 0], fillCount: "one" };
+    case "playroom": return { ambient: [0.35, 0.35, 0.3], fillDirection1: [1, -0.4, 1], fillColor1: [1, 0.7, 0.7], fillDirection2: [-1, -0.2, -0.5], fillColor2: [0.7, 0.7, 1], fillCount: "two" };
+    case "closet": return { ambient: [0.2, 0.2, 0.3], fillDirection1: [0.3, -0.6, -0.5], fillColor1: [0.25, 0.25, 0.4], fillDirection2: [0, 0, 0], fillColor2: [0, 0, 0], fillCount: "one" };
+    case "garbage": return { ambient: [0.3, 0.3, 0.3], fillDirection1: [-0.5, -0.5, -0.8], fillColor1: [0.8, 0.9, 0.8], fillDirection2: [0, 0, 0], fillColor2: [0, 0, 0], fillCount: "one" };
+    case "balsa": return { ambient: [0.3, 0.3, 0.3], fillDirection1: [0.8, -0.6, -0.9], fillColor1: [1, 1, 0.9], fillDirection2: [0, 0, 0], fillColor2: [0, 0, 0], fillCount: "one" };
+    case "park": return { ambient: [0.4, 0.4, 0.3], fillDirection1: [0.8, -0.35, -0.2], fillColor1: [0.9, 0.9, 0.8], fillDirection2: [0, 0, 0], fillColor2: [0, 0, 0], fillCount: "one" };
+    default: return { ambient: [0.5, 0.5, 0.4], fillDirection1: [0.4, -0.5, -0.8], fillColor1: [0.9, 0.9, 0.85], fillDirection2: [0, 0, 0], fillColor2: [0, 0, 0], fillCount: "one" };
+  }
+}
+
+function getBugdom2RenderingDeterminedValues(profile: string): Readonly<Record<string, string>> {
+  const defaults = getBugdom2RenderingDefaults(profile);
+  return {
+    "level.renderingFog": String(defaults.fog),
+    "level.renderingBackgroundR": String(defaults.background[0]),
+    "level.renderingBackgroundG": String(defaults.background[1]),
+    "level.renderingBackgroundB": String(defaults.background[2]),
+    "level.renderingFogStart": String(defaults.fogStart),
+    "level.renderingFogEnd": String(defaults.fogEnd),
+    "level.renderingLensFlare": String(defaults.lensFlare),
+    "level.renderingTerrainScale": String(defaults.terrainScale),
+    "level.renderingFieldOfView": String(defaults.fieldOfView),
+  };
+}
+
+function getBugdom2LightingDeterminedValues(profile: string): Readonly<Record<string, string>> {
+  const defaults = getBugdom2LightingDefaults(profile);
+  return {
+    "level.lightingAmbientR": String(defaults.ambient[0]),
+    "level.lightingAmbientG": String(defaults.ambient[1]),
+    "level.lightingAmbientB": String(defaults.ambient[2]),
+    "level.lightingFillCount": defaults.fillCount,
+    "level.lightingFill1X": String(defaults.fillDirection1[0]),
+    "level.lightingFill1Y": String(defaults.fillDirection1[1]),
+    "level.lightingFill1Z": String(defaults.fillDirection1[2]),
+    "level.lightingFill1R": String(defaults.fillColor1[0]),
+    "level.lightingFill1G": String(defaults.fillColor1[1]),
+    "level.lightingFill1B": String(defaults.fillColor1[2]),
+    "level.lightingFill2X": String(defaults.fillDirection2[0]),
+    "level.lightingFill2Y": String(defaults.fillDirection2[1]),
+    "level.lightingFill2Z": String(defaults.fillDirection2[2]),
+    "level.lightingFill2R": String(defaults.fillColor2[0]),
+    "level.lightingFill2G": String(defaults.fillColor2[1]),
+    "level.lightingFill2B": String(defaults.fillColor2[2]),
+  };
+}
+
+const bugdom2RenderingGroup: MetadataRuleGroup = {
+  id: "bugdom2-rendering",
+  label: "Rendering",
+  presetKey: "level.rendering",
+  determinedValues: Object.fromEntries([
+    "gnome-garden", "sidewalk", "fido", "plumbing", "playroom", "closet", "gutter", "garbage", "balsa", "park",
+  ].map((profile) => [profile, getBugdom2RenderingDeterminedValues(profile)])),
+};
+
+const bugdom2VisualProfiles: readonly MetadataPresetProfile[] = [
+  { key: "gnome-garden", label: "Gnome Garden" },
+  { key: "sidewalk", label: "Sidewalk" },
+  { key: "fido", label: "Fido" },
+  { key: "playroom", label: "Playroom" },
+  { key: "closet", label: "Closet" },
+  { key: "garbage", label: "Garbage" },
+  { key: "balsa", label: "Balsa" },
+  { key: "park", label: "Park" },
+];
+
+const bugdom2LightingGroup: MetadataRuleGroup = {
+  id: "bugdom2-lighting",
+  label: "World lighting",
+  presetKey: "level.lighting",
+  determinedValues: Object.fromEntries([
+    "gnome-garden", "sidewalk", "fido", "plumbing", "playroom", "closet", "gutter", "garbage", "balsa", "park",
+  ].map((profile) => [profile, getBugdom2LightingDeterminedValues(profile)])),
+};
+
+interface CroMagLightingDefaults {
+  readonly ambient: readonly [number, number, number];
+  readonly fillDirection: readonly [number, number, number];
+  readonly fillColor: readonly [number, number, number];
+}
+
+function getCroMagLightingDefaults(profile: string): CroMagLightingDefaults {
+  switch (profile) {
+    case "ice": return { ambient: [0.7, 0.7, 0.7], fillDirection: [1, -0.1, 1], fillColor: [1, 1, 1] };
+    case "atlantis": return { ambient: [0.5, 0.5, 0.7], fillDirection: [0, -1, 0], fillColor: [0.9, 0.9, 1] };
+    default: return { ambient: [0.6, 0.6, 0.6], fillDirection: [1, -0.2, 1], fillColor: [1, 1, 1] };
+  }
+}
+
+function getCroMagSkyColor(profile: string): readonly [number, number, number] {
+  const colors: Readonly<Record<string, readonly [number, number, number]>> = {
+    desert: [153 / 255, 171 / 255, 237 / 255], jungle: [82 / 255, 148 / 255, 198 / 255],
+    ice: [115 / 255, 198 / 255, 1], crete: [44 / 255, 73 / 255, 195 / 255],
+    china: [179 / 255, 153 / 255, 91 / 255], egypt: [222 / 255, 181 / 255, 99 / 255],
+    europe: [16 / 255, 16 / 255, 74 / 255], scandinavia: [74 / 255, 90 / 255, 148 / 255],
+    atlantis: [5 / 255, 160 / 255, 190 / 255], aztec: [82 / 255, 148 / 255, 198 / 255],
+    coliseum: [61 / 255, 87 / 255, 198 / 255],
+  };
+  return colors[profile] ?? colors.desert ?? [0.6, 0.67, 0.93];
+}
+
+function getCroMagLightingDeterminedValues(profile: string): Readonly<Record<string, string>> {
+  const defaults = getCroMagLightingDefaults(profile);
+  return {
+    "track.lightingSunX": String(defaults.fillDirection[0]),
+    "track.lightingSunY": String(defaults.fillDirection[1]),
+    "track.lightingSunZ": String(defaults.fillDirection[2]),
+    "track.lightingAmbientR": String(defaults.ambient[0]),
+    "track.lightingAmbientG": String(defaults.ambient[1]),
+    "track.lightingAmbientB": String(defaults.ambient[2]),
+    "track.lightingFillR": String(defaults.fillColor[0]),
+    "track.lightingFillG": String(defaults.fillColor[1]),
+    "track.lightingFillB": String(defaults.fillColor[2]),
+  };
+}
+
+function getCroMagSkyDeterminedValues(profile: string): Readonly<Record<string, string>> {
+  const color = getCroMagSkyColor(profile);
+  return {
+    "track.skyRed": String(color[0]),
+    "track.skyGreen": String(color[1]),
+    "track.skyBlue": String(color[2]),
+  };
+}
+
+const croMagLightingGroup: MetadataRuleGroup = {
+  id: "cromag-lighting",
+  label: "Lighting",
+  presetKey: "track.lighting",
+  determinedValues: {
+    standard: getCroMagLightingDeterminedValues("standard"),
+    ice: getCroMagLightingDeterminedValues("ice"),
+    atlantis: getCroMagLightingDeterminedValues("atlantis"),
+  },
+};
+
+const croMagSkyGroup: MetadataRuleGroup = {
+  id: "cromag-sky",
+  label: "Sky color",
+  presetKey: "track.sky",
+  determinedValues: {
+    desert: getCroMagSkyDeterminedValues("desert"),
+    jungle: getCroMagSkyDeterminedValues("jungle"),
+    ice: getCroMagSkyDeterminedValues("ice"),
+    crete: getCroMagSkyDeterminedValues("crete"),
+    china: getCroMagSkyDeterminedValues("china"),
+    egypt: getCroMagSkyDeterminedValues("egypt"),
+    europe: getCroMagSkyDeterminedValues("europe"),
+    scandinavia: getCroMagSkyDeterminedValues("scandinavia"),
+    atlantis: getCroMagSkyDeterminedValues("atlantis"),
+    aztec: getCroMagSkyDeterminedValues("aztec"),
+    coliseum: getCroMagSkyDeterminedValues("coliseum"),
+  },
+};
+
+const croMagLightingProfiles: readonly MetadataPresetProfile[] = [
+  { key: "standard", label: "Standard" },
+  { key: "ice", label: "Ice" },
+  { key: "atlantis", label: "Atlantis" },
+];
+
+const croMagSkyProfiles: readonly MetadataPresetProfile[] = [
+  { key: "desert", label: "Desert" },
+  { key: "jungle", label: "Jungle and Aztec" },
+  { key: "ice", label: "Ice" },
+  { key: "crete", label: "Crete, Spiral, Celtic, and Maze" },
+  { key: "china", label: "China" },
+  { key: "egypt", label: "Egypt and Tar Pits" },
+  { key: "europe", label: "Europe" },
+  { key: "scandinavia", label: "Scandinavia and Stonehenge" },
+  { key: "atlantis", label: "Atlantis" },
+  { key: "aztec", label: "Aztec" },
+  { key: "coliseum", label: "Coliseum" },
+];
+
+interface Nanosaur2RenderingDefaults {
+  readonly background: readonly [number, number, number];
+  readonly fogStart: number;
+  readonly fogEnd: number;
+  readonly ambient: readonly [number, number, number];
+  readonly sunDirection: readonly [number, number, number];
+  readonly fillColor: readonly [number, number, number];
+  readonly lensFlare: boolean;
+}
+
+function getNanosaur2RenderingDefaults(profile: string): Nanosaur2RenderingDefaults {
+  switch (profile) {
+    case "desert": return { background: [0.968, 0.537, 0.278], fogStart: 0.4, fogEnd: 0.95, ambient: [0.45, 0.45, 0.45], sunDirection: [0.4, -0.3, 0.2], fillColor: [0.6, 0.6, 0.6], lensFlare: true };
+    case "swamp": return { background: [0.568, 0.243, 0.125], fogStart: 0.4, fogEnd: 0.95, ambient: [0.45, 0.45, 0.45], sunDirection: [0.4, -0.3, 0.2], fillColor: [0.6, 0.6, 0.6], lensFlare: true };
+    default: return { background: [0.43, 0.33, 0.7], fogStart: 0.35, fogEnd: 0.95, ambient: [0.4, 0.4, 0.4], sunDirection: [0.4, -0.5, 0.5], fillColor: [0.7, 0.7, 0.7], lensFlare: true };
+  }
+}
+
+function getNanosaur2RenderingDeterminedValues(profile: string): Readonly<Record<string, string>> {
+  const defaults = getNanosaur2RenderingDefaults(profile);
+  return {
+    "level.renderingBackgroundR": String(defaults.background[0]),
+    "level.renderingBackgroundG": String(defaults.background[1]),
+    "level.renderingBackgroundB": String(defaults.background[2]),
+    "level.renderingFogStart": String(defaults.fogStart),
+    "level.renderingFogEnd": String(defaults.fogEnd),
+    "level.renderingAmbientR": String(defaults.ambient[0]),
+    "level.renderingAmbientG": String(defaults.ambient[1]),
+    "level.renderingAmbientB": String(defaults.ambient[2]),
+    "level.renderingSunX": String(defaults.sunDirection[0]),
+    "level.renderingSunY": String(defaults.sunDirection[1]),
+    "level.renderingSunZ": String(defaults.sunDirection[2]),
+    "level.renderingFillR": String(defaults.fillColor[0]),
+    "level.renderingFillG": String(defaults.fillColor[1]),
+    "level.renderingFillB": String(defaults.fillColor[2]),
+    "level.renderingLensFlare": String(defaults.lensFlare),
+  };
+}
+
+const nanosaur2RenderingGroup: MetadataRuleGroup = {
+  id: "nanosaur2-rendering",
+  label: "Rendering",
+  presetKey: "level.rendering",
+  determinedValues: {
+    forest: getNanosaur2RenderingDeterminedValues("forest"),
+    desert: getNanosaur2RenderingDeterminedValues("desert"),
+    swamp: getNanosaur2RenderingDeterminedValues("swamp"),
+  },
+};
+
+const nanosaur2RenderingProfiles: readonly MetadataPresetProfile[] = [
+  { key: "forest", label: "Forest" },
+  { key: "desert", label: "Desert" },
+  { key: "swamp", label: "Swamp" },
+];
+
+function getBugdom2RenderingRules(profile: string): readonly MetadataRule[] {
+  const defaults = getBugdom2RenderingDefaults(profile);
+  return [
+    editableRule("level.renderingFog", "Fog enabled", "When enabled, distant geometry fades into the configured fog range. When disabled, the scene keeps the selected clear color without distance fog.", String(defaults.fog), "System/Main.c:599-741", { kind: "checkbox" }, String(defaults.fog), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingBackgroundR", "Background red", "Sets the red channel of the color used to clear the area behind the terrain and sky.", String(defaults.background[0]), "System/Main.c:599-741", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2RenderingDefaults, (value) => value.background[0], 0, 1, 0.01), String(defaults.background[0]), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingBackgroundG", "Background green", "Sets the green channel of the color used to clear the area behind the terrain and sky.", String(defaults.background[1]), "System/Main.c:599-741", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2RenderingDefaults, (value) => value.background[1], 0, 1, 0.01), String(defaults.background[1]), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingBackgroundB", "Background blue", "Sets the blue channel of the color used to clear the area behind the terrain and sky.", String(defaults.background[2]), "System/Main.c:599-741", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2RenderingDefaults, (value) => value.background[2], 0, 1, 0.01), String(defaults.background[2]), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingFogStart", "Fog starts at", "Sets where fog begins as a multiplier of the active view distance. A smaller value makes distant geometry fade sooner.", String(defaults.fogStart), "System/Main.c:599-741", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2RenderingDefaults, (value) => value.fogStart, 0, 2, 0.01), String(defaults.fogStart), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingFogEnd", "Fog ends at", "Sets where fog reaches full strength as a multiplier of the active view distance. A larger value keeps distant geometry visible farther away.", String(defaults.fogEnd), "System/Main.c:599-741", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2RenderingDefaults, (value) => value.fogEnd, 0, 2, 0.01), String(defaults.fogEnd), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingLensFlare", "Lens flare", "Controls whether the sun-facing lens-flare effect is drawn in this area.", String(defaults.lensFlare), "System/Main.c:599-741", { kind: "checkbox" }, String(defaults.lensFlare), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingTerrainScale", "Terrain scale", "Scales terrain geometry before it is placed in the world. Balsa uses 1.6; the other areas use 1.0.", String(defaults.terrainScale), "System/Main.c:580-599", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2RenderingDefaults, (value) => value.terrainScale, 0.5, 2, 0.01), String(defaults.terrainScale), bugdom2RenderingGroup, "determined"),
+    editableRule("level.renderingFieldOfView", "Field of view", "Sets the camera field of view. The normal Bugdom 2 view is 1.2; Balsa narrows it to 0.9 for flight.", String(defaults.fieldOfView), "System/Main.c:585; System/Main.c:686-699", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2RenderingDefaults, (value) => value.fieldOfView, 0.5, 1.5, 0.01), String(defaults.fieldOfView), bugdom2RenderingGroup, "determined"),
+  ];
+}
+
+function getBugdom2LightingRules(profile: string): readonly MetadataRule[] {
+  const defaults = getBugdom2LightingDefaults(profile);
+  return [
+    editableRule("level.lightingAmbientR", "Ambient red", "Sets the red channel of the light applied evenly to the whole scene.", String(defaults.ambient[0]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.ambient[0], 0, 1, 0.01), String(defaults.ambient[0]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingAmbientG", "Ambient green", "Sets the green channel of the light applied evenly to the whole scene.", String(defaults.ambient[1]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.ambient[1], 0, 1, 0.01), String(defaults.ambient[1]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingAmbientB", "Ambient blue", "Sets the blue channel of the light applied evenly to the whole scene.", String(defaults.ambient[2]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.ambient[2], 0, 1, 0.01), String(defaults.ambient[2]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFillCount", "Active fill lights", "Chooses whether the renderer uses one or two directional fill lights. Fido and Playroom use two; the other area presets use one.", defaults.fillCount, "System/Main.c:753-880", { kind: "select", options: ["one", "two"], optionLabels: { one: "One fill light", two: "Two fill lights" }, optionDescriptions: { one: "Use only the primary directional fill light.", two: "Use both directional fill lights." } }, defaults.fillCount, bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill1X", "Primary light direction X", "Sets the horizontal X component of the primary directional light.", String(defaults.fillDirection1[0]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillDirection1[0], -1, 1, 0.01), String(defaults.fillDirection1[0]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill1Y", "Primary light direction Y", "Sets the vertical Y component of the primary directional light.", String(defaults.fillDirection1[1]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillDirection1[1], -1, 1, 0.01), String(defaults.fillDirection1[1]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill1Z", "Primary light direction Z", "Sets the depth Z component of the primary directional light.", String(defaults.fillDirection1[2]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillDirection1[2], -1, 1, 0.01), String(defaults.fillDirection1[2]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill1R", "Primary light red", "Sets the red channel of the primary directional light.", String(defaults.fillColor1[0]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillColor1[0], 0, 1, 0.01), String(defaults.fillColor1[0]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill1G", "Primary light green", "Sets the green channel of the primary directional light.", String(defaults.fillColor1[1]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillColor1[1], 0, 1, 0.01), String(defaults.fillColor1[1]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill1B", "Primary light blue", "Sets the blue channel of the primary directional light.", String(defaults.fillColor1[2]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillColor1[2], 0, 1, 0.01), String(defaults.fillColor1[2]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill2X", "Secondary light direction X", "Sets the horizontal X component of the secondary directional light.", String(defaults.fillDirection2[0]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillDirection2[0], -1, 1, 0.01), String(defaults.fillDirection2[0]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill2Y", "Secondary light direction Y", "Sets the vertical Y component of the secondary directional light.", String(defaults.fillDirection2[1]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillDirection2[1], -1, 1, 0.01), String(defaults.fillDirection2[1]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill2Z", "Secondary light direction Z", "Sets the depth Z component of the secondary directional light.", String(defaults.fillDirection2[2]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillDirection2[2], -1, 1, 0.01), String(defaults.fillDirection2[2]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill2R", "Secondary light red", "Sets the red channel of the secondary directional light.", String(defaults.fillColor2[0]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillColor2[0], 0, 1, 0.01), String(defaults.fillColor2[0]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill2G", "Secondary light green", "Sets the green channel of the secondary directional light.", String(defaults.fillColor2[1]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillColor2[1], 0, 1, 0.01), String(defaults.fillColor2[1]), bugdom2LightingGroup, "determined"),
+    editableRule("level.lightingFill2B", "Secondary light blue", "Sets the blue channel of the secondary directional light.", String(defaults.fillColor2[2]), "System/Main.c:753-880", getPresetSliderControl(bugdom2VisualProfiles, getBugdom2LightingDefaults, (value) => value.fillColor2[2], 0, 1, 0.01), String(defaults.fillColor2[2]), bugdom2LightingGroup, "determined"),
+  ];
+}
+
+function getCroMagLightingRules(profile: string): readonly MetadataRule[] {
+  const defaults = getCroMagLightingDefaults(profile);
+  return [
+    editableRule("track.lightingSunX", "Fill light direction X", "Sets the horizontal X component of the track’s directional fill light.", String(defaults.fillDirection[0]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.fillDirection[0], -1, 1, 0.01), String(defaults.fillDirection[0]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingSunY", "Fill light direction Y", "Sets the vertical Y component of the track’s directional fill light.", String(defaults.fillDirection[1]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.fillDirection[1], -1, 1, 0.01), String(defaults.fillDirection[1]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingSunZ", "Fill light direction Z", "Sets the depth Z component of the track’s directional fill light.", String(defaults.fillDirection[2]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.fillDirection[2], -1, 1, 0.01), String(defaults.fillDirection[2]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingAmbientR", "Ambient red", "Sets the red channel of the light applied evenly to the whole track.", String(defaults.ambient[0]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.ambient[0], 0, 1, 0.01), String(defaults.ambient[0]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingAmbientG", "Ambient green", "Sets the green channel of the light applied evenly to the whole track.", String(defaults.ambient[1]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.ambient[1], 0, 1, 0.01), String(defaults.ambient[1]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingAmbientB", "Ambient blue", "Sets the blue channel of the light applied evenly to the whole track.", String(defaults.ambient[2]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.ambient[2], 0, 1, 0.01), String(defaults.ambient[2]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingFillR", "Fill light red", "Sets the red channel of the track’s directional fill light.", String(defaults.fillColor[0]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.fillColor[0], 0, 1, 0.01), String(defaults.fillColor[0]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingFillG", "Fill light green", "Sets the green channel of the track’s directional fill light.", String(defaults.fillColor[1]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.fillColor[1], 0, 1, 0.01), String(defaults.fillColor[1]), croMagLightingGroup, "determined"),
+    editableRule("track.lightingFillB", "Fill light blue", "Sets the blue channel of the track’s directional fill light.", String(defaults.fillColor[2]), "System/Main.c:1216-1248", getPresetSliderControl(croMagLightingProfiles, getCroMagLightingDefaults, (value) => value.fillColor[2], 0, 1, 0.01), String(defaults.fillColor[2]), croMagLightingGroup, "determined"),
+  ];
+}
+
+function getCroMagSkyRules(profile: string): readonly MetadataRule[] {
+  const color = getCroMagSkyColor(profile);
+  return [
+    editableRule("track.skyRed", "Sky red", "Sets the red channel of the clear color behind the track’s sky dome.", String(color[0]), "System/Main.c:1251-1280", getPresetSliderControl(croMagSkyProfiles, getCroMagSkyColor, (value) => value[0], 0, 1, 0.01), String(color[0]), croMagSkyGroup, "determined"),
+    editableRule("track.skyGreen", "Sky green", "Sets the green channel of the clear color behind the track’s sky dome.", String(color[1]), "System/Main.c:1251-1280", getPresetSliderControl(croMagSkyProfiles, getCroMagSkyColor, (value) => value[1], 0, 1, 0.01), String(color[1]), croMagSkyGroup, "determined"),
+    editableRule("track.skyBlue", "Sky blue", "Sets the blue channel of the clear color behind the track’s sky dome.", String(color[2]), "System/Main.c:1251-1280", getPresetSliderControl(croMagSkyProfiles, getCroMagSkyColor, (value) => value[2], 0, 1, 0.01), String(color[2]), croMagSkyGroup, "determined"),
+  ];
+}
+
+function getNanosaur2RenderingRules(profile: string): readonly MetadataRule[] {
+  const defaults = getNanosaur2RenderingDefaults(profile);
+  return [
+    editableRule("level.renderingBackgroundR", "Background red", "Sets the red channel of the clear color behind the level’s sky and terrain.", String(defaults.background[0]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.background[0], 0, 1, 0.01), String(defaults.background[0]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingBackgroundG", "Background green", "Sets the green channel of the clear color behind the level’s sky and terrain.", String(defaults.background[1]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.background[1], 0, 1, 0.01), String(defaults.background[1]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingBackgroundB", "Background blue", "Sets the blue channel of the clear color behind the level’s sky and terrain.", String(defaults.background[2]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.background[2], 0, 1, 0.01), String(defaults.background[2]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingFogStart", "Fog starts at", "Sets where fog begins as a multiplier of the camera view distance.", String(defaults.fogStart), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.fogStart, 0, 2, 0.01), String(defaults.fogStart), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingFogEnd", "Fog ends at", "Sets where fog reaches full strength as a multiplier of the camera view distance.", String(defaults.fogEnd), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.fogEnd, 0, 2, 0.01), String(defaults.fogEnd), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingAmbientR", "Ambient red", "Sets the red channel of the light applied evenly to the level.", String(defaults.ambient[0]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.ambient[0], 0, 1, 0.01), String(defaults.ambient[0]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingAmbientG", "Ambient green", "Sets the green channel of the light applied evenly to the level.", String(defaults.ambient[1]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.ambient[1], 0, 1, 0.01), String(defaults.ambient[1]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingAmbientB", "Ambient blue", "Sets the blue channel of the light applied evenly to the level.", String(defaults.ambient[2]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.ambient[2], 0, 1, 0.01), String(defaults.ambient[2]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingSunX", "Sun direction X", "Sets the horizontal X component of the level’s directional light.", String(defaults.sunDirection[0]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.sunDirection[0], -1, 1, 0.01), String(defaults.sunDirection[0]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingSunY", "Sun direction Y", "Sets the vertical Y component of the level’s directional light.", String(defaults.sunDirection[1]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.sunDirection[1], -1, 1, 0.01), String(defaults.sunDirection[1]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingSunZ", "Sun direction Z", "Sets the depth Z component of the level’s directional light.", String(defaults.sunDirection[2]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.sunDirection[2], -1, 1, 0.01), String(defaults.sunDirection[2]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingFillR", "Fill light red", "Sets the red channel of the level’s fill light.", String(defaults.fillColor[0]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.fillColor[0], 0, 1, 0.01), String(defaults.fillColor[0]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingFillG", "Fill light green", "Sets the green channel of the level’s fill light.", String(defaults.fillColor[1]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.fillColor[1], 0, 1, 0.01), String(defaults.fillColor[1]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingFillB", "Fill light blue", "Sets the blue channel of the level’s fill light.", String(defaults.fillColor[2]), "System/Main.c:446-492", getPresetSliderControl(nanosaur2RenderingProfiles, getNanosaur2RenderingDefaults, (value) => value.fillColor[2], 0, 1, 0.01), String(defaults.fillColor[2]), nanosaur2RenderingGroup, "determined"),
+    editableRule("level.renderingLensFlare", "Lens flare", "Controls whether the level’s sun-facing lens-flare effect is drawn.", String(defaults.lensFlare), "System/Main.c:446-492", { kind: "checkbox" }, String(defaults.lensFlare), nanosaur2RenderingGroup, "determined"),
+  ];
 }
 
 function getBillyAreaMode(levelIndex: number): string {
@@ -967,13 +1576,32 @@ function getBugdom2BehaviorControl(key: string): MetadataControl {
   };
 }
 
+function getBugdom2PresetControl(key: string): MetadataControl {
+  const control = getBugdom2BehaviorControl(key);
+  if (control.kind !== "select") return control;
+  return {
+    ...control,
+    options: [...control.options, "custom"],
+    optionLabels: {
+      ...control.optionLabels,
+      custom: key === "level.lighting" ? "Custom lighting values" : "Custom rendering values",
+    },
+    optionDescriptions: {
+      ...control.optionDescriptions,
+      custom: key === "level.lighting"
+        ? "Use the original area lighting as a starting point, then edit the individual light values below."
+        : "Use the original area rendering as a starting point, then edit the individual rendering values below.",
+    },
+  };
+}
+
 const ottoOptionDescriptions: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  "level.environment": { standard: "Use the ordinary view background and fog settings for this level.", blob: "Use the Blob World view distance, fog, and background settings.", "blob-boss": "Use the Blob Boss view distance, fog, and background settings.", apocalypse: "Use the Apocalypse view distance, fog, and background settings.", cloud: "Use the Cloud view distance, fog, and background settings.", jungle: "Use the Jungle view distance, fog, and background settings.", "jungle-boss": "Use the Jungle Boss view distance, fog, and background settings.", "fire-ice": "Use the Fire Ice view distance, fog, and background settings.", saucer: "Use the Saucer view distance, fog, and background settings.", "brain-boss": "Use the Brain Boss view distance, fog, and background settings." },
+  "level.environment": { standard: "Use the ordinary view distance, fog, background color, and lens-flare settings.", blob: "Use the Blob World view distance, fog, background color, and lens-flare settings.", "blob-boss": "Use the Blob Boss view distance, fog, background color, and lens-flare settings.", apocalypse: "Use the Apocalypse view distance, fog, background color, and lens-flare settings.", cloud: "Use the Cloud view distance, fog, background color, and lens-flare settings.", jungle: "Use the Jungle view distance, fog, background color, and lens-flare settings.", "fire-ice": "Use the Fire Ice view distance, fog, background color, and lens-flare settings.", saucer: "Use the Saucer view distance, fog, background color, and lens-flare settings.", "brain-boss": "Use the Brain Boss view distance, fog, background color, and lens-flare settings.", custom: "Use the original level preset as a starting point, then enable individual environment values below as needed." },
   "level.sky": { standard: "Render the ordinary sky and horizon.", apocalypse: "Render the glowing Apocalypse sky and horizon edge." },
   "level.blobDeformation": { none: "Do not add Blob World terrain deformation.", blob: "Add the two ordinary Blob World jello deformations.", "blob-boss": "Add the larger Blob Boss jello deformations." },
   "level.camera": { standard: "Use the ordinary camera height and tracking.", "blob-boss": "Use the lower Blob Boss camera treatment." },
   "level.lighting": {
-    standard: "Use the ordinary sun direction, ambient light, and fill light.", blob: "Use the ordinary sun direction, ambient light, and fill light.", "blob-boss": "Use Blob Boss sun direction, ambient light, and fill light.", apocalypse: "Use Apocalypse sun direction and fill light.", jungle: "Use Jungle sun direction and fill light.", "jungle-boss": "Use Jungle Boss sun direction and fill light.", "fire-ice": "Use Fire Ice sun direction and fill light.", saucer: "Use Saucer sun direction and fill light.", "brain-boss": "Use Brain Boss sun direction and fill light.",
+    standard: "Use the ordinary sun direction, ambient light, and fill-light color.", "blob-boss": "Use the Blob Boss sun direction, ambient light, and fill-light color.", apocalypse: "Use the Apocalypse sun direction, ambient light, and fill-light color.", jungle: "Use the Jungle sun direction, ambient light, and fill-light color.", "jungle-boss": "Use the Jungle Boss sun direction, ambient light, and fill-light color.", "fire-ice": "Use the Fire Ice sun direction, ambient light, and fill-light color.", saucer: "Use the Saucer sun direction, ambient light, and fill-light color.", "brain-boss": "Use the Brain Boss sun direction, ambient light, and fill-light color.", custom: "Use the original level preset as a starting point, then enable individual lighting values below as needed.",
   },
   "level.autoFade": { standard: "Use the ordinary object visibility distance.", "fog-only": "Use the Fog Only visibility distance.", apocalypse: "Use the Apocalypse visibility distance.", saucer: "Use the Saucer visibility distance." },
   "level.player": { "rocket-and-robot": "Start with the normal rocket and robot sequence.", robot: "Start directly with the robot.", saucer: "Start with the saucer." },
@@ -992,7 +1620,8 @@ const ottoOptionDescriptions: Readonly<Record<string, Readonly<Record<string, st
 };
 
 const ottoOptionLabels: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  "level.environment": { standard: "Standard environment", blob: "Blob World environment", "blob-boss": "Blob Boss environment", apocalypse: "Apocalypse environment", cloud: "Cloud environment", jungle: "Jungle environment", "jungle-boss": "Jungle Boss environment", "fire-ice": "Fire Ice environment", saucer: "Saucer environment", "brain-boss": "Brain Boss environment" },
+  "level.environment": { standard: "Standard environment", blob: "Blob World environment", "blob-boss": "Blob Boss environment", apocalypse: "Apocalypse environment", cloud: "Cloud environment", jungle: "Jungle environment", "fire-ice": "Fire Ice environment", saucer: "Saucer environment", "brain-boss": "Brain Boss environment", custom: "Custom environment values" },
+  "level.lighting": { standard: "Standard lighting", "blob-boss": "Blob Boss lighting", apocalypse: "Apocalypse lighting", jungle: "Jungle lighting", "jungle-boss": "Jungle Boss lighting", "fire-ice": "Fire Ice lighting", saucer: "Saucer lighting", "brain-boss": "Brain Boss lighting", custom: "Custom lighting values" },
   "level.blobDeformation": { none: "None", blob: "Blob World", "blob-boss": "Blob Boss" },
   "level.introShips": { standard: "Normal intro saucers", saucer: "Single ice saucer", none: "No intro ships" },
   "level.rocketFuel": { required: "Fuel required", "not-required": "Fuel not required" },
@@ -1021,7 +1650,7 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
       ];
     case Game.BUGDOM:
       return [
-        rule("level.realId", "selected real-level enum", "System/Main.c:453-456", "resolved"),
+        rule("level.realId", "Level identity", "System/Main.c:453-456", "resolved"),
         editableRule("level.terrainFamily", "Terrain family", "Choose the ruleset used by enemies, items, liquids, fences, the camera, and rendering. Lawn keeps the ordinary grassy rules; Pond enables water-bug and mosquito behavior; Forest enables forest traps and dragonflies; Hive enables bee and hive rules; Night enables firefly rules; Anthill enables ant, roach, and anthill liquid rules. This does not change the terrain file or level identity.", getBugdomTerrainFamily(levelIndex), "System/Main.c:51-62,305-311; System/File.c:868-904,1081-1088", getMetadataControl("level.terrainFamily"), getBugdomTerrainFamily(levelIndex)),
         editableRule("level.area", "Area variant", "Choose the sub-area rules used inside the selected terrain family. Training, Lawn Area, Beach, Flight, Hive Area, Queen Bee, Ant Hill, and Ant King change the relevant item, enemy, ride, camera, or presentation branches. This does not change the real level number, terrain file, or save progression.", getBugdomArea(levelIndex), "System/Main.c:51-62,305-311; System/File.c:868-904,1081-1088", getMetadataControl("level.area"), getBugdomArea(levelIndex)),
         editableRule("level.flyingBeeSetup", "Flying-bee setup", "Choose whether flying bees use the Hive setup. Hive enables keyed flying-bee activation, Hive-specific bee limits, and the lower Hive spawn height; the original value keeps flying-bee setup tied to the current level. This does not change worker-bee setup, terrain family, or resource identity.", levelIndex === 5 ? "hive" : "source-default", "Enemies/Enemy_Bee_Flying.c:82-111", getMetadataControl("level.flyingBeeSetup"), levelIndex === 5 ? "hive" : "source-default"),
@@ -1050,7 +1679,7 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
       ];
     case Game.BUGDOM_2:
       return [
-        rule("level.id", "selected level enum", "Headers/main.h; System/Main.c:270-284", "resolved"),
+        rule("level.id", "Level identity", "Headers/main.h; System/Main.c:270-284", "resolved"),
         editableRule("level.bugdom2Area", "Gameplay area", "Choose the gameplay area whose enemy, item, trap, water, terrain, player, camera, and presentation rules are used. For example, Balsa enables flight-style movement and Park enables its water and animal rules. This does not change the level number, save slot, or indexed asset files.", getBugdom2Area(levelIndex), "Headers/main.h:16-28; System/LoadLevel.c:244-276", getBugdom2AreaControl()),
         editableRule("level.fido", "Fido enemy rules", "Choose whether the Fido-specific tick and flea rules are active. Fido enables the Fido enemy spawn, cleanup, and defeat behavior; the original value preserves the current level’s enemy rules. This does not change terrain or model resources.", "source-default", "Enemies/Enemy_Tick.c:782; Enemies/Enemy_Flea.c:137-900", getBugdom2BehaviorControl("level.fido")),
         rule("level.tunnelStart", levelIndex === 3 || levelIndex === 6 ? "tunnel entry coordinates" : "not applicable", "Player/Player.c:207-236", "derived"),
@@ -1078,8 +1707,12 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
         editableRule("level.fileScale", "Terrain height scale area", "Choose whether Park’s terrain height scale adjustment is used. Park enables the extended terrain-height calculation; the original value keeps the current level’s scale. This does not change the level file identity.", "source-default", "System/File.c:678", getBugdom2BehaviorControl("level.fileScale")),
         editableRule("level.tunnel", "Tunnel area", "Choose the tunnel rules used for loading and movement. Plumbing selects the sewer tunnel and Gutter selects the gutter tunnel; the original value keeps the current level’s tunnel behavior.", "source-default", "System/LoadLevel.c:741-774; Player/Player_Tunnel.c:118-1065", getBugdom2BehaviorControl("level.tunnel")),
         editableRule("level.areaUpdate", "Per-frame area updates", "Choose which area-specific systems update every frame: Gnome Garden sprinklers, Playroom slot cars, Garbage rising water, or Park fog. The original value keeps the current level’s updates.", "source-default", "System/Main.c:463-481", getBugdom2BehaviorControl("level.areaUpdate")),
-        editableRule("level.rendering", "View and terrain setup", "Choose the area-specific view distance, fog, active terrain range, and terrain-scale setup. The original value keeps the current level’s rendering setup.", "source-default", "System/Main.c:599-741", getBugdom2BehaviorControl("level.rendering")),
-        editableRule("level.lighting", "World lighting", "Choose the area-specific sun direction, fill-light count, and ambient lighting. The original value keeps the current level’s lighting.", "source-default", "System/Main.c:753-880", getBugdom2BehaviorControl("level.lighting")),
+        ...([3, 6].includes(levelIndex) ? [] : [
+          editableRule("level.rendering", "Rendering preset", "Choose the area’s original camera, fog, clear-color, lens-flare, terrain-scale, and field-of-view setup, or choose Custom rendering values to edit those values independently below.", getBugdom2Area(levelIndex), "System/Main.c:599-741", getBugdom2PresetControl("level.rendering"), getBugdom2Area(levelIndex), bugdom2RenderingGroup, "preset"),
+          ...getBugdom2RenderingRules(getBugdom2Area(levelIndex)),
+          editableRule("level.lighting", "Lighting preset", "Choose the area’s original ambient and directional-light setup, or choose Custom lighting values to edit each light independently below.", getBugdom2Area(levelIndex), "System/Main.c:753-880", getBugdom2PresetControl("level.lighting"), getBugdom2Area(levelIndex), bugdom2LightingGroup, "preset"),
+          ...getBugdom2LightingRules(getBugdom2Area(levelIndex)),
+        ]),
         editableRule("level.autoFade", "Object auto-fade", "Choose whether the level uses its no-fade object rules for Fido, Balsa, or Closet. The original value keeps the current level’s fade distances.", "source-default", "System/Main.c:909-918", getBugdom2BehaviorControl("level.autoFade")),
         editableRule("level.levelInit", "Level initialization", "Choose the area-specific counters, enemy setup, and special opening dialogs initialized at level start. The original value keeps the current level’s initialization.", "source-default", "System/Main.c:965-1000", getBugdom2BehaviorControl("level.levelInit")),
         rule("level.sentinel", "title-screen -1 sentinel is excluded from gameplay tables", "Items/Items2.c:237; Skeleton/SkeletonAnim.c:300-307"),
@@ -1087,14 +1720,16 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
       ];
     case Game.CRO_MAG:
       return [
-        rule("track.id", "selected track enum", "System/Main.c:112-119", "resolved"),
+        rule("track.id", "Track identity", "System/Main.c:112-119", "resolved"),
         editableRule("track.mode", "Track rules", "Selects race or battle scoring and lap-timing rules. The original game mode is the default; this does not change the track's asset identity or progression slot.", "source-default", "Screens/RaceTimes.c:29-42; Screens/SelectTrack.c:194-205", { kind: "select", options: ["source-default", "race", "battle"], optionLabels: { "source-default": "Original game mode", race: "Race scoring", battle: "Battle scoring" }, optionDescriptions: croMagOptionDescriptions["track.mode"] }),
         editableRule("track.waterAnimation", "Water animation", "Selects how water surfaces move during play. This does not create water patches or change their heights.", levelIndex === 1 || levelIndex === 3 ? "scroll-both" : levelIndex === 5 ? "scroll-v" : "none", "Terrain/Liquids.c:196-213", { kind: "select", options: ["none", "scroll-both", "scroll-v"], optionLabels: { none: "No water animation", "scroll-both": "Scroll horizontally and vertically", "scroll-v": "Scroll vertically" }, optionDescriptions: croMagOptionDescriptions["track.waterAnimation"] }),
         editableRule("track.surfaceEffects", "Surface effects", "Controls whether snow particles are emitted each frame. This does not change terrain collision or the track resource.", levelIndex === 2 || levelIndex === 16 ? "snow" : "none", "System/Main.c:1184-1188", { kind: "select", options: ["none", "snow"], optionLabels: { none: "No snow particles", snow: "Emit snow particles" }, optionDescriptions: croMagOptionDescriptions["track.surfaceEffects"] }),
         editableRule("track.vehicle", "Player vehicle", "Selects the player vehicle setup. This does not change vehicle availability in the pre-race selection screen or scoreboard identity.", levelIndex === 8 ? "submarine" : "car", "Player/Player.c:204-211; Player/Player_Car.c:312-316", { kind: "select", options: ["car", "submarine"], optionLabels: { car: "Car", submarine: "Submarine" }, optionDescriptions: croMagOptionDescriptions["track.vehicle"] }),
         editableRule("track.music", "Music", "Selects the soundtrack family played when the track starts. This does not change track assets, records, or progression.", getCroMagMusic(levelIndex), "System/Main.c:1191-1212", { kind: "select", options: ["desert", "jungle", "atlantis", "china", "egypt", "crete", "ice", "europe", "viking"], optionLabels: { desert: "Desert soundtrack", jungle: "Jungle soundtrack", atlantis: "Atlantis soundtrack", china: "China soundtrack", egypt: "Egypt soundtrack", crete: "Crete soundtrack", ice: "Ice soundtrack", europe: "Europe soundtrack", viking: "Viking soundtrack" }, optionDescriptions: croMagOptionDescriptions["track.music"] }),
-        editableRule("track.lighting", "Lighting", "Selects the lighting preset used to initialize the game view. This does not change terrain or model resources.", levelIndex === 2 ? "ice" : levelIndex === 8 ? "atlantis" : "standard", "System/Main.c:1216-1248", { kind: "select", options: ["standard", "ice", "atlantis"], optionLabels: { standard: "Standard lighting", ice: "Ice lighting", atlantis: "Atlantis lighting" }, optionDescriptions: croMagOptionDescriptions["track.lighting"] }),
-        editableRule("track.sky", "Sky color", "Selects the clear-sky color preset behind the sky dome. This does not change the sky model or track identity.", getCroMagSky(levelIndex), "System/Main.c:1251-1280", { kind: "select", options: ["desert", "jungle", "ice", "crete", "china", "egypt", "europe", "scandinavia", "atlantis", "aztec", "coliseum"], optionLabels: { desert: "Desert sky", jungle: "Jungle sky", ice: "Ice sky", crete: "Crete sky", china: "China sky", egypt: "Egypt sky", europe: "Europe sky", scandinavia: "Scandinavia sky", atlantis: "Atlantis sky", aztec: "Aztec sky", coliseum: "Coliseum sky" }, optionDescriptions: croMagOptionDescriptions["track.sky"] }),
+        editableRule("track.lighting", "Lighting preset", "Choose the original track lighting preset, or choose Custom lighting values to edit the directional light, ambient light, and fill color below.", levelIndex === 2 ? "ice" : levelIndex === 8 ? "atlantis" : "standard", "System/Main.c:1216-1248", { kind: "select", options: ["standard", "ice", "atlantis", "custom"], optionLabels: { standard: "Standard lighting", ice: "Ice lighting", atlantis: "Atlantis lighting", custom: "Custom lighting values" }, optionDescriptions: { ...croMagOptionDescriptions["track.lighting"], custom: "Use the original track lighting as a starting point, then edit each lighting value below." } }, levelIndex === 2 ? "ice" : levelIndex === 8 ? "atlantis" : "standard", croMagLightingGroup, "preset"),
+        ...getCroMagLightingRules(levelIndex === 2 ? "ice" : levelIndex === 8 ? "atlantis" : "standard"),
+        editableRule("track.sky", "Sky color preset", "Choose the original clear color behind the track’s sky dome, or choose Custom sky color to edit its red, green, and blue channels below.", getCroMagSky(levelIndex), "System/Main.c:1251-1280", { kind: "select", options: ["desert", "jungle", "ice", "crete", "china", "egypt", "europe", "scandinavia", "atlantis", "aztec", "coliseum", "custom"], optionLabels: { desert: "Desert sky", jungle: "Jungle sky", ice: "Ice sky", crete: "Crete sky", china: "China sky", egypt: "Egypt sky", europe: "Europe sky", scandinavia: "Scandinavia sky", atlantis: "Atlantis sky", aztec: "Aztec sky", coliseum: "Coliseum sky", custom: "Custom sky color" }, optionDescriptions: { ...croMagOptionDescriptions["track.sky"], custom: "Use the original track sky color as a starting point, then edit its color channels below." } }, getCroMagSky(levelIndex), croMagSkyGroup, "preset"),
+        ...getCroMagSkyRules(getCroMagSky(levelIndex)),
         editableRule("track.liquidMaterial", "Liquid material", "Selects whether vehicle wheel debris uses water spray or the Tar Pits material behavior.", levelIndex === 14 ? "tar" : "water", "Player/Player_Car.c:3637-3640", { kind: "select", options: ["water", "tar"], optionLabels: { water: "Water spray", tar: "Tar spray" }, optionDescriptions: croMagOptionDescriptions["track.liquidMaterial"] }),
         editableRule("track.campfire", "Campfire type", "Selects the campfire model used by the shared campfire terrain item.", levelIndex === 2 ? "ice" : "scandinavia", "Items/Triggers.c:1076", { kind: "select", options: ["ice", "scandinavia"], optionLabels: { ice: "Ice campfire", scandinavia: "Scandinavia campfire" }, optionDescriptions: croMagOptionDescriptions["track.campfire"] }),
         editableRule("track.startLineCollision", "Starting-line collision", "Selects the collision boxes used by the starting-line object. This does not change the track model or authored start positions.", levelIndex === 3 ? "crete" : levelIndex === 8 ? "none" : levelIndex === 1 ? "jungle" : "standard", "Items/Items.c:150-263", { kind: "select", options: ["standard", "crete", "jungle", "none"], optionLabels: { standard: "Standard bridge collision", crete: "Crete rotated collision", jungle: "Jungle obstacle-avoidance collision", none: "No collision (Atlantis default)" }, optionDescriptions: croMagOptionDescriptions["track.startLineCollision"] }),
@@ -1143,7 +1778,7 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
       ];
     case Game.NANOSAUR_2:
       return [
-        rule("level.id", "selected level enum", "Headers/main.h; System/Main.c:192-242", "resolved"),
+        rule("level.id", "Level identity", "Headers/main.h; System/Main.c:192-242", "resolved"),
         rule("level.mainDispatch", "level loop, new-game, Adventure 3, and transition switches", "System/Main.c:192-242,343-492"),
         editableRule("level.mode", "Gameplay mode", "Choose how this level is played. Adventure is exploration, Race uses checkpoints and finishing order, Battle is player-versus-player combat, and Capture the Flag is team flag play. This changes gameplay rules, not the level’s terrain or map file.", levelIndex < 3 ? "adventure" : levelIndex < 5 ? "race" : levelIndex < 7 ? "battle" : "capture-the-flag", "System/Main.c:343-492", getNanosaur2Control("level.mode", ["adventure", "race", "battle", "capture-the-flag"])),
         editableRule("level.biome", "Environment", "Choose the environment theme used by the level’s terrain-art setup and shared environmental assets. Forest, Desert, and Swamp select the corresponding environment family. This does not change the map image, terrain file, or scenery item models; those are controlled separately below.", [0, 5, 8].includes(levelIndex) ? "forest" : [1, 4, 6].includes(levelIndex) ? "desert" : "swamp", "System/LoadLevel.c:70-180", getNanosaur2Control("level.biome", ["forest", "desert", "swamp"])),
@@ -1155,17 +1790,23 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
         editableRule("level.flightHeight", "Maximum flight altitude", "Choose the player’s flight ceiling. Adventure 1 caps flight at terrain height plus its altitude allowance; Standard allows the normal maximum altitude. This does not change race checkpoints.", levelIndex === 0 ? "adventure1" : "standard", "Player/Player.c:1174", getNanosaur2Control("level.flightHeight", ["standard", "adventure1"])),
         editableRule("level.raceMarkers", "Race line markers", "Choose how crossed terrain line markers are handled. Race treats them as checkpoints and updates race progress; Standard uses ordinary line-marker handling. This does not change the selected gameplay mode.", levelIndex === 3 || levelIndex === 4 ? "race" : "standard", "Player/Player_Terrain.c:768", getNanosaur2Control("level.raceMarkers", ["standard", "race"])),
         editableRule("level.intro", "Save-game continuation menu", "Choose which continuation label is shown after saving: None hides both level-transition labels, Level 1 shows the “Entering Level 2” option, and Level 2 shows the “Entering Level 3” option. This affects the menu only—not level identity or progression.", levelIndex === 1 ? "level1" : levelIndex === 2 ? "level2" : "none", "Screens/LevelIntro.c:604", getNanosaur2Control("level.intro", ["none", "level1", "level2"])),
-        editableRule("level.rendering", "Sky and lighting", "Choose the Forest, Desert, or Swamp sky, fog, and lighting treatment. This changes the level’s visual atmosphere only; terrain art and scenery item models are controlled by Environment and Scenery and item set.", [0, 5, 8].includes(levelIndex) ? "forest" : [1, 4, 6].includes(levelIndex) ? "desert" : "swamp", "System/Main.c:446-492", getNanosaur2Control("level.rendering", ["forest", "desert", "swamp"])),
-        rule("level.persistence", "level-specific file and save identity", "System/File.c:1269"),
-        rule("level.bounds", "level identity is bounded before indexed access", "System/Main.c:192-242; System/LoadLevel.c:70-180", "resolved"),
+        editableRule("level.rendering", "Rendering preset", "Choose the Forest, Desert, or Swamp visual preset for the level’s visual atmosphere, or choose Custom rendering values to edit the clear color, fog, ambient light, directional light, fill color, and lens flare independently below.", [0, 5, 8].includes(levelIndex) ? "forest" : [1, 4, 6].includes(levelIndex) ? "desert" : "swamp", "System/Main.c:446-492", getNanosaur2PresetControl("level.rendering", ["forest", "desert", "swamp"]), [0, 5, 8].includes(levelIndex) ? "forest" : [1, 4, 6].includes(levelIndex) ? "desert" : "swamp", nanosaur2RenderingGroup, "preset"),
+        ...getNanosaur2RenderingRules([0, 5, 8].includes(levelIndex) ? "forest" : [1, 4, 6].includes(levelIndex) ? "desert" : "swamp"),
+        rule("level.persistence", "Level file and save identity", "System/File.c:1269"),
+        rule("level.bounds", "Level bounds check", "System/Main.c:192-242; System/LoadLevel.c:70-180", "resolved"),
       ];
     case Game.OTTO_MATIC:
       return [
-        rule("level.id", "selected level enum", "Headers/main.h; System/GameMain.c:175-226", "resolved"),
-        rule("level.assetIdentity", "native asset identity remains tied to the selected level", "System/File.c:627-936", "resolved"),
+        auditRule("level.id", "Level identity (read-only)", "Identifies which original Otto Matic level resource is open. It stays tied to the level slot so authored assets, saves, and progression remain safe; behavior settings below can be overridden independently.", "Selected level resource", "Headers/main.h; System/GameMain.c:175-226"),
+        auditRule("level.assetIdentity", "Level assets (read-only)", "The original level chooses its terrain, models, textures, skeletons, and other indexed assets. These resources are kept with the level identity because selecting another asset set could make item data unsafe.", "Original level asset set", "System/File.c:627-936"),
         editableRule("level.gravity", "Gravity", "Controls the downward acceleration used by the player and robot movement. Higher numbers make jumps fall faster; this setting does not change model scale or spline-human movement.", levelIndex === 2 ? "3900" : "5200", "System/GameMain.c:781-816; System/GameMain.c:872-874", { kind: "slider", min: 0, max: 8000, step: 100, gameValues: [{ value: 5200, label: "Normal gravity" }, { value: 3900, label: "Blob Boss low gravity" }] }),
         editableRule("level.tileSlipperiness", "Terrain slipperiness", "Controls how much the terrain reduces steering traction. Zero is the normal surface; the Blob World uses 0.10, which makes the ground more slippery.", levelIndex === 1 ? "0.1" : "0.0", "System/GameMain.c:781-788; System/GameMain.c:872-874", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0, label: "Normal terrain" }, { value: 0.1, label: "Blob World" }] }),
-        editableRule("level.environment", "View environment", "Controls the view’s background color, fog, draw horizon, and lens-flare treatment. It is independent from the light direction and ambient-light preset below.", getOttoEnvironmentProfile(levelIndex), "System/GameMain.c:559-663", getOttoControl("level.environment", ["standard", "blob", "blob-boss", "apocalypse", "cloud", "jungle", "jungle-boss", "fire-ice", "saucer", "brain-boss"])),
+        editableRule("level.environment", "Environment preset", "Choose a named environment preset for the view distance, fog treatment, background color, and lens-flare treatment. The individual values below are read-only for named presets; choose Custom environment values to edit them independently.", getOttoEnvironmentProfile(levelIndex), "System/GameMain.c:559-663", getOttoControl("level.environment", ["standard", "blob", "blob-boss", "apocalypse", "cloud", "jungle", "fire-ice", "saucer", "brain-boss", "custom"]), getOttoEnvironmentProfile(levelIndex), ottoEnvironmentGroup, "preset"),
+        editableRule("level.environmentViewDistance", "View distance", "Controls the camera’s far clipping distance as a multiplier of the normal world range. A value of 0.60 shows a shorter view, while 1.00 uses the ordinary range. This changes visibility distance only; it does not change fog color or terrain scale.", String(getOttoEnvironmentDefaults(levelIndex).viewDistance), "System/GameMain.c:559-663", { kind: "slider", min: 0.5, max: 1.1, step: 0.01, gameValues: [{ value: 0.6, label: "Blob World" }, { value: 0.7, label: "Blob Boss and Brain Boss" }, { value: 0.8, label: "Saucer" }, { value: 1, label: "Normal range" }] }, String(getOttoEnvironmentDefaults(levelIndex).viewDistance), ottoEnvironmentGroup, "determined"),
+        editableRule("level.environmentBackgroundR", "Background red", "Controls the red channel of the cleared view background. Values range from 0.00 to 1.00. This changes the background color only; it does not recolor terrain or lighting.", String(getOttoEnvironmentDefaults(levelIndex).background[0]), "System/GameMain.c:559-663", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0, label: "Apocalypse and Fire Ice" }, { value: 0.1, label: "Standard and Brain Boss" }, { value: 0.17, label: "Blob Boss" }, { value: 0.2, label: "Saucer" }, { value: 0.6, label: "Jungle" }, { value: 0.686, label: "Cloud" }, { value: 0.8, label: "Blob World" }] }, String(getOttoEnvironmentDefaults(levelIndex).background[0]), ottoEnvironmentGroup, "determined"),
+        editableRule("level.environmentBackgroundG", "Background green", "Controls the green channel of the cleared view background. Values range from 0.00 to 1.00. This changes the background color only; it does not recolor terrain or lighting.", String(getOttoEnvironmentDefaults(levelIndex).background[1]), "System/GameMain.c:559-663", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0, label: "Apocalypse, Fire Ice, and Brain Boss" }, { value: 0.05, label: "Blob Boss" }, { value: 0.137, label: "Cloud" }, { value: 0.4, label: "Saucer" }, { value: 0.5, label: "Standard" }, { value: 0.6, label: "Blob World and Jungle" }] }, String(getOttoEnvironmentDefaults(levelIndex).background[1]), ottoEnvironmentGroup, "determined"),
+        editableRule("level.environmentBackgroundB", "Background blue", "Controls the blue channel of the cleared view background. Values range from 0.00 to 1.00. This changes the background color only; it does not recolor terrain or lighting.", String(getOttoEnvironmentDefaults(levelIndex).background[2]), "System/GameMain.c:559-663", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0, label: "Apocalypse and Fire Ice" }, { value: 0.1, label: "Standard and Brain Boss" }, { value: 0.29, label: "Blob Boss" }, { value: 0.3, label: "Jungle" }, { value: 0.431, label: "Cloud" }, { value: 0.7, label: "Saucer" }, { value: 0.8, label: "Blob World" }] }, String(getOttoEnvironmentDefaults(levelIndex).background[2]), ottoEnvironmentGroup, "determined"),
+        editableRule("level.environmentLensFlare", "Sun lens flare", "Controls whether the sun lens flare is drawn in the 3D view. This is a presentation effect only; it does not change the sun direction or lighting of objects.", String(getOttoEnvironmentDefaults(levelIndex).lensFlare), "System/GameMain.c:559-663; 3D/Camera.c:73-84", { kind: "checkbox" }, String(getOttoEnvironmentDefaults(levelIndex).lensFlare), ottoEnvironmentGroup, "determined"),
         editableRule("level.sky", "Sky and horizon", "Choose the sky and horizon treatment. Standard renders the ordinary sky; Apocalypse renders its glowing sky and horizon edge behavior. This changes the background appearance, not terrain collision or level identity.", levelIndex === 3 ? "apocalypse" : "standard", "Effects/Sky.c:82-252", getOttoControl("level.sky", ["standard", "apocalypse"])),
         editableRule("level.cloudTwoSidedTerrain", "Two-sided Cloud terrain", "Keeps both sides of Cloud scaffolding polygons visible. This is a rendering choice only; it does not enable Cloud pits, cannons, or power-ups.", levelIndex === 4 ? "true" : "false", "Terrain/Terrain.c:164-174", { kind: "checkbox" }),
         editableRule("level.cloudBlankTiles", "Cloud blank-tile pits", "Treats blank Cloud terrain tiles as bottomless pits when calculating the terrain surface. This is separate from the enemy and player pit responses below.", levelIndex === 4 ? "true" : "false", "Terrain/Terrain.c:1325-1338", { kind: "checkbox" }),
@@ -1179,7 +1820,16 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
         editableRule("level.blobBossEffects", "Blob Boss animated effects", "Animates the Blob Boss platform and pipe textures and rotates its spinning platform. This does not create the boss machine or deformation by itself.", levelIndex === 2 ? "true" : "false", "System/GameMain.c:498-510", { kind: "checkbox" }),
         editableRule("level.cloudEffects", "Cloud animated effects", "Updates the Cloud zig-zag slats each frame. This does not enable Cloud terrain, cannons, or bumper cars.", levelIndex === 4 ? "true" : "false", "System/GameMain.c:512-514", { kind: "checkbox" }),
         editableRule("level.camera", "Camera behavior", "Choose the camera height and tracking rules. Standard uses the ordinary camera; Blob Boss uses the lower camera treatment for that world. This changes the view, not player movement or level resources.", levelIndex === 2 ? "blob-boss" : "standard", "3D/Camera.c:246-297; System/GameMain.c:443-527", getOttoControl("level.camera", ["standard", "blob-boss"])),
-        editableRule("level.lighting", "Lighting", "Controls the world sun direction, ambient light, and fill-light direction and color. Fog, background color, horizon distance, and lens flare are controlled separately by View environment.", getOttoLightingProfile(levelIndex), "System/GameMain.c:671-764", getOttoControl("level.lighting", ["standard", "blob", "blob-boss", "apocalypse", "jungle", "jungle-boss", "fire-ice", "saucer", "brain-boss"])),
+        editableRule("level.lighting", "Lighting preset", "Choose a named lighting preset for the sun direction, ambient light, and fill-light color. The individual values below are read-only for named presets; choose Custom lighting values to edit them independently.", getOttoLightingProfile(levelIndex), "System/GameMain.c:671-790", getOttoControl("level.lighting", ["standard", "blob-boss", "apocalypse", "jungle", "jungle-boss", "fire-ice", "saucer", "brain-boss", "custom"]), getOttoLightingProfile(levelIndex), ottoLightingGroup, "preset"),
+        editableRule("level.lightingSunX", "Sun direction — horizontal", "Controls the horizontal component of the normalized world-light direction. The game normalizes the three sun-direction components together; changing this value changes the direction of object shading and the lens-flare source.", String(getOttoLightingDefaults(levelIndex).sunDirection[0]), "System/GameMain.c:671-790", { kind: "slider", min: -1, max: 1, step: 0.01, gameValues: [{ value: 0.5, label: "Most standard worlds" }, { value: 0.1, label: "Jungle Boss" }, { value: -0.5, label: "Brain Boss" }] }, String(getOttoLightingDefaults(levelIndex).sunDirection[0]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingSunY", "Sun direction — vertical", "Controls the vertical component of the normalized world-light direction. Negative values place the light above the world; the game normalizes the three components together.", String(getOttoLightingDefaults(levelIndex).sunDirection[1]), "System/GameMain.c:671-790", { kind: "slider", min: -1, max: 1, step: 0.01, gameValues: [{ value: -0.35, label: "Standard and Blob Boss" }, { value: -0.6, label: "Apocalypse" }, { value: -0.8, label: "Jungle" }, { value: -1, label: "Fire Ice" }] }, String(getOttoLightingDefaults(levelIndex).sunDirection[1]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingSunZ", "Sun direction — depth", "Controls the depth component of the normalized world-light direction. The game normalizes the three components together; changing this value changes which side of objects receives the world light.", String(getOttoLightingDefaults(levelIndex).sunDirection[2]), "System/GameMain.c:671-790", { kind: "slider", min: -1, max: 1, step: 0.01, gameValues: [{ value: 0.8, label: "Standard, Jungle, and Brain Boss" }, { value: -0.8, label: "Saucer" }, { value: -1, label: "Jungle Boss" }, { value: 0, label: "Fire Ice" }] }, String(getOttoLightingDefaults(levelIndex).sunDirection[2]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingAmbientR", "Ambient light — red", "Controls the red channel of the world’s ambient light. Values range from 0.00 to 1.00 and affect the base light on shaded objects, not the view background.", String(getOttoLightingDefaults(levelIndex).ambient[0]), "System/GameMain.c:671-790", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0.2, label: "Blob Boss and Apocalypse" }, { value: 0.3, label: "Jungle and boss worlds" }, { value: 0.4, label: "Standard" }] }, String(getOttoLightingDefaults(levelIndex).ambient[0]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingAmbientG", "Ambient light — green", "Controls the green channel of the world’s ambient light. Values range from 0.00 to 1.00 and affect the base light on shaded objects, not the view background.", String(getOttoLightingDefaults(levelIndex).ambient[1]), "System/GameMain.c:671-790", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0.2, label: "Blob Boss and Apocalypse" }, { value: 0.25, label: "Saucer" }, { value: 0.3, label: "Jungle and boss worlds" }, { value: 0.4, label: "Standard" }] }, String(getOttoLightingDefaults(levelIndex).ambient[1]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingAmbientB", "Ambient light — blue", "Controls the blue channel of the world’s ambient light. Values range from 0.00 to 1.00 and affect the base light on shaded objects, not the view background.", String(getOttoLightingDefaults(levelIndex).ambient[2]), "System/GameMain.c:671-790", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0.2, label: "Blob Boss and Apocalypse" }, { value: 0.25, label: "Saucer" }, { value: 0.3, label: "Jungle and boss worlds" }, { value: 0.36, label: "Standard" }] }, String(getOttoLightingDefaults(levelIndex).ambient[2]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingFillR", "Fill light — red", "Controls the red channel of the single fill light applied to world geometry. Values range from 0.00 to 1.00; this does not change ambient light or the sun direction.", String(getOttoLightingDefaults(levelIndex).fillColor[0]), "System/GameMain.c:671-790", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0.6, label: "Apocalypse" }, { value: 0.7, label: "Fire Ice" }, { value: 0.9, label: "Standard fill" }] }, String(getOttoLightingDefaults(levelIndex).fillColor[0]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingFillG", "Fill light — green", "Controls the green channel of the single fill light applied to world geometry. Values range from 0.00 to 1.00; this does not change ambient light or the sun direction.", String(getOttoLightingDefaults(levelIndex).fillColor[1]), "System/GameMain.c:671-790", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0.6, label: "Fire Ice" }, { value: 0.7, label: "Apocalypse" }, { value: 0.9, label: "Standard fill" }] }, String(getOttoLightingDefaults(levelIndex).fillColor[1]), ottoLightingGroup, "determined"),
+        editableRule("level.lightingFillB", "Fill light — blue", "Controls the blue channel of the single fill light applied to world geometry. Values range from 0.00 to 1.00; this does not change ambient light or the sun direction.", String(getOttoLightingDefaults(levelIndex).fillColor[2]), "System/GameMain.c:671-790", { kind: "slider", min: 0, max: 1, step: 0.01, gameValues: [{ value: 0.6, label: "Fire Ice" }, { value: 0.7, label: "Apocalypse" }, { value: 0.85, label: "Standard fill" }] }, String(getOttoLightingDefaults(levelIndex).fillColor[2]), ottoLightingGroup, "determined"),
         editableRule("level.autoFade", "Object draw distance", "Choose how far objects remain visible before they fade or are culled. Standard uses the ordinary range; Fog Only, Apocalypse, and Saucer use their corresponding visibility ranges. This changes visibility, not object placement or collision.", levelIndex === 1 ? "fog-only" : levelIndex === 3 ? "apocalypse" : levelIndex === 8 ? "saucer" : "standard", "System/GameMain.c:701-735", getOttoControl("level.autoFade", ["standard", "fog-only", "apocalypse", "saucer"])),
         editableRule("level.blobDeformation", "Blob terrain deformation", "Selects the Blob terrain deformation strength. None leaves the terrain static, Blob World adds the ordinary waves, and Blob Boss adds its larger waves. Gravity and slipperiness are separate settings.", levelIndex === 1 ? "blob" : levelIndex === 2 ? "blob-boss" : "none", "System/GameMain.c:897-958", getOttoControl("level.blobDeformation", ["none", "blob", "blob-boss"])),
         editableRule("level.blobBossMachine", "Blob Boss machine", "Creates the Blob Boss machine at level start. This is independent from Blob Boss terrain deformation, gravity, camera, platform, and robot behavior.", levelIndex === 2 ? "true" : "false", "System/GameMain.c:927-934", { kind: "checkbox" }),
@@ -1209,7 +1859,6 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
         editableRule("level.rocketFuel", "Exit fuel requirement", "Controls only whether the exit door requires a full fuel tank. It does not control the boss gate or tractor-beam gate, which are separate conditions below.", levelIndex === 6 || levelIndex === 8 ? "not-required" : "required", "Player/Player.c:1442-1463", getOttoControl("level.rocketFuel", ["required", "not-required"])),
         editableRule("level.rocketBossGate", "Exit boss gate", "Prevents the exit door from opening until the Brain Boss is defeated. This gate is independent from fuel and tractor-beam requirements.", levelIndex === 9 ? "true" : "false", "Player/Player.c:1450-1454", { kind: "checkbox" }),
         editableRule("level.rocketTractorBeamGate", "Exit tractor-beam gate", "Prevents the exit door from opening while the Jungle Boss tractor beam is active. This gate is independent from fuel and boss-defeat requirements.", levelIndex === 6 ? "true" : "false", "Player/Player.c:1439-1445", { kind: "checkbox" }),
-        editableRule("level.rocketPersistence", "Exit rocket stays loaded", "Keeps the exit rocket loaded when it moves outside the active terrain range. This is one independent persistence rule; it does not select a Jungle, Saucer, or Brain Boss variant.", [6, 8, 9].includes(levelIndex) ? "true" : "false", "Player/Player.c:1399-1412; Player/Player.c:1477-1490", { kind: "checkbox" }),
         editableRule("level.exitHelp", "Exit help prompt", "Shows or hides the Enter Ship help prompt when the player reaches the exit rocket.", ![6, 8, 9].includes(levelIndex) ? "true" : "false", "Player/Player.c:876-896", { kind: "checkbox" }),
         editableRule("level.blobLandingWell", "Blob landing well", "Uses the Blob World landing-rocket behavior that checks whether the player has been sucked into the Blob well. This does not enable robot landing waves or the Blob bonus-screen presentation.", levelIndex === 1 ? "true" : "false", "Player/Player.c:1530-1533", { kind: "checkbox" }),
         editableRule("level.blobLandingDeformation", "Blob landing waves", "Creates the Blob World deformation wave when the robot lands hard on the terrain. This is independent from the player’s Blob landing well and the Blob bonus screen.", levelIndex === 1 ? "true" : "false", "Player/Player_Robot.c:1080-1086", { kind: "checkbox" }),

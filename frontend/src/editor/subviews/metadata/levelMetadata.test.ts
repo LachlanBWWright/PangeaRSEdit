@@ -2,7 +2,12 @@ import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS, getLevelIndex } from "@/editor/utils/gamePortConfig";
 import { describe, expect, it } from "vitest";
 import { getLevelMetadataDetails } from "./levelMetadata";
-import { getMetadataResourceMode } from "./metadataResource";
+import {
+  getMetadataResourceMode,
+  hasMetadataProperty,
+  resetMetadataResource,
+  updateMetadataResource,
+} from "./metadataResource";
 import { metadataResourceTypeSchema } from "@/validation/levelDataSchemas";
 import { getMetadataRuleValueLabel, getMetadataValueLabel } from "./levelMetadataRules";
 import { readFileSync, readdirSync } from "node:fs";
@@ -20,7 +25,158 @@ function readNativeSourceTree(root: string): string {
     .join("\n");
 }
 
+function getMetadataReaderCall(game: Game, key: string): string | undefined {
+  const floatKeys: Readonly<Record<number, readonly string[]>> = {
+    [Game.BUGDOM_2]: [
+      "level.renderingBackgroundR", "level.renderingBackgroundG", "level.renderingBackgroundB",
+      "level.renderingFogStart", "level.renderingFogEnd", "level.renderingTerrainScale",
+      "level.renderingFieldOfView", "level.lightingAmbientR", "level.lightingAmbientG",
+      "level.lightingAmbientB", "level.lightingFill1X", "level.lightingFill1Y", "level.lightingFill1Z",
+      "level.lightingFill1R", "level.lightingFill1G", "level.lightingFill1B", "level.lightingFill2X",
+      "level.lightingFill2Y", "level.lightingFill2Z", "level.lightingFill2R", "level.lightingFill2G",
+      "level.lightingFill2B",
+    ],
+    [Game.CRO_MAG]: [
+      "track.lightingSunX", "track.lightingSunY", "track.lightingSunZ", "track.lightingAmbientR",
+      "track.lightingAmbientG", "track.lightingAmbientB", "track.lightingFillR", "track.lightingFillG",
+      "track.lightingFillB", "track.skyRed", "track.skyGreen", "track.skyBlue",
+    ],
+    [Game.NANOSAUR_2]: [
+      "level.renderingBackgroundR", "level.renderingBackgroundG", "level.renderingBackgroundB",
+      "level.renderingFogStart", "level.renderingFogEnd", "level.renderingAmbientR",
+      "level.renderingAmbientG", "level.renderingAmbientB", "level.renderingSunX", "level.renderingSunY",
+      "level.renderingSunZ", "level.renderingFillR", "level.renderingFillG", "level.renderingFillB",
+    ],
+  };
+  if (floatKeys[game]?.includes(key)) return `GetLevelMetadataFloat("${key}"`;
+  const boolKeys: Readonly<Record<number, readonly string[]>> = {
+    [Game.BUGDOM_2]: ["level.renderingFog", "level.renderingLensFlare"],
+    [Game.NANOSAUR_2]: ["level.renderingLensFlare"],
+  };
+  if (boolKeys[game]?.includes(key)) return `GetLevelMetadataBool("${key}"`;
+  if (game === Game.BUGDOM_2 && key === "level.lightingFillCount") return `GetLevelMetadataString("${key}"`;
+  if (game === Game.CRO_MAG && ["track.lighting", "track.sky"].includes(key)) return `TrackMetadataProfileIs("${key}"`;
+  switch (game) {
+    case Game.BILLY_FRONTIER:
+    case Game.CRO_MAG:
+      return `LevelMetadataProfileIs("${key}"`;
+    case Game.BUGDOM:
+      if (["level.flyingBeeSetup", "level.workerBeeSetup", "level.beeFlightRegeneration", "level.queenBeeRegeneration", "level.antKing", "level.beachNutRegeneration", "level.dragonflyRide", "level.splineItems", "presentation.levelIntro"].includes(key)) {
+        return `LevelMetadataProfileIs("${key}"`;
+      }
+      return `LevelMetadataCaseFor("${key}"`;
+    case Game.BUGDOM_2:
+      return `LevelMetadataCaseFor("${key}"`;
+    case Game.MIGHTY_MIKE:
+      return `LevelMetadataScene("${key}"`;
+    case Game.NANOSAUR:
+      return undefined;
+    case Game.NANOSAUR_2:
+      if (key === "level.mapView") return `LevelMetadataMapViewFor("${key}"`;
+      if (["level.doorMotion", "level.flightHeight", "level.intro", "level.minePlacement", "level.raceMarkers", "level.turretRange"].includes(key)) {
+        return `LevelMetadataProfileIs("${key}"`;
+      }
+      return `LevelMetadataCaseFor("${key}"`;
+    case Game.OTTO_MATIC:
+      return undefined;
+  }
+}
+
 describe("level metadata details", () => {
+  it("keeps metadata properties sparse and resets them independently", () => {
+    const first = updateMetadataResource(
+      undefined,
+      Game.OTTO_MATIC,
+      "Blob World",
+      "level.gravity",
+      "3900",
+    );
+    expect(first.properties).toEqual({ "level.gravity": "3900" });
+    expect(hasMetadataProperty(first, "level.gravity")).toBe(true);
+    expect(hasMetadataProperty(first, "level.tileSlipperiness")).toBe(false);
+
+    const second = updateMetadataResource(
+      first,
+      Game.OTTO_MATIC,
+      "Blob World",
+      "level.tileSlipperiness",
+      "0.1",
+    );
+    expect(second.properties).toEqual({
+      "level.gravity": "3900",
+      "level.tileSlipperiness": "0.1",
+    });
+
+    const resetOne = resetMetadataResource(second, "level.gravity");
+    expect(resetOne?.properties).toEqual({ "level.tileSlipperiness": "0.1" });
+    expect(resetMetadataResource(resetOne, "level.tileSlipperiness")).toBeUndefined();
+  });
+
+  it("keeps Mighty Mike scene overrides sparse and identity-scoped", () => {
+    const first = updateMetadataResource(
+      undefined,
+      Game.MIGHTY_MIKE,
+      "Jurassic 1",
+      "scene.sound",
+      "bargain",
+    );
+    expect(first).toEqual({
+      schemaVersion: 1,
+      game: "mightymike",
+      identity: "Jurassic 1",
+      properties: { "scene.sound": "bargain" },
+    });
+
+    const second = updateMetadataResource(
+      first,
+      Game.MIGHTY_MIKE,
+      "Jurassic 1",
+      "area.doors",
+      "clown",
+    );
+    expect(second.properties).toEqual({
+      "scene.sound": "bargain",
+      "area.doors": "clown",
+    });
+
+    const nextArea = updateMetadataResource(
+      second,
+      Game.MIGHTY_MIKE,
+      "Candy 2",
+      "scene.cinema",
+      "fairy",
+    );
+    expect(nextArea.properties).toEqual({ "scene.cinema": "fairy" });
+    expect(resetMetadataResource(nextArea, "scene.cinema")).toBeUndefined();
+  });
+
+  it("keeps Nanosaur 2 overrides sparse across independent behavior settings", () => {
+    const first = updateMetadataResource(
+      undefined,
+      Game.NANOSAUR_2,
+      "level1",
+      "level.minePlacement",
+      "forest",
+    );
+    expect(first.properties).toEqual({ "level.minePlacement": "forest" });
+    expect(hasMetadataProperty(first, "level.doorMotion")).toBe(false);
+
+    const second = updateMetadataResource(
+      first,
+      Game.NANOSAUR_2,
+      "level1",
+      "level.doorMotion",
+      "continuous",
+    );
+    expect(second.properties).toEqual({
+      "level.minePlacement": "forest",
+      "level.doorMotion": "continuous",
+    });
+    const resetMine = resetMetadataResource(second, "level.minePlacement");
+    expect(resetMine?.properties).toEqual({ "level.doorMotion": "continuous" });
+    expect(resetMetadataResource(resetMine, "level.doorMotion")).toBeUndefined();
+  });
+
   it("connects every editable key to each native game source tree", () => {
     const gameRoots: readonly (readonly [Game, string])[] = [
       [Game.OTTO_MATIC, "../../../../../games/pangea-ports/games/OttoMatic-Android/src"],
@@ -203,8 +359,8 @@ describe("level metadata details", () => {
     expect(editableKeys).toContain("level.infobar");
     expect(editableKeys).toContain("level.completion");
     expect(editableKeys).toContain("level.areaUpdate");
-    expect(editableKeys).toContain("level.rendering");
-    expect(editableKeys).toContain("level.lighting");
+    expect(editableKeys).not.toContain("level.rendering");
+    expect(editableKeys).not.toContain("level.lighting");
     expect(editableKeys).toContain("level.autoFade");
     expect(editableKeys).toContain("level.levelInit");
     expect(editableKeys).not.toContain("level.presentation");
@@ -284,6 +440,172 @@ describe("level metadata details", () => {
     expect(brainBossTrigger?.value).toBe("player-landed");
   });
 
+  it("keeps Otto fuel as a profile-valued dropdown", () => {
+    const levelInfo = GAME_PORT_CONFIGS[Game.OTTO_MATIC].levels[8];
+    expect(levelInfo).toBeDefined();
+    if (!levelInfo) return;
+
+    const fuelRule = getLevelMetadataDetails(Game.OTTO_MATIC, 8, levelInfo).runtimeRules
+      .find((rule) => rule.key === "level.rocketFuel");
+    expect(fuelRule?.value).toBe("not-required");
+    expect(fuelRule?.control).toEqual(expect.objectContaining({
+      kind: "select",
+      options: ["required", "not-required"],
+    }));
+
+    const playerSource = readFileSync(
+      join(__dirname, "../../../../../games/pangea-ports/games/OttoMatic-Android/src/Player/Player.c"),
+      "utf8",
+    );
+    expect(playerSource).toContain('LevelMetadataProfileIs("level.rocketFuel", "required"');
+    expect(playerSource).not.toContain('GetLevelMetadataBool("level.rocketFuel"');
+  });
+
+  it("keeps every Otto metadata reader aligned with its control type", () => {
+    const levelInfo = GAME_PORT_CONFIGS[Game.OTTO_MATIC].levels[0];
+    expect(levelInfo).toBeDefined();
+    if (!levelInfo) return;
+
+    const details = getLevelMetadataDetails(Game.OTTO_MATIC, 0, levelInfo);
+    const rulesByKey = new Map(details.runtimeRules.map((rule) => [rule.key, rule]));
+    const nativeSource = readNativeSourceTree(join(
+      __dirname,
+      "../../../../../games/pangea-ports/games/OttoMatic-Android/src",
+    ));
+    const checkboxKeys = [
+      "level.brainAlien",
+      "level.cloudPits",
+      "level.cloudCannon",
+      "level.cloudBalloonPowerups",
+      "level.cloudTransparentBlack",
+      "level.cloudTwoSidedTerrain",
+      "level.cloudBlankTiles",
+      "level.fences",
+      "level.saucers",
+      "level.blobEffects",
+      "level.blobBossEffects",
+      "level.cloudEffects",
+      "level.blobBossMachine",
+      "level.teleporters",
+      "level.spacePods",
+      "level.bumperCars",
+      "level.jungleBoss",
+      "level.zipLines",
+      "level.brainBoss",
+      "level.saucerMode",
+      "level.rocketDoorStaysOpen",
+      "level.environmentLensFlare",
+      "level.rocketBossGate",
+      "level.rocketTractorBeamGate",
+      "level.exitHelp",
+      "level.rocketExit",
+      "level.blobLandingWell",
+      "level.blobLandingDeformation",
+      "level.blobBonusScreen",
+      "level.robotStartHeight",
+      "level.robotBlobBounce",
+      "level.robotElectricFloor",
+      "level.bonusTractorBeam",
+      "level.introVisible",
+      "level.introGlow",
+      "level.finalLevel",
+      "level.blobBossEnvMap",
+      "level.growthPowerups",
+      "level.reducedPowerupSparkles",
+    ];
+    checkboxKeys.forEach((key) => {
+      expect(rulesByKey.get(key)?.control.kind, key).toBe("checkbox");
+      expect(nativeSource, key).toContain(`GetLevelMetadataBool("${key}"`);
+    });
+
+    const profileKeys = [
+      "level.camera",
+      "level.introTiming",
+      "level.jungleWeapons",
+      "level.flytrapTargeting",
+      "level.sky",
+      "level.splineSurface",
+      "level.transport",
+      "level.zipLineStyle",
+      "level.blobDeformation",
+      "level.rocketExitTrigger",
+      "level.rocketFuel",
+    ];
+    profileKeys.forEach((key) => {
+      expect(rulesByKey.get(key)?.control.kind, key).toBe("select");
+      expect(nativeSource, key).toContain(`LevelMetadataProfileIs("${key}"`);
+    });
+
+    const caseKeys = [
+      "level.environment",
+      "level.lighting",
+      "level.autoFade",
+      "level.player",
+      "level.sky",
+    ];
+    caseKeys.forEach((key) => {
+      expect(rulesByKey.get(key)?.control.kind, key).toBe("select");
+      expect(nativeSource, key).toContain(`LevelMetadataCaseFor("${key}"`);
+    });
+
+    ["level.gravity", "level.tileSlipperiness"].forEach((key) => {
+      expect(rulesByKey.get(key)?.control.kind, key).toBe("slider");
+      expect(nativeSource, key).toContain(`ReadMetadataFloat(json, "${key}"`);
+    });
+    [
+      "level.environmentViewDistance",
+      "level.environmentBackgroundR",
+      "level.environmentBackgroundG",
+      "level.environmentBackgroundB",
+      "level.lightingSunX",
+      "level.lightingSunY",
+      "level.lightingSunZ",
+      "level.lightingAmbientR",
+      "level.lightingAmbientG",
+      "level.lightingAmbientB",
+      "level.lightingFillR",
+      "level.lightingFillG",
+      "level.lightingFillB",
+    ].forEach((key) => {
+      expect(rulesByKey.get(key)?.control.kind, key).toBe("slider");
+      expect(nativeSource, key).toContain(`GetLevelMetadataFloat("${key}"`);
+    });
+    expect(nativeSource).not.toContain('LevelMetadataCaseFor("level.assetIdentity"');
+  });
+
+  it("keeps non-Otto metadata controls connected to native readers", () => {
+    const gameRoots: readonly (readonly [Game, string])[] = [
+      [Game.BILLY_FRONTIER, "../../../../../games/pangea-ports/games/BillyFrontier-Android/Source"],
+      [Game.BUGDOM, "../../../../../games/pangea-ports/games/Bugdom-android/src"],
+      [Game.BUGDOM_2, "../../../../../games/pangea-ports/games/Bugdom2-Android/Source"],
+      [Game.CRO_MAG, "../../../../../games/pangea-ports/games/CroMagRally-Android/Source"],
+      [Game.MIGHTY_MIKE, "../../../../../games/pangea-ports/games/MightyMike-Android/src"],
+      [Game.NANOSAUR, "../../../../../games/pangea-ports/games/Nanosaur-android/src"],
+      [Game.NANOSAUR_2, "../../../../../games/pangea-ports/games/Nanosaur2-Android/Source"],
+    ];
+
+    gameRoots.forEach(([game, root]) => {
+      const levelInfo = GAME_PORT_CONFIGS[game].levels[0];
+      expect(levelInfo).toBeDefined();
+      if (!levelInfo) return;
+
+      const rules = getLevelMetadataDetails(game, 0, levelInfo).runtimeRules;
+      const nativeSource = readNativeSourceTree(join(__dirname, root));
+      const editableRules = rules.filter((rule) => rule.editable);
+
+      expect(editableRules.every((rule) => ["select", "slider", "checkbox"].includes(rule.control.kind)), String(game)).toBe(true);
+      if (![Game.BUGDOM_2, Game.NANOSAUR_2].includes(game)) {
+        expect(nativeSource, String(game)).not.toContain('GetLevelMetadataBool("');
+      }
+      editableRules.forEach((rule) => {
+        const readerCall = getMetadataReaderCall(game, rule.key);
+        expect(readerCall, `${game} ${rule.key}`).toBeDefined();
+        if (!readerCall) return;
+        expect(nativeSource, `${game} ${rule.key}`).toContain(readerCall);
+      });
+    });
+  });
+
   it("exposes every Otto runtime setting with a semantic control", () => {
     const levelInfo = GAME_PORT_CONFIGS[Game.OTTO_MATIC].levels[2];
     expect(levelInfo).toBeDefined();
@@ -295,6 +617,11 @@ describe("level metadata details", () => {
       "level.gravity",
       "level.tileSlipperiness",
       "level.environment",
+      "level.environmentViewDistance",
+      "level.environmentBackgroundR",
+      "level.environmentBackgroundG",
+      "level.environmentBackgroundB",
+      "level.environmentLensFlare",
       "level.sky",
       "level.cloudTwoSidedTerrain",
       "level.cloudBlankTiles",
@@ -309,6 +636,15 @@ describe("level metadata details", () => {
       "level.cloudEffects",
       "level.camera",
       "level.lighting",
+      "level.lightingSunX",
+      "level.lightingSunY",
+      "level.lightingSunZ",
+      "level.lightingAmbientR",
+      "level.lightingAmbientG",
+      "level.lightingAmbientB",
+      "level.lightingFillR",
+      "level.lightingFillG",
+      "level.lightingFillB",
       "level.autoFade",
       "level.blobDeformation",
       "level.blobBossMachine",
@@ -338,7 +674,6 @@ describe("level metadata details", () => {
       "level.rocketFuel",
       "level.rocketBossGate",
       "level.rocketTractorBeamGate",
-      "level.rocketPersistence",
       "level.exitHelp",
       "level.blobLandingWell",
       "level.blobLandingDeformation",
@@ -402,6 +737,119 @@ describe("level metadata details", () => {
     details.runtimeRules.filter((rule) => rule.editable).forEach((rule) => {
       expect(nativeSource, rule.key).toContain(`"${rule.key}"`);
     });
+    expect(nativeSource).toContain('LevelMetadataUsesCustomValues("level.environment")');
+    expect(nativeSource).toContain('LevelMetadataUsesCustomValues("level.lighting")');
+  });
+
+  it("lists Otto's actual environment and lighting values in slider metadata", () => {
+    const levelInfo = GAME_PORT_CONFIGS[Game.OTTO_MATIC].levels[4];
+    expect(levelInfo).toBeDefined();
+    if (!levelInfo) return;
+
+    const rules = getLevelMetadataDetails(Game.OTTO_MATIC, 4, levelInfo).runtimeRules;
+    const valuesFor = (key: string): readonly number[] => {
+      const rule = rules.find((candidate) => candidate.key === key);
+      if (!rule || rule.control.kind !== "slider") return [];
+      return rule.control.gameValues?.map((gameValue) => gameValue.value) ?? [];
+    };
+
+    expect(valuesFor("level.environmentBackgroundR")).toEqual([0, 0.1, 0.17, 0.2, 0.6, 0.686, 0.8]);
+    expect(valuesFor("level.environmentBackgroundG")).toEqual([0, 0.05, 0.137, 0.4, 0.5, 0.6]);
+    expect(valuesFor("level.environmentBackgroundB")).toEqual([0, 0.1, 0.29, 0.3, 0.431, 0.7, 0.8]);
+    expect(valuesFor("level.lightingAmbientG")).toEqual([0.2, 0.25, 0.3, 0.4]);
+    expect(valuesFor("level.lightingAmbientB")).toEqual([0.2, 0.25, 0.3, 0.36]);
+  });
+
+  it("groups Otto presets with their determined values and exposes custom editing", () => {
+    const levelInfo = GAME_PORT_CONFIGS[Game.OTTO_MATIC].levels[4];
+    expect(levelInfo).toBeDefined();
+    if (!levelInfo) return;
+
+    const rules = getLevelMetadataDetails(Game.OTTO_MATIC, 4, levelInfo).runtimeRules;
+    const environmentPreset = rules.find((rule) => rule.key === "level.environment");
+    const environmentDistance = rules.find((rule) => rule.key === "level.environmentViewDistance");
+    const lightingPreset = rules.find((rule) => rule.key === "level.lighting");
+    const lightingSun = rules.find((rule) => rule.key === "level.lightingSunX");
+
+    expect(environmentPreset?.control).toEqual(expect.objectContaining({
+      kind: "select",
+      options: expect.arrayContaining(["custom"]),
+    }));
+    expect(environmentPreset?.group?.id).toBe("otto-environment");
+    expect(environmentPreset?.groupRole).toBe("preset");
+    expect(environmentDistance?.group?.id).toBe("otto-environment");
+    expect(environmentDistance?.groupRole).toBe("determined");
+    expect(environmentPreset?.group?.determinedValues.cloud?.["level.environmentViewDistance"]).toBe("1");
+
+    expect(lightingPreset?.control).toEqual(expect.objectContaining({
+      kind: "select",
+      options: expect.arrayContaining(["custom"]),
+    }));
+    expect(lightingPreset?.group?.id).toBe("otto-lighting");
+    expect(lightingSun?.group?.id).toBe("otto-lighting");
+    expect(lightingSun?.groupRole).toBe("determined");
+  });
+
+  it("groups the other visual profiles with their underlying values", () => {
+    const bugdom2Rules = getLevelMetadataDetails(
+      Game.BUGDOM_2,
+      2,
+      GAME_PORT_CONFIGS[Game.BUGDOM_2].levels[2],
+    ).runtimeRules;
+    const bugdom2Rendering = bugdom2Rules.find((rule) => rule.key === "level.rendering");
+    const bugdom2Fog = bugdom2Rules.find((rule) => rule.key === "level.renderingFog");
+    const bugdom2Background = bugdom2Rules.find((rule) => rule.key === "level.renderingBackgroundR");
+    expect(bugdom2Rendering?.control).toEqual(expect.objectContaining({ options: expect.arrayContaining(["custom"]) }));
+    expect(bugdom2Rendering?.groupRole).toBe("preset");
+    expect(bugdom2Fog?.group?.id).toBe("bugdom2-rendering");
+    expect(bugdom2Rendering?.group?.determinedValues.fido?.["level.renderingFog"]).toBe("true");
+    expect(bugdom2Background?.control).toEqual(expect.objectContaining({
+      kind: "slider",
+      gameValues: expect.arrayContaining([
+        { value: 0.9, label: "Sidewalk" },
+        { value: 0, label: "Balsa" },
+      ]),
+    }));
+
+    const croMagRules = getLevelMetadataDetails(
+      Game.CRO_MAG,
+      2,
+      GAME_PORT_CONFIGS[Game.CRO_MAG].levels[2],
+    ).runtimeRules;
+    const croMagLighting = croMagRules.find((rule) => rule.key === "track.lighting");
+    const croMagAmbient = croMagRules.find((rule) => rule.key === "track.lightingAmbientR");
+    const croMagSky = croMagRules.find((rule) => rule.key === "track.sky");
+    const croMagSkyRed = croMagRules.find((rule) => rule.key === "track.skyRed");
+    expect(croMagLighting?.control).toEqual(expect.objectContaining({ options: expect.arrayContaining(["custom"]) }));
+    expect(croMagAmbient?.group?.id).toBe("cromag-lighting");
+    expect(croMagLighting?.group?.determinedValues.ice?.["track.lightingAmbientR"]).toBe("0.7");
+    expect(croMagSky?.control).toEqual(expect.objectContaining({ options: expect.arrayContaining(["custom"]) }));
+    expect(croMagSkyRed?.control).toEqual(expect.objectContaining({
+      kind: "slider",
+      gameValues: expect.arrayContaining([
+        { value: 153 / 255, label: "Desert" },
+        { value: 61 / 255, label: "Coliseum" },
+      ]),
+    }));
+
+    const nanosaur2Rules = getLevelMetadataDetails(
+      Game.NANOSAUR_2,
+      0,
+      GAME_PORT_CONFIGS[Game.NANOSAUR_2].levels[0],
+    ).runtimeRules;
+    const nanosaur2Rendering = nanosaur2Rules.find((rule) => rule.key === "level.rendering");
+    const nanosaur2Fog = nanosaur2Rules.find((rule) => rule.key === "level.renderingFogStart");
+    const nanosaur2Background = nanosaur2Rules.find((rule) => rule.key === "level.renderingBackgroundR");
+    expect(nanosaur2Rendering?.control).toEqual(expect.objectContaining({ options: expect.arrayContaining(["custom"]) }));
+    expect(nanosaur2Fog?.group?.id).toBe("nanosaur2-rendering");
+    expect(nanosaur2Rendering?.group?.determinedValues.forest?.["level.renderingFogStart"]).toBe("0.35");
+    expect(nanosaur2Background?.control).toEqual(expect.objectContaining({
+      kind: "slider",
+      gameValues: expect.arrayContaining([
+        { value: 0.43, label: "Forest" },
+        { value: 0.968, label: "Desert" },
+      ]),
+    }));
   });
 
   it("exposes only consumed Nanosaur 2 behavior settings", () => {
@@ -417,13 +865,28 @@ describe("level metadata details", () => {
       "level.raceMarkers",
       "level.intro",
       "level.rendering",
+      "level.renderingBackgroundR",
+      "level.renderingBackgroundG",
+      "level.renderingBackgroundB",
+      "level.renderingFogStart",
+      "level.renderingFogEnd",
+      "level.renderingAmbientR",
+      "level.renderingAmbientG",
+      "level.renderingAmbientB",
+      "level.renderingSunX",
+      "level.renderingSunY",
+      "level.renderingSunZ",
+      "level.renderingFillR",
+      "level.renderingFillG",
+      "level.renderingFillB",
+      "level.renderingLensFlare",
     ];
     GAME_PORT_CONFIGS[Game.NANOSAUR_2].levels.forEach((levelInfo, levelIndex) => {
       const details = getLevelMetadataDetails(Game.NANOSAUR_2, levelIndex, levelInfo);
       const editableRules = details.runtimeRules.filter((rule) => rule.editable);
       expect(editableRules.map((rule) => rule.key)).toEqual(expectedKeys);
       expect(editableRules.every((rule) => rule.citations.length > 0)).toBe(true);
-      expect(editableRules.every((rule) => rule.control.kind === "select")).toBe(true);
+      expect(editableRules.every((rule) => ["select", "slider", "checkbox"].includes(rule.control.kind))).toBe(true);
     });
   });
 
@@ -556,7 +1019,19 @@ describe("level metadata details", () => {
       "track.vehicle",
       "track.music",
       "track.lighting",
+      "track.lightingSunX",
+      "track.lightingSunY",
+      "track.lightingSunZ",
+      "track.lightingAmbientR",
+      "track.lightingAmbientG",
+      "track.lightingAmbientB",
+      "track.lightingFillR",
+      "track.lightingFillG",
+      "track.lightingFillB",
       "track.sky",
+      "track.skyRed",
+      "track.skyGreen",
+      "track.skyBlue",
       "track.liquidMaterial",
       "track.campfire",
       "track.startLineCollision",
@@ -666,6 +1141,14 @@ describe("level metadata details", () => {
     expect(rules.map((rule) => rule.key)).toEqual(["area.mode"]);
     expect(rules[0]?.description).not.toContain("terrain resource");
     expect(rules[0]?.description).toContain("save slot");
+  });
+
+  it("rejects structurally incomplete Billy metadata before reading properties", () => {
+    const portRoot = join(__dirname, "../../../../../games/pangea-ports/games/BillyFrontier-Android/Source");
+    const fileSource = readFileSync(join(portRoot, "System/File.c"), "utf8");
+    expect(fileSource).toContain("MetadataJSONLooksValid");
+    expect(fileSource).toContain("!MetadataJSONLooksValid(json)");
+    expect(fileSource).toContain("lastSignificant == '}'");
   });
 
   it("does not expose identity or audit-only rows as editable fields", () => {
@@ -829,6 +1312,31 @@ describe("level metadata details", () => {
     });
   });
 
+  it("loads Mighty Mike metadata before first-area audio and validates its document boundary", () => {
+    const portRoot = join(__dirname, "../../../../../games/pangea-ports/games/MightyMike-Android/src");
+    const mainSource = readFileSync(join(portRoot, "Heart/Main.c"), "utf8");
+    const metadataSource = readFileSync(join(portRoot, "System/LevelMetadata.c"), "utf8");
+    const cmakeSource = readFileSync(join(portRoot, "..", "CMakeLists.txt"), "utf8");
+    const initAreaSource = mainSource.slice(
+      mainSource.indexOf("void InitArea(void)"),
+      mainSource.indexOf("void LoadAreaArt(void)"),
+    );
+    const loadAreaArtSource = mainSource.slice(mainSource.indexOf("void LoadAreaArt(void)"));
+    expect(initAreaSource.indexOf("LoadAreaArt();")).toBeLessThan(
+      initAreaSource.indexOf("PlayAreaMusic();"),
+    );
+    expect(loadAreaArtSource.indexOf("LoadLevelMetadata(gCustomMapPath")).toBeLessThan(
+      loadAreaArtSource.indexOf("LoadPlayfield(path);"),
+    );
+    expect(metadataSource).toContain("static Boolean IsBalancedJSON");
+    expect(metadataSource).toContain("!IsBalancedJSON(json)");
+    expect(metadataSource).toContain('#include "LevelMetadataJSON.h"');
+    expect(metadataSource).toContain("PangeaLevelMetadataJSONIsValid");
+    expect(cmakeSource).toContain('option(PANGEA_ENABLE_LEVEL_METADATA "Enable per-level metadata overrides" ON)');
+    expect(metadataSource).toContain("#if defined(PANGEA_ENABLE_LEVEL_METADATA)");
+    expect(metadataSource).toContain("return fallback;");
+  });
+
   it("does not expose inactive Nanosaur 1 metadata fields as editable", () => {
     const levelInfo = GAME_PORT_CONFIGS[Game.NANOSAUR].levels[0];
     expect(levelInfo).toBeDefined();
@@ -849,6 +1357,16 @@ describe("level metadata details", () => {
       details.runtimeRules.map(() => "resolved"),
     );
   });
+
+	it("loads Nanosaur 1 companion metadata without making identity editable", () => {
+		const source = readNativeSourceTree(join(__dirname, "../../../../../games/pangea-ports/games/Nanosaur-android/src"));
+		const mainSource = readFileSync(join(__dirname, "../../../../../games/pangea-ports/games/Nanosaur-android/src/System/Main.c"), "utf8");
+		const fileSource = readFileSync(join(__dirname, "../../../../../games/pangea-ports/games/Nanosaur-android/src/System/File.c"), "utf8");
+		expect(mainSource).toContain("LoadNanosaurMetadata");
+		expect(fileSource).toContain('PangeaLevelMetadataJSONIsValid(json, length, "nanosaur1")');
+		expect(fileSource).toContain("PANGEA_ENABLE_LEVEL_METADATA");
+		expect(source).not.toContain("gNanosaurMetadataLevel");
+	});
 
   it("validates the four-character Meta resource shape", () => {
     const result = metadataResourceTypeSchema.safeParse({
