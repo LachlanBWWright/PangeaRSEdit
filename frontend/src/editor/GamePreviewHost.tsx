@@ -13,6 +13,7 @@ import type {
   MultiplayerRuntimeEvent,
   PreviewRuntimeModule,
   PreviewVfsFile,
+  PreviewRuntimeFailure,
 } from "./utils/gamePreviewRuntime";
 
 interface Props {
@@ -42,6 +43,7 @@ interface Props {
   readonly networkMatchConfig?: MultiplayerMatchConfig | null;
   readonly networkRuntimeTransport?: MultiplayerRuntimeManagedTransport | null;
   readonly onRuntimeError?: (message: string) => void;
+  readonly onRuntimeFailure?: (failure: PreviewRuntimeFailure) => void;
   readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
   readonly onRuntimeModule?: (module: PreviewRuntimeModule | null) => void;
   /** When true, launch from the title screen without level injection or level-jump globals. */
@@ -60,6 +62,7 @@ export function GamePreviewHost({
   networkMatchConfig,
   networkRuntimeTransport,
   onRuntimeError,
+  onRuntimeFailure,
   onRuntimeEvent,
   onRuntimeModule,
   normalLaunch = false,
@@ -105,6 +108,7 @@ export function GamePreviewHost({
           errorText: text,
         });
       },
+      onFailure: onRuntimeFailure,
       onRuntimeEvent,
       onRuntimeModule,
     });
@@ -117,6 +121,7 @@ export function GamePreviewHost({
     networkMatchConfig,
     networkRuntimeTransport,
     onRuntimeError,
+    onRuntimeFailure,
     onRuntimeEvent,
     onRuntimeModule,
     terrainDataBytes,

@@ -161,9 +161,9 @@ export function StandardEditorView({
   };
 
   return (
-    <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
+    <div className={`flex flex-col flex-1 w-full gap-2 min-h-0 ${view === View.tiles || view === View.scripts ? "" : "pt-2 md:pt-6"}`}>
       <MenuSection
-        scrollable={view !== View.supertiles}
+        key={view}
         className={view === View.scripts || view === View.metadata ? "!h-full" : undefined}
       >
         {view === View.fences &&

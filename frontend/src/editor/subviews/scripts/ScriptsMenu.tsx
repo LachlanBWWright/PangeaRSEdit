@@ -8,6 +8,7 @@ import { LevelNumber } from "@/data/globals/levelNumber";
 import { SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline, SelectedSplineItem } from "@/data/splines/splineAtoms";
 import { TestGameDialog } from "@/editor/TestGameDialog";
+import type { PreviewRuntimeFailure } from "@/editor/utils/gamePreviewRuntime";
 import { getSelectedItem } from "@/editor/subviews/items/itemMenuState";
 import type {
   FenceData,
@@ -830,12 +831,13 @@ export function ScriptsMenu({
 
   return (
     <>
-      <div className="h-full overflow-y-auto p-6 pr-12 text-sm">
+      <div className="h-full overflow-y-auto text-sm">
             <Tabs
+              className="editor-script-tabs"
               value={activeTab}
               onValueChange={(value) => setActiveTab(parseScriptsTab(value))}
             >
-        <TabsList className="grid grid-cols-4 gap-1">
+        <TabsList className="editor-subnavbar grid grid-cols-4 gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="code">Code</TabsTrigger>
@@ -1348,27 +1350,27 @@ export function ScriptsMenu({
         terrainRsrcBytes={previewRsrcBytes}
         terrainTextureBytes={previewTextureBytes}
         customFiles={previewCustomFiles}
-        onScriptRuntimeDiagnostic={(message) => {
+        onScriptRuntimeFailure={(failure: PreviewRuntimeFailure) => {
           updateWorkspace((state) =>
             appendScriptDiagnostic(state, {
-              category: "runtime-traceback",
+              category: failure.category,
               severity: "error",
-              message,
-              code: "runtime.traceback",
+              message: failure.message,
+              code: failure.code,
               filePath: "Data/Scripts/dist/main.lua",
               line: 0,
               column: 0,
             }),
           );
         }}
-        onPreviewRuntimeError={(message) => {
+        onPreviewRuntimeFailure={(failure: PreviewRuntimeFailure) => {
           updateWorkspace((state) =>
             appendScriptDiagnostic(state, {
-              category: "native-adapter",
+              category: failure.category,
               severity: "error",
-              message,
-              code: "runtime.native",
-              filePath: "runtime",
+              message: failure.message,
+              code: failure.code,
+              filePath: failure.category === "packaging" ? "Data/Scripts/config" : "runtime",
               line: 0,
               column: 0,
             }),

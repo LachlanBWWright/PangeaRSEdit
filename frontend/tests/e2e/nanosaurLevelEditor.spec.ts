@@ -9,7 +9,9 @@ import { Buffer } from "node:buffer";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { runScriptPackageRoundTrip } from "./scriptPackageRoundTrip";
 import { runScriptRuntimeTraceback } from "./scriptRuntimeTraceback";
+import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,9 +35,10 @@ function nanosaurCard(page: Page): Locator {
 }
 
 function levelActionsSummary(page: Page): Locator {
-  return page.locator("summary").filter({
-    hasText: "Level Actions",
-  });
+  return page
+    .locator("summary")
+    .filter({ hasText: "Level Actions" })
+    .or(page.getByRole("button", { name: "Level Actions", exact: true }));
 }
 
 async function uploadNanosaurLevelFiles(page: Page): Promise<void> {
@@ -173,9 +176,7 @@ test.describe("Nanosaur level editor", () => {
     await expect(levelActionsSummary(page)).toBeVisible({ timeout: 30000 });
 
     await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-    await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
+    const dialog = await openScriptWorkspace(page);
     await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
     await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
     await dialog.getByRole("tab", { name: "Preview and Export", exact: true }).click();
@@ -214,6 +215,30 @@ test.describe("Nanosaur level editor", () => {
         buffer: scriptPackageBytes,
       });
     await expect(page.getByText(/Imported /)).toBeVisible({ timeout: 30000 });
+  });
+
+  test("runs the uploaded Nanosaur level through scripted and native previews", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        "pangea-feature-flags",
+        JSON.stringify({
+          scripting: true,
+          multiplayer: false,
+          itemModelMappingPreview: false,
+        }),
+      );
+    });
+    await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: "Nanosaur", exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+    await runScriptPackageRoundTrip(page, nanosaurCard(page), [
+      nanosaurLevelPath,
+      nanosaurTexturePath,
+    ]);
   });
 
   test("renders production source-validation diagnostics after editing a script", async ({
@@ -280,16 +305,18 @@ test.describe("Nanosaur level editor", () => {
     await uploadNanosaurLevelFiles(page);
     await expect(levelActionsSummary(page)).toBeVisible({ timeout: 30000 });
     await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-    await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
+    const openScriptsButton = page.getByRole("button", { name: "Open Scripts", exact: true });
+    if ((await openScriptsButton.count()) > 0) {
+      await openScriptsButton.click();
+    }
+    const dialog = page.getByRole("dialog").last();
+    const workspace: Locator | Page = (await dialog.count()) > 0 ? dialog : page;
+    await workspace.getByRole("tab", { name: "Assignments", exact: true }).click();
+    await workspace.locator("#custom-object-label").fill("Nanosaur Test Object");
+    await workspace.getByRole("button", { name: "Save Object", exact: true }).click();
+    await expect(workspace.getByText("Nanosaur Test Object", { exact: true }).first()).toBeVisible();
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole("tab", { name: "Assignments", exact: true }).click();
-    await dialog.locator("#custom-object-label").fill("Nanosaur Test Object");
-    await dialog.getByRole("button", { name: "Save Object", exact: true }).click();
-    await expect(dialog.getByText("Nanosaur Test Object", { exact: true })).toBeVisible();
-
-    const visualType = dialog.getByRole("combobox", {
+    const visualType = workspace.getByRole("combobox", {
       name: "Nanosaur Test Object visual type",
     });
     await visualType.click();
@@ -312,27 +339,27 @@ test.describe("Nanosaur level editor", () => {
     await expect(page.locator("#scripted-item-x")).toHaveValue("240");
 
     await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-    await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-    const reopenedDialog = page.getByRole("dialog");
-    await expect(reopenedDialog).toBeVisible();
-    await reopenedDialog
+    if ((await openScriptsButton.count()) > 0) {
+      await openScriptsButton.click();
+    }
+    const reopenedDialog = page.getByRole("dialog").last();
+    const reopenedWorkspace: Locator | Page = (await reopenedDialog.count()) > 0 ? reopenedDialog : page;
+    await reopenedWorkspace
       .getByRole("tab", { name: "Assignments", exact: true })
       .click();
-    await expect(
-      reopenedDialog.getByText("Nanosaur Test Object", { exact: true }),
-    ).toBeVisible();
+    await expect(reopenedWorkspace.getByText("Nanosaur Test Object", { exact: true }).first()).toBeVisible();
 
-    await reopenedDialog
+    await reopenedWorkspace
       .getByRole("tab", { name: "Preview and Export", exact: true })
       .click();
-    await reopenedDialog
+    await reopenedWorkspace
       .getByRole("button", { name: "Compile Bundle", exact: true })
       .click();
     await expect(page.getByText("Script bundle compiled")).toBeVisible({
       timeout: 30000,
     });
 
-    await reopenedDialog
+    await reopenedWorkspace
       .getByRole("button", { name: "Preview with Scripts", exact: true })
       .click();
     const previewDialog = page.getByRole("dialog").last();
@@ -353,6 +380,10 @@ test.describe("Nanosaur level editor", () => {
     await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({
       timeout: 30000,
     });
+    await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+    await previewDialog.getByRole("button", { name: "Reload Game", exact: true }).click();
+    await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 30000 });
+    await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
   });
 
   test("surfaces a production Lua runtime traceback in Nanosaur", async ({

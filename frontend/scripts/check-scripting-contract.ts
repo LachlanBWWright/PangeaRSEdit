@@ -49,6 +49,10 @@ interface RuntimeGameCapabilities {
   readonly mapItems: boolean;
   readonly pickupScoreEffects: boolean;
   readonly objectCollision: boolean;
+  readonly playerScore: boolean;
+  readonly playerLives: boolean;
+  readonly playerInventory: boolean;
+  readonly weaponScoreEffects: boolean;
   readonly playerCommands: boolean;
   readonly playerInvulnerability: boolean;
 }
@@ -150,17 +154,17 @@ const adapterSaveLoadCallSites: readonly {
 
 const playerCommandBinding = (
   gameId: string,
-  field: "setPlayerHealth" | "setPlayerInvulnerable" | "setPlayerPosition",
+  field: "setPlayerHealth" | "setPlayerShieldActive" | "setPlayerInvulnerable" | "setPlayerPosition",
   functionName: string,
 ): {
   readonly gameId: string;
-  readonly field: "setPlayerHealth" | "setPlayerInvulnerable" | "setPlayerPosition";
+  readonly field: "setPlayerHealth" | "setPlayerShieldActive" | "setPlayerInvulnerable" | "setPlayerPosition";
   readonly functionName: string;
 } => ({ gameId, field, functionName });
 
 const adapterPlayerCommandBindings: readonly {
   readonly gameId: string;
-  readonly field: "setPlayerHealth" | "setPlayerInvulnerable" | "setPlayerPosition";
+  readonly field: "setPlayerHealth" | "setPlayerShieldActive" | "setPlayerInvulnerable" | "setPlayerPosition";
   readonly functionName: string;
 }[] = [
   playerCommandBinding("OttoMatic-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
@@ -170,12 +174,20 @@ const adapterPlayerCommandBindings: readonly {
   playerCommandBinding("Nanosaur2-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
   playerCommandBinding("CroMagRally-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
   playerCommandBinding("BillyFrontier-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("MightyMike-Android", "setPlayerHealth", "SetScriptPlayerHealth"),
+  playerCommandBinding("Bugdom-android", "setPlayerShieldActive", "SetScriptPlayerShieldActive"),
+  playerCommandBinding("Bugdom2-Android", "setPlayerShieldActive", "SetScriptPlayerShieldActive"),
+  playerCommandBinding("Nanosaur-android", "setPlayerShieldActive", "SetScriptPlayerShieldActive"),
+  playerCommandBinding("Nanosaur2-Android", "setPlayerShieldActive", "SetScriptPlayerShieldActive"),
+  playerCommandBinding("BillyFrontier-Android", "setPlayerShieldActive", "SetScriptPlayerShieldActive"),
+  playerCommandBinding("MightyMike-Android", "setPlayerShieldActive", "SetScriptPlayerShieldActive"),
   playerCommandBinding("OttoMatic-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
   playerCommandBinding("Bugdom-android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
   playerCommandBinding("Bugdom2-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
   playerCommandBinding("Nanosaur-android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
   playerCommandBinding("Nanosaur2-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
   playerCommandBinding("BillyFrontier-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
+  playerCommandBinding("MightyMike-Android", "setPlayerInvulnerable", "SetScriptPlayerInvulnerable"),
   playerCommandBinding("OttoMatic-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
   playerCommandBinding("Bugdom-android", "setPlayerPosition", "SetScriptPlayerPosition"),
   playerCommandBinding("Bugdom2-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
@@ -183,6 +195,7 @@ const adapterPlayerCommandBindings: readonly {
   playerCommandBinding("Nanosaur2-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
   playerCommandBinding("CroMagRally-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
   playerCommandBinding("BillyFrontier-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
+  playerCommandBinding("MightyMike-Android", "setPlayerPosition", "SetScriptPlayerPosition"),
 ];
 
 const adapterLifecycleCalls: readonly string[] = [
@@ -761,7 +774,7 @@ function parseAdapterCapabilities(
     return err(`Adapter capability metadata is incomplete: ${path}`);
   }
   const capabilityValues = metadataSource.match(
-    new RegExp(`#define\\s+${capabilityMacro}\\s+\\{\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*\\}`),
+    new RegExp(`#define\\s+${capabilityMacro}\\s+\\{\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*\\}`),
   );
   if (!capabilityValues) return err(`Generated capability metadata is missing: ${capabilityMacro}`);
   return ok({
@@ -771,9 +784,22 @@ function parseAdapterCapabilities(
     mapItems: capabilityValues[3] === "true",
     pickupScoreEffects: capabilityValues[4] === "true",
     objectCollision: capabilityValues[5] === "true",
-    playerCommands: source.includes(".setPlayerHealth =") || source.includes(".setPlayerInvulnerable =") || source.includes(".setPlayerPosition ="),
+    playerScore: capabilityValues[6] === "true",
+    playerLives: capabilityValues[7] === "true",
+    playerInventory: capabilityValues[8] === "true",
+    weaponScoreEffects: capabilityValues[9] === "true",
+    playerCommands: source.includes(".setPlayerHealth =") || source.includes(".setPlayerShieldActive =") || source.includes(".setPlayerInvulnerable =") || source.includes(".setPlayerPosition ="),
     playerInvulnerability: source.includes(".setPlayerInvulnerable ="),
   });
+}
+
+function parseAdapterPlayerEvents(source: string): Result<readonly string[], string> {
+  const events = [...source.matchAll(
+    /PangeaScript_CallPlayerEvent\([^;]*?,\s*"([^"]+)"\s*\)/g,
+  )]
+    .map((match) => match[1])
+    .filter((event): event is string => event !== undefined);
+  return ok([...new Set(events)].sort());
 }
 
 function parseAdapterNativeItems(
@@ -985,6 +1011,13 @@ function validateAdapterCapabilities(metadataSource: string): Result<true, strin
     if (source.isErr()) return err(source.error);
     const nativeItems = parseAdapterNativeItems(source.value, relativePath);
     if (nativeItems.isErr()) return err(nativeItems.error);
+    const dispatchedPlayerEvents = parseAdapterPlayerEvents(source.value);
+    if (dispatchedPlayerEvents.isErr()) return err(dispatchedPlayerEvents.error);
+    for (const event of dispatchedPlayerEvents.value) {
+      if (!game.supportedHooks.includes(event)) {
+        return err(`Adapter dispatches undeclared player event ${event}: ${game.gameId}`);
+      }
+    }
     for (const hook of game.supportedHooks) {
       const call = Object.entries(adapterHookCalls).find(
         ([hookId]) => hookId === hook,
@@ -1103,6 +1136,10 @@ function validateAdapterCapabilities(metadataSource: string): Result<true, strin
       mapItems: contract.capabilities.mapItemHooks === "supported",
       pickupScoreEffects: contract.capabilities.pickupScoreEffects === "supported",
       objectCollision: contract.capabilities.objectCollision === "supported",
+      playerScore: contract.capabilities.playerScore === "supported",
+      playerLives: contract.capabilities.playerLives === "supported",
+      playerInventory: contract.capabilities.playerInventory === "supported",
+      weaponScoreEffects: contract.capabilities.weaponHitEvents === "supported" && contract.capabilities.playerScore === "supported",
       playerCommands: contract.capabilities.playerCommands === "supported",
       playerInvulnerability: contract.capabilities.playerInvulnerability === "supported",
     };

@@ -56,6 +56,7 @@ import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl
 import { LevelScaleControl } from "../subviews/tiles/LevelScaleControl";
 import {
   supportsLevelScale,
+  supportsLevelScalePlacement,
   type LevelScaleMode,
 } from "../utils/levelScaleState";
 
@@ -159,7 +160,7 @@ export function IndividualTilesMenu({
   };
 
   return (
-    <div className="flex flex-col gap-2 p-1">
+    <div className="editor-tabbed-menu flex flex-col gap-2 p-1">
       {semanticAttributes.length > 0 && (
         <Tabs
           value={tileView === TileViews.Attributes ? "attributes" : "topology"}
@@ -170,7 +171,7 @@ export function IndividualTilesMenu({
             setCanvasViewMode(CanvasView.TWO_D);
           }}
         >
-          <TabsList className="grid grid-cols-2 gap-2 w-full overflow-clip">
+          <TabsList className="editor-subnavbar grid grid-cols-2 gap-2 w-full overflow-clip">
             <TabsTrigger className="w-full" value="topology">
               Topology
             </TabsTrigger>
@@ -332,6 +333,9 @@ export function IndividualTilesMenu({
           {supportsLevelScale(globals.GAME_TYPE) && onApplyLevelScale && (
             <LevelScaleControl
               tileSize={headerData.Hedr[1000].obj.tileSize}
+              supportsPlacementBehavior={supportsLevelScalePlacement(
+                globals.GAME_TYPE,
+              )}
               onApply={onApplyLevelScale}
             />
           )}

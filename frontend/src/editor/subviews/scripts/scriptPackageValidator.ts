@@ -135,6 +135,7 @@ export interface PackageValidationError {
 
 export interface ScriptPackageValidationOptions {
   readonly assetsPrevalidated?: boolean;
+  readonly allowLegacySources?: boolean;
 }
 
 function parseJsonBytes(bytes: Uint8Array): Result<unknown, string> {
@@ -174,11 +175,13 @@ export function validateScriptPackage(
     if (path.startsWith("Data/Scripts/src/")) {
       if (!path.endsWith(".lua")) {
         const isLegacySource = /\.(?:ts|tsx|js)$/i.test(path);
-        errors.push(
-          isLegacySource
-            ? `Legacy TypeScript/JavaScript package detected at ${path}; convert the source to Lua 5.4 before importing.`
-            : `Script source files must be Lua: ${path}`,
-        );
+        if (!isLegacySource || !options.allowLegacySources) {
+          errors.push(
+            isLegacySource
+              ? `Legacy TypeScript/JavaScript package detected at ${path}; convert the source to Lua 5.4 before importing.`
+              : `Script source files must be Lua: ${path}`,
+          );
+        }
       }
     }
     if (path.startsWith("Data/Scripts/assets/")) {

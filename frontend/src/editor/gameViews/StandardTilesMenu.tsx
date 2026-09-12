@@ -107,7 +107,7 @@ export function StandardTilesMenu({
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="editor-tabbed-menu flex flex-col gap-2">
       <Tabs
         value={
           tileView === TileViews.Topology
@@ -128,7 +128,7 @@ export function StandardTilesMenu({
           }
         }}
       >
-        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
+        <TabsList className="editor-subnavbar grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
           <TabsTrigger className="w-full" value="topology">
             Topology
           </TabsTrigger>

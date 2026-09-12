@@ -43,7 +43,7 @@ export function LiquidPreview({
     <img
       src={src}
       alt={alt}
-      className="max-h-36 max-w-full object-contain"
+      className="max-h-full max-w-full object-contain"
     />
   );
 }

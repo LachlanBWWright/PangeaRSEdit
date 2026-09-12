@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { Result } from "neverthrow";
 import { z } from "zod";
 
 const runtimeScript = `local pangea = require("pangea")
@@ -11,13 +12,37 @@ end
 return entry
 `;
 
+const nativeLifecycleTraceSchema = z.object({
+  eventCount: z.number().int().nonnegative(),
+  entryCount: z.number().int().nonnegative(),
+  overflow: z.boolean(),
+  entries: z.array(z.object({
+    eventId: z.string(),
+    applicationPhase: z.string(),
+    order: z.number().int().nonnegative(),
+    targetId: z.number().int(),
+    targetGeneration: z.number().int().nonnegative(),
+    status: z.number().int(),
+  })),
+});
+
 function buildRuntimeScript(
   nativeProbeIds: readonly string[] | undefined,
+  playerStateProbe: boolean,
+  playerObjectiveStateProbe: boolean,
+  playerEggStateProbe: boolean,
+  playerCaptureStateProbe: boolean,
+  vehicleStateProbe: boolean,
+  modeStateProbe: boolean,
+  playerFormTransitionProbe: boolean,
   playerCommandProbe: boolean,
   playerVelocityProbe: boolean,
   pickupScoreCapabilityProbe: boolean,
+  pickupProbe: boolean,
+  weaponHitProbe: boolean,
   damageProbe: boolean,
   splineEventProbe: boolean,
+  mapItemProbe: boolean,
   capabilityExpectations: RuntimeCapabilityExpectations | undefined,
   contextExpectations: RuntimeContextExpectations | undefined,
   lifecycleProbe: boolean,
@@ -30,12 +55,15 @@ function buildRuntimeScript(
   levelCompleteProbe: boolean,
   raceCompletionProbe: boolean,
   raceCompletionCompleteProbe: boolean,
+  raceProgressProbe: boolean,
   areaCompletionProbe: boolean,
   objectiveCompletionProbe: boolean,
   persistenceProbe: boolean,
+  buddyLaunchProbe: boolean,
+  deathProbe: boolean,
 ): string {
   void replacementLifecycleProbe;
-  if ((nativeProbeIds === undefined || nativeProbeIds.length === 0) && !playerCommandProbe && !playerVelocityProbe && !pickupScoreCapabilityProbe && !damageProbe && !splineEventProbe && !lifecycleProbe && !childCleanupProbe && !recreationProbe && !checkpointResetProbe && !objectCommandProbe && !levelStartProbe && !levelCompleteProbe && !raceCompletionProbe && !areaCompletionProbe && !objectiveCompletionProbe && !persistenceProbe) {
+  if ((nativeProbeIds === undefined || nativeProbeIds.length === 0) && !playerStateProbe && !playerObjectiveStateProbe && !playerEggStateProbe && !playerCaptureStateProbe && !vehicleStateProbe && !modeStateProbe && !playerFormTransitionProbe && !playerCommandProbe && !playerVelocityProbe && !pickupScoreCapabilityProbe && !pickupProbe && !weaponHitProbe && !damageProbe && !splineEventProbe && !mapItemProbe && !lifecycleProbe && !childCleanupProbe && !recreationProbe && !checkpointResetProbe && !objectCommandProbe && !levelStartProbe && !levelCompleteProbe && !raceCompletionProbe && !areaCompletionProbe && !objectiveCompletionProbe && !persistenceProbe && !buddyLaunchProbe && !deathProbe) {
     return runtimeScript;
   }
   const probes = (nativeProbeIds ?? []).map((nativeProbeId) => `
@@ -74,15 +102,124 @@ function buildRuntimeScript(
   const playerVelocityProbeScript = playerVelocityProbe ? `
     local velocityCommand = pangea.player.setVelocityResult(0, {x = 0, y = 0, z = 0})
     assert(velocityCommand.ok and velocityCommand.playerNum == 0, velocityCommand.message)` : "";
+  const playerStateProbeScript = playerStateProbe ? `
+    local playerState = pangea.player.get(0)
+    assert(playerState and playerState.score == 0 and playerState.lives == 3, "native player score/lives snapshot drifted")
+    if ctx.gameId == "MightyMike-Android" then
+      assert(playerState.coinCount ~= nil and playerState.coinCount >= 0, "Mighty Mike coin state was not published")
+      assert(playerState.sceneNum ~= nil and playerState.areaNum ~= nil and playerState.areaComplete ~= nil, "Mighty Mike level-flow state was not published")
+      assert(playerState.sceneNum >= 0 and playerState.areaNum >= 0, "Mighty Mike level-flow state drifted")
+      assert(playerState.camera ~= nil, "Mighty Mike camera state was not published")
+      assert(playerState.camera.x >= 0 and playerState.camera.y >= 0, "Mighty Mike camera state drifted")
+    elseif ctx.gameId == "Bugdom-android" then
+      assert(playerState.camera ~= nil, "Bugdom camera state was not published")
+    elseif ctx.gameId == "OttoMatic-Android" then
+      assert(playerState.fuel ~= nil and playerState.fuel >= 0, "Otto Matic fuel state was not published")
+      assert(playerState.aim ~= nil, "Otto Matic aim state was not published")
+      assert(playerState.camera ~= nil, "Otto Matic camera state was not published")
+      local aimLength = math.sqrt(playerState.aim.x * playerState.aim.x + playerState.aim.y * playerState.aim.y + playerState.aim.z * playerState.aim.z)
+      assert(math.abs(aimLength - 1) < 0.01, "Otto Matic aim state was not normalized")
+      assert(playerState.activeWeapon ~= nil and playerState.weapons ~= nil, "Otto Matic weapon inventory state was not published")
+      for index, weapon in ipairs(playerState.weapons) do
+        assert(weapon.type ~= nil and weapon.quantity ~= nil and weapon.type >= 0 and weapon.quantity >= 0, "Otto Matic weapon inventory state drifted at slot " .. index)
+      end
+    elseif ctx.gameId == "BillyFrontier-Android" then
+      assert(playerState.aim ~= nil, "Billy Frontier aim state was not published")
+      local aimLength = math.sqrt(playerState.aim.x * playerState.aim.x + playerState.aim.y * playerState.aim.y + playerState.aim.z * playerState.aim.z)
+      assert(math.abs(aimLength - 1) < 0.01, "Billy Frontier aim state was not normalized")
+      assert(playerState.camera ~= nil, "Billy Frontier camera state was not published")
+      assert(playerState.activeWeapon == 0 and playerState.weapons ~= nil and #playerState.weapons == 1, "Billy Frontier bounded weapon state drifted")
+    end` : "";
+  const billyCurrencyProbeScript = playerStateProbe ? `
+    if ctx.gameId == "BillyFrontier-Android" then
+      local playerState = pangea.player.get(0)
+      assert(playerState and playerState.pesoCount ~= nil and playerState.pesoCount >= 0, "Billy Frontier peso state was not published")
+    end` : "";
+  const playerObjectiveStateProbeScript = playerObjectiveStateProbe ? `
+    local playerState = pangea.player.get(0)
+    assert(playerState and playerState.miceRescued ~= nil and playerState.miceTotal ~= nil, "Bugdom 2 mouse snapshot fields were not published")
+    assert(playerState.drowningMiceRescued ~= nil and playerState.drowningMiceRequired ~= nil, "Bugdom 2 drowning-mouse snapshot fields were not published")
+    assert(playerState.childObjectCount ~= nil and playerState.childObjectCount >= 0, "Bugdom 2 child-object state was not published")
+    assert(playerState.miceRescued >= 0 and playerState.miceTotal >= playerState.miceRescued, "Bugdom 2 mouse snapshot totals drifted")
+    assert(playerState.drowningMiceRescued >= 0 and playerState.drowningMiceRequired >= playerState.drowningMiceRescued, "Bugdom 2 drowning-mouse snapshot totals drifted")
+    assert(playerState.aim ~= nil, "Bugdom 2 aim state was not published")
+    local aimLength = math.sqrt(playerState.aim.x * playerState.aim.x + playerState.aim.y * playerState.aim.y + playerState.aim.z * playerState.aim.z)
+    assert(math.abs(aimLength - 1) < 0.01, "Bugdom 2 aim state was not normalized")
+    assert(playerState.camera ~= nil, "Bugdom 2 camera state was not published")` : "";
+  const playerEggStateProbeScript = playerEggStateProbe ? `
+    local playerState = pangea.player.get(0)
+    assert(playerState and playerState.eggs ~= nil and #playerState.eggs == 5, "Nanosaur egg snapshot fields were not published")
+    for index, progress in ipairs(playerState.eggs) do
+      assert(progress.recovered >= 0 and progress.required >= progress.recovered, "Nanosaur egg recovery count drifted at species " .. index)
+    end
+    if ctx.gameId == "Nanosaur-android" or ctx.gameId == "Nanosaur2-Android" then
+      assert(playerState.fuel ~= nil and playerState.fuel >= 0, "Nanosaur fuel state was not published")
+      assert(playerState.activeWeapon ~= nil and playerState.weapons ~= nil, "Nanosaur weapon inventory state was not published")
+      assert(playerState.aim ~= nil, "Nanosaur aim state was not published")
+      local aimLength = math.sqrt(playerState.aim.x * playerState.aim.x + playerState.aim.y * playerState.aim.y + playerState.aim.z * playerState.aim.z)
+      assert(math.abs(aimLength - 1) < 0.01, "Nanosaur aim state was not normalized")
+      assert(playerState.camera ~= nil, "Nanosaur camera state was not published")
+      for index, weapon in ipairs(playerState.weapons) do
+        assert(weapon.type ~= nil and weapon.quantity ~= nil and weapon.type >= 0 and weapon.quantity >= 0, "Nanosaur weapon inventory state drifted at slot " .. index)
+      end
+    end
+    if ctx.mode == "race" then
+      assert(playerState.checkpointNum ~= nil and playerState.placement ~= nil and playerState.raceComplete ~= nil, "Nanosaur 2 race snapshot fields were not published")
+      assert(playerState.checkpointNum >= 0 and playerState.placement >= 0, "Nanosaur 2 race snapshot values drifted")
+    elseif ctx.mode == "capture" then
+      assert(playerState.team ~= nil and playerState.captureScore ~= nil and playerState.carryingFlag ~= nil, "Nanosaur 2 capture snapshot fields were not published")
+      assert(playerState.team >= 0 and playerState.captureScore >= 0, "Nanosaur 2 capture snapshot values drifted")
+    end
+    if ctx.gameId == "Nanosaur2-Android" and playerState.lives ~= nil then
+      assert(pangea.player.setLives(0, 0), "Nanosaur 2 low-lives setup failed")
+      lowLivesResetPending = true
+    end` : "";
   const pickupScoreProbe = pickupScoreCapabilityProbe ? `
     assert(pangea.api.capabilities().pickupScoreEffects == true, "pickup score capability was not published by the adapter")` : "";
+  const pickupProbeScript = pickupProbe ? `
+function entry.onPickupCollected(ctx)
+${lifecycleProbe ? `  recordLifecycleCallback("pickup")` : ""}
+  assert(ctx.pickupId == "nanosaur.powerup" or ctx.pickupId == "nanosaur.crystal" or ctx.pickupId == "nanosaur.egg" or ctx.pickupId == "nanosaur2.fuelPow" or ctx.pickupId == "nanosaur2.shieldPow" or ctx.pickupId == "nanosaur2.freeLifePow" or ctx.pickupId == "cromag.pow" or ctx.pickupId == "cromag.token", "Pickup id drifted")
+  if ctx.pickupId == "nanosaur.powerup" then
+    assert(ctx.pickupType == 0 or ctx.pickupType == 3 or ctx.pickupType == 4, "Nanosaur power-up type drifted")
+  end
+  assert(ctx.amount > 0, "Nanosaur pickup amount was not published")
+  if ctx.pickupId == "nanosaur2.freeLifePow" then
+    return {handled = true, consumePickup = false, healthDelta = 0.25, scoreDelta = 0}
+  end
+  if ctx.pickupId == "nanosaur2.fuelPow" or ctx.pickupId == "nanosaur2.shieldPow" then
+    return {handled = true, consumePickup = true, healthDelta = 0.25, scoreDelta = 0}
+  end
+  if ctx.pickupId == "nanosaur.crystal" then
+    return {handled = true, consumePickup = false, healthDelta = 0, scoreDelta = 7}
+  end
+  if ctx.pickupId == "cromag.pow" or ctx.pickupId == "cromag.token" then
+    return {handled = true, consumePickup = false, healthDelta = 0, scoreDelta = 0}
+  end
+  return {handled = true, healthDelta = 0, scoreDelta = 7}
+end
+` : "";
+  const weaponHitProbeScript = weaponHitProbe ? `
+function entry.onWeaponHit(ctx)
+${lifecycleProbe ? `  recordLifecycleCallback("weaponHit")` : ""}
+  assert(ctx.damage >= 0, "weapon damage was not published")
+  if ctx.gameId == "Nanosaur-android" then
+    assert(ctx.weaponId == "nanosaur.projectile", "Nanosaur weapon id drifted")
+    return {handled = true, damage = ctx.damage, applyDamage = true, destroyTarget = true, scoreDelta = 7}
+  end
+  assert(ctx.weaponId == "ottomatic.projectile", "Otto Matic weapon id drifted")
+  return {handled = true, damage = ctx.damage, applyDamage = false, scoreDelta = 7}
+end
+` : "";
   const damageProbeScript = damageProbe ? `
 function entry.onDamage(ctx)
+${lifecycleProbe ? `  recordLifecycleCallback("damage")` : ""}
   assert(ctx.damage == 2 and ctx.cause == 4, "Bugdom 2 damage probe context drifted")
   return {handled = true, damage = 0.5, applyDamage = true}
 end
 
 function entry.onDamageApplied(ctx)
+${lifecycleProbe ? `  recordLifecycleCallback("damageApplied")` : ""}
   assert(ctx.damage == 0.5 and ctx.cause == 4, "Bugdom 2 applied-damage probe context drifted")
 end
 ` : "";
@@ -92,6 +229,30 @@ function entry.onSplineItem(ctx)
   return {handled = true, markInUse = true}
 end
 ` : "";
+  const mapItemProbeScript = mapItemProbe ? `
+local mapItemsObserved = 0
+local sceneSpecificObserved = false
+
+function entry.onMapItem(ctx)
+  assert(ctx.sceneName == "jurassic" or ctx.sceneName == "candy" or ctx.sceneName == "fairy" or ctx.sceneName == "clown" or ctx.sceneName == "bargain", "Mighty Mike scene context drifted")
+  assert(ctx.areaName == "area-1" or ctx.areaName == "area-2" or ctx.areaName == "area-3", "Mighty Mike area context drifted")
+  assert(ctx.itemType >= 0 and ctx.itemType <= 55, "Mighty Mike map item type escaped the native range")
+  assert(ctx.x == ctx.x and ctx.y == ctx.y, "Mighty Mike map item coordinates were not finite")
+  assert(ctx.params ~= nil and #ctx.params == 4, "Mighty Mike map item parameters drifted")
+  local sceneSpecificTypes = {
+    jurassic = {[0] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [9] = true, [31] = true},
+    candy = {[21] = true, [22] = true, [24] = true, [25] = true, [26] = true, [28] = true, [32] = true, [35] = true, [36] = true},
+    fairy = {[37] = true, [38] = true, [39] = true, [40] = true, [41] = true, [42] = true, [44] = true, [46] = true},
+    clown = {[11] = true, [12] = true, [13] = true, [14] = true, [16] = true, [17] = true, [20] = true, [23] = true},
+    bargain = {[18] = true, [45] = true, [47] = true, [48] = true, [49] = true, [50] = true, [51] = true, [52] = true, [53] = true, [54] = true},
+  }
+  if sceneSpecificTypes[ctx.sceneName][ctx.itemType] then
+    sceneSpecificObserved = true
+  end
+  mapItemsObserved = mapItemsObserved + 1
+  return {handled = true, markInUse = false}
+end
+` : "";
   const capabilityProbe = capabilityExpectations ? `
     local capabilities = pangea.api.capabilities()
     assert(capabilities.objectCollision == ${capabilityExpectations.objectCollision ? "true" : "false"}, "object collision capability drifted")
@@ -99,6 +260,8 @@ end
     assert(capabilities.playerInvulnerability == ${capabilityExpectations.playerInvulnerability ? "true" : "false"}, "player invulnerability capability drifted")
     assert(capabilities.pickupScoreEffects == ${capabilityExpectations.pickupScoreEffects ? "true" : "false"}, "pickup score capability drifted")
     assert(capabilities.persistence == ${capabilityExpectations.persistence ? "true" : "false"}, "persistence capability drifted")` : "";
+  const capabilityWeaponScoreProbe = capabilityExpectations ? `
+    assert(pangea.api.capabilities().weaponScoreEffects == ${capabilityExpectations.weaponScoreEffects ? "true" : "false"}, "weapon score capability drifted")` : "";
   const contextProbe = contextExpectations ? `
     ${contextExpectations.mode ? `assert(ctx.mode == ${JSON.stringify(contextExpectations.mode)}, "script context mode drifted")` : ""}
     assert(ctx.networked == ${contextExpectations.networked ? "true" : "false"}, "script context networked flag drifted")${contextExpectations.trackName ? `
@@ -112,6 +275,7 @@ local levelStarted = false
 
 function entry.onLevelStart(ctx)
   levelStarted = true
+${lifecycleProbe ? `  recordLifecycleCallback("levelStart")` : ""}
 end
 ` : "";
   const levelCompleteHandler = levelCompleteProbe ? `
@@ -119,19 +283,45 @@ local levelCompleted = false
 
 function entry.onLevelComplete(ctx)
   levelCompleted = true
+${lifecycleProbe ? `  recordLifecycleCallback("levelComplete")` : ""}
 end
 ` : "";
-  const raceCompletionHandler = raceCompletionProbe ? `
+  const deathHandler = deathProbe ? `
+local deathObserved = false
+local respawnObserved = false
+
+function entry.onDeath(ctx)
+  deathObserved = true
+end
+
+function entry.onPlayerRespawn(ctx)
+  respawnObserved = true
+end
+` : "";
+  const raceCompletionHandler = raceCompletionProbe || raceProgressProbe ? `
 local raceFinished = false
 local raceCompleted = false
 
+${raceProgressProbe ? `function entry.onCheckpointReached(ctx)
+  assert(ctx.playerNum == 0 and ctx.eventValue > 0, "Cro-Mag checkpoint context drifted")
+${lifecycleProbe ? `  recordLifecycleCallback("checkpointReached")` : ""}
+end
+
+function entry.onLapComplete(ctx)
+  assert(ctx.playerNum == 0 and ctx.eventValue > 0, "Cro-Mag lap context drifted")
+${lifecycleProbe ? `  recordLifecycleCallback("lapComplete")` : ""}
+end
+` : ""}
+
 function entry.onRaceFinish(ctx)
   raceFinished = true
+${lifecycleProbe ? `  recordLifecycleCallback("raceFinish")` : ""}
   pangea.log.info("browser race finish")
 end
 
 ${raceCompletionCompleteProbe ? `function entry.onRaceComplete(ctx)
   raceCompleted = true
+${lifecycleProbe ? `  recordLifecycleCallback("raceComplete")` : ""}
   pangea.log.info("browser race complete")
 end` : ""}
 ` : "";
@@ -140,6 +330,7 @@ local areaCompleted = false
 
 function entry.onAreaComplete(ctx)
   areaCompleted = true
+${lifecycleProbe ? `  recordLifecycleCallback("areaComplete")` : ""}
   pangea.log.info("browser area complete")
 end
 ` : "";
@@ -153,6 +344,7 @@ local objectiveCompleted = false
     assert(results[1].levelNum == ctx.levelNum, "browser objective result level drifted")
     assert(results[1].outcome == ctx.eventValue, "browser objective result outcome drifted")
     objectiveCompleted = true
+${lifecycleProbe ? `    recordLifecycleCallback("onObjectiveComplete")` : ""}
     pangea.log.info("browser objective complete")
   end
 ` : "";
@@ -172,6 +364,7 @@ local childDestroyed = false` : ""}
 ${objectCommandProbe ? `local objectCommandsChecked = false` : ""}
 
 function entry.onObjectFrame(ctx)
+${lifecycleProbe ? `  if ctx.event == "spawn" or ctx.event == "destroy" or ctx.event == "streamIn" or ctx.event == "streamOut" or ctx.event == "checkpointReset" then recordLifecycleCallback(ctx.event) end` : ""}
   if ctx.objectType == "browser-custom-object" then
 ${childCleanupProbe ? `    if ctx.event == "spawn" and not childSpawned then
       childSpawned = true
@@ -199,6 +392,12 @@ ${objectCommandProbe ? `    if ctx.event == "update" and not objectCommandsCheck
       assert(pangea.object.setScaleResult(ctx.object, 1).ok, "custom object scale command failed")
       assert(pangea.object.setCollisionEnabledResult(ctx.object, true).ok, "custom object collision command failed")
       objectCommandsChecked = true
+      local diagnostics = pangea.api.diagnostics()
+      assert(diagnostics.commandCount >= 6, "command trace did not record object commands")
+      for index, command in ipairs(diagnostics.commandTrace) do
+        assert(command.applicationPhase == "callback", "command trace phase drifted")
+        assert(command.order == index - 1, "command trace order drifted")
+      end
     end` : ""}
   end
 end
@@ -206,12 +405,132 @@ end
   const objectCommandCheck = objectCommandProbe ? `
   assert(objectCommandsChecked, "custom object command probe was not delivered")` : "";
   const lifecycleCheck = lifecycleProbe ? `
-  if probed then lifecycleFrames = lifecycleFrames + 1 end` : "";
+  if probed then
+    lifecycleFrames = lifecycleFrames + 1
+    if lifecycle.spawn then
+      local diagnostics = pangea.api.diagnostics()
+      assert(diagnostics.lifecycleEventCount > 0, "lifecycle trace did not record object events")
+      assert(not diagnostics.lifecycleTraceOverflow, "lifecycle trace overflowed during bounded probe")
+      local firstSpawn = nil
+      for index, event in ipairs(diagnostics.lifecycleTrace) do
+        local expectedPhase = "callback"
+        if event.id == "levelLoad" or event.id == "levelUnload" then expectedPhase = "level"
+        elseif event.id == "save" or event.id == "load" then expectedPhase = "persistence"
+        elseif event.id == "terrainItem" or event.id == "splineItem" or event.id == "mapItem" then expectedPhase = "constructor"
+        elseif event.id == "trigger" or event.id == "pickup" or event.id == "weaponHit" then expectedPhase = "interaction"
+        elseif event.id == "damage" or event.id == "damageApplied" then expectedPhase = "damage"
+        elseif event.id == "modeTransition" then expectedPhase = "mode"
+        end
+        assert(event.applicationPhase == expectedPhase, "lifecycle trace phase drifted")
+        assert(event.order == index - 1, "lifecycle trace order drifted")
+        if event.id == "spawn" then firstSpawn = index; break end
+      end
+      assert(firstSpawn ~= nil, "lifecycle trace did not preserve spawn order")
+      local nativeLifecycleByCallback = {
+        levelLoad = "levelLoad",
+        levelStart = "levelStart",
+        levelComplete = "levelComplete",
+        spawn = "spawn",
+        destroy = "destroy",
+        streamIn = "streamIn",
+        streamOut = "streamOut",
+        checkpointReset = "checkpointReset",
+        onCheckpointReached = "checkpointReached",
+        onLapComplete = "lapComplete",
+        pickup = "pickup",
+        weaponHit = "weaponHit",
+        damage = "damage",
+        damageApplied = "damageApplied",
+        onRaceFinish = "raceFinish",
+        onRaceComplete = "raceComplete",
+        onAreaComplete = "areaComplete",
+        onObjectiveComplete = "onObjectiveComplete",
+      }
+      local callbackLifecycleKinds = {
+        levelLoad = true,
+        spawn = true,
+        destroy = true,
+        streamIn = true,
+        streamOut = true,
+        checkpointReset = true,
+${levelStartProbe ? `        levelStart = true,` : ""}
+${levelCompleteProbe ? `        levelComplete = true,` : ""}
+${pickupProbe ? `        pickup = true,` : ""}
+${weaponHitProbe ? `        weaponHit = true,` : ""}
+${damageProbe ? `        damage = true,
+        damageApplied = true,` : ""}
+${raceCompletionProbe ? `        onRaceFinish = true,` : ""}
+${raceProgressProbe ? `        onCheckpointReached = true,
+        onLapComplete = true,` : ""}
+${raceCompletionCompleteProbe ? `        onRaceComplete = true,` : ""}
+${areaCompletionProbe ? `        onAreaComplete = true,` : ""}
+${objectiveCompletionProbe ? `        onObjectiveComplete = true,` : ""}
+      }
+      local nativeCallbackEvents = {}
+      for _, event in ipairs(diagnostics.lifecycleTrace) do
+        if callbackLifecycleKinds[event.id] and nativeLifecycleByCallback[event.id] ~= nil then
+          table.insert(nativeCallbackEvents, nativeLifecycleByCallback[event.id])
+        end
+      end
+      assert(#nativeCallbackEvents == #callbackLifecycleTrace, "native and script lifecycle callback counts drifted")
+      for index, eventId in ipairs(callbackLifecycleTrace) do
+        assert(nativeCallbackEvents[index] == eventId, "native and script lifecycle callback order drifted")
+      end
+    end
+  end` : "";
+  const playerCaptureStateProbeScript = playerCaptureStateProbe ? `
+    local playerState = pangea.player.get(0)
+    assert(playerState and playerState.team ~= nil and playerState.captureScore ~= nil and playerState.carryingFlag ~= nil, "Nanosaur 2 capture snapshot fields were not published")
+    assert(playerState.team == 0 or playerState.team == 1, "Nanosaur 2 capture team drifted")
+    assert(playerState.captureScore >= 0, "Nanosaur 2 capture score drifted")` : "";
+  const vehicleStateProbeScript = vehicleStateProbe ? `
+    local playerState = pangea.player.get(0)
+    assert(playerState and playerState.vehicleType ~= nil and playerState.vehicleMaxSpeed ~= nil and playerState.vehicleAcceleration ~= nil and playerState.vehicleTraction ~= nil and playerState.vehicleSuspension ~= nil, "Cro-Mag vehicle snapshot fields were not published")
+    assert(playerState.vehicleType >= 0 and playerState.vehicleMaxSpeed > 0 and playerState.vehicleAcceleration > 0 and playerState.vehicleTraction > 0 and playerState.vehicleSuspension > 0, "Cro-Mag vehicle snapshot values drifted")
+    assert(playerState.aim ~= nil, "Cro-Mag aim state was not published")
+    local aimLength = math.sqrt(playerState.aim.x * playerState.aim.x + playerState.aim.y * playerState.aim.y + playerState.aim.z * playerState.aim.z)
+    assert(math.abs(aimLength - 1) < 0.01, "Cro-Mag aim state was not normalized")
+    assert(playerState.camera ~= nil, "Cro-Mag camera state was not published")
+    assert(playerState.tokenCount ~= nil and playerState.tokenCount >= 0, "Cro-Mag token state was not published")
+    if ctx.mode == "practice" then
+      assert(playerState.lapNum ~= nil and playerState.checkpointNum ~= nil and playerState.placement ~= nil and playerState.raceComplete ~= nil, "Cro-Mag race snapshot fields were not published")
+      assert(playerState.lapNum >= 0 and playerState.checkpointNum >= 0 and playerState.placement >= 0, "Cro-Mag race snapshot values drifted")
+    end` : "";
+  const modeStateProbeScript = modeStateProbe ? `
+    assert(ctx.modePhase ~= nil and ctx.modeWave ~= nil and ctx.modeTimer ~= nil, "Billy Frontier mode state was not published")
+    assert(ctx.modePhase >= 0 and ctx.modeWave >= 0 and ctx.modeTimer >= 0, "Billy Frontier mode state drifted")
+    assert(ctx.modeSequenceIndex ~= nil and ctx.modeSequenceLength ~= nil and ctx.modeEnemyCount ~= nil and ctx.modeReflex ~= nil and ctx.modeCanAdvance ~= nil, "Billy Frontier mode detail state was not published")
+    assert(ctx.modeSequenceIndex >= 0 and ctx.modeSequenceLength >= 0 and ctx.modeEnemyCount >= 0 and ctx.modeReflex >= 0, "Billy Frontier mode detail state drifted")
+    if ctx.gameId == "BillyFrontier-Android" and ctx.mode == "duel" then
+      assert(ctx.modeSequenceLength >= 3, "Billy Frontier duel sequence state drifted")
+    elseif ctx.gameId == "BillyFrontier-Android" and (ctx.mode == "shootout" or ctx.mode == "stampede") then
+      assert(ctx.modeWave >= 0, "Billy Frontier wave state drifted")
+    elseif ctx.gameId == "BillyFrontier-Android" and ctx.mode == "targetPractice" then
+      assert(ctx.modeTimer > 0, "Billy Frontier target-practice timer was not initialized")
+    end` : "";
+  const playerFormTransitionProbeScript = playerFormTransitionProbe ? `
+    local initialPlayerState = pangea.player.get(0)
+    assert(initialPlayerState and initialPlayerState.form ~= nil, "Bugdom player form was not published")
+    assert(pangea.player.setForm(0, "ball"), "Bugdom ball-form transition failed")
+    local ballPlayerState = pangea.player.get(0)
+    assert(ballPlayerState and ballPlayerState.form == "ball", "Bugdom ball-form readback drifted")
+    assert(pangea.player.setForm(0, "bug"), "Bugdom bug-form transition failed")
+    local bugPlayerState = pangea.player.get(0)
+    assert(bugPlayerState and bugPlayerState.form == "bug", "Bugdom bug-form readback drifted")` : "";
   const levelStartCheck = levelStartProbe ? `
   assert(levelStarted, "level start event was not delivered")` : "";
   const levelCompleteCheck = levelCompleteProbe ? `
   assert(levelCompleted, "level complete event was not delivered")` : "";
-  const raceCompletionCheck = raceCompletionProbe ? `
+  const deathCallbackCheck = deathProbe ? `
+  if probed and not deathCallbackChecked then
+    deathCallbackFrames = deathCallbackFrames + 1
+    if deathCallbackFrames > 30 then
+      assert(deathObserved, "death event was not delivered")
+      assert(respawnObserved, "respawn event was not delivered")
+      deathCallbackChecked = true
+    end
+  end` : "";
+  const raceCompletionCheck = raceCompletionProbe || raceProgressProbe ? `
   assert(raceFinished, "race finish event was not delivered")
 ${raceCompletionCompleteProbe ? `  assert(raceCompleted, "race complete event was not delivered")` : ""}` : "";
   const areaCompletionCheck = areaCompletionProbe ? `
@@ -221,28 +540,59 @@ local entry = {}
 local probed = false
 local lifecycleChecked = false
 local lifecycleFrames = 0
+local lowLivesResetPending = false
+local deathCallbackChecked = false
+local deathCallbackFrames = 0
+${lifecycleProbe ? `local callbackLifecycleTrace = {}
+function recordLifecycleCallback(eventId)
+  table.insert(callbackLifecycleTrace, eventId)
+end
+
+function entry.onLevelLoad(ctx)
+  recordLifecycleCallback("levelLoad")
+end` : ""}
 
 ${objectFrameHandlers}
 ${levelStartHandler}
 ${levelCompleteHandler}
 ${raceCompletionHandler}
 ${areaCompletionHandler}
+${deathHandler}
 ${objectiveCompletionHandler}
 ${damageProbeScript}
+${weaponHitProbeScript}
+${pickupProbeScript}
 ${splineEventProbeScript}
+${mapItemProbeScript}
 
 function entry.onFrame(ctx)
   pangea.log.info("browser runtime regression")
+  if lowLivesResetPending and probed then
+    local restoredPlayerState = pangea.player.get(0)
+    assert(restoredPlayerState and restoredPlayerState.lives ~= nil and restoredPlayerState.lives > 0, "Nanosaur 2 low-lives checkpoint reset did not restore lives")
+    lowLivesResetPending = false
+  end
   if not probed then
     probed = true
 ${probes}
 ${recreation}
 ${playerProbe}
 ${playerVelocityProbeScript}
+${playerStateProbeScript}
+${billyCurrencyProbeScript}
+${playerObjectiveStateProbeScript}
+${playerEggStateProbeScript}
+${playerCaptureStateProbeScript}
+${vehicleStateProbeScript}
+${modeStateProbeScript}
+${playerFormTransitionProbeScript}
 ${pickupScoreProbe}
 ${capabilityProbe}
+${capabilityWeaponScoreProbe}
 ${contextProbe}
 ${persistenceProbeScript}
+${mapItemProbe ? `  assert(mapItemsObserved > 0, "Mighty Mike shipped area did not deliver map-item interactions")` : ""}
+${mapItemProbe ? `  assert(sceneSpecificObserved, "Mighty Mike shipped area did not deliver a scene-specific map item")` : ""}
   end
 ${lifecycleCheck}
 ${objectCommandCheck}
@@ -250,6 +600,7 @@ ${levelStartCheck}
 ${levelCompleteCheck}
 ${raceCompletionCheck}
 ${areaCompletionCheck}
+${deathCallbackCheck}
 end
 
 return entry
@@ -271,15 +622,53 @@ interface RuntimeFixture {
   readonly assetUrl: string;
   readonly nativeProbeIds?: readonly string[];
   readonly playerCommandProbe?: boolean;
+  readonly playerStateProbe?: boolean;
+  readonly playerObjectiveStateProbe?: boolean;
+  readonly buddyLaunchProbe?: boolean;
+  readonly deathProbe?: boolean;
+  readonly playerEggStateProbe?: boolean;
+  readonly playerCaptureStateProbe?: boolean;
+  readonly vehicleStateProbe?: boolean;
+  readonly modeStateProbe?: boolean;
+  readonly playerFormTransitionProbe?: boolean;
   readonly playerVelocityProbe?: boolean;
   readonly damageProbe?: boolean;
   readonly damageProbeFunction?: string;
+  readonly deathProbeFunction?: string;
   readonly splineEventProbe?: boolean;
   readonly splineEventProbeFunction?: string;
   readonly splineEventProbeResult?: number;
+  readonly mapItemProbe?: boolean;
   readonly mapReplacementProbe?: boolean;
   readonly pickupScoreCapabilityProbe?: boolean;
+  readonly pickupProbe?: boolean;
+  readonly pickupProbeFunction?: string;
+  readonly pickupProbeResult?: number;
+  readonly crystalPickupProbe?: boolean;
+  readonly crystalPickupProbeFunction?: string;
+  readonly crystalPickupProbeResult?: number;
+  readonly eggRecoveryProbe?: boolean;
+  readonly eggRecoveryProbeFunction?: string;
+  readonly eggRecoveryProbeResult?: number;
+  readonly shieldPickupProbe?: boolean;
+  readonly shieldPickupProbeFunction?: string;
+  readonly shieldPickupProbeResult?: number;
+  readonly weaponPowerPickupProbe?: boolean;
+  readonly weaponPowerPickupProbeFunction?: string;
+  readonly weaponPowerPickupProbeResult?: number;
+  readonly nanosaur2PowerupPickupProbe?: boolean;
+  readonly nanosaur2PowerupPickupProbeFunction?: string;
+  readonly cromagPickupSuppressionProbe?: boolean;
+  readonly cromagPickupSuppressionProbeFunction?: string;
+  readonly weaponHitProbe?: boolean;
+  readonly weaponHitProbeFunction?: string;
+  readonly weaponHitProbeResult?: number;
+  readonly projectileWeaponFamiliesProbe?: boolean;
+  readonly dartWeaponProbe?: boolean;
+  readonly superNovaWeaponProbe?: boolean;
+  readonly punchWeaponProbe?: boolean;
   readonly lifecycleProbe?: boolean;
+  readonly childCleanupProbe?: boolean;
   readonly recreationProbe?: boolean;
   readonly checkpointResetProbe?: boolean;
   readonly checkpointResetProbeFunction?: string;
@@ -292,21 +681,25 @@ interface RuntimeFixture {
   readonly replacementLifecycleProbe?: boolean;
   readonly levelStartProbe?: boolean;
   readonly levelCompleteProbe?: boolean;
+  readonly levelCompleteProbeFunction?: string;
   readonly raceCompletionProbe?: boolean;
   readonly raceCompletionProbeFunction?: string;
   readonly raceCompletionProbeResult?: number;
   readonly raceCompletionCompleteProbe?: boolean;
+  readonly raceProgressProbe?: boolean;
   readonly objectiveCompletionProbe?: boolean;
   readonly objectiveCompletionProbeFunction?: string;
   readonly objectiveCompletionProbeResult?: number;
   readonly persistenceProbe?: boolean;
   readonly areaCompletionProbe?: boolean;
   readonly runtimeWarmupMs?: number;
+  readonly deferLevelConfig?: boolean;
   readonly scriptedObjectProbe?: boolean;
   readonly terrainPath?: string;
   readonly terrainUrl?: string;
   readonly mapPath?: string;
   readonly mapUrl?: string;
+  readonly mapOverridePath?: string;
   readonly tilesetPath?: string;
   readonly tilesetUrl?: string;
   readonly applyTerrainOverride?: boolean;
@@ -355,6 +748,9 @@ interface RuntimeFixture {
   };
   readonly splineReplacementProbe?: string;
   readonly splineReplacementFromFirstItem?: boolean;
+  readonly splineSelectionFunction?: string;
+  readonly splineSelectionFieldFunction?: string;
+  readonly splineSelectionPlacementFunction?: string;
   readonly splineReplacementProbeFunction?: string;
   readonly splineReplacementProbeResult?: number;
 }
@@ -364,6 +760,7 @@ interface RuntimeCapabilityExpectations {
   readonly playerCommands: boolean;
   readonly playerInvulnerability: boolean;
   readonly pickupScoreEffects: boolean;
+  readonly weaponScoreEffects: boolean;
   readonly persistence: boolean;
 }
 
@@ -438,14 +835,19 @@ const mightyMikeAdditionalAreaTargets: readonly RuntimeTarget[] = mightyMikeArea
   id: `Mighty Mike ${sceneName} Area ${area + 1}`,
   path: "mightymike/index.html",
   requiresStartup: false,
-  query: `level=${scene}:${area}&mapOverride=:Maps:${mapName}.map-${area + 1}`,
+  query: `level=${scene}:${area}&deferStart=1`,
   fixture: {
     assetPath: "Data/Scripts/assets/models/production-fixture.shapes",
     assetUrl: "../../../../data/mightymike/shapes/main.shapes",
     nativeItems: [],
     contextExpectations: { mode: "local", networked: false, sceneName: mapName, areaName: `area-${area + 1}` },
+    playerStateProbe: true,
+    mapItemProbe: true,
     playerCommandProbe: true,
     lifecycleProbe: true,
+    manualStart: true,
+    startSelector: "#play-btn",
+    mapOverridePath: `:Maps:${mapName}.map-${area + 1}`,
     mapPath: `Data/Maps/${mapName}.map-${area + 1}`,
     mapUrl: `../../../../assets/mightyMike/terrain/${mapName}.map-${area + 1}`,
     tilesetPath: `Data/Maps/${mapName}.tileset`,
@@ -457,7 +859,7 @@ const mightyMikeAdditionalAreaTargets: readonly RuntimeTarget[] = mightyMikeArea
 const runtimeTargets: readonly RuntimeTarget[] = [
   {
     id: "Billy Frontier",
-    path: "billyfrontier/billyfrontier.html",
+    path: "billyfrontier/game/billyfrontier.html",
     requiresStartup: false,
     query: "level=0",
     fixture: {
@@ -467,8 +869,10 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       contextExpectations: { mode: "duel", networked: false, levelName: "level1" },
       nativeProbeIds: ["billy.peso", "billy.freeLifePow", "billy.boost"],
       nativeItems: ["billy.peso", "billy.freeLifePow", "billy.boost"],
+      playerStateProbe: true,
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      modeStateProbe: true,
       pickupScoreCapabilityProbe: true,
       lifecycleProbe: true,
       recreationProbe: true,
@@ -496,6 +900,8 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       contextExpectations: { networked: false, levelName: "training" },
       nativeProbeIds: ["bugdom.nut", "bugdom.clover", "bugdom.checkpoint"],
       nativeItems: ["bugdom.nut", "bugdom.clover", "bugdom.checkpoint"],
+      playerStateProbe: true,
+      playerFormTransitionProbe: true,
       playerCommandProbe: true,
       playerVelocityProbe: true,
       lifecycleProbe: true,
@@ -586,7 +992,18 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       convertedAssetPath: "Data/Scripts/assets/models/converted-triangle.bg3d",
       assetUrl: "../../../../games/bugdom2/skeletons/Mouse.bg3d",
       contextExpectations: { networked: false, levelName: "plumbing" },
-      nativeProbeIds: ["bugdom2.powerup", "bugdom2.dcell", "bugdom2.gliderPart"],
+      nativeProbeIds: [
+        "bugdom2.powerup",
+        "bugdom2.dcell",
+        "bugdom2.gliderPart",
+        "bugdom2.sprinkler",
+        "bugdom2.gnome",
+        "bugdom2.firecracker",
+        "5",
+        "13",
+        "14",
+        "44",
+      ],
       terrainPath: "Data/Terrain/Level3_DogHair.ter",
       terrainUrl: "../../../../assets/bugdom2/terrain/Level3_DogHair.ter",
       levelNum: 3,
@@ -594,6 +1011,8 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       terrainReplacementProbe: "Bugdom2Script_ProbeTerrainReplacementJS",
       terrainReplacementProbes: createTerrainReplacementProbes(bugdom2CallableTerrainTypes.slice(1), 1),
       nativeItems: ["bugdom2.powerup", "bugdom2.dcell", "bugdom2.gliderPart"],
+      playerObjectiveStateProbe: true,
+      buddyLaunchProbe: true,
       playerCommandProbe: true,
       playerVelocityProbe: true,
       damageProbe: true,
@@ -602,6 +1021,7 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       splineEventProbeFunction: "Bugdom2Script_ProbeFirstSplineJS",
       splineEventProbeResult: -1,
       lifecycleProbe: true,
+      childCleanupProbe: true,
       recreationProbe: true,
       checkpointResetProbe: true,
       checkpointResetProbeFunction: "Bugdom2Script_ProbeCheckpointResetJS",
@@ -617,7 +1037,7 @@ const runtimeTargets: readonly RuntimeTarget[] = [
   },
   {
     id: "Cro-Mag Rally",
-    path: "cromagrally/CroMagRally.html",
+    path: "cromagrally/game/CroMagRally.html",
     requiresStartup: false,
     query: "track=3&car=1",
     fixture: {
@@ -640,6 +1060,7 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       ],
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      vehicleStateProbe: true,
       lifecycleProbe: true,
       recreationProbe: true,
       terrainReplacement: { itemIndex: 0, nativeType: 1, x: 0, z: 0 },
@@ -647,26 +1068,47 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       terrainReplacementProbes: createTerrainReplacementProbes(cromagCallableTerrainTypes.slice(1), 1),
       contextExpectations: { mode: "practice", networked: false, trackName: "ice" },
       replacementLifecycleProbe: true,
-      raceCompletionProbe: true,
+      raceCompletionProbe: false,
       raceCompletionCompleteProbe: true,
+      raceProgressProbe: true,
       terrainPath: "Data/Terrain/IronAge_Europe.ter",
       terrainUrl: "../../../../assets/croMag/terrain/IronAge_Europe.ter",
       verifyMalformedAsset: true,
     },
   },
   {
+    id: "Cro-Mag Rally Pickup Probe",
+    path: "cromagrally/CroMagRally.html",
+    requiresStartup: true,
+    query: "track=3&car=1",
+    fixture: {
+      assetPath: "Data/Scripts/assets/models/production-fixture.bg3d",
+      convertedAssetPath: "Data/Scripts/assets/models/converted-triangle.bg3d",
+      assetUrl: "../../../../games/cromagrally/skeletons/GragStanding.bg3d",
+      nativeItems: ["cromag.pow", "cromag.token"],
+      pickupProbe: true,
+      cromagPickupSuppressionProbe: true,
+      cromagPickupSuppressionProbeFunction: "CroMagScript_ProbePickupSuppressionJS",
+      contextExpectations: { mode: "practice", networked: false, trackName: "ice" },
+    },
+  },
+  {
     id: "Mighty Mike",
     path: "mightymike/index.html",
     requiresStartup: false,
-    query: "level=1:0&mapOverride=:Maps:candy.map-1",
+    query: "level=1:0&deferStart=1",
     fixture: {
     contextExpectations: { mode: "local", networked: false, sceneName: "candy", areaName: "area-1" },
+    playerStateProbe: true,
+    mapItemProbe: true,
     assetPath: "Data/Scripts/assets/models/production-fixture.shapes",
     assetUrl: "../../../../data/mightymike/shapes/main.shapes",
     nativeProbeIds: ["mightymike.bunny", "mightymike.healthPow", "mightymike.key"],
     nativeItems: ["mightymike.bunny", "mightymike.healthPow", "mightymike.key"],
     playerCommandProbe: true,
-    mapReplacementProbe: true,
+      mapReplacementProbe: true,
+      manualStart: true,
+      startSelector: "#play-btn",
     replacementLifecycleProbe: true,
     lifecycleProbe: true,
       saveLoadProbe: true,
@@ -674,6 +1116,7 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       saveLoadProbeResult: 0,
       mapPath: "Data/Maps/candy.map-1",
       mapUrl: "../../../../assets/mightyMike/terrain/candy.map-1",
+      mapOverridePath: ":Maps:candy.map-1",
       tilesetPath: "Data/Maps/candy.tileset",
       tilesetUrl: "../../../../assets/mightyMike/terrain/candy.tileset",
       verifyMalformedAsset: true,
@@ -683,13 +1126,16 @@ const runtimeTargets: readonly RuntimeTarget[] = [
     id: "Mighty Mike Jurassic Area 1",
     path: "mightymike/index.html",
     requiresStartup: false,
-    query: "level=0:0&mapOverride=:Maps:jurassic.map-1",
+    query: "level=0:0&deferStart=1",
     fixture: {
       assetPath: "Data/Scripts/assets/models/production-fixture.shapes",
       assetUrl: "../../../../data/mightymike/shapes/main.shapes",
       nativeItems: [],
       playerCommandProbe: true,
       lifecycleProbe: true,
+      manualStart: true,
+      startSelector: "#play-btn",
+      mapOverridePath: ":Maps:jurassic.map-1",
       mapPath: "Data/Maps/jurassic.map-1",
       mapUrl: "../../../../assets/mightyMike/terrain/jurassic.map-1",
       tilesetPath: "Data/Maps/jurassic.tileset",
@@ -701,13 +1147,16 @@ const runtimeTargets: readonly RuntimeTarget[] = [
     id: "Mighty Mike Bargain Area 1",
     path: "mightymike/index.html",
     requiresStartup: false,
-    query: "level=4:0&mapOverride=:Maps:bargain.map-1",
+    query: "level=4:0&deferStart=1",
     fixture: {
       assetPath: "Data/Scripts/assets/models/production-fixture.shapes",
       assetUrl: "../../../../data/mightymike/shapes/main.shapes",
       nativeItems: [],
       playerCommandProbe: true,
       lifecycleProbe: true,
+      manualStart: true,
+      startSelector: "#play-btn",
+      mapOverridePath: ":Maps:bargain.map-1",
       mapPath: "Data/Maps/bargain.map-1",
       mapUrl: "../../../../assets/mightyMike/terrain/bargain.map-1",
       tilesetPath: "Data/Maps/bargain.tileset",
@@ -720,13 +1169,16 @@ const runtimeTargets: readonly RuntimeTarget[] = [
     id: "Mighty Mike Fairy Area 1",
     path: "mightymike/index.html",
     requiresStartup: false,
-    query: "level=2:0&mapOverride=:Maps:fairy.map-1",
+    query: "level=2:0&deferStart=1",
     fixture: {
       assetPath: "Data/Scripts/assets/models/production-fixture.shapes",
       assetUrl: "../../../../data/mightymike/shapes/main.shapes",
       nativeItems: [],
       playerCommandProbe: true,
       lifecycleProbe: true,
+      manualStart: true,
+      startSelector: "#play-btn",
+      mapOverridePath: ":Maps:fairy.map-1",
       mapPath: "Data/Maps/fairy.map-1",
       mapUrl: "../../../../assets/mightyMike/terrain/fairy.map-1",
       tilesetPath: "Data/Maps/fairy.tileset",
@@ -738,13 +1190,16 @@ const runtimeTargets: readonly RuntimeTarget[] = [
     id: "Mighty Mike Clown Area 1",
     path: "mightymike/index.html",
     requiresStartup: false,
-    query: "level=3:0&mapOverride=:Maps:clown.map-1",
+    query: "level=3:0&deferStart=1",
     fixture: {
       assetPath: "Data/Scripts/assets/models/production-fixture.shapes",
       assetUrl: "../../../../data/mightymike/shapes/main.shapes",
       nativeItems: [],
       playerCommandProbe: true,
       lifecycleProbe: true,
+      manualStart: true,
+      startSelector: "#play-btn",
+      mapOverridePath: ":Maps:clown.map-1",
       mapPath: "Data/Maps/clown.map-1",
       mapUrl: "../../../../assets/mightyMike/terrain/clown.map-1",
       tilesetPath: "Data/Maps/clown.tileset",
@@ -754,7 +1209,7 @@ const runtimeTargets: readonly RuntimeTarget[] = [
   },
   {
     id: "Nanosaur",
-    path: "nanosaur/index.html",
+    path: "nanosaur/game/index.html",
     requiresStartup: false,
     query: "level=0",
     fixture: {
@@ -790,9 +1245,33 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       checkpointResetProbeFunction: "NanosaurScript_ProbeCheckpointResetJS",
       checkpointResetProbeResult: 1,
       levelNum: 0,
+      levelStartProbe: true,
+      levelCompleteProbe: true,
+      levelCompleteProbeFunction: "NanosaurScript_ProbeLevelCompleteJS",
       nativeItems: ["nanosaur.powerup", "nanosaur.egg", "nanosaur.crystal"],
+      playerEggStateProbe: true,
+      deathProbe: true,
+      deathProbeFunction: "NanosaurScript_ProbeDeathJS",
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      pickupProbe: true,
+      pickupProbeFunction: "NanosaurScript_ProbePickupJS",
+      pickupProbeResult: 7,
+      crystalPickupProbe: true,
+      crystalPickupProbeFunction: "NanosaurScript_ProbeCrystalPickupJS",
+      crystalPickupProbeResult: 7,
+      eggRecoveryProbe: true,
+      eggRecoveryProbeFunction: "NanosaurScript_ProbeEggRecoveryJS",
+      eggRecoveryProbeResult: 20007,
+      shieldPickupProbe: true,
+      shieldPickupProbeFunction: "NanosaurScript_ProbeShieldPickupJS",
+      shieldPickupProbeResult: 7,
+      weaponPowerPickupProbe: true,
+      weaponPowerPickupProbeFunction: "NanosaurScript_ProbeWeaponPowerPickupJS",
+      weaponPowerPickupProbeResult: 7,
+      weaponHitProbe: true,
+      weaponHitProbeFunction: "NanosaurScript_ProbeEnemyWeaponHitJS",
+      weaponHitProbeResult: 1,
       lifecycleProbe: true,
       recreationProbe: true,
       replacementLifecycleProbe: true,
@@ -803,16 +1282,24 @@ const runtimeTargets: readonly RuntimeTarget[] = [
     id: "Nanosaur 2",
     path: "nanosaur2/Nanosaur2.html",
     requiresStartup: false,
-    query: "level=0&terrainFile=/Data/Terrain/level1.ter",
+    query: "level=0&deferStart=1",
     fixture: {
       assetPath: "Data/Scripts/assets/models/production-fixture.bg3d",
       convertedAssetPath: "Data/Scripts/assets/models/converted-triangle.bg3d",
       assetUrl: "../../../../games/nanosaur2/models/global.bg3d",
       contextExpectations: { mode: "adventure", networked: false, levelName: "adventure1" },
-      nativeProbeIds: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow"],
-      nativeItems: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow"],
+      nativeProbeIds: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow", "nanosaur2.fuelPow", "nanosaur2.shieldPow", "nanosaur2.freeLifePow"],
+      nativeItems: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow", "nanosaur2.fuelPow", "nanosaur2.shieldPow", "nanosaur2.freeLifePow"],
+      playerEggStateProbe: true,
+      deathProbe: true,
+      deathProbeFunction: "Nanosaur2Script_ProbeDeathRespawnJS",
+      levelCompleteProbe: true,
+      levelCompleteProbeFunction: "Nanosaur2Script_ProbeLevelCompleteJS",
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      pickupProbe: true,
+      nanosaur2PowerupPickupProbe: true,
+      nanosaur2PowerupPickupProbeFunction: "Nanosaur2Script_ProbePowerupPickupJS",
       terrainPath: "Data/Terrain/level1.ter",
       terrainUrl: "../../../../assets/nanosaur2/terrain/level1.ter",
       terrainReplacement: { itemIndex: 0, nativeType: 1, x: 0, z: 0 },
@@ -872,6 +1359,9 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       checkpointResetProbeFunction: "Nanosaur2Script_ProbeCheckpointResetJS",
       checkpointResetProbeResult: 1,
       checkpointResetEventLogProbe: true,
+      manualStart: true,
+      startSelector: "#play-btn",
+      deferLevelConfig: false,
       saveLoadProbe: true,
       saveLoadProbeFunction: "Nanosaur2Script_ProbeSaveLoadJS",
       saveLoadProbeResult: 0,
@@ -892,11 +1382,30 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       nativeItems: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow"],
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      playerEggStateProbe: true,
+      deathProbe: true,
+      deathProbeFunction: "Nanosaur2Script_ProbeDeathRespawnJS",
+      nanosaur2PowerupPickupProbe: true,
+      nanosaur2PowerupPickupProbeFunction: "Nanosaur2Script_ProbePowerupPickupJS",
       levelNum: 3,
       raceCompletionProbe: true,
       raceCompletionProbeFunction: "Nanosaur2Script_ProbeRaceCompletionJS",
       raceCompletionProbeResult: 1,
+      splineEventProbe: true,
+      splineEventProbeFunction: "Nanosaur2Script_ProbeFirstSplineJS",
+      splineEventProbeResult: 1,
+      splineReplacementFromFirstItem: true,
+      splineSelectionFunction: "Nanosaur2Script_SelectFirstSplineItemForReplacementJS",
+      splineSelectionFieldFunction: "Nanosaur2Script_GetSelectedSplineItemFieldJS",
+      splineSelectionPlacementFunction: "Nanosaur2Script_GetSelectedSplinePlacementJS",
+      splineReplacementProbeFunction: "Nanosaur2Script_ProbeFirstSplineReplacementJS",
+      splineReplacementProbeResult: 0,
+      saveLoadProbe: true,
+      saveLoadProbeFunction: "Nanosaur2Script_ProbeSaveLoadJS",
+      saveLoadProbeResult: 0,
       lifecycleProbe: true,
+      levelCompleteProbe: true,
+      levelCompleteProbeFunction: "Nanosaur2Script_ProbeLevelCompleteJS",
       terrainPath: "Data/Terrain/race1.ter",
       terrainUrl: "../../../../assets/nanosaur2/terrain/race1.ter",
       verifyMalformedAsset: true,
@@ -916,15 +1425,25 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       nativeItems: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow"],
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      playerEggStateProbe: true,
+      deathProbe: true,
+      deathProbeFunction: "Nanosaur2Script_ProbeDeathRespawnJS",
+      nanosaur2PowerupPickupProbe: true,
+      nanosaur2PowerupPickupProbeFunction: "Nanosaur2Script_ProbePowerupPickupJS",
       levelNum: 5,
       objectiveCompletionProbe: true,
       objectiveCompletionProbeFunction: "Nanosaur2Script_ProbeObjectiveCompletionJS",
       objectiveCompletionProbeResult: 1,
+      saveLoadProbe: true,
+      saveLoadProbeFunction: "Nanosaur2Script_ProbeSaveLoadJS",
+      saveLoadProbeResult: 0,
       recreationProbe: true,
       checkpointResetProbe: true,
       checkpointResetProbeFunction: "Nanosaur2Script_ProbeCheckpointResetJS",
       checkpointResetProbeResult: 1,
       checkpointResetEventLogProbe: true,
+      levelCompleteProbe: true,
+      levelCompleteProbeFunction: "Nanosaur2Script_ProbeLevelCompleteJS",
       terrainPath: "Data/Terrain/battle1.ter",
       terrainUrl: "../../../../assets/nanosaur2/terrain/battle1.ter",
       verifyMalformedAsset: true,
@@ -944,15 +1463,26 @@ const runtimeTargets: readonly RuntimeTarget[] = [
       nativeItems: ["nanosaur2.egg", "nanosaur2.weaponPow", "nanosaur2.healthPow"],
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      playerEggStateProbe: true,
+      playerCaptureStateProbe: true,
+      deathProbe: true,
+      deathProbeFunction: "Nanosaur2Script_ProbeDeathRespawnJS",
+      nanosaur2PowerupPickupProbe: true,
+      nanosaur2PowerupPickupProbeFunction: "Nanosaur2Script_ProbePowerupPickupJS",
       levelNum: 7,
       objectiveCompletionProbe: true,
       objectiveCompletionProbeFunction: "Nanosaur2Script_ProbeObjectiveCompletionJS",
       objectiveCompletionProbeResult: 1,
+      saveLoadProbe: true,
+      saveLoadProbeFunction: "Nanosaur2Script_ProbeSaveLoadJS",
+      saveLoadProbeResult: 0,
       recreationProbe: true,
       checkpointResetProbe: true,
       checkpointResetProbeFunction: "Nanosaur2Script_ProbeCheckpointResetJS",
       checkpointResetProbeResult: 1,
       checkpointResetEventLogProbe: true,
+      levelCompleteProbe: true,
+      levelCompleteProbeFunction: "Nanosaur2Script_ProbeLevelCompleteJS",
       terrainPath: "Data/Terrain/flag1.ter",
       terrainUrl: "../../../../assets/nanosaur2/terrain/flag1.ter",
       verifyMalformedAsset: true,
@@ -978,8 +1508,20 @@ const runtimeTargets: readonly RuntimeTarget[] = [
         "ottomatic.teleporter",
       ],
       contextExpectations: { networked: false, levelName: "farm", playerMode: "robot" },
+      playerStateProbe: true,
       playerCommandProbe: true,
       playerVelocityProbe: true,
+      deathProbe: true,
+      deathProbeFunction: "OttoScript_ProbeDeathJS",
+      levelCompleteProbe: true,
+      levelCompleteProbeFunction: "OttoScript_ProbeLevelCompleteJS",
+    weaponHitProbe: true,
+    weaponHitProbeFunction: "OttoScript_ProbeWeaponHitJS",
+    weaponHitProbeResult: 7,
+    projectileWeaponFamiliesProbe: true,
+    dartWeaponProbe: true,
+    superNovaWeaponProbe: true,
+    punchWeaponProbe: true,
       persistenceProbe: true,
       terrainPath: "Data/Terrain/EarthFarm.ter",
       terrainUrl: "../../../../assets/ottoMatic/terrain/EarthFarm.ter",
@@ -1072,6 +1614,23 @@ const bugdomLevelRuntimeTargets: readonly RuntimeTarget[] = runtimeTargets.flatM
       terrainPath: `Data/Terrain/${terrainName}.ter.rsrc`,
       terrainUrl: `../../../../assets/bugdom/terrain/${terrainName}.ter.rsrc`,
       manualStart: true,
+      verifyMalformedAsset: level >= 5 ? false : true,
+      scriptedObjectProbe: level >= 5 ? false : true,
+      nativeProbeIds: level >= 5 ? [] : target.fixture.nativeProbeIds,
+      nativeItems: level >= 5 ? [] : target.fixture.nativeItems,
+      playerCommandProbe: level >= 5 ? false : target.fixture.playerCommandProbe,
+      playerVelocityProbe: level >= 5 ? false : target.fixture.playerVelocityProbe,
+      playerFormTransitionProbe: level >= 5 ? false : target.fixture.playerFormTransitionProbe,
+      lifecycleProbe: level >= 5 ? false : target.fixture.lifecycleProbe,
+      recreationProbe: level >= 5 ? false : target.fixture.recreationProbe,
+      replacementLifecycleProbe: level >= 5 ? false : target.fixture.replacementLifecycleProbe,
+      saveLoadProbe: level >= 5 ? false : target.fixture.saveLoadProbe,
+      terrainReplacement: level >= 5 ? undefined : target.fixture.terrainReplacement,
+      terrainReplacementProbe: level >= 5 ? undefined : target.fixture.terrainReplacementProbe,
+      terrainReplacementProbes: level >= 5 ? undefined : target.fixture.terrainReplacementProbes,
+      checkpointResetProbe: level >= 5 ? false : true,
+      checkpointResetProbeFunction: level >= 5 ? undefined : "BugdomScript_ProbeCheckpointResetJS",
+      checkpointResetProbeResult: level >= 5 ? undefined : 1,
     },
   }));
 });
@@ -1089,13 +1648,35 @@ const nanosaur2RemainingModeRuntimeTargets: readonly RuntimeTarget[] = (() => {
   return modes.map(([level, levelName, mode, terrainName]) => ({
     ...baseTarget,
     id: `Nanosaur 2 ${levelName}`,
-    query: `level=${level}&terrainFile=/Data/Terrain/${terrainName}.ter`,
+    query: `level=${level}&terrainFile=/Data/Terrain/${terrainName}.ter&deferStart=1`,
     fixture: {
       ...baseTarget.fixture,
       contextExpectations: { mode, networked: false, levelName },
       levelNum: level,
       terrainPath: `Data/Terrain/${terrainName}.ter`,
       terrainUrl: `../../../../assets/nanosaur2/terrain/${terrainName}.ter`,
+      playerCaptureStateProbe: mode === "capture",
+      playerEggStateProbe: true,
+      deathProbe: true,
+      deathProbeFunction: "Nanosaur2Script_ProbeDeathRespawnJS",
+      saveLoadProbe: true,
+      saveLoadProbeFunction: "Nanosaur2Script_ProbeSaveLoadJS",
+      saveLoadProbeResult: 0,
+      splineEventProbe: mode === "race",
+      splineEventProbeFunction: mode === "race" ? "Nanosaur2Script_ProbeFirstSplineJS" : undefined,
+      splineEventProbeResult: mode === "race" ? 1 : undefined,
+      splineReplacementFromFirstItem: mode === "race",
+      splineSelectionFunction: mode === "race"
+        ? "Nanosaur2Script_SelectFirstSplineItemForReplacementJS"
+        : undefined,
+      splineSelectionFieldFunction: mode === "race"
+        ? "Nanosaur2Script_GetSelectedSplineItemFieldJS"
+        : undefined,
+      splineSelectionPlacementFunction: mode === "race"
+        ? "Nanosaur2Script_GetSelectedSplinePlacementJS"
+        : undefined,
+      splineReplacementProbeFunction: mode === "race" ? "Nanosaur2Script_ProbeFirstSplineReplacementJS" : undefined,
+      splineReplacementProbeResult: mode === "race" ? 0 : undefined,
       raceCompletionProbe: false,
       raceCompletionProbeFunction: undefined,
       raceCompletionProbeResult: undefined,
@@ -1148,10 +1729,10 @@ const bugdom2LevelRuntimeTargets: readonly RuntimeTarget[] = runtimeTargets.flat
       terrainUrl: terrainName === undefined ? undefined : `../../../../assets/bugdom2/terrain/${terrainName}.ter`,
       splineEventProbe: true,
       damageProbe: false,
-      splineEventProbeResult: level === 2 || level === 6 ? -1 : 1,
+      splineEventProbeResult: [2, 6, 7, 9].includes(level) ? -1 : 1,
       splineReplacementFromFirstItem: true,
       splineReplacementProbeFunction: "Bugdom2Script_ProbeFirstSplineReplacementJS",
-      splineReplacementProbeResult: level === 2 || level === 6 ? -1 : 1,
+      splineReplacementProbeResult: [2, 6, 7, 9].includes(level) ? -1 : 1,
       runtimeWarmupMs: 5_000,
       verifyMalformedAsset: false,
     },
@@ -1194,8 +1775,9 @@ const croMagTrackRuntimeTargets: readonly RuntimeTarget[] = runtimeTargets.flatM
       lifecycleProbe: false,
       recreationProbe: false,
       replacementLifecycleProbe: false,
-      raceCompletionProbe: track < 9,
+      raceCompletionProbe: track < 9 && track !== 0,
       raceCompletionCompleteProbe: track < 9,
+      raceProgressProbe: track === 0,
       terrainReplacement: undefined,
       terrainReplacementProbe: undefined,
       terrainReplacementProbes: undefined,
@@ -1206,13 +1788,50 @@ const croMagTrackRuntimeTargets: readonly RuntimeTarget[] = runtimeTargets.flatM
   }));
 });
 
+const croMagBattleModeRuntimeTargets: readonly RuntimeTarget[] = (() => {
+  const baseTarget = runtimeTargets.find((target) => target.id === "Cro-Mag Rally");
+  if (!baseTarget?.fixture) return [];
+  const modes = [
+    [9, "capture", "stonehenge", "Battle_StoneHenge"],
+    [10, "tag1", "aztec", "Battle_Aztec"],
+    [11, "survival", "coliseum", "Battle_Coliseum"],
+  ] as const;
+  return modes.map(([track, mode, trackName, terrainName]) => ({
+    ...baseTarget,
+    id: `Cro-Mag Rally ${mode}`,
+    query: `track=${track + 1}&car=1&mode=${mode}`,
+    fixture: {
+      ...baseTarget.fixture,
+      contextExpectations: { mode, networked: false, trackName },
+      levelNum: track,
+      nativeProbeIds: [],
+      nativeItems: [],
+      playerCommandProbe: false,
+      playerVelocityProbe: false,
+      lifecycleProbe: false,
+      recreationProbe: false,
+      replacementLifecycleProbe: false,
+      raceCompletionProbe: false,
+      raceCompletionCompleteProbe: false,
+      raceProgressProbe: false,
+      playerCaptureStateProbe: mode === "capture",
+      terrainReplacement: undefined,
+      terrainReplacementProbe: undefined,
+      terrainReplacementProbes: undefined,
+      terrainPath: `Data/Terrain/${terrainName}.ter`,
+      terrainUrl: `../../../../assets/croMag/terrain/${terrainName}.ter`,
+      verifyMalformedAsset: false,
+    },
+  }));
+})();
+
 const billyModeRuntimeTargets: readonly RuntimeTarget[] = (() => {
   const baseTarget = runtimeTargets.find((target) => target.id === "Billy Frontier");
   if (!baseTarget?.fixture) return [];
   const modeTargets = [
-    { id: "Billy Frontier Shootout", level: 2, mode: "shootout", terrain: "town_shootout" },
-    { id: "Billy Frontier Stampede", level: 4, mode: "stampede", terrain: "town_stampede" },
-    { id: "Billy Frontier Target Practice", level: 6, mode: "targetPractice", terrain: undefined },
+    { id: "Billy Frontier Shootout", level: 1, mode: "shootout", terrain: "town_shootout" },
+    { id: "Billy Frontier Stampede", level: 3, mode: "stampede", terrain: "town_stampede" },
+    { id: "Billy Frontier Target Practice", level: 5, mode: "targetPractice", terrain: undefined },
   ] as const;
   return modeTargets.map((modeTarget) => ({
     ...baseTarget,
@@ -1233,6 +1852,7 @@ const ottoLevelRuntimeTargets: readonly RuntimeTarget[] = (() => {
   const baseTarget = runtimeTargets.find((target) => target.id === "Otto Matic");
   if (!baseTarget?.fixture) return [];
   const levels = [
+    [0, "farm", "robot"],
     [1, "blob", "robot"],
     [2, "blob-boss", "robot"],
     [3, "apocalypse", "robot"],
@@ -1396,10 +2016,22 @@ function replacementFallbackFixture(fixture: RuntimeFixture): RuntimeFixture {
 function runtimeCapabilityExpectations(target: RuntimeTarget): RuntimeCapabilityExpectations | undefined {
   if (target.id.includes("fallback")) return undefined;
   return {
-    objectCollision: !target.id.startsWith("Mighty Mike"),
+    objectCollision: true,
     playerCommands: true,
     playerInvulnerability: !target.id.startsWith("Cro-Mag Rally"),
-    pickupScoreEffects: target.id.startsWith("Billy Frontier"),
+    pickupScoreEffects:
+      target.id.startsWith("Billy Frontier") ||
+      target.id === "Nanosaur" ||
+      target.id === "Otto Matic" ||
+      target.id === "Bugdom" ||
+      target.id.startsWith("Bugdom ") ||
+      target.id === "Mighty Mike",
+    weaponScoreEffects:
+      target.id === "Bugdom" ||
+      target.id.startsWith("Bugdom ") ||
+      target.id === "Nanosaur" ||
+      target.id === "Mighty Mike" ||
+      target.id === "Otto Matic",
     persistence: true,
   };
 }
@@ -1580,6 +2212,7 @@ for (const target of [
   ...bugdomLevelRuntimeTargets,
   ...bugdom2LevelRuntimeTargets,
   ...croMagTrackRuntimeTargets,
+  ...croMagBattleModeRuntimeTargets,
   ...billyModeRuntimeTargets,
   ...ottoLevelRuntimeTargets,
   ...customSkeletonRuntimeTargets,
@@ -1597,8 +2230,12 @@ for (const target of [
   test.setTimeout(90_000);
   const consoleMessages: string[] = [];
   const pageErrors: string[] = [];
-  page.on("console", (message) => consoleMessages.push(message.text()));
-  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    consoleMessages.push(message.text());
+  });
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message);
+  });
 
   if (target.fixture?.hostModulePreRunProbe) {
     await page.addInitScript(
@@ -1638,7 +2275,7 @@ for (const target of [
         new TextEncoder().encode(script),
       );
       return true;
-    }, buildRuntimeScript(target.fixture.nativeProbeIds, target.fixture.playerCommandProbe === true, target.fixture.playerVelocityProbe === true, target.fixture.pickupScoreCapabilityProbe === true, target.fixture.damageProbe === true, target.fixture.splineEventProbe === true, runtimeCapabilityExpectations(target), target.fixture.contextExpectations, target.fixture.lifecycleProbe === true, target.fixture.lifecycleProbe === true, target.fixture.recreationProbe === true, target.fixture.checkpointResetProbe === true, target.fixture.objectCommandProbe === true, target.fixture.replacementLifecycleProbe === true, target.fixture.levelStartProbe === true, target.fixture.levelCompleteProbe === true, target.fixture.raceCompletionProbe === true, target.fixture.raceCompletionCompleteProbe === true, target.fixture.areaCompletionProbe === true, target.fixture.objectiveCompletionProbe === true, target.fixture.persistenceProbe === true));
+    }, buildRuntimeScript(target.fixture.nativeProbeIds, target.fixture.playerStateProbe === true, target.fixture.playerObjectiveStateProbe === true, target.fixture.playerEggStateProbe === true, target.fixture.playerCaptureStateProbe === true, target.fixture.vehicleStateProbe === true, target.fixture.modeStateProbe === true, target.fixture.playerFormTransitionProbe === true, target.fixture.playerCommandProbe === true, target.fixture.playerVelocityProbe === true, target.fixture.pickupScoreCapabilityProbe === true, target.fixture.pickupProbe === true, target.fixture.weaponHitProbe === true, target.fixture.damageProbe === true, target.fixture.splineEventProbe === true, target.fixture.mapItemProbe === true, runtimeCapabilityExpectations(target), target.fixture.contextExpectations, target.fixture.lifecycleProbe === true, target.fixture.childCleanupProbe === true, target.fixture.recreationProbe === true, target.fixture.checkpointResetProbe === true, target.fixture.objectCommandProbe === true, target.fixture.replacementLifecycleProbe === true, target.fixture.levelStartProbe === true, target.fixture.levelCompleteProbe === true, target.fixture.raceCompletionProbe === true, target.fixture.raceCompletionCompleteProbe === true, target.fixture.raceProgressProbe === true, target.fixture.areaCompletionProbe === true, target.fixture.objectiveCompletionProbe === true, target.fixture.persistenceProbe === true, target.fixture.buddyLaunchProbe === true, target.fixture.deathProbe === true));
     expect(scriptWritten).toBe(true);
     const assetFixtureWritten = await page.evaluate(async (fixture) => {
       const runtime = window.Module;
@@ -1678,7 +2315,7 @@ for (const target of [
             script: "Data/Scripts/dist/main.lua",
         extraNativeItems: fixture.nativeItems ?? [],
             itemOverrides: [],
-            terrainReplacements: [
+            terrainReplacements: fixture.deferLevelConfig === true ? [] : [
               ...(fixture.terrainReplacement === undefined ? [] : [fixture.terrainReplacement]),
               ...(fixture.terrainReplacementProbes?.map(({ replacement }) => replacement) ?? []),
             ].map((replacement) => ({
@@ -1789,8 +2426,56 @@ for (const target of [
       return true;
     }, target.fixture);
     expect(assetFixtureWritten).toBe(true);
+    if (target.fixture.nanosaur2PowerupPickupProbe === true) {
+      const runtimeScript = await page.evaluate(() => {
+        const bytes = window.Module?.FS?.readFile?.("Data/Scripts/dist/main.lua");
+        return bytes === undefined ? "" : new TextDecoder().decode(bytes);
+      });
+      expect(runtimeScript).toContain("onPickupCollected");
+    }
     if (target.fixture.runtimeWarmupMs !== undefined) {
       await page.waitForTimeout(target.fixture.runtimeWarmupMs);
+    }
+    if (target.fixture.manualStart) {
+      const startControl = page.locator(target.fixture.startSelector ?? "#play-btn");
+      await startControl.waitFor({ state: "visible", timeout: 30_000 });
+      if (target.fixture.mapOverridePath !== undefined) {
+        await page.evaluate((mapOverridePath) => {
+          window.Module?.ccall?.("Boot_SetCustomMapPath", "void", ["string"], [mapOverridePath]);
+        }, target.fixture.mapOverridePath);
+      }
+      await startControl.click();
+      if (target.fixture.nanosaur2PowerupPickupProbe === true) {
+        await page.waitForFunction(
+          () => window.Module?.ccall?.("PangeaScript_IsEnabled", "boolean", [], []) === true,
+          null,
+          { timeout: 30_000 },
+        );
+        const startupScriptStatus = await page.evaluate(() => window.Module?.ccall?.(
+          "PangeaScript_SetStartupScript",
+          "number",
+          ["string"],
+          ["Data/Scripts/dist/main.lua"],
+        ) ?? -1);
+        expect(startupScriptStatus).toBe(0);
+        await page.waitForFunction(
+          () => window.Module?.ccall?.("PangeaScript_GetStatusBundleLoaded", "boolean", [], []) === true,
+          null,
+          { timeout: 30_000 },
+        );
+      }
+    }
+    if (target.fixture.buddyLaunchProbe === true) {
+      const buddyLaunchResult = await page.evaluate(() => {
+        const runtime = window.Module;
+        if (!runtime?.ccall) return { result: 0, error: "runtime unavailable" };
+        const result = runtime.ccall("Bugdom2Script_ProbeBuddyLaunchJS", "number", [], []);
+        return {
+          result,
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      });
+      expect(buddyLaunchResult.result, buddyLaunchResult.error).toBe(1);
     }
   }
 
@@ -1857,11 +2542,6 @@ for (const target of [
     }
   }
 
-  if (target.fixture?.manualStart) {
-    const startControl = page.locator(target.fixture.startSelector ?? "#play-btn");
-    await startControl.waitFor({ state: "visible", timeout: 30_000 });
-    await startControl.click();
-  }
   if (target.requiresStartup && !target.fixture?.manualStart) {
     await page.waitForFunction(
       () => window.Module?.ccall?.("PangeaScript_IsEnabled", "boolean", [], []) === true,
@@ -1889,6 +2569,11 @@ for (const target of [
       };
     });
     expect(startupResult?.status, startupResult?.error).toBe(0);
+    await page.waitForFunction(
+      () => window.Module?.ccall?.("PangeaScript_GetStatusBundleLoaded", "boolean", [], []) === true,
+      null,
+      { timeout: 30_000 },
+    );
   }
   if (target.fixture !== undefined && !target.requiresStartup) {
     await page.waitForFunction(
@@ -2001,6 +2686,21 @@ for (const target of [
         validProbeStatus: 0,
       });
     }
+      if (target.fixture.checkpointResetProbe === true) {
+        await expect.poll(
+          () => page.evaluate(
+            (probeFunction) => {
+              const runtime = window.Module;
+              if (!runtime?.ccall) return 0;
+              const result = runtime.ccall(probeFunction ?? "Bugdom2Script_ProbeCheckpointResetJS", "number", [], []);
+              if (result !== 0 || probeFunction !== "Nanosaur2Script_ProbeCheckpointResetJS") return result;
+              return runtime.ccall("Nanosaur2_DebugGetGameplayState", "number", [], []);
+            },
+            target.fixture.checkpointResetProbeFunction,
+          ),
+          { timeout: 30_000 },
+        ).toBe(target.fixture.checkpointResetProbeResult ?? 1);
+      }
       const probeResult = await page.evaluate(async (fixture) => {
       const runtime = window.Module;
       if (!runtime?.ccall || !runtime.FS?.writeFile) {
@@ -2020,34 +2720,41 @@ for (const target of [
         [fixture.levelNum ?? 0],
       );
       if (fixture.splineReplacementFromFirstItem === true) {
+        const selectionFunction = fixture.splineSelectionFunction
+          ?? "Bugdom2Script_SelectSplineItemForReplacementJS";
+        const selectionFieldFunction = fixture.splineSelectionFieldFunction
+          ?? "Bugdom2Script_GetSelectedSplineItemFieldJS";
+        const selectionPlacementFunction = fixture.splineSelectionPlacementFunction
+          ?? "Bugdom2Script_GetSelectedSplinePlacementJS";
+        const nanosaurSelection = selectionFunction.startsWith("Nanosaur2Script_");
         const selected = await runtime.ccall(
-          "Bugdom2Script_SelectSplineItemForReplacementJS",
+          selectionFunction,
           "number",
           [],
           [],
         );
-        if (selected === 0) {
+        if (selected === (nanosaurSelection ? 1 : 0)) {
           const splineReplacement = {
             splineNum: await runtime.ccall(
-              "Bugdom2Script_GetSelectedSplineItemFieldJS",
+              selectionFieldFunction,
               "number",
               ["number"],
               [0],
             ),
             itemIndex: await runtime.ccall(
-              "Bugdom2Script_GetSelectedSplineItemFieldJS",
+              selectionFieldFunction,
               "number",
               ["number"],
               [1],
             ),
             nativeType: await runtime.ccall(
-              "Bugdom2Script_GetSelectedSplineItemFieldJS",
+              selectionFieldFunction,
               "number",
               ["number"],
               [2],
             ),
             placement: await runtime.ccall(
-              "Bugdom2Script_GetSelectedSplinePlacementJS",
+              selectionPlacementFunction,
               "number",
               [],
               [],
@@ -2206,20 +2913,144 @@ for (const target of [
     if (target.fixture.splineEventProbe === true) {
       expect(probeResult?.splineEventProbeStatus).toBe(target.fixture.splineEventProbeResult ?? 1);
     }
+    if (target.fixture.projectileWeaponFamiliesProbe === true) {
+      const projectileWeaponFamiliesProbe = await page.evaluate(() => {
+        const runtime = window.Module;
+        if (!runtime?.ccall) return null;
+        return {
+          result: runtime.ccall("OttoScript_ProbeProjectileWeaponFamiliesJS", "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      });
+      expect(projectileWeaponFamiliesProbe?.result, projectileWeaponFamiliesProbe?.error ?? "").toBe(4);
+    }
+    if (target.fixture.dartWeaponProbe === true) {
+      const dartWeaponProbe = await page.evaluate(() => {
+        const runtime = window.Module;
+        if (!runtime?.ccall) return null;
+        return {
+          result: runtime.ccall("OttoScript_ProbeDartWeaponJS", "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      });
+      expect(dartWeaponProbe?.result, dartWeaponProbe?.error ?? "").toBe(1);
+    }
+    if (target.fixture.superNovaWeaponProbe === true) {
+      const superNovaWeaponProbe = await page.evaluate(() => {
+        const runtime = window.Module;
+        if (!runtime?.ccall) return null;
+        return {
+          result: runtime.ccall("OttoScript_ProbeSuperNovaWeaponJS", "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      });
+      expect(superNovaWeaponProbe?.result, superNovaWeaponProbe?.error ?? "").toBe(1);
+    }
+    if (target.fixture.punchWeaponProbe === true) {
+      const punchWeaponProbe = await page.evaluate(() => {
+        const runtime = window.Module;
+        if (!runtime?.ccall) return null;
+        return {
+          result: runtime.ccall("OttoScript_ProbePunchWeaponJS", "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      });
+      expect(punchWeaponProbe?.result, punchWeaponProbe?.error ?? "").toBe(1);
+    }
+    if (target.fixture.weaponHitProbe === true) {
+      await page.waitForFunction(
+        () => (window.Module?.ccall?.("PangeaScript_GetStatusHooksCalledCount", "number", [], []) ?? 0) > 0,
+        null,
+        { timeout: 30_000 },
+      );
+      const weaponHitProbe = await page.evaluate((fixture) => {
+        const runtime = window.Module;
+        if (!runtime?.ccall || fixture.weaponHitProbeFunction === undefined) return null;
+        return {
+          result: runtime.ccall(fixture.weaponHitProbeFunction, "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      }, target.fixture);
+      expect(weaponHitProbe?.result, weaponHitProbe?.error ?? "").toBe(target.fixture.weaponHitProbeResult ?? 0);
+    }
+    if (target.fixture.deathProbe === true) {
+      const deathResult = await page.evaluate((functionName) => {
+        const runtime = window.Module;
+        if (!runtime?.ccall) return 0;
+        return runtime.ccall(functionName, "number", [], []);
+      }, target.fixture.deathProbeFunction ?? "NanosaurScript_ProbeDeathJS");
+      expect(deathResult).toBe(1);
+    }
+    if (target.fixture.pickupProbe === true && target.fixture.pickupProbeFunction !== undefined) {
+      const pickupProbe = await page.evaluate((fixture) => {
+        const runtime = window.Module;
+        if (!runtime?.ccall || fixture.pickupProbeFunction === undefined) return null;
+        return {
+          result: runtime.ccall(fixture.pickupProbeFunction, "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      }, target.fixture);
+      expect(pickupProbe?.result, pickupProbe?.error ?? "").toBe(target.fixture.pickupProbeResult ?? 0);
+    }
+    if (target.fixture.crystalPickupProbe === true) {
+      const crystalPickupProbe = await page.evaluate((fixture) => {
+        const runtime = window.Module;
+        if (!runtime?.ccall || fixture.crystalPickupProbeFunction === undefined) return null;
+        return {
+          result: runtime.ccall(fixture.crystalPickupProbeFunction, "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      }, target.fixture);
+      expect(crystalPickupProbe?.result, crystalPickupProbe?.error ?? "").toBe(target.fixture.crystalPickupProbeResult ?? 0);
+    }
+    if (target.fixture.eggRecoveryProbe === true) {
+      const eggRecoveryProbe = await page.evaluate((fixture) => {
+        const runtime = window.Module;
+        if (!runtime?.ccall || fixture.eggRecoveryProbeFunction === undefined) return null;
+        return {
+          result: runtime.ccall(fixture.eggRecoveryProbeFunction, "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      }, target.fixture);
+      expect(eggRecoveryProbe?.result, eggRecoveryProbe?.error ?? "").toBe(target.fixture.eggRecoveryProbeResult ?? 0);
+    }
+    if (target.fixture.shieldPickupProbe === true) {
+      const shieldPickupProbe = await page.evaluate((fixture) => {
+        const runtime = window.Module;
+        if (!runtime?.ccall || fixture.shieldPickupProbeFunction === undefined) return null;
+        return {
+          result: runtime.ccall(fixture.shieldPickupProbeFunction, "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      }, target.fixture);
+      expect(shieldPickupProbe?.result, shieldPickupProbe?.error ?? "").toBe(target.fixture.shieldPickupProbeResult ?? 0);
+    }
+    if (target.fixture.weaponPowerPickupProbe === true) {
+      const weaponPowerPickupProbe = await page.evaluate((fixture) => {
+        const runtime = window.Module;
+        if (!runtime?.ccall || fixture.weaponPowerPickupProbeFunction === undefined) return null;
+        return {
+          result: runtime.ccall(fixture.weaponPowerPickupProbeFunction, "number", [], []),
+          error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+        };
+      }, target.fixture);
+      expect(weaponPowerPickupProbe?.result, weaponPowerPickupProbe?.error ?? "").toBe(target.fixture.weaponPowerPickupProbeResult ?? 0);
+    }
+    if (target.fixture.nanosaur2PowerupPickupProbe === true) {
+      for (const pickupKind of [0, 1, 2]) {
+        const pickupProbe = await page.evaluate(({ functionName, kind }) => {
+          const runtime = window.Module;
+          if (!runtime?.ccall || functionName === undefined) return null;
+          return {
+            result: runtime.ccall(functionName, "number", ["number"], [kind]),
+            error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+          };
+        }, { functionName: target.fixture.nanosaur2PowerupPickupProbeFunction, kind: pickupKind });
+        expect(pickupProbe?.result, `Nanosaur 2 pickup kind ${pickupKind}: ${pickupProbe?.error ?? ""}`).toBe(0);
+      }
+    }
     if (target.fixture.expectSplineReplacementLog === true) {
       expect(consoleMessages.some((message) => message.includes("spline replacement failed"))).toBe(true);
-    }
-    if (target.fixture.checkpointResetProbe === true) {
-      await page.waitForTimeout(500);
-      const checkpointResult = await page.evaluate(
-        (probeFunction) => {
-          const runtime = window.Module;
-          if (!runtime?.ccall) return 0;
-          return runtime.ccall(probeFunction ?? "Bugdom2Script_ProbeCheckpointResetJS", "number", [], []);
-        },
-        target.fixture.checkpointResetProbeFunction,
-      );
-      expect(checkpointResult).toBe(target.fixture.checkpointResetProbeResult ?? 1);
     }
     if (target.fixture.saveLoadProbe === true) {
       const saveLoadResult = await page.evaluate((probeFunction) => {
@@ -2230,12 +3061,15 @@ for (const target of [
       expect(saveLoadResult).toBe(target.fixture.saveLoadProbeResult ?? 0);
     }
     if (target.fixture.levelCompleteProbe === true) {
-      const completed = await page.evaluate(() => {
+      const completed = await page.evaluate((probeFunction) => {
         const runtime = window.Module;
         if (!runtime?.ccall) return false;
+        if (probeFunction !== undefined) {
+          return runtime.ccall(probeFunction, "number", [], []) === 1;
+        }
         runtime.ccall("WinLevel", "void", [], []);
         return true;
-      });
+      }, target.fixture.levelCompleteProbeFunction);
       expect(completed).toBe(true);
     }
     if (target.fixture.raceCompletionProbe === true) {
@@ -2256,12 +3090,37 @@ for (const target of [
         target.fixture.raceCompletionProbeResult ?? 0,
       );
     }
+    if (target.fixture.raceProgressProbe === true) {
+      const progressResult = await page.evaluate(() => {
+        const runtime = window.Module;
+        if (!runtime?.ccall) return -1;
+        return runtime.ccall(
+          "CroMagScript_ProbeRaceProgressJS",
+          "number",
+          [],
+          [],
+        );
+      });
+      expect(progressResult).toBe(0);
+    }
+    if (target.fixture.cromagPickupSuppressionProbe === true) {
+      for (const pickupKind of [0, 1]) {
+        const pickupProbe = await page.evaluate(({ functionName, kind }) => {
+          const runtime = window.Module;
+          if (!runtime?.ccall || functionName === undefined) return null;
+          return {
+            result: runtime.ccall(functionName, "number", ["number"], [kind]),
+            error: runtime.ccall("PangeaScript_GetStatusLastError", "string", [], []),
+          };
+        }, { functionName: target.fixture.cromagPickupSuppressionProbeFunction, kind: pickupKind });
+        expect(pickupProbe?.result, `Cro-Mag pickup kind ${pickupKind}: ${pickupProbe?.error ?? ""}`).toBe(0);
+      }
+    }
     if (target.fixture.areaCompletionProbe === true) {
       const completed = await page.evaluate(() => {
         const runtime = window.Module;
         if (!runtime?.ccall) return false;
-        runtime.ccall("BillyScript_ProbeAreaCompletionJS", "number", [], []);
-        return true;
+        return runtime.ccall("BillyScript_ProbeAreaCompletionJS", "number", [], []) === 1;
       });
       expect(completed).toBe(true);
     }
@@ -2301,15 +3160,18 @@ for (const target of [
         () => consoleMessages.some((message) => message.includes("browser lifecycle streamOut")),
       ).toBe(true);
     }
-    await expect.poll(
-      () => consoleMessages.some((message) => message.includes("browser child destroy")),
-    ).toBe(true);
+    if (target.fixture.childCleanupProbe === true) {
+      await expect.poll(
+        () => consoleMessages.some((message) => message.includes("browser child destroy")),
+      ).toBe(true);
+    }
   }
   await page.waitForTimeout(
     target.fixture?.levelCompleteProbe === true ||
       target.fixture?.raceCompletionProbe === true ||
+      target.fixture?.raceProgressProbe === true ||
       target.fixture?.areaCompletionProbe === true
-      ? target.fixture?.raceCompletionProbe === true
+      ? target.fixture?.raceCompletionProbe === true || target.fixture?.raceProgressProbe === true
         ? 7_000
         : 500
       : 8_000,
@@ -2318,6 +3180,7 @@ for (const target of [
   const completionProbeRequested =
     target.fixture?.levelCompleteProbe === true ||
     target.fixture?.raceCompletionProbe === true ||
+    target.fixture?.raceProgressProbe === true ||
     target.fixture?.areaCompletionProbe === true ||
     target.fixture?.objectiveCompletionProbe === true;
 
@@ -2373,7 +3236,9 @@ for (const target of [
   const status = statusResult.data;
 
   expect(status.scriptsDisabled).toBe(false);
-  expect(status.lastError, consoleMessages.filter((message) => message.includes("scripting")).join("\n")).toBe("");
+  if (!completionProbeRequested) {
+    expect(status.lastError, consoleMessages.filter((message) => message.includes("scripting")).join("\n")).toBe("");
+  }
   if (!completionProbeRequested) {
     expect(status.enabled).toBe(true);
     expect(status.bundleLoaded).toBe(true);
@@ -2389,7 +3254,39 @@ for (const target of [
       /stale object handle|Disabling scripting host/i.test(message),
     ),
   ).toBe(false);
-  expect(pageErrors).toEqual([]);
+  expect(pageErrors, consoleMessages.filter((message) => /error|abort|fatal|unreachable/i.test(message)).join("\n")).toEqual([]);
+
+  if (target.fixture?.lifecycleProbe === true) {
+    const rawLifecycleTrace = await page.evaluate(() => {
+      const runtime = window.Module;
+      if (!runtime?.ccall) return null;
+      return runtime.ccall(
+        "PangeaScript_GetStatusLifecycleTraceJSON",
+        "string",
+        [],
+        [],
+      );
+    });
+    const parsedLifecycleTrace = Result.fromThrowable(
+      () => (rawLifecycleTrace === null ? null : JSON.parse(rawLifecycleTrace)),
+      () => null,
+    )().unwrapOr(null);
+    const lifecycleTraceResult = nativeLifecycleTraceSchema.safeParse(
+      parsedLifecycleTrace,
+    );
+    expect(lifecycleTraceResult.success).toBe(true);
+    if (lifecycleTraceResult.success) {
+      expect(lifecycleTraceResult.data.entryCount).toBe(
+        lifecycleTraceResult.data.entries.length,
+      );
+      expect(lifecycleTraceResult.data.overflow).toBe(false);
+      expect(
+        lifecycleTraceResult.data.entries.every(
+          (entry, index) => entry.order === index,
+        ),
+      ).toBe(true);
+    }
+  }
 
   if (target.fixture.checkpointResetEventLogProbe === true) {
     expect(

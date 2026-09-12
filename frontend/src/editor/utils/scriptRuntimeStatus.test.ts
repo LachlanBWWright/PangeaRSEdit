@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { PreviewRuntimeModule } from "./gamePreviewRuntimeTypes";
 import {
+  compareNormalizedLifecycleTraces,
   getRuntimeDiagnosticMessage,
+  queryLifecycleTrace,
   queryScriptingStatus,
   selectScriptingStatusModule,
 } from "./scriptRuntimeStatus";
@@ -137,5 +139,97 @@ describe("queryScriptingStatus", () => {
       preRun: [],
       locateFile: (path) => path,
     })).toBeNull();
+  });
+});
+
+describe("queryLifecycleTrace", () => {
+  const traceJSON = JSON.stringify({
+    eventCount: 2,
+    entryCount: 2,
+    overflow: false,
+    entries: [
+      {
+        eventId: "spawn",
+        applicationPhase: "objectCreation",
+        order: 0,
+        targetId: 41,
+        targetGeneration: 9,
+        status: 0,
+      },
+      {
+        eventId: "reset",
+        applicationPhase: "reset",
+        order: 1,
+        targetId: 0,
+        targetGeneration: 0,
+        status: 0,
+      },
+    ],
+  });
+
+  it("parses the native JSON export and preserves generation-aware handles", () => {
+    const result = queryLifecycleTrace(
+      createModule({ PangeaScript_GetStatusLifecycleTraceJSON: traceJSON }),
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.entries[0]?.targetGeneration).toBe(9);
+      expect(result.value.overflow).toBe(false);
+    }
+  });
+
+  it("returns a typed error for malformed native output", () => {
+    const result = queryLifecycleTrace(
+      createModule({ PangeaScript_GetStatusLifecycleTraceJSON: "not-json" }),
+    );
+
+    expect(result.isErr()).toBe(true);
+  });
+
+  it("compares traces after normalizing allocation-specific handles", () => {
+    const left = queryLifecycleTrace(
+      createModule({ PangeaScript_GetStatusLifecycleTraceJSON: traceJSON }),
+    );
+    const right = queryLifecycleTrace(
+      createModule({
+        PangeaScript_GetStatusLifecycleTraceJSON: traceJSON.replace(
+          '"targetId":41,"targetGeneration":9',
+          '"targetId":7,"targetGeneration":2',
+        ),
+      }),
+    );
+
+    expect(left.isOk() && right.isOk()).toBe(true);
+    if (left.isOk() && right.isOk()) {
+      expect(compareNormalizedLifecycleTraces(left.value, right.value)).toEqual({
+        matches: true,
+        firstMismatchIndex: null,
+        reason: null,
+      });
+    }
+  });
+
+  it("reports the first ordered lifecycle mismatch", () => {
+    const left = queryLifecycleTrace(
+      createModule({ PangeaScript_GetStatusLifecycleTraceJSON: traceJSON }),
+    );
+    const right = queryLifecycleTrace(
+      createModule({
+        PangeaScript_GetStatusLifecycleTraceJSON: traceJSON.replace(
+          '"eventId":"reset"',
+          '"eventId":"completion"',
+        ),
+      }),
+    );
+
+    expect(left.isOk() && right.isOk()).toBe(true);
+    if (left.isOk() && right.isOk()) {
+      expect(compareNormalizedLifecycleTraces(left.value, right.value)).toEqual({
+        matches: false,
+        firstMismatchIndex: 1,
+        reason: "Lifecycle trace entries differ",
+      });
+    }
   });
 });

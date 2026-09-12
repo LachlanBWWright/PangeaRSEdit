@@ -69,6 +69,11 @@ function renderCapabilityMacros(contract: ScriptingContract): string {
         capabilities?.mapItemHooks === "supported",
         capabilities?.pickupScoreEffects === "supported",
         capabilities?.objectCollision === "supported",
+        capabilities?.playerScore === "supported",
+        capabilities?.playerLives === "supported",
+        capabilities?.playerInventory === "supported",
+        capabilities?.weaponHitEvents === "supported" && capabilities?.playerScore === "supported",
+        capabilities?.playerForm === "supported",
       ];
       return `#define ${definition.macro} { ${values.join(", ")} }`;
     })

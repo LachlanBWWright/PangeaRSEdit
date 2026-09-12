@@ -116,4 +116,70 @@ test("uses the production Mighty Mike Scripts workspace through preview launch",
   await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+  await previewDialog.getByRole("button", { name: "Reload Game", exact: true }).click();
+  await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+});
+
+test("surfaces a production Lua runtime traceback in the Mighty Mike preview monitor", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "pangea-feature-flags",
+      JSON.stringify({
+        scripting: true,
+        multiplayer: false,
+        itemModelMappingPreview: false,
+      }),
+    );
+  });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Mighty Mike", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+
+  await mightyMikeCard(page)
+    .locator('input[type="file"]')
+    .setInputFiles([mapPath, tilesetPath]);
+  await expect(
+    page.getByRole("button", { name: "Level Actions", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("tab", { name: "Scripts", exact: true }).click();
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Load", exact: true }).first().click();
+  await page.getByRole("tab", { name: "Code", exact: true }).click();
+  await page.getByRole("button", { name: /user\.lua Saved/ }).click();
+
+  const editorDialog = page.getByRole("dialog").last();
+  await editorDialog.locator(".monaco-editor").click();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.insertText(
+    'local pangea = require("pangea")\nlocal entry = {}\nfunction entry.onAreaFrame(ctx)\n  error("mighty mike production traceback regression")\nend\nreturn entry',
+  );
+  await editorDialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Saved source file", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("tab", { name: "Preview and Export", exact: true }).click();
+  await page.getByRole("button", { name: "Compile Bundle", exact: true }).click();
+  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("button", { name: "Preview with Scripts", exact: true }).click();
+  const previewDialog = page.getByRole("dialog").last();
+  await previewDialog.getByRole("button", { name: "Launch Game", exact: true }).click();
+  await expect(
+    previewDialog.getByRole("button", { name: "Reload Game", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(previewDialog.getByText("Last Error:", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    previewDialog.getByText(/mighty mike production traceback regression/, {
+      exact: false,
+    }),
+  ).toBeVisible({ timeout: 30_000 });
 });

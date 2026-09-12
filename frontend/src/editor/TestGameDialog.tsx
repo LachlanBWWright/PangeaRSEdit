@@ -25,6 +25,7 @@ import type {
   MultiplayerRuntimeEvent,
   PreviewRuntimeModule,
   PreviewVfsFile,
+  PreviewRuntimeFailure,
 } from "./utils/gamePreviewRuntime";
 import {
   getRuntimeDiagnosticMessage,
@@ -44,7 +45,9 @@ interface Props {
   terrainTextureBytes: Uint8Array | null | undefined;
   customFiles?: readonly PreviewVfsFile[];
   onScriptRuntimeDiagnostic?: (message: string) => void;
+  onScriptRuntimeFailure?: (failure: PreviewRuntimeFailure) => void;
   onPreviewRuntimeError?: (message: string) => void;
+  onPreviewRuntimeFailure?: (failure: PreviewRuntimeFailure) => void;
   /** When true, launch from the title screen without level selection or terrain injection. */
   normalLaunch?: boolean;
 }
@@ -61,7 +64,9 @@ export function TestGameDialog(props: Props) {
     terrainTextureBytes,
     customFiles,
     onScriptRuntimeDiagnostic,
+    onScriptRuntimeFailure,
     onPreviewRuntimeError,
+    onPreviewRuntimeFailure,
     normalLaunch = false,
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
@@ -96,9 +101,15 @@ export function TestGameDialog(props: Props) {
   const handlePreviewRuntimeError = useCallback(
     (message: string): void => {
       setRuntimeDiagnosticMessage(message);
-      onPreviewRuntimeError?.(message);
+        onPreviewRuntimeError?.(message);
     },
     [onPreviewRuntimeError],
+  );
+  const handlePreviewRuntimeFailure = useCallback(
+    (failure: PreviewRuntimeFailure): void => {
+      onPreviewRuntimeFailure?.(failure);
+    },
+    [onPreviewRuntimeFailure],
   );
   const handlePreviewRuntimeEvent = useCallback((event: MultiplayerRuntimeEvent): void => {
     if (event.type === "runtimeInitialized") {
@@ -127,6 +138,11 @@ export function TestGameDialog(props: Props) {
         lastReportedScriptError.current = runtimeError;
         setRuntimeDiagnosticMessage(runtimeError);
         onScriptRuntimeDiagnostic?.(runtimeError);
+        onScriptRuntimeFailure?.({
+          category: "runtime-traceback",
+          code: "runtime.traceback",
+          message: runtimeError,
+        });
       }
       if (status) lastReportedScriptErrorCount.current = status.errorCount;
       if (!runtimeError) {
@@ -134,7 +150,7 @@ export function TestGameDialog(props: Props) {
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [onScriptRuntimeDiagnostic, previewStarted, runtimeInitialized]);
+  }, [onScriptRuntimeDiagnostic, onScriptRuntimeFailure, previewStarted, runtimeInitialized]);
 
   const handleLevelChange = (value: string) => {
     onLevelNumberChange(Number(value));
@@ -245,7 +261,8 @@ export function TestGameDialog(props: Props) {
                 customFiles={customFiles}
                 runToken={runToken}
                 normalLaunch={normalLaunch}
-                onRuntimeError={handlePreviewRuntimeError}
+        onRuntimeError={handlePreviewRuntimeError}
+        onRuntimeFailure={handlePreviewRuntimeFailure}
                 onRuntimeEvent={handlePreviewRuntimeEvent}
                 onRuntimeModule={handlePreviewRuntimeModule}
               />

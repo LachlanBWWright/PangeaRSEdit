@@ -1,6 +1,8 @@
 import { err, ok, type Result } from "neverthrow";
-import { SCRIPTING_CONTRACT } from "./scriptContract";
-import type { NativeSpawnAudit } from "./scriptApiSchema";
+import {
+  AUTHORITATIVE_API_SCHEMA,
+  type NativeSpawnAudit,
+} from "./scriptApiSchema";
 
 export type NativeReplacementClassification =
   | "directly-replaceable"
@@ -53,11 +55,18 @@ function getAuditWarnings(audit: NativeItemAudit): readonly string[] {
 }
 
 function supportedModesForGame(gameId: string): readonly string[] {
-  return SCRIPTING_CONTRACT.games[gameId]?.modes ?? [];
+  if (gameId === "Nanosaur2-Android") return ["adventure", "race", "battle", "capture"];
+  if (gameId === "CroMagRally-Android") {
+    return ["local", "practice", "network", "tag1", "tag2", "survival", "capture"];
+  }
+  if (gameId === "BillyFrontier-Android" || gameId === "MightyMike-Android") {
+    return ["local"];
+  }
+  return ["single-player"];
 }
 
 function buildAudit(): readonly NativeItemAudit[] {
-  return SCRIPTING_CONTRACT.api.games.flatMap((game) =>
+  return AUTHORITATIVE_API_SCHEMA.games.flatMap((game) =>
     game.nativeSpawns.map((nativeSpawn) => {
       const audit: NativeSpawnAudit = nativeSpawn.audit;
       const nativeType = nativeSpawn.nativeType ?? Number(nativeSpawn.id);

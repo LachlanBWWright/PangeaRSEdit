@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 export async function runScriptRuntimeTraceback(
   page: Page,
@@ -9,15 +10,14 @@ export async function runScriptRuntimeTraceback(
 ): Promise<void> {
   await card.locator('input[type="file"]').setInputFiles([...levelFiles]);
   await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
+    page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog.getByRole("tab", { name: "Code", exact: true }).click();
-  await dialog.getByRole("button", { name: /user\.lua Saved/ }).click();
+  const workspace = await openScriptWorkspace(page);
+  await workspace.getByRole("tab", { name: "Overview", exact: true }).click();
+  await workspace.getByRole("button", { name: "Load", exact: true }).first().click();
+  await workspace.getByRole("tab", { name: "Code", exact: true }).click();
+  await workspace.getByRole("button", { name: /user\.lua Saved/ }).click();
 
   const editorDialog = page.getByRole("dialog").last();
   await editorDialog.locator(".monaco-editor").click();
@@ -29,14 +29,14 @@ export async function runScriptRuntimeTraceback(
   await expect(page.getByText("Saved source file", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
 
-  await dialog
+  await workspace
     .getByRole("tab", { name: "Preview and Export", exact: true })
     .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
+  await workspace.getByRole("button", { name: "Compile Bundle", exact: true }).click();
   await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
-  await dialog
+  await workspace
     .getByRole("button", { name: "Preview with Scripts", exact: true })
     .click();
   const previewDialog = page.getByRole("dialog").last();

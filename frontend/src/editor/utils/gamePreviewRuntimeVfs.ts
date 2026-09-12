@@ -165,7 +165,7 @@ function writePreviewCustomFilesToVfs(
   module: PreviewRuntimeModule,
   customFiles: readonly PreviewVfsFile[],
   onError: (text: string) => void,
-): void {
+): boolean {
   for (const file of customFiles) {
     ensureParentDirectory(module, file.path);
     const writeCustomResult = writeFileToVfs(module, file.path, file.data);
@@ -173,13 +173,14 @@ function writePreviewCustomFilesToVfs(
       onError(
         `Failed to write preview override file ${file.path}: ${writeCustomResult.error}`,
       );
-      return;
+      return false;
     }
     logPreviewRuntime("Injected preview override file", {
       path: file.path,
       byteLength: file.data.byteLength,
     });
   }
+  return true;
 }
 
 /**
@@ -197,7 +198,7 @@ function writeTerrainToVfs(
   terrainTextureBytes: Uint8Array | null,
   customFiles: readonly PreviewVfsFile[] | undefined,
   onError: (text: string) => void,
-): void {
+): boolean {
   const hasTerrainBytes = Boolean(
     terrainDataBytes ?? terrainRsrcBytes ?? terrainTextureBytes,
   );
@@ -209,7 +210,7 @@ function writeTerrainToVfs(
       level: currentLevelInfo,
       terrainPaths,
     });
-    return;
+    return true;
   }
 
   const vfs = module.FS;
@@ -269,7 +270,7 @@ function writeTerrainToVfs(
     );
     if (writeDataResult.isErr()) {
       onError(`Failed to write terrain data file: ${writeDataResult.error}`);
-      return;
+      return false;
     }
     if (terrainPaths.altDataPath) {
       const altWriteResult = writeTerrainDataPath(
@@ -277,10 +278,10 @@ function writeTerrainToVfs(
         terrainDataBytes,
       );
       if (altWriteResult.isErr()) {
-        console.warn(
-          "[GamePreview] Failed to write alternate terrain data path",
-          altWriteResult.error,
+        onError(
+          `Failed to write alternate terrain data file: ${altWriteResult.error}`,
         );
+        return false;
       }
     }
   }
@@ -297,7 +298,7 @@ function writeTerrainToVfs(
     );
     if (writeRsrcResult.isErr()) {
       onError(`Failed to write terrain rsrc file: ${writeRsrcResult.error}`);
-      return;
+      return false;
     }
   }
 
@@ -315,7 +316,7 @@ function writeTerrainToVfs(
       onError(
         `Failed to write terrain texture file: ${writeTextureResult.error}`,
       );
-      return;
+      return false;
     }
     if (terrainPaths.altTexturePath) {
       const alternateTextureResult = writeFileToVfs(
@@ -327,7 +328,7 @@ function writeTerrainToVfs(
         onError(
           `Failed to write alternate terrain texture file: ${alternateTextureResult.error}`,
         );
-        return;
+        return false;
       }
       logPreviewRuntime("Injected alternate terrain texture bytes", {
         texturePath: terrainPaths.altTexturePath,
@@ -337,7 +338,9 @@ function writeTerrainToVfs(
   }
 
   if (customFiles && customFiles.length > 0) {
-    writePreviewCustomFilesToVfs(module, customFiles, onError);
+    if (!writePreviewCustomFilesToVfs(module, customFiles, onError)) {
+      return false;
+    }
   }
 
   if (
@@ -350,16 +353,16 @@ function writeTerrainToVfs(
     const terrain = config.terrain;
     const terrainFile = currentLevelInfo.terrainFile;
     if (typeof terrainFile !== "string") {
-      return;
+      return true;
     }
     const setPathFn = terrain.setPathFn;
     const setPathFnStr = getStringField({ setPathFn }, "setPathFn");
     if (!setPathFnStr) {
-      return;
+      return true;
     }
     const getSetPathArg = terrain.getSetPathArg;
     if (!isFunction(getSetPathArg)) {
-      return;
+      return true;
     }
     const setPathArg =
       config.game === Game.NANOSAUR
@@ -369,11 +372,18 @@ function writeTerrainToVfs(
       fn: setPathFnStr,
       arg: setPathArg,
     });
-    Result.fromThrowable(
+    const setPathResult = Result.fromThrowable(
       () => module.ccall?.(setPathFnStr, null, ["string"], [setPathArg]),
       (e) => mapErr(e),
     )();
+    if (setPathResult.isErr()) {
+      onError(
+        `Failed to set runtime terrain override path: ${setPathResult.error}`,
+      );
+      return false;
+    }
   }
+  return true;
 }
 
 export {

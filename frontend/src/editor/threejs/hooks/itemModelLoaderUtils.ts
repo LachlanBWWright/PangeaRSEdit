@@ -10,7 +10,18 @@ import {
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 let requestIdCounter = 0;
+let workerIdCounter = 0;
+const workerIds = new WeakMap<Worker, number>();
 const fileGltfCache = new Map<string, Promise<GLTF>>();
+
+function getWorkerCacheKey(worker: Worker, fileUrl: string): string {
+  let workerId = workerIds.get(worker);
+  if (workerId === undefined) {
+    workerId = ++workerIdCounter;
+    workerIds.set(worker, workerId);
+  }
+  return `${workerId}:${fileUrl}`;
+}
 
 const workerResponseSchema = z.object({
   type: z.string(),
@@ -36,7 +47,7 @@ export function convertBg3dToGltf(
         reject(new Error(`Worker error: ${parsed.data.error ?? "Unknown worker error"}`));
         return;
       }
-      if (parsed.data.type !== "bg3d-with-skeleton-to-glb") {
+      if (parsed.data.type !== "bg3d-to-glb") {
         reject(new Error(`Unexpected worker response: ${parsed.data.type}`));
         return;
       }
@@ -53,12 +64,7 @@ export function convertBg3dToGltf(
     };
     worker.addEventListener("message", handleMessage);
     worker.addEventListener("error", handleError);
-    worker.postMessage({
-      type: "bg3d-with-skeleton-to-glb",
-      bg3dBuffer: buffer,
-      skeletonData: undefined,
-      requestId,
-    });
+    worker.postMessage({ type: "bg3d-to-glb", buffer, requestId });
     setTimeout(() => {
       if (resolved) return;
       resolved = true;
@@ -70,7 +76,8 @@ export function convertBg3dToGltf(
 }
 
 export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
-  const cached = fileGltfCache.get(fileUrl);
+  const cacheKey = getWorkerCacheKey(worker, fileUrl);
+  const cached = fileGltfCache.get(cacheKey);
   if (cached) return cached;
 
   const promise = (async () => {
@@ -123,9 +130,9 @@ export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
     return gltf;
   })();
 
-  fileGltfCache.set(fileUrl, promise);
+  fileGltfCache.set(cacheKey, promise);
   promise.then(undefined, () => {
-    fileGltfCache.delete(fileUrl);
+    fileGltfCache.delete(cacheKey);
   });
   return promise;
 }

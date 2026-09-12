@@ -32,4 +32,6 @@ RUN chown app:app /app
 COPY --from=publish --chown=app:app /app/publish .
 USER app
 
-ENTRYPOINT ["dotnet", "PangeaRSEdit.Api.dll"]
+# Railway supplies PORT at runtime; keep local/container execution on 8080 when
+# no platform port is present.
+ENTRYPOINT ["sh", "-c", "ASPNETCORE_HTTP_PORTS=${PORT:-8080} exec dotnet PangeaRSEdit.Api.dll"]

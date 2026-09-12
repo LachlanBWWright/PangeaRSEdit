@@ -18,6 +18,7 @@ export function BugdomMetadataMenu({
     <div className="p-1">
       <LevelScaleControl
         tileSize={headerData.Hedr[1000].obj.tileSize}
+        supportsPlacementBehavior={false}
         onApply={onApplyLevelScale}
       />
     </div>

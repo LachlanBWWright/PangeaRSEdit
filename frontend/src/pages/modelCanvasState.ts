@@ -9,7 +9,10 @@ export interface CameraConfig {
 }
 
 /** Builds the default camera framing used by the model canvas for a given game. */
-export function buildModelCanvasCameraConfig(gameType?: Game): CameraConfig {
+export function buildModelCanvasCameraConfig(
+  gameType?: Game,
+  cameraDistanceMultiplier = 1,
+): CameraConfig {
   let position: [number, number, number] = [0, 0, 100];
 
   if (gameType === Game.BUGDOM) {
@@ -23,6 +26,12 @@ export function buildModelCanvasCameraConfig(gameType?: Game): CameraConfig {
   } else if (gameType === Game.CRO_MAG) {
     position = [0, 0, 160];
   }
+
+  position = [
+    position[0] * cameraDistanceMultiplier,
+    position[1] * cameraDistanceMultiplier,
+    position[2] * cameraDistanceMultiplier,
+  ];
 
   return {
     position,

@@ -35,6 +35,16 @@ interface ScriptCodeModalProps {
   onDelete?: () => void;
 }
 
+export function getLuaIntelligenceStatus(
+  configured: boolean,
+  status: "disconnected" | "connecting" | "connected" | "unavailable",
+): string {
+  if (!configured) return "snippets only";
+  if (status === "connected") return "LuaLS connected";
+  if (status === "connecting") return "connecting to LuaLS";
+  return "snippets only (LuaLS unavailable)";
+}
+
 export function ScriptCodeModal({
   open,
   onOpenChange,
@@ -49,8 +59,8 @@ export function ScriptCodeModal({
 }: ScriptCodeModalProps) {
   const lspStatus = useSyncExternalStore(
     (listener) => scriptLspClient.subscribe(listener),
-    () => scriptLspClient.getStatus(),
-    () => "disconnected",
+    (): ReturnType<typeof scriptLspClient.getStatus> => scriptLspClient.getStatus(),
+    (): ReturnType<typeof scriptLspClient.getStatus> => "disconnected",
   );
   const [draft, setDraft] = useState({ base: content, value: content });
   const editorContent = draft.base === content ? draft.value : content;
@@ -195,14 +205,11 @@ export function ScriptCodeModal({
               </span>
             )}
           </span>
-          <span>
-            Lua intelligence: {hasConfiguredApiEndpoint()
-              ? lspStatus === "connected"
-                ? "LuaLS connected"
-                : lspStatus === "connecting"
-                  ? "connecting"
-                  : "snippets only"
-              : "snippets only"}
+          <span role="status" aria-live="polite">
+            Lua intelligence: {getLuaIntelligenceStatus(
+              hasConfiguredApiEndpoint(),
+              lspStatus,
+            )}
           </span>
         </div>
       </DialogContent>

@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runScriptPackageRoundTrip } from "./scriptPackageRoundTrip";
+import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,26 +60,24 @@ test("uses the production Otto Scripts workspace through preview launch", async 
   await ottoCard(page)
     .locator('input[type="file"]')
     .setInputFiles([earthFarmLevelPath, earthFarmTexturePath]);
-  const levelActions = page.locator("summary").filter({
-    hasText: "Level Actions",
-  });
+  const levelActions = page
+    .locator("summary")
+    .filter({ hasText: "Level Actions" })
+    .or(page.getByRole("button", { name: "Level Actions", exact: true }));
   await expect(levelActions).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog
+  const workspace = await openScriptWorkspace(page);
+  await workspace.getByRole("button", { name: "Load", exact: true }).first().click();
+  await workspace
     .getByRole("tab", { name: "Preview and Export", exact: true })
     .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
+  await workspace.getByRole("button", { name: "Compile Bundle", exact: true }).click();
   await expect(page.getByText("Script bundle compiled")).toBeVisible({
     timeout: 30_000,
   });
 
-  await dialog
+  await workspace
     .getByRole("button", { name: "Preview with Scripts", exact: true })
     .click();
   const previewDialog = page.getByRole("dialog").last();
@@ -97,6 +96,12 @@ test("uses the production Otto Scripts workspace through preview launch", async 
   await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+  await previewDialog
+    .getByRole("button", { name: "Reload Game", exact: true })
+    .click({ force: true });
+  await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
 });
 
 test("creates, places, edits, and reopens an Otto scripted object", async ({
@@ -121,19 +126,22 @@ test("creates, places, edits, and reopens an Otto scripted object", async ({
     .locator('input[type="file"]')
     .setInputFiles([earthFarmLevelPath, earthFarmTexturePath]);
   await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
+    page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("tab", { name: "Assignments", exact: true }).click();
-  await dialog.locator("#custom-object-label").fill("Otto Test Object");
-  await dialog.getByRole("button", { name: "Save Object", exact: true }).click();
-  await expect(dialog.getByText("Otto Test Object", { exact: true })).toBeVisible();
+  const openScriptsButton = page.getByRole("button", { name: "Open Scripts", exact: true });
+  if ((await openScriptsButton.count()) > 0) {
+    await openScriptsButton.click();
+  }
+  const dialog = page.getByRole("dialog").last();
+  const workspace: Locator | Page = (await dialog.count()) > 0 ? dialog : page;
+  await workspace.getByRole("tab", { name: "Assignments", exact: true }).click();
+  await workspace.locator("#custom-object-label").fill("Otto Test Object");
+  await workspace.getByRole("button", { name: "Save Object", exact: true }).click();
+  await expect(workspace.getByText("Otto Test Object", { exact: true }).first()).toBeVisible();
 
-  const visualType = dialog.getByRole("combobox", {
+  const visualType = workspace.getByRole("combobox", {
     name: "Otto Test Object visual type",
   });
   await visualType.click();
@@ -151,14 +159,17 @@ test("creates, places, edits, and reopens an Otto scripted object", async ({
   await expect(page.locator("#scripted-item-x")).toHaveValue("240");
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const reopenedDialog = page.getByRole("dialog");
-  await reopenedDialog.getByRole("tab", { name: "Assignments", exact: true }).click();
-  await expect(reopenedDialog.getByText("Otto Test Object", { exact: true })).toBeVisible();
-  await reopenedDialog
+  if ((await openScriptsButton.count()) > 0) {
+    await openScriptsButton.click();
+  }
+  const reopenedDialog = page.getByRole("dialog").last();
+  const reopenedWorkspace: Locator | Page = (await reopenedDialog.count()) > 0 ? reopenedDialog : page;
+  await reopenedWorkspace.getByRole("tab", { name: "Assignments", exact: true }).click();
+  await expect(reopenedWorkspace.getByText("Otto Test Object", { exact: true }).first()).toBeVisible();
+  await reopenedWorkspace
     .getByRole("tab", { name: "Preview and Export", exact: true })
     .click();
-  await reopenedDialog
+  await reopenedWorkspace
     .getByRole("button", { name: "Compile Bundle", exact: true })
     .click();
   await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
@@ -258,7 +269,7 @@ test("surfaces a native-adapter runtime load failure in the preview monitor", as
     .locator('input[type="file"]')
     .setInputFiles([earthFarmLevelPath, earthFarmTexturePath]);
   await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
+    page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   await page.getByRole("button", { name: "Open Scripts", exact: true }).click();

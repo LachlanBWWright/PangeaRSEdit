@@ -9,6 +9,11 @@ import {
   getPreviewTerrainPaths,
   loadPreviewRuntime,
 } from "./gamePreviewRuntime";
+import type { PreviewRuntimeModule } from "./gamePreviewRuntime";
+import type {
+  PreviewModuleOptions,
+} from "./gamePreviewRuntimeLoader";
+import type { PreviewRuntimeFailure } from "./gamePreviewRuntimeTypes";
 import { startGamePreview } from "./gamePreviewHostRuntime";
 
 vi.mock("./gamePreviewRuntime", () => ({
@@ -44,6 +49,7 @@ function startOptions(canvas: HTMLCanvasElement) {
     normalLaunch: true,
     onStatus: vi.fn(),
     onError: vi.fn(),
+    onFailure: vi.fn(),
   };
 }
 
@@ -111,10 +117,40 @@ describe("startGamePreview", () => {
     expect(canvas.height).toBe(480);
 
     cleanup();
+    cleanup();
 
-    expect(stopGame).toHaveBeenCalled();
-    expect(cleanupGlobals).toHaveBeenCalled();
+    expect(stopGame).toHaveBeenCalledTimes(1);
+    expect(cleanupGlobals).toHaveBeenCalledTimes(1);
     expect(window.Module).toBe(previousModule);
+  });
+
+  it("ignores runtime callbacks that arrive after cleanup", async () => {
+    const canvas = createCanvas();
+    let runtimeModuleCallback:
+      | ((module: PreviewRuntimeModule) => void)
+      | undefined;
+    let resolveLoad:
+      | ((result: Awaited<ReturnType<typeof loadPreviewRuntime>>) => void)
+      | undefined;
+    vi.mocked(loadPreviewRuntime).mockImplementationOnce(
+      async (_module, _scriptUrl, _isCancelled, onModule) => {
+        runtimeModuleCallback = onModule;
+        return await new Promise((resolve) => {
+          resolveLoad = resolve;
+        });
+      },
+    );
+    const options = startOptions(canvas);
+    const cleanup = startGamePreview(options);
+    await vi.advanceTimersByTimeAsync(0);
+    cleanup();
+
+    runtimeModuleCallback?.({ canvas, arguments: [], preRun: [], locateFile: () => "" });
+    resolveLoad?.(ok(() => undefined));
+    await Promise.resolve();
+
+    expect(options.onError).not.toHaveBeenCalled();
+    cleanup();
   });
 
   it("tries the next asset base after a missing script and reports terminal failures", async () => {
@@ -135,6 +171,38 @@ describe("startGamePreview", () => {
 
     expect(loadPreviewRuntime).toHaveBeenCalledTimes(2);
     expect(options.onError).toHaveBeenCalledWith("runtime crashed");
+    cleanup();
+  });
+
+  it("preserves typed runtime failures reported by the loaded module", async () => {
+    const canvas = createCanvas();
+    let reportModuleFailure: ((failure: PreviewRuntimeFailure) => void) | undefined;
+    vi.mocked(createPreviewModule).mockImplementationOnce(
+      (options: PreviewModuleOptions) => {
+        reportModuleFailure = options.onFailure;
+        return {
+          canvas: options.canvas,
+          arguments: [],
+          preRun: [],
+          locateFile: () => "",
+        };
+      },
+    );
+    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(ok(() => undefined));
+    const options = startOptions(canvas);
+
+    const cleanup = startGamePreview(options);
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    const failure: PreviewRuntimeFailure = {
+      category: "native-adapter",
+      code: "runtime.level",
+      message: "native level load failed",
+    };
+    reportModuleFailure?.(failure);
+
+    expect(options.onFailure).toHaveBeenCalledWith(failure);
     cleanup();
   });
 

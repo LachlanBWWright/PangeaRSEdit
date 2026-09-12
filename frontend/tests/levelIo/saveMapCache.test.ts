@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBlankLevel } from "@/data/levelTemplates";
 import { OttoGlobals } from "@/data/globals/globals";
 import { levelOutputCache } from "@/data/level-io/levelOutputCache";
+import { combineLevelData } from "@/data/utils/levelDataUtils";
 import {
   buildPreviewTerrainBlobs,
   saveMap,
@@ -45,7 +46,13 @@ function blankOttoLevel() {
     height: 64,
   });
   return result.match(
-    (value) => value,
+    (value) => {
+      const combined = combineLevelData(value);
+      return combined.match(
+        (level) => level,
+        (error) => expect.fail(error),
+      );
+    },
     (error) => expect.fail(error),
   );
 }

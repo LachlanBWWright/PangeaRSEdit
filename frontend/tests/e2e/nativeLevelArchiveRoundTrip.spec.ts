@@ -53,6 +53,12 @@ const archiveCases: readonly ArchiveCase[] = [
     texturePath: "../../public/assets/nanosaur2/terrain/level1.ter",
   },
   {
+    title: "Nanosaur",
+    gameTitle: "Nanosaur",
+    levelPath: "../../public/assets/nanosaur/terrain/Level1.ter",
+    texturePath: "../../public/assets/nanosaur/terrain/Level1.trt",
+  },
+  {
     title: "Nanosaur 2 Race 1",
     gameTitle: "Nanosaur 2",
     levelPath: "../../public/assets/nanosaur2/terrain/race1.ter.rsrc",

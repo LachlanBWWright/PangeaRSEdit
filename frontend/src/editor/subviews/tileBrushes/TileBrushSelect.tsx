@@ -27,7 +27,7 @@ function BrushSummary({
   readonly number: number;
 }) {
   return (
-    <span className="flex min-w-0 items-center gap-2">
+    <span className="!flex min-w-0 flex-row items-center gap-2">
       <TileBrushThumbnail
         brush={brush}
         game={game}
@@ -66,7 +66,7 @@ export function TileBrushSelect({
 
   return (
     <Select value={selectedBrush?.id} onValueChange={onSelect}>
-      <SelectTrigger className="h-auto min-h-12 w-full py-1.5">
+      <SelectTrigger className="h-12 min-h-12 w-full py-1.5">
         {selectedBrush ? (
           <BrushSummary
             brush={selectedBrush}

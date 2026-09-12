@@ -13,6 +13,14 @@ const texturePath = path.resolve(
   __dirname,
   "../../public/assets/bugdom2/terrain/Level3_DogHair.ter",
 );
+const tracebackLevelPath = path.resolve(
+  __dirname,
+  "../../public/assets/bugdom2/terrain/Level1_Garden.ter.rsrc",
+);
+const tracebackTexturePath = path.resolve(
+  __dirname,
+  "../../public/assets/bugdom2/terrain/Level1_Garden.ter",
+);
 
 function bugdom2Card(page: Page): Locator {
   return page
@@ -97,6 +105,70 @@ test("uses the production Bugdom 2 Scripts workspace through preview launch", as
   await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+  await previewDialog.getByRole("button", { name: "Reload Game", exact: true }).click();
+  await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+});
+
+test("surfaces a production Lua runtime traceback in the Bugdom 2 preview monitor", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "pangea-feature-flags",
+      JSON.stringify({
+        scripting: true,
+        multiplayer: false,
+        itemModelMappingPreview: false,
+      }),
+    );
+  });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Bugdom 2", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+
+  await bugdom2Card(page)
+    .locator('input[type="file"]')
+    .setInputFiles([tracebackLevelPath, tracebackTexturePath]);
+  await expect(page.getByRole("button", { name: "Level Actions", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("tab", { name: "Scripts", exact: true }).click();
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Load", exact: true }).first().click();
+  await page.getByRole("tab", { name: "Code", exact: true }).click();
+  await page.getByRole("button", { name: /user\.lua Saved/ }).click();
+
+  const editorDialog = page.getByRole("dialog").last();
+  await editorDialog.locator(".monaco-editor").click();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.insertText(
+    'local pangea = require("pangea")\nlocal entry = {}\nfunction entry.onFrame(ctx)\n  error("bugdom2 production traceback regression")\nend\nreturn entry',
+  );
+  await editorDialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Saved source file", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("tab", { name: "Preview and Export", exact: true }).click();
+  await page.getByRole("button", { name: "Compile Bundle", exact: true }).click();
+  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("button", { name: "Preview with Scripts", exact: true }).click();
+  const previewDialog = page.getByRole("dialog").last();
+  await previewDialog.getByRole("button", { name: "Launch Game", exact: true }).click();
+  await expect(
+    previewDialog.getByRole("button", { name: "Reload Game", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(previewDialog.getByText("Last Error:", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    previewDialog.getByText(/bugdom2 production traceback regression/, { exact: false }),
+  ).toBeVisible({ timeout: 30_000 });
 });
 
 test("creates, places, edits, and reopens a Bugdom 2 scripted object", async ({
@@ -121,19 +193,22 @@ test("creates, places, edits, and reopens a Bugdom 2 scripted object", async ({
     .locator('input[type="file"]')
     .setInputFiles([levelPath, texturePath]);
   await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
+    page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("tab", { name: "Assignments", exact: true }).click();
-  await dialog.locator("#custom-object-label").fill("Bugdom 2 Test Object");
-  await dialog.getByRole("button", { name: "Save Object", exact: true }).click();
-  await expect(dialog.getByText("Bugdom 2 Test Object", { exact: true })).toBeVisible();
+  const openScriptsButton = page.getByRole("button", { name: "Open Scripts", exact: true });
+  if ((await openScriptsButton.count()) > 0) {
+    await openScriptsButton.click();
+  }
+  const dialog = page.getByRole("dialog").last();
+  const workspace: Locator | Page = (await dialog.count()) > 0 ? dialog : page;
+  await workspace.getByRole("tab", { name: "Assignments", exact: true }).click();
+  await workspace.locator("#custom-object-label").fill("Bugdom 2 Test Object");
+  await workspace.getByRole("button", { name: "Save Object", exact: true }).click();
+  await expect(workspace.getByText("Bugdom 2 Test Object", { exact: true }).first()).toBeVisible();
 
-  const visualType = dialog.getByRole("combobox", {
+  const visualType = workspace.getByRole("combobox", {
     name: "Bugdom 2 Test Object visual type",
   });
   await visualType.click();
@@ -153,16 +228,19 @@ test("creates, places, edits, and reopens a Bugdom 2 scripted object", async ({
   await expect(page.locator("#scripted-item-x")).toHaveValue("240");
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const reopenedDialog = page.getByRole("dialog");
-  await reopenedDialog.getByRole("tab", { name: "Assignments", exact: true }).click();
+  if ((await openScriptsButton.count()) > 0) {
+    await openScriptsButton.click();
+  }
+  const reopenedDialog = page.getByRole("dialog").last();
+  const reopenedWorkspace: Locator | Page = (await reopenedDialog.count()) > 0 ? reopenedDialog : page;
+  await reopenedWorkspace.getByRole("tab", { name: "Assignments", exact: true }).click();
   await expect(
-    reopenedDialog.getByText("Bugdom 2 Test Object", { exact: true }),
+    reopenedWorkspace.getByText("Bugdom 2 Test Object", { exact: true }).first(),
   ).toBeVisible();
-  await reopenedDialog
+  await reopenedWorkspace
     .getByRole("tab", { name: "Preview and Export", exact: true })
     .click();
-  await reopenedDialog
+  await reopenedWorkspace
     .getByRole("button", { name: "Compile Bundle", exact: true })
     .click();
   await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({

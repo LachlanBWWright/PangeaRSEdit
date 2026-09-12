@@ -32,6 +32,21 @@ export interface PreviewVfsFile {
   readonly data: Uint8Array;
 }
 
+export const PREVIEW_RUNTIME_FAILURE_CATEGORIES = [
+  "packaging",
+  "runtime-traceback",
+  "native-adapter",
+] as const;
+
+export type PreviewRuntimeFailureCategory =
+  (typeof PREVIEW_RUNTIME_FAILURE_CATEGORIES)[number];
+
+export interface PreviewRuntimeFailure {
+  readonly category: PreviewRuntimeFailureCategory;
+  readonly code: string;
+  readonly message: string;
+}
+
 export interface PreviewRuntimeModule {
   canvas: HTMLCanvasElement;
   keyboardListeningElement?: HTMLCanvasElement;

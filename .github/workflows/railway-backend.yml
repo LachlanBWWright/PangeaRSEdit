@@ -1,0 +1,67 @@
+name: Deploy Backend to Railway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/railway-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: railway-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+      - name: Restore backend
+        run: dotnet restore backend/PangeaRSEdit.sln
+      - name: Test backend
+        run: dotnet test backend/PangeaRSEdit.sln --configuration Release --no-restore
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+      RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE || 'pangearsedit-api' }}
+      RAILWAY_ENVIRONMENT: ${{ vars.RAILWAY_ENVIRONMENT || 'production' }}
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+      - name: Align backend content hash with this release
+        run: >-
+          railway variable set
+          --project "$RAILWAY_PROJECT_ID"
+          --service "$RAILWAY_SERVICE"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --skip-deploys
+          Multiplayer__RequiredContentHash=${{ github.sha }}
+      - name: Deploy backend
+        run: >-
+          railway up ./backend
+          --path-as-root
+          --project "$RAILWAY_PROJECT_ID"
+          --service "$RAILWAY_SERVICE"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --ci
+          --message "Deploy ${{ github.sha }}"
+      - name: Verify backend readiness
+        run: >-
+          curl --fail --retry 12 --retry-all-errors --retry-delay 5
+          "https://${{ vars.RAILWAY_API_HOST }}/healthz"

@@ -1,10 +1,5 @@
 /** Types for model hierarchy and node management. */
-import {
-  Object3D,
-  Group,
-  AnimationMixer,
-  type AnimationClip,
-} from "three";
+import { Object3D, Group, AnimationMixer, type AnimationClip } from "three";
 import { AnimationInfo } from "@/components/AnimationViewer";
 import { Game } from "@/data/globals/globals";
 import type {
@@ -23,10 +18,7 @@ export interface ModelGltfResult {
 }
 /** High-level interaction modes supported by the model viewer. */
 export type ViewerInteractionMode =
-  | "navigate"
-  | "animate"
-  | "paint-weights"
-  | "bone-edit";
+  "navigate" | "animate" | "paint-weights" | "bone-edit";
 
 /** Flattened representation of a node in the model hierarchy tree. */
 export interface ModelNode {
@@ -68,4 +60,6 @@ export interface ModelCanvasProps {
   weightVisualizationMode?: WeightVisualizationMode;
   onWeightBrushStroke?: (hit: WeightBrushHit) => void;
   sceneUpdateRevision?: number;
+  previewAttachments?: boolean;
+  cameraDistanceMultiplier?: number;
 }

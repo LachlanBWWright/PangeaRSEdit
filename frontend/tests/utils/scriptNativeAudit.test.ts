@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { SCRIPTING_CONTRACT } from "@/editor/subviews/scripts/scriptContract";
 import {
   NATIVE_ITEM_AUDIT,
@@ -9,6 +11,60 @@ import {
 } from "@/editor/subviews/scripts/scriptNativeAudit";
 
 describe("native replacement audit", () => {
+  it("audits Cro-Mag's complete race and battle native surface", () => {
+    const cromag = SCRIPTING_CONTRACT.api.games.find(
+      (game) => game.gameId === "CroMagRally-Android",
+    );
+    expect(cromag).toBeDefined();
+    if (cromag === undefined) return;
+
+    const sourceRoot = join(
+      process.cwd(),
+      "../games/pangea-ports/games/CroMagRally-Android/Source",
+    );
+    const checkpoints = readFileSync(join(sourceRoot, "Terrain/Checkpoints.c"), "utf8");
+    const scripting = readFileSync(join(sourceRoot, "Scripting/ScriptBindings.c"), "utf8");
+    const weapons = readFileSync(join(sourceRoot, "Player/Player_Weapons.c"), "utf8");
+    const traps = readFileSync(join(sourceRoot, "Items/Traps.c"), "utf8");
+    const items = readFileSync(join(sourceRoot, "Items/Items.c"), "utf8");
+    const car = readFileSync(join(sourceRoot, "Player/Player_Car.c"), "utf8");
+    const liquids = readFileSync(join(sourceRoot, "Terrain/Liquids.c"), "utf8");
+    const file = readFileSync(join(sourceRoot, "System/File.c"), "utf8");
+    expect(checkpoints).toContain("CroMagScript_OnCheckpointReached");
+    expect(checkpoints).toContain("CroMagScript_OnLapComplete");
+    expect(checkpoints).toContain("CroMagScript_OnRaceFinish");
+    expect(scripting).toContain("CroMagScript_ResetObjectRegistry();");
+    expect(scripting).toContain("CroMagScript_OnRaceComplete");
+    for (const nativeId of [
+      "cromag.boneProjectile",
+      "cromag.freezeProjectile",
+      "cromag.oilProjectile",
+      "cromag.birdBomb",
+      "cromag.romanCandle",
+      "cromag.bottleRocket",
+      "cromag.torpedo",
+      "cromag.landMine",
+    ]) {
+      expect(weapons).toContain(nativeId);
+    }
+    for (const nativeId of [
+      "cromag.catapultRock",
+      "cromag.cannonBall",
+      "cromag.pterodactylBomb",
+      "cromag.totemDart",
+      "cromag.dustDevil",
+      "cromag.dustDevilSegment",
+    ]) {
+      expect(traps).toContain(nativeId);
+    }
+    expect(items).toContain("cromag.finishLine");
+    expect(car).toContain("cromag.vehicleWheel");
+    expect(car).toContain("cromag.vehicleDriver");
+    expect(liquids).toContain("cromag.tarPatch");
+    expect(file).toContain(":Terrain:StoneAge_Desert.ter");
+    expect(file).toContain(":Terrain:Battle_Ramps.ter");
+  });
+
   it("rejects semantically inconsistent audit metadata", () => {
     expect(validateNativeItemAuditCatalog().isOk()).toBe(true);
   });
@@ -38,6 +94,62 @@ describe("native replacement audit", () => {
         audit.saveBehavior,
       );
     }
+  });
+
+  it("covers every Mighty Mike Shapes/map item type", () => {
+    const mightyMike = SCRIPTING_CONTRACT.api.games.find(
+      (game) => game.gameId === "MightyMike-Android",
+    );
+    expect(mightyMike).toBeDefined();
+    if (mightyMike === undefined) return;
+
+    const mapItems = mightyMike.nativeSpawns
+      .filter((spawn) => spawn.category === "map")
+      .map((spawn) => spawn.nativeType ?? Number(spawn.id))
+      .sort((left, right) => left - right);
+    expect(mapItems).toEqual(Array.from({ length: 56 }, (_, index) => index));
+    expect(
+      mapItems.every((nativeType) =>
+        NATIVE_ITEM_AUDIT.some(
+          (audit) =>
+            audit.gameId === mightyMike.gameId && audit.nativeType === nativeType,
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("covers every Bugdom terrain constructor type", () => {
+    const bugdom = SCRIPTING_CONTRACT.api.games.find(
+      (game) => game.gameId === "Bugdom-android",
+    );
+    expect(bugdom).toBeDefined();
+    if (bugdom === undefined) return;
+
+    const terrainItems = bugdom.nativeSpawns
+      .filter((spawn) => spawn.category === "Terrain item")
+      .map((spawn) => spawn.nativeType ?? Number(spawn.id))
+      .sort((left, right) => left - right);
+    expect(terrainItems).toEqual(Array.from({ length: 63 }, (_, index) => index + 1));
+    expect(terrainItems.every((nativeType) =>
+      NATIVE_ITEM_AUDIT.some((audit) => audit.gameId === bugdom.gameId && audit.nativeType === nativeType),
+    )).toBe(true);
+  });
+
+  it("covers every Otto Matic terrain constructor type", () => {
+    const otto = SCRIPTING_CONTRACT.api.games.find(
+      (game) => game.gameId === "OttoMatic-Android",
+    );
+    expect(otto).toBeDefined();
+    if (otto === undefined) return;
+
+    const terrainItems = otto.nativeSpawns
+      .filter((spawn) => spawn.category === "Terrain item")
+      .map((spawn) => spawn.nativeType ?? Number(spawn.id))
+      .sort((left, right) => left - right);
+    expect(terrainItems).toEqual(Array.from({ length: 108 }, (_, index) => index + 1));
+    expect(terrainItems.every((nativeType) =>
+      NATIVE_ITEM_AUDIT.some((audit) => audit.gameId === otto.gameId && audit.nativeType === nativeType),
+    )).toBe(true);
   });
 
   it("keeps Bugdom representative terrain families semantically categorized", () => {

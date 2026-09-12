@@ -18,6 +18,7 @@ import {
   createScriptWorkspaceContext,
   importScriptPackageZipAsync,
   loadScriptSample,
+  moveCustomPlacement,
 } from "@/editor/subviews/scripts/scriptWorkspaceState";
 
 interface ScriptGameFixture {
@@ -96,7 +97,15 @@ describe("script workspace production package path", () => {
     "round-trips the Lua package for $gameId",
     async ({ gameId, globals }) => {
       const context = createScriptWorkspaceContext(globals, 1);
-      const state = loadScriptSample(context, "log-level-start");
+      const initialState = loadScriptSample(context, "hover-beacon");
+      const placement = initialState.levels[context.levelKey]?.customPlacements[0];
+      expect(placement, `${gameId} should create a placement`).toBeDefined();
+      if (!placement) return;
+      const state = moveCustomPlacement(initialState, placement.id, {
+        x: 240,
+        y: placement.position.y,
+        z: placement.position.z,
+      });
 
       const packageResult = await buildScriptPackageZipAsync(state);
       expect(packageResult.isOk()).toBe(true);
@@ -114,6 +123,9 @@ describe("script workspace production package path", () => {
         .toBeDefined();
       expect(importedResult.value.sourceFiles["Data/Scripts/src/main.lua"])
         .toBeDefined();
+      expect(
+        importedResult.value.levels[context.levelKey]?.customPlacements[0]?.position.x,
+      ).toBe(240);
     },
   );
 

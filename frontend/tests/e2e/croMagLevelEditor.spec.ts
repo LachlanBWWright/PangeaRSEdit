@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runScriptPackageRoundTrip } from "./scriptPackageRoundTrip";
 import { runScriptObjectAuthoringRoundTrip } from "./scriptObjectAuthoringRoundTrip";
+import { runScriptRuntimeTraceback } from "./scriptRuntimeTraceback";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,4 +112,32 @@ test("uses the production Cro-Mag Rally Scripts workspace through preview launch
   await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+  await previewDialog.getByRole("button", { name: "Reload Game", exact: true }).click();
+  await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+});
+
+test("surfaces a production Lua runtime traceback in the Cro-Mag Rally preview monitor", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    window.localStorage.setItem("pangea-feature-flags", JSON.stringify({
+      scripting: true,
+      multiplayer: false,
+      itemModelMappingPreview: false,
+    }));
+  });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Cro-Mag Rally", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await runScriptRuntimeTraceback(
+    page,
+    croMagCard(page),
+    [levelPath, texturePath],
+    "cro-mag rally production traceback regression",
+    "onRaceStart",
+  );
 });

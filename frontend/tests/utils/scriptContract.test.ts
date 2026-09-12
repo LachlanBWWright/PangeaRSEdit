@@ -119,8 +119,19 @@ describe("scripting contract", () => {
     expect(CAPABILITY_MATRIX["CroMagRally-Android"]).toMatchObject({
       raceMetadata: "supported",
     });
+    expect(SCRIPTING_CONTRACT.games["CroMagRally-Android"]?.modes).toEqual([
+      "local",
+      "practice",
+      "network",
+      "tag1",
+      "tag2",
+      "survival",
+      "capture",
+    ]);
     expect(CAPABILITY_MATRIX["OttoMatic-Android"]).toMatchObject({
       raceMetadata: "unsupported",
+      weaponHitEvents: "supported",
+      weaponScoreEffects: "supported",
     });
     expect(CAPABILITY_MATRIX["Bugdom2-Android"]).toMatchObject({
       objectiveMetadata: "unsupported",
@@ -130,7 +141,7 @@ describe("scripting contract", () => {
       pickupScoreEffects: "supported",
     });
     expect(CAPABILITY_MATRIX["MightyMike-Android"]).toMatchObject({
-      objectCollision: "unsupported",
+      objectCollision: "supported",
     });
   });
 
@@ -246,7 +257,7 @@ describe("scripting contract", () => {
     const commands = SCRIPTING_CONTRACT.api.apis.filter(
       (api) => api.command !== undefined,
     );
-    expect(commands).toHaveLength(28);
+    expect(commands).toHaveLength(40);
     for (const command of commands) {
       expect(command.command?.capability).toBeTruthy();
       expect(command.command?.authority).toBe("disabled-network");

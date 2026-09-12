@@ -112,6 +112,10 @@ test("uses the production Bugdom Scripts workspace through preview launch", asyn
   await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+  await previewDialog.getByRole("button", { name: "Reload Game", exact: true }).click();
+  await expect(previewDialog.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
 });
 
 test("surfaces a production Lua runtime traceback in the Bugdom preview monitor", async ({

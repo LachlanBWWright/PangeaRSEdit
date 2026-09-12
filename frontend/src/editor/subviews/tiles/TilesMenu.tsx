@@ -97,7 +97,7 @@ export function TilesMenu({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="editor-tabbed-menu flex flex-col gap-2">
       <Tabs
         value={getTabForTileView(tileView)}
         onValueChange={(v) => {
@@ -108,7 +108,7 @@ export function TilesMenu({
           }
         }}
       >
-        <TabsList className="grid grid-flow-col auto-cols-fr w-full">
+        <TabsList className="editor-subnavbar grid grid-flow-col auto-cols-fr w-full">
           <TabsTrigger value="topology">Topology</TabsTrigger>
           {hasTileFlags && <TabsTrigger value="flags">Empty Tiles</TabsTrigger>}
           {hasElectricFloorOptions && (

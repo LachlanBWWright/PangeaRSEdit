@@ -86,7 +86,7 @@ export function EditSplineItemMenu({
     const hasSplineItems = splineItemData.length > 0;
     return (
       <>
-        {selectedSplineItemControl}
+        <div className="min-w-0">{selectedSplineItemControl}</div>
         <MenuEmptyState
           title={hasSplineItems ? "No Spline Item Selected" : "No Spline Items"}
           description={
@@ -108,8 +108,8 @@ export function EditSplineItemMenu({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-2">
-        {selectedSplineItemControl}
+      <div className="mb-2 grid min-w-0 grid-cols-2 gap-0">
+        <div className="min-w-0">{selectedSplineItemControl}</div>
         <Select
           value={currentSplineItemData.type.toString()}
           onValueChange={(e) => {
@@ -124,8 +124,8 @@ export function EditSplineItemMenu({
             });
           }}
         >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a spline item" />
+          <SelectTrigger className="min-w-0 rounded-l-none border-l-0">
+            <SelectValue placeholder="Select a spline item type" />
           </SelectTrigger>
           <SelectContent>
             {safeSplineItemTypes.size > 0 && (

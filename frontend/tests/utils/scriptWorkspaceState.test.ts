@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { strToU8, zipSync } from "fflate";
+import { strToU8, unzipSync, zipSync } from "fflate";
 import { z } from "zod";
 import { Document, WebIO } from "@gltf-transform/core";
 import {
@@ -154,6 +154,34 @@ describe("scriptWorkspaceState", () => {
 
     expect(withFinding.diagnostics).toHaveLength(1);
     expect(duplicated.diagnostics).toEqual(withFinding.diagnostics);
+  });
+
+  it("keeps diagnostics in the five supported categories", () => {
+    const categories: readonly ScriptDiagnostic["category"][] = [
+      "source-validation",
+      "luals",
+      "packaging",
+      "runtime-traceback",
+      "native-adapter",
+    ];
+    const context = createScriptWorkspaceContext(OttoGlobals, 1);
+    const state = ensureScriptWorkspace({}, context);
+    const diagnostics = categories.map((category) => ({
+      category,
+      severity: "error" as const,
+      message: `${category} failure`,
+      code: category,
+      filePath: "main.lua",
+      line: 0,
+      column: 0,
+    }));
+    const classified = diagnostics.reduce(
+      (current, diagnostic) => appendScriptDiagnostic(current, diagnostic),
+      state,
+    );
+
+    expect(classified.diagnostics.map((diagnostic) => diagnostic.category)).toEqual(categories);
+    expect(summarizeScriptWorkspace(classified).buildErrorCount).toBe(3);
   });
 
   it("advertises implemented core runtime capabilities for every game", () => {
@@ -389,12 +417,23 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain("---@field contractVersion integer");
     expect(runtimeDeclaration.content).toContain("---@field runtimeFingerprint integer");
     expect(runtimeDeclaration.content).toContain("---@field pickupScoreEffects boolean");
+    expect(runtimeDeclaration.content).toContain("---@field weaponScoreEffects boolean");
     expect(runtimeDeclaration.content).toContain("---@field current fun(): integer");
     expect(runtimeDeclaration.content).toContain("---@field frame fun(): integer");
     expect(runtimeDeclaration.content).toContain("---@field after fun(delaySeconds: number");
     expect(runtimeDeclaration.content).toContain("---@field diagnostics fun(): PangeaDiagnostics");
     expect(runtimeDeclaration.content).toContain("---@class PangeaPlayerSnapshot");
     expect(runtimeDeclaration.content).toContain("---@field get fun(playerNum: integer): PangeaPlayerSnapshot|nil");
+    expect(runtimeDeclaration.content).toContain("---@field aim Vector3|nil");
+    expect(runtimeDeclaration.content).toContain("---@field fuel number|nil");
+    expect(runtimeDeclaration.content).toContain("---@field tokenCount integer|nil");
+    expect(runtimeDeclaration.content).toContain("---@field coinCount integer|nil");
+    expect(runtimeDeclaration.content).toContain("---@field pesoCount integer|nil");
+    expect(runtimeDeclaration.content).toContain("---@field childObjectCount integer|nil");
+    expect(runtimeDeclaration.content).toContain("---@field sceneNum integer|nil");
+    expect(runtimeDeclaration.content).toContain("---@field areaNum integer|nil");
+    expect(runtimeDeclaration.content).toContain("---@field areaComplete boolean|nil");
+    expect(runtimeDeclaration.content).toContain("---@field camera Vector3|nil");
     expect(runtimeDeclaration.content).toContain("---@class PlayerCommandResult");
     expect(runtimeDeclaration.content).toContain("---@field setHealthResult fun(playerNum: integer, health: number): PlayerCommandResult");
     expect(runtimeDeclaration.content).toContain("---@field setPositionResult fun(playerNum: integer, position: Vector3): PlayerCommandResult");
@@ -430,14 +469,14 @@ describe("scriptWorkspaceState", () => {
     );
   });
 
-  it("omits unsupported object commands from LuaLS declarations", () => {
-    const context = createScriptWorkspaceContext(MightyMikeGlobals, 1);
+  it("omits unsupported player commands from LuaLS declarations", () => {
+    const context = createScriptWorkspaceContext(Nanosaur2Globals, 1);
     const state = ensureScriptWorkspace({}, context);
     const declaration = buildScriptTypeDeclarationFiles(state).find(
       (file) => file.path === "Data/Scripts/types/pangea-runtime.lua",
     );
     expect(declaration).toBeDefined();
-    expect(declaration?.content).not.toContain("setCollisionEnabled");
+    expect(declaration?.content).not.toContain("setScore");
   });
 
   it("emits documented native spawn IDs for every game", () => {
@@ -473,6 +512,22 @@ describe("scriptWorkspaceState", () => {
     expect(billyContext.supportedHooks).toContain("onAreaStart");
     expect(billyContext.supportedHooks).toContain("onAreaFrame");
     expect(billyContext.supportedHooks).not.toContain("onLevelStart");
+  });
+
+  it("declares Billy Frontier native mode state in LuaLS contexts", () => {
+    const context = createScriptWorkspaceContext(BillyFrontierGlobals, 1);
+    const state = ensureScriptWorkspace({}, context);
+    const declaration = buildScriptTypeDeclarationFiles(state).find(
+      (file) => file.path === "Data/Scripts/types/pangea-runtime.lua",
+    );
+    expect(declaration?.content).toContain("---@field modePhase number|nil");
+    expect(declaration?.content).toContain("---@field modeWave number|nil");
+    expect(declaration?.content).toContain("---@field modeTimer number|nil");
+    expect(declaration?.content).toContain("---@field modeSequenceIndex number|nil");
+    expect(declaration?.content).toContain("---@field modeSequenceLength number|nil");
+    expect(declaration?.content).toContain("---@field modeEnemyCount number|nil");
+    expect(declaration?.content).toContain("---@field modeReflex number|nil");
+    expect(declaration?.content).toContain("---@field modeCanAdvance boolean|nil");
   });
 
   it("exports terrain bindings into the bindings sidecar", () => {
@@ -550,7 +605,10 @@ describe("scriptWorkspaceState", () => {
     }
 
     const importedResult = importScriptPackageZip(zipResult.value, context);
-    expect(importedResult.isOk()).toBe(true);
+    expect(
+      importedResult.isOk(),
+      importedResult.isErr() ? importedResult.error : "",
+    ).toBe(true);
     if (importedResult.isErr()) {
       return;
     }
@@ -725,7 +783,10 @@ describe("scriptWorkspaceState", () => {
       zipResult.value,
       context,
     );
-    expect(importedResult.isOk()).toBe(true);
+    expect(
+      importedResult.isOk(),
+      importedResult.isErr() ? importedResult.error : "",
+    ).toBe(true);
     if (importedResult.isErr()) return;
     expect(importedResult.value.assets[modelPath]?.bytes).toEqual(
       new Uint8Array(
@@ -803,12 +864,10 @@ describe("scriptWorkspaceState", () => {
     expect(importedResult.value.assets[sourcePath]?.bytes).toEqual(sourceBytes);
   });
 
-  it("rejects non-Lua source files from imported script packages", () => {
+  it("rejects unsupported non-Lua source files from imported script packages", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const zipBytes = zipSync({
-      "Data/Scripts/src/bad.js": strToU8(
-        "exports.onLevelStart = function() {};",
-      ),
+      "Data/Scripts/src/bad.css": strToU8("not a script"),
     });
 
     const importedResult = importScriptPackageZip(zipBytes, context);
@@ -817,27 +876,35 @@ describe("scriptWorkspaceState", () => {
     if (importedResult.isOk()) {
       return;
     }
-    expect(importedResult.error).toContain(
-      "Legacy TypeScript/JavaScript package detected",
-    );
+    expect(importedResult.error).toContain("Script source files must be Lua");
   });
 
-  it("reports the legacy migration path for TypeScript packages", () => {
+  it("migrates legacy callback packages into Lua 5.4 source", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
-    const zipBytes = zipSync({
-      "Data/Scripts/src/legacy.ts": strToU8(
-        "export function onLevelStart(): void {}",
-      ),
-    });
+    const packageResult = buildScriptPackageZip(
+      loadScriptSample(context, "log-level-start"),
+    );
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+    const files = unzipSync(packageResult.value);
+    delete files[SCRIPT_PACKAGE_MANIFEST_PATH];
+    files["Data/Scripts/src/legacy.ts"] = strToU8(
+      "export function onLevelStart(): void {}",
+    );
+    const zipBytes = zipSync(files);
 
     const importedResult = importScriptPackageZip(zipBytes, context);
 
-    expect(importedResult.isErr()).toBe(true);
-    if (importedResult.isOk()) return;
-    expect(importedResult.error).toContain(
-      "Legacy TypeScript/JavaScript package detected",
+    expect(
+      importedResult.isOk(),
+      importedResult.isErr() ? importedResult.error : "",
+    ).toBe(true);
+    if (importedResult.isErr()) return;
+    expect(importedResult.value.sourceFiles["Data/Scripts/src/legacy.lua"]?.content)
+      .toContain("function module.onLevelStart()");
+    expect(importedResult.value.statusLog).toContain(
+      "Legacy TypeScript/JavaScript source migrated to Lua 5.4",
     );
-    expect(importedResult.error).toContain("Lua 5.4");
   });
 
   it("marks custom-object workspaces as extended", () => {

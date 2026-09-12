@@ -14,14 +14,17 @@ export function GameBuildDownloads({ game }: GameBuildDownloadsProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2" aria-label={`${config.portName} downloads`}>
+    <div
+      className="grid grid-cols-2 gap-2"
+      aria-label={`${config.portName} downloads`}
+    >
       {config.variants.map((variant) => (
         <Button
           key={variant.id}
           asChild
           size="sm"
           variant="outline"
-          className={`text-gray-100 hover:text-white ${variant.className}`}
+          className={`w-full justify-start text-gray-100 hover:text-white ${variant.className}`}
         >
           <a
             href={getGameDownloadUrl(config.portName, variant.fileName)}

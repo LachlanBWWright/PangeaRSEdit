@@ -52,6 +52,10 @@ export interface ScriptPreviewBundle {
   readonly nextState?: ScriptWorkspaceState;
 }
 
+const EMPTY_NATIVE_PREVIEW_SCRIPT = new TextEncoder().encode(
+  "return {}\n",
+);
+
 function buildLevelData(
   params: ScriptLevelDataInput,
 ): Result<ReturnType<typeof prepareDownloadData>, string> {
@@ -109,7 +113,12 @@ export async function prepareScriptPreviewBundle(
     readonly compiledState?: ScriptWorkspaceState | null;
   },
 ): Promise<Result<ScriptPreviewBundle, string>> {
-  let customFiles: readonly { readonly path: string; readonly data: Uint8Array }[] = [];
+  let customFiles: readonly { readonly path: string; readonly data: Uint8Array }[] = [
+    {
+      path: "Data/Scripts/dist/main.lua",
+      data: EMPTY_NATIVE_PREVIEW_SCRIPT,
+    },
+  ];
   if (params.compiledState) {
     const previewFilesResult = await buildPreviewScriptFilesAsync(
       params.compiledState,

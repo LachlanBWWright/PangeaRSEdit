@@ -12,6 +12,8 @@ import {
   type MultiplayerRuntimeEvent,
   type StartNetworkMatchFn,
   type PreviewTerrainPaths,
+  type PreviewRuntimeFailure,
+  type PreviewRuntimeFailureCategory,
 } from "./gamePreviewRuntimeTypes";
 import {
   ensurePreviewPrefsDirs,
@@ -21,6 +23,10 @@ import {
 import { mapErr } from "../../utils/mapErr";
 
 const RUNTIME_SCRIPT_FETCH_TIMEOUT_MS = 20_000;
+const SCRIPT_BUNDLE_RETRY_DELAY_MS = 50;
+const SCRIPT_BUNDLE_MAX_RETRIES = 200;
+const SCRIPT_STATUS_NOT_ENABLED = 1;
+const RUNTIME_STOP_GRACE_MS = 3_000;
 const GAME_KEYBOARD_EVENT_TYPES = new Set(["keydown", "keyup", "keypress"]);
 
 export interface PreviewModuleOptions {
@@ -39,11 +45,43 @@ export interface PreviewModuleOptions {
   readonly localParticipantId?: string | null;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
+  readonly onFailure?: (failure: PreviewRuntimeFailure) => void;
   readonly normalLaunch?: boolean;
   readonly deferNetworkStart?: boolean;
   readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
   readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
   readonly onRuntimeModule?: (module: PreviewRuntimeModule) => void;
+}
+
+function reportPreviewFailure(
+  onError: (text: string) => void,
+  onFailure: ((failure: PreviewRuntimeFailure) => void) | undefined,
+  category: PreviewRuntimeFailureCategory,
+  code: string,
+  message: string,
+): void {
+  onError(message);
+  onFailure?.({ category, code, message });
+}
+
+function nativeStatusMessageFromCcall(
+  ccall: NonNullable<PreviewRuntimeModule["ccall"]>,
+  fallback: string,
+): string {
+  const statusError = Result.fromThrowable(
+    () => ccall("PangeaScript_GetStatusLastError", "string", [], []),
+    (error) => mapErr(error),
+  )();
+  if (statusError.isOk() && statusError.value.trim().length > 0) {
+    return `${fallback}: ${statusError.value}`;
+  }
+  return fallback;
+}
+
+function nativeStatusMessage(module: PreviewRuntimeModule, fallback: string): string {
+  return module.ccall === undefined
+    ? fallback
+    : nativeStatusMessageFromCcall(module.ccall, fallback);
 }
 
 function formatSchemaError(error: ZodError): string {
@@ -72,10 +110,121 @@ function findScriptBundlePath(
   return scriptBundlePath ? normalizeScriptPath(scriptBundlePath) : null;
 }
 
+function retryScriptBundleLoad(
+  ccall: NonNullable<PreviewRuntimeModule["ccall"]>,
+  scriptBundlePath: string,
+  attempt: number,
+  onError: (text: string) => void,
+  onFailure: ((failure: PreviewRuntimeFailure) => void) | undefined,
+): void {
+  const enabledResult = Result.fromThrowable(
+    () => ccall("PangeaScript_GetStatusEnabled", "boolean", [], []),
+    (error) => mapErr(error),
+  )();
+  if (enabledResult.isErr()) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.status", enabledResult.error);
+    return;
+  }
+  const enabledStatusResult = z.boolean().safeParse(enabledResult.value);
+  if (!enabledStatusResult.success) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.status", "PangeaScript_GetStatusEnabled returned an invalid status");
+    return;
+  }
+  if (!enabledStatusResult.data) {
+    if (attempt < SCRIPT_BUNDLE_MAX_RETRIES) {
+      window.setTimeout(
+        () => retryScriptBundleLoad(ccall, scriptBundlePath, attempt + 1, onError, onFailure),
+        SCRIPT_BUNDLE_RETRY_DELAY_MS,
+      );
+    }
+    return;
+  }
+
+  const loadedResult = Result.fromThrowable(
+    () => ccall("PangeaScript_GetStatusBundleLoaded", "boolean", [], []),
+    (error) => mapErr(error),
+  )();
+  if (loadedResult.isErr()) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.status", loadedResult.error);
+    return;
+  }
+  const loadedStatusResult = z.boolean().safeParse(loadedResult.value);
+  if (!loadedStatusResult.success) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.status", "PangeaScript_GetStatusBundleLoaded returned an invalid status");
+    return;
+  }
+  if (loadedStatusResult.data) {
+    return;
+  }
+  if (attempt >= SCRIPT_BUNDLE_MAX_RETRIES) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.reload", "PangeaScript bundle did not become loaded before the retry limit");
+    return;
+  }
+  const startupResult = Result.fromThrowable(
+    () =>
+      ccall(
+        "PangeaScript_SetStartupScript",
+        "number",
+        ["string"],
+        [scriptBundlePath],
+      ),
+    (error) => mapErr(error),
+  )();
+  if (startupResult.isErr()) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.startup", startupResult.error);
+    return;
+  }
+  const startupStatusResult = z.number().safeParse(startupResult.value);
+  if (!startupStatusResult.success) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.startup.status", "PangeaScript_SetStartupScript returned an invalid retry status");
+    return;
+  }
+  if (startupStatusResult.data === SCRIPT_STATUS_NOT_ENABLED) {
+    window.setTimeout(
+      () => retryScriptBundleLoad(ccall, scriptBundlePath, attempt + 1, onError, onFailure),
+      SCRIPT_BUNDLE_RETRY_DELAY_MS,
+    );
+    return;
+  }
+  if (startupStatusResult.data !== 0) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.startup", nativeStatusMessageFromCcall(ccall, `PangeaScript_SetStartupScript failed with status ${startupStatusResult.data}`));
+    return;
+  }
+  const retryResult = Result.fromThrowable(
+    () => ccall("PangeaScript_Reload", "number", [], []),
+    (error) => mapErr(error),
+  )();
+  if (retryResult.isErr()) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.reload", retryResult.error);
+    return;
+  }
+  const retryStatusResult = z.number().safeParse(retryResult.value);
+  if (!retryStatusResult.success) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.reload.status", "PangeaScript_Reload returned an invalid retry status");
+    return;
+  }
+  if (retryStatusResult.data === SCRIPT_STATUS_NOT_ENABLED) {
+    window.setTimeout(
+      () => retryScriptBundleLoad(ccall, scriptBundlePath, attempt + 1, onError, onFailure),
+      SCRIPT_BUNDLE_RETRY_DELAY_MS,
+    );
+    return;
+  }
+  if (retryStatusResult.data !== 0) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.reload", nativeStatusMessageFromCcall(ccall, `PangeaScript_Reload failed with status ${retryStatusResult.data}`));
+    return;
+  }
+  window.setTimeout(
+    () => retryScriptBundleLoad(ccall, scriptBundlePath, attempt + 1, onError, onFailure),
+    SCRIPT_BUNDLE_RETRY_DELAY_MS,
+  );
+}
+
 function configureScriptingExports(
   module: PreviewRuntimeModule,
   customFiles: readonly PreviewVfsFile[] | undefined,
   onError: (text: string) => void,
+  onFailure: ((failure: PreviewRuntimeFailure) => void) | undefined,
 ): void {
   const scriptBundlePath = findScriptBundlePath(customFiles);
   if (!scriptBundlePath) {
@@ -84,7 +233,7 @@ function configureScriptingExports(
 
   const ccall = module.ccall;
   if (!ccall) {
-    onError("Emscripten ccall is unavailable");
+    reportPreviewFailure(onError, onFailure, "native-adapter", "runtime.ccall", "Emscripten ccall is unavailable");
     return;
   }
 
@@ -99,17 +248,45 @@ function configureScriptingExports(
     (error) => mapErr(error),
   )();
   if (startupResult.isErr()) {
-    onError(startupResult.error);
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.startup", startupResult.error);
     return;
   }
   const statusResult = z.number().safeParse(startupResult.value);
   if (!statusResult.success) {
-    onError("PangeaScript_SetStartupScript returned an invalid status");
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.startup.status", "PangeaScript_SetStartupScript returned an invalid status");
     return;
   }
   if (statusResult.data !== 0) {
-    onError(`PangeaScript_SetStartupScript failed with status ${statusResult.data}`);
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.startup", nativeStatusMessage(module, `PangeaScript_SetStartupScript failed with status ${statusResult.data}`));
+    return;
   }
+
+  const reloadResult = Result.fromThrowable(
+    () => ccall("PangeaScript_Reload", "number", [], []),
+    (error) => mapErr(error),
+  )();
+  if (reloadResult.isErr()) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.reload", reloadResult.error);
+    return;
+  }
+  const reloadStatusResult = z.number().safeParse(reloadResult.value);
+  if (!reloadStatusResult.success) {
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.reload.status", "PangeaScript_Reload returned an invalid status");
+    return;
+  }
+  if (reloadStatusResult.data !== 0) {
+    if (reloadStatusResult.data === SCRIPT_STATUS_NOT_ENABLED) {
+      window.setTimeout(
+        () => retryScriptBundleLoad(ccall, scriptBundlePath, 0, onError, onFailure),
+        SCRIPT_BUNDLE_RETRY_DELAY_MS,
+      );
+      return;
+    }
+    reportPreviewFailure(onError, onFailure, "native-adapter", "scripting.reload", nativeStatusMessage(module, `PangeaScript_Reload failed with status ${reloadStatusResult.data}`));
+    return;
+  }
+
+  window.setTimeout(() => retryScriptBundleLoad(ccall, scriptBundlePath, 0, onError, onFailure), 0);
 }
 
 function applyNetworkMatchConfig(
@@ -198,6 +375,7 @@ export function createPreviewModule(
     localParticipantId,
     onStatus,
     onError,
+    onFailure,
     normalLaunch = false,
     deferNetworkStart = false,
     onRuntimeEvent,
@@ -283,7 +461,7 @@ export function createPreviewModule(
       if (terrainPaths && !normalLaunch) {
         // Emscripten invokes onRuntimeInitialized after preRun and before
         // callMain, so packaged files exist but the game has not loaded a level.
-        writeTerrainToVfs(
+        const terrainWritten = writeTerrainToVfs(
           module,
           config,
           currentLevelInfo,
@@ -292,13 +470,23 @@ export function createPreviewModule(
           terrainRsrcBytes,
           terrainTextureBytes ?? null,
           customFiles,
-          onError,
+          (message) => reportPreviewFailure(onError, onFailure, "packaging", "preview.vfs", message),
         );
+        if (!terrainWritten) {
+          return;
+        }
       } else if (customFiles && customFiles.length > 0) {
-        writePreviewCustomFilesToVfs(module, customFiles, onError);
+        const customFilesWritten = writePreviewCustomFilesToVfs(
+          module,
+          customFiles,
+          (message) => reportPreviewFailure(onError, onFailure, "packaging", "preview.vfs", message),
+        );
+        if (!customFilesWritten) {
+          return;
+        }
       }
 
-      configureScriptingExports(module, customFiles, onError);
+      configureScriptingExports(module, customFiles, onError, onFailure);
 
       if (!normalLaunch) {
         const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
@@ -318,7 +506,7 @@ export function createPreviewModule(
               type: "runtimeLoadFailed",
               detail: skipResult.error,
             });
-            onError(skipResult.error);
+            reportPreviewFailure(onError, onFailure, "native-adapter", "runtime.level", nativeStatusMessage(module, skipResult.error));
             return;
           }
         }
@@ -335,7 +523,7 @@ export function createPreviewModule(
             type: "runtimeLoadFailed",
             detail: configResult.error,
           });
-          onError(configResult.error);
+          reportPreviewFailure(onError, onFailure, "native-adapter", "runtime.network-config", configResult.error);
           return;
         }
         onRuntimeEvent?.({ type: "runtimeConfigApplied" });
@@ -349,7 +537,7 @@ export function createPreviewModule(
               type: "runtimeLoadFailed",
               detail: startResult.error,
             });
-            onError(startResult.error);
+            reportPreviewFailure(onError, onFailure, "native-adapter", "runtime.network-start", startResult.error);
             return;
           }
           onRuntimeEvent?.({ type: "runtimeStartNow" });
@@ -370,7 +558,7 @@ export function createPreviewModule(
       } else {
         message = reason instanceof Error ? reason.message : String(reason);
       }
-      onError(message);
+      reportPreviewFailure(onError, onFailure, "native-adapter", "runtime.abort", message);
     },
   };
 
@@ -636,7 +824,9 @@ export async function loadPreviewRuntime(
     for (const id of pendingTimerIds) realClearTimeout(id);
     pendingRafIds.clear();
     pendingTimerIds.clear();
-    if (restoreGlobals) {
+    // A delayed cooperative quit may finish after a replacement runtime has
+    // installed its globals. Only the active runtime may restore them.
+    if (restoreGlobals && window.Module === module) {
       restoreWindowGlobals();
     }
     removeTrackedKeyboardListeners();
@@ -821,11 +1011,15 @@ export async function loadPreviewRuntime(
       return;
     }
     stopRequested = true;
+    // Restore the host scheduling APIs before waiting for the native loop to
+    // unwind. A replacement preview may be mounted during that grace period;
+    // its canvas observer must not inherit the stopped runtime's timers.
+    restoreWindowGlobals();
     if (requestRuntimeQuit()) {
       const stopTimerId = realSetTimeout(() => {
         pendingTimerIds.delete(stopTimerId);
         finishStop(true);
-      }, 100);
+      }, RUNTIME_STOP_GRACE_MS);
       pendingTimerIds.add(stopTimerId);
       return;
     }

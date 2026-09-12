@@ -35,6 +35,11 @@ export const SCRIPT_RUNTIME_CAPABILITY_FIELDS = [
   { name: "mapItems", luaType: "boolean" },
   { name: "pickupScoreEffects", luaType: "boolean" },
   { name: "objectCollision", luaType: "boolean" },
+  { name: "playerScore", luaType: "boolean" },
+  { name: "playerLives", luaType: "boolean" },
+  { name: "playerInventory", luaType: "boolean" },
+  { name: "playerForm", luaType: "boolean" },
+  { name: "weaponScoreEffects", luaType: "boolean" },
   { name: "playerCommands", luaType: "boolean" },
   { name: "playerInvulnerability", luaType: "boolean" },
   { name: "memoryLimitBytes", luaType: "integer" },
@@ -149,7 +154,9 @@ function multiplayerClassification(row: GameCapabilityRow): "unsupported" | "uns
 
 function gameModes(gameId: string): readonly string[] {
   if (gameId === "Nanosaur2-Android") return ["adventure", "race", "battle", "capture"];
-  if (gameId === "CroMagRally-Android") return ["local", "practice", "network"];
+  if (gameId === "CroMagRally-Android") {
+    return ["local", "practice", "network", "tag1", "tag2", "survival", "capture"];
+  }
   if (gameId === "BillyFrontier-Android" || gameId === "MightyMike-Android") {
     return ["local"];
   }
@@ -452,10 +459,15 @@ export function validateScriptingContract(): Result<true, string> {
         "playerLifecycleEvents",
         "pickupEvents",
         "pickupScoreEffects",
+        "weaponScoreEffects",
         "weaponHitEvents",
         "nativeSpawn",
         "scriptedSpawn",
         "playerLookup",
+        "playerScore",
+        "playerLives",
+        "playerInventory",
+        "playerForm",
         "playerCommands",
         "playerInvulnerability",
         "raceMetadata",

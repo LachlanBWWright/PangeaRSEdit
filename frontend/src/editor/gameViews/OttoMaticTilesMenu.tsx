@@ -76,7 +76,7 @@ export function OttoMaticTilesMenu({
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div className="editor-tabbed-menu flex min-w-0 flex-col gap-2">
       <Tabs
         value={getOttoTileTabValue(tileView)}
         onValueChange={(value) => {
@@ -87,7 +87,7 @@ export function OttoMaticTilesMenu({
           }
         }}
       >
-        <TabsList className="grid w-full min-w-0 grid-flow-col auto-cols-fr gap-2 overflow-clip">
+        <TabsList className="editor-subnavbar grid w-full min-w-0 grid-flow-col auto-cols-fr gap-2 overflow-clip">
           <TabsTrigger className="w-full min-w-0 truncate" value="topology">
             Topology
           </TabsTrigger>

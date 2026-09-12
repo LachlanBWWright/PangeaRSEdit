@@ -975,7 +975,7 @@ export function IntroPrompt() {
     );
 
   return (
-    <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full p-2 md:p-6 flex-1 min-h-0">
+    <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full flex-1 min-h-0">
       <NewMapConfirmDialog
         open={newMapConfirmOpen}
         onOpenChange={setNewMapConfirmOpen}

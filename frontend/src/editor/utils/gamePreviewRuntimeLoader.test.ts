@@ -6,6 +6,7 @@ import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
 import {
   getPreviewTerrainPaths,
+  type PreviewRuntimeFailure,
   type PreviewRuntimeModule,
 } from "./gamePreviewRuntimeTypes";
 import {
@@ -48,6 +49,8 @@ type Ccall = NonNullable<PreviewRuntimeModule["ccall"]>;
 function createCcallAdapter(
   spy: (ident: string, returnType: string | null, argTypes: string[], args: unknown[]) => unknown,
   defaultNumber: number,
+  defaultBoolean = false,
+  defaultString = "",
 ): Ccall {
   function ccall(
     ident: string,
@@ -80,8 +83,8 @@ function createCcallAdapter(
     args: unknown[],
   ): unknown {
     spy(ident, returnType, argTypes, args);
-    if (returnType === "string") return "";
-    if (returnType === "boolean") return false;
+    if (returnType === "string") return defaultString;
+    if (returnType === "boolean") return defaultBoolean;
     return defaultNumber;
   }
   return ccall;
@@ -165,6 +168,7 @@ function createNetworkPreviewModule(
   game: Game,
   networkMatchConfig: unknown,
   onError?: (text: string) => void,
+  onFailure?: (failure: PreviewRuntimeFailure) => void,
 ) {
   return createPreviewModule({
     config: GAME_PORT_CONFIGS[game],
@@ -181,6 +185,7 @@ function createNetworkPreviewModule(
     localParticipantId: "host",
     onStatus: () => undefined,
     onError: onError ?? (() => undefined),
+    onFailure,
   });
 }
 
@@ -262,6 +267,7 @@ describe("game preview runtime loader", () => {
 
   it("reports an error when multiplayer mode is omitted for a Cro-Mag arena launch", () => {
     const onError = vi.fn();
+    const onFailure = vi.fn();
     const module = createNetworkPreviewModule(
       Game.CRO_MAG,
       {
@@ -293,6 +299,7 @@ describe("game preview runtime loader", () => {
         ],
       },
       onError,
+      onFailure,
     );
 
     module.ccall = createCcallAdapter(vi.fn(), 0);
@@ -301,6 +308,11 @@ describe("game preview runtime loader", () => {
     expect(onError).toHaveBeenCalledWith(
       expect.stringContaining("Invalid multiplayer match config"),
     );
+    expect(onFailure).toHaveBeenCalledWith({
+      category: "native-adapter",
+      code: "runtime.network-config",
+      message: expect.stringContaining("Invalid multiplayer match config"),
+    });
   });
 
   it("reports an error when multiplayer mode is malformed for a Nanosaur 2 battle launch", () => {
@@ -346,7 +358,8 @@ describe("game preview runtime loader", () => {
         normalLaunch: true,
       });
 
-      module.ccall = createCcallAdapter(ccall, 0);
+      module.FS = { writeFile: () => undefined };
+      module.ccall = createCcallAdapter(ccall, 0, true);
       module.onRuntimeInitialized?.();
 
       expect(ccall).toHaveBeenCalledWith(
@@ -355,13 +368,15 @@ describe("game preview runtime loader", () => {
         ["string"],
         ["Data/Scripts/dist/main.lua"],
       );
-      expect(ccall).toHaveBeenCalledTimes(1);
+      expect(ccall).toHaveBeenCalledWith("PangeaScript_Reload", "number", [], []);
+      expect(ccall).toHaveBeenCalledTimes(2);
       expect(onError).not.toHaveBeenCalled();
     },
   );
 
   it("surfaces a rejected startup-script status from the runtime", () => {
     const onError = vi.fn();
+    const onFailure = vi.fn();
     const module = createPreviewModule({
       config: GAME_PORT_CONFIGS[Game.BUGDOM_2],
       levelNumber: 0,
@@ -379,14 +394,86 @@ describe("game preview runtime loader", () => {
       }],
       onStatus: () => undefined,
       onError,
+      onFailure,
       normalLaunch: true,
     });
 
-    module.ccall = createCcallAdapter(vi.fn(), 8);
+    module.FS = { writeFile: () => undefined };
+    module.ccall = createCcallAdapter(vi.fn(), 8, true);
     module.onRuntimeInitialized?.();
 
     expect(onError).toHaveBeenCalledWith(
       "PangeaScript_SetStartupScript failed with status 8",
+    );
+    expect(onFailure).toHaveBeenCalledWith({
+      category: "native-adapter",
+      code: "scripting.startup",
+      message: "PangeaScript_SetStartupScript failed with status 8",
+    });
+  });
+
+  it("preserves native context for a rejected startup-script status", () => {
+    const onError = vi.fn();
+    const onFailure = vi.fn();
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.BUGDOM_2],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      customFiles: [{ path: "Data/Scripts/dist/main.lua", data: new Uint8Array([1]) }],
+      onStatus: () => undefined,
+      onError,
+      onFailure,
+      normalLaunch: true,
+    });
+
+    module.FS = { writeFile: () => undefined };
+    module.ccall = createCcallAdapter(vi.fn(), 8, true, "startup script rejected by native adapter");
+    module.onRuntimeInitialized?.();
+
+    expect(onFailure).toHaveBeenCalledWith({
+      category: "native-adapter",
+      code: "scripting.startup",
+      message: "PangeaScript_SetStartupScript failed with status 8: startup script rejected by native adapter",
+    });
+  });
+
+  it("classifies preview VFS failures as packaging diagnostics", () => {
+    const onError = vi.fn();
+    const onFailure = vi.fn();
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.OTTO_MATIC],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test-token",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      customFiles: [{ path: "Data/Scripts/dist/main.lua", data: new Uint8Array([1]) }],
+      onStatus: () => undefined,
+      onError,
+      onFailure,
+      normalLaunch: true,
+    });
+
+    module.onRuntimeInitialized?.();
+
+    expect(onFailure).toHaveBeenCalledWith({
+      category: "packaging",
+      code: "preview.vfs",
+      message: expect.stringContaining("No VFS write mechanism available"),
+    });
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to write preview override file"),
     );
   });
 
@@ -640,6 +727,95 @@ describe("game preview runtime loader", () => {
 
     editorInput.remove();
     canvas.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("does not let stale runtime cleanup restore over a replacement module", async () => {
+    vi.useFakeTimers();
+    const canvas = document.createElement("canvas");
+    const oldModule = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas,
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "old",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      onStatus: () => undefined,
+      onError: () => undefined,
+      normalLaunch: true,
+    });
+    const newModule = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas,
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "new",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      onStatus: () => undefined,
+      onError: () => undefined,
+      normalLaunch: true,
+    });
+    oldModule.ccall = createCcallAdapter(vi.fn(), 0);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("")));
+    const stopResult = await loadPreviewRuntime(
+      oldModule,
+      "https://example.com/old.js",
+    );
+    expect(stopResult.isOk()).toBe(true);
+    if (stopResult.isErr()) return;
+
+    window.Module = oldModule;
+    stopResult.value();
+    window.Module = newModule;
+    vi.advanceTimersByTime(3_000);
+
+    expect(window.Module).toBe(newModule);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("restores host scheduling APIs synchronously when stopping", async () => {
+    vi.useFakeTimers();
+    const canvas = document.createElement("canvas");
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 0,
+      currentLevelInfo: undefined,
+      canvas,
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "stop",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      onStatus: () => undefined,
+      onError: () => undefined,
+      normalLaunch: true,
+    });
+    const hostRequestAnimationFrame = window.requestAnimationFrame;
+    const hostSetTimeout = window.setTimeout;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("")));
+
+    const stopResult = await loadPreviewRuntime(
+      module,
+      "https://example.com/stop.js",
+    );
+    expect(stopResult.isOk()).toBe(true);
+    if (stopResult.isErr()) return;
+
+    stopResult.value();
+
+    expect(window.requestAnimationFrame).toBe(hostRequestAnimationFrame);
+    expect(window.setTimeout).toBe(hostSetTimeout);
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 

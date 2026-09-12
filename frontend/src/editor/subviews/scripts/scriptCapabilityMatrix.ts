@@ -1,5 +1,6 @@
 import type { ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
 import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
+import { getNativeItemAudit } from "./scriptNativeAudit";
 
 export type ScriptCapabilityStatus =
   | "supported"
@@ -27,10 +28,15 @@ export type ScriptCapabilityKey =
   | "playerLifecycleEvents"
   | "pickupEvents"
   | "pickupScoreEffects"
+  | "weaponScoreEffects"
   | "weaponHitEvents"
   | "nativeSpawn"
   | "scriptedSpawn"
   | "playerLookup"
+  | "playerScore"
+  | "playerLives"
+  | "playerInventory"
+  | "playerForm"
   | "playerCommands"
   | "playerInvulnerability"
   | "raceMetadata"
@@ -60,10 +66,15 @@ export interface GameCapabilityRow {
   readonly playerLifecycleEvents: ScriptCapabilityStatus;
   readonly pickupEvents: ScriptCapabilityStatus;
   readonly pickupScoreEffects: ScriptCapabilityStatus;
+  readonly weaponScoreEffects: ScriptCapabilityStatus;
   readonly weaponHitEvents: ScriptCapabilityStatus;
   readonly nativeSpawn: ScriptCapabilityStatus;
   readonly scriptedSpawn: ScriptCapabilityStatus;
   readonly playerLookup: ScriptCapabilityStatus;
+  readonly playerScore: ScriptCapabilityStatus;
+  readonly playerLives: ScriptCapabilityStatus;
+  readonly playerInventory: ScriptCapabilityStatus;
+  readonly playerForm: ScriptCapabilityStatus;
   readonly playerCommands: ScriptCapabilityStatus;
   readonly playerInvulnerability: ScriptCapabilityStatus;
   readonly raceMetadata: ScriptCapabilityStatus;
@@ -94,11 +105,16 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    pickupScoreEffects: "unsupported",
-    weaponHitEvents: "unsupported",
+    pickupScoreEffects: "supported",
+    weaponScoreEffects: "supported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "supported",
+    playerLives: "supported",
+    playerInventory: "supported",
+    playerForm: "unsupported",
     playerCommands: "supported",
     playerInvulnerability: "supported",
     raceMetadata: "unsupported",
@@ -123,15 +139,20 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "supported",
     raceProgressEvents: "unsupported",
-    objectiveEvents: "unsupported",
+    objectiveEvents: "supported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    pickupScoreEffects: "unsupported",
+    pickupScoreEffects: "supported",
+    weaponScoreEffects: "supported",
     weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "supported",
+    playerLives: "supported",
+    playerInventory: "supported",
+    playerForm: "supported",
     playerCommands: "supported",
     playerInvulnerability: "supported",
     raceMetadata: "unsupported",
@@ -156,15 +177,20 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     objectAnimationMarkerEvents: "supported",
     checkpointEvents: "supported",
     raceProgressEvents: "unsupported",
-    objectiveEvents: "unsupported",
+    objectiveEvents: "supported",
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    pickupScoreEffects: "unsupported",
+    pickupScoreEffects: "supported",
+    weaponScoreEffects: "supported",
     weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "supported",
+    playerLives: "supported",
+    playerInventory: "supported",
+    playerForm: "unsupported",
     playerCommands: "supported",
     playerInvulnerability: "supported",
     raceMetadata: "unsupported",
@@ -193,11 +219,16 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    pickupScoreEffects: "unsupported",
+    pickupScoreEffects: "supported",
+    weaponScoreEffects: "supported",
     weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "supported",
+    playerLives: "supported",
+    playerInventory: "supported",
+    playerForm: "unsupported",
     playerCommands: "supported",
     playerInvulnerability: "supported",
     raceMetadata: "unsupported",
@@ -227,10 +258,15 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
     pickupScoreEffects: "unsupported",
+    weaponScoreEffects: "unsupported",
     weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "unsupported",
+    playerLives: "supported",
+    playerInventory: "supported",
+    playerForm: "unsupported",
     playerCommands: "supported",
     playerInvulnerability: "supported",
     raceMetadata: "supported",
@@ -247,7 +283,7 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     levelHooks: "supported",
     globalFrameHooks: "supported",
     terrainItemHooks: "supported",
-    splineItemHooks: "unsupported",
+    splineItemHooks: "supported",
     mapItemHooks: "unsupported",
     objectFrameHooks: "supported",
     objectTriggerEvents: "supported",
@@ -260,10 +296,15 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
     pickupScoreEffects: "unsupported",
+    weaponScoreEffects: "unsupported",
     weaponHitEvents: "unsupported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "unsupported",
+    playerLives: "unsupported",
+    playerInventory: "supported",
+    playerForm: "unsupported",
     playerCommands: "supported",
     playerInvulnerability: "unsupported",
     raceMetadata: "supported",
@@ -293,10 +334,15 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
     pickupScoreEffects: "supported",
-    weaponHitEvents: "unsupported",
+    weaponScoreEffects: "supported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "supported",
+    playerLives: "supported",
+    playerInventory: "supported",
+    playerForm: "unsupported",
     playerCommands: "supported",
     playerInvulnerability: "supported",
     raceMetadata: "unsupported",
@@ -325,16 +371,21 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     damageEvents: "supported",
     playerLifecycleEvents: "supported",
     pickupEvents: "supported",
-    pickupScoreEffects: "unsupported",
+    pickupScoreEffects: "supported",
+    weaponScoreEffects: "supported",
     weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",
+    playerScore: "supported",
+    playerLives: "supported",
+    playerInventory: "supported",
+    playerForm: "unsupported",
     playerCommands: "supported",
     playerInvulnerability: "supported",
     raceMetadata: "unsupported",
     objectiveMetadata: "unsupported",
-    objectCollision: "unsupported",
+    objectCollision: "supported",
     levelMetadata: "supported",
     timeAPIs: "supported",
     logging: "supported",
@@ -361,10 +412,15 @@ const DEFAULT_CAPABILITY_ROW: GameCapabilityRow = {
   playerLifecycleEvents: "unsupported",
   pickupEvents: "unsupported",
   pickupScoreEffects: "unsupported",
+  weaponScoreEffects: "unsupported",
   weaponHitEvents: "unsupported",
   nativeSpawn: "unsupported",
   scriptedSpawn: "unsupported",
   playerLookup: "unsupported",
+  playerScore: "unsupported",
+  playerLives: "unsupported",
+  playerInventory: "unsupported",
+  playerForm: "unsupported",
   playerCommands: "unsupported",
   playerInvulnerability: "unsupported",
   raceMetadata: "unsupported",
@@ -454,6 +510,35 @@ export function getWorkspaceWarnings(
     }
   }
 
+  for (const [levelKey, levelState] of Object.entries(state.levels)) {
+    const replacementGroups = [
+      ["terrain", levelState.terrainReplacements],
+      ["spline", levelState.splineReplacements],
+      ["map", levelState.mapReplacements],
+    ] as const;
+    for (const [surface, replacements] of replacementGroups) {
+      for (const replacement of replacements) {
+        const audit = getNativeItemAudit(gameId, replacement.nativeType, surface);
+        if (!audit) {
+          warnings.push(
+            `Level '${levelKey}' ${surface} replacement '${replacement.id}' has no registered native adapter for type ${String(replacement.nativeType)}.`,
+          );
+          continue;
+        }
+        for (const dependency of audit.requiredAssets) {
+          warnings.push(
+            `Level '${levelKey}' replacement '${replacement.id}' requires native dependency '${dependency}' before preview/export.`,
+          );
+        }
+        if (audit.modeAudit !== "all-declared-modes") {
+          warnings.push(
+            `Level '${levelKey}' replacement '${replacement.id}' has incomplete native mode coverage; verify the selected runtime mode before preview/export.`,
+          );
+        }
+      }
+    }
+  }
+
   const mpStatus = getCapability(gameId, "multiplayer");
   if (mpStatus === "unsafeInMultiplayer") {
     warnings.push("Multiplayer support is untested and unsafe for scripting on this game.");
@@ -514,6 +599,10 @@ export function getWorkspaceWarnings(
         } else if (scoreStatus === "planned") {
           warnings.push("Script returns pickup scoreDelta, but scripted pickup score effects are planned on this game.");
         }
+		const weaponScoreStatus = getCapability(gameId, "weaponScoreEffects");
+		if (weaponScoreStatus === "unsupported" && file.content.includes("onWeaponHit")) {
+			warnings.push("Script returns weapon-hit scoreDelta, but scripted weapon score effects are unsupported on this game.");
+		}
       }
     }
   }

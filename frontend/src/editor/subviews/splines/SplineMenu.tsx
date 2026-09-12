@@ -82,7 +82,13 @@ export const SplineMenu = memo(function SplineMenu({
         } else setSelectedSplineItem(parseInt(e));
       }}
     >
-      <SelectTrigger>
+      <SelectTrigger
+        className={`min-w-0 justify-start ${
+          selectedSplineItem !== undefined && selectedItem
+            ? "rounded-r-none"
+            : ""
+        }`}
+      >
         {selectedSplineItem !== undefined && selectedItem ? (
           <ItemThumbnail
             game={globals.GAME_TYPE}
@@ -93,6 +99,7 @@ export const SplineMenu = memo(function SplineMenu({
             params={selectedItem}
             metadata={`#${selectedSplineItem}`}
             compact
+            className="min-w-0"
           />
         ) : (
           "No Item Selected"
@@ -127,19 +134,18 @@ export const SplineMenu = memo(function SplineMenu({
   );
 
   return (
-    <div className="flex flex-col gap-2 min-h-full">
-      <div className="flex flex-col gap-2 flex-1 min-h-0">
-        {splineItemData && (
-          <EditSplineItemMenu
-            splineItemData={splineItemData}
-            setSplineData={setSplineData}
-            selectedSplineItemControl={selectedSplineItemControl}
-          />
-        )}
-        {splineItemData !== null && splineItemData !== undefined && (
-          <EditSplineMenu splineData={splineData} setSplineData={setSplineData} />
-        )}
-      </div>
+    <div className="flex min-h-full min-w-0 flex-col gap-4 p-2">
+      <section className="min-w-0">
+        <EditSplineMenu splineData={splineData} setSplineData={setSplineData} />
+      </section>
+
+      <section className="min-w-0 border-t border-gray-700 pt-4">
+        <EditSplineItemMenu
+          splineItemData={splineItemData}
+          setSplineData={setSplineData}
+          selectedSplineItemControl={selectedSplineItemControl}
+        />
+      </section>
     </div>
   );
 });

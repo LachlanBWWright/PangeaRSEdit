@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 export async function runScriptObjectAuthoringRoundTrip(
   page: Page,
@@ -7,19 +8,20 @@ export async function runScriptObjectAuthoringRoundTrip(
   objectLabel: string,
 ): Promise<void> {
   await card.locator('input[type="file"]').setInputFiles([...levelFiles]);
-  await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
-  ).toBeVisible({ timeout: 30_000 });
+  const levelActions = page
+    .locator("summary")
+    .filter({ hasText: "Level Actions" })
+    .or(page.getByRole("button", { name: "Level Actions", exact: true }));
+  await expect(levelActions).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("tab", { name: "Assignments", exact: true }).click();
-  await dialog.locator("#custom-object-label").fill(objectLabel);
-  await dialog.getByRole("button", { name: "Save Object", exact: true }).click();
-  await expect(dialog.getByText(objectLabel, { exact: true })).toBeVisible();
+  const workspace = await openScriptWorkspace(page);
+  await workspace.getByRole("tab", { name: "Assignments", exact: true }).click();
+  await workspace.locator("#custom-object-label").fill(objectLabel);
+  await workspace.getByRole("button", { name: "Save Object", exact: true }).click();
+  await expect(workspace.getByText(objectLabel, { exact: true })).toBeVisible();
 
-  await dialog
+  await workspace
     .getByRole("combobox", { name: `${objectLabel} visual type` })
     .click();
   await page.getByRole("option", { name: "No visual", exact: true }).click();
@@ -46,16 +48,15 @@ export async function runScriptObjectAuthoringRoundTrip(
   await expect(page.locator("#scripted-item-x")).toHaveValue("240");
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const reopenedDialog = page.getByRole("dialog");
-  await reopenedDialog
+  const reopenedWorkspace = await openScriptWorkspace(page);
+  await reopenedWorkspace
     .getByRole("tab", { name: "Assignments", exact: true })
     .click();
-  await expect(reopenedDialog.getByText(objectLabel, { exact: true })).toBeVisible();
-  await reopenedDialog
+  await expect(reopenedWorkspace.getByText(objectLabel, { exact: true }).first()).toBeVisible();
+  await reopenedWorkspace
     .getByRole("tab", { name: "Preview and Export", exact: true })
     .click();
-  await reopenedDialog
+  await reopenedWorkspace
     .getByRole("button", { name: "Compile Bundle", exact: true })
     .click();
   await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({

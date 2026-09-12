@@ -38,6 +38,7 @@ import { CroMagPathPanel } from "../paths/CroMagPathPanel";
 import { LevelScaleControl } from "../tiles/LevelScaleControl";
 import {
   supportsLevelScale,
+  supportsLevelScalePlacement,
   type LevelScaleMode,
 } from "@/editor/utils/levelScaleState";
 import { buildTerrainEntityOverlay } from "./terrainEntityOverlay";
@@ -301,6 +302,9 @@ export function SupertileMenu({
             <div className="border-t border-gray-600 pt-2">
               <LevelScaleControl
                 tileSize={headerData.Hedr[1000].obj.tileSize}
+                supportsPlacementBehavior={supportsLevelScalePlacement(
+                  globals.GAME_TYPE,
+                )}
                 onApply={onApplyLevelScale}
               />
             </div>

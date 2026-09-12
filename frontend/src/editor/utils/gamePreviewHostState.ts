@@ -6,6 +6,7 @@ import type {
   MultiplayerRuntimeEvent,
   PreviewRuntimeModule,
   PreviewVfsFile,
+  PreviewRuntimeFailure,
 } from "./gamePreviewRuntime";
 
 export interface PreviewState {
@@ -36,6 +37,7 @@ interface StartPreparedGamePreviewOptions extends PreviewTerrainBytes {
   readonly customFiles?: readonly PreviewVfsFile[];
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
+  readonly onFailure?: (failure: PreviewRuntimeFailure) => void;
   readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
   readonly onRuntimeModule?: (module: PreviewRuntimeModule | null) => void;
 }
@@ -75,6 +77,7 @@ export function startPreparedGamePreview({
   customFiles,
   onStatus,
   onError,
+  onFailure,
   onRuntimeEvent,
   onRuntimeModule,
 }: StartPreparedGamePreviewOptions): (() => void) | undefined {
@@ -108,6 +111,7 @@ export function startPreparedGamePreview({
     networkRuntimeTransport,
     onStatus,
     onError,
+    onFailure,
     onRuntimeEvent,
     onRuntimeModule,
   });

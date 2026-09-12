@@ -23,7 +23,7 @@ describe("game download variants", () => {
   it("maps Otto Matic to a direct Pages download URL", () => {
     const config = getGameDownloadConfig(Game.OTTO_MATIC);
     expect(config).toBeDefined();
-    expect(config?.variants[0].fileName).toBe(
+    expect(config?.variants[0]?.fileName).toBe(
       "OttoMatic-Android-linux.AppImage",
     );
     expect(

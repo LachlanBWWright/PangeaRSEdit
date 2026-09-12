@@ -93,7 +93,7 @@ export const ItemMenu = memo(function ItemMenu({
   }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
-    <div className="flex h-full min-h-full flex-col gap-2">
+    <div className="flex h-full min-h-full flex-col gap-2 px-3">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu hasItems={itemCount > 0} />
       ) : (

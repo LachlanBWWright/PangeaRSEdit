@@ -20,13 +20,13 @@ export function BugdomTerrainMenu({
   const [mode, setMode] = useAtom(bugdomTerrainModeAtom);
 
   return (
-    <div className="flex min-h-0 flex-col gap-2">
+    <div className="editor-tabbed-menu flex min-h-0 flex-col gap-2">
       <Tabs value={mode} onValueChange={(value) => {
         if (value === "topology" || value === "vertex-colors") {
           setMode(value);
         }
       }}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="editor-subnavbar grid w-full grid-cols-2">
           <TabsTrigger value="topology">Topology</TabsTrigger>
           <TabsTrigger value="vertex-colors">Vertex coloring</TabsTrigger>
         </TabsList>

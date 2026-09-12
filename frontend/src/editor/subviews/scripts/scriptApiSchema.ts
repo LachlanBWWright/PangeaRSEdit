@@ -48,9 +48,13 @@ export const ApiAvailabilityCapabilitySchema = z.enum([
   "scriptedSpawn",
   "playerLookup",
   "playerCommands",
+  "playerScore",
+  "playerInventory",
+  "playerForm",
   "playerInvulnerability",
   "raceMetadata",
   "objectiveMetadata",
+  "checkpointEvents",
   "objectCollision",
   "levelMetadata",
   "persistence",
@@ -145,6 +149,48 @@ const PLAYER_COMMAND_METADATA: CommandMetadata = {
   validation: ["integer player index", "finite health in range 0..1", "adapter health mutation support"],
 };
 
+const PLAYER_LIVES_COMMAND_METADATA: CommandMetadata = {
+  capability: "player-lives",
+  authority: "disabled-network",
+  applicationPhase: "callback",
+  validation: ["integer player index", "non-negative integer lives count", "adapter lives mutation support"],
+};
+
+const PLAYER_SCORE_COMMAND_METADATA: CommandMetadata = {
+  capability: "player-score",
+  authority: "disabled-network",
+  applicationPhase: "callback",
+  validation: ["integer player index", "non-negative integer score in range 0..UINT32_MAX", "adapter score mutation support"],
+};
+
+const PLAYER_INVENTORY_COMMAND_METADATA: CommandMetadata = {
+  capability: "player-inventory",
+  authority: "disabled-network",
+  applicationPhase: "callback",
+  validation: ["integer player index", "valid adapter weapon type", "non-negative quantity in range 0..999", "adapter inventory mutation support"],
+};
+
+const PLAYER_KEY_COMMAND_METADATA: CommandMetadata = {
+  capability: "player-keys",
+  authority: "disabled-network",
+  applicationPhase: "callback",
+  validation: ["integer player index", "valid adapter key identifier", "boolean enabled state", "adapter key inventory mutation support"],
+};
+
+const PLAYER_COLLECTIBLE_COMMAND_METADATA: CommandMetadata = {
+  capability: "player-collectibles",
+  authority: "disabled-network",
+  applicationPhase: "callback",
+  validation: ["integer player index", "named clover color green, blue, or gold", "non-negative count in range 0..999", "adapter collectible mutation support"],
+};
+
+const PLAYER_SHIELD_COMMAND_METADATA: CommandMetadata = {
+  capability: "player-shield",
+  authority: "disabled-network",
+  applicationPhase: "callback",
+  validation: ["integer player index", "boolean active state", "adapter-native shield activation/deactivation support"],
+};
+
 const PLAYER_POSITION_COMMAND_METADATA: CommandMetadata = {
   capability: "player-position",
   authority: "disabled-network",
@@ -157,6 +203,13 @@ const PLAYER_VELOCITY_COMMAND_METADATA: CommandMetadata = {
   authority: "disabled-network",
   applicationPhase: "callback",
   validation: ["integer player index", "finite Vector3", "adapter player-velocity mutation support"],
+};
+
+const PLAYER_FORM_COMMAND_METADATA: CommandMetadata = {
+  capability: "player-form",
+  authority: "disabled-network",
+  applicationPhase: "callback",
+  validation: ["integer player index", "supported native form identifier", "adapter player-form mutation support"],
 };
 
 const PLAYER_HEAL_COMMAND_METADATA: CommandMetadata = {
@@ -1335,7 +1388,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     },
     {
       name: "pangea.player.get",
-      description: "Returns a normalized read-only player snapshot.",
+      description: "Returns a normalized read-only player snapshot, including transform/aim, score/lives, fuel, token/coin/peso progress, child-object count, and structured weapon inventory where the selected game exposes those native fields.",
       availabilityCapability: "playerLookup",
       parameters: [{ name: "playerNum", type: "number" }],
       returnType: "PangeaPlayerSnapshot|nil",
@@ -1355,6 +1408,13 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       returnType: "PangeaObjectiveResult[]|nil",
     },
     {
+      name: "pangea.player.checkpointResults",
+      description: "Returns the bounded read-only checkpoint result table observed from native checkpoint events, or nil when no checkpoint has been reached.",
+      availabilityCapability: "checkpointEvents",
+      parameters: [],
+      returnType: "PangeaCheckpointResult[]|nil",
+    },
+    {
       name: "pangea.player.setHealth",
       description: "Sets a player's normalized health when the native adapter exposes a safe health mutation boundary.",
       availabilityCapability: "playerCommands",
@@ -1369,6 +1429,102 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       parameters: [{ name: "playerNum", type: "number" }, { name: "health", type: "number" }],
       returnType: "PlayerCommandResult",
       command: PLAYER_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setLives",
+      description: "Sets a player's lives count when the native adapter exposes a safe lives mutation boundary.",
+      availabilityCapability: "playerCommands",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "lives", type: "number" }],
+      returnType: "boolean",
+      command: PLAYER_LIVES_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setLivesResult",
+      description: "Sets a player's lives count and returns structured status and diagnostics.",
+      availabilityCapability: "playerCommands",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "lives", type: "number" }],
+      returnType: "PlayerCommandResult",
+      command: PLAYER_LIVES_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setScore",
+      description: "Sets a player's score when the native adapter exposes a safe score mutation boundary.",
+      availabilityCapability: "playerScore",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "score", type: "number" }],
+      returnType: "boolean",
+      command: PLAYER_SCORE_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setScoreResult",
+      description: "Sets a player's score and returns structured status and diagnostics.",
+      availabilityCapability: "playerScore",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "score", type: "number" }],
+      returnType: "PlayerCommandResult",
+      command: PLAYER_SCORE_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setWeaponQuantity",
+      description: "Sets a player's bounded weapon quantity when the native adapter exposes safe inventory mutation.",
+      availabilityCapability: "playerInventory",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "weaponType", type: "number" }, { name: "quantity", type: "number" }],
+      returnType: "boolean",
+      command: PLAYER_INVENTORY_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setWeaponQuantityResult",
+      description: "Sets a player's bounded weapon quantity and returns structured status and diagnostics.",
+      availabilityCapability: "playerInventory",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "weaponType", type: "number" }, { name: "quantity", type: "number" }],
+      returnType: "PlayerCommandResult",
+      command: PLAYER_INVENTORY_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setKey",
+      description: "Sets a player's semantic key inventory state when the native adapter exposes safe key mutation.",
+      availabilityCapability: "playerInventory",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "keyId", type: "number" }, { name: "enabled", type: "boolean" }],
+      returnType: "boolean",
+      command: PLAYER_KEY_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setKeyResult",
+      description: "Sets a player's semantic key inventory state and returns structured status and diagnostics.",
+      availabilityCapability: "playerInventory",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "keyId", type: "number" }, { name: "enabled", type: "boolean" }],
+      returnType: "PlayerCommandResult",
+      command: PLAYER_KEY_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setCloverCount",
+      description: "Sets a player's named clover count when the native adapter exposes safe collectible mutation.",
+      availabilityCapability: "playerInventory",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "color", type: "stringUnion", unionValues: ["green", "blue", "gold"] }, { name: "count", type: "number" }],
+      returnType: "boolean",
+      command: PLAYER_COLLECTIBLE_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setCloverCountResult",
+      description: "Sets a player's named clover count and returns structured status and diagnostics.",
+      availabilityCapability: "playerInventory",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "color", type: "stringUnion", unionValues: ["green", "blue", "gold"] }, { name: "count", type: "number" }],
+      returnType: "PlayerCommandResult",
+      command: PLAYER_COLLECTIBLE_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setShieldActive",
+      description: "Activates or deactivates a player's native shield when the adapter exposes that boundary.",
+      availabilityCapability: "playerCommands",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "active", type: "boolean" }],
+      returnType: "boolean",
+      command: PLAYER_SHIELD_COMMAND_METADATA,
+    },
+    {
+      name: "pangea.player.setShieldActiveResult",
+      description: "Activates or deactivates a player's native shield and returns structured status and diagnostics.",
+      availabilityCapability: "playerCommands",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "active", type: "boolean" }],
+      returnType: "PlayerCommandResult",
+      command: PLAYER_SHIELD_COMMAND_METADATA,
     },
     {
       name: "pangea.player.heal",
@@ -1435,6 +1591,14 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       command: PLAYER_VELOCITY_COMMAND_METADATA,
     },
     {
+      name: "pangea.player.setForm",
+      description: "Changes a supported player's native playable form, such as Bugdom's bug and ball forms.",
+      availabilityCapability: "playerForm",
+      parameters: [{ name: "playerNum", type: "number" }, { name: "form", type: "stringUnion", unionValues: ["bug", "ball"] }],
+      returnType: "boolean",
+      command: PLAYER_FORM_COMMAND_METADATA,
+    },
+    {
       name: "pangea.spawn.native",
       description: "Spawns a native object.",
       completion: "native-spawn",
@@ -1480,13 +1644,67 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       parameters: [{ name: "handle", type: "objectHandle" }],
       returnType: "ObjectSource|nil",
     },
+    {
+      name: "pangea.object.velocity",
+      description: "Gets the current native or scripted velocity of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "Vector3|nil",
+    },
+    {
+      name: "pangea.object.rotation",
+      description: "Gets the current native or scripted rotation of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "Vector3|nil",
+    },
+    {
+      name: "pangea.object.scale",
+      description: "Gets the current uniform native or scripted scale of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "number|nil",
+    },
+    {
+      name: "pangea.object.animation",
+      description: "Gets the current native or scripted animation index of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "number|nil",
+    },
+    {
+      name: "pangea.object.animationSpeed",
+      description: "Gets the current native or scripted animation speed of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "number|nil",
+    },
+    {
+      name: "pangea.object.animationFrame",
+      description: "Gets the current native animation frame of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "number|nil",
+    },
+    {
+      name: "pangea.object.active",
+      description: "Gets the current active lifecycle state of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "boolean|nil",
+    },
+    {
+      name: "pangea.object.collisionEnabled",
+      description: "Gets the current native or scripted collision state of an object when the adapter exposes it.",
+      parameters: [{ name: "handle", type: "objectHandle" }],
+      returnType: "boolean|nil",
+    },
     { name: "pangea.object.all", description: "Returns all currently registered object handles.", parameters: [], returnType: "ObjectHandle[]" },
     { name: "pangea.object.findByTag", description: "Returns registered object handles carrying a tag.", parameters: [{ name: "tag", type: "string" }], returnType: "ObjectHandle[]" },
     { name: "pangea.object.nearest", description: "Returns the nearest readable registered object, optionally filtered by tag.", parameters: [{ name: "origin", type: "vector3" }, { name: "tag", type: "string", optional: true }], returnType: "ObjectHandle|nil" },
     { name: "pangea.object.exists", description: "Checks whether a generation-checked object handle is live.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "boolean" },
     { name: "pangea.object.tags", description: "Returns the tags assigned to an object.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "string[]" },
     { name: "pangea.object.hasTag", description: "Checks whether an object has a tag.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "tag", type: "string" }], returnType: "boolean" },
+    { name: "pangea.object.type", description: "Returns the native registration type of an object, such as an enemy, pickup, hazard, or scripted object.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "string|nil" },
+    { name: "pangea.object.category", description: "Returns the semantic category of a live native or scripted object, such as enemy, pickup, hazard, projectile/effect, or scripted.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "string|nil" },
+    { name: "pangea.object.health", description: "Returns native object health when the adapter exposes it, without granting mutation authority.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "number|nil" },
+    { name: "pangea.object.damage", description: "Returns native object damage contribution when the adapter exposes it, without granting mutation authority.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "number|nil" },
     { name: "pangea.object.state", description: "Returns mutable script-owned state scoped to an object generation.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "table|nil" },
+    { name: "pangea.object.captureCheckpoint", description: "Captures a bounded deep copy of script-owned object state for checkpoint/reset restoration.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "boolean" },
+    { name: "pangea.object.restoreCheckpoint", description: "Restores the object's script-owned state from its captured checkpoint baseline.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "boolean" },
     {
       name: "pangea.object.setPosition",
       description: "Sets the position of an object.",
@@ -1576,7 +1794,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "OttoMatic-Android",
       gameName: "Otto Matic",
-      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onFrame", "onLevelComplete", "onLevelUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onDamage", "onDamageApplied", "onPlayerSpawn", "onCheckpointReached", "onPlayerRespawn", "onDeath", "onSave", "onLoad"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onFrame", "onLevelComplete", "onLevelUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onWeaponHit", "onDamage", "onDamageApplied", "onPlayerSpawn", "onCheckpointReached", "onPlayerRespawn", "onDeath", "onSave", "onLoad"],
       contextFields: [
         { name: "playerMode", type: "string", optional: true },
       ],
@@ -1591,7 +1809,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "Bugdom-android",
       gameName: "Bugdom",
-      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onFrame", "onLevelComplete", "onLevelUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onWeaponHit", "onDamage", "onDamageApplied", "onPlayerSpawn", "onCheckpointReached", "onPlayerRespawn", "onDeath", "onSave", "onLoad"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onFrame", "onLevelComplete", "onLevelUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onWeaponHit", "onDamage", "onDamageApplied", "onPlayerSpawn", "onCheckpointReached", "onObjectiveComplete", "onPlayerRespawn", "onDeath", "onSave", "onLoad"],
       contextFields: [],
       nativeSpawns: [
         ...nativeTerrainItems(bugdomItemTypeNames, 1, bugdomItemParams, "terrain", bugdomCompleteTerrainAuditOverrides, bugdomTerrainCategoryOverrides),
@@ -1603,7 +1821,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "Bugdom2-Android",
       gameName: "Bugdom 2",
-      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onFrame", "onLevelComplete", "onLevelUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onWeaponHit", "onDamage", "onDamageApplied", "onDeath", "onPlayerSpawn", "onCheckpointReached", "onPlayerRespawn", "onSave", "onLoad"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onLevelLoad", "onLevelStart", "onFrame", "onLevelComplete", "onLevelUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onWeaponHit", "onDamage", "onDamageApplied", "onDeath", "onPlayerSpawn", "onCheckpointReached", "onObjectiveComplete", "onPlayerRespawn", "onSave", "onLoad"],
       contextFields: [],
       nativeSpawns: [
         ...nativeTerrainItems(bugdom2ItemTypeNames, 1, bugdom2ItemParams, "terrain", bugdom2CompleteTerrainAuditOverrides, bugdom2TerrainCategoryOverrides),
@@ -1637,6 +1855,9 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
         { id: "nanosaur2.egg", nativeType: 3, label: "Egg", category: "Pickup", description: "Spawn a Nanosaur 2 objective egg.", audit: { ...constructorProbeAudit, lifecycle: "pickup", requiredAssets: ["native-registry", "egg-objective-assets", "terrain-player-systems"], modeAudit: "all-declared-modes", childObjects: "native-owned", saveBehavior: "native-owned", auditBasis: "Source audit: Items/Eggs.c registers eggs across the VS mode switch, chains the egg and light beam to the nest, persists collection through item flags, and routes collection through the native egg objective state; Source/Scripting/ScriptBindings.c records the same dependency in the native item table." } },
         { id: "nanosaur2.weaponPow", nativeType: 6, label: "Weapon Powerup", category: "Pickup", description: "Spawn a weapon powerup.", audit: { ...constructorProbeAudit, lifecycle: "pickup", requiredAssets: ["native-registry", "weapon-pickup-assets", "terrain-player-systems"], modeAudit: "all-declared-modes", childObjects: "native-owned", saveBehavior: "native-owned", auditBasis: "Source audit: Items/POWs.c registers weapon powerups for single- and multiplayer timing paths, chains the native membrane effect, applies quantity to native player weapon state, and routes collection through the shared pickup boundary; Source/Scripting/ScriptBindings.c records the constructor dependency." } },
         { id: "nanosaur2.healthPow", nativeType: 21, label: "Health Powerup", category: "Pickup", description: "Spawn a health powerup.", audit: { ...constructorProbeAudit, lifecycle: "pickup", requiredAssets: ["native-registry", "health-pickup-assets", "terrain-player-systems"], modeAudit: "all-declared-modes", childObjects: "native-owned", saveBehavior: "native-owned", auditBasis: "Source audit: Items/POWs.c registers health powerups across the shared VS mode paths, chains the native membrane effect, applies health to native player state, and routes collection through the shared pickup boundary; Source/Scripting/ScriptBindings.c records the constructor dependency." } },
+        { id: "nanosaur2.fuelPow", nativeType: 22, label: "Fuel Powerup", category: "Pickup", description: "Spawn a jetpack fuel powerup.", audit: { ...constructorProbeAudit, lifecycle: "pickup", requiredAssets: ["native-registry", "fuel-pickup-assets", "terrain-player-systems"], modeAudit: "all-declared-modes", childObjects: "native-owned", saveBehavior: "native-owned", auditBasis: "Source audit: Items/POWs.c registers fuel powerups, applies the mode-specific native jetpack fuel amount, and routes collection through the shared pickup boundary; Source/Scripting/ScriptBindings.c records the constructor dependency." } },
+        { id: "nanosaur2.shieldPow", nativeType: 33, label: "Shield Powerup", category: "Pickup", description: "Spawn a shield powerup.", audit: { ...constructorProbeAudit, lifecycle: "pickup", requiredAssets: ["native-registry", "shield-pickup-assets", "terrain-player-systems"], modeAudit: "all-declared-modes", childObjects: "native-owned", saveBehavior: "native-owned", auditBasis: "Source audit: Items/POWs.c registers shield powerups, applies native shield power and creates the native shield object, then routes collection through the shared pickup boundary; Source/Scripting/ScriptBindings.c records the constructor dependency." } },
+        { id: "nanosaur2.freeLifePow", nativeType: 47, label: "Free Life Powerup", category: "Pickup", description: "Spawn a free-life powerup.", audit: { ...constructorProbeAudit, lifecycle: "pickup", requiredAssets: ["native-registry", "free-life-pickup-assets", "terrain-player-systems"], modeAudit: "all-declared-modes", childObjects: "native-owned", saveBehavior: "native-owned", auditBasis: "Source audit: Items/POWs.c registers free-life powerups, increments native player lives, and routes collection through the shared pickup boundary; Source/Scripting/ScriptBindings.c records the constructor dependency." } },
       ],
     },
     {
@@ -1644,7 +1865,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       gameName: "Cro-Mag Rally",
       supportedHooks: ["onGameStart", "onGameShutdown", "onRaceLoad", "onRaceStart", "onRaceFrame", "onRaceComplete", "onRaceUnload", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onDamage", "onDamageApplied", "onPlayerSpawn", "onCheckpointReached", "onLapComplete", "onRaceFinish", "onDeath"],
       contextFields: [
-        { name: "mode", type: "stringUnion", unionValues: ["local", "practice", "network"], optional: true },
+        { name: "mode", type: "stringUnion", unionValues: ["local", "practice", "network", "tag1", "tag2", "survival", "capture"], optional: true },
         { name: "trackName", type: "string", optional: true },
         { name: "networked", type: "boolean", optional: true },
       ],
@@ -1663,6 +1884,14 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       supportedHooks: ["onGameStart", "onGameShutdown", "onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onDamage", "onDamageApplied", "onPlayerSpawn", "onDeath", "onSave", "onLoad"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"], optional: true },
+        { name: "modePhase", type: "number", optional: true },
+        { name: "modeWave", type: "number", optional: true },
+        { name: "modeTimer", type: "number", optional: true },
+        { name: "modeSequenceIndex", type: "number", optional: true },
+        { name: "modeSequenceLength", type: "number", optional: true },
+        { name: "modeEnemyCount", type: "number", optional: true },
+        { name: "modeReflex", type: "number", optional: true },
+        { name: "modeCanAdvance", type: "boolean", optional: true },
       ],
       nativeSpawns: [
         ...nativeTerrainItems(billyItemTypeNames, 1, billyItemParams, "terrain", billyCompleteTerrainAuditOverrides, billyTerrainCategoryOverrides),

@@ -264,7 +264,7 @@ function ActualMenu({ config, ...props }: MenuProps) {
   if (view === View.tiles) {
     return config.game === Game.OTTO_MATIC ? <OttoMaticTilesMenu headerData={headerData} setHeaderData={setHeaderData} /> : <StandardTilesMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} />;
   }
-  return <SupertileMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} setTerrainData={setTerrainData} mapImages={mapImages} setMapImages={setMapImages} onApplyLevelScale={applyLevelScale} />;
+  return <SupertileMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} setTerrainData={setTerrainData} mapImages={mapImages} setMapImages={setMapImages} itemData={itemData} fenceData={fenceData} splineData={splineData} liquidData={liquidData} onApplyLevelScale={applyLevelScale} />;
 }
 
 function EditorMenuPanel({
@@ -293,7 +293,7 @@ function EditorMenuPanel({
     <div data-storybook-editor-menu data-editor-game={config.name} data-editor-tab={selectedTab?.label ?? ""}>
       <div className="min-w-0">
         <div data-editor-menu-toolbar className="min-w-0 border-b border-gray-700 p-2"><EditorToolbar config={config} hasSupertiles={Boolean(terrainData.STgd)} /></div>
-        <div data-editor-menu-surface><MenuSection scrollable={view !== View.animations}><ActualMenu {...props} /></MenuSection></div>
+        <div data-editor-menu-surface><MenuSection><ActualMenu {...props} /></MenuSection></div>
       </div>
     </div>
   );

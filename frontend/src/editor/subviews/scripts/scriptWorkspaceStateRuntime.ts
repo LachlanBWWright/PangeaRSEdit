@@ -44,6 +44,7 @@ import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
 import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
 import { materializeCustomObjectSourceTemplate } from "./scriptCustomObjectTemplate";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
+import { migrateLegacyScriptSource } from "./scriptLegacyMigration";
 import type {
   ScriptBehaviorDefinition,
   ScriptAssetFile,
@@ -472,6 +473,9 @@ function getGameTags(gameId: string): readonly ScriptTagDefinition[] {
       createTag("nanosaur2.egg", "Nanosaur 2 Egg", "Eggs to capture/protect.", ["global", "terrainItem"], "game"),
       createTag("nanosaur2.weaponPow", "Weapon Powerup", "Laser/fire weapon powerups.", ["global", "terrainItem"], "game"),
       createTag("nanosaur2.healthPow", "Health Powerup", "Dinosaur health pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.fuelPow", "Fuel Powerup", "Jetpack fuel pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.shieldPow", "Shield Powerup", "Shield pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.freeLifePow", "Free Life Powerup", "Extra-life pickups.", ["global", "terrainItem"], "game"),
       createTag("nanosaur2.wormhole", "Wormhole", "Wormhole gate.", ["global", "customObject"], "game"),
       createTag("nanosaur2.bonuswormhole", "Bonus Wormhole", "Bonus wormhole gate.", ["global", "customObject"], "game"),
       createTag("nanosaur2.enemy.raptor", "Raptor Robot", "Raptor robot enemy.", ["global", "customObject"], "game"),
@@ -2798,6 +2802,39 @@ function decodeJsonFile<T>(
   return ok(parsed.data);
 }
 
+export interface ImportedScriptLevelSidecars {
+  readonly terrainBindings: readonly ScriptTerrainBinding[];
+  readonly splineBindings: readonly ScriptSplineBinding[];
+  readonly mapItemBindings: readonly ScriptMapItemBinding[];
+  readonly customPlacements: readonly ScriptCustomObjectPlacement[];
+}
+
+export function decodeScriptLevelSidecars(
+  files: Readonly<Record<string, Uint8Array>>,
+  bindingsPath: string,
+  placementsPath: string,
+): Result<ImportedScriptLevelSidecars, string> {
+  const bindingsResult = decodeJsonFile(
+    files,
+    bindingsPath,
+    scriptBindingsFileSchema,
+  );
+  if (bindingsResult.isErr()) return err(bindingsResult.error);
+  const placementsResult = decodeJsonFile(
+    files,
+    placementsPath,
+    scriptPlacementsFileSchema,
+  );
+  if (placementsResult.isErr()) return err(placementsResult.error);
+
+  return ok({
+    terrainBindings: bindingsResult.value?.terrainBindings ?? [],
+    splineBindings: bindingsResult.value?.splineBindings ?? [],
+    mapItemBindings: bindingsResult.value?.mapItemBindings ?? [],
+    customPlacements: placementsResult.value?.placements ?? [],
+  });
+}
+
 export function importScriptPackageZip(
   bytes: Uint8Array,
   context: ScriptWorkspaceContext,
@@ -2817,7 +2854,7 @@ export function importScriptPackageZip(
   const validationResult = validateScriptPackage(
     files,
     context,
-    validationOptions,
+    { ...validationOptions, allowLegacySources: true },
   );
   if (validationResult.isErr()) {
     return err(validationResult.error);
@@ -2863,24 +2900,34 @@ export function importScriptPackageZip(
     .filter(([path]) => path.startsWith("Data/Scripts/src/"))
     .filter(([path]) => path !== GENERATED_ENTRY_PATH);
 
-  const legacyTsPath = importedFiles.find(
-    ([path]) => path.endsWith(".ts") || path.endsWith(".tsx") || path.endsWith(".js")
-  );
-  if (legacyTsPath) {
-    return err("Legacy TypeScript/JavaScript package detected. This editor only supports Lua 5.4 scripting. Please convert your scripts to Lua before importing.");
-  }
-
   const nonLuaSourcePath = importedFiles.find(
     ([path]) => !isLuaSourcePath(path),
   );
-  if (nonLuaSourcePath) {
+  if (nonLuaSourcePath && !/\.(?:tsx?|jsx?)$/i.test(nonLuaSourcePath[0])) {
     return err(`Script source files must be Lua: ${nonLuaSourcePath[0]}`);
   }
 
-  const importedSourceFiles = importedFiles
-    .map(([path, fileBytes]) =>
-      createSourceFile(path, strFromU8(fileBytes), "user"),
-    );
+  const migratedSources = importedFiles.map(([path, fileBytes]) => {
+    if (isLuaSourcePath(path)) {
+      return ok({
+        file: createSourceFile(path, strFromU8(fileBytes), "user"),
+        warnings: [] as readonly string[],
+      });
+    }
+    return migrateLegacyScriptSource(path, strFromU8(fileBytes)).map((migrated) => ({
+      file: createSourceFile(migrated.path, migrated.content, "user"),
+      warnings: migrated.warnings,
+    }));
+  });
+  const failedMigration = migratedSources.find((result) => result.isErr());
+  if (failedMigration?.isErr()) return err(failedMigration.error);
+  const importedSourceFiles: ScriptSourceFile[] = [];
+  const migrationWarnings: string[] = [];
+  for (const result of migratedSources) {
+    if (result.isErr()) return err(result.error);
+    importedSourceFiles.push(result.value.file);
+    migrationWarnings.push(...result.value.warnings);
+  }
 
   const sourceFiles: Record<string, ScriptSourceFile> = Object.fromEntries(
     importedSourceFiles.map((file) => [file.path, file]),
@@ -2911,35 +2958,19 @@ export function importScriptPackageZip(
       const bindingsPath = `Data/Scripts/config/bindings/${levelLabel}.json`;
       const placementsPath = `Data/Scripts/config/placements/${levelLabel}.json`;
 
-      let terrainBindings: ScriptTerrainBinding[] = [];
-      let splineBindings: ScriptSplineBinding[] = [];
-      let mapItemBindings: ScriptMapItemBinding[] = [];
-      let customPlacements: ScriptCustomObjectPlacement[] = [];
-
-      const bBytes = files[bindingsPath];
-      if (bBytes) {
-        const bResult = decodeJsonFile(files, bindingsPath, scriptBindingsFileSchema);
-        if (bResult.isOk() && bResult.value) {
-          terrainBindings = [...bResult.value.terrainBindings];
-          splineBindings = [...bResult.value.splineBindings];
-          mapItemBindings = [...bResult.value.mapItemBindings];
-        }
-      }
-
-      const pBytes = files[placementsPath];
-      if (pBytes) {
-        const pResult = decodeJsonFile(files, placementsPath, scriptPlacementsFileSchema);
-        if (pResult.isOk() && pResult.value) {
-          customPlacements = [...pResult.value.placements];
-        }
-      }
+      const sidecarsResult = decodeScriptLevelSidecars(
+        files,
+        bindingsPath,
+        placementsPath,
+      );
+      if (sidecarsResult.isErr()) return err(sidecarsResult.error);
 
       nextLevels[levelKey] = {
         globalHooks: projectJson.editor.levels[levelKey]?.globalHooks ?? [],
-        terrainBindings,
-        splineBindings,
-        mapItemBindings,
-        customPlacements,
+        terrainBindings: [...sidecarsResult.value.terrainBindings],
+        splineBindings: [...sidecarsResult.value.splineBindings],
+        mapItemBindings: [...sidecarsResult.value.mapItemBindings],
+        customPlacements: [...sidecarsResult.value.customPlacements],
         terrainReplacements:
           projectJson.editor.levels[levelKey]?.terrainReplacements ?? [],
         mapReplacements:
@@ -2980,7 +3011,14 @@ export function importScriptPackageZip(
       customObjects: objectsResult.value?.objects ?? [],
       params: paramsResult.value?.params ?? [],
       diagnostics: projectJson?.editor.diagnostics ?? [],
-      statusLog: projectJson?.editor.statusLog ?? ["Imported script package"],
+      statusLog: [
+        ...(projectJson?.editor.statusLog ?? ["Imported script package"]),
+        ...(migrationWarnings.length > 0
+          ? ["Legacy source migrated with warnings", ...migrationWarnings]
+          : importedFiles.some(([path]) => !isLuaSourcePath(path))
+            ? ["Legacy TypeScript/JavaScript source migrated to Lua 5.4"]
+            : []),
+      ],
       sampleId: projectJson?.editor.sampleId ?? null,
       levels: nextLevels,
     },

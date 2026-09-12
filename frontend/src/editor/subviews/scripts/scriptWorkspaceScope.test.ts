@@ -4,8 +4,10 @@ import {
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
   loadScriptSample,
+  replaceTerrainItemWithCustomObject,
   replaceScriptWorkspace,
 } from "./scriptWorkspaceState";
+import { getWorkspaceWarnings } from "./scriptCapabilityMatrix";
 
 describe("script workspace scope", () => {
   it("shares custom object definitions across levels while keeping placements separate", () => {
@@ -23,5 +25,25 @@ describe("script workspace scope", () => {
     expect(
       workspace.levels[levelOneContext.levelKey]?.customPlacements,
     ).toHaveLength(1);
+  });
+
+  it("surfaces native replacement dependencies before preview", () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 0);
+    const workspace = loadScriptSample(context, "hover-beacon");
+    const replacement = replaceTerrainItemWithCustomObject(workspace, {
+      id: "replacement-1",
+      itemIndex: 1,
+      nativeType: 4,
+      x: 10,
+      z: 20,
+      customObjectId: workspace.customObjects[0]?.id ?? "missing-object",
+      strict: false,
+    });
+
+    expect(getWorkspaceWarnings(replacement)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("requires native dependency"),
+      ]),
+    );
   });
 });

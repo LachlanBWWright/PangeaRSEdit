@@ -8,6 +8,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
+import { isRenderableContainerSize } from "@/hooks/useContainerSize";
 import { Updater } from "use-immer";
 import { CanvasStageLayers, CanvasViewMode } from "./CanvasStageLayers";
 import {
@@ -91,7 +92,8 @@ export function KonvaView({
 
   useEffect(() => {
     const updateSize = () => {
-      setContainerSize(getContainerSize(containerRef.current));
+      const nextSize = getContainerSize(containerRef.current);
+      if (isRenderableContainerSize(nextSize)) setContainerSize(nextSize);
     };
     updateSize();
     if (typeof ResizeObserver !== "undefined") {
