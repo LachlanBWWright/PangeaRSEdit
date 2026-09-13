@@ -1,6 +1,9 @@
 import { err, ok, type Result } from "neverthrow";
 import type { GamePortConfig } from "@/editor/utils/gamePortConfig";
-import { buildPreviewAssetBaseUrls } from "@/editor/utils/gamePreviewRuntime";
+import {
+  buildPreviewAssetBaseUrls,
+  resolvePreviewRuntimeAssetPath,
+} from "@/editor/utils/gamePreviewRuntime";
 
 const PRELOAD_DEPENDENCY_PATTERN =
   /["'`]([^"'`]+\.(?:wasm|data|mem|worker\.js))["'`]/g;
@@ -134,7 +137,9 @@ export async function runRuntimePreflight(input: {
     if (!dependencyPath) {
       continue;
     }
-    preloadUrls.add(new URL(dependencyPath, baseUrl).href);
+    preloadUrls.add(
+      new URL(resolvePreviewRuntimeAssetPath(dependencyPath), baseUrl).href,
+    );
   }
 
   const assetUrls = Array.from(preloadUrls);

@@ -1,7 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
-import { getPreviewTerrainPaths } from "./gamePreviewRuntimeTypes";
+import {
+  getPreviewTerrainPaths,
+  resolvePreviewRuntimeAssetPath,
+} from "./gamePreviewRuntimeTypes";
 import { createPreviewModule } from "./gamePreviewRuntimeLoader";
 import {
   writePreviewCustomFilesToVfs,
@@ -109,11 +112,32 @@ describe("Mighty Mike preview terrain paths", () => {
     });
     module.FS = { writeFile };
 
+    expect(module.locateFile("datafile_Bugdom.data")).toBe(
+      "https://example.com/Bugdom.data?v=test-token",
+    );
+
     module.onRuntimeInitialized?.();
 
     expect(writeFile).toHaveBeenCalledWith(
       "Data/Scripts/dist/main.lua",
       new Uint8Array([4, 5, 6]),
+    );
+  });
+});
+
+describe("resolvePreviewRuntimeAssetPath", () => {
+  test("maps Emscripten datafile names to staged bundle names", () => {
+    expect(resolvePreviewRuntimeAssetPath("datafile_Nanosaur2.data")).toBe(
+      "Nanosaur2.data",
+    );
+    expect(
+      resolvePreviewRuntimeAssetPath("assets/datafile_CroMagRally.data"),
+    ).toBe("assets/CroMagRally.data");
+  });
+
+  test("preserves other runtime asset names", () => {
+    expect(resolvePreviewRuntimeAssetPath("Nanosaur2.wasm")).toBe(
+      "Nanosaur2.wasm",
     );
   });
 });

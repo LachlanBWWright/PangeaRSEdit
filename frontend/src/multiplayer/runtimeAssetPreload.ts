@@ -1,5 +1,8 @@
 import { ResultAsync, okAsync } from "neverthrow";
-import { buildPreviewAssetBaseUrls } from "@/editor/utils/gamePreviewRuntime";
+import {
+  buildPreviewAssetBaseUrls,
+  resolvePreviewRuntimeAssetPath,
+} from "@/editor/utils/gamePreviewRuntime";
 import type { GamePortConfig } from "@/editor/utils/gamePortConfig";
 
 const PRELOAD_DEPENDENCY_PATTERN =
@@ -37,7 +40,9 @@ export async function preloadGameRuntimeAssets(
         if (!dependencyPath) {
           continue;
         }
-        preloadUrls.add(new URL(dependencyPath, baseUrl).href);
+        preloadUrls.add(
+          new URL(resolvePreviewRuntimeAssetPath(dependencyPath), baseUrl).href,
+        );
       }
     }
   }

@@ -14,6 +14,7 @@ import {
   type PreviewTerrainPaths,
   type PreviewRuntimeFailure,
   type PreviewRuntimeFailureCategory,
+  resolvePreviewRuntimeAssetPath,
 } from "./gamePreviewRuntimeTypes";
 import {
   ensurePreviewPrefsDirs,
@@ -436,7 +437,8 @@ export function createPreviewModule(
       },
     ],
     locateFile: (path: string) =>
-      new URL(path, assetBaseUrl).href + `?v=${cacheBustToken}`,
+      new URL(resolvePreviewRuntimeAssetPath(path), assetBaseUrl).href +
+      `?v=${cacheBustToken}`,
     setStatus: (text: string) => {
       if (!runtimeInitialized || text === "") {
         onStatus(text);

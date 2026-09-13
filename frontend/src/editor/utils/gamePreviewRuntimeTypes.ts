@@ -32,6 +32,17 @@ export interface PreviewVfsFile {
   readonly data: Uint8Array;
 }
 
+/** Keep generated Emscripten data references aligned with staged bundle names. */
+export function resolvePreviewRuntimeAssetPath(path: string): string {
+  const separatorIndex = path.lastIndexOf("/");
+  const directory = separatorIndex >= 0 ? path.slice(0, separatorIndex + 1) : "";
+  const filename = path.slice(separatorIndex + 1);
+  if (!filename.startsWith("datafile_") || !filename.endsWith(".data")) {
+    return path;
+  }
+  return `${directory}${filename.slice("datafile_".length)}`;
+}
+
 export const PREVIEW_RUNTIME_FAILURE_CATEGORIES = [
   "packaging",
   "runtime-traceback",

@@ -5,6 +5,7 @@ export {
   buildPreviewAssetBaseUrls,
   getPreviewTerrainPaths,
   levelLabel,
+  resolvePreviewRuntimeAssetPath,
 } from "./gamePreviewRuntimeTypes";
 export type {
   MultiplayerRuntimeEvent,
