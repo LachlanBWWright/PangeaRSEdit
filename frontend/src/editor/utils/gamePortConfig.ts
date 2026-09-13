@@ -198,7 +198,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     buildLaunchQuery: (n) =>
       new URLSearchParams({ level: String(n), skipMenu: "1", embed: "1" }),
     wasmDir: "nanosaur",
-    mainJs: "game/Nanosaur.js",
+    mainJs: "Nanosaur.js",
     prefsFolderName: "Nanosaur",
     requestQuitFn: "Nanosaur_RequestQuit",
     remoteGameUrl: () =>
@@ -274,7 +274,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     buildLaunchQuery: (n) =>
       new URLSearchParams({ track: String(n), car: "1", embed: "1" }),
     wasmDir: "cromagrally",
-    mainJs: "game/CroMagRally.js",
+    mainJs: "CroMagRally.js",
     prefsFolderName: "CroMagRally",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/CroMagRally-Android/game/CroMagRally.html?track=${String(n)}`,
@@ -297,7 +297,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     buildLaunchQuery: (n) =>
       new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "billyfrontier",
-    mainJs: "game/billyfrontier.js",
+    mainJs: "billyfrontier.js",
     prefsFolderName: "BillyFrontier",
     requestQuitFn: "BillyFrontier_RequestQuit",
     remoteGameUrl: (n) =>
