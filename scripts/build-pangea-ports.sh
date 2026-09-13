@@ -256,12 +256,13 @@ wasm_assets_are_complete() {
     compgen -G "$destination/*.wasm" >/dev/null
 }
 
-for PORT_NAME in $ALL_GAMES; do
+build_game() {
+  local PORT_NAME="$1"
   if [[ -n "$GAME_FILTER" ]]; then
     SHORT_NAME="$(wasm_dir_for_port "$PORT_NAME")"
     if [[ "$GAME_FILTER" != "$PORT_NAME" && "$GAME_FILTER" != "$SHORT_NAME" ]]; then
       echo "Skipping $PORT_NAME"
-      continue
+      return 0
     fi
   fi
 
@@ -288,7 +289,7 @@ for PORT_NAME in $ALL_GAMES; do
   case "$TARGET" in
     native|desktop)
       (cd "$PANGEA_PORTS" && run_step python3 scripts/ports.py run --game "$PORT_NAME" --task native-build)
-      continue
+      return 0
       ;;
     android)
       GAME_DIR="$PANGEA_PORTS/games/$PORT_NAME"
@@ -298,7 +299,7 @@ for PORT_NAME in $ALL_GAMES; do
       fi
       (cd "$GAME_DIR/android" && run_step ./gradlew assembleDebug)
       echo "Done: $PORT_NAME Android debug APK under $GAME_DIR/android/app/build/outputs/apk/"
-      continue
+      return 0
       ;;
     wasm)
       (cd "$PANGEA_PORTS" && run_step python3 scripts/ports.py run --game "$PORT_NAME" --task wasm-build)
@@ -338,7 +339,44 @@ for PORT_NAME in $ALL_GAMES; do
   fi
 
   echo "Done: $PORT_NAME → $DEST"
-done
+}
+
+WASM_JOBS="${PANGEA_WASM_JOBS:-1}"
+NATIVE_JOBS="${PANGEA_NATIVE_JOBS:-1}"
+if ! [[ "$WASM_JOBS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: PANGEA_WASM_JOBS must be a positive integer." >&2
+  exit 1
+fi
+if ! [[ "$NATIVE_JOBS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: PANGEA_NATIVE_JOBS must be a positive integer." >&2
+  exit 1
+fi
+
+BUILD_JOBS=1
+case "$TARGET" in
+  wasm) BUILD_JOBS="$WASM_JOBS" ;;
+  native|desktop) BUILD_JOBS="$NATIVE_JOBS" ;;
+esac
+
+if [[ -z "$GAME_FILTER" && "$BUILD_JOBS" -gt 1 && "$TARGET" != "android" ]]; then
+  running=0
+  for PORT_NAME in $ALL_GAMES; do
+    build_game "$PORT_NAME" &
+    running=$((running + 1))
+    if [[ "$running" -ge "$BUILD_JOBS" ]]; then
+      wait -n
+      running=$((running - 1))
+    fi
+  done
+  while [[ "$running" -gt 0 ]]; do
+    wait -n
+    running=$((running - 1))
+  done
+else
+  for PORT_NAME in $ALL_GAMES; do
+    build_game "$PORT_NAME"
+  done
+fi
 
 echo ""
 case "$TARGET" in

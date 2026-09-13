@@ -48,6 +48,8 @@ jobs:
             libdecor-0-dev liburing-dev cmake ninja-build python3 zip unzip
 
       - name: Build game WASM bundles
+        env:
+          PANGEA_WASM_JOBS: "2"
         run: npm run build:games
 
       - name: Verify staged scripting WASM artifacts
@@ -55,6 +57,8 @@ jobs:
 
       - name: Build supported native scripting adapters
         working-directory: .
+        env:
+          PANGEA_NATIVE_JOBS: "2"
         run: ./scripts/build-pangea-ports.sh --target native
 
       - name: Run shared scripting native and WASM conformance tests

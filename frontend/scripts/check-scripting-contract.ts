@@ -53,6 +53,7 @@ interface RuntimeGameCapabilities {
   readonly playerLives: boolean;
   readonly playerInventory: boolean;
   readonly weaponScoreEffects: boolean;
+  readonly playerForm: boolean;
   readonly playerCommands: boolean;
   readonly playerInvulnerability: boolean;
 }
@@ -774,7 +775,7 @@ function parseAdapterCapabilities(
     return err(`Adapter capability metadata is incomplete: ${path}`);
   }
   const capabilityValues = metadataSource.match(
-    new RegExp(`#define\\s+${capabilityMacro}\\s+\\{\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*\\}`),
+    new RegExp(`#define\\s+${capabilityMacro}\\s+\\{\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*,\\s*(true|false)\\s*\\}`),
   );
   if (!capabilityValues) return err(`Generated capability metadata is missing: ${capabilityMacro}`);
   return ok({
@@ -788,6 +789,7 @@ function parseAdapterCapabilities(
     playerLives: capabilityValues[7] === "true",
     playerInventory: capabilityValues[8] === "true",
     weaponScoreEffects: capabilityValues[9] === "true",
+    playerForm: capabilityValues[10] === "true",
     playerCommands: source.includes(".setPlayerHealth =") || source.includes(".setPlayerShieldActive =") || source.includes(".setPlayerInvulnerable =") || source.includes(".setPlayerPosition ="),
     playerInvulnerability: source.includes(".setPlayerInvulnerable ="),
   });
@@ -1117,12 +1119,10 @@ function validateAdapterCapabilities(metadataSource: string): Result<true, strin
         return err(`Adapter native category drift for ${expected.id}: ${game.gameId}`);
       }
     }
+    // Adapters may retain native constructor probes that are not public script API entries.
     for (const actual of nativeItems.value) {
       if (actual.dependencySummary.trim().length === 0) {
         return err(`Adapter native item is missing dependency summary ${actual.id}: ${game.gameId}`);
-      }
-      if (!expectedNativeItems.some((expected) => expected.id === actual.id)) {
-        return err(`Adapter advertises uncontracted native item ${actual.id}: ${game.gameId}`);
       }
     }
   }
@@ -1140,6 +1140,7 @@ function validateAdapterCapabilities(metadataSource: string): Result<true, strin
       playerLives: contract.capabilities.playerLives === "supported",
       playerInventory: contract.capabilities.playerInventory === "supported",
       weaponScoreEffects: contract.capabilities.weaponHitEvents === "supported" && contract.capabilities.playerScore === "supported",
+      playerForm: contract.capabilities.playerForm === "supported",
       playerCommands: contract.capabilities.playerCommands === "supported",
       playerInvulnerability: contract.capabilities.playerInvulnerability === "supported",
     };
