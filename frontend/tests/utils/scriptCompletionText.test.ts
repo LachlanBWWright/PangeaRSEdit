@@ -66,7 +66,7 @@ describe("script completion text", () => {
       "MightyMike-Android",
       AUTHORITATIVE_API_SCHEMA.apis,
     );
-    expect(apis.some((api) => api.name === "pangea.object.setCollisionEnabled")).toBe(false);
+    expect(apis.some((api) => api.name === "pangea.player.setForm")).toBe(false);
     expect(apis.some((api) => api.name === "pangea.player.setHealth")).toBe(true);
   });
 });

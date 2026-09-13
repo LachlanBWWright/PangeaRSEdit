@@ -98,7 +98,33 @@ jobs:
         run: pnpm exec playwright install chromium
 
       - name: Run unit and Storybook tests with combined coverage
-        run: pnpm run test:coverage:combined
+        run: |
+          mkdir -p ../ci-test-results
+          set -o pipefail
+          pnpm run test:coverage:combined 2>&1 | tee ../ci-test-results/frontend-test-suite.log
+
+      - name: Publish frontend test failure details
+        if: failure()
+        working-directory: .
+        run: |
+          {
+            echo "## Frontend test failure details"
+            echo
+            echo 'The full test log is available in the `frontend-test-failure-log` artifact.'
+            echo
+            echo '### Failure summary'
+            echo '```text'
+            rg -n "FAIL|AssertionError|Error:|Test Files|Tests|Coverage was not generated" ci-test-results/frontend-test-suite.log | tail -120 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload frontend test failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-failure-log
+          path: ci-test-results/frontend-test-suite.log
+          if-no-files-found: ignore
 
       - name: Upload frontend coverage reports
         if: success()

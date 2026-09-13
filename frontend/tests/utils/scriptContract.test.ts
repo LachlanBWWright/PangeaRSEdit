@@ -257,7 +257,7 @@ describe("scripting contract", () => {
     const commands = SCRIPTING_CONTRACT.api.apis.filter(
       (api) => api.command !== undefined,
     );
-    expect(commands).toHaveLength(40);
+    expect(commands).toHaveLength(41);
     for (const command of commands) {
       expect(command.command?.capability).toBeTruthy();
       expect(command.command?.authority).toBe("disabled-network");

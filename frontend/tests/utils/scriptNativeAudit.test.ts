@@ -104,7 +104,7 @@ describe("native replacement audit", () => {
     if (mightyMike === undefined) return;
 
     const mapItems = mightyMike.nativeSpawns
-      .filter((spawn) => spawn.category === "map")
+      .filter((spawn) => /^\d+$/.test(spawn.id))
       .map((spawn) => spawn.nativeType ?? Number(spawn.id))
       .sort((left, right) => left - right);
     expect(mapItems).toEqual(Array.from({ length: 56 }, (_, index) => index));
@@ -126,7 +126,7 @@ describe("native replacement audit", () => {
     if (bugdom === undefined) return;
 
     const terrainItems = bugdom.nativeSpawns
-      .filter((spawn) => spawn.category === "Terrain item")
+      .filter((spawn) => /^\d+$/.test(spawn.id))
       .map((spawn) => spawn.nativeType ?? Number(spawn.id))
       .sort((left, right) => left - right);
     expect(terrainItems).toEqual(Array.from({ length: 63 }, (_, index) => index + 1));
@@ -143,7 +143,7 @@ describe("native replacement audit", () => {
     if (otto === undefined) return;
 
     const terrainItems = otto.nativeSpawns
-      .filter((spawn) => spawn.category === "Terrain item")
+      .filter((spawn) => /^\d+$/.test(spawn.id))
       .map((spawn) => spawn.nativeType ?? Number(spawn.id))
       .sort((left, right) => left - right);
     expect(terrainItems).toEqual(Array.from({ length: 108 }, (_, index) => index + 1));

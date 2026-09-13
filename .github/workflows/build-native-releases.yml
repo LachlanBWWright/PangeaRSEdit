@@ -168,7 +168,7 @@ jobs:
         run: pnpm --dir frontend run build:games
       - name: Build project
         env:
-          VITE_API_ORIGIN: ${{ vars.RENDER_API_ORIGIN }}
+          VITE_API_ORIGIN: https://pangearsedit.onrender.com
           VITE_API_BASE_PATH: ""
           VITE_MULTIPLAYER_ENABLED: ${{ vars.MULTIPLAYER_ENABLED || 'false' }}
           VITE_SCRIPTING_ENABLED: "false"

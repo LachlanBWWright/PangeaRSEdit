@@ -110,7 +110,7 @@ describe("startGamePreview", () => {
     expect(options.onStatus).toHaveBeenCalledWith("Loading runtime script...");
     expect(loadPreviewRuntime).toHaveBeenCalledWith(
       expect.objectContaining({ canvas }),
-      "https://assets.test/CroMagRally.js?v=development-5-1-7",
+      "https://assets.test/game/CroMagRally.js?v=development-5-1-7",
       expect.any(Function),
     );
     expect(canvas.width).toBe(640);

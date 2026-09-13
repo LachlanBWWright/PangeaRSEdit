@@ -5,10 +5,10 @@ import { describe, expect, it } from "vitest";
 
 const workflowPath = resolve(
   __dirname,
-  "../../../.github/workflows/deploy.yml",
+  "../../../.github/workflows/build-native-releases.yml",
 );
 
-describe("deploy workflow", () => {
+describe("Pages deployment workflow", () => {
   it("keeps generated Pangea Ports wasm artifacts in the Pages output", async () => {
     const workflow = await readFile(workflowPath, "utf8");
 
