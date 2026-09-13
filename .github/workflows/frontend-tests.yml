@@ -9,8 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      VITE_MULTIPLAYER_CONTENT_HASH: ${{ github.sha }}
     defaults:
       run:
         working-directory: ./frontend

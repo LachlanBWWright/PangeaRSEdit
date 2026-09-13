@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using PangeaRSEdit.Application.Common;
 using PangeaRSEdit.Application.Multiplayer;
 using PangeaRSEdit.Infrastructure.Persistence;
@@ -11,8 +10,7 @@ namespace PangeaRSEdit.Infrastructure.Multiplayer;
 
 public sealed class EfMultiplayerLobbyService(
     PangeaRSEditDbContext dbContext,
-    MultiplayerRuntimeState runtimeState,
-    IConfiguration configuration) : IMultiplayerLobbyService
+    MultiplayerRuntimeState runtimeState) : IMultiplayerLobbyService
 {
     private static readonly TimeSpan ParticipantStaleAfter = TimeSpan.FromMinutes(2);
     private const int RequiredProtocolVersion = 1;
@@ -877,7 +875,6 @@ public sealed class EfMultiplayerLobbyService(
             lobby.MaxPlayers,
             RequiredProtocolVersion,
             RequiredRuntimeVersion,
-            configuration["Multiplayer:RequiredContentHash"] ?? "development-unpinned",
             lobby.HostParticipantId,
             orderedPlayers
         );

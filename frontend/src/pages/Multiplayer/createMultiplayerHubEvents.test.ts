@@ -75,7 +75,6 @@ describe("createMultiplayerHubEvents", () => {
       maxPlayers: 2,
       requiredProtocolVersion: 1,
       requiredRuntimeVersion: "host-authoritative-v2",
-      requiredContentHash: "development-unpinned",
       hostParticipantId: "participant-1",
       players: [],
     };

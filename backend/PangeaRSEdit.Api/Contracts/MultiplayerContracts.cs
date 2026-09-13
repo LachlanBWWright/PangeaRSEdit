@@ -133,7 +133,6 @@ public sealed record MultiplayerMatchConfigResponse(
     int MaxPlayers,
     int RequiredProtocolVersion,
     string RequiredRuntimeVersion,
-    string RequiredContentHash,
     string HostParticipantId,
     IReadOnlyList<MultiplayerMatchConfigPlayerResponse> Players
 );

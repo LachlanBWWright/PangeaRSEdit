@@ -4,7 +4,6 @@ import type { MultiplayerMatchConfig } from "./types";
 interface LocalRuntimeCompatibility {
   readonly protocolVersion: number;
   readonly runtimeVersion: string;
-  readonly contentHash: string;
 }
 
 export function validateRuntimeCompatibility(
@@ -19,11 +18,6 @@ export function validateRuntimeCompatibility(
   if (matchConfig.requiredRuntimeVersion !== local.runtimeVersion) {
     return err(
       `Unsupported multiplayer runtime version ${matchConfig.requiredRuntimeVersion}`,
-    );
-  }
-  if (matchConfig.requiredContentHash !== local.contentHash) {
-    return err(
-      `Multiplayer content mismatch: server requires ${matchConfig.requiredContentHash}, local bundle is ${local.contentHash}`,
     );
   }
   return ok(undefined);

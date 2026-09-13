@@ -22,7 +22,7 @@ The production topology is:
 - An external TURN service with short-lived credentials issued by the API.
 - Render environment variables/secrets for deployment configuration.
 
-Production startup fails closed unless PostgreSQL, CORS, TURN, `Multiplayer__Topology=single-instance`, and a deployment-specific `Multiplayer__RequiredContentHash` are configured. The topology declaration prevents accidentally deploying process-local signaling state across multiple replicas. The content hash must match `VITE_MULTIPLAYER_CONTENT_HASH` in the frontend build, preventing stale clients from joining a newer runtime. The application never creates or upgrades a production schema during normal startup.
+Production startup requires PostgreSQL, CORS, and a participant-token signing key. Multiplayer uses one instance because signaling state is process-local. The application never creates or upgrades a production schema during normal startup.
 
 ## Render and Supabase deployment
 
@@ -36,22 +36,19 @@ Create the Render service from the repository's Blueprint, or create a Docker We
 - Health check path: `/healthz`
 - Instance count: `1`
 
-Render's default web-service port is `10000`; the Blueprint sets `PORT` and `ASPNETCORE_HTTP_PORTS` to `10000`. The container also remains runnable locally on port `8080` when `PORT` is not set. Render web services must listen on `0.0.0.0`; ASP.NET Core does so through the container port configuration. [Render's web-service documentation](https://render.com/docs/web-services) describes the required port binding, and [Render's health-check documentation](https://render.com/docs/health-checks) documents the `/healthz` HTTP probe.
+Render supplies the web-service `PORT`; the container also remains runnable locally on port `8080` when `PORT` is not set. Render web services must listen on `0.0.0.0`; ASP.NET Core does so through the container port configuration. [Render's web-service documentation](https://render.com/docs/web-services) describes the required port binding, and [Render's health-check documentation](https://render.com/docs/health-checks) documents the `/healthz` HTTP probe.
 
 Set these Render variables and secrets:
 
 | Variable | Value |
 | --- | --- |
 | `ConnectionStrings__Default` | Supabase connection string, including SSL mode such as `Ssl Mode=Require` |
-| `Frontend__BaseUrl` | Public frontend URL |
 | `Cors__AllowedOrigins__0` | Exact frontend origin, without a trailing slash |
-| `Multiplayer__StunUrl` | STUN service URL |
-| `Multiplayer__TurnUrl` | TURN service URL |
-| `Multiplayer__TurnSharedSecret` | TURN shared secret |
 | `Multiplayer__ParticipantSigningKey` | High-entropy participant signing key |
-| `Multiplayer__RequiredContentHash` | Same commit SHA compiled into the frontend |
 
-The GitHub Pages build uses the `RENDER_API_ORIGIN` repository/environment variable for the deployed API origin. Set `MULTIPLAYER_ENABLED` to `true` when the backend is configured. The Pages workflow compiles the current commit SHA; update `Multiplayer__RequiredContentHash` in Render to the same SHA before enabling multiplayer for that release.
+The GitHub Pages build uses the `RENDER_API_ORIGIN` repository/environment variable for the deployed API origin. Set `MULTIPLAYER_ENABLED` to `true` when the backend is configured.
+
+`Multiplayer__StunUrl` is optional; if absent, the API uses Google's public STUN server. TURN variables are also optional and are only needed when direct peer connections fail behind restrictive NATs or firewalls. Google OAuth is optional; add `Authentication__Google__ClientId` and `Authentication__Google__ClientSecret` only if sign-in is enabled.
 
 Supabase is the production migration authority. The initial Supabase migration mirrors the existing EF Core migration history. For future production schema changes, update the EF model and migration, generate the SQL migration script, and commit the resulting SQL under `supabase/migrations/`. Apply pending migrations with the Supabase CLI before deploying the API:
 
@@ -87,8 +84,7 @@ dotnet PangeaRSEdit.Api.dll --migrate
 
 1. Apply any pending Supabase migrations.
 2. Deploy the backend from the target commit on Render.
-3. Set `Multiplayer__RequiredContentHash` in Render to that commit SHA.
-4. Build/deploy the GitHub Pages frontend with `RENDER_API_ORIGIN` and the same `VITE_MULTIPLAYER_CONTENT_HASH`.
+3. Build/deploy the GitHub Pages frontend with `RENDER_API_ORIGIN`.
 
 Keep the Render service at one instance until multiplayer signaling state is moved out of process memory.
 

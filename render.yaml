@@ -9,27 +9,11 @@ services:
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
-      - key: ASPNETCORE_HTTP_PORTS
-        value: "10000"
-      - key: PORT
-        value: "10000"
       - key: Database__Provider
         value: postgres
       - key: ConnectionStrings__Default
         sync: false
-      - key: Frontend__BaseUrl
-        sync: false
       - key: Cors__AllowedOrigins__0
         sync: false
-      - key: Multiplayer__StunUrl
-        sync: false
-      - key: Multiplayer__TurnUrl
-        sync: false
-      - key: Multiplayer__TurnSharedSecret
-        sync: false
       - key: Multiplayer__ParticipantSigningKey
-        sync: false
-      - key: Multiplayer__Topology
-        value: single-instance
-      - key: Multiplayer__RequiredContentHash
         sync: false

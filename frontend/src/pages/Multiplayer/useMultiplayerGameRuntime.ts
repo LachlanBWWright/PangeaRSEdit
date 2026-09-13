@@ -29,8 +29,6 @@ export interface MultiplayerRuntimeTransportHandle {
 
 const RUNTIME_PROTOCOL_VERSION = 1;
 const RUNTIME_COMPAT_VERSION = "host-authoritative-v2";
-const RUNTIME_CONTENT_HASH =
-  import.meta.env.VITE_MULTIPLAYER_CONTENT_HASH ?? "development-unpinned";
 
 interface UseMultiplayerGameRuntimeInput {
   readonly lobby: MultiplayerLobbyDetails | null;
@@ -106,7 +104,6 @@ export function useMultiplayerGameRuntime(
     const compatibilityResult = validateRuntimeCompatibility(matchConfig, {
       protocolVersion: RUNTIME_PROTOCOL_VERSION,
       runtimeVersion: RUNTIME_COMPAT_VERSION,
-      contentHash: RUNTIME_CONTENT_HASH,
     });
     if (compatibilityResult.isErr()) {
       queueMicrotask(() => {

@@ -27,7 +27,6 @@ const launchPayloadSchema = z.object({
   maxPlayers: z.number(),
   requiredProtocolVersion: z.number(),
   requiredRuntimeVersion: z.string(),
-  requiredContentHash: z.string(),
   hostParticipantId: z.string(),
   players: z.array(
     z.object({
@@ -145,7 +144,6 @@ function buildValidMatchConfig(
     maxPlayers: 2,
     requiredProtocolVersion: 1,
     requiredRuntimeVersion: "host-authoritative-v2",
-    requiredContentHash: "development-unpinned",
     hostParticipantId: "host",
     players: [
       {
@@ -281,7 +279,6 @@ describe("game preview runtime loader", () => {
         maxPlayers: 2,
         requiredProtocolVersion: 1,
         requiredRuntimeVersion: "host-authoritative-v2",
-        requiredContentHash: "development-unpinned",
         hostParticipantId: "host",
         players: [
           {
