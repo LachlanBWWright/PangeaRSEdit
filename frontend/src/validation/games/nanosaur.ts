@@ -5,6 +5,7 @@ import {
   metadataSchema,
   resourceEntrySchema,
   hexDataEntrySchema,
+  metadataResourceTypeSchema,
 } from "../levelDataSchemas";
 
 // Nanosaur 1 level data is converted by nanosaur1LevelToLevelData to an Otto-like structure
@@ -13,6 +14,7 @@ import {
 export const nanosaurLevelSchema = z
   .object({
     _metadata: metadataSchema,
+    Meta: metadataResourceTypeSchema.optional(),
     // Use Otto-like full header since nanosaur1LevelToLevelData produces that
     Hedr: z.record(z.string(), resourceEntrySchema(headerOttoMaticSchema)),
     Layr: z

@@ -9,6 +9,7 @@ import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { openFile } from "@/editor/loadLogic/openFile";
 import { View } from "@/editor/viewEnum";
+import { SelectedItem } from "@/data/items/itemAtoms";
 import { MenuSection } from "@/editor/gameViews/MenuSection";
 import { StandardEditorToolbar } from "@/editor/toolbars/StandardEditorToolbar";
 import { Bugdom1EditorToolbar } from "@/editor/toolbars/Bugdom1EditorToolbar";
@@ -25,11 +26,13 @@ import { OttoMaticTilesMenu } from "@/editor/gameViews/OttoMaticTilesMenu";
 import { IndividualTilesMenu } from "@/editor/gameViews/IndividualTilesMenu";
 import { SupertileMenu } from "@/editor/subviews/supertiles/SupertilesMenu";
 import { BugdomTileMenu } from "@/editor/subviews/bugdom/BugdomTileMenu";
-import { BugdomVertexColorMenu } from "@/editor/subviews/bugdom/BugdomVertexColorMenu";
+import { BugdomTerrainMenu } from "@/editor/subviews/bugdom/BugdomTerrainMenu";
+import { BugdomMetadataMenu } from "@/editor/subviews/bugdom/BugdomMetadataMenu";
 import { NanosaurCollisionPathMenu } from "@/editor/subviews/tiles/NanosaurCollisionPathMenu";
 import { MightyMikeTileMenu } from "@/editor/subviews/mightymike/MightyMikeTileMenu";
 import { MightyMikeTilesetDataPanel } from "@/editor/subviews/mightymike/MightyMikeTilesetDataPanel";
 import { getFeatureFlags, setFeatureFlags } from "@/config/featureFlags";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export interface GameMenuConfig {
   readonly game: Game;
@@ -64,7 +67,7 @@ export const EDITOR_MENUS: readonly GameMenuConfig[] = [
       { label: "Scripts", view: View.scripts },
       { label: "Terrain", view: View.tiles },
       { label: "Visual Tiles", view: View.supertiles },
-      { label: "Vertex Colors", view: View.vertexColors },
+      { label: "Metadata", view: View.vertexColors },
     ],
   },
   {
@@ -174,10 +177,10 @@ const EMPTY_SPLINE_DATA: SplineData = {
   SpIt: {},
 };
 
-function createStoryStore(config: GameMenuConfig) {
+function createStoryStore(config: GameMenuConfig, initialView?: View) {
   const store = createStore();
   store.set(Globals, GLOBALS_BY_GAME[config.game]);
-  store.set(ActiveView, config.tabs[0]?.view ?? View.items);
+  store.set(ActiveView, initialView ?? config.tabs[0]?.view ?? View.items);
   store.set(LevelNumber, 1);
   store.set(CanvasViewMode, CanvasView.TWO_D);
   return store;
@@ -232,9 +235,24 @@ function ActualMenu({ config, ...props }: MenuProps) {
     if (view === View.items) return <ItemMenu itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />;
     if (view === View.splines) return <SplineMenu splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />;
     if (view === View.scripts) return <ScriptsMenu headerData={headerData} itemData={itemData} liquidData={null} fenceData={null} splineData={null} terrainData={terrainData} mapImages={mapImages} />;
-    if (view === View.tiles) return <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} onApplyLevelScale={applyLevelScale} />;
+    if (view === View.tiles) {
+      return config.game === Game.BUGDOM ? (
+        <BugdomTerrainMenu
+          headerData={headerData}
+          setHeaderData={setHeaderData}
+          terrainData={terrainData}
+        />
+      ) : (
+        <IndividualTilesMenu
+          headerData={headerData}
+          setHeaderData={setHeaderData}
+          terrainData={terrainData}
+          onApplyLevelScale={applyLevelScale}
+        />
+      );
+    }
     if (view === View.supertiles) return <BugdomTileMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} setTerrainData={setTerrainData} mapImages={mapImages} setMapImages={setMapImages} />;
-    if (view === View.vertexColors) return <BugdomVertexColorMenu terrainData={terrainData} />;
+    if (view === View.vertexColors) return <BugdomMetadataMenu headerData={headerData} onApplyLevelScale={applyLevelScale} />;
     return <NanosaurCollisionPathMenu terrainData={terrainData} />;
   }
 
@@ -244,9 +262,9 @@ function ActualMenu({ config, ...props }: MenuProps) {
   if (view === View.splines) return <SplineMenu splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />;
   if (view === View.scripts) return <ScriptsMenu headerData={headerData} itemData={itemData} liquidData={liquidData} fenceData={fenceData} splineData={splineData} terrainData={terrainData} mapImages={mapImages} />;
   if (view === View.tiles) {
-    return config.game === Game.OTTO_MATIC ? <OttoMaticTilesMenu headerData={headerData} setHeaderData={setHeaderData} onApplyLevelScale={applyLevelScale} /> : <StandardTilesMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} onApplyLevelScale={applyLevelScale} />;
+    return config.game === Game.OTTO_MATIC ? <OttoMaticTilesMenu headerData={headerData} setHeaderData={setHeaderData} /> : <StandardTilesMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} />;
   }
-  return <SupertileMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} setTerrainData={setTerrainData} mapImages={mapImages} setMapImages={setMapImages} />;
+  return <SupertileMenu headerData={headerData} setHeaderData={setHeaderData} terrainData={terrainData} setTerrainData={setTerrainData} mapImages={mapImages} setMapImages={setMapImages} itemData={itemData} fenceData={fenceData} splineData={splineData} liquidData={liquidData} onApplyLevelScale={applyLevelScale} />;
 }
 
 function EditorMenuPanel({
@@ -275,14 +293,20 @@ function EditorMenuPanel({
     <div data-storybook-editor-menu data-editor-game={config.name} data-editor-tab={selectedTab?.label ?? ""}>
       <div className="min-w-0">
         <div data-editor-menu-toolbar className="min-w-0 border-b border-gray-700 p-2"><EditorToolbar config={config} hasSupertiles={Boolean(terrainData.STgd)} /></div>
-        <div data-editor-menu-surface><MenuSection scrollable={view !== View.animations}><ActualMenu {...props} /></MenuSection></div>
+        <div data-editor-menu-surface><MenuSection><ActualMenu {...props} /></MenuSection></div>
       </div>
     </div>
   );
 }
 
-function StoryPanel({ config }: { config: GameMenuConfig }) {
-  const [store] = useState(() => createStoryStore(config));
+function StoryPanel({
+  config,
+  initialView,
+}: {
+  config: GameMenuConfig;
+  initialView?: View;
+}) {
+  const [store] = useState(() => createStoryStore(config, initialView));
   const [level, setLevel] = useState<AtomicLevelData | null>(null);
   const [mapImages, setMapImages] = useState<HTMLCanvasElement[]>([]);
 
@@ -294,7 +318,12 @@ function StoryPanel({ config }: { config: GameMenuConfig }) {
       setMapFile: () => undefined,
       setMapImagesFile: () => undefined,
       setMapImages,
-      setData: setLevel,
+      setData: (nextLevel) => {
+        if ((nextLevel.itemData?.Itms[1000]?.obj.length ?? 0) > 0) {
+          store.set(SelectedItem, 0);
+        }
+        setLevel(nextLevel);
+      },
     });
   }, [config, store]);
 
@@ -308,18 +337,20 @@ function StoryPanel({ config }: { config: GameMenuConfig }) {
   }
 
   return (
-    <Provider store={store}>
-      <EditorMenuPanel
-        config={config}
-        level={{
-          ...level,
-          headerData: level.headerData,
-          terrainData: level.terrainData,
-          itemData: level.itemData,
-        }}
-        initialMapImages={mapImages}
-      />
-    </Provider>
+    <TooltipProvider>
+      <Provider store={store}>
+        <EditorMenuPanel
+          config={config}
+          level={{
+            ...level,
+            headerData: level.headerData,
+            terrainData: level.terrainData,
+            itemData: level.itemData,
+          }}
+          initialMapImages={mapImages}
+        />
+      </Provider>
+    </TooltipProvider>
   );
 }
 
@@ -328,7 +359,13 @@ export function enableStoryScripting(): void {
   setFeatureFlags({ ...flags, scripting: true });
 }
 
-export function GameEditorStory({ game }: { game: Game }) {
+export function GameEditorStory({
+  game,
+  view,
+}: {
+  game: Game;
+  view?: View;
+}) {
   const config = EDITOR_MENUS.find((candidate) => candidate.game === game);
-  return config ? <StoryPanel config={config} /> : null;
+  return config ? <StoryPanel config={config} initialView={view} /> : null;
 }

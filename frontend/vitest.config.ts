@@ -18,6 +18,7 @@ export default defineConfig({
   test: {
     dir: import.meta.dirname,
     testTimeout: 120000,
+    maxWorkers: 4,
     include: broadInclude,
     exclude: [
       "tests/e2e/**",

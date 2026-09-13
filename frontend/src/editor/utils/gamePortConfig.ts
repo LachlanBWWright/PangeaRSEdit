@@ -179,6 +179,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       argTypes: ["number"],
       args: [n],
     }),
+    requestQuitFn: "OttoMatic_RequestQuit",
     hasFenceCollision: true,
     hasGodMode: true,
     hasSpeedMultiplier: true,
@@ -197,8 +198,9 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     buildLaunchQuery: (n) =>
       new URLSearchParams({ level: String(n), skipMenu: "1", embed: "1" }),
     wasmDir: "nanosaur",
-    mainJs: "Nanosaur.js",
+    mainJs: "game/Nanosaur.js",
     prefsFolderName: "Nanosaur",
+    requestQuitFn: "Nanosaur_RequestQuit",
     remoteGameUrl: () =>
       "https://lachlanbwwright.github.io/Nanosaur-android/game/index.html?level=0&skipMenu=1",
     levels: NANOSAUR_LEVELS,
@@ -222,6 +224,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     wasmDir: "bugdom",
     mainJs: "Bugdom.js",
     prefsFolderName: "Bugdom",
+    requestQuitFn: "Bugdom_RequestQuit",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/Bugdom-android/game.html?level=${String(n)}`,
     levels: BUGDOM_LEVELS,
@@ -249,6 +252,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     wasmDir: "bugdom2",
     mainJs: "Bugdom2.js",
     prefsFolderName: "Bugdom2",
+    requestQuitFn: "Bugdom2_RequestQuit",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/Bugdom2-Android/Bugdom2.html?level=${String(n)}`,
     levels: BUGDOM2_LEVELS,
@@ -270,12 +274,13 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     buildLaunchQuery: (n) =>
       new URLSearchParams({ track: String(n), car: "1", embed: "1" }),
     wasmDir: "cromagrally",
-    mainJs: "CroMagRally.js",
+    mainJs: "game/CroMagRally.js",
     prefsFolderName: "CroMagRally",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/CroMagRally-Android/game/CroMagRally.html?track=${String(n)}`,
     levels: CROMAG_TRACKS,
     defaultLevel: 1,
+    requestQuitFn: "CroMag_RequestQuit",
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
@@ -292,8 +297,9 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     buildLaunchQuery: (n) =>
       new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "billyfrontier",
-    mainJs: "billyfrontier.js",
+    mainJs: "game/billyfrontier.js",
     prefsFolderName: "BillyFrontier",
+    requestQuitFn: "BillyFrontier_RequestQuit",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/BillyFrontier-Android/game/billyfrontier.html#level=${String(n)}`,
     levels: BILLY_FRONTIER_AREAS,
@@ -325,11 +331,13 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       "https://github.com/LachlanBWWright/MightyMike-Android",
     levels: MIGHTY_MIKE_LEVELS,
     defaultLevel: 0,
+    requestQuitFn: "MightyMike_RequestQuit",
     hasFenceCollision: false,
     hasGodMode: false,
     hasSpeedMultiplier: false,
     terrain: {
       getDataPath: (f) => `/Data/Maps/${f}`,
+      getRsrcPath: (f) => `/Data/Maps/${f}.Meta.rsrc`,
       setPathFn: "Boot_SetCustomMapPath",
       getSetPathArg: (f) => `:Maps:${f}`,
     },
@@ -344,6 +352,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     wasmDir: "nanosaur2",
     mainJs: "Nanosaur2.js",
     prefsFolderName: "Nanosaur2",
+    requestQuitFn: "Nanosaur2_RequestQuit",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/Nanosaur2-Android/?level=${String(n)}`,
     levels: NANOSAUR2_LEVELS,

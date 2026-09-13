@@ -4,13 +4,17 @@ import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { z } from "zod";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 import { hasConfiguredApiEndpoint } from "@/api/apiBase";
-import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
+import { SCRIPTING_CONTRACT } from "./scriptContract";
+import { getAvailableApiFunctions } from "./scriptApiAvailability";
 import { scriptLspClient } from "./scriptLspClient";
 import {
+  buildApiCompletionInsertText,
+  buildApiSignature,
   buildNativeIdSnippet,
   getContextualApiName,
   nativeIdInsertText,
 } from "./scriptCompletionText";
+import type { ApiFunction } from "./scriptApiSchema";
 import type {
   LspCompletionItem,
   LspDocumentSymbol,
@@ -123,7 +127,7 @@ function buildCompletionItems(
   range: monaco.IRange,
 ): readonly monaco.languages.CompletionItem[] {
   const getHookContextType = (hookId: string): string => {
-    const hook = AUTHORITATIVE_API_SCHEMA.hooks.find(
+    const hook = SCRIPTING_CONTRACT.api.hooks.find(
       (candidate) => candidate.name === hookId,
     );
     return hook?.contextType ?? "LevelContext";
@@ -158,54 +162,31 @@ function buildCompletionItems(
     .slice(0, position.column - 1);
   const contextualApiName = (qualifiedName: string): string =>
     getContextualApiName(linePrefix, qualifiedName);
-  const game = AUTHORITATIVE_API_SCHEMA.games.find(
+  const game = SCRIPTING_CONTRACT.api.games.find(
     (candidate) => candidate.gameId === state.context.gameId,
   );
   const nativeSpawns = game?.nativeSpawns ?? [];
   const nativeSpawnIds = nativeSpawns.map((nativeSpawn) => nativeSpawn.id);
   const nativeIdSnippet = buildNativeIdSnippet(nativeSpawnIds);
+  const specializedApiNames = new Set(
+    SCRIPTING_CONTRACT.api.apis
+      .filter((api) => api.completion === "native-spawn")
+      .map((api) => api.name),
+  );
+  const nativeSpawnApi = SCRIPTING_CONTRACT.api.apis.find(
+    (api) => api.completion === "native-spawn",
+  );
+  const availableApis = getAvailableApiFunctions(
+    state.context.gameId,
+    SCRIPTING_CONTRACT.api.apis,
+  );
   const apiItems = [
     {
-      label: "pangea.log.info",
+      label: nativeSpawnApi?.name ?? "pangea.spawn.native",
       kind: monaco.languages.CompletionItemKind.Function,
       range,
-      documentation: "Log an informational message.",
-      insertText: `${contextualApiName("pangea.log.info")}("\${1:message}")`,
-    },
-    {
-      label: "pangea.log.warn",
-      kind: monaco.languages.CompletionItemKind.Function,
-      range,
-      documentation: "Log a warning message.",
-      insertText: `${contextualApiName("pangea.log.warn")}("\${1:message}")`,
-    },
-    {
-      label: "pangea.log.error",
-      kind: monaco.languages.CompletionItemKind.Function,
-      range,
-      documentation: "Log an error message.",
-      insertText: `${contextualApiName("pangea.log.error")}("\${1:message}")`,
-    },
-    {
-      label: "pangea.object.position",
-      kind: monaco.languages.CompletionItemKind.Function,
-      range,
-      documentation: "Read the current position for an object handle.",
-      insertText: `${contextualApiName("pangea.object.position")}(\${1:handle})`,
-    },
-    {
-      label: "pangea.object.setPosition",
-      kind: monaco.languages.CompletionItemKind.Function,
-      range,
-      documentation: "Update an object handle position from Lua.",
-      insertText: `${contextualApiName("pangea.object.setPosition")}(\${1:handle}, { x = \${2:0}, y = \${3:0}, z = \${4:0} })`,
-    },
-    {
-      label: "pangea.spawn.native",
-      kind: monaco.languages.CompletionItemKind.Function,
-      range,
-      documentation: "Spawn a native game object at a position.",
-      insertText: `${contextualApiName("pangea.spawn.native")}(${nativeIdSnippet}, { x = \${2:0}, y = \${3:0}, z = \${4:0} })`,
+      documentation: nativeSpawnApi?.description ?? "Spawn a native game object at a position.",
+      insertText: `${contextualApiName(nativeSpawnApi?.name ?? "pangea.spawn.native")}(${nativeIdSnippet}, { x = \${2:0}, y = \${3:0}, z = \${4:0} })`,
       insertTextRules:
         monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
     },
@@ -214,17 +195,15 @@ function buildCompletionItems(
     insertTextRules:
       monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
   }));
-  const specializedApiNames = new Set(apiItems.map((item) => item.label));
-  const schemaApiItems = AUTHORITATIVE_API_SCHEMA.apis
+  const schemaApiItems = availableApis
     .filter((api) => !specializedApiNames.has(api.name))
     .map((api) => ({
       label: api.name,
       kind: monaco.languages.CompletionItemKind.Function,
       range,
+      detail: buildApiSignature(api),
       documentation: api.description ?? api.name,
-      insertText: `${contextualApiName(api.name)}(${api.parameters
-        .map((parameter, index) => `\${${index + 1}:${parameter.name}}`)
-        .join(", ")})`,
+      insertText: buildApiCompletionInsertText(api, contextualApiName),
       insertTextRules:
         monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
     }));
@@ -275,6 +254,34 @@ function buildCompletionRange(
     startColumn: word.startColumn,
     endColumn: word.endColumn,
   };
+}
+
+function findApiAtCallSite(
+  state: ScriptWorkspaceState,
+  model: monaco.editor.ITextModel,
+  position: monaco.Position,
+): ApiFunction | null {
+  const linePrefix = model
+    .getLineContent(position.lineNumber)
+    .slice(0, position.column - 1);
+  const callMatch = /([A-Za-z_][A-Za-z0-9_.]*)\([^()]*$/.exec(linePrefix);
+  const calledName = callMatch?.[1];
+  if (calledName === undefined) return null;
+  const apis = getAvailableApiFunctions(state.context.gameId, SCRIPTING_CONTRACT.api.apis);
+  return apis.find((api) =>
+    api.name === calledName || getContextualApiName(linePrefix, api.name) === calledName,
+  ) ?? null;
+}
+
+function activeSignatureParameter(
+  model: monaco.editor.ITextModel,
+  position: monaco.Position,
+): number {
+  const linePrefix = model
+    .getLineContent(position.lineNumber)
+    .slice(0, position.column - 1);
+  const callStart = linePrefix.lastIndexOf("(");
+  return callStart < 0 ? 0 : linePrefix.slice(callStart + 1).split(",").length - 1;
 }
 
 export function ensureScriptMonacoConfigured(): void {
@@ -334,6 +341,36 @@ export function configureScriptMonaco(
           suggestions: [
             ...buildCompletionItems(state, model, position, range),
           ],
+        };
+      },
+    },
+  );
+
+  const signatureHelpDisposable = monaco.languages.registerSignatureHelpProvider(
+    "lua",
+    {
+      signatureHelpTriggerCharacters: ["(", ","],
+      signatureHelpRetriggerCharacters: [",", ")"],
+      provideSignatureHelp(model, position) {
+        const api = findApiAtCallSite(state, model, position);
+        if (api === null) return null;
+        return {
+          value: {
+            signatures: [{
+              label: buildApiSignature(api),
+              documentation: api.description ?? "",
+              parameters: api.parameters.map((parameter) => ({
+                label: parameter.name,
+                documentation: parameter.description ?? "",
+              })),
+            }],
+            activeSignature: 0,
+            activeParameter: Math.min(
+              activeSignatureParameter(model, position),
+              Math.max(api.parameters.length - 1, 0),
+            ),
+          },
+          dispose: () => undefined,
         };
       },
     },
@@ -459,6 +496,7 @@ export function configureScriptMonaco(
 
   return [
     completionDisposable,
+    signatureHelpDisposable,
     hoverDisposable,
     definitionDisposable,
     referencesDisposable,

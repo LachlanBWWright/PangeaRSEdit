@@ -1,7 +1,9 @@
 import { strToU8 } from "fflate";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 import { buildNativeSpawnDeclarations, buildNativeSpawnOverloads } from "./scriptNativeDeclarations";
-import { AUTHORITATIVE_API_SCHEMA, Field } from "./scriptApiSchema";
+import type { ApiFunction, Field } from "./scriptApiSchema";
+import { SCRIPT_FAILURE_CODES, SCRIPTING_CONTRACT, SCRIPT_RUNTIME_CAPABILITY_FIELDS } from "./scriptContract";
+import { getAvailableApiFunctions } from "./scriptApiAvailability";
 
 export interface ScriptTypeDeclarationFile {
   readonly path: string;
@@ -25,7 +27,7 @@ function mapFieldToLuaLS(field: Field): string {
     function: "function",
     unknown: "unknown",
   };
-  const luaType = typeMap[field.type] ?? "any";
+  const luaType = typeMap[field.type] ?? "unknown";
   return `---@field ${field.name} ${luaType}${optionalSuffix}`;
 }
 
@@ -36,7 +38,7 @@ function buildContextFields(gameId: string): readonly string[] {
     "---@field levelNum number",
     "---@field levelName string|nil",
   ];
-  const game = AUTHORITATIVE_API_SCHEMA.games.find((g) => g.gameId === gameId);
+  const game = SCRIPTING_CONTRACT.api.games.find((g) => g.gameId === gameId);
   if (!game) return commonFields;
   return [...commonFields, ...game.contextFields.map(mapFieldToLuaLS)];
 }
@@ -47,7 +49,7 @@ function buildFrameFields(gameId: string): readonly string[] {
     "---@field deltaSeconds number",
     "---@field levelTimeSeconds number",
   ];
-  const game = AUTHORITATIVE_API_SCHEMA.games.find((g) => g.gameId === gameId);
+  const game = SCRIPTING_CONTRACT.api.games.find((g) => g.gameId === gameId);
   if (!game) return commonFields;
   return [...commonFields, ...game.contextFields.map(mapFieldToLuaLS)];
 }
@@ -55,7 +57,7 @@ function buildFrameFields(gameId: string): readonly string[] {
 function buildHookSignatures(state: ScriptWorkspaceState): string {
   return state.context.supportedHooks
     .map((hookId) => {
-      const hook = AUTHORITATIVE_API_SCHEMA.hooks.find((h) => h.name === hookId);
+      const hook = SCRIPTING_CONTRACT.api.hooks.find((h) => h.name === hookId);
       if (!hook) {
         return `---@field ${hookId} fun(ctx: LevelContext): nil`;
       }
@@ -90,8 +92,14 @@ function buildObjectTypeDeclarations(state: ScriptWorkspaceState): string {
   ]);
 }
 
+function objectEventContextType(eventId: string): string {
+  if (eventId === "animationEvent") return "AnimationMarkerObjectFrameContext";
+  if (eventId === "animationComplete") return "AnimationCompleteObjectFrameContext";
+  return "ObjectFrameContext";
+}
+
 function buildNativeSpawnIdDeclarations(state: ScriptWorkspaceState): string {
-  const game = AUTHORITATIVE_API_SCHEMA.games.find(
+  const game = SCRIPTING_CONTRACT.api.games.find(
     (candidate) => candidate.gameId === state.context.gameId,
   );
   if (game === undefined || game.nativeSpawns.length === 0) {
@@ -118,8 +126,137 @@ function buildPangeaModuleDeclaration(): readonly string[] {
   ];
 }
 
+function luaFunctionFieldType(field: Field): string {
+  if (field.type === "stringUnion" && field.unionValues && field.unionValues.length > 0) {
+    return (
+      field.unionValues.map((value) => JSON.stringify(value)).join("|") +
+      (field.optional ? "|nil" : "")
+    );
+  }
+  const types: Record<Field["type"], string> = {
+    string: "string",
+    number: "number",
+    boolean: "boolean",
+    vector2: "Vector2",
+    vector3: "Vector3",
+    objectHandle: "ObjectHandle",
+    stringUnion: "string",
+    table: "table",
+    function: "function",
+    unknown: "unknown",
+  };
+  return types[field.type] + (field.optional ? "|nil" : "");
+}
+
+function luaApiParameterType(
+  namespace: string,
+  methodName: string,
+  field: Field,
+): string {
+  if (field.type === "function") {
+    const callbackType = namespace === "events" ? "fun(payload: unknown)" : "fun()";
+    return callbackType + (field.optional ? "|nil" : "");
+  }
+  const integerParameters = new Set([
+    "playerNum",
+    "timerId",
+    "taskId",
+    "subscriptionId",
+  ]);
+  const methodUsesIntegerParameters =
+    (namespace === "random" && ["integer", "seed"].includes(methodName)) ||
+    (namespace === "persistence" && field.name === "version") ||
+    (namespace === "api" && methodName === "requireVersion");
+  if (integerParameters.has(field.name) || methodUsesIntegerParameters) {
+    return "integer" + (field.optional ? "|nil" : "");
+  }
+  return luaFunctionFieldType(field);
+}
+
+function luaApiReturnType(namespace: string, methodName: string, returnType: string): string {
+  const integerMethods = new Set([
+    "level.current",
+    "time.frame",
+    "time.after",
+    "time.every",
+    "task.start",
+    "events.on",
+    "events.once",
+    "events.emit",
+    "random.integer",
+    "player.count",
+  ]);
+  return integerMethods.has(`${namespace}.${methodName}`) ? "integer" : returnType;
+}
+
+function buildApiFunctionDeclaration(
+  api: ApiFunction,
+  namespace: string,
+  methodName: string,
+  tagType?: string,
+  overrides?: {
+    readonly parameterTypes?: Readonly<Record<string, string>>;
+    readonly returnType?: string;
+  },
+): string {
+  const parameters = api.parameters
+    .map((parameter) => {
+      const overriddenType = overrides?.parameterTypes?.[parameter.name];
+      const parameterType = overriddenType === undefined
+        ? parameter.name === "tag" && tagType !== undefined
+          ? tagType + (parameter.optional ? "|nil" : "")
+          : luaApiParameterType(namespace, methodName, parameter)
+        : overriddenType;
+      return `${parameter.name}: ${parameterType}`;
+    })
+    .join(", ");
+  const description = api.description === undefined ? "" : ` ${api.description}`;
+  const returnType = methodName === "tags" && tagType !== undefined
+    ? `${tagType}[]`
+    : overrides?.returnType ?? luaApiReturnType(namespace, methodName, api.returnType);
+  return `---@field ${methodName} fun(${parameters}): ${returnType}${description}`;
+}
+
+function buildApiClassDeclarations(namespace: string, gameId: string): readonly string[] {
+  const prefix = `pangea.${namespace}.`;
+  return getAvailableApiFunctions(gameId, SCRIPTING_CONTRACT.api.apis)
+    .filter((api) => api.name.startsWith(prefix))
+    .map((api) => buildApiFunctionDeclaration(api, namespace, api.name.slice(prefix.length)));
+}
+
+function buildObjectApiDeclarations(tagType: string, gameId: string): readonly string[] {
+  const prefix = "pangea.object.";
+  return getAvailableApiFunctions(gameId, SCRIPTING_CONTRACT.api.apis)
+    .filter((api) => api.name.startsWith(prefix))
+    .map((api) => {
+      const methodName = api.name.slice(prefix.length);
+      return buildApiFunctionDeclaration(api, "object", methodName, tagType);
+    });
+}
+
+function buildSpawnApiDeclarations(gameId: string): readonly string[] {
+  const prefix = "pangea.spawn.";
+  const overrides: Readonly<Record<string, { readonly parameterTypes: Readonly<Record<string, string>>; readonly returnType: string }>> = {
+    nativeResult: {
+      parameterTypes: { id: "NativeSpawnId", options: "NativeSpawnOptions|nil" },
+      returnType: "NativeSpawnResult",
+    },
+    scripted: {
+      parameterTypes: { options: "ScriptedSpawnOptions|nil" },
+      returnType: "ObjectHandle|nil",
+    },
+  };
+  return getAvailableApiFunctions(gameId, SCRIPTING_CONTRACT.api.apis)
+    .filter((api) => api.name.startsWith(prefix) && !api.name.endsWith(".native"))
+    .map((api) => {
+      const methodName = api.name.slice(prefix.length);
+      const override = overrides[methodName];
+      return buildApiFunctionDeclaration(api, "spawn", methodName, undefined, override);
+    });
+}
+
 function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
-  const game = AUTHORITATIVE_API_SCHEMA.games.find((candidate) => candidate.gameId === state.context.gameId);
+  const game = SCRIPTING_CONTRACT.api.games.find((candidate) => candidate.gameId === state.context.gameId);
   const gameFields = buildContextFields(state.context.gameId);
   const frameFields = buildFrameFields(state.context.gameId);
   const tagType = buildTagDeclarations(state);
@@ -128,6 +265,9 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
   const nativeItems = game?.nativeSpawns ?? [];
   const nativeOptionDeclarations = buildNativeSpawnDeclarations(nativeItems);
   const nativeOverloads = buildNativeSpawnOverloads(nativeItems);
+  const objectEventType = SCRIPTING_CONTRACT.objectEvents
+    .map((event) => JSON.stringify(event.id))
+    .join("|");
 
   return [
     "---@class Vector2",
@@ -161,11 +301,31 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field object ObjectHandle",
     "---@field objectType ObjectTypeId",
     "---@field position Vector3",
+    "---@field velocity Vector3|nil",
+    "---@field collisionEnabled boolean|nil",
+    "---@field rotation Vector3|nil",
     `---@field tags ${tagType}[]`,
-    '---@field event "spawn"|"update"|"triggerEnter"|"animationEvent"|"animationComplete"|"destroy"',
+    `---@field event ${objectEventType}`,
+    "---@field eventValue integer|nil",
+    "---@field other ObjectHandle|nil",
+    "---@field sideBits integer",
     "",
-    "---@class ObjectFrameResult",
-    "---@field positionOffset Vector3|nil",
+    "---@class AnimationMarkerObjectFrameContext : ObjectFrameContext",
+    "---@field event \"animationEvent\"",
+    "---@field eventValue integer",
+    "",
+    "---@class AnimationCompleteObjectFrameContext : ObjectFrameContext",
+    "---@field event \"animationComplete\"",
+    "---@field eventValue nil",
+    "",
+    "---@class ObjectBehaviorSelf",
+    "---@field handle ObjectHandle",
+    "",
+    "---@class CustomObjectBehavior",
+    ...SCRIPTING_CONTRACT.objectEvents.map(
+      (event) =>
+        `---@field ${event.handler} fun(self: ObjectBehaviorSelf, ctx: ${objectEventContextType(event.id)})|nil`,
+    ),
     "",
     "---@class TerrainItemContext : LevelContext",
     "---@field itemType number",
@@ -191,9 +351,10 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field playerNum number",
     "---@field pickupId string|nil",
     "---@field pickupType number",
+    "---@field pickupVariant number",
     "---@field amount number",
     "---@field pickup ObjectHandle",
-    "---@field player ObjectHandle",
+    "---@field player ObjectHandle|nil",
     "---@field position Vector3",
     "",
     "---@class WeaponHitContext : LevelContext",
@@ -201,8 +362,8 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field weaponId string|nil",
     "---@field weaponType number",
     "---@field damage number",
-    "---@field weapon ObjectHandle",
-    "---@field target ObjectHandle",
+    "---@field weapon ObjectHandle|nil",
+    "---@field target ObjectHandle|nil",
     "---@field position Vector3",
     "---@field targetType number",
     "---@field targetFlags number",
@@ -212,7 +373,7 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field triggerId string|nil",
     "---@field triggerType number",
     "---@field self ObjectHandle",
-    "---@field other ObjectHandle",
+    "---@field other ObjectHandle|nil",
     "---@field position Vector3",
     "---@field sideBits number",
     "---@field otherType number",
@@ -255,26 +416,62 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field healthDelta number|nil",
     "---@field scoreDelta number|nil",
     "",
+    "---@class DamageContext : LevelContext",
+    "---@field playerNum number",
+    "---@field cause number",
+    "---@field damage number",
+    "---@field source ObjectHandle|nil",
+    "---@field target ObjectHandle",
+    "---@field position Vector3",
+    "",
+    "---@class DamageResult",
+    "---@field handled boolean|nil",
+    "---@field applyDamage boolean|nil",
+    "---@field damage number|nil",
+    "",
+    "---@class PlayerEventContext : LevelContext",
+    "---@field playerNum number",
+    "---@field player ObjectHandle",
+    "---@field position Vector3|nil",
+    "---@field velocity Vector3|nil",
+    "---@field collisionEnabled boolean|nil",
+    "---@field rotation Vector3|nil",
+    "---@field eventValue number|nil",
+    "",
+    "---@alias ObjectiveOutcome 0|1|2",
+    "",
+    "---@class ObjectiveEventContext : PlayerEventContext",
+    "---@field eventValue ObjectiveOutcome",
+    "",
     "---@class PangeaLogApi",
-    "---@field info fun(message: string)",
-    "---@field warn fun(message: string)",
-    "---@field error fun(message: string)",
+    ...buildApiClassDeclarations("log", state.context.gameId),
+    "",
+    "---@class ObjectSource",
+    "---@field kind \"terrain\"|\"spline\"|\"map\"",
+    "---@field itemIndex integer",
+    "---@field nativeType integer",
+    "---@field splineNum integer",
+    "---@field x number",
+    "---@field y number",
+    "---@field z number",
+    "---@field placement number",
     "",
     "---@class PangeaObjectApi",
-    "---@field exists fun(handle: ObjectHandle): boolean",
-    "---@field position fun(handle: ObjectHandle): Vector3|nil",
-    "---@field all fun(): ObjectHandle[]",
-    "---@field findByTag fun(tag: string): ObjectHandle[]",
-    "---@field nearest fun(origin: Vector3, tag: string|nil): ObjectHandle|nil",
-    "---@field setPosition fun(handle: ObjectHandle, position: Vector3): boolean",
-    "---@field setVelocity fun(handle: ObjectHandle, velocity: Vector3): boolean",
-    "---@field setRotation fun(handle: ObjectHandle, rotation: Vector3): boolean",
-    "---@field setScale fun(handle: ObjectHandle, scale: number): boolean",
-    "---@field setAnimation fun(handle: ObjectHandle, animation: string|integer, speed: number|nil, blendSeconds: number|nil): boolean",
-    `---@field tags fun(handle: ObjectHandle): ${tagType}[]`,
-    `---@field hasTag fun(handle: ObjectHandle, tag: ${tagType}): boolean`,
-    "---@field state fun(handle: ObjectHandle): table|nil",
-    "---@field delete fun(handle: ObjectHandle): boolean",
+    ...buildObjectApiDeclarations(tagType, state.context.gameId),
+    "",
+    "---@class ObjectCommandResult",
+    "---@field ok boolean",
+    "---@field code integer",
+    `---@field reason ${SCRIPT_FAILURE_CODES.map((code) => JSON.stringify(code)).join("|")}|"unknown"`,
+    "---@field message string",
+    "---@field primary ObjectHandle|nil",
+    "",
+    "---@class PlayerCommandResult",
+    "---@field ok boolean",
+    "---@field code integer",
+    `---@field reason ${SCRIPT_FAILURE_CODES.map((code) => JSON.stringify(code)).join("|")}|"unknown"`,
+    "---@field message string",
+    "---@field playerNum integer",
     "",
     "---@class NativeSpawnOptions",
     "---@field subtype integer|nil Game-specific subtype, such as a powerup kind.",
@@ -287,7 +484,7 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@class NativeSpawnResult",
     "---@field ok boolean",
     "---@field code integer",
-    '---@field reason "ok"|"not-enabled"|"file-not-found"|"parse-error"|"runtime-error"|"bad-argument"|"budget-exceeded"|"incompatible-item"|"config-error"|"unknown"',
+    `---@field reason ${SCRIPT_FAILURE_CODES.map((code) => JSON.stringify(code)).join("|")}|"unknown"`,
     "---@field message string",
     "---@field primary ObjectHandle|nil",
     "",
@@ -297,8 +494,7 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "",
     "---@class PangeaSpawnApi",
     "---@field native PangeaNativeSpawn",
-    "---@field nativeResult fun(id: NativeSpawnId, position: Vector3, options: NativeSpawnOptions|nil): NativeSpawnResult",
-    "---@field scripted fun(id: string, position: Vector3, options: ScriptedSpawnOptions|nil): ObjectHandle|nil",
+    ...buildSpawnApiDeclarations(state.context.gameId),
     "",
     "---@class ScriptedSpawnOptions",
     "---@field scale number|nil",
@@ -307,33 +503,15 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field blendSeconds number|nil",
     "",
     "---@class PangeaCapabilities",
-    "---@field levelSettings boolean",
-    "---@field objectMutation boolean",
-    "---@field objectPosition boolean",
-    "---@field spawnNative boolean",
-    "---@field spawnScripted boolean",
-    "---@field objectQueries boolean",
-    "---@field timers boolean",
-    "---@field tasks boolean",
-    "---@field events boolean",
-    "---@field terrainItems boolean",
-    "---@field splineItems boolean",
-    "---@field mapItems boolean",
-    "---@field memoryLimitBytes integer",
-    "---@field loadInstructionBudget integer",
-    "---@field eventInstructionBudget integer",
-    "---@field frameInstructionBudget integer",
-    "---@field timerLimit integer",
-    "---@field taskLimit integer",
-    "---@field subscriptionLimit integer",
-    "---@field playerLookup boolean",
+    ...SCRIPT_RUNTIME_CAPABILITY_FIELDS.map((field) => `---@field ${field.name} ${field.luaType}`),
     "",
     "---@class PangeaRuntimeApi",
+    "---@field contractVersion integer",
+    "---@field apiVersion integer",
+    "---@field runtimeFingerprint integer",
     "---@field version integer",
     "---@field minimumVersion integer",
-    "---@field requireVersion fun(minimum: integer, maximum: integer|nil): true Raise a clear load error when the runtime API is incompatible.",
-    "---@field capabilities fun(): PangeaCapabilities",
-    "---@field diagnostics fun(): PangeaDiagnostics",
+    ...buildApiClassDeclarations("api", state.context.gameId),
     "",
     "---@class PangeaDiagnostics",
     "---@field memoryUsedBytes integer",
@@ -342,45 +520,175 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field activeTasks integer",
     "---@field activeSubscriptions integer",
     "---@field frameNum integer",
+    "---@field commandCount integer",
+    "---@field commandHash integer",
+    "---@field commandTraceOverflow boolean",
+    "---@field commandTrace PangeaCommandTraceEntry[]",
+    "---@field lifecycleEventCount integer",
+    "---@field lifecycleTraceOverflow boolean",
+    "---@field lifecycleTrace PangeaLifecycleTraceEntry[]",
+    "---@field persistentBytes integer",
+    "---@field persistentEntries integer",
+    "",
+    "---@class PangeaCommandTraceEntry",
+    "---@field id string",
+    "---@field applicationPhase string",
+    "---@field order integer",
+    "---@field objectId integer",
+    "---@field generation integer",
+    "---@field status integer",
+    "",
+    "---@class PangeaLifecycleTraceEntry",
+    "---@field id string",
+    "---@field applicationPhase string",
+    "---@field order integer",
+    "---@field objectId integer",
+    "---@field generation integer",
+    "---@field status integer",
     "",
     "---@class PangeaLevelApi",
-    "---@field current fun(): integer",
-    "---@field setting fun(key: string): string|number|boolean|nil",
+    ...buildApiClassDeclarations("level", state.context.gameId),
     "",
     "---@class PangeaTimeApi",
-    "---@field frame fun(): integer",
-    "---@field delta fun(): number",
-    "---@field level fun(): number",
-    "---@field after fun(delaySeconds: number, callback: fun()): integer Schedule a one-shot callback using level time.",
-    "---@field every fun(intervalSeconds: number, callback: fun()): integer Schedule a repeating callback without accumulating frame drift.",
-    "---@field cancel fun(timerId: integer): boolean",
-    "---@field isActive fun(timerId: integer): boolean",
+    ...buildApiClassDeclarations("time", state.context.gameId),
     "",
     "---@class PangeaTaskApi",
-    "---@field start fun(callback: fun()): integer Start a budgeted coroutine immediately.",
-    "---@field wait fun(delaySeconds: number) Suspend the current task until level time advances by the delay.",
-    "---@field cancel fun(taskId: integer): boolean",
-    "---@field isActive fun(taskId: integer): boolean",
+    ...buildApiClassDeclarations("task", state.context.gameId),
     "",
     "---@class PangeaEventsApi",
-    "---@field on fun(eventName: string, callback: fun(payload: unknown)): integer Subscribe and return a removable subscription ID.",
-    "---@field once fun(eventName: string, callback: fun(payload: unknown)): integer Subscribe for the next matching emission only.",
-    "---@field off fun(subscriptionId: integer): boolean",
-    "---@field emit fun(eventName: string, payload: unknown|nil): integer Emit synchronously and return the number of listeners called.",
+    ...buildApiClassDeclarations("events", state.context.gameId),
     "",
     "---@class PangeaRandomApi",
-    "---@field number fun(): number Returns a deterministic value in the range 0 through 1.",
-    "---@field integer fun(minimum: integer, maximum: integer): integer",
-    "---@field seed fun(seed: integer) Reset the deterministic script random stream.",
+    ...buildApiClassDeclarations("random", state.context.gameId),
     "",
     "---@class PangeaPlayerSnapshot",
     "---@field playerNum integer",
     "---@field position Vector3",
+    "---@field velocity Vector3|nil",
+    "---@field collisionEnabled boolean|nil",
+    "---@field rotation Vector3|nil",
+    "---@field aim Vector3|nil",
     "---@field health number|nil",
+    "---@field fuel number|nil",
+    "---@field score integer|nil",
+	"---@field coinCount integer|nil",
+	"---@field bunnyCount integer|nil",
+    "---@field pesoCount integer|nil",
+    "---@field tokenCount integer|nil",
+    "---@field lives integer|nil",
+    "---@field activeWeapon integer|nil",
+	"---@field weaponCharge number|nil",
+	"---@field giant boolean|nil",
+	"---@field giantTimeRemaining number|nil",
+	"---@field weapons PangeaPlayerWeapon[]|nil",
+    "---@field keys integer[]|nil",
+    "---@field greenCloverCount integer|nil",
+    "---@field blueCloverCount integer|nil",
+    "---@field goldCloverCount integer|nil",
+    "---@field lapNum integer|nil",
+    "---@field shieldActive boolean|nil",
+	"---@field shieldTimeRemaining number|nil",
+	"---@field invulnerable boolean|nil",
+	"---@field invulnerabilityTimeRemaining number|nil",
+	"---@field knockedDown boolean|nil",
+	"---@field knockdownTimeRemaining number|nil",
+	"---@field burning boolean|nil",
+	"---@field burnTimeRemaining number|nil",
+	"---@field dead boolean|nil",
+    "---@field ridingBall boolean|nil",
+	"---@field tunnelSpeed number|nil",
+	"---@field tunnelAngle number|nil",
+	"---@field tunnelBanking number|nil",
+	"---@field jetThrust number|nil",
+	"---@field glidePower number|nil",
+	"---@field grounded boolean|nil",
+	"---@field heightOffGround number|nil",
+	"---@field onWater boolean|nil",
+	"---@field onLava boolean|nil",
+	"---@field jetpackActive boolean|nil",
+	"---@field animation integer|nil",
+	"---@field animationSpeed number|nil",
+	"---@field animationFrame integer|nil",
+    "---@field form \"bug\"|\"ball\"|nil",
+	"---@field formTimeRemaining number|nil",
+    "---@field miceRescued integer|nil",
+    "---@field miceTotal integer|nil",
+    "---@field drowningMiceRescued integer|nil",
+    "---@field drowningMiceRequired integer|nil",
+    "---@field childObjectCount integer|nil",
+    "---@field eggs PangeaEggProgress[]|nil",
+    "---@field checkpointNum integer|nil",
+    "---@field placement integer|nil",
+    "---@field raceComplete boolean|nil",
+    "---@field vehicleType integer|nil",
+    "---@field vehicleMaxSpeed number|nil",
+    "---@field vehicleAcceleration number|nil",
+    "---@field vehicleTraction number|nil",
+    "---@field vehicleSuspension number|nil",
+	"---@field groundTraction number|nil",
+	"---@field groundFriction number|nil",
+	"---@field groundSteering number|nil",
+	"---@field groundAcceleration number|nil",
+	"---@field nitroActive boolean|nil",
+	"---@field nitroTimeRemaining number|nil",
+	"---@field greasedTiresActive boolean|nil",
+	"---@field greasedTiresTimeRemaining number|nil",
+	"---@field stickyTiresActive boolean|nil",
+	"---@field stickyTiresTimeRemaining number|nil",
+	"---@field superSuspensionActive boolean|nil",
+	"---@field superSuspensionTimeRemaining number|nil",
+	"---@field invisibilityActive boolean|nil",
+	"---@field invisibilityTimeRemaining number|nil",
+	"---@field frozen boolean|nil",
+	"---@field frozenTimeRemaining number|nil",
+	"---@field flaming boolean|nil",
+	"---@field flamingTimeRemaining number|nil",
+	"---@field submarineImmobilized boolean|nil",
+	"---@field submarineImmobilizedTimeRemaining number|nil",
+	"---@field ramming boolean|nil",
+	"---@field rammingTimeRemaining number|nil",
+	"---@field planing boolean|nil",
+    "---@field team integer|nil",
+	"---@field carryingFlag boolean|nil",
+	"---@field captureScore integer|nil",
+	"---@field tagged boolean|nil",
+	"---@field tagTimeRemaining number|nil",
+	"---@field sceneNum integer|nil",
+    "---@field areaNum integer|nil",
+    "---@field areaComplete boolean|nil",
+    "---@field levelComplete boolean|nil",
+    "---@field camera Vector3|nil",
+    "",
+    "---@class PangeaPlayerWeapon",
+    "---@field type integer",
+    "---@field quantity integer",
+    "",
+    "---@class PangeaEggProgress",
+    "---@field recovered integer",
+    "---@field required integer",
+    "",
+    "---@class PangeaRaceResult",
+    "---@field playerNum integer",
+    "---@field lapNum integer",
+    "---@field checkpointNum integer",
+    "---@field placement integer",
+    "---@field raceComplete boolean",
+    "",
+    "---@class PangeaObjectiveResult",
+    "---@field levelNum integer",
+    "---@field playerNum integer",
+    "---@field outcome 0|1|2",
+    "",
+    "---@class PangeaCheckpointResult",
+    "---@field levelNum integer",
+    "---@field playerNum integer",
+    "---@field checkpoint integer",
     "",
     "---@class PangeaPlayerApi",
-    "---@field count fun(): integer",
-    "---@field get fun(playerNum: integer): PangeaPlayerSnapshot|nil",
+    ...buildApiClassDeclarations("player", state.context.gameId),
+    "",
+    "---@class PangeaPersistenceApi",
+    ...buildApiClassDeclarations("persistence", state.context.gameId),
     "",
     nativeOptionDeclarations,
     "---@class PangeaApi",
@@ -391,6 +699,7 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field task PangeaTaskApi",
     "---@field events PangeaEventsApi",
     "---@field random PangeaRandomApi",
+    "---@field persistence PangeaPersistenceApi",
     "---@field player PangeaPlayerApi",
     "---@field log PangeaLogApi",
     "---@field object PangeaObjectApi",

@@ -22,6 +22,7 @@ export function MultiplayerGameStage({
                 ref={gameCanvasRef}
                 className="h-full max-h-full w-full max-w-full bg-black object-contain"
                 aria-label="Multiplayer Game"
+                tabIndex={-1}
               />
             </div>
           ) : (

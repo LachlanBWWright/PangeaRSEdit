@@ -5,6 +5,10 @@ import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
+  ItemData,
+  FenceData,
+  SplineData,
+  LiquidData,
   isSupertileEmpty,
 } from "@/python/structSpecs/LevelTypes";
 import { useRef, useState } from "react";
@@ -31,6 +35,13 @@ import { CheckpointPanel } from "../checkpoints/CheckpointPanel";
 import { getGameFeatures } from "@/editor/utils/gameFeatures";
 import { MenuEmptyState } from "../MenuEmptyState";
 import { CroMagPathPanel } from "../paths/CroMagPathPanel";
+import { LevelScaleControl } from "../tiles/LevelScaleControl";
+import {
+  supportsLevelScale,
+  supportsLevelScalePlacement,
+  type LevelScaleMode,
+} from "@/editor/utils/levelScaleState";
+import { buildTerrainEntityOverlay } from "./terrainEntityOverlay";
 
 /**
  * Standard Supertile Menu for games with STgd-based terrain
@@ -45,13 +56,23 @@ export function SupertileMenu({
   setTerrainData,
   mapImages,
   setMapImages,
+  onApplyLevelScale,
+  itemData,
+  fenceData,
+  splineData,
+  liquidData,
 }: {
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
+  itemData: ItemData | null;
+  fenceData: FenceData | null;
+  splineData: SplineData | null;
+  liquidData: LiquidData | null;
   setTerrainData: Updater<TerrainData>;
+  onApplyLevelScale: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
@@ -68,6 +89,7 @@ export function SupertileMenu({
   const [tileEditorOpen, setTileEditorOpen] = useState(false);
   const [mapEditorOpen, setMapEditorOpen] = useState(false);
   const [mapEditorImageUrl, setMapEditorImageUrl] = useState("");
+  const [mapEditorOverlay, setMapEditorOverlay] = useState<HTMLCanvasElement | null>(null);
 
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {
@@ -208,12 +230,36 @@ export function SupertileMenu({
                 return;
               }
               setMapEditorImageUrl(imageDataUrl);
+              setMapEditorOverlay(
+                buildTerrainEntityOverlay({
+                  width: globals.SUPERTILE_TEXMAP_SIZE * (hedr.mapWidth / globals.TILES_PER_SUPERTILE),
+                  height: globals.SUPERTILE_TEXMAP_SIZE * (hedr.mapHeight / globals.TILES_PER_SUPERTILE),
+                  itemData,
+                  fenceData,
+                  splineData,
+                  liquidData,
+                }),
+              );
               setMapEditorOpen(true);
             }}
           >
             Edit whole map in texture editor
           </Button>
           <div className="flex-1" />
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={
+              selectedTile >= stgd.length ||
+              !stgd[selectedTile] ||
+              isSupertileEmpty(stgd[selectedTile])
+            }
+            onClick={() => {
+              setSelectedTileBlank(selectedTile, globals, setTerrainData);
+            }}
+          >
+            Set to Blank
+          </Button>
           <p>Download Selected Tile</p>
           <Button
             size="sm"
@@ -252,35 +298,36 @@ export function SupertileMenu({
               <p>Texture ID: {stgd[selectedTile]?.superTileId || 0}</p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={
-              selectedTile >= stgd.length ||
-              !stgd[selectedTile] ||
-              isSupertileEmpty(stgd[selectedTile])
-            }
-            onClick={() => {
-              setSelectedTileBlank(selectedTile, globals, setTerrainData);
-            }}
-          >
-            Set to Blank
-          </Button>
+          {supportsLevelScale(globals.GAME_TYPE) && (
+            <div className="border-t border-gray-600 pt-2">
+              <LevelScaleControl
+                tileSize={headerData.Hedr[1000].obj.tileSize}
+                supportsPlacementBehavior={supportsLevelScalePlacement(
+                  globals.GAME_TYPE,
+                )}
+                onApply={onApplyLevelScale}
+              />
+            </div>
+          )}
           {supportsCheckpoints && (
-            <CheckpointPanel
-              headerData={headerData}
-              setHeaderData={setHeaderData}
-              terrainData={terrainData}
-              setTerrainData={setTerrainData}
-            />
+            <div className="border-t border-gray-600 pt-2">
+              <CheckpointPanel
+                headerData={headerData}
+                setHeaderData={setHeaderData}
+                terrainData={terrainData}
+                setTerrainData={setTerrainData}
+              />
+            </div>
           )}
           {supportsPaths && (
-            <CroMagPathPanel
-              headerData={headerData}
-              setHeaderData={setHeaderData}
-              terrainData={terrainData}
-              setTerrainData={setTerrainData}
-            />
+            <div className="border-t border-gray-600 pt-2">
+              <CroMagPathPanel
+                headerData={headerData}
+                setHeaderData={setHeaderData}
+                terrainData={terrainData}
+                setTerrainData={setTerrainData}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -307,9 +354,14 @@ export function SupertileMenu({
         }}
       />
       <ImageEditor
+        key={mapEditorOpen ? "open" : "closed"}
         isOpen={mapEditorOpen}
-        onClose={() => setMapEditorOpen(false)}
+        onClose={() => {
+          setMapEditorOpen(false);
+          setMapEditorOverlay(null);
+        }}
         imageUrl={mapEditorImageUrl}
+        overlayImage={mapEditorOverlay}
         imageName="Whole map texture"
         saveActions={[
           {

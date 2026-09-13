@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { err, ok } from "neverthrow";
 import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
 import {
@@ -8,6 +9,11 @@ import {
   getPreviewTerrainPaths,
   loadPreviewRuntime,
 } from "./gamePreviewRuntime";
+import type { PreviewRuntimeModule } from "./gamePreviewRuntime";
+import type {
+  PreviewModuleOptions,
+} from "./gamePreviewRuntimeLoader";
+import type { PreviewRuntimeFailure } from "./gamePreviewRuntimeTypes";
 import { startGamePreview } from "./gamePreviewHostRuntime";
 
 vi.mock("./gamePreviewRuntime", () => ({
@@ -43,6 +49,7 @@ function startOptions(canvas: HTMLCanvasElement) {
     normalLaunch: true,
     onStatus: vi.fn(),
     onError: vi.fn(),
+    onFailure: vi.fn(),
   };
 }
 
@@ -92,7 +99,7 @@ describe("startGamePreview", () => {
     const cleanupGlobals = vi.fn();
     const stopGame = vi.fn();
     vi.mocked(applyPreviewGlobals).mockReturnValueOnce(cleanupGlobals);
-    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(stopGame);
+    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(ok(stopGame));
     const options = startOptions(canvas);
 
     const cleanup = startGamePreview(options);
@@ -110,10 +117,40 @@ describe("startGamePreview", () => {
     expect(canvas.height).toBe(480);
 
     cleanup();
+    cleanup();
 
-    expect(stopGame).toHaveBeenCalled();
-    expect(cleanupGlobals).toHaveBeenCalled();
+    expect(stopGame).toHaveBeenCalledTimes(1);
+    expect(cleanupGlobals).toHaveBeenCalledTimes(1);
     expect(window.Module).toBe(previousModule);
+  });
+
+  it("ignores runtime callbacks that arrive after cleanup", async () => {
+    const canvas = createCanvas();
+    let runtimeModuleCallback:
+      | ((module: PreviewRuntimeModule) => void)
+      | undefined;
+    let resolveLoad:
+      | ((result: Awaited<ReturnType<typeof loadPreviewRuntime>>) => void)
+      | undefined;
+    vi.mocked(loadPreviewRuntime).mockImplementationOnce(
+      async (_module, _scriptUrl, _isCancelled, onModule) => {
+        runtimeModuleCallback = onModule;
+        return await new Promise((resolve) => {
+          resolveLoad = resolve;
+        });
+      },
+    );
+    const options = startOptions(canvas);
+    const cleanup = startGamePreview(options);
+    await vi.advanceTimersByTimeAsync(0);
+    cleanup();
+
+    runtimeModuleCallback?.({ canvas, arguments: [], preRun: [], locateFile: () => "" });
+    resolveLoad?.(ok(() => undefined));
+    await Promise.resolve();
+
+    expect(options.onError).not.toHaveBeenCalled();
+    cleanup();
   });
 
   it("tries the next asset base after a missing script and reports terminal failures", async () => {
@@ -123,8 +160,8 @@ describe("startGamePreview", () => {
       "https://working.test/",
     ]);
     vi.mocked(loadPreviewRuntime)
-      .mockRejectedValueOnce(new Error("404 missing runtime"))
-      .mockRejectedValueOnce(new Error("runtime crashed"));
+      .mockResolvedValueOnce(err("404 missing runtime"))
+      .mockResolvedValueOnce(err("runtime crashed"));
     const options = startOptions(canvas);
 
     const cleanup = startGamePreview(options);
@@ -134,6 +171,38 @@ describe("startGamePreview", () => {
 
     expect(loadPreviewRuntime).toHaveBeenCalledTimes(2);
     expect(options.onError).toHaveBeenCalledWith("runtime crashed");
+    cleanup();
+  });
+
+  it("preserves typed runtime failures reported by the loaded module", async () => {
+    const canvas = createCanvas();
+    let reportModuleFailure: ((failure: PreviewRuntimeFailure) => void) | undefined;
+    vi.mocked(createPreviewModule).mockImplementationOnce(
+      (options: PreviewModuleOptions) => {
+        reportModuleFailure = options.onFailure;
+        return {
+          canvas: options.canvas,
+          arguments: [],
+          preRun: [],
+          locateFile: () => "",
+        };
+      },
+    );
+    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(ok(() => undefined));
+    const options = startOptions(canvas);
+
+    const cleanup = startGamePreview(options);
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+
+    const failure: PreviewRuntimeFailure = {
+      category: "native-adapter",
+      code: "runtime.level",
+      message: "native level load failed",
+    };
+    reportModuleFailure?.(failure);
+
+    expect(options.onFailure).toHaveBeenCalledWith(failure);
     cleanup();
   });
 
@@ -157,7 +226,7 @@ describe("startGamePreview", () => {
       configurable: true,
       get: () => fullscreenCanvas,
     });
-    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(() => undefined);
+    vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(ok(() => undefined));
     const resizeSpy = vi.spyOn(window, "dispatchEvent");
     const cleanup = startGamePreview(startOptions(canvas));
     document.dispatchEvent(new Event("fullscreenchange"));

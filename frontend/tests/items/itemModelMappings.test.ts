@@ -421,7 +421,7 @@ describe("item model mappings", () => {
         p1: 0,
         p2: 0,
         p3: 0,
-      }),
+      }, 0, "terrainItem"),
     ).toBeUndefined();
 
     expect(
@@ -468,6 +468,7 @@ describe("item model mappings", () => {
     ).toMatchObject({
       modelFile: "buildings.bg3d",
       modelIndex: 0,
+      yOffset: 416.2409668,
     });
   });
 });

@@ -153,6 +153,14 @@ export function getParamTooltip(param: ParamDescription): string {
   if (param.type === "Integer") {
     return `${param.description}\nExample: ${param.defaultCitation.code}`;
   }
+  if (param.type === "TypeSelector") {
+    return `${param.description}\n${Object.entries(param.options)
+      .map(([value, label]) => `${value}: ${label}`)
+      .join("\n")}`;
+  }
+  if (param.type === "Rotation") {
+    return `${param.description}\nSteps: ${param.divisions}\nMultiplier: ${param.multiplier}`;
+  }
   if (param.type === "Bit Flags" && Array.isArray(param.flags)) {
     return param.flags
       .map(

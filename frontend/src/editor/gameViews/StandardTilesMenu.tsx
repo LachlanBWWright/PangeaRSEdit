@@ -51,19 +51,15 @@ import {
 import { getSemanticTileAttributes } from "@/data/terrain/semanticTileAttributes";
 import { SemanticTileAttributeControls } from "../subviews/tiles/SemanticTileAttributeControls";
 import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl";
-import { LevelScaleControl } from "../subviews/tiles/LevelScaleControl";
-import type { LevelScaleMode } from "../utils/levelScaleState";
 
 export function StandardTilesMenu({
   headerData,
   setHeaderData,
   terrainData,
-  onApplyLevelScale,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
-  onApplyLevelScale: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -111,7 +107,7 @@ export function StandardTilesMenu({
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="editor-tabbed-menu flex flex-col gap-2">
       <Tabs
         value={
           tileView === TileViews.Topology
@@ -132,7 +128,7 @@ export function StandardTilesMenu({
           }
         }}
       >
-        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
+        <TabsList className="editor-subnavbar grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
           <TabsTrigger className="w-full" value="topology">
             Topology
           </TabsTrigger>
@@ -212,10 +208,6 @@ export function StandardTilesMenu({
           <Input type="number" value={minY} onChange={handleMinYChange} />
           <p>Max Height</p>
           <Input type="number" value={maxY} onChange={handleMaxYChange} />
-          <LevelScaleControl
-            tileSize={headerData.Hedr[1000].obj.tileSize}
-            onApply={onApplyLevelScale}
-          />
           <TopologyOpacityControl />
           {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
             canShowAccessibilityOverlay && (
@@ -228,15 +220,6 @@ export function StandardTilesMenu({
               </div>
             )}
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
-            <div className="flex items-center gap-2">
-              <p>Show 3D View</p>
-              <Switch
-                checked={canvasViewMode === CanvasView.THREE_D}
-                onCheckedChange={(e) =>
-                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)
-                }
-              />
-            </div>
             <div className="flex items-center gap-2">
               <Button onClick={() => setExport3DScene((c) => c + 1)}>
                 Download 3D (GLB)

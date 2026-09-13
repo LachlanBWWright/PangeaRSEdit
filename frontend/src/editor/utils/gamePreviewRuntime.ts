@@ -12,6 +12,8 @@ export type {
   StartNetworkMatchFn,
   PreviewTerrainPaths,
   PreviewVfsFile,
+  PreviewRuntimeFailure,
+  PreviewRuntimeFailureCategory,
 } from "./gamePreviewRuntimeTypes";
 export { applyPreviewGlobals } from "./gamePreviewRuntimeGlobals";
 export type { PreviewModuleOptions } from "./gamePreviewRuntimeLoader";

@@ -4,11 +4,14 @@ import {
   BillyFrontierGlobals,
   type GlobalsInterface,
 } from "@/data/globals/globals";
+import { ScriptItemDemoButton } from "./levelSelectorRender";
 
 export function BillyFrontierLevels({
   openFile,
+  onCreateScriptItemDemoLevel,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
+  onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
   return (
     <LevelGrid title="Billy Frontier Levels">
@@ -72,6 +75,7 @@ export function BillyFrontierLevels({
       >
         Town Stampede
       </Button>
+      <ScriptItemDemoButton globals={BillyFrontierGlobals} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
     </LevelGrid>
   );
 }

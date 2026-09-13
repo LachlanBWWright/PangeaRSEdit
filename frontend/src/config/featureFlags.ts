@@ -5,10 +5,25 @@ const FEATURE_FLAGS_STORAGE_KEY = "pangea-feature-flags";
 
 const multiplayerDefault = import.meta.env.VITE_MULTIPLAYER_ENABLED === "true";
 const scriptingDefault = import.meta.env.VITE_SCRIPTING_ENABLED === "true";
+const itemModelMappingPreviewDefault =
+  import.meta.env.VITE_ITEM_MODEL_MAPPING_PREVIEW_ENABLED === "true";
+const scriptItemDemoLevelsDefault =
+  import.meta.env.VITE_SCRIPT_ITEM_DEMO_LEVELS_ENABLED === "true";
+const levelValidationDefault =
+  import.meta.env.VITE_LEVEL_VALIDATION_ENABLED === "true";
+const levelOutputCacheDefault =
+  import.meta.env.VITE_LEVEL_OUTPUT_CACHE_ENABLED === "true";
+const levelMetadataDefault =
+  import.meta.env.VITE_LEVEL_METADATA_ENABLED === "true";
 
-const featureFlagsSchema = z.object({
+export const featureFlagsSchema = z.object({
   multiplayer: z.boolean().default(multiplayerDefault),
   scripting: z.boolean().default(scriptingDefault),
+  itemModelMappingPreview: z.boolean().default(itemModelMappingPreviewDefault),
+  scriptItemDemoLevels: z.boolean().default(scriptItemDemoLevelsDefault),
+  levelValidation: z.boolean().default(levelValidationDefault),
+  levelOutputCache: z.boolean().default(levelOutputCacheDefault),
+  levelMetadata: z.boolean().default(levelMetadataDefault),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
@@ -16,6 +31,11 @@ export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   multiplayer: multiplayerDefault,
   scripting: scriptingDefault,
+  itemModelMappingPreview: itemModelMappingPreviewDefault,
+  scriptItemDemoLevels: scriptItemDemoLevelsDefault,
+  levelValidation: levelValidationDefault,
+  levelOutputCache: levelOutputCacheDefault,
+  levelMetadata: levelMetadataDefault,
 };
 
 export let ENABLE_SCRIPTS = false;

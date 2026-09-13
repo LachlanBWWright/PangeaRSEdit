@@ -191,7 +191,7 @@ function ItemMarkers({
           <group
             key={index}
             position={position}
-            scale={item.scale * 10}
+            scale={item.scale}
             onPointerDown={(event: ThreeEvent<PointerEvent>) => {
               event.stopPropagation();
               setDragState({
@@ -214,7 +214,7 @@ function ItemMarkers({
               const deltaX = event.clientX - dragState.startX;
               const nextSplineIndex = clampSplineIndex(
                 Math.round(
-                  dragState.startSplineIndex + deltaX * dragSensitivity,
+                  dragState.startSplineIndex + deltaX * dragSensitivity * 0.1,
                 ),
                 tunnelData.splinePoints.length,
               );
@@ -225,6 +225,11 @@ function ItemMarkers({
                 setDragState(null);
               }
               event.stopPropagation();
+            }}
+            onPointerCancel={(event: ThreeEvent<PointerEvent>) => {
+              if (dragState?.pointerId === event.pointerId) {
+                setDragState(null);
+              }
             }}
             onClick={(event: ThreeEvent<MouseEvent>) => {
               event.stopPropagation();

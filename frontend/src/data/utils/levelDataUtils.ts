@@ -123,6 +123,7 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
     "PaPt",
     "nanosaurPathLayer",
     "_metadata",
+    "Meta",
     "tileset",
   ]);
   const extraResources: Record<string, unknown> = {};
@@ -157,6 +158,7 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
         ...(levelData.nanosaurPathLayer !== undefined
           ? { nanosaurPathLayer: levelData.nanosaurPathLayer }
           : {}),
+        ...(levelData.Meta !== undefined ? { Meta: levelData.Meta } : {}),
         // Preserve game-specific tileset data (e.g. MightyMikeTileSet with collisionImages)
         ...(levelData.tileset !== undefined ? { tileset: levelData.tileset } : {}),
       }

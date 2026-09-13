@@ -14,7 +14,6 @@ const config: MultiplayerMatchConfig = {
   maxPlayers: 2,
   requiredProtocolVersion: 1,
   requiredRuntimeVersion: "host-authoritative-v2",
-  requiredContentHash: "content-a",
   hostParticipantId: "host-1",
   players: [],
 };
@@ -22,22 +21,17 @@ const config: MultiplayerMatchConfig = {
 const local = {
   protocolVersion: 1,
   runtimeVersion: "host-authoritative-v2",
-  contentHash: "content-a",
 };
 
 describe("multiplayer runtime compatibility", () => {
-  it("accepts an exact protocol, runtime, and content match", () => {
+  it("accepts an exact protocol and runtime match", () => {
     expect(validateRuntimeCompatibility(config, local).isOk()).toBe(true);
   });
 
-  it("rejects a stale content bundle", () => {
+  it("ignores content bundle differences", () => {
     const result = validateRuntimeCompatibility(config, {
       ...local,
-      contentHash: "content-b",
     });
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error).toContain("content mismatch");
-    }
+    expect(result.isOk()).toBe(true);
   });
 });

@@ -106,6 +106,14 @@ export function MiniThreeView({
               logBonePositions={false}
               gameType={gameType}
               previewLighting
+              previewAttachments={
+                gameType === Game.OTTO_MATIC ||
+                gameType === Game.BILLY_FRONTIER ||
+                gameType === Game.CRO_MAG
+              }
+              cameraDistanceMultiplier={
+                gameType === Game.CRO_MAG ? 1.2 : undefined
+              }
               autoRotate
               autoRotateSpeed={1.5}
             />

@@ -36,7 +36,6 @@ interface MockLobbyState {
     maxPlayers: number;
     requiredProtocolVersion: number;
     requiredRuntimeVersion: string;
-    requiredContentHash: string;
     hostParticipantId: string;
     players: {
       participantId: string;
@@ -56,8 +55,6 @@ const laterIso = "2026-05-16T01:00:00.000Z";
 const lobbyId = "00000000-0000-4000-8000-000000000111";
 const hostParticipantId = "00000000-0000-4000-8000-000000000211";
 const guestParticipantId = "00000000-0000-4000-8000-000000000311";
-const runtimeContentHash =
-  process.env.VITE_MULTIPLAYER_CONTENT_HASH ?? "development-unpinned";
 
 function withParticipant(
   lobby: MockLobbyState,
@@ -263,7 +260,6 @@ async function installMockMultiplayerApi(
         maxPlayers: lobby.maxPlayers,
         requiredProtocolVersion: 1,
         requiredRuntimeVersion: "host-authoritative-v2",
-        requiredContentHash: runtimeContentHash,
         hostParticipantId: lobby.hostParticipantId,
         players: lobby.players.map((player) => ({
           participantId: player.participantId,

@@ -62,6 +62,18 @@ describe("tunnel validation", () => {
       "tunnel-0-tri-0",
     ]);
   });
+
+  it("reports level-specific item types and non-finite values", () => {
+    const invalid = data();
+    const item = invalid.items[0];
+    if (!item) return;
+    invalid.items[0] = { ...item, type: 4, scale: Number.NaN };
+    const issueIds = getTunnelValidationIssues(invalid, "gutter").map(
+      (issue) => issue.id,
+    );
+    expect(issueIds).toContain("item-0-level-type");
+    expect(issueIds).toContain("item-0-scale");
+  });
 });
 
 describe("tunnel viewer geometry", () => {

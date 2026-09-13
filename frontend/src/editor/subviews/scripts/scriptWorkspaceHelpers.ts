@@ -35,6 +35,9 @@ export function getLevelState(workspace: ScriptWorkspaceState) {
       splineBindings: [],
       mapItemBindings: [],
       customPlacements: [],
+      terrainReplacements: [],
+      mapReplacements: [],
+      splineReplacements: [],
     }
   );
 }
@@ -188,10 +191,13 @@ export function parseScriptSourceDirectory(
   }
 }
 
-export function parseScriptSourceLanguage(
-  _value: string,
-): ScriptSourceLanguage {
-  return "lua";
+export function parseScriptSourceLanguage(value: string): ScriptSourceLanguage {
+  switch (value) {
+    case "lua":
+      return "lua";
+    default:
+      return "lua";
+  }
 }
 
 function buildScriptSourceDirectoryPath(
@@ -234,8 +240,11 @@ export function buildGeneratedScriptSourcePath(
 }
 
 export function buildDefaultScriptSourceContent(
-  _language: ScriptSourceLanguage,
+  language: ScriptSourceLanguage,
 ): string {
+  if (language !== "lua") {
+    return "";
+  }
   return [
     "local pangea = require('pangea')",
     "",

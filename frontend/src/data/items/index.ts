@@ -111,6 +111,21 @@ export {
   BillyFrontierItemMapper,
 } from "./mappers";
 
+export {
+  type ItemLevelBinding,
+  type ItemLevelBindingKind,
+  type ItemLevelBindingStrategy,
+  ITEM_LEVEL_BINDINGS,
+  getItemLevelBinding,
+  getItemLevelBindings,
+  hasItemLevelBinding,
+} from "./itemLevelBindings";
+
+export {
+  getItemLevelSupportLabel,
+  type ItemLevelSupportLabel,
+} from "./itemLevelSupport";
+
 // Item model utilities
 export {
   getGameMappingSummary,

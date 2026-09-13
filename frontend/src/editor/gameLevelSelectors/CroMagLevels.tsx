@@ -5,11 +5,14 @@ import {
   LEVEL_SELECTOR_GLOBALS,
 } from "@/editor/gameLevelSelectors/levelSelectorData";
 import { OpenFileButtons } from "@/editor/gameLevelSelectors/levelSelectorRender";
+import { ScriptItemDemoButton } from "@/editor/gameLevelSelectors/levelSelectorRender";
 
 export function CroMagLevels({
   openFile,
+  onCreateScriptItemDemoLevel,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
+  onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
   return (
     <>
@@ -22,6 +25,9 @@ export function CroMagLevels({
           })}
         </LevelGrid>
       ))}
+      <LevelGrid title="Script Item Demos">
+        <ScriptItemDemoButton globals={LEVEL_SELECTOR_GLOBALS.croMag} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
+      </LevelGrid>
     </>
   );
 }

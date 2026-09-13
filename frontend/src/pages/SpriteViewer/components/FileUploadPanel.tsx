@@ -51,17 +51,17 @@ export function FileUploadPanel({
             }
           }}
         >
-          <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select file type" />
           </SelectTrigger>
-          <SelectContent className="bg-gray-700 border-gray-600">
-            <SelectItem value="sprites" className="text-white focus:bg-gray-600">
+          <SelectContent>
+            <SelectItem value="sprites">
               Sprites (.shapes)
             </SelectItem>
-            <SelectItem value="tga" className="text-white focus:bg-gray-600">
+            <SelectItem value="tga">
               Images (.tga)
             </SelectItem>
-            <SelectItem value="tileset" className="text-white focus:bg-gray-600">
+            <SelectItem value="tileset">
               Tilesets (.tileset)
             </SelectItem>
           </SelectContent>

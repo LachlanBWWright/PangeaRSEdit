@@ -101,6 +101,44 @@ describe("level byte serialization boundaries", () => {
     }
   });
 
+  it("strips embedded Meta resources when metadata is disabled", async () => {
+    const metadataLevel = {
+      ...minimalLevelData(),
+      Meta: {
+        1000: {
+          name: "Level Metadata",
+          obj: {
+            schemaVersion: 1,
+            game: "ottomatic",
+            identity: "Earth Farm",
+            properties: { "level.gravity": "-30" },
+          },
+          order: 0,
+        },
+      },
+    };
+    const withMetadataDisabled = await serializeLevelDownloadBytes({
+      levelData: metadataLevel,
+      globals: BugdomGlobals,
+      fileName: "level",
+      mapImages: [],
+      levelMetadataEnabled: false,
+    });
+    const withoutMetadata = await serializeLevelDownloadBytes({
+      levelData: minimalLevelData(),
+      globals: BugdomGlobals,
+      fileName: "level",
+      mapImages: [],
+      levelMetadataEnabled: false,
+    });
+
+    expect(withMetadataDisabled.isOk()).toBe(true);
+    expect(withoutMetadata.isOk()).toBe(true);
+    if (withMetadataDisabled.isOk() && withoutMetadata.isOk()) {
+      expect(withMetadataDisabled.value[0]?.bytes).toEqual(withoutMetadata.value[0]?.bytes);
+    }
+  });
+
   it("reports unsupported image serialization errors from preview generation", async () => {
     const globals = {
       ...OttoGlobals,

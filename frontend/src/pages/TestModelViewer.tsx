@@ -687,10 +687,10 @@ export function TestModelViewer() {
           <div className="space-y-2">
             <Label className="text-gray-300">Game</Label>
             <Select value={selectedGame} onValueChange={handleGameChange}>
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="Select a game" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectContent>
                 {GAME_CONFIGS.map((game) => (
                   <SelectItem
                     key={game.id}
@@ -712,14 +712,14 @@ export function TestModelViewer() {
               onValueChange={handleFileChange}
               disabled={!gameConfig || allFiles.length === 0}
             >
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger>
                 <SelectValue
                   placeholder={
                     allFiles.length ? "Select a file" : "No files available"
                   }
                 />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600 max-h-80">
+              <SelectContent className="max-h-80">
                 {allFiles.map((file) => (
                   <SelectItem
                     key={file.path}

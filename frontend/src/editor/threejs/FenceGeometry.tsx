@@ -5,13 +5,17 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
+import { useAtom } from "jotai";
+import { SelectedFence, SelectedFenceNub } from "@/data/fences/fenceAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { getFenceHeight } from "@/data/fences/getFenceHeight";
 import { Texture, DoubleSide, TextureLoader, RepeatWrapping, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter } from "three";
 
-interface FenceGeometryProps {
+interface FenceGeometryProps extends FenceGeometryInteractionProps {
   fenceData: FenceData;
   headerData: HeaderData;
   terrainData: TerrainData;
@@ -21,7 +25,14 @@ interface FenceGeometryProps {
 
 // Import helper functions from separate files to avoid Fast Refresh warnings
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
+import type { Ray } from "three";
+import type { ThreeEntityDragState } from "./threeEntityInteraction";
 
+
+interface FenceGeometryInteractionProps {
+  onNubPointerDown?: (kind: "fence", entityIndex: number, pointIndex: number, pointerId: number, startX: number, startZ: number, ray: Ray) => void;
+  draggingEntity?: ThreeEntityDragState | null;
+}
 
 interface FenceSegmentGeometryData {
   vertices: number[];
@@ -129,8 +140,11 @@ interface FenceGroupData {
   }[];
 }
 
-const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData, topologyVersion }) => {
+const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData, topologyVersion, onNubPointerDown, draggingEntity }) => {
   const globals = useAtomValue(Globals);
+  const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
+  const [selectedFenceNub, setSelectedFenceNub] = useAtom(SelectedFenceNub);
+  const activeView = useAtomValue(ActiveView);
   const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
   useEffect(() => {
@@ -279,19 +293,46 @@ const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, heade
     <group name="fences">
       {fenceGroups.map((fenceGroup) => {
         const fenceType = fenceGroup.fenceType;
+        const fenceHeight = getFenceHeight(globals, fenceType);
         const imagePath = getFenceImagePath(globals, fenceType);
         const texture = textures.get(imagePath) || null;
         const fenceColor = getFenceColor(globals, fenceType, fenceGroup.fenceIdx);
+        const nubs = fenceData.FnNb[1000 + fenceGroup.fenceIdx]?.obj ?? [];
+        const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
+        const isSelected =
+          activeView === View.fences && selectedFence === fenceGroup.fenceIdx;
 
         return (
-          <group key={`fence-group-${fenceGroup.fenceIdx}`}>
+          <group
+            key={`fence-group-${fenceGroup.fenceIdx}`}
+            onPointerDown={activeView === View.fences ? (event) => {
+              event.stopPropagation();
+              setSelectedFence(fenceGroup.fenceIdx);
+              setSelectedFenceNub(null);
+            } : undefined}
+          >
             {fenceGroup.segments.map((segment) => (
               <FenceSegmentMesh
                 key={`fence-${fenceGroup.fenceIdx}-segment-${segment.index}`}
                 geometry={segment.geometry}
                 texture={texture}
-                fenceColor={fenceColor}
+                fenceColor={isSelected ? "#facc15" : fenceColor}
               />
+            ))}
+            {activeView === View.fences && nubs.map((nub, nubIdx) => (
+              <mesh
+                key={`fence-nub-${fenceGroup.fenceIdx}-${nubIdx}`}
+                position={[nub[0] * scale, getTerrainHeightAtPoint(nub[0], nub[1], headerData, terrainData, globals) + fenceHeight / 2, nub[1] * scale]}
+                onPointerDown={activeView === View.fences ? (event) => {
+                  event.stopPropagation();
+                  setSelectedFence(fenceGroup.fenceIdx);
+                  setSelectedFenceNub(nubIdx);
+                  onNubPointerDown?.("fence", fenceGroup.fenceIdx, nubIdx, event.pointerId, nub[0], nub[1], event.ray);
+                } : undefined}
+              >
+                <boxGeometry args={[32, fenceHeight, 32]} />
+                <meshBasicMaterial color={draggingEntity?.kind === "fence" && draggingEntity.entityIndex === fenceGroup.fenceIdx && draggingEntity.pointIndex === nubIdx ? 0x22c55e : isSelected && selectedFenceNub === nubIdx ? 0xffffff : 0xfacc15} wireframe={isSelected && selectedFenceNub !== nubIdx} />
+              </mesh>
             ))}
           </group>
         );

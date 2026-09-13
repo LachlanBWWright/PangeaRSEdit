@@ -1,5 +1,13 @@
 Follow these project standards for all code changes:
 
+## Source boundary
+
+- Never edit anything under `games/originals/`. Those directories are the
+  upstream/original game sources and must remain untouched.
+- Never edit anything under `games/pangea-ports/games/*/extern/Pomme/`.
+  Pomme is a vendored dependency; port implementation changes belong in the
+  game source directories or shared scripting code, not in Pomme.
+
 Never use TypeScript `any`, or type assertions. Model unknown values explicitly and narrow them safely.
 Never throw exceptions. Use `neverthrow` (`Result`, `ResultAsync`) for recoverable failure paths.
 Use `Result.fromThrowable` and `ResultAsync.fromPromise` only at third-party or external boundaries that may throw or reject. Wrap those exceptions immediately at the boundary and expose typed `Result` or `ResultAsync` APIs to the rest of the codebase. Internal functions must never throw; model their failures directly with `Result` or `ResultAsync` instead of wrapping internal calls with `fromThrowable` or `fromPromise`.

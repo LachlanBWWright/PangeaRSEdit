@@ -9,6 +9,8 @@ node_modules/
 plans/
 dist/
 build/pangea-script/
+build/pangea-script-wasm/
+**/build/Testing/Temporary/
 .env
 pangearsedit-dev.db
 pangearsedit-dev.db-shm

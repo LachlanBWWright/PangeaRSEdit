@@ -15,7 +15,6 @@ const validMatchConfig = {
   maxPlayers: 2,
   requiredProtocolVersion: 1,
   requiredRuntimeVersion: "host-authoritative-v2",
-  requiredContentHash: "development-unpinned",
   hostParticipantId: "host-1",
   players: [
     {

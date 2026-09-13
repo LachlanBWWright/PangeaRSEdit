@@ -61,18 +61,19 @@ import { currentAuthUserAtom } from "@/data/globals/authState";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import type { PreviewVfsFile } from "./utils/gamePreviewRuntimeTypes";
 import {
-  buildPreviewScriptFiles,
-  buildScriptPackageFiles,
-  buildScriptPackageZip,
+  buildPreviewScriptFilesAsync,
+  buildScriptPackageFilesAsync,
+  buildScriptPackageZipAsync,
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
   getScriptWorkspaceId,
-  importScriptPackageZip,
+  importScriptPackageZipAsync,
   replaceScriptWorkspace,
   retargetScriptWorkspace,
   scriptWorkspaceStoreAtom,
 } from "./subviews/scripts/scriptWorkspaceState";
 import { summarizeScriptWorkspace } from "./subviews/scripts/scriptWorkspaceSelectors";
+import { createScriptItemDemoWorkspace } from "./subviews/scripts/scriptItemDemoLevel";
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
   const match = MIGHTY_MIKE_LEVELS.find(
@@ -122,6 +123,7 @@ export function IntroPrompt() {
   // Tunnel data for Bugdom 2 tunnel levels
   const [tunnelData, setTunnelData] = useState<TunnelData | null>(null);
   const [tunnelFileName, setTunnelFileName] = useState<string>("");
+  const [tunnelLevelKind, setTunnelLevelKind] = useState<"plumbing" | "gutter">("plumbing");
   const canSaveToCloud = authUser !== null;
 
   // Safe item types tracking
@@ -146,6 +148,7 @@ export function IntroPrompt() {
   );
   const [processed, setProcessed] = useState(false);
   const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [previewFromMainMenu, setPreviewFromMainMenu] = useState(false);
   const [newMapConfirmOpen, setNewMapConfirmOpen] = useState(false);
   const [previewLevelNumber, setPreviewLevelNumber] = useState(0);
   const [terrainDataBytes, setTerrainDataBytes] = useState<
@@ -453,6 +456,7 @@ export function IntroPrompt() {
     setMapImagesFile(undefined);
     setTunnelData(null);
     setTunnelFileName("");
+    setTunnelLevelKind("plumbing");
     setLevelNumber(undefined);
     setPreviewCustomFiles(undefined);
     setTestDialogOpen(false);
@@ -462,10 +466,13 @@ export function IntroPrompt() {
   }, [setAllAtomicData, setLevelNumber]);
 
   const handleCreateBlankLevel = useCallback(
-    (gameType: GlobalsInterface) => {
+    (gameType: GlobalsInterface, includePlayerStart = false) => {
       setGlobals(gameType);
       const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
-      const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
+      const result = createBlankLevel(gameType.GAME_TYPE, {
+        ...dimensions,
+        includePlayerStart,
+      });
       if (result.isErr()) {
         toast.error("Failed to create blank level", {
           description: result.error,
@@ -513,6 +520,24 @@ export function IntroPrompt() {
     ],
   );
 
+  const handleCreateScriptItemDemoLevel = useCallback(
+    (gameType: GlobalsInterface) => {
+      handleCreateBlankLevel(gameType, true);
+      void createScriptItemDemoWorkspace(gameType).match(
+        (workspace) => {
+          setScriptWorkspaceStore((store) =>
+            replaceScriptWorkspace(store, workspace),
+          );
+          toast.success("Script item demo level created");
+        },
+        (error) => toast.error("Could not create script item demo level", {
+          description: error,
+        }),
+      );
+    },
+    [handleCreateBlankLevel, setScriptWorkspaceStore],
+  );
+
   const buildOriginalCompatibleFiles = useCallback(async () => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
     if (combinedDataResult.isErr()) {
@@ -552,7 +577,16 @@ export function IntroPrompt() {
   }, [getCurrentAtomicData, globals, mapFile, mapImages, mapImagesFile]);
 
   const prepareTestLevel = useCallback(
-    (customFiles?: readonly PreviewVfsFile[]) => {
+    (customFiles?: readonly PreviewVfsFile[], fromMainMenu = false) => {
+      setPreviewFromMainMenu(fromMainMenu);
+      if (fromMainMenu) {
+        setPreviewCustomFiles(customFiles);
+        setTerrainDataBytes(null);
+        setTerrainRsrcBytes(null);
+        setTerrainTextureBytes(null);
+        setTestDialogOpen(true);
+        return;
+      }
       const combinedDataResult = combineLevelData(getCurrentAtomicData());
       if (combinedDataResult.isErr()) {
         toast.error("Preview failed", {
@@ -645,8 +679,14 @@ export function IntroPrompt() {
     prepareTestLevel(undefined);
   }, [prepareTestLevel]);
 
-  const handlePreviewWithScripts = useCallback(() => {
-    const previewFilesResult = buildPreviewScriptFiles(scriptWorkspace);
+  const handlePreviewFromMainMenu = useCallback(() => {
+    prepareTestLevel(undefined, true);
+  }, [prepareTestLevel]);
+
+  const handlePreviewWithScripts = useCallback(async () => {
+    const previewFilesResult = await buildPreviewScriptFilesAsync(
+      scriptWorkspace,
+    );
     if (previewFilesResult.isErr()) {
       toast.error("Preview failed", {
         description: previewFilesResult.error,
@@ -657,8 +697,22 @@ export function IntroPrompt() {
     prepareTestLevel(previewFilesResult.value);
   }, [prepareTestLevel, scriptWorkspace]);
 
-  const handleDownloadScriptPackage = useCallback(() => {
-    const zipResult = buildScriptPackageZip(scriptWorkspace);
+  const handlePreviewFromMainMenuWithScripts = useCallback(async () => {
+    const previewFilesResult = await buildPreviewScriptFilesAsync(
+      scriptWorkspace,
+    );
+    if (previewFilesResult.isErr()) {
+      toast.error("Preview failed", {
+        description: previewFilesResult.error,
+      });
+      return;
+    }
+
+    prepareTestLevel(previewFilesResult.value, true);
+  }, [prepareTestLevel, scriptWorkspace]);
+
+  const handleDownloadScriptPackage = useCallback(async () => {
+    const zipResult = await buildScriptPackageZipAsync(scriptWorkspace);
     if (zipResult.isErr()) {
       toast.error("Script package failed", {
         description: zipResult.error,
@@ -679,7 +733,9 @@ export function IntroPrompt() {
       return;
     }
 
-    const scriptFilesResult = buildScriptPackageFiles(scriptWorkspace);
+    const scriptFilesResult = await buildScriptPackageFilesAsync(
+      scriptWorkspace,
+    );
     if (scriptFilesResult.isErr()) {
       toast.error("Extended package failed", {
         description: scriptFilesResult.error,
@@ -718,8 +774,8 @@ export function IntroPrompt() {
 
       void file
         .arrayBuffer()
-        .then((buffer) => {
-          const importResult = importScriptPackageZip(
+        .then(async (buffer) => {
+          const importResult = await importScriptPackageZipAsync(
             new Uint8Array(buffer),
             previewScriptContext,
           );
@@ -821,11 +877,11 @@ export function IntroPrompt() {
 
   useEffect(() => {
     const left =
-      mapFile && mapImages ? (
+      mapFile && mapImages && !tunnelData ? (
         <Button onClick={() => setNewMapConfirmOpen(true)}>←New Map</Button>
       ) : null;
     const editorActions =
-      mapFile && mapImages ? (
+      mapFile && mapImages && !tunnelData ? (
         <>
           <LevelActionMenu
             canPreviewInGame={Boolean(GAME_PORT_CONFIGS[globals.GAME_TYPE])}
@@ -833,6 +889,8 @@ export function IntroPrompt() {
             hasScripts={scriptSummary.hasScripts}
             onPreviewInGame={handleTestLevel}
             onPreviewWithScripts={handlePreviewWithScripts}
+            onPreviewFromMainMenu={handlePreviewFromMainMenu}
+            onPreviewFromMainMenuWithScripts={handlePreviewFromMainMenuWithScripts}
             onDownload={handleDownload}
             onDownloadExtendedPackage={handleDownloadExtendedPackage}
             onDownloadScriptPackage={handleDownloadScriptPackage}
@@ -850,6 +908,7 @@ export function IntroPrompt() {
               terrainRsrcBytes={terrainRsrcBytes}
               terrainTextureBytes={terrainTextureBytes}
               customFiles={previewCustomFiles}
+              normalLaunch={previewFromMainMenu}
             />
           )}
         </>
@@ -863,6 +922,8 @@ export function IntroPrompt() {
     handleDownload,
     handleSaveToCloud,
     handleTestLevel,
+    handlePreviewFromMainMenu,
+    handlePreviewFromMainMenuWithScripts,
     mapFile,
     mapImages,
     canSaveToCloud,
@@ -870,6 +931,7 @@ export function IntroPrompt() {
     handleDownloadScriptPackage,
     previewLevelNumber,
     previewCustomFiles,
+    previewFromMainMenu,
     handlePreviewWithScripts,
     setEditorNavbarActions,
     setEditorNavbarLeft,
@@ -878,6 +940,7 @@ export function IntroPrompt() {
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,
+    tunnelData,
     testDialogOpen,
     handleUploadScriptPackage,
   ]);
@@ -887,7 +950,8 @@ export function IntroPrompt() {
       <TunnelEditor
         tunnelData={tunnelData}
         fileName={tunnelFileName}
-        isPlumbing={tunnelFileName.toLowerCase().includes("plumb")}
+        isPlumbing={tunnelLevelKind === "plumbing"}
+        tunnelLevelKind={tunnelLevelKind}
         onUpdateTunnelData={handleTunnelDataUpdate}
         onClose={handleTunnelClose}
       />
@@ -904,12 +968,14 @@ export function IntroPrompt() {
         setData={setAllAtomicData}
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
+        setTunnelLevelKind={setTunnelLevelKind}
         onCreateBlankLevel={handleCreateBlankLevel}
+        onCreateScriptItemDemoLevel={handleCreateScriptItemDemoLevel}
       />
     );
 
   return (
-    <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full p-2 md:p-6 flex-1 min-h-0">
+    <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full flex-1 min-h-0">
       <NewMapConfirmDialog
         open={newMapConfirmOpen}
         onOpenChange={setNewMapConfirmOpen}

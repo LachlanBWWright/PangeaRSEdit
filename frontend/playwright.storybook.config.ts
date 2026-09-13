@@ -7,6 +7,7 @@ export default defineConfig({
     "**/*Accessibility.spec.ts",
     "**/*Overflow.spec.ts",
     "**/*Interactions.spec.ts",
+    "**/*Screenshots.spec.ts",
   ],
   fullyParallel: false,
   workers: 1,
@@ -15,7 +16,7 @@ export default defineConfig({
     timeout: 30_000,
   },
   use: {
-    baseURL: "http://127.0.0.1:6006",
+    baseURL: process.env.STORYBOOK_BASE_URL ?? "http://127.0.0.1:6006",
     trace: "retain-on-failure",
   },
   webServer: {

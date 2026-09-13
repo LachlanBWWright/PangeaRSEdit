@@ -35,7 +35,6 @@ const multiplayerMatchConfigBaseSchema = z.object({
   maxPlayers: z.number().int().min(2).max(6),
   requiredProtocolVersion: z.number().int().positive(),
   requiredRuntimeVersion: z.string().min(1),
-  requiredContentHash: z.string().min(1),
   hostParticipantId: z.string().min(1),
   players: z.array(MultiplayerMatchConfigPlayerSchema),
 });

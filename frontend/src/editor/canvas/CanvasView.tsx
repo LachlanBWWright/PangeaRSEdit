@@ -8,6 +8,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
+import { isRenderableContainerSize } from "@/hooks/useContainerSize";
 import { Updater } from "use-immer";
 import { CanvasStageLayers, CanvasViewMode } from "./CanvasStageLayers";
 import {
@@ -27,6 +28,7 @@ import {
   getStickyStageOffset,
   getTerrainContentSize,
   StageData,
+  isPointerWithinMap,
 } from "@/editor/canvas/konvaViewState";
 
 type View = CanvasViewMode;
@@ -90,7 +92,8 @@ export function KonvaView({
 
   useEffect(() => {
     const updateSize = () => {
-      setContainerSize(getContainerSize(containerRef.current));
+      const nextSize = getContainerSize(containerRef.current);
+      if (isRenderableContainerSize(nextSize)) setContainerSize(nextSize);
     };
     updateSize();
     if (typeof ResizeObserver !== "undefined") {
@@ -202,7 +205,20 @@ export function KonvaView({
           scaleY={stage.scale}
           x={stageOffset.x}
           y={stageOffset.y}
-          draggable={!isTopologyMode}
+          draggable
+          onDragStart={(e) => {
+            if (
+              isTopologyMode &&
+              isPointerWithinMap(
+                e,
+                globals.TILE_SIZE,
+                headerData.Hedr[1000].obj.mapWidth,
+                headerData.Hedr[1000].obj.mapHeight,
+              )
+            ) {
+              e.target.getStage()?.stopDrag();
+            }
+          }}
           onClick={handleStageClick}
           onDblClick={handleStageDblClick}
           onWheel={handleStageWheel}

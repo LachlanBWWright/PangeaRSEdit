@@ -39,6 +39,22 @@ export function ScriptPreviewExportPanel({
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
       <div className="grid gap-4">
+        <Card className="border-sky-900 bg-sky-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-sky-200">
+              Prefer VS Code or another IDE?
+            </CardTitle>
+            <CardDescription className="text-xs text-sky-300/80">
+              Download the script package, edit the Lua source in your IDE, then upload the complete ZIP here.
+              It includes LuaLS settings, generated declarations, and a starter example.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 text-xs text-sky-100/80">
+            <p>1. Download Script Package</p>
+            <p>2. Edit files under Data/Scripts/src/</p>
+            <p>3. Upload Script Package, compile, and preview</p>
+          </CardContent>
+        </Card>
         {warnings.length > 0 && (
           <Card className="border-amber-900 bg-amber-950/20 text-amber-200">
             <CardHeader className="pb-2">

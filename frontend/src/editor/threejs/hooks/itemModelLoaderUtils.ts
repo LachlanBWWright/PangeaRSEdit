@@ -1,8 +1,8 @@
 import { mapErr } from "@/utils/mapErr";
-import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { ResultAsync } from "neverthrow";
 import { Group, Mesh, Object3D } from "three";
-import { errorSchema } from "@/schemas/common";
+import { arrayBufferSchema, errorSchema } from "@/schemas/common";
+import { z } from "zod";
 import {
   GLTFLoader,
   type GLTF,
@@ -10,7 +10,25 @@ import {
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 let requestIdCounter = 0;
+let workerIdCounter = 0;
+const workerIds = new WeakMap<Worker, number>();
 const fileGltfCache = new Map<string, Promise<GLTF>>();
+
+function getWorkerCacheKey(worker: Worker, fileUrl: string): string {
+  let workerId = workerIds.get(worker);
+  if (workerId === undefined) {
+    workerId = ++workerIdCounter;
+    workerIds.set(worker, workerId);
+  }
+  return `${workerId}:${fileUrl}`;
+}
+
+const workerResponseSchema = z.object({
+  type: z.string(),
+  requestId: z.string().optional(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+});
 
 export function convertBg3dToGltf(
   worker: Worker,
@@ -19,15 +37,23 @@ export function convertBg3dToGltf(
   const requestId = `req_${++requestIdCounter}`;
   return new Promise<ArrayBuffer>((resolve, reject) => {
     let resolved = false;
-    const handleMessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
-      if (e.data.requestId !== requestId) return;
+    const handleMessage = (e: MessageEvent<unknown>) => {
+      const parsed = workerResponseSchema.safeParse(e.data);
+      if (!parsed.success || parsed.data.requestId !== requestId) return;
       resolved = true;
       worker.removeEventListener("message", handleMessage);
       worker.removeEventListener("error", handleError);
-      if (e.data.type === "error")
-        reject(new Error(`Worker error: ${e.data.error}`));
-      else if (e.data.type === "bg3d-with-skeleton-to-glb" && e.data.result)
-        resolve(e.data.result);
+      if (parsed.data.type === "error") {
+        reject(new Error(`Worker error: ${parsed.data.error ?? "Unknown worker error"}`));
+        return;
+      }
+      if (parsed.data.type !== "bg3d-to-glb") {
+        reject(new Error(`Unexpected worker response: ${parsed.data.type}`));
+        return;
+      }
+      const result = arrayBufferSchema.safeParse(parsed.data.result);
+      if (result.success) resolve(result.data);
+      else reject(new Error("Worker returned an invalid GLB buffer."));
     };
     const handleError = (error: ErrorEvent) => {
       if (resolved) return;
@@ -38,12 +64,7 @@ export function convertBg3dToGltf(
     };
     worker.addEventListener("message", handleMessage);
     worker.addEventListener("error", handleError);
-    worker.postMessage({
-      type: "bg3d-with-skeleton-to-glb",
-      bg3dBuffer: buffer,
-      skeletonData: undefined,
-      requestId,
-    });
+    worker.postMessage({ type: "bg3d-to-glb", buffer, requestId });
     setTimeout(() => {
       if (resolved) return;
       resolved = true;
@@ -55,7 +76,8 @@ export function convertBg3dToGltf(
 }
 
 export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
-  const cached = fileGltfCache.get(fileUrl);
+  const cacheKey = getWorkerCacheKey(worker, fileUrl);
+  const cached = fileGltfCache.get(cacheKey);
   if (cached) return cached;
 
   const promise = (async () => {
@@ -108,9 +130,9 @@ export function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
     return gltf;
   })();
 
-  fileGltfCache.set(fileUrl, promise);
+  fileGltfCache.set(cacheKey, promise);
   promise.then(undefined, () => {
-    fileGltfCache.delete(fileUrl);
+    fileGltfCache.delete(cacheKey);
   });
   return promise;
 }

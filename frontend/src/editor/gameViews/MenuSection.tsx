@@ -2,17 +2,15 @@ import { PropsWithChildren } from "react";
 
 type MenuSectionProps = PropsWithChildren<{
   className?: string;
-  scrollable?: boolean;
 }>;
 
 export function MenuSection({
   className,
   children,
-  scrollable = true,
 }: MenuSectionProps) {
   return (
     <div
-      className={`h-[320px] ${scrollable ? "overflow-y-auto" : "overflow-hidden"} ${className ?? ""}`.trim()}
+      className={`h-[320px] min-h-0 shrink-0 overflow-y-auto ${className ?? ""}`.trim()}
     >
       {children}
     </div>

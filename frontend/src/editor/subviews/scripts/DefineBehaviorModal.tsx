@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScriptFieldHelpTooltip } from "./ScriptFieldHelpTooltip";
 import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
+import { buildCustomObjectSourceTemplate } from "./scriptCustomObjectTemplate";
 import type { ScriptHookId, ScriptTagDefinition } from "./scriptWorkspaceState";
 
 type BehaviorTarget =
@@ -89,7 +90,7 @@ const HOOK_OPTIONS: Record<
   splineItem: [{ id: "onSplineItem", label: "Spline Item" }],
   mightyMikeItem: [{ id: "onMapItem", label: "Map Item" }],
   objectType: [{ id: "onObjectFrame", label: "Object Frame" }],
-  customObject: [{ id: "onObjectFrame", label: "Object Frame" }],
+  customObject: [{ id: "onObjectFrame", label: "Object lifecycle" }],
 };
 
 function getDefaultHook(target: BehaviorTarget): ScriptHookId | null {
@@ -215,6 +216,10 @@ function generateSourceTemplate(
   hooks: ScriptHookId[],
   label: string,
 ): string {
+  if (target === "customObject") {
+    return buildCustomObjectSourceTemplate(label);
+  }
+
   const lines = [
     `-- ${label}`,
     `-- Generated script for ${target}`,
@@ -256,7 +261,7 @@ export function DefineBehaviorModal({
 }: DefineBehaviorModalProps) {
   const [target, setTarget] = useState<BehaviorTarget>(initialTarget);
   const [selectedHooks, setSelectedHooks] = useState<readonly ScriptHookId[]>(
-    initialHooks ?? ["onTerrainItem"],
+    initialHooks ?? [getDefaultHook(initialTarget) ?? "onTerrainItem"],
   );
   const [label, setLabel] = useState(() =>
     getInitialScriptLabel(initialTarget, initialHooks),
@@ -279,23 +284,6 @@ export function DefineBehaviorModal({
     () => buildGeneratedSourceFilePath(target, label, existingSourcePaths),
     [existingSourcePaths, label, target],
   );
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    setTarget(initialTarget);
-    setLabel(getInitialScriptLabel(initialTarget, initialHooks));
-    setDescription("");
-    setSelectedObjectTypeId("");
-    setSelectedTags([]);
-    if (initialHooks && initialHooks.length > 0) {
-      setSelectedHooks(initialHooks);
-      return;
-    }
-    const defaultHook = getDefaultHook(initialTarget);
-    setSelectedHooks(defaultHook === null ? [] : [defaultHook]);
-  }, [initialHooks, initialTarget, open]);
 
   const handleTargetChange = (newTarget: BehaviorTarget) => {
     setTarget(newTarget);

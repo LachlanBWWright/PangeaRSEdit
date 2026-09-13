@@ -29,6 +29,7 @@ interface ImageEditorCanvasProps {
   handleMouseUp: () => void;
   handleWheel: (event: Konva.KonvaEventObject<WheelEvent>) => void;
   selectedColorHighlightCanvas: HTMLCanvasElement | null;
+  overlayImage: HTMLCanvasElement | null;
   strokes: BrushStroke[];
   currentStroke: BrushStroke | null;
 }
@@ -51,6 +52,7 @@ export function ImageEditorCanvas({
   handleMouseUp,
   handleWheel,
   selectedColorHighlightCanvas,
+  overlayImage,
   strokes,
   currentStroke,
 }: ImageEditorCanvasProps) {
@@ -120,6 +122,15 @@ export function ImageEditorCanvas({
                 <Image image={image} />
                 {selectedColorHighlightCanvas && (
                   <Image image={selectedColorHighlightCanvas} opacity={0.45} />
+                )}
+                {overlayImage && (
+                  <Image
+                    image={overlayImage}
+                    width={image.width}
+                    height={image.height}
+                    opacity={0.65}
+                    listening={false}
+                  />
                 )}
 
                 {strokes.map((stroke, i) => (

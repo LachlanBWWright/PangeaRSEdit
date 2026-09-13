@@ -56,10 +56,10 @@ export function SpriteControls({
                 }
               }}
             >
-              <SelectTrigger className="flex-1 bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Select a shape" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectContent>
                 {shapesFile.shapes.map((shape, idx) => (
                   <SelectItem
                     key={`shape-${idx}`}

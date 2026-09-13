@@ -4,11 +4,14 @@ import {
   Nanosaur2Globals,
   type GlobalsInterface,
 } from "@/data/globals/globals";
+import { ScriptItemDemoButton } from "./levelSelectorRender";
 
 export function Nanosaur2Levels({
   openFile,
+  onCreateScriptItemDemoLevel,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
+  onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
   return (
     <LevelGrid title="Nanosaur 2 Levels">
@@ -75,6 +78,7 @@ export function Nanosaur2Levels({
       >
         CTF 2
       </Button>
+      <ScriptItemDemoButton globals={Nanosaur2Globals} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
     </LevelGrid>
   );
 }

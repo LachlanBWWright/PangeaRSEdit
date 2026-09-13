@@ -273,6 +273,36 @@ export const hexDataEntrySchema = z.object({
   order: z.number().optional(),
 });
 
+/** The four-character resource used for editable level behavior metadata. */
+export const metadataResourceSchema = z.object({
+  schemaVersion: z.literal(1),
+  game: z.enum([
+    "ottomatic",
+    "bugdom1",
+    "bugdom2",
+    "nanosaur1",
+    "nanosaur2",
+    "cromag",
+    "billyfrontier",
+    "mightymike",
+    "Nanosaur",
+    "Nanosaur 1",
+    "Mighty Mike",
+    "Otto Matic",
+    "Bugdom",
+    "Bugdom 2",
+    "Nanosaur 2",
+    "Cro-Mag Rally",
+    "Billy Frontier",
+  ]),
+  identity: z.string().min(1),
+  properties: z.record(z.string(), z.string()),
+}).strict();
+
+export const metadataResourceTypeSchema = z.object({
+  1000: resourceEntrySchema(metadataResourceSchema),
+});
+
 // ============================================================================
 // Level Data Schema helpers and notes
 //

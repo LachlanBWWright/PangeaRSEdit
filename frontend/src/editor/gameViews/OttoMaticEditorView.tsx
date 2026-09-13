@@ -14,6 +14,7 @@ import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
@@ -27,7 +28,10 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { CanvasViewToggle } from "../subviews/CanvasViewToggle";
+import { supportsThreeCanvas } from "../canvas/canvasViewState";
 import { MenuSection } from "./MenuSection";
+import { LevelMetadataMenu } from "../subviews/metadata/LevelMetadataMenu";
 import {
   EmptyFencePrompt,
   EmptyItemPrompt,
@@ -84,6 +88,7 @@ export function OttoMaticEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const { levelMetadata } = useFeatureFlags();
   const storedView = useAtomValue(ActiveView);
   const setView = useSetAtom(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
@@ -119,8 +124,8 @@ export function OttoMaticEditorView({
   const view = normalizeEditorView(
     storedView,
     ENABLE_SCRIPTS
-      ? [View.fences, View.water, View.items, View.splines, View.scripts, View.tiles, View.supertiles]
-      : [View.fences, View.water, View.items, View.splines, View.tiles, View.supertiles],
+      ? [View.fences, View.water, View.items, View.splines, View.scripts, View.tiles, View.supertiles, ...(levelMetadata ? [View.metadata] : [])]
+      : [View.fences, View.water, View.items, View.splines, View.tiles, View.supertiles, ...(levelMetadata ? [View.metadata] : [])],
     showSupertileMenu ? View.supertiles : View.tiles,
   );
   useEffect(() => {
@@ -158,8 +163,11 @@ export function OttoMaticEditorView({
   };
 
   return (
-    <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection>
+    <div className={`flex flex-col flex-1 w-full gap-2 min-h-0 ${view === View.tiles || view === View.scripts ? "" : "pt-2 md:pt-6"}`}>
+      <MenuSection
+        key={view}
+        className={view === View.scripts || view === View.metadata ? "!h-full" : undefined}
+      >
         {view === View.fences &&
           (fenceData ? (
             <FenceMenu
@@ -223,6 +231,23 @@ export function OttoMaticEditorView({
           <OttoMaticTilesMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
+          />
+        )}
+        {levelMetadata && view === View.metadata && (
+          <LevelMetadataMenu terrainData={terrainData} setTerrainData={setTerrainData} />
+        )}
+        {view === View.supertiles && showSupertileMenu && (
+          <SupertileMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+            terrainData={terrainData}
+            itemData={itemData}
+            fenceData={fenceData}
+            splineData={splineData}
+            liquidData={liquidData}
+            setTerrainData={setTerrainData}
+            mapImages={mapImages}
+            setMapImages={setMapImages}
             onApplyLevelScale={(nextTileSize, mode) =>
               applyLevelScale({
                 previousTileSize: headerData.Hedr[1000].obj.tileSize,
@@ -238,18 +263,11 @@ export function OttoMaticEditorView({
             }
           />
         )}
-        {view === View.supertiles && showSupertileMenu && (
-          <SupertileMenu
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-            terrainData={terrainData}
-            setTerrainData={setTerrainData}
-            mapImages={mapImages}
-            setMapImages={setMapImages}
-          />
-        )}
       </MenuSection>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
+      {view !== View.scripts && view !== View.metadata && <div
+          className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative"
+      >
+        {supportsThreeCanvas(view) && <CanvasViewToggle />}
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -259,9 +277,11 @@ export function OttoMaticEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
-          {itemData && <ItemFilterToggle />}
+          {itemData && (
+            <ItemFilterToggle itemData={itemData} splineData={splineData} />
+          )}
         </div>
-        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
+        {canvasViewMode === CanvasView.THREE_D && supportsThreeCanvas(view) ? (
           <ThreeView
             headerData={headerData}
             fenceData={fenceData}
@@ -270,6 +290,10 @@ export function OttoMaticEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setItemData={setItemData}
+            setFenceData={setFenceData}
+            setLiquidData={setLiquidData}
+            setSplineData={setSplineData}
             setTerrainData={setTerrainData}
           />
         ) : (
@@ -292,7 +316,7 @@ export function OttoMaticEditorView({
             onResize={handleSupertileResize}
           />
         )}
-      </div>
+      </div>}
     </div>
   );
 }

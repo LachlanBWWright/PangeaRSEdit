@@ -28,6 +28,7 @@ export interface BlankLevelOptions {
   width: number;
   height: number;
   defaultTerrainHeight?: number;
+  includePlayerStart?: boolean;
 }
 export interface BlankLevelData {
   headerData: HeaderData;
@@ -57,6 +58,7 @@ export function createBlankLevel(
       options.width,
       options.height,
       defaultHeight,
+      options.includePlayerStart ?? false,
     );
   }
   if (game === Game.MIGHTY_MIKE) {
@@ -64,9 +66,15 @@ export function createBlankLevel(
       options.width,
       options.height,
       defaultHeight,
+      options.includePlayerStart ?? false,
     );
   }
-  const headerData = createBlankHeader(game, options.width, options.height);
+  const headerData = createBlankHeader(
+    game,
+    options.width,
+    options.height,
+    options.includePlayerStart ? 1 : 0,
+  );
   const terrainData = createBlankTerrain(
     game,
     options.width,
@@ -77,10 +85,13 @@ export function createBlankLevel(
   const fenceData = req.supportsFences ? createBlankFenceData() : null;
   const splineData = req.supportsSplines ? createBlankSplineData() : null;
   const liquidData = req.supportsWater ? createBlankLiquidData() : null;
+  const itemDataWithPlayerStart = options.includePlayerStart
+    ? createPlayerStartItemData(game)
+    : itemData;
   return ok({
     headerData,
     terrainData,
-    itemData,
+    itemData: itemDataWithPlayerStart,
     fenceData,
     splineData,
     liquidData,
@@ -90,11 +101,12 @@ function createBlankHeader(
   game: Game,
   width: number,
   height: number,
+  numItems = 0,
 ): HeaderData {
   // Base fields required by BaseHeader
   const baseFields = {
     version: 1,
-    numItems: 0,
+    numItems,
     mapWidth: width,
     mapHeight: height,
     tileSize: 32,
@@ -221,6 +233,19 @@ function createBlankTerrain(
 function createBlankItemData(): ItemData {
   return { Itms: { 1000: { name: "Terrain Items List", obj: [], order: 0 } } };
 }
+
+function createPlayerStartItemData(game: Game): ItemData {
+  const type = game === Game.MIGHTY_MIKE ? 29 : 0;
+  return {
+    Itms: {
+      1000: {
+        name: "Terrain Items List",
+        obj: [{ x: 0, z: 0, type, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 }],
+        order: 0,
+      },
+    },
+  };
+}
 function createBlankFenceData(): FenceData {
   return {
     Fenc: { 1000: { name: "Fence List", obj: [], order: 0 } },
@@ -255,8 +280,14 @@ function createBlankNanosaurLevel(
   width: number,
   height: number,
   defaultHeight: number,
+  includePlayerStart: boolean,
 ): Result<BlankLevelData, string> {
-  const headerData = createBlankHeader(Game.NANOSAUR, width, height);
+  const headerData = createBlankHeader(
+    Game.NANOSAUR,
+    width,
+    height,
+    includePlayerStart ? 1 : 0,
+  );
   const terrainData = createBlankTerrain(
     Game.NANOSAUR,
     width,
@@ -272,6 +303,19 @@ function createBlankNanosaurLevel(
     height,
     defaultHeight,
   );
+  if (includePlayerStart) {
+    blankLevel.objectList = [
+      {
+        x: 0,
+        y: 0,
+        type: 0,
+        parm: [0, 0, 0, 0],
+        flags: 0,
+        prevItemIdx: -1,
+        nextItemIdx: -1,
+      },
+    ];
+  }
   terrainData._metadata = {
     ...terrainData._metadata,
     nanosaur1RawLevel: blankLevel,
@@ -279,7 +323,9 @@ function createBlankNanosaurLevel(
   return ok({
     headerData,
     terrainData,
-    itemData,
+    itemData: includePlayerStart
+      ? createPlayerStartItemData(Game.NANOSAUR)
+      : itemData,
     fenceData,
     splineData,
     liquidData,
@@ -290,8 +336,14 @@ function createBlankMightyMikeLevel(
   width: number,
   height: number,
   defaultHeight: number,
+  includePlayerStart: boolean,
 ): Result<BlankLevelData, string> {
-  const headerData = createBlankHeader(Game.MIGHTY_MIKE, width, height);
+  const headerData = createBlankHeader(
+    Game.MIGHTY_MIKE,
+    width,
+    height,
+    includePlayerStart ? 1 : 0,
+  );
   const terrainData = createBlankTerrain(
     Game.MIGHTY_MIKE,
     width,
@@ -311,12 +363,19 @@ function createBlankMightyMikeLevel(
     flatTileValues: MightyMikeTileValue[];
     blankTileSet: MightyMikeTileSet;
   } = buildBlankMightyMikeData(width, height);
+  const mapData = includePlayerStart
+    ? {
+        ...blankMap,
+        numItems: 1,
+        items: [{ x: 250, y: 300, type: 29, p0: 0, p1: 0, p2: 0, p3: 0 }],
+      }
+    : blankMap;
   terrainData._metadata = {
     ...terrainData._metadata,
     1000: {
       name: "Metadata",
       obj: {
-        mightyMikeMapData: blankMap,
+        mightyMikeMapData: mapData,
         mightyMikeTileValues: flatTileValues,
       },
       order: 100,
@@ -337,7 +396,7 @@ function createBlankMightyMikeLevel(
     fenceData,
     splineData,
     liquidData,
-    mightyMikeMapData: blankMap,
+    mightyMikeMapData: mapData,
     mightyMikeTileValues: flatTileValues,
     mightyMikeTileSet: blankTileSet,
   });

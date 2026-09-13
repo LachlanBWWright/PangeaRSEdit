@@ -1,6 +1,6 @@
 import type { ResultAsync } from "neverthrow";
 
-export function ignoreRtcError(_message: string): void {
+export function ignoreRtcError(): void {
   return;
 }
 

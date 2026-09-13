@@ -1,11 +1,20 @@
 import type { LevelData } from "@/python/structSpecs/LevelTypes";
-import type { GlobalsInterface } from "@/data/globals/globals";
+import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import { snapshotCanvasImages } from "@/data/level-io/terrainImageSnapshots";
 import {
   preparePreviewWithWorker,
   serializeDownloadWithWorker,
 } from "@/data/level-io/levelIoWorkerClient";
 import type { LevelIoProgress } from "@/data/level-io/levelIoTypes";
+import { getFeatureFlags } from "@/config/featureFlags";
+import {
+  cacheDownloadArtifacts,
+  cachePreviewArtifacts,
+  getCachedDownloadFiles,
+  getCachedPreviewArtifacts,
+  getLevelOutputCacheKeys,
+  getLevelOutputReuse,
+} from "@/data/level-io/levelOutputCache";
 
 function downloadBytes(bytes: Uint8Array, filename: string): void {
   const stableBytes = Uint8Array.from(bytes);
@@ -35,6 +44,48 @@ export async function buildPreviewTerrainBlobs(
   const snapshotResult = snapshotCanvasImages(mapImages ?? []);
   if (snapshotResult.isErr()) {
     return null;
+  }
+
+  const hasCompanionMetadata =
+    getFeatureFlags().levelMetadata &&
+    (globals.GAME_TYPE === Game.NANOSAUR || globals.GAME_TYPE === Game.MIGHTY_MIKE) &&
+    data.Meta !== undefined;
+  if (getFeatureFlags().levelOutputCache && !hasCompanionMetadata) {
+    const keys = getLevelOutputCacheKeys(
+      data,
+      globals,
+      snapshotResult.value,
+    );
+    const reuse = getLevelOutputReuse(globals, keys);
+    const cached = getCachedPreviewArtifacts(
+      globals,
+      reuse,
+      snapshotResult.value.length > 0,
+    );
+    if (cached) return cached;
+
+    const previewResult = await preparePreviewWithWorker(
+      {
+        globals,
+        levelData: data,
+        mapImages: snapshotResult.value,
+        ...reuse,
+      },
+      onProgress,
+    );
+    if (previewResult.isErr()) return null;
+    cachePreviewArtifacts(globals, keys, previewResult.value);
+    return {
+      dataBytes: previewResult.value.dataBytes
+        ? Uint8Array.from(previewResult.value.dataBytes)
+        : null,
+      rsrcBytes: previewResult.value.rsrcBytes
+        ? Uint8Array.from(previewResult.value.rsrcBytes)
+        : null,
+      textureBytes: previewResult.value.textureBytes
+        ? Uint8Array.from(previewResult.value.textureBytes)
+        : null,
+    };
   }
 
   const previewResult = await preparePreviewWithWorker(
@@ -92,6 +143,29 @@ export async function saveMap({
     return;
   }
 
+  const useCache =
+    getFeatureFlags().levelOutputCache &&
+    !(getFeatureFlags().levelMetadata &&
+      (globals.GAME_TYPE === Game.NANOSAUR || globals.GAME_TYPE === Game.MIGHTY_MIKE) &&
+      data.Meta !== undefined);
+  const cacheKeys = useCache
+    ? getLevelOutputCacheKeys(data, globals, snapshotResult.value)
+    : null;
+  const reuse = cacheKeys ? getLevelOutputReuse(globals, cacheKeys) : {};
+  if (cacheKeys) {
+    const cachedFiles = getCachedDownloadFiles(
+      globals,
+      reuse,
+      mapDownloadName ?? mapFile.name,
+      mapImagesFile?.name,
+      snapshotResult.value.length > 0,
+    );
+    if (cachedFiles) {
+      for (const file of cachedFiles) downloadBytes(file.bytes, file.filename);
+      toast({ title: "Map Downloaded!" });
+      return;
+    }
+  }
   const serializeResult = await serializeDownloadWithWorker(
     {
       globals,
@@ -99,6 +173,7 @@ export async function saveMap({
       mapImagesFileName: mapImagesFile?.name,
       levelData: data,
       mapImages: snapshotResult.value,
+      ...reuse,
     },
     onProgress,
   );
@@ -112,6 +187,10 @@ export async function saveMap({
 
   for (const file of serializeResult.value.files) {
     downloadBytes(file.bytes, file.filename);
+  }
+
+  if (cacheKeys) {
+    cacheDownloadArtifacts(globals, cacheKeys, serializeResult.value.files);
   }
 
   toast({

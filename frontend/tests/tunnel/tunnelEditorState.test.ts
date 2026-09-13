@@ -10,6 +10,7 @@ import {
   deleteTunnelSection,
   duplicateTunnelSection,
   updateTunnelItemAtIndex,
+  updateTunnelSplinePointAtIndex,
 } from "@/editor/tunnel/tunnelEditorState";
 
 function item(sectionNum: number, splineIndex = 0): TunnelItem {
@@ -36,6 +37,18 @@ describe("tunnel editor state", () => {
     const section = createEmptyTunnelSection();
     expect(section.tunnelMesh).not.toBe(section.waterMesh);
     expect(section.tunnelMesh.bBox).not.toBe(section.waterMesh.bBox);
+  });
+
+  it("updates runtime spline points without changing their count", () => {
+    const source = data();
+    const point = {
+      point: { x: 99, y: 88, z: 77 },
+      up: { x: 0, y: 0, z: 1 },
+    };
+    const updated = updateTunnelSplinePointAtIndex(source, 0, point);
+    expect(updated.splinePoints[0]).toEqual(point);
+    expect(updated.header.numSplinePoints).toBe(1);
+    expect(source.splinePoints[0]?.point.x).toBe(10);
   });
 
   it("adds, updates, and deletes items while synchronizing the header", () => {

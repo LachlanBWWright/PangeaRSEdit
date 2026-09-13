@@ -31,6 +31,7 @@ export interface ParseLevelRequest {
   readonly globals: GlobalsInterface;
   readonly fileName: string;
   readonly levelBytes: ArrayBuffer;
+  readonly levelMetadataEnabled: boolean;
   readonly mightyMikeTilesetBytes?: ArrayBuffer;
   readonly mightyMikePaletteBytes?: ArrayBuffer;
   readonly mightyMikeSceneName?: string;
@@ -44,6 +45,10 @@ export interface SerializeDownloadRequest {
   readonly mapImagesFileName?: string;
   readonly levelData: unknown;
   readonly mapImages: readonly LevelIoImagePayload[];
+  readonly levelMetadataEnabled: boolean;
+  readonly reuseLevelBytes?: Uint8Array;
+  readonly reuseTextureBytes?: Uint8Array;
+  readonly reuseCombinedBytes?: Uint8Array;
 }
 
 export interface PreparePreviewRequest {
@@ -52,6 +57,10 @@ export interface PreparePreviewRequest {
   readonly globals: GlobalsInterface;
   readonly levelData: unknown;
   readonly mapImages: readonly LevelIoImagePayload[];
+  readonly levelMetadataEnabled: boolean;
+  readonly reuseLevelBytes?: Uint8Array;
+  readonly reuseTextureBytes?: Uint8Array;
+  readonly reuseCombinedBytes?: Uint8Array;
 }
 
 export type LevelIoRequest =

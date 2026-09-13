@@ -39,7 +39,7 @@ export function MultiplayerDebugOverlay({
   errorText,
 }: MultiplayerDebugOverlayProps) {
   return (
-    <section className="min-w-0 space-y-2 rounded-md border border-emerald-800 bg-emerald-950/30 p-3">
+    <section className="min-w-0 space-y-2 border-t border-emerald-800 pt-3">
       <div className="truncate text-sm font-semibold text-emerald-200">
         Multiplayer Debug
       </div>

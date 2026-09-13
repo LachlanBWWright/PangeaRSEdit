@@ -1,9 +1,7 @@
 import { DataType } from "@/data/globals/globals";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
-import {
-  parseNanosaurTerrainTextures,
-  createCanvasFromTile,
-} from "@/data/processors/classicProprocessor";
+import { imagePayloadsToCanvases } from "@/data/level-io/terrainImageSnapshots";
+import { parseNanosaurTerrainWithWorker } from "@/data/level-io/nanosaurTerrainWorkerClient";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { parseLevelDataFile } from "./parseLevelDataFile";
@@ -146,8 +144,8 @@ export async function openFile({
       id: loadToastId,
       description: imgFile.name,
     });
-    const tiles = parseNanosaurTerrainTextures(imgBuffer);
-    if (tiles.length === 0) {
+    const tilesResult = await parseNanosaurTerrainWithWorker(imgBuffer);
+    if (tilesResult.isErr() || tilesResult.value.length === 0) {
       toast.error("No terrain textures decoded", {
         id: loadToastId,
         description: imgFile.name,
@@ -159,13 +157,23 @@ export async function openFile({
       });
       return;
     }
+    const canvasesResult = imagePayloadsToCanvases(
+      tilesResult.value,
+    );
+    if (canvasesResult.isErr()) {
+      toast.error("Failed to materialize terrain textures", {
+        id: loadToastId,
+        description: canvasesResult.error,
+      });
+      return;
+    }
     console.info("[terrain] decoded Nanosaur texture tiles", {
       gameName: gameType.GAME_NAME,
       fileName: imgFile.name,
-      tileCount: tiles.length,
+      tileCount: tilesResult.value.length,
     });
     setMapImagesFile(imgFile);
-    setMapImages(tiles.map(createCanvasFromTile));
+    setMapImages(canvasesResult.value);
   } else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
     const imgResResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (imgResResult.isErr() || !imgResResult.value.ok) {

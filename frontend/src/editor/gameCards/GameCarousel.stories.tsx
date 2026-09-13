@@ -31,7 +31,9 @@ const meta = {
     setMapImages: noOp,
     setTunnelData: noOp,
     setTunnelFileName: noOp,
+    setTunnelLevelKind: noOp,
     onCreateBlankLevel: noOp,
+    onCreateScriptItemDemoLevel: noOp,
   },
 } satisfies Meta<typeof GameCarousel>;
 

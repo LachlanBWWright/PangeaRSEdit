@@ -161,22 +161,20 @@ export const FenceMenu = memo(function FenceMenu({
   }
 
   return (
-    <div className="flex flex-col gap-2 min-h-full">
-      <p>
-        Fence {selectedFence} ({numNubs} points)
-      </p>
-      <SnappingToggle />
+    <div
+      className={
+        fencePreviewPath
+          ? "grid h-full min-h-0 min-w-0 w-full grid-cols-[minmax(0,1fr)_12rem] gap-2 px-3"
+          : "flex h-full min-h-0 min-w-0 w-full flex-col gap-2 px-3"
+      }
+    >
+      <div className="flex min-h-0 min-w-0 flex-col gap-2">
+        <p>
+          Fence {selectedFence} ({numNubs} points)
+        </p>
+        <SnappingToggle />
 
-      {/* Two-column layout: left = type + delete + nub controls; right = preview */}
-      <div
-        className={
-          fencePreviewPath
-            ? "grid grid-cols-[1fr_auto] gap-2 w-full flex-1 min-h-0"
-            : "w-full flex-1 min-h-0"
-        }
-      >
-        {/* Left column */}
-        <div className="flex flex-col gap-2 flex-1 min-h-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           {fenceDataObj !== null && fenceDataObj !== undefined && (
             <Select
               value={fenceDataObj.fenceType.toString()}
@@ -381,27 +379,27 @@ export const FenceMenu = memo(function FenceMenu({
               );
             })()}
         </div>
-
-        {/* Right column: fence type preview image */}
-        {fencePreviewPath && (
-          <div className="flex w-48 self-stretch items-center justify-center rounded border border-gray-600 bg-gray-800 p-2">
-            {fencePreviewImageSrc ? (
-              <img
-                src={fencePreviewImageSrc}
-                alt={
-                  fenceDataObj
-                    ? getFenceName(globals, fenceDataObj.fenceType)
-                    : ""
-                }
-                className="max-h-36 max-w-full object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            ) : null}
-          </div>
-        )}
       </div>
+
+      {/* The preview is a sibling of the controls so it fills the menu height. */}
+      {fencePreviewPath && (
+        <div className="flex min-h-0 min-w-0 items-center justify-center overflow-hidden">
+          {fencePreviewImageSrc ? (
+            <img
+              src={fencePreviewImageSrc}
+              alt={
+                fenceDataObj
+                  ? getFenceName(globals, fenceDataObj.fenceType)
+                  : ""
+              }
+              className="max-h-full max-w-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+        </div>
+      )}
     </div>
   );
 });

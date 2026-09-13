@@ -58,10 +58,10 @@ export function TilesetEditor({
               value={currentPaletteScene ?? ""}
               onValueChange={(value) => onPaletteSceneChange(value)}
             >
-              <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+            <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a palette scene" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
+            <SelectContent>
                 {sceneNames.map((scene) => (
                   <SelectItem
                     key={scene}

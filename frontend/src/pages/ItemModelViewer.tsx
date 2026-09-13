@@ -1,1245 +1,166 @@
-/**
- * Item Model Viewer
- *
- * A test page for viewing 3D models by selecting a game and item.
- * Shows item names (like "Exit Rocket") instead of mesh names (like "Mesh_001").
- * Uses the item mappers to find the correct model file and index for each item.
- */
-
-import { mapErr } from "@/utils/mapErr";
-import React, {
-  useState,
-  useCallback,
-  useRef,
-  useMemo,
-  type ComponentRef,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid } from "@react-three/drei";
-import {
-  Group,
-  Mesh,
-  MeshBasicMaterial,
-  MeshPhysicalMaterial,
-  MeshStandardMaterial,
-  DoubleSide,
-  BufferGeometry,
-  Box3,
-  Vector3,
-  MathUtils,
-} from "three";
+import { Grid, OrbitControls } from "@react-three/drei";
+import { Box3, Group, MathUtils, Mesh, Vector3 } from "three";
+import { Boxes, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ItemThumbnail } from "@/components/items/ItemThumbnail";
-import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
-import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
-import {
-  GLTFLoader,
-  type GLTF,
-} from "three/examples/jsm/loaders/GLTFLoader.js";
-import {
-  Game,
-  OttoGlobals,
-  BugdomGlobals,
-  Bugdom2Globals,
-  NanosaurGlobals,
-  Nanosaur2Globals,
-  CroMagGlobals,
-  BillyFrontierGlobals,
-  MightyMikeGlobals,
-  type GlobalsInterface,
-} from "@/data/globals/globals";
-import { getGameMapper } from "@/data/items/mappers";
-import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
-import type {
-  ItemModelKind,
-  UniversalItemModelMapping,
-} from "@/data/items/itemModelTypes";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Game, type GlobalsInterface, OttoGlobals, BugdomGlobals, Bugdom2Globals, NanosaurGlobals, Nanosaur2Globals, CroMagGlobals, BillyFrontierGlobals } from "@/data/globals/globals";
+import { getGameMapper, getGamesWithMappers } from "@/data/items/mappers";
+import type { ItemModelKind, UniversalItemModelMapping } from "@/data/items/itemModelTypes";
 import { getCitationPermalink } from "@/data/items/itemModelTypes";
-import { ResultAsync, err, ok, type Result } from "neverthrow";
+import { DEFAULT_ITEM_MODEL_PARAMS, resolveItemModelPreview } from "@/data/items/itemModelPreview";
+import { getItemModelAuditEntry } from "@/data/items/itemModelMappingAudit";
+import { getItemModelParameterControls, setItemModelBit } from "@/data/items/itemModelPreviewControls";
+import { useItemModelCache } from "@/editor/threejs/hooks/useItemModelCache";
+import { presentItemModel } from "@/editor/threejs/itemModelPresentation";
+import type { ItemModelParams } from "@/editor/threejs/hooks/itemModelCacheKey";
 
-type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
-
-/**
- * Camera configuration for optimal model viewing
- * Position values based on typical Pangea game model scales (~100-500 units)
- */
-const CAMERA_POSITION: [number, number, number] = [300, 200, 300];
-const CAMERA_FOV = 50;
-const CAMERA_NEAR = 1;
-const CAMERA_FAR = 50000; // Large far plane to prevent clipping on large models
-
-/**
- * Grid configuration
- */
-const GRID_SIZE = 1000;
-const GRID_CELL_SIZE = 50;
-const GRID_SECTION_SIZE = 200;
-const GRID_FADE_DISTANCE = 2000;
-
-/**
- * Worker timeout configuration
- */
-const WORKER_TIMEOUT_MS = 60000; // 60 seconds for large model files
-const AUTO_FRAME_PADDING = 1.2;
-const AUTO_FRAME_MIN_RADIUS = 1;
-const AUTO_FRAME_MIN_DISTANCE_FACTOR = 1.05;
-const AUTO_FRAME_VIEW_DIRECTION = new Vector3(1, 0.7, 1).normalize();
-
-interface SceneBounds {
-  min: [number, number, number];
-  max: [number, number, number];
-}
-
-/**
- * Game configuration with globals reference
- */
-interface GameOption {
-  id: Game;
-  name: string;
-  globals: GlobalsInterface;
-  basePath: string;
-}
-
-const GAME_OPTIONS: GameOption[] = [
-  {
-    id: Game.OTTO_MATIC,
-    name: "Otto Matic",
-    globals: OttoGlobals,
-    basePath: "/PangeaRSEdit/games/ottomatic",
-  },
-  {
-    id: Game.BUGDOM,
-    name: "Bugdom (3DMF)",
-    globals: BugdomGlobals,
-    basePath: "/PangeaRSEdit/games/bugdom1",
-  },
-  {
-    id: Game.BUGDOM_2,
-    name: "Bugdom 2",
-    globals: Bugdom2Globals,
-    basePath: "/PangeaRSEdit/games/bugdom2",
-  },
-  {
-    id: Game.NANOSAUR,
-    name: "Nanosaur (3DMF)",
-    globals: NanosaurGlobals,
-    basePath: "/PangeaRSEdit/games/nanosaur1",
-  },
-  {
-    id: Game.NANOSAUR_2,
-    name: "Nanosaur 2",
-    globals: Nanosaur2Globals,
-    basePath: "/PangeaRSEdit/games/nanosaur2",
-  },
-  {
-    id: Game.CRO_MAG,
-    name: "Cro-Mag Rally",
-    globals: CroMagGlobals,
-    basePath: "/PangeaRSEdit/games/cromagrally",
-  },
-  {
-    id: Game.BILLY_FRONTIER,
-    name: "Billy Frontier",
-    globals: BillyFrontierGlobals,
-    basePath: "/PangeaRSEdit/games/billyfrontier",
-  },
-  {
-    id: Game.MIGHTY_MIKE,
-    name: "Mighty Mike",
-    globals: MightyMikeGlobals,
-    basePath: "/PangeaRSEdit/games/mightymike",
-  },
+interface GameOption { readonly id: Game; readonly name: string; readonly globals: GlobalsInterface; }
+const ALL_GAMES: readonly GameOption[] = [
+  { id: Game.OTTO_MATIC, name: "Otto Matic", globals: OttoGlobals }, { id: Game.BUGDOM, name: "Bugdom", globals: BugdomGlobals },
+  { id: Game.BUGDOM_2, name: "Bugdom 2", globals: Bugdom2Globals }, { id: Game.NANOSAUR, name: "Nanosaur", globals: NanosaurGlobals },
+  { id: Game.NANOSAUR_2, name: "Nanosaur 2", globals: Nanosaur2Globals }, { id: Game.CRO_MAG, name: "Cro-Mag Rally", globals: CroMagGlobals },
+  { id: Game.BILLY_FRONTIER, name: "Billy Frontier", globals: BillyFrontierGlobals },
 ];
+const GAME_OPTIONS = ALL_GAMES.filter((game) => getGamesWithMappers().includes(game.id));
+const KINDS: readonly { value: ItemModelKind; label: string }[] = [{ value: "terrainItem", label: "Terrain item" }, { value: "splineItem", label: "Spline item" }];
+const ITEM_PARAMETER_KEYS: readonly ("p0" | "p1" | "p2" | "p3")[] = ["p0", "p1", "p2", "p3"];
 
-function calculateSceneBounds(scene: Group): SceneBounds | null {
+interface PreviewItem {
+  readonly type: number;
+  readonly name: string;
+  readonly hasMapping: boolean;
+  readonly auditDisposition?: string;
+}
+interface Bounds { readonly center: [number, number, number]; readonly radius: number; }
+
+function itemsFor(game: GameOption, kind: ItemModelKind): readonly PreviewItem[] {
+  const source = kind === "terrainItem" ? game.globals.ITEM_TYPES : game.globals.SPLINE_ITEM_TYPES ?? {};
+  const mapper = getGameMapper(game.id);
+  return Object.entries(source).flatMap(([rawType, name]) => {
+    const type = Number.parseInt(rawType, 10);
+    if (Number.isNaN(type)) return [];
+    const hasMapping = mapper?.getMapping(type, undefined, DEFAULT_ITEM_MODEL_PARAMS, undefined, kind) !== undefined;
+    const audit = hasMapping ? undefined : getItemModelAuditEntry(game.id, kind, type);
+    return [{ type, name, hasMapping, auditDisposition: audit?.disposition }];
+  }).sort((left, right) => left.type - right.type);
+}
+
+function boundsFor(scene: Group): Bounds | null {
   const box = new Box3().setFromObject(scene);
-  if (box.isEmpty()) {
-    return null;
-  }
-  return {
-    min: [box.min.x, box.min.y, box.min.z],
-    max: [box.max.x, box.max.y, box.max.z],
-  };
+  if (box.isEmpty()) return null;
+  const center = box.getCenter(new Vector3());
+  return { center: [center.x, center.y, center.z], radius: Math.max(box.getSize(new Vector3()).length() / 2, 1) };
 }
 
-function applyPerspectiveCameraRange(
-  cameraLike: object,
-  near: number,
-  far: number,
-): void {
-  Reflect.set(cameraLike, "near", near);
-  Reflect.set(cameraLike, "far", far);
-  const projectionUpdate = Reflect.get(cameraLike, "updateProjectionMatrix");
-  if (typeof projectionUpdate === "function") {
-    Reflect.apply(projectionUpdate, cameraLike, []);
-  }
-}
-
-function computeCameraDistanceForBounds(
-  radius: number,
-  verticalFovRadians: number,
-  aspect: number,
-): number {
-  const horizontalFovRadians =
-    2 * Math.atan(Math.tan(verticalFovRadians / 2) * aspect);
-  const distanceForVertical = radius / Math.tan(verticalFovRadians / 2);
-  const distanceForHorizontal = radius / Math.tan(horizontalFovRadians / 2);
-  const baseDistance = Math.max(distanceForVertical, distanceForHorizontal);
-  return Math.max(
-    baseDistance * AUTO_FRAME_PADDING,
-    radius * AUTO_FRAME_MIN_DISTANCE_FACTOR,
-  );
-}
-
-function AutoFitCamera({
-  sceneBounds,
-  fitVersion,
-  controlsRef,
-  onApplied,
-}: {
-  sceneBounds: SceneBounds | null;
-  fitVersion: number;
-  controlsRef: React.RefObject<OrbitControlsImpl | null>;
-  onApplied: (version: number) => void;
-}) {
-  const { camera, size } = useThree();
-
-  React.useEffect(() => {
-    if (!sceneBounds) {
-      return;
-    }
-
-    const min = new Vector3(
-      sceneBounds.min[0],
-      sceneBounds.min[1],
-      sceneBounds.min[2],
-    );
-    const max = new Vector3(
-      sceneBounds.max[0],
-      sceneBounds.max[1],
-      sceneBounds.max[2],
-    );
-    const center = min.clone().add(max).multiplyScalar(0.5);
-    const radius = Math.max(
-      max.clone().sub(min).length() * 0.5,
-      AUTO_FRAME_MIN_RADIUS,
-    );
-
-    const aspect = size.width / Math.max(size.height, 1);
-    const verticalFovRadians = MathUtils.degToRad(CAMERA_FOV);
-    const distance = computeCameraDistanceForBounds(
-      radius,
-      verticalFovRadians,
-      aspect,
-    );
-
-    const position = center
-      .clone()
-      .add(AUTO_FRAME_VIEW_DIRECTION.clone().multiplyScalar(distance));
-
-    camera.position.copy(position);
-    camera.lookAt(center);
-
-    const near = Math.max(0.05, distance - radius * 2);
-    const far = distance + radius * 4;
-    applyPerspectiveCameraRange(camera, near, far);
-
-    const controls = controlsRef.current;
-    if (controls) {
-      controls.target.copy(center);
-      controls.minDistance = radius * AUTO_FRAME_MIN_DISTANCE_FACTOR;
-      controls.maxDistance = Math.max(distance * 4, controls.minDistance + 10);
-      controls.update();
-    }
-
-    onApplied(fitVersion);
-  }, [
-    camera,
-    controlsRef,
-    fitVersion,
-    onApplied,
-    sceneBounds,
-    size.height,
-    size.width,
-  ]);
-
-  return null;
-}
-
-/**
- * Item info for display
- */
-interface ItemInfo {
-  type: number;
-  name: string;
-  hasMapping: boolean;
-  mapping: UniversalItemModelMapping | undefined;
-  kind: ItemModelKind;
-  isParamDependent?: boolean; // True if this item's model depends on params
-}
-
-/**
- * Format item display string with indicators
- * @param item - The item info
- * @returns Formatted string like "4: Human ✓ ↺"
- */
-function formatItemDisplay(item: ItemInfo): string {
-  const modelIndicator = item.hasMapping ? " ✓" : "";
-  const splineIndicator = item.kind === "splineItem" ? " ↺" : "";
-  const paramIndicator = item.isParamDependent ? " ⚙" : "";
-  return `${item.type}: ${item.name}${modelIndicator}${splineIndicator}${paramIndicator}`;
-}
-
-/**
- * 3D Model display component
- */
-const ModelDisplay: React.FC<{ gltfScene: Group | null }> = ({ gltfScene }) => {
-  if (!gltfScene) {
-    return (
-      <mesh>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="gray" wireframe />
-      </mesh>
-    );
-  }
-
-  return <primitive object={gltfScene} />;
-};
-
-/**
- * Calculate model statistics (vertices, faces)
- */
-function calculateModelStats(scene: Group | null): {
-  vertices: number;
-  faces: number;
-} {
-  let vertices = 0;
-  let faces = 0;
-
-  if (!scene) return { vertices, faces };
-
-  scene.traverse((object) => {
-    if (object instanceof Mesh) {
-      const geometry = object.geometry;
-      if (geometry instanceof BufferGeometry) {
-        const position = geometry.getAttribute("position");
-        if (position) {
-          vertices += position.count;
-        }
-        const index = geometry.getIndex();
-        if (index) {
-          faces += index.count / 3;
-        } else if (position) {
-          faces += position.count / 3;
-        }
-      }
-    }
-  });
-
+function statsFor(scene: Group | null): { vertices: number; faces: number } | null {
+  if (!scene) return null;
+  let vertices = 0; let faces = 0;
+  scene.traverse((object) => { if (!(object instanceof Mesh)) return; const positions = object.geometry.getAttribute("position"); if (!positions) return; vertices += positions.count; faces += (object.geometry.getIndex()?.count ?? positions.count) / 3; });
   return { vertices, faces };
 }
 
-/**
- * Extract a specific subgroup from a GLTF scene by index.
- * When groupSize > 1, extracts consecutive subgroups and combines them.
- */
-function extractSubgroupByIndex(
-  gltf: GLTF,
-  modelIndex: number,
-  groupSize = 1,
-): Group | null {
-  const groupsContainer =
-    gltf.scene.children && gltf.scene.children.length > 0
-      ? gltf.scene.children[0]
-      : null;
-
-  if (!groupsContainer) {
-    console.warn("No groups container found");
-    return null;
+function fitCamera(cameraLike: object, bounds: Bounds, aspect: number): void {
+  const distance = Math.max(bounds.radius / Math.tan(MathUtils.degToRad(50) / 2), bounds.radius * 1.2) * Math.max(1, 1 / aspect);
+  const position = Reflect.get(cameraLike, "position");
+  if (position !== null && typeof position === "object") {
+    const setPosition = Reflect.get(position, "set");
+    if (typeof setPosition === "function") Reflect.apply(setPosition, position, [bounds.center[0] + distance, bounds.center[1] + distance * 0.7, bounds.center[2] + distance]);
   }
-
-  if (modelIndex >= groupsContainer.children.length) {
-    console.warn(
-      `Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`,
-    );
-    return null;
-  }
-
-  const newScene = new Group();
-  const endIndex = Math.min(
-    modelIndex + groupSize,
-    groupsContainer.children.length,
-  );
-
-  for (let i = modelIndex; i < endIndex; i++) {
-    const targetModel = groupsContainer.children[i];
-    if (targetModel) {
-      newScene.add(targetModel.clone(true));
-    }
-  }
-
-  if (newScene.children.length === 0) {
-    return null;
-  }
-
-  return newScene;
+  const lookAt = Reflect.get(cameraLike, "lookAt");
+  if (typeof lookAt === "function") Reflect.apply(lookAt, cameraLike, bounds.center);
+  Reflect.set(cameraLike, "near", Math.max(0.05, distance - bounds.radius * 2));
+  Reflect.set(cameraLike, "far", distance + bounds.radius * 4);
+  const updateProjectionMatrix = Reflect.get(cameraLike, "updateProjectionMatrix");
+  if (typeof updateProjectionMatrix === "function") Reflect.apply(updateProjectionMatrix, cameraLike, []);
 }
 
-function applyLightingMode(
-  cloned: Group,
-  lightingMode: "unlit" | undefined,
-): void {
-  if (lightingMode !== "unlit") {
-    return;
+function CameraFit({ bounds, version }: { bounds: Bounds | null; version: number }) {
+  const { camera, size } = useThree();
+  const controls = useRef<React.ElementRef<typeof OrbitControls>>(null);
+  React.useEffect(() => {
+    if (!bounds) return;
+    const aspect = size.width / Math.max(size.height, 1);
+    fitCamera(camera, bounds, aspect);
+    if (controls.current) { controls.current.target.set(...bounds.center); controls.current.minDistance = bounds.radius * 1.05; controls.current.maxDistance = Math.max(bounds.radius * 4, controls.current.minDistance + 10); controls.current.update(); }
+  }, [bounds, camera, size.height, size.width, version]);
+  return <OrbitControls ref={controls} makeDefault />;
+}
+
+function ModelViewport({ scene, bounds, version }: { scene: Group | null; bounds: Bounds | null; version: number }) {
+  return <Canvas camera={{ fov: 50, near: 0.05, far: 50000, position: [300, 200, 300] }}><color attach="background" args={["#111827"]} /><ambientLight intensity={0.8} /><directionalLight position={[400, 500, 300]} intensity={1.4} /><Grid args={[1000, 20]} cellSize={50} sectionSize={200} fadeDistance={2000} /><CameraFit bounds={bounds} version={version} />{scene ? <primitive object={scene} /> : null}</Canvas>;
+}
+
+function MappingSummary({ game, mapping, audit }: { game: Game; mapping: UniversalItemModelMapping | undefined; audit: ReturnType<typeof getItemModelAuditEntry> }) {
+  if (!mapping) {
+    if (!audit) return <p className="text-sm text-slate-400">No mapping resolves for this request.</p>;
+    return <div className="space-y-1 text-sm text-amber-200"><div>Audited disposition: {audit.disposition}</div><div>{audit.reason}</div><div className="text-xs text-slate-400">Source: <code>{audit.source}</code></div></div>;
   }
+  return <div className="space-y-1 text-sm text-slate-300"><div>Path: <code>{mapping.modelPath}/{mapping.modelFile}</code></div><div>Model index: {mapping.modelIndex} · group size: {mapping.groupSize ?? 1}</div>{mapping.modelParts && <div>Parts: {mapping.modelParts.map((part) => part.partId).join(", ")}</div>}<div>Scale: {mapping.scale ?? 1} · XZ: {mapping.scaleXZ ?? 1} · Y: {mapping.scaleY ?? 1}</div><div>Rotation: {mapping.rotationY ?? 0} rad · Y offset: {mapping.yOffset ?? 0}</div><div>Verification: {mapping.verificationStatus ?? "unspecified"}{mapping.lightingMode === "unlit" ? " · unlit" : ""}</div>{mapping.staticAnalysisIssues?.map((issue) => <div key={issue.message} className={issue.severity === "error" ? "text-red-300" : "text-amber-300"}>{issue.severity}: {issue.message}</div>)}{mapping.citations && <div>Citations: {mapping.citations.map((citation) => <a className="mr-2 text-cyan-300 underline" href={getCitationPermalink(game, citation)} key={`${citation.file}:${citation.line}`} target="_blank" rel="noreferrer">{citation.file}:{citation.line}</a>)}</div>}</div>;
+}
 
-  cloned.traverse((node) => {
-    if (!(node instanceof Mesh) || !node.material) {
-      return;
+function ParameterControls({ mapping, params, flags, onParam, onFlags }: { mapping: UniversalItemModelMapping | undefined; params: ItemModelParams; flags: number; onParam: (key: "p0" | "p1" | "p2" | "p3", value: number) => void; onFlags: (value: number) => void }) {
+  return <div className="space-y-3">{getItemModelParameterControls(mapping, params, flags).map((control) => {
+    if (control.key === "flags") {
+      if (control.domain.kind !== "bitset") return null;
+      return <div className="space-y-2" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label>{control.domain.bits.map((bit) => <label className="flex items-center gap-2 text-sm text-slate-300" key={bit.index}><Checkbox checked={(flags & (1 << bit.index)) !== 0} onCheckedChange={(checked) => onFlags(setItemModelBit(flags, bit.index, checked === true))} />{bit.label}</label>)}</div>;
     }
-
-    const originalMaterials = Array.isArray(node.material)
-      ? node.material
-      : [node.material];
-    const unlitMaterials = originalMaterials.map((material) => {
-      if (material instanceof MeshBasicMaterial) {
-        material.side = DoubleSide;
-        material.toneMapped = false;
-        material.needsUpdate = true;
-        return material;
-      }
-
-      if (
-        material instanceof MeshStandardMaterial ||
-        material instanceof MeshPhysicalMaterial
-      ) {
-        const unlitMaterial = new MeshBasicMaterial({
-          map: material.map,
-          color: material.color,
-          transparent: material.transparent,
-          alphaTest: material.alphaTest,
-          side: DoubleSide,
-          opacity: material.opacity,
-          vertexColors: material.vertexColors,
-        });
-        unlitMaterial.name = material.name;
-        unlitMaterial.depthWrite = material.depthWrite;
-        unlitMaterial.toneMapped = false;
-        return unlitMaterial;
-      }
-
-      return material;
-    });
-
-    node.material = Array.isArray(node.material)
-      ? unlitMaterials
-      : (unlitMaterials[0] ?? node.material);
-  });
+    const parameterKey = ITEM_PARAMETER_KEYS.find((key) => key === control.key);
+    if (!parameterKey) return null;
+    if (control.domain.kind === "enum") return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Select value={String(control.value)} onValueChange={(value) => onParam(parameterKey, Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{control.domain.values.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
+    const min = control.domain.kind === "integer" ? control.domain.min : undefined; const max = control.domain.kind === "integer" ? control.domain.max : undefined;
+    return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Input type="number" min={min} max={max} value={control.value} onChange={(event) => onParam(parameterKey, Number(event.target.value))} /></div>;
+  })}</div>;
 }
 
 export function ItemModelViewer() {
-  const [searchParams] = useSearchParams();
-  const isCaptureMode = searchParams.get("capture") === "1";
-  const [selectedGameId, setSelectedGameId] = useState<Game | null>(null);
-  const [selectedItemType, setSelectedItemType] = useState<number | null>(null);
-  const [selectedItemKind, setSelectedItemKind] =
-    useState<ItemModelKind>("terrainItem");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [gltfScene, setGltfScene] = useState<Group | null>(null);
-  const [status, setStatus] = useState<string>(
-    "Select a game and item to begin",
-  );
-  const [modelStats, setModelStats] = useState<{
-    vertices: number;
-    faces: number;
-  } | null>(null);
-  const [sceneBounds, setSceneBounds] = useState<SceneBounds | null>(null);
-  const [cameraFitVersion, setCameraFitVersion] = useState(0);
-  const [cameraFitAppliedVersion, setCameraFitAppliedVersion] = useState(0);
-  const [loadedModelInfo, setLoadedModelInfo] = useState<{
-    file: string;
-    index: number;
-    mapping?: UniversalItemModelMapping;
-  } | null>(null);
-
-  // Params state for param-dependent items
-  const [itemParams, setItemParams] = useState<{
-    p0: number;
-    p1: number;
-    p2: number;
-    p3: number;
-  }>({
-    p0: 0,
-    p1: 0,
-    p2: 0,
-    p3: 0,
-  });
-
-  // Helper to get param value by index
-  const getParamValue = (paramIndex: number): number => {
-    switch (paramIndex) {
-      case 0:
-        return itemParams.p0;
-      case 1:
-        return itemParams.p1;
-      case 2:
-        return itemParams.p2;
-      case 3:
-        return itemParams.p3;
-      default:
-        return 0;
-    }
-  };
-
-  const workerRef = useRef<Worker | null>(null);
-  const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
-
-  // Get the current game option
-  const selectedGame = GAME_OPTIONS.find((g) => g.id === selectedGameId);
-
-  // Get item mapper for the selected game
-  const mapper =
-    selectedGameId !== null ? getGameMapper(selectedGameId) : undefined;
-
-  // Check if current item is param-dependent
-  const paramDependentInfo = useMemo(() => {
-    if (selectedGameId !== Game.OTTO_MATIC || selectedItemType === null)
-      return null;
-    const options = ottoItemMapper.getParamDependentOptions(selectedItemType);
-    if (!options) return null;
-
-    // Validate paramIndex is 0-3
-    const paramIndex = options.paramIndex;
-    if (
-      paramIndex !== 0 &&
-      paramIndex !== 1 &&
-      paramIndex !== 2 &&
-      paramIndex !== 3
-    ) {
-      return null;
-    }
-
-    return {
-      paramIndex,
-      options: options.options.map((opt) => ({
-        value: opt.value,
-        name: opt.label,
-      })),
-    };
-  }, [selectedGameId, selectedItemType]);
-
-  // Get current mapping based on params
-  const currentMapping = useMemo(() => {
-    if (selectedItemType === null || !mapper) return undefined;
-    return mapper.getMapping(
-      selectedItemType,
-      undefined,
-      itemParams,
-      undefined,
-      selectedItemKind,
-    );
-  }, [selectedItemType, selectedItemKind, mapper, itemParams]);
-
-  // Get all items for the selected game with their mapping status
-  const gameItems = useMemo<ItemInfo[]>(() => {
-    if (!selectedGame) return [];
-
-    const itemTypes = selectedGame.globals.ITEM_TYPES;
-    const splineItemTypes = selectedGame.globals.SPLINE_ITEM_TYPES;
-    const items: ItemInfo[] = [];
-    const isOttoMatic = selectedGame.id === Game.OTTO_MATIC;
-
-    for (const [typeStr, name] of Object.entries(itemTypes)) {
-      const type = parseInt(typeStr);
-      if (isNaN(type)) continue;
-
-      const mapping = mapper?.getMapping(
-        type,
-        undefined,
-        undefined,
-        undefined,
-        "terrainItem",
-      );
-      // Check if this is a param-dependent item using the Otto mapper
-      const isParamDependent = isOttoMatic
-        ? ottoItemMapper.isParamDependent(type)
-        : false;
-
-      items.push({
-        type,
-        name,
-        hasMapping: mapping !== undefined,
-        mapping,
-        kind: "terrainItem",
-        isParamDependent,
-      });
-    }
-
-    for (const [typeStr, name] of Object.entries(splineItemTypes ?? {})) {
-      const type = parseInt(typeStr);
-      if (isNaN(type)) continue;
-
-      const mapping = mapper?.getMapping(
-        type,
-        undefined,
-        undefined,
-        undefined,
-        "splineItem",
-      );
-      items.push({
-        type,
-        name,
-        hasMapping: mapping !== undefined,
-        mapping,
-        kind: "splineItem",
-        isParamDependent: false,
-      });
-    }
-
-    // Sort by type number
-    items.sort((a, b) => a.type - b.type || a.kind.localeCompare(b.kind));
-
-    return items;
-  }, [selectedGame, mapper]);
-
-  // Get the selected item info
-  const selectedItem = gameItems.find(
-    (item) =>
-      item.type === selectedItemType && item.kind === selectedItemKind,
-  );
-
-  // Count items with mappings and spline items
-  const mappedItemCount = gameItems.filter((i) => i.hasMapping).length;
-  const splineItemCount = gameItems.filter(
-    (item) => item.kind === "splineItem",
-  ).length;
-
-  // Initialize worker
-  const getWorker = useCallback(() => {
-    if (!workerRef.current) {
-      workerRef.current = new BG3DGltfWorker();
-    }
-    return workerRef.current;
-  }, []);
-
-  // Reset state when game changes
-  const handleGameChange = useCallback((gameIdStr: string) => {
-    const gameId = Number.parseInt(gameIdStr, 10);
-    if (Number.isNaN(gameId)) {
-      return;
-    }
-    setSelectedGameId(gameId);
-    setSelectedItemType(null);
-    setSelectedItemKind("terrainItem");
-    setGltfScene(null);
-    setModelStats(null);
-    setSceneBounds(null);
-    setCameraFitAppliedVersion(0);
-    setLoadedModelInfo(null);
-    setError(null);
-    setItemParams({ p0: 0, p1: 0, p2: 0, p3: 0 });
-    setStatus("Select an item to load its 3D model");
-  }, []);
-
-  // Handle item selection
-  const handleItemChange = useCallback(
-    (itemKey: string) => {
-      const match = /^(terrainItem|splineItem):(-?\d+)$/u.exec(itemKey);
-      if (!match) return;
-      const rawItemType = match[2];
-      if (rawItemType === undefined) return;
-
-      const kind = match[1] === "splineItem" ? "splineItem" : "terrainItem";
-      const itemType = parseInt(rawItemType);
-      setSelectedItemType(itemType);
-      setSelectedItemKind(kind);
-      setGltfScene(null);
-      setModelStats(null);
-      setSceneBounds(null);
-      setCameraFitAppliedVersion(0);
-      setLoadedModelInfo(null);
-      setError(null);
-      setItemParams({ p0: 0, p1: 0, p2: 0, p3: 0 }); // Reset params
-
-      const item = gameItems.find(
-        (candidate) =>
-          candidate.type === itemType && candidate.kind === kind,
-      );
-      if (item) {
-        if (item.hasMapping || item.isParamDependent) {
-          setStatus(`Selected: ${item.name} - Click "Load Model" to view`);
-        } else {
-          setStatus(`Selected: ${item.name} - No model mapping available`);
-        }
-      }
-    },
-    [gameItems],
-  );
-
-  // Handle param change for param-dependent items
-  const handleParamChange = useCallback((paramName: string, value: number) => {
-    setItemParams((prev) => ({ ...prev, [paramName]: value }));
-    setGltfScene(null); // Clear loaded model when param changes
-    setSceneBounds(null);
-    setCameraFitAppliedVersion(0);
-    setLoadedModelInfo(null);
-  }, []);
-
-  // Load the model for the selected item
-  const loadItemModel = useCallback(async () => {
-    // Use currentMapping which accounts for params
-    if (!selectedGame || selectedItemType === null || !currentMapping) {
-      setError("No model mapping available for this item");
-      return;
-    }
-
-    const mapping = currentMapping;
+  const [searchParams] = useSearchParams(); const captureMode = searchParams.get("capture") === "1";
+  const [gameId, setGameId] = useState<Game | null>(null); const [kind, setKind] = useState<ItemModelKind>("terrainItem"); const [itemType, setItemType] = useState<number | null>(null); const [search, setSearch] = useState(""); const [params, setParams] = useState<ItemModelParams>(DEFAULT_ITEM_MODEL_PARAMS); const [flags, setFlags] = useState(0); const [levelNum, setLevelNum] = useState<number | undefined>(); const [scene, setScene] = useState<Group | null>(null); const [bounds, setBounds] = useState<Bounds | null>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null); const [fitVersion, setFitVersion] = useState(0); const requestVersion = useRef(0);
+  const selectedGame = GAME_OPTIONS.find((option) => option.id === gameId); const mapper = gameId === null ? undefined : getGameMapper(gameId); const items = useMemo(() => selectedGame ? itemsFor(selectedGame, kind) : [], [kind, selectedGame]); const visibleItems = items.filter((item) => `${item.type} ${item.name}`.toLowerCase().includes(search.toLowerCase())); const resolution = gameId === null || itemType === null ? undefined : resolveItemModelPreview({ game: gameId, kind, itemType, levelNum, params, flags }); const mapping = resolution?.kind === "resolved" ? resolution.value.mapping : undefined; const levelDependent = itemType !== null && mapper?.isLevelDependent?.(itemType) === true; const { loadModel } = useItemModelCache(gameId ?? Game.OTTO_MATIC);
+  const reset = useCallback((nextGame: Game | null, nextKind: ItemModelKind) => { requestVersion.current += 1; setGameId(nextGame); setKind(nextKind); setItemType(null); setParams(DEFAULT_ITEM_MODEL_PARAMS); setFlags(0); setLevelNum(undefined); setScene(null); setBounds(null); setError(null); }, []);
+  const invalidatePreview = useCallback(() => { requestVersion.current += 1; setScene(null); setBounds(null); }, []);
+  const selectItem = useCallback((nextType: number) => { requestVersion.current += 1; setItemType(nextType); setScene(null); setBounds(null); setParams(DEFAULT_ITEM_MODEL_PARAMS); setFlags(0); }, []);
+  const loadAdjacentItem = useCallback(async (nextType: number) => {
+    if (gameId === null) return;
+    const nextParams = DEFAULT_ITEM_MODEL_PARAMS;
+    const nextResolution = resolveItemModelPreview({ game: gameId, kind, itemType: nextType, levelNum, params: nextParams, flags });
+    if (nextResolution.kind !== "resolved") return;
+    const version = requestVersion.current + 1;
+    requestVersion.current = version;
     setLoading(true);
     setError(null);
-    setCameraFitAppliedVersion(0);
-    setStatus(`Loading model for ${selectedItem?.name ?? "item"}...`);
-
-    // Construct the model path using the mapping's directory (either "models" or "skeletons")
-    const modelPath = [
-      selectedGame.basePath,
-      mapping.modelPath,
-      mapping.modelFile,
-    ].join("/");
-
-    console.log(
-      `Loading model from: ${modelPath}, index: ${mapping.modelIndex}`,
-    );
-    setStatus(`Fetching ${mapping.modelFile}...`);
-
-    const responseResult = await ResultAsync.fromPromise(
-      fetch(modelPath),
-      mapErr,
-    );
-    if (responseResult.isErr()) {
-      const msg = responseResult.error;
-      setError(msg);
-      const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${msg}`);
+    const loaded = await loadModel(nextType, nextParams, levelNum, kind, flags);
+    if (version !== requestVersion.current) return;
+    if (!loaded) {
       setLoading(false);
+      setError(`Unable to load ${nextResolution.value.mapping.modelFile}. Check the mapping and model asset.`);
       return;
     }
-    const response = responseResult.value;
-    if (!response.ok) {
-      const errorMsg = `Failed to fetch model: ${response.statusText} (${modelPath})`;
-      setError(errorMsg);
-      const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${errorMsg}`);
-      setLoading(false);
-      return;
-    }
-
-    const bufferResult = await ResultAsync.fromPromise(
-      response.arrayBuffer(),
-      mapErr,
-    );
-    if (bufferResult.isErr()) {
-      const msg = bufferResult.error;
-      setError(msg);
-      const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${msg}`);
-      console.error("Model load error:", bufferResult.error);
-      setLoading(false);
-      return;
-    }
-    const buffer = bufferResult.value;
-    setStatus(`Converting ${mapping.modelFile} to GLB...`);
-
-    // Convert via worker
-    const glbBufferResult: Result<ArrayBuffer, string> = await new Promise(
-      (resolve) => {
-        const worker = getWorker();
-        let resolved = false;
-
-        const handleMessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
-          if (e.data.type === "bg3d-with-skeleton-to-glb" && e.data.result) {
-            resolved = true;
-            worker.removeEventListener("message", handleMessage);
-            worker.removeEventListener("error", handleError);
-            resolve(ok(e.data.result));
-          } else if (e.data.type === "error") {
-            resolved = true;
-            worker.removeEventListener("message", handleMessage);
-            worker.removeEventListener("error", handleError);
-            resolve(err(e.data.error));
-          }
-        };
-
-        const handleError = (error: ErrorEvent) => {
-          if (!resolved) {
-            resolved = true;
-            worker.removeEventListener("message", handleMessage);
-            worker.removeEventListener("error", handleError);
-            resolve(err(error.message || "Worker error"));
-          }
-        };
-
-        worker.addEventListener("message", handleMessage);
-        worker.addEventListener("error", handleError);
-
-        worker.postMessage({
-          type: "bg3d-with-skeleton-to-glb",
-          bg3dBuffer: buffer,
-          skeletonData: undefined,
-        });
-
-        // Timeout
-        setTimeout(() => {
-          if (!resolved) {
-            resolved = true;
-            worker.removeEventListener("message", handleMessage);
-            worker.removeEventListener("error", handleError);
-            resolve(err("Conversion timeout"));
-          }
-        }, WORKER_TIMEOUT_MS);
-      },
-    );
-
-    if (glbBufferResult.isErr()) {
-      const errorMsg = glbBufferResult.error;
-      setError(errorMsg);
-      const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${errorMsg}`);
-      console.error("Model load error:", glbBufferResult.error);
-      setLoading(false);
-      return;
-    }
-    const glbBuffer = glbBufferResult.value;
-
-    setStatus("Loading GLB into Three.js...");
-
-    // Load into Three.js
-    const blob = new Blob([glbBuffer], { type: "model/gltf-binary" });
-    const blobUrl = URL.createObjectURL(blob);
-
-    const loader = new GLTFLoader();
-    const gltfResult = await ResultAsync.fromPromise(
-      new Promise<GLTF>((resolve, reject) => {
-        loader.load(
-          blobUrl,
-          (gltf) => resolve(gltf),
-          undefined,
-          (err) => reject(err),
-        );
-      }),
-      mapErr,
-    );
-
-    URL.revokeObjectURL(blobUrl);
-
-    if (gltfResult.isErr()) {
-      const errorMsg = gltfResult.error;
-      setError(errorMsg);
-      const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${errorMsg}`);
-      console.error("Model load error:", gltfResult.error);
-      setLoading(false);
-      return;
-    }
-    const gltf = gltfResult.value;
-
-    // Extract the specific model by index
-    const groupSize = mapping.groupSize ?? 1;
-    setStatus(
-      `Extracting model at index ${mapping.modelIndex}${groupSize > 1 ? ` (${groupSize} groups)` : ""}...`,
-    );
-    const extracted = extractSubgroupByIndex(
-      gltf,
-      mapping.modelIndex,
-      groupSize,
-    );
-
-    if (!extracted) {
-      const errorMsg = `Could not extract model at index ${mapping.modelIndex}`;
-      setError(errorMsg);
-      const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${errorMsg}`);
-      setLoading(false);
-      return;
-    }
-
-    // Apply scaling: uniform scale, then per-axis overrides
-    const baseScale = mapping.scale ?? 1;
-    const sx = baseScale * (mapping.scaleXZ ?? 1);
-    const sy = baseScale * (mapping.scaleY ?? 1);
-    const sz = baseScale * (mapping.scaleXZ ?? 1);
-    extracted.scale.set(sx, sy, sz);
-    applyLightingMode(extracted, mapping.lightingMode);
-
-    if (mapping.rotationY) {
-      extracted.rotateY(mapping.rotationY);
-    }
-    const yOff = mapping.yOffset ?? 0;
-    if (mapping.positionOffset) {
-      extracted.position.set(
-        mapping.positionOffset[0],
-        mapping.positionOffset[1] + yOff,
-        mapping.positionOffset[2],
-      );
-    } else if (yOff !== 0) {
-      extracted.position.set(0, yOff, 0);
-    }
-
-    setGltfScene(extracted);
-    setModelStats(calculateModelStats(extracted));
-    setSceneBounds(calculateSceneBounds(extracted));
-    setCameraFitVersion((version) => version + 1);
-    setLoadedModelInfo({
-      file: mapping.modelFile,
-      index: mapping.modelIndex,
-      mapping,
-    });
-
-    const itemName = selectedItem?.name ?? "item";
-    setStatus(
-      `Loaded: ${itemName} (${mapping.modelFile} @ index ${mapping.modelIndex})`,
-    );
+    const displayed = presentItemModel(loaded, nextResolution.value.mapping, nextParams);
+    setScene(displayed);
+    setBounds(boundsFor(displayed));
+    setFitVersion((current) => current + 1);
     setLoading(false);
-  }, [selectedGame, selectedItemType, selectedItem, currentMapping, getWorker]);
-
-  return (
-    <div className="flex h-full gap-4 p-4 bg-gray-900">
-      {/* Controls Panel */}
-      <Card className="w-96 shrink-0 bg-gray-800 border-gray-700 overflow-auto">
-        <CardHeader>
-          <CardTitle className="text-white">Item Model Viewer</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Game Selector */}
-          <div className="space-y-2">
-            <Label className="text-gray-300">Game</Label>
-            <Select
-              value={selectedGameId !== null ? String(selectedGameId) : ""}
-              onValueChange={handleGameChange}
-            >
-              <SelectTrigger
-                data-testid="item-model-game-select-trigger"
-                className="bg-gray-700 border-gray-600 text-white"
-              >
-                <SelectValue placeholder="Select a game" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
-                {GAME_OPTIONS.map((game) => (
-                  <SelectItem
-                    key={game.id}
-                    value={String(game.id)}
-                    className="text-white hover:bg-gray-600"
-                  >
-                    {game.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Item Selector */}
-          {selectedGame && (
-            <div className="space-y-2">
-              <Label className="text-gray-300">
-                Item ({mappedItemCount}/{gameItems.length} have models
-                {splineItemCount > 0 ? `; ${splineItemCount} spline items` : ""}
-                )
-              </Label>
-              <Select
-                value={
-                  selectedItemType !== null
-                    ? `${selectedItemKind}:${String(selectedItemType)}`
-                    : ""
-                }
-                onValueChange={handleItemChange}
-              >
-                <SelectTrigger
-                  data-testid="item-model-item-select-trigger"
-                  className="bg-gray-700 border-gray-600 text-white"
-                >
-                  <SelectValue placeholder="Select an item" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600 max-h-80">
-                  {gameItems.map((item) => (
-                    <SelectItem
-                      key={`${item.kind}:${String(item.type)}`}
-                      value={`${item.kind}:${String(item.type)}`}
-                      data-item-type={String(item.type)}
-                      data-item-name={item.name}
-                      data-item-spline={item.kind === "splineItem" ? "1" : "0"}
-                      data-item-mapped={item.hasMapping ? "1" : "0"}
-                      className={`text-white hover:bg-gray-600 ${
-                        item.hasMapping ? "text-green-300" : "text-gray-400"
-                      }`}
-                    >
-                      <ItemThumbnail
-                        game={selectedGame.id}
-                        kind={item.kind}
-                        itemType={item.type}
-                        label={formatItemDisplay(item)}
-                        badgeLabel={item.name}
-                        params={itemParams}
-                        compact
-                      />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Param Selector for param-dependent items */}
-          {paramDependentInfo && selectedItem && (
-            <div className="p-3 bg-purple-900/30 border border-purple-700 rounded space-y-2">
-              <div
-                className="text-purple-300 text-sm font-medium"
-                aria-label="Model variant selector - model varies by parameter"
-              >
-                <span aria-hidden="true">⚙</span> Model Variant (p
-                {paramDependentInfo.paramIndex})
-              </div>
-              <Select
-                value={String(getParamValue(paramDependentInfo.paramIndex))}
-                onValueChange={(val) =>
-                  handleParamChange(
-                    `p${paramDependentInfo.paramIndex}`,
-                    parseInt(val),
-                  )
-                }
-              >
-                <SelectTrigger
-                  data-testid="item-model-param-select-trigger"
-                  className="bg-gray-700 border-gray-600 text-white"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600">
-                  {paramDependentInfo.options.map((opt) => (
-                    <SelectItem
-                      key={opt.value}
-                      value={String(opt.value)}
-                      className="text-white hover:bg-gray-600"
-                    >
-                      {opt.value}: {opt.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Selected Item Info */}
-          {selectedItem && selectedGame && (
-            <div className="p-3 bg-gray-700/50 rounded text-sm space-y-1">
-              <ItemThumbnail
-                game={selectedGame.id}
-                kind={selectedItem.kind}
-                itemType={selectedItem.type}
-                label={selectedItem.name}
-                params={itemParams}
-                className="mb-2"
-                metadata={`Type ${String(selectedItem.type)}`}
-              />
-              <div className="text-gray-400">Type: {selectedItem.type}</div>
-              {selectedItem.kind === "splineItem" && (
-                <div className="text-cyan-300">↺ Spline item</div>
-              )}
-              {selectedItem.isParamDependent && (
-                <div className="text-purple-300">
-                  ⚙ Model varies by parameter
-                </div>
-              )}
-              {currentMapping && (
-                <>
-                  <div className="text-blue-300">
-                    File: {currentMapping.modelFile}
-                  </div>
-                  <div className="text-blue-300">
-                    Index: {currentMapping.modelIndex}
-                    {currentMapping.groupSize && currentMapping.groupSize > 1
-                      ? ` (${currentMapping.groupSize} groups)`
-                      : ""}
-                  </div>
-                  {currentMapping.requiresSkeleton && (
-                    <div className="text-purple-300">
-                      Requires skeleton: {currentMapping.skeletonFile}
-                    </div>
-                  )}
-                </>
-              )}
-              {!currentMapping && !selectedItem.isParamDependent && (
-                <div className="text-yellow-400">No model mapping defined</div>
-              )}
-            </div>
-          )}
-
-          {/* Load Button */}
-          <Button
-            onClick={loadItemModel}
-            disabled={loading || !currentMapping}
-            data-testid="item-model-load-button"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {loading ? "Loading..." : "Load Model"}
-          </Button>
-
-          {/* Status */}
-          <div
-            data-testid="item-model-status"
-            className="p-3 bg-gray-700 rounded text-sm text-gray-300"
-          >
-            {status}
-          </div>
-
-          {/* Loaded Model Info */}
-          {loadedModelInfo && (
-            <div className="p-3 bg-green-900/30 border border-green-700 rounded text-sm text-green-300 space-y-1">
-              <div>Loaded from: {loadedModelInfo.file}</div>
-              <div>Model index: {loadedModelInfo.index}</div>
-              {loadedModelInfo.mapping?.scale && (
-                <div>Scale: {loadedModelInfo.mapping.scale}</div>
-              )}
-              {loadedModelInfo.mapping?.groupSize &&
-                loadedModelInfo.mapping.groupSize > 1 && (
-                  <div>Group size: {loadedModelInfo.mapping.groupSize}</div>
-                )}
-              {loadedModelInfo.mapping?.citations &&
-                loadedModelInfo.mapping.citations.length > 0 &&
-                selectedGameId !== null && (
-                  <div className="mt-2 pt-2 border-t border-green-700/50">
-                    <div className="text-xs text-green-400 font-semibold mb-1">
-                      Source Citations:
-                    </div>
-                    {loadedModelInfo.mapping.citations.map((cite, i) => {
-                      const permalink = getCitationPermalink(
-                        selectedGameId,
-                        cite,
-                      );
-                      return (
-                        <div key={i} className="text-xs text-green-400/80">
-                          {permalink ? (
-                            <a
-                              href={permalink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline hover:text-green-300"
-                            >
-                              {cite.file}:{cite.line}
-                            </a>
-                          ) : (
-                            <span>
-                              {cite.file}:{cite.line}
-                            </span>
-                          )}
-                          {" — "}
-                          {cite.description}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-            </div>
-          )}
-
-          {/* Model Stats */}
-          {modelStats && (
-            <div className="p-3 bg-gray-700/50 rounded text-sm text-gray-400 flex gap-4">
-              <span>Vertices: {modelStats.vertices.toLocaleString()}</span>
-              <span>
-                Faces: {Math.round(modelStats.faces).toLocaleString()}
-              </span>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="p-3 bg-red-900/50 border border-red-700 rounded text-sm text-red-300">
-              {error}
-            </div>
-          )}
-
-          {/* Info */}
-          <div className="text-xs text-gray-500 space-y-1">
-            <p>• Green items (✓) have 3D model mappings</p>
-            <p>• Cyan items (↺) can be placed on splines</p>
-            <p>• Purple items (⚙) have param-dependent models</p>
-            <p>• Gray items don't have models defined yet</p>
-            <p>• Model mappings are based on game source code analysis</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 3D Canvas */}
-      <div
-        data-testid="item-model-canvas-container"
-        data-fit-ready={
-          gltfScene && cameraFitAppliedVersion === cameraFitVersion ? "1" : "0"
-        }
-        className={
-          isCaptureMode
-            ? "flex-1 overflow-hidden"
-            : "flex-1 bg-gray-800 rounded-lg overflow-hidden"
-        }
-      >
-        <Canvas
-          data-testid="item-model-canvas"
-          camera={{
-            position: CAMERA_POSITION,
-            fov: CAMERA_FOV,
-            near: CAMERA_NEAR,
-            far: CAMERA_FAR,
-          }}
-          gl={{
-            alpha: isCaptureMode,
-            preserveDrawingBuffer: isCaptureMode,
-          }}
-          onCreated={({ gl }) => {
-            if (isCaptureMode) {
-              gl.setClearColor(0x000000, 0);
-            }
-          }}
-          style={isCaptureMode ? {} : { background: "#1a1a2e" }}
-        >
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[1, 2, 1]} intensity={1} />
-
-          <ModelDisplay gltfScene={gltfScene} />
-
-          <AutoFitCamera
-            sceneBounds={sceneBounds}
-            fitVersion={cameraFitVersion}
-            controlsRef={orbitControlsRef}
-            onApplied={setCameraFitAppliedVersion}
-          />
-          <OrbitControls ref={orbitControlsRef} />
-          {!isCaptureMode && (
-            <>
-              <Grid
-                args={[GRID_SIZE, GRID_SIZE]}
-                cellSize={GRID_CELL_SIZE}
-                cellThickness={0.5}
-                cellColor="#3a3a5a"
-                sectionSize={GRID_SECTION_SIZE}
-                sectionThickness={1}
-                sectionColor="#5a5a8a"
-                fadeDistance={GRID_FADE_DISTANCE}
-                fadeStrength={1}
-              />
-              <axesHelper args={[100]} />
-            </>
-          )}
-        </Canvas>
-      </div>
-    </div>
-  );
+  }, [flags, gameId, kind, levelNum, loadModel]);
+  const selectedVisibleIndex = visibleItems.findIndex((item) => item.type === itemType);
+  const selectAdjacentItem = useCallback((direction: -1 | 1) => {
+    const nextIndex = selectedVisibleIndex < 0
+      ? (direction === 1 ? 0 : visibleItems.length - 1)
+      : selectedVisibleIndex + direction;
+    const nextItem = visibleItems[nextIndex];
+    if (nextItem) {
+      selectItem(nextItem.type);
+      void loadAdjacentItem(nextItem.type);
+    }
+  }, [loadAdjacentItem, selectItem, selectedVisibleIndex, visibleItems]);
+  const loadPreview = useCallback(async () => { if (gameId === null || itemType === null || !mapping) return; const version = requestVersion.current + 1; requestVersion.current = version; setLoading(true); setError(null); const loaded = await loadModel(itemType, params, levelNum, kind, flags); if (version !== requestVersion.current) return; if (!loaded) { setLoading(false); setError(`Unable to load ${mapping.modelFile}. Check the mapping and model asset.`); return; } const displayed = presentItemModel(loaded, mapping, params); setScene(displayed); setBounds(boundsFor(displayed)); setFitVersion((current) => current + 1); setLoading(false); }, [flags, gameId, itemType, kind, levelNum, loadModel, mapping, params]);
+  const audit = gameId === null || itemType === null ? undefined : getItemModelAuditEntry(gameId, kind, itemType);
+  const stats = statsFor(scene); const requestText = gameId === null || itemType === null ? "Select a game and item" : JSON.stringify({ game: gameId, kind, itemType, levelNum, params, flags });
+  return <div className="flex h-full min-h-0 gap-4 bg-gray-900 p-4">{!captureMode && <Card className="w-[26rem] shrink-0 overflow-auto border-gray-700 bg-gray-800"><CardHeader><CardTitle className="flex items-center gap-2 text-white"><Boxes className="h-5 w-5" />Item-to-model mapping preview</CardTitle><p className="text-sm text-slate-400">Experimental diagnostic view using the editor’s shared mapping and model pipeline.</p></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label className="text-slate-300">Game</Label><Select value={gameId === null ? "" : String(gameId)} onValueChange={(value) => reset(Number(value), kind)}><SelectTrigger><SelectValue placeholder="Select a game" /></SelectTrigger><SelectContent>{GAME_OPTIONS.map((option) => <SelectItem key={option.id} value={String(option.id)}>{option.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label className="text-slate-300">Item kind</Label><Select value={kind} onValueChange={(value) => reset(gameId, value === "splineItem" ? "splineItem" : "terrainItem")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{KINDS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>{selectedGame && <><div className="space-y-2"><Label className="text-slate-300">Search items</Label><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or numeric type" /></div><div className="space-y-2"><Label className="text-slate-300">Item</Label><div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-1"><Button type="button" size="icon" variant="outline" aria-label="Previous item" disabled={selectedVisibleIndex <= 0} onClick={() => selectAdjacentItem(-1)}><ChevronLeft className="h-4 w-4" /></Button><Select value={itemType === null ? "" : String(itemType)} onValueChange={(value) => selectItem(Number(value))}><SelectTrigger><SelectValue placeholder="Select an item" /></SelectTrigger><SelectContent>{visibleItems.map((item) => <SelectItem key={item.type} value={String(item.type)}>{item.type}: {item.name}{item.hasMapping ? " ✓" : item.auditDisposition ? ` — audited ${item.auditDisposition}` : " — unmapped"}</SelectItem>)}</SelectContent></Select><Button type="button" size="icon" variant="outline" aria-label="Next item" disabled={selectedVisibleIndex < 0 || selectedVisibleIndex >= visibleItems.length - 1} onClick={() => selectAdjacentItem(1)}><ChevronRight className="h-4 w-4" /></Button></div></div></>}{levelDependent && <div className="space-y-2"><Label className="text-slate-300">Level</Label><Select value={levelNum === undefined ? "" : String(levelNum)} onValueChange={(value) => { invalidatePreview(); setLevelNum(Number(value)); }}><SelectTrigger><SelectValue placeholder="Choose a level" /></SelectTrigger><SelectContent>{Array.from({ length: 11 }, (_, level) => <SelectItem key={level} value={String(level)}>{level}</SelectItem>)}</SelectContent></Select></div>}<ParameterControls mapping={mapping} params={params} flags={flags} onFlags={(value) => { invalidatePreview(); setFlags(value); }} onParam={(key, value) => { invalidatePreview(); setParams((current) => ({ ...current, [key]: value })); }} /><Button className="w-full" disabled={loading || !mapping} onClick={() => void loadPreview()}>{loading ? "Loading model…" : "Load model"}</Button>{error && <p role="alert" className="text-sm text-red-300">{error}</p>}<MappingSummary game={gameId ?? Game.OTTO_MATIC} mapping={mapping} audit={audit} /><div className="rounded border border-slate-700 bg-slate-900/50 p-2 text-xs text-slate-400"><div>Normalized request</div><code className="break-all">{requestText}</code></div>{stats && <div className="text-xs text-slate-400">Vertices: {stats.vertices} · Faces: {stats.faces}</div>}<Button variant="ghost" className="w-full" onClick={() => { invalidatePreview(); setError(null); }}><RotateCcw className="mr-2 h-4 w-4" />Clear preview</Button></CardContent></Card>}<div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-slate-700"><ModelViewport scene={scene} bounds={bounds} version={fitVersion} /></div></div>;
 }

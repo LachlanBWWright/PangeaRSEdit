@@ -1,5 +1,10 @@
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ChevronDown,
   CloudUpload,
@@ -10,7 +15,7 @@ import {
   Upload,
   Package,
 } from "lucide-react";
-import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 interface LevelActionMenuProps {
   canPreviewInGame: boolean;
@@ -18,6 +23,8 @@ interface LevelActionMenuProps {
   hasScripts?: boolean;
   onPreviewInGame: () => void;
   onPreviewWithScripts?: () => void;
+  onPreviewFromMainMenu?: () => void;
+  onPreviewFromMainMenuWithScripts?: () => void;
   onDownload: () => void;
   onDownloadExtendedPackage?: () => void;
   onDownloadScriptPackage?: () => void;
@@ -31,108 +38,92 @@ export function LevelActionMenu({
   hasScripts = false,
   onPreviewInGame,
   onPreviewWithScripts,
+  onPreviewFromMainMenu,
+  onPreviewFromMainMenuWithScripts,
   onDownload,
   onDownloadExtendedPackage,
   onDownloadScriptPackage,
   onUploadScriptPackage,
   onSaveToCloud,
 }: LevelActionMenuProps) {
-  const detailsRef = useRef<HTMLDetailsElement>(null);
-
-  const closeAndRun = (action: () => void) => {
-    detailsRef.current?.removeAttribute("open");
-    action();
-  };
+  const featureFlags = useFeatureFlags();
+  const scriptingEnabled = featureFlags.scripting;
 
   return (
-    <details className="relative z-50 shrink-0" ref={detailsRef}>
-      <Button
-        asChild
-        size="default"
-        variant="outline"
-        className="h-10 gap-2 px-4 font-medium"
-      >
-        <summary className="flex h-full list-none items-center gap-2 px-4 [&::-webkit-details-marker]:hidden">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="default" variant="outline" className="h-10 gap-2 px-4 font-medium">
           <ChevronDown className="h-4 w-4" />
           Level Actions
-        </summary>
-      </Button>
+        </Button>
+      </DropdownMenuTrigger>
 
-      <div className="absolute right-0 top-full z-60 mt-2 min-w-56 overflow-hidden rounded-md border border-slate-700 bg-slate-800 shadow-lg">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className="w-56 border-slate-700 bg-slate-800 p-1 text-slate-100"
+      >
         {canPreviewInGame && (
-          <Button
-            type="button"
-            variant="menu"
-            onClick={() => closeAndRun(onPreviewInGame)}
-          >
+          <DropdownMenuItem onSelect={onPreviewInGame}>
             <Gamepad2 className="h-4 w-4" />
-            {ENABLE_SCRIPTS && hasScripts
+            {scriptingEnabled && hasScripts
               ? "Preview in Game (no scripts)"
               : "Preview in Game"}
-          </Button>
+          </DropdownMenuItem>
         )}
-        {ENABLE_SCRIPTS &&
+        {scriptingEnabled &&
           canPreviewInGame &&
           hasScripts &&
           onPreviewWithScripts && (
-          <Button
-            type="button"
-            variant="menu"
-            onClick={() => closeAndRun(onPreviewWithScripts)}
-          >
+          <DropdownMenuItem onSelect={onPreviewWithScripts}>
             <Code className="h-4 w-4" />
             Preview in Game (scripts)
-          </Button>
+          </DropdownMenuItem>
         )}
-        <button
-          type="button"
-          className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-white hover:bg-slate-700"
-          onClick={() => closeAndRun(onDownload)}
-        >
+        {canPreviewInGame && onPreviewFromMainMenu && (
+          <DropdownMenuItem onSelect={onPreviewFromMainMenu}>
+            <Gamepad2 className="h-4 w-4" />
+            Preview from Main Menu
+          </DropdownMenuItem>
+        )}
+        {scriptingEnabled &&
+          canPreviewInGame &&
+          hasScripts &&
+          onPreviewFromMainMenuWithScripts && (
+          <DropdownMenuItem onSelect={onPreviewFromMainMenuWithScripts}>
+            <Code className="h-4 w-4" />
+            Preview from Main Menu (scripts)
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onSelect={onDownload}>
           <Download className="h-4 w-4" />
           Download Level
-        </button>
-        {ENABLE_SCRIPTS && hasScripts && onDownloadExtendedPackage && (
-          <Button
-            type="button"
-            variant="menu"
-            onClick={() => closeAndRun(onDownloadExtendedPackage)}
-          >
+        </DropdownMenuItem>
+        {scriptingEnabled && hasScripts && onDownloadExtendedPackage && (
+          <DropdownMenuItem onSelect={onDownloadExtendedPackage}>
             <Package className="h-4 w-4" />
             Download Extended Package
-          </Button>
+          </DropdownMenuItem>
         )}
-        {ENABLE_SCRIPTS && hasScripts && onDownloadScriptPackage && (
-          <Button
-            type="button"
-            variant="menu"
-            onClick={() => closeAndRun(onDownloadScriptPackage)}
-          >
+        {scriptingEnabled && hasScripts && onDownloadScriptPackage && (
+          <DropdownMenuItem onSelect={onDownloadScriptPackage}>
             <FileCode className="h-4 w-4" />
             Download Script Package
-          </Button>
+          </DropdownMenuItem>
         )}
-        {ENABLE_SCRIPTS && hasScripts && onUploadScriptPackage && (
-          <Button
-            type="button"
-            variant="menu"
-            onClick={() => closeAndRun(onUploadScriptPackage)}
-          >
+        {scriptingEnabled && hasScripts && onUploadScriptPackage && (
+          <DropdownMenuItem onSelect={onUploadScriptPackage}>
             <Upload className="h-4 w-4" />
             Upload Script Package
-          </Button>
+          </DropdownMenuItem>
         )}
         {canSaveToCloud && (
-          <Button
-            type="button"
-            variant="menu"
-            onClick={() => closeAndRun(onSaveToCloud)}
-          >
+          <DropdownMenuItem onSelect={onSaveToCloud}>
             <CloudUpload className="h-4 w-4" />
             Save to Cloud
-          </Button>
+          </DropdownMenuItem>
         )}
-      </div>
-    </details>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

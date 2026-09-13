@@ -11,12 +11,14 @@ import {
   checkpointSchema,
   pathDefinitionSchema,
   pathPointSchema,
+  metadataResourceTypeSchema,
 } from "../levelDataSchemas";
 
 // Cro-Mag Rally similar to Otto except header uses numPaths instead of numWaterPatches
 export const croMagLevelSchema = z
   .object({
     _metadata: metadataSchema,
+    Meta: metadataResourceTypeSchema.optional(),
     Hedr: z.record(z.string(), resourceEntrySchema(headerCroMagSchema)),
     STgd: z
       .record(z.string(), resourceEntrySchema(z.array(supertileGridOttoSchema)))

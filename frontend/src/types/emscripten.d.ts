@@ -27,6 +27,7 @@ declare global {
       FS?: { writeFile: (path: string, data: Uint8Array) => void };
       [key: string]: unknown;
     };
+    __ottoHostPreRun?: boolean;
 
     // ----- Bugdom: pre-load window globals -----
     BUGDOM_START_LEVEL?: number;

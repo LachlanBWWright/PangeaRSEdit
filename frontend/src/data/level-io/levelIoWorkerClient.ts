@@ -6,6 +6,8 @@ import {
   levelIoResponseSchema,
 } from "./levelIoSchemas";
 import { levelIoError, type LevelIoError } from "./levelIoErrors";
+import { getFeatureFlags } from "@/config/featureFlags";
+import { validateLevelDataForGameIfEnabled } from "./levelValidationGate";
 import type {
   LevelIoImagePayload,
   LevelIoProgress,
@@ -177,6 +179,7 @@ export function parseLevelWithWorker(
     globals: options.globals,
     fileName: options.fileName,
     levelBytes: options.levelBytes,
+    levelMetadataEnabled: getFeatureFlags().levelMetadata,
     mightyMikeTilesetBytes: options.mightyMikeTilesetBytes,
     mightyMikePaletteBytes: options.mightyMikePaletteBytes,
     mightyMikeSceneName: options.mightyMikeSceneName,
@@ -213,9 +216,25 @@ export function serializeDownloadWithWorker(
     readonly mapImagesFileName?: string;
     readonly levelData: unknown;
     readonly mapImages: readonly LevelIoImagePayload[];
+    readonly reuseLevelBytes?: Uint8Array;
+    readonly reuseTextureBytes?: Uint8Array;
+    readonly reuseCombinedBytes?: Uint8Array;
   },
   onProgress?: (progress: LevelIoProgress) => void,
 ) {
+  const validationResult = validateLevelDataForGameIfEnabled(
+    options.levelData,
+    options.globals.GAME_TYPE,
+    getFeatureFlags().levelValidation,
+  );
+  if (validationResult.isErr()) {
+    return errAsync(
+      levelIoError(
+        "serialize.failed",
+        `Level validation failed for ${options.globals.GAME_NAME}: ${validationResult.error}`,
+      ),
+    );
+  }
   const requestId = nextRequestId("serialize-download");
   const request: SerializeDownloadRequest = {
     requestId,
@@ -225,11 +244,19 @@ export function serializeDownloadWithWorker(
     mapImagesFileName: options.mapImagesFileName,
     levelData: options.levelData,
     mapImages: options.mapImages,
+    levelMetadataEnabled: getFeatureFlags().levelMetadata,
+    reuseLevelBytes: options.reuseLevelBytes,
+    reuseTextureBytes: options.reuseTextureBytes,
+    reuseCombinedBytes: options.reuseCombinedBytes,
   };
+  const transferables = collectImageTransfers(request.mapImages);
+  if (request.reuseLevelBytes) transferables.push(request.reuseLevelBytes.buffer);
+  if (request.reuseTextureBytes) transferables.push(request.reuseTextureBytes.buffer);
+  if (request.reuseCombinedBytes) transferables.push(request.reuseCombinedBytes.buffer);
   return runWorkerRequest(
     "serialize-download",
     request,
-    collectImageTransfers(request.mapImages),
+    transferables,
     onProgress,
   ).andThen((response) => {
     if (response.type !== "serialized-download") {
@@ -249,9 +276,25 @@ export function preparePreviewWithWorker(
     readonly globals: GlobalsInterface;
     readonly levelData: unknown;
     readonly mapImages: readonly LevelIoImagePayload[];
+    readonly reuseLevelBytes?: Uint8Array;
+    readonly reuseTextureBytes?: Uint8Array;
+    readonly reuseCombinedBytes?: Uint8Array;
   },
   onProgress?: (progress: LevelIoProgress) => void,
 ) {
+  const validationResult = validateLevelDataForGameIfEnabled(
+    options.levelData,
+    options.globals.GAME_TYPE,
+    getFeatureFlags().levelValidation,
+  );
+  if (validationResult.isErr()) {
+    return errAsync(
+      levelIoError(
+        "preview.failed",
+        `Level validation failed for ${options.globals.GAME_NAME}: ${validationResult.error}`,
+      ),
+    );
+  }
   const requestId = nextRequestId("prepare-preview");
   const request: PreparePreviewRequest = {
     requestId,
@@ -259,11 +302,19 @@ export function preparePreviewWithWorker(
     globals: options.globals,
     levelData: options.levelData,
     mapImages: options.mapImages,
+    levelMetadataEnabled: getFeatureFlags().levelMetadata,
+    reuseLevelBytes: options.reuseLevelBytes,
+    reuseTextureBytes: options.reuseTextureBytes,
+    reuseCombinedBytes: options.reuseCombinedBytes,
   };
+  const transferables = collectImageTransfers(request.mapImages);
+  if (request.reuseLevelBytes) transferables.push(request.reuseLevelBytes.buffer);
+  if (request.reuseTextureBytes) transferables.push(request.reuseTextureBytes.buffer);
+  if (request.reuseCombinedBytes) transferables.push(request.reuseCombinedBytes.buffer);
   return runWorkerRequest(
     "prepare-preview",
     request,
-    collectImageTransfers(request.mapImages),
+    transferables,
     onProgress,
   ).andThen((response) => {
     if (response.type !== "prepared-preview") {

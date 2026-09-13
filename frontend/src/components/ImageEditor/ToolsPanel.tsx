@@ -46,6 +46,9 @@ interface Props {
    * swatch color to a new CSS color string.
    */
   onReplacePaletteColor?: (index: number, newColor: string) => void;
+  hasOverlay?: boolean;
+  showOverlay?: boolean;
+  setShowOverlay?: (value: boolean) => void;
 }
 
 export function ToolsPanel({
@@ -60,6 +63,9 @@ export function ToolsPanel({
   onReplacePaletteColor,
   highlightSelectedColorUsage,
   setHighlightSelectedColorUsage,
+  hasOverlay = false,
+  showOverlay = false,
+  setShowOverlay,
 }: Props) {
   const isPaletteMode = paletteColors !== undefined && paletteColors.length > 0;
   const canEditPalette = onReplacePaletteColor !== undefined;
@@ -151,17 +157,17 @@ export function ToolsPanel({
             value={brushShape}
             onValueChange={(value: "circle" | "square") => setBrushShape(value)}
           >
-            <SelectTrigger className="w-full bg-gray-700 border-gray-600 h-9">
+            <SelectTrigger className="w-full h-9">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
-              <SelectItem value="circle" className="text-gray-200">
+            <SelectContent>
+              <SelectItem value="circle">
                 <div className="flex items-center space-x-2">
                   <Circle className="w-4 h-4" />
                   <span>Circle</span>
                 </div>
               </SelectItem>
-              <SelectItem value="square" className="text-gray-200">
+              <SelectItem value="square">
                 <div className="flex items-center space-x-2">
                   <Square className="w-4 h-4" />
                   <span>Square</span>
@@ -171,6 +177,25 @@ export function ToolsPanel({
           </Select>
         </div>
       </div>
+
+      {hasOverlay && setShowOverlay && (
+        <div className="space-y-3 pt-4 border-t border-gray-700">
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Map Overlay
+          </label>
+          <label className="flex items-center justify-between rounded bg-gray-900/50 px-2 py-2 text-sm text-gray-300">
+            <span>Show map elements</span>
+            <Switch
+              checked={showOverlay}
+              onCheckedChange={setShowOverlay}
+              aria-label="Show map elements overlay"
+            />
+          </label>
+          <p className="text-[10px] text-gray-500">
+            Shows positions captured when the editor opened.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-3 pt-4 border-t border-gray-700">
         <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">

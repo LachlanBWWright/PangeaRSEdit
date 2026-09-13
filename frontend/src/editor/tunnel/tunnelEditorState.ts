@@ -4,7 +4,19 @@ import type {
   TunnelItem,
   TunnelSection,
   TunnelSectionMesh,
+  TunnelSplinePoint,
 } from "@/data/tunnelParser/types";
+
+export function updateTunnelSplinePointAtIndex(
+  tunnelData: TunnelData,
+  index: number,
+  point: TunnelSplinePoint,
+): TunnelData {
+  const splinePoints = tunnelData.splinePoints.map((current, currentIndex) =>
+    currentIndex === index ? point : current,
+  );
+  return { ...tunnelData, splinePoints };
+}
 
 export function createEmptySectionMesh(): TunnelSectionMesh {
   const emptyBoundingBox: BoundingBox = {

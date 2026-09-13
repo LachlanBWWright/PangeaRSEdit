@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { metadataResourceTypeSchema } from "../levelDataSchemas";
 import { validateLevelData } from "../levelDataSchemas";
 
 // Mighty Mike level data schema
 // Mighty Mike is a 2D game with a simplified structure
 export const mightyMikeLevelSchema = z.object({
+  Meta: metadataResourceTypeSchema.optional(),
   Hedr: z.object({
     1000: z.object({
       name: z.string().optional(),

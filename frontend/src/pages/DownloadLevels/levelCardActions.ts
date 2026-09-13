@@ -1,5 +1,7 @@
 import { toast } from "sonner";
 import { GAME_KEY_TO_ENUM, type Level } from "@/data/levels";
+import { getFeatureFlags } from "@/config/featureFlags";
+import { validateLevelBytesForGame } from "@/data/level-io/levelValidationGate";
 import type { Game } from "@/data/globals/globals";
 import {
   downloadLevelArchive,
@@ -68,7 +70,18 @@ export function createPlayInBrowserHandler({
     setIsFetchingPlay(true);
     void fetchPlayBytes(level.terFile, level.rsrcFile)
       .match(
-        ([dataBytes, rsrcBytes]) => {
+        async ([dataBytes, rsrcBytes]) => {
+          if (getFeatureFlags().levelValidation) {
+            const validationResult = await validateLevelBytesForGame(
+              gameEnum,
+              dataBytes,
+              rsrcBytes,
+            );
+            if (validationResult.isErr()) {
+              toast.error(`Level validation failed: ${validationResult.error}`);
+              return;
+            }
+          }
           onPlayInBrowser(gameEnum, levelNumber, dataBytes, rsrcBytes);
         },
         (error) => {

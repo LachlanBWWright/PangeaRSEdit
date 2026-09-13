@@ -2,17 +2,15 @@ import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { progressToast } from "@/toasts/progressToast";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
-import {
-  createCanvasFromTile,
-  parseNanosaurTerrainTextures,
-} from "@/data/processors/classicProprocessor";
+import { parseNanosaurTerrainWithWorker } from "@/data/level-io/nanosaurTerrainWorkerClient";
+import { imagePayloadsToCanvases } from "@/data/level-io/terrainImageSnapshots";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
 import { MightyMikePreview } from "./MightyMikePreview";
 import { Card, CardContent } from "@/components/ui/card";
 import { Result } from "neverthrow";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 import {
@@ -29,6 +27,7 @@ import {
   getTextureFileType,
 } from "./gameCardDisplayState";
 import type { ParsedLevelDataFile } from "@/editor/loadLogic/parseLevelDataFile";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 const GAME_CARD_PREVIEW_HEIGHT_CLASS = "h-60";
 
@@ -42,6 +41,7 @@ export function GameCard({
   setMapImages,
   setTunnelData,
   setTunnelFileName,
+  setTunnelLevelKind,
   onCreateBlankLevel,
 }: {
   title: string;
@@ -51,24 +51,30 @@ export function GameCard({
     file: Blob,
     gameType: GlobalsInterface,
     companionTextureFile?: File,
+    companionMetadataFile?: File,
   ) => Promise<Result<ParsedLevelDataFile, string>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  setTunnelLevelKind: (kind: TunnelLevelKind) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
 }) {
+  const { levelMetadata: levelMetadataEnabled } = useFeatureFlags();
   const modelPath = getGameCardModelPath(globals.GAME_TYPE);
   const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
   const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
   const isBugdom1 = globals.DATA_TYPE === DataType.RSRC_FORK;
   const isNanosaur1 = globals.DATA_TYPE === DataType.TRT_FILE;
+  const supportsMetadataCompanion = isNanosaur1 || isMightyMike;
   const inputRef = useRef<HTMLInputElement>(null);
   const [stagedLevelFile, setStagedLevelFile] = useState<File | null>(null);
   const [stagedTextureFile, setStagedTextureFile] = useState<File | null>(null);
+  const [stagedMetadataFile, setStagedMetadataFile] = useState<File | null>(null);
   const stagedLevelRef = useRef<File | null>(null);
   const stagedTextureRef = useRef<File | null>(null);
+  const stagedMetadataRef = useRef<File | null>(null);
 
   const levelFileType = getLevelFileType(isMightyMike, globals.DATA_TYPE);
   const textureFileType = getTextureFileType(
@@ -80,25 +86,35 @@ export function GameCard({
   const accepts = useMemo(() => {
     return getUploadAcceptTypes({
       isBugdom2,
+      isNanosaur1,
+      isMightyMike,
       levelFileType,
       textureFileType,
       hasStagedLevel: stagedLevelFile !== null,
       hasStagedTexture: stagedTextureFile !== null,
+      hasStagedMetadata: levelMetadataEnabled && stagedMetadataFile !== null,
+      levelMetadataEnabled,
     });
   }, [
     isBugdom2,
+    isNanosaur1,
+    isMightyMike,
     levelFileType,
     textureFileType,
     stagedLevelFile,
     stagedTextureFile,
+    stagedMetadataFile,
+    levelMetadataEnabled,
   ]);
   const allTypes = getSupportedUploadTypes(
     levelFileType,
     textureFileType,
     isBugdom2,
+    supportsMetadataCompanion,
+    levelMetadataEnabled,
   );
 
-  const stagedBadge = (name: string, kind: "level" | "texture") => (
+  const stagedBadge = (name: string, kind: "level" | "texture" | "metadata") => (
     <span className="inline-flex items-center gap-0.5">
       {name}
       <Button
@@ -112,9 +128,12 @@ export function GameCard({
           if (kind === "level") {
             stagedLevelRef.current = null;
             setStagedLevelFile(null);
-          } else {
+          } else if (kind === "texture") {
             stagedTextureRef.current = null;
             setStagedTextureFile(null);
+          } else {
+            stagedMetadataRef.current = null;
+            setStagedMetadataFile(null);
           }
         }}
       >
@@ -131,18 +150,21 @@ export function GameCard({
   const clearStaged = () => {
     stagedLevelRef.current = null;
     stagedTextureRef.current = null;
+    stagedMetadataRef.current = null;
     setStagedLevelFile(null);
     setStagedTextureFile(null);
+    setStagedMetadataFile(null);
   };
 
-  const loadStagedLevel = async (levelFile: File, textureFile: File | null) => {
+  const loadStagedLevel = async (levelFile: File, textureFile: File | null, metadataFile: File | null) => {
+    const activeMetadataFile = levelMetadataEnabled ? metadataFile : null;
     const toastId = "level-load-progress";
     progressToast.start({
       id: toastId,
       title: "Loading level files...",
       description: levelFile.name,
       current: 0,
-      completed: textureFile ? 4 : 2,
+      completed: textureFile || activeMetadataFile ? 4 : 2,
     });
     setMapFile(levelFile);
     progressToast.update({
@@ -150,12 +172,15 @@ export function GameCard({
       title: "Parsing level data...",
       description: levelFile.name,
       current: 1,
-      completed: textureFile ? 4 : 2,
+      completed: textureFile || activeMetadataFile ? 4 : 2,
     });
     const parseResult = await handleParseLevelDataFile(
       levelFile,
       globals,
       isMightyMike ? (textureFile ?? undefined) : undefined,
+      supportsMetadataCompanion
+        ? (activeMetadataFile ?? undefined)
+        : undefined,
     );
     if (parseResult.isErr()) {
       progressToast.fail({
@@ -182,8 +207,8 @@ export function GameCard({
       const buffer = await textureFile.arrayBuffer();
 
       if (isNanosaur1) {
-        const tiles = parseNanosaurTerrainTextures(buffer);
-        if (tiles.length === 0) {
+        const tilesResult = await parseNanosaurTerrainWithWorker(buffer);
+        if (tilesResult.isErr() || tilesResult.value.length === 0) {
           progressToast.fail({
             id: toastId,
             title: "Failed to load textures",
@@ -198,8 +223,17 @@ export function GameCard({
           return;
         }
 
+        const canvasesResult = imagePayloadsToCanvases(tilesResult.value);
+        if (canvasesResult.isErr()) {
+          progressToast.fail({
+            id: toastId,
+            title: "Failed to materialize textures",
+            description: canvasesResult.error,
+          });
+          return;
+        }
         setMapImagesFile(textureFile);
-        setMapImages(tiles.map(createCanvasFromTile));
+        setMapImages(canvasesResult.value);
       } else {
         const mapImagesResult = await loadMapImages(
           new DataView(buffer),
@@ -251,6 +285,8 @@ export function GameCard({
       levelFileType,
       textureFileType,
       isBugdom2,
+      supportsMetadataCompanion,
+      levelMetadataEnabled,
     );
     if (fileKind === "tunnel") {
       const result = parseTunnelFile(await file.arrayBuffer());
@@ -260,7 +296,19 @@ export function GameCard({
         });
         return;
       }
+      const levelKind = file.name.toLowerCase().includes("plumb")
+        ? "plumbing"
+        : file.name.toLowerCase().includes("gutter")
+          ? "gutter"
+          : null;
+      if (levelKind === null) {
+        toast.error("Choose a Plumbing.tun or Gutter.tun filename", {
+          description: "The game uses different models and collision rules for each tunnel level.",
+        });
+        return;
+      }
       setTunnelFileName(file.name);
+      setTunnelLevelKind(levelKind);
       setTunnelData(result.value);
       toast.success("Tunnel level loaded");
       return;
@@ -268,8 +316,9 @@ export function GameCard({
 
     const isLevel = fileKind === "level";
     const isTexture = fileKind === "texture";
+    const isMetadata = levelMetadataEnabled && fileKind === "metadata";
 
-    if (!isLevel && !isTexture) {
+    if (!isLevel && !isTexture && !isMetadata) {
       toast.error("Unsupported file type", {
         description: `Expected ${accepts}`,
       });
@@ -280,6 +329,7 @@ export function GameCard({
       {
         level: stagedLevelRef.current,
         texture: stagedTextureRef.current,
+        metadata: stagedMetadataRef.current,
       },
       file,
       fileKind,
@@ -301,16 +351,29 @@ export function GameCard({
         description: file.name,
       });
     }
+    if (isMetadata) {
+      stagedMetadataRef.current = file;
+      setStagedMetadataFile(file);
+      toast.success("Metadata companion staged", { description: file.name });
+    }
 
     if (!textureFileType) {
       if (nextLevel) {
-        await loadStagedLevel(nextLevel, null);
+        await loadStagedLevel(
+          nextLevel,
+          null,
+          levelMetadataEnabled ? (nextStaged.metadata ?? null) : null,
+        );
       }
       return;
     }
 
-    if (nextLevel && nextTexture) {
-      await loadStagedLevel(nextLevel, nextTexture);
+    if (nextLevel && (nextTexture || (levelMetadataEnabled && nextStaged.metadata))) {
+      await loadStagedLevel(
+        nextLevel,
+        nextTexture,
+        levelMetadataEnabled ? (nextStaged.metadata ?? null) : null,
+      );
       return;
     }
 
@@ -396,7 +459,12 @@ export function GameCard({
               Drop files here or click to browse
             </p>
             <p className="text-xs text-gray-400 mt-1 break-all">
-              {stagedLevelFile && stagedTextureFile ? (
+              {levelMetadataEnabled && stagedMetadataFile ? (
+                <>
+                  Staged: {stagedBadge(stagedMetadataFile.name, "metadata")}{" "}
+                  {stagedLevelFile ? "— metadata ready" : "— now upload level file"}
+                </>
+              ) : stagedLevelFile && stagedTextureFile ? (
                 <>
                   Staged: {stagedBadge(stagedLevelFile.name, "level")},{" "}
                   {stagedBadge(stagedTextureFile.name, "texture")}

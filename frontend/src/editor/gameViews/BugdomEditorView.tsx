@@ -13,18 +13,23 @@ import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
-import { IndividualTilesMenu } from "./IndividualTilesMenu";
+import { BugdomTerrainMenu } from "../subviews/bugdom/BugdomTerrainMenu";
+import { BugdomMetadataMenu } from "../subviews/bugdom/BugdomMetadataMenu";
+import { LevelMetadataMenu } from "../subviews/metadata/LevelMetadataMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { CanvasViewToggle } from "../subviews/CanvasViewToggle";
+import { supportsThreeCanvas } from "../canvas/canvasViewState";
 import { MenuSection } from "./MenuSection";
 import {
   EmptyFencePrompt,
@@ -55,7 +60,6 @@ import {
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import { resizeEditorAtomicSupertiles } from "@/editor/gameViews/editorResizeState";
 import { applyLevelScale } from "../utils/applyLevelScale";
-import { BugdomVertexColorMenu } from "../subviews/bugdom/BugdomVertexColorMenu";
 
 export function BugdomEditorView({
   headerData,
@@ -77,6 +81,7 @@ export function BugdomEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const { levelMetadata } = useFeatureFlags();
   const storedView = useAtomValue(ActiveView);
   const setView = useSetAtom(ActiveView);
   const selectedTile = useAtomValue(SelectedTile);
@@ -108,8 +113,8 @@ export function BugdomEditorView({
   const view = normalizeEditorView(
     storedView,
     ENABLE_SCRIPTS
-      ? [View.fences, View.items, View.splines, View.scripts, View.tiles, View.supertiles, View.vertexColors]
-      : [View.fences, View.items, View.splines, View.tiles, View.supertiles, View.vertexColors],
+      ? [View.fences, View.items, View.splines, View.scripts, View.tiles, View.supertiles, View.vertexColors, ...(levelMetadata ? [View.metadata] : [])]
+      : [View.fences, View.items, View.splines, View.tiles, View.supertiles, View.vertexColors, ...(levelMetadata ? [View.metadata] : [])],
     View.supertiles,
   );
   useEffect(() => {
@@ -147,8 +152,11 @@ export function BugdomEditorView({
   };
 
   return (
-    <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection key={view} scrollable={true}>
+    <div className={`flex flex-col flex-1 w-full gap-2 min-h-0 ${view === View.tiles ? "" : "pt-2 md:pt-6"}`}>
+      <MenuSection
+        key={view}
+        className={view === View.scripts || view === View.metadata ? "!h-full" : undefined}
+      >
         {view === View.fences &&
           (fenceData ? (
             <FenceMenu
@@ -198,10 +206,15 @@ export function BugdomEditorView({
             />
           ))}
         {view === View.tiles && (
-          <IndividualTilesMenu
+          <BugdomTerrainMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
             terrainData={terrainData}
+          />
+        )}
+        {view === View.vertexColors && (
+          <BugdomMetadataMenu
+            headerData={headerData}
             onApplyLevelScale={(nextTileSize, mode) =>
               applyLevelScale({
                 previousTileSize: headerData.Hedr[1000].obj.tileSize,
@@ -216,6 +229,9 @@ export function BugdomEditorView({
             }
           />
         )}
+        {levelMetadata && view === View.metadata && (
+          <LevelMetadataMenu terrainData={terrainData} setTerrainData={setTerrainData} />
+        )}
         {view === View.supertiles && (
           <BugdomTileMenu
             key={selectedTile}
@@ -227,11 +243,11 @@ export function BugdomEditorView({
             setMapImages={setMapImages}
           />
         )}
-        {view === View.vertexColors && (
-          <BugdomVertexColorMenu terrainData={terrainData} />
-        )}
       </MenuSection>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
+      {view !== View.scripts && view !== View.metadata && <div
+          className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative"
+      >
+        {supportsThreeCanvas(view) && <CanvasViewToggle />}
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -241,9 +257,11 @@ export function BugdomEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
-          {itemData && <ItemFilterToggle />}
+          {itemData && (
+            <ItemFilterToggle itemData={itemData} splineData={splineData} />
+          )}
         </div>
-        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
+        {canvasViewMode === CanvasView.THREE_D && supportsThreeCanvas(view) ? (
           <ThreeView
             headerData={headerData}
             fenceData={fenceData}
@@ -252,6 +270,9 @@ export function BugdomEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setItemData={setItemData}
+            setFenceData={setFenceData}
+            setSplineData={setSplineData}
             setTerrainData={setTerrainData}
           />
         ) : (
@@ -272,7 +293,7 @@ export function BugdomEditorView({
             onResize={handleSupertileResize}
           />
         )}
-      </div>
+      </div>}
     </div>
   );
 }

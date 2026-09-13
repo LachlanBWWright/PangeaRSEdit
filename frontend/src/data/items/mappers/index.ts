@@ -47,7 +47,7 @@ export function hasGameMapper(game: Game): boolean {
 export function getGamesWithMappers(): Game[] {
   return Object.keys(MAPPER_REGISTRY)
     .map(Number)
-    .filter((g): g is Game => !isNaN(g) && MAPPER_REGISTRY[g as Game] !== undefined);
+    .filter((g): g is Game => !isNaN(g) && Object.hasOwn(MAPPER_REGISTRY, g));
 }
 
 /**

@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/select";
 import { StatusChip } from "./ScriptSharedComponents";
 import type { ScriptHookId } from "./scriptWorkspaceState";
+import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
 
 interface ScriptGlobalHookAssignment {
   hookId: ScriptHookId;
@@ -44,6 +45,9 @@ export function ScriptGlobalHooksPanel({
       <h3 className="mb-2 font-semibold text-white">Global Hooks</h3>
       <div className="divide-y divide-slate-800 border-y border-slate-800">
         {supportedHooks.map((hookId) => {
+          const hook = AUTHORITATIVE_API_SCHEMA.hooks.find(
+            (candidate) => candidate.name === hookId,
+          );
           const existing = globalHooks.find(
             (candidate) => candidate.hookId === hookId,
           );
@@ -58,6 +62,14 @@ export function ScriptGlobalHooksPanel({
                 <p className="text-xs text-slate-400">
                   {existing ? existing.sourceFilePath : "No script assigned"}
                 </p>
+                <p className="mt-1 text-xs text-slate-300">
+                  {hook?.description ?? "Runs when the selected game reports this event."}
+                </p>
+                {hook && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Context: {hook.contextType} · Returns: {hook.returnType}
+                  </p>
+                )}
               </div>
               <Select
                 value={existing?.behaviorId ?? "none"}

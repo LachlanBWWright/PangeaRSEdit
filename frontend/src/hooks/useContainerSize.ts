@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
-interface ContainerSize {
+export interface ContainerSize {
   width: number;
   height: number;
+}
+
+export function isRenderableContainerSize(size: ContainerSize): boolean {
+  return size.width > 0 && size.height > 0;
 }
 
 function readContainerSize(
@@ -29,7 +33,7 @@ export function useContainerSize(
   useEffect(() => {
     const updateSize = () => {
       const size = readContainerSize(containerRef);
-      if (size) setContainerSize(size);
+      if (size && isRenderableContainerSize(size)) setContainerSize(size);
     };
     updateSize();
     if (typeof ResizeObserver !== "undefined") {

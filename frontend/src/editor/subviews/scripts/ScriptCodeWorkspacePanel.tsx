@@ -10,6 +10,14 @@ import { StatusChip } from "./ScriptSharedComponents";
 import type { ScriptDiagnostic } from "./scriptWorkspaceState";
 import { MenuEmptyState } from "../MenuEmptyState";
 
+function diagnosticCategoryLabel(category: ScriptDiagnostic["category"]): string {
+  if (category === "source-validation") return "Source validation";
+  if (category === "luals") return "LuaLS";
+  if (category === "packaging") return "Packaging";
+  if (category === "runtime-traceback") return "Runtime traceback";
+  return "Native adapter";
+}
+
 interface ScriptCodeWorkspacePanelProps {
   activeCodePath: string | null;
   activeCodeDescription: string;
@@ -80,7 +88,7 @@ export function ScriptCodeWorkspacePanel({
           </div>
           {diagnostics.length === 0 ? (
             <p className="text-xs text-slate-400">
-              No compile diagnostics yet.
+              No diagnostics yet.
             </p>
           ) : (
             diagnostics.map((diagnostic, index) => (
@@ -93,7 +101,7 @@ export function ScriptCodeWorkspacePanel({
                     {diagnostic.filePath}
                   </p>
                   <StatusChip
-                    label={String(diagnostic.code)}
+                    label={`${diagnosticCategoryLabel(diagnostic.category)} · ${String(diagnostic.code)}`}
                     tone={
                       diagnostic.severity === "error" ? "danger" : "warning"
                     }

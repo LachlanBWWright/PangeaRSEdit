@@ -1,4 +1,4 @@
-import { Result, ResultAsync, ok } from "neverthrow";
+import { err, Result, ok } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 import {
   createManagedMultiplayerRuntimeBridge,
@@ -19,6 +19,7 @@ import {
   type PreviewVfsFile,
   type PreviewRuntimeModule,
   type StartNetworkMatchFn,
+  type PreviewRuntimeFailure,
 } from "./gamePreviewRuntime";
 import { mapErr } from "../../utils/mapErr";
 
@@ -41,6 +42,8 @@ interface StartGamePreviewOptions {
   readonly onStartNetworkMatchReady?: (start: StartNetworkMatchFn) => void;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
+  readonly onFailure?: (failure: PreviewRuntimeFailure) => void;
+  readonly onRuntimeModule?: (module: PreviewRuntimeModule | null) => void;
 }
 
 function isScriptNotFoundError(error: string): boolean {
@@ -244,15 +247,33 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     onStartNetworkMatchReady,
     onStatus,
     onError,
+    onFailure,
+    onRuntimeModule,
   } = options;
 
   let cancelled = false;
+  let cleanedUp = false;
   let stopGame: (() => void) | null = null;
   let uninstallRuntimeBridge: (() => void) | null = null;
   let disposeRuntimeTransportSubscription: (() => void) | null = null;
   const resizePulseTimerIds = new Set<number>();
   const resizePulseFrameIds = new Set<number>();
   const previousModule = window.Module;
+  const reportStatus = (text: string): void => {
+    if (!cancelled) onStatus(text);
+  };
+  const reportError = (text: string): void => {
+    if (!cancelled) onError(text);
+  };
+  const reportFailure = (failure: PreviewRuntimeFailure): void => {
+    if (!cancelled) onFailure?.(failure);
+  };
+  const reportRuntimeEvent = (event: MultiplayerRuntimeEvent): void => {
+    if (!cancelled) onRuntimeEvent?.(event);
+  };
+  const reportRuntimeModule = (module: PreviewRuntimeModule | null): void => {
+    if (!cancelled) onRuntimeModule?.(module);
+  };
   const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
   const cleanupGlobals = applyPreviewGlobals(
     window,
@@ -264,7 +285,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
   const assetBaseUrls = buildPreviewAssetBaseUrls(config);
   const assetVersion = import.meta.env.VITE_GAME_ASSET_VERSION ?? "development";
   const cacheBustToken = `${assetVersion}-${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
-  onStatus("Waiting for game canvas...");
+  reportStatus("Waiting for game canvas...");
 
   const handleFullscreenChange = () => {
     if (cancelled) return;
@@ -284,7 +305,12 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
         localParticipantId,
       );
       if (localPlayerIndexResult.isErr()) {
-        onError(localPlayerIndexResult.error);
+        reportError(localPlayerIndexResult.error);
+        reportFailure({
+          category: "native-adapter",
+          code: "runtime.network-config",
+          message: localPlayerIndexResult.error,
+        });
         return;
       }
       const localPlayerIndex = localPlayerIndexResult.value;
@@ -327,6 +353,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
 
     canvas.width = width;
     canvas.height = height;
+    canvas.focus();
     triggerResizePulse(resizePulseTimerIds);
 
     void (async () => {
@@ -351,22 +378,34 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           networkMatchConfig,
           localParticipantId,
           deferNetworkStart,
-          onRuntimeEvent,
-          onStartNetworkMatchReady,
+          onRuntimeEvent: reportRuntimeEvent,
+          onStartNetworkMatchReady: (start) => {
+            if (cancelled) return;
+            onStartNetworkMatchReady?.(() =>
+              cancelled ? err("Preview launch has been cancelled") : start(),
+            );
+          },
           normalLaunch,
-          onStatus,
-          onError,
+          onRuntimeModule: reportRuntimeModule,
+          onStatus: reportStatus,
+          onError: reportError,
+          onFailure: reportFailure,
         });
         syncRuntimeCanvasSize(activeModule);
 
         window.Module = activeModule;
+        reportRuntimeModule(activeModule);
         const scriptUrl =
           new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
-        onStatus("Loading runtime script...");
-        const stopOrErr = await ResultAsync.fromPromise(
-          loadPreviewRuntime(activeModule, scriptUrl, () => cancelled),
-          (e) => mapErr(e),
-        );
+        reportStatus("Loading runtime script...");
+        const stopOrErr = onRuntimeModule
+          ? await loadPreviewRuntime(
+              activeModule,
+              scriptUrl,
+              () => cancelled,
+              reportRuntimeModule,
+            )
+          : await loadPreviewRuntime(activeModule, scriptUrl, () => cancelled);
         if (cancelled) {
           if (stopOrErr.isOk()) stopOrErr.value();
           return;
@@ -378,10 +417,16 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
           if (canTryNextBase) {
             continue;
           }
-          onError(stopOrErr.error);
+          reportError(stopOrErr.error);
+          reportFailure({
+            category: "packaging",
+            code: "runtime.script-load",
+            message: stopOrErr.error,
+          });
           return;
         }
         stopGame = stopOrErr.value;
+        reportRuntimeModule(window.Module ?? activeModule);
         scheduleStartupCanvasSync(
           activeModule,
           resizePulseFrameIds,
@@ -398,6 +443,8 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
   );
 
   return () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
     cancelled = true;
     stopObservingCanvas();
     stopGame?.();
@@ -417,5 +464,6 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     uninstallRuntimeBridge?.();
     uninstallRuntimeBridge = null;
     restorePreviewModule(previousModule);
+    onRuntimeModule?.(null);
   };
 }

@@ -74,6 +74,22 @@ describe("Game Item Mappers", () => {
       expect(getGameMapper(Game.MIGHTY_MIKE)).toBeUndefined();
     });
   });
+
+  it("does not leave legacy top-level multipart extraction in mapped previews", () => {
+    const mappers = [ottoItemMapper, bugdom2ItemMapper, nanosaur2ItemMapper];
+    for (const mapper of mappers) {
+      for (const itemType of mapper.getMappedTypes()) {
+        const mapping = mapper.getMapping(
+          itemType,
+          0,
+          { p0: 0, p1: 0, p2: 0, p3: 0 },
+          0,
+          "terrainItem",
+        );
+        expect(mapping?.groupSize, `${mapper.game}:${itemType}`).toBeUndefined();
+      }
+    }
+  });
   
   describe("hasGameMapper", () => {
     it("should return true for games with mappers", () => {
@@ -211,6 +227,63 @@ describe("Game Item Mappers", () => {
       }
       expect(ottoItemMapper.hasModel(99999)).toBe(false);
     });
+
+    it("uses source child offsets for multipart Otto props", () => {
+      const windmill = ottoItemMapper.getMapping(OttoItemType.Windmill);
+      const pitcherPod = ottoItemMapper.getMapping(OttoItemType.PitcherPod);
+      const saucerTurret = ottoItemMapper.getMapping(OttoItemType.Turret);
+      const iceSaucer = ottoItemMapper.getMapping(OttoItemType.IceSaucer);
+      const powerPost = ottoItemMapper.getMapping(OttoItemType.BumperCarPowerPost);
+
+      expect(windmill?.modelParts?.[1]?.positionOffset).toEqual([0, 372, 53]);
+      expect(pitcherPod?.modelParts?.[1]?.positionOffset).toEqual([0, 336.7, 164.6]);
+      expect(saucerTurret?.modelParts?.[1]?.positionOffset).toEqual([0, 114, 0]);
+      expect(iceSaucer?.modelParts?.[2]?.positionOffset).toEqual([0, 300 / 2.7, 0]);
+      expect(iceSaucer?.modelParts?.[2]?.scale).toBe(20);
+      expect(powerPost?.modelParts?.[1]?.positionOffset).toEqual([0, 80, 0]);
+    });
+
+    it("selects the source zip-line post model for each level family", () => {
+      const apocalypse = ottoItemMapper.getMapping(OttoItemType.ZipLinePost, 3);
+      const fireIce = ottoItemMapper.getMapping(OttoItemType.ZipLinePost, 7);
+
+      expect(apocalypse?.modelFile).toBe("level4_apocalypse.bg3d");
+      expect(apocalypse?.modelIndex).toBe(20);
+      expect(fireIce?.modelFile).toBe("level8_fireice.bg3d");
+      expect(fireIce?.modelIndex).toBe(38);
+      expect(ottoItemMapper.isLevelDependent(OttoItemType.ZipLinePost)).toBe(true);
+    });
+
+    it("extracts every Otto multipart source object", () => {
+      const expectedCounts: readonly [number, number][] = [
+        [OttoItemType.Checkpoint, 2],
+        [OttoItemType.Tractor, 5],
+        [OttoItemType.Windmill, 2],
+        [OttoItemType.ExitRocket, 2],
+        [OttoItemType.MagnetMonster, 2],
+        [OttoItemType.BubblePump, 2],
+        [OttoItemType.SlimeMech, 2],
+        [OttoItemType.MachineBoss, 2],
+        [OttoItemType.CrunchDoor, 2],
+        [OttoItemType.ZipLinePost, 1],
+        [OttoItemType.PitcherPod, 2],
+        [OttoItemType.Cannon, 2],
+        [OttoItemType.BumperCarPowerPost, 2],
+        [OttoItemType.CloudTunnel, 2],
+        [OttoItemType.JawsBot, 5],
+        [OttoItemType.HammerBot, 3],
+        [OttoItemType.DrillBot, 4],
+        [OttoItemType.SwingerBot, 6],
+        [OttoItemType.RadarDish, 2],
+        [OttoItemType.IceSaucer, 3],
+        [OttoItemType.Railgun, 2],
+        [OttoItemType.Turret, 2],
+        [OttoItemType.BumperCarGate, 2],
+      ];
+      for (const [itemType, count] of expectedCounts) {
+        expect(ottoItemMapper.getMapping(itemType)?.modelParts, `${itemType}`).toHaveLength(count);
+      }
+    });
     
     it("should handle param-dependent Human mapping", () => {
       // Human should use different models based on p0 param.
@@ -292,6 +365,18 @@ describe("Game Item Mappers", () => {
       // Will be undefined until mappings are added
       expect(mapping === undefined || mapping !== null).toBe(true);
     });
+
+    it("preserves Bugdom 2 child positions for multipart props", () => {
+      const windmill = bugdom2ItemMapper.getMapping(Bugdom2ItemType.Windmill);
+      const hive = bugdom2ItemMapper.getMapping(Bugdom2ItemType.BeeHive);
+      const scarecrow = bugdom2ItemMapper.getMapping(Bugdom2ItemType.Scarecrow);
+
+      expect(windmill?.modelParts?.map((part) => part.modelIndex)).toEqual([28, 29]);
+      expect(windmill?.modelParts?.[1]?.positionOffset).toEqual([0, 1050, -560]);
+      expect(hive?.modelParts?.map((part) => part.modelIndex)).toEqual([25, 26]);
+      expect(hive?.modelParts?.[1]?.positionOffset).toEqual([-135, 350, -50]);
+      expect(scarecrow?.modelParts?.map((part) => part.modelIndex)).toEqual([8, 9]);
+    });
   });
   
   describe("BugdomItemMapper", () => {
@@ -358,6 +443,18 @@ describe("Game Item Mappers", () => {
       expect(mapping?.verificationStatus).toBe("verified");
     });
 
+    it("should use the converted lawn-rock scale", () => {
+      const mapping = bugdomItemMapper.getMapping(
+        BugdomItemType.Rock,
+        1,
+        { p0: 0, p1: 0, p2: 0, p3: 0 },
+      );
+
+      expect(mapping?.modelFile).toBe("Lawn_Models2.3dmf");
+      expect(mapping?.modelIndex).toBe(8);
+      expect(mapping?.scale).toBe(0.1);
+    });
+
     it("should resolve LawnDoor from level, params, and flags", () => {
       const mapping = bugdomItemMapper.getMapping(
         BugdomItemType.LawnDoor,
@@ -369,6 +466,45 @@ describe("Game Item Mappers", () => {
       expect(mapping?.modelFile).toBe("Night_Models.3dmf");
       expect(mapping?.modelIndex).toBe(15);
       expect(mapping?.rotationY).toBe(Math.PI / 2);
+    });
+
+    it("should map Bugdom 2 bowling pins to the playroom battery mesh", () => {
+      const mapping = bugdom2ItemMapper.getMapping(Bugdom2ItemType.BowlingPins);
+
+      expect(mapping).toMatchObject({
+        modelFile: "Level5_Playroom.bg3d",
+        modelIndex: 8,
+        scale: 0.7,
+      });
+    });
+
+    it("should map Otto Matic's blob boss marker to the visible central unit", () => {
+      const mapping = ottoItemMapper.getMapping(OttoItemType.MachineBoss);
+
+      expect(mapping).toMatchObject({
+        modelFile: "level3_blobboss.bg3d",
+        modelIndex: 25,
+        scale: 6,
+      });
+      expect(mapping?.modelParts).toHaveLength(2);
+    });
+
+    it("resolves visible spline-backed objects from their terrain markers", () => {
+      expect(
+        ottoItemMapper.getMapping(OttoItemType.MagnetMonster),
+      ).toBeDefined();
+      expect(
+        bugdom2ItemMapper.getMapping(Bugdom2ItemType.SlotCar),
+      ).toBeDefined();
+      expect(
+        nanosaur2ItemMapper.getMapping(Nanosaur2ItemType.RamphorEnemy),
+      ).toBeDefined();
+      expect(
+        croMagItemMapper.getMapping(18),
+      ).toBeDefined();
+      expect(
+        billyFrontierItemMapper.getMapping(BillyFrontierItemType.StampedeKanga),
+      ).toBeDefined();
     });
 
     it("should resolve HoneycombPlatform size and material", () => {
@@ -455,6 +591,32 @@ describe("Game Item Mappers", () => {
       expect(forestTurret?.scale).toBe(2.5);
       expect(desertTurret?.scale).toBe(2.5);
       expect(swampTurret?.scale).toBe(2.5);
+      expect(forestTurret?.modelParts?.map((part) => part.partId)).toEqual([
+        "base",
+        "turret",
+        "wheel",
+        "gun",
+        "lens",
+      ]);
+      expect(forestTurret?.modelParts?.[2]?.positionOffset).toEqual([31.837, 282.548, 0]);
+      expect(desertTurret?.modelParts?.[3]?.positionOffset).toEqual([0, 283.141, 0]);
+    });
+
+    it("maps Nanosaur 2 multipart objects to source model indices", () => {
+      const forestDoor = nanosaur2ItemMapper.getMapping(Nanosaur2ItemType.ForestDoor, 0);
+      const desertDoor = nanosaur2ItemMapper.getMapping(Nanosaur2ItemType.ForestDoor, 1);
+      const key = nanosaur2ItemMapper.getMapping(Nanosaur2ItemType.ForestDoorKey, 0);
+      const crystal = nanosaur2ItemMapper.getMapping(
+        Nanosaur2ItemType.Crystal,
+        1,
+        { p0: 2, p1: 0, p2: 0, p3: 0 },
+      );
+
+      expect(forestDoor?.modelParts?.map((part) => part.modelIndex)).toEqual([42, 26]);
+      expect(desertDoor?.modelParts?.map((part) => part.modelIndex)).toEqual([47, 26]);
+      expect(forestDoor?.modelParts?.[1]?.positionOffset).toEqual([0, 70, 0]);
+      expect(key?.modelParts?.map((part) => part.modelIndex)).toEqual([27, 28]);
+      expect(crystal?.modelParts?.map((part) => part.modelIndex)).toEqual([35, 38]);
     });
   });
   

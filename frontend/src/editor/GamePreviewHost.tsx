@@ -9,7 +9,12 @@ import {
   startPreparedGamePreview,
   type PreviewState,
 } from "./utils/gamePreviewHostState";
-import type { PreviewVfsFile } from "./utils/gamePreviewRuntime";
+import type {
+  MultiplayerRuntimeEvent,
+  PreviewRuntimeModule,
+  PreviewVfsFile,
+  PreviewRuntimeFailure,
+} from "./utils/gamePreviewRuntime";
 
 interface Props {
   readonly config: GamePortConfig;
@@ -37,6 +42,10 @@ interface Props {
   readonly runToken: number;
   readonly networkMatchConfig?: MultiplayerMatchConfig | null;
   readonly networkRuntimeTransport?: MultiplayerRuntimeManagedTransport | null;
+  readonly onRuntimeError?: (message: string) => void;
+  readonly onRuntimeFailure?: (failure: PreviewRuntimeFailure) => void;
+  readonly onRuntimeEvent?: (event: MultiplayerRuntimeEvent) => void;
+  readonly onRuntimeModule?: (module: PreviewRuntimeModule | null) => void;
   /** When true, launch from the title screen without level injection or level-jump globals. */
   readonly normalLaunch?: boolean;
 }
@@ -52,6 +61,10 @@ export function GamePreviewHost({
   runToken,
   networkMatchConfig,
   networkRuntimeTransport,
+  onRuntimeError,
+  onRuntimeFailure,
+  onRuntimeEvent,
+  onRuntimeModule,
   normalLaunch = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -62,8 +75,8 @@ export function GamePreviewHost({
   });
 
   useEffect(() => {
+    const canvas = canvasRef.current;
     return () => {
-      const canvas = canvasRef.current;
       if (canvas && document.activeElement === canvas) {
         canvas.blur();
       }
@@ -88,12 +101,16 @@ export function GamePreviewHost({
         setPreviewState({ runToken, statusText: text, errorText: null });
       },
       onError: (text) => {
+        onRuntimeError?.(text);
         setPreviewState({
           runToken,
           statusText: "Failed to start game.",
           errorText: text,
         });
       },
+      onFailure: onRuntimeFailure,
+      onRuntimeEvent,
+      onRuntimeModule,
     });
   }, [
     config,
@@ -103,6 +120,10 @@ export function GamePreviewHost({
     runToken,
     networkMatchConfig,
     networkRuntimeTransport,
+    onRuntimeError,
+    onRuntimeFailure,
+    onRuntimeEvent,
+    onRuntimeModule,
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,

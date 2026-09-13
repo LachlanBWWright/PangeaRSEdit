@@ -1,11 +1,20 @@
-import { ResultAsync } from "neverthrow";
+import { err, errAsync, ok, ResultAsync, type Result } from "neverthrow";
 import { zip } from "fflate";
 import { mapErr } from "@/utils/mapErr";
 import type { Level } from "@/data/levels";
+import { getFeatureFlags } from "@/config/featureFlags";
+import { validateLevelBytesForGame } from "@/data/level-io/levelValidationGate";
+import { GAME_KEY_TO_ENUM } from "@/data/levels";
 
 interface DownloadTarget {
   name: string;
   url: string;
+}
+
+interface FetchedDownloadTarget {
+  name: string;
+  url: string;
+  data: Uint8Array<ArrayBuffer>;
 }
 
 /** Rejects a fetch response when the HTTP status is not successful. */
@@ -96,19 +105,35 @@ function collectDownloadTargets(level: Level): DownloadTarget[] {
 function fetchNamedBytes(
   name: string,
   url: string,
-): ResultAsync<{ name: string; data: Uint8Array<ArrayBuffer> }, string> {
-  return fetchBytes(url).map((data) => ({ name, data }));
+): ResultAsync<FetchedDownloadTarget, string> {
+  return fetchBytes(url).map((data) => ({ name, url, data }));
 }
 
 /** Converts fetched name/data pairs into the object shape expected by the zip library. */
 function buildZipMap(
-  pairs: { name: string; data: Uint8Array<ArrayBuffer> }[],
+  pairs: FetchedDownloadTarget[],
 ): Record<string, Uint8Array<ArrayBuffer>> {
   const files: Record<string, Uint8Array<ArrayBuffer>> = {};
   for (const { name, data } of pairs) {
     files[name] = data;
   }
   return files;
+}
+
+async function validateFetchedLevel(
+  level: Level,
+  pairs: FetchedDownloadTarget[],
+): Promise<Result<void, string>> {
+  if (!getFeatureFlags().levelValidation) {
+    return ok(undefined);
+  }
+  const game = GAME_KEY_TO_ENUM[level.game];
+  if (game === undefined) {
+    return err(`Unknown game key: ${level.game}`);
+  }
+  const dataBytes = pairs.find((pair) => pair.url === level.terFile)?.data ?? null;
+  const rsrcBytes = pairs.find((pair) => pair.url === level.rsrcFile)?.data ?? null;
+  return validateLevelBytesForGame(game, dataBytes, rsrcBytes);
 }
 
 /** Downloads the remote level payloads and packages them into a zip archive. */
@@ -126,7 +151,14 @@ export function downloadLevelArchive(
   const fetches = targets.map(({ name, url }) => fetchNamedBytes(name, url));
 
   return ResultAsync.combine(fetches)
-    .andThen((pairs) => zipFiles(buildZipMap(pairs)))
+    .andThen((pairs) =>
+      ResultAsync.fromPromise(validateFetchedLevel(level, pairs), mapErr).andThen(
+        (validationResult) =>
+          validationResult.isOk()
+            ? zipFiles(buildZipMap(pairs))
+            : errAsync(validationResult.error),
+      ),
+    )
     .map((data) => ({ data, zipName }));
 }
 

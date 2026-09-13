@@ -5,6 +5,7 @@ import {
   scaleItemCoordinates,
   scaleTerrainFeatureCoordinates,
   supportsLevelScale,
+  supportsLevelScalePlacement,
 } from "@/editor/utils/levelScaleState";
 import type { FenceData, ItemData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Game } from "@/data/globals/globals";
@@ -24,6 +25,15 @@ describe("level scale state", () => {
   it("calculates the inverse coordinate factor for preserved positions", () => {
     expect(getPreservedPositionFactor(32, 64)).toBe(0.5);
     expect(getPreservedPositionFactor(0, 64)).toBeNull();
+  });
+
+  it("only enables placement behavior for games whose terrain scale changes X/Z", () => {
+    expect(supportsLevelScalePlacement(Game.BUGDOM_2)).toBe(true);
+    expect(supportsLevelScalePlacement(Game.NANOSAUR_2)).toBe(true);
+    expect(supportsLevelScalePlacement(Game.BILLY_FRONTIER)).toBe(true);
+    expect(supportsLevelScalePlacement(Game.BUGDOM)).toBe(false);
+    expect(supportsLevelScalePlacement(Game.OTTO_MATIC)).toBe(false);
+    expect(supportsLevelScalePlacement(Game.CRO_MAG)).toBe(false);
   });
 
   it("rescales integer item and fence coordinates", () => {

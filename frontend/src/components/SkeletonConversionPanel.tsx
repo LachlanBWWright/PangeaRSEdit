@@ -5,7 +5,7 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
-import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrcWithWorker } from "../modelParsers/skeletonRsrc/skeletonWorkerClient";
 import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import { DEFAULT_BG3D_EXPORT_TARGET } from "../modelParsers/bg3dExportTargets";
@@ -92,9 +92,8 @@ export function SkeletonConversionPanel({
         );
 
         pushLog("Parsing skeleton resource.");
-        const skeletonParseResult = await ResultAsync.fromPromise(
-          parseSkeletonRsrc(skeletonRawBuffer),
-          mapErr,
+        const skeletonParseResult = await parseSkeletonRsrcWithWorker(
+          skeletonRawBuffer,
         );
         if (skeletonParseResult.isErr()) {
           const message = `Failed to parse skeleton file: ${skeletonParseResult.error}`;

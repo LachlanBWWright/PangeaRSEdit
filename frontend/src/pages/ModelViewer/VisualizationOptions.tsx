@@ -62,10 +62,10 @@ export function VisualizationOptions({
               setInteractionMode("navigate");
             }}
           >
-            <SelectTrigger className="border-gray-600 bg-gray-800 text-white">
+            <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-gray-600 bg-gray-800 text-white">
+            <SelectContent>
               <SelectItem value="navigate">Inspect model</SelectItem>
               <SelectItem value="animate" disabled={!hasSkeleton}>
                 Animate
@@ -164,10 +164,10 @@ export function VisualizationOptions({
                 setWeightVisualizationMode("none");
               }}
             >
-              <SelectTrigger className="h-8 border-gray-600 bg-gray-800 text-xs text-white">
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-gray-600 bg-gray-800 text-white">
+              <SelectContent>
                 <SelectItem value="none">None</SelectItem>
                 <SelectItem value="dominant">Assigned bone</SelectItem>
                 <SelectItem value="unweighted">Unassigned vertices</SelectItem>

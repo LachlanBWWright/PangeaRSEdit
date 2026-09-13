@@ -9,4 +9,5 @@ export enum View {
   animations,
   vertexColors,
   collisionPath,
+  metadata,
 }

@@ -254,25 +254,17 @@ static IReadOnlyList<string> ValidateProductionConfiguration(
         errors.Add("Production requires at least one Cors__AllowedOrigins entry.");
     }
 
-    if (string.IsNullOrWhiteSpace(configuration["Multiplayer:TurnUrl"])
-        || string.IsNullOrWhiteSpace(configuration["Multiplayer:TurnSharedSecret"]))
-    {
-        errors.Add("Production multiplayer requires TURN URL and shared secret configuration.");
-    }
-
     if (string.IsNullOrWhiteSpace(configuration["Multiplayer:ParticipantSigningKey"]))
     {
         errors.Add("Production multiplayer requires a participant signing key.");
     }
 
-    if (!string.Equals(configuration["Multiplayer:Topology"], "single-instance", StringComparison.OrdinalIgnoreCase))
+    if (!string.Equals(
+            configuration["Multiplayer:Topology"] ?? "single-instance",
+            "single-instance",
+            StringComparison.OrdinalIgnoreCase))
     {
         errors.Add("Production multiplayer currently requires Multiplayer__Topology=single-instance because signaling state is process-local.");
-    }
-
-    if (string.IsNullOrWhiteSpace(configuration["Multiplayer:RequiredContentHash"]))
-    {
-        errors.Add("Production multiplayer requires Multiplayer__RequiredContentHash to identify the deployed runtime and content bundle.");
     }
 
     return errors;

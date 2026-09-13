@@ -12,22 +12,58 @@ dotnet run --project backend/PangeaRSEdit.Api
 
 ## Production architecture
 
-Production is intentionally constrained to at most one Cloud Run instance because SignalR groups and active WebRTC signaling state are held in process memory. The service can scale to zero when no requests or WebSocket connections are active. Clients retry and rejoin signaling after a cold start, while lobby membership and visibility remain in PostgreSQL.
+Production is intentionally constrained to exactly one Render instance because SignalR groups and active WebRTC signaling state are held in process memory. Clients retry and rejoin signaling after a restart, while lobby membership and visibility remain in PostgreSQL.
 
 The production topology is:
 
 - GitHub Pages for the frontend.
-- Artifact Registry for immutable backend images.
-- Cloud Run with `min-instances=0` and `max-instances=1`.
-- Cloud SQL for PostgreSQL.
+- Render Web Service for the backend container.
+- Supabase PostgreSQL for durable data and migrations.
 - An external TURN service with short-lived credentials issued by the API.
-- Secret Manager for the database connection string and TURN shared secret.
+- Render environment variables/secrets for deployment configuration.
 
-Production startup fails closed unless PostgreSQL, CORS, TURN, `Multiplayer__Topology=single-instance`, and a deployment-specific `Multiplayer__RequiredContentHash` are configured. The topology declaration prevents accidentally deploying process-local signaling state across multiple replicas. The content hash must match `VITE_MULTIPLAYER_CONTENT_HASH` in the frontend build, preventing stale clients from joining a newer runtime. The application never creates or upgrades a production schema during normal startup.
+Production startup requires PostgreSQL, CORS, and a participant-token signing key. Multiplayer uses one instance because signaling state is process-local. The application never creates or upgrades a production schema during normal startup.
+
+## Render and Supabase deployment
+
+The repository includes [`render.yaml`](../render.yaml), which defines the Render Web Service. It uses the Dockerfile at `backend/Dockerfile`, exposes `/healthz` as the HTTP health check, and sets the service to one instance. Render's `PORT` value is passed through to ASP.NET Core by the Docker entrypoint.
+
+Create the Render service from the repository's Blueprint, or create a Docker Web Service manually with:
+
+- Root directory: `backend`
+- Runtime: `Docker`
+- Dockerfile: `./Dockerfile`
+- Health check path: `/healthz`
+- Instance count: `1`
+
+Render supplies the web-service `PORT`; the container also remains runnable locally on port `8080` when `PORT` is not set. Render web services must listen on `0.0.0.0`; ASP.NET Core does so through the container port configuration. [Render's web-service documentation](https://render.com/docs/web-services) describes the required port binding, and [Render's health-check documentation](https://render.com/docs/health-checks) documents the `/healthz` HTTP probe.
+
+Set these Render variables and secrets:
+
+| Variable | Value |
+| --- | --- |
+| `ConnectionStrings__Default` | Supabase connection string, including SSL mode such as `Ssl Mode=Require` |
+| `Cors__AllowedOrigins__0` | Exact frontend origin, without a trailing slash |
+| `Multiplayer__ParticipantSigningKey` | High-entropy participant signing key |
+
+The GitHub Pages build uses the `RENDER_API_ORIGIN` repository/environment variable for the deployed API origin. Set `MULTIPLAYER_ENABLED` to `true` when the backend is configured.
+
+`Multiplayer__StunUrl` is optional; if absent, the API uses Google's public STUN server. TURN variables are also optional and are only needed when direct peer connections fail behind restrictive NATs or firewalls. Google OAuth is optional; add `Authentication__Google__ClientId` and `Authentication__Google__ClientSecret` only if sign-in is enabled.
+
+Supabase is the production migration authority. The initial Supabase migration mirrors the existing EF Core migration history. For future production schema changes, update the EF model and migration, generate the SQL migration script, and commit the resulting SQL under `supabase/migrations/`. Apply pending migrations with the Supabase CLI before deploying the API:
+
+```sh
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+Do not run `--migrate` as the normal Render service start command. That mode remains available for local and test environments only, and the production API intentionally does not run schema changes during startup.
+
+Render's free plan does not provide a pre-deploy command, so production migrations should be applied through Supabase before the Render deploy. On a paid Render plan, a pre-deploy command can be used for an explicitly designed migration workflow; it must still run against the same Supabase database and be reviewed for backward compatibility.
 
 ## Database migrations
 
-EF Core migrations are stored in `PangeaRSEdit.Infrastructure/Persistence/Migrations`. Restore the pinned local tool and add migrations from the `backend` directory:
+EF Core migrations are stored in `PangeaRSEdit.Infrastructure/Persistence/Migrations`. Restore the pinned local tool and add migrations from the backend directory:
 
 ```sh
 dotnet tool restore
@@ -38,48 +74,20 @@ dotnet tool run dotnet-ef migrations add MigrationName \
   --output-dir Persistence/Migrations
 ```
 
-The container supports a dedicated migration invocation:
+The container supports a dedicated migration invocation for local and test use:
 
 ```sh
 dotnet PangeaRSEdit.Api.dll --migrate
 ```
 
-CI updates and executes a Cloud Run migration job before deploying the new service revision. A failed migration stops deployment.
+## Frontend and backend release order
 
-## GitHub Actions configuration
+1. Apply any pending Supabase migrations.
+2. Deploy the backend from the target commit on Render.
+3. Build/deploy the GitHub Pages frontend with `RENDER_API_ORIGIN`.
 
-Configure the following repository variables:
-
-| Variable | Purpose |
-| --- | --- |
-| `GCP_PROJECT_ID` | Google Cloud project ID |
-| `GCP_ARTIFACT_REGISTRY_LOCATION` | Artifact Registry region |
-| `GCP_ARTIFACT_REGISTRY_REPOSITORY` | Docker repository name |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | GitHub Workload Identity provider |
-| `GCP_ARTIFACT_REGISTRY_SERVICE_ACCOUNT` | Image publishing identity |
-| `GCP_CLOUD_RUN_DEPLOY_SERVICE_ACCOUNT` | Migration and deployment identity |
-| `GCP_CLOUD_RUN_RUNTIME_SERVICE_ACCOUNT` | Runtime identity used by the service and migration job |
-| `GCP_CLOUD_RUN_REGION` | Cloud Run region |
-| `GCP_CLOUD_RUN_SERVICE` | API service name |
-| `GCP_CLOUD_RUN_MIGRATION_JOB` | Schema migration job name |
-| `GCP_CLOUD_SQL_INSTANCE` | Cloud SQL instance connection name |
-| `GCP_DATABASE_CONNECTION_STRING_SECRET` | Secret Manager secret name containing the Npgsql connection string |
-| `GCP_TURN_SHARED_SECRET` | Secret Manager secret name containing the TURN shared secret |
-| `GCP_PARTICIPANT_SIGNING_KEY_SECRET` | Secret Manager secret name containing a high-entropy participant signing key |
-| `PRODUCTION_FRONTEND_URL` | Full frontend URL used for redirects |
-| `PRODUCTION_FRONTEND_ORIGIN` | Exact frontend origin allowed by CORS |
-| `PRODUCTION_API_ORIGIN` | Stable Cloud Run or custom-domain API origin compiled into the frontend |
-| `MULTIPLAYER_STUN_URL` | Production STUN URL |
-| `MULTIPLAYER_TURN_URL` | Production TURN URL |
-
-Use a connection string whose host is the Cloud SQL Unix socket, for example `Host=/cloudsql/PROJECT:REGION:INSTANCE;Database=pangearsedit;Username=...;Password=...;Pooling=true;Maximum Pool Size=20`.
-
-The Artifact Registry identity only needs repository write access. The deployment identity needs permission to update Cloud Run services and jobs and to act as the runtime identity. The runtime identity needs Cloud SQL Client and Secret Manager Secret Accessor for the configured runtime secrets.
-
-Grant `roles/run.invoker` to `allUsers` on the API service once during infrastructure provisioning. The deployment workflow deliberately does not mutate public invocation IAM on each release.
-
-The GitHub `production` environment should require approval. No long-lived Google Cloud credential is stored in GitHub; both workflows use GitHub OIDC and Workload Identity Federation.
+Keep the Render service at one instance until multiplayer signaling state is moved out of process memory.
 
 ## Rollback
 
-Cloud Run keeps prior revisions, but a database migration may not be backward compatible. Prefer additive migrations and expand/contract changes. To roll back application code, direct all traffic to the previous healthy revision in Cloud Run. Do not run EF migration removal against production data.
+Render can roll back the service deployment, but database migrations may not be backward compatible. Prefer additive migrations and expand/contract changes. Do not remove EF migrations against production data.

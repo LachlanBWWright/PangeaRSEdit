@@ -22,6 +22,7 @@ import {
   splinePointSchema,
   splineItemSchema,
   checkpointSchema,
+  metadataResourceTypeSchema,
 } from "../levelDataSchemas";
 
 /**
@@ -31,6 +32,7 @@ export function createSimplifiedLevelSchema() {
   return z
     .object({
       _metadata: metadataSchema,
+      Meta: metadataResourceTypeSchema.optional(),
       Hedr: z.record(z.string(), resourceEntrySchema(headerSimplifiedSchema)),
       STgd: z
         .record(z.string(), resourceEntrySchema(z.array(supertileGridSimplifiedSchema)))

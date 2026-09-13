@@ -36,6 +36,7 @@ interface ImageEditorProps {
    * The host component should remap all pixels of the old color to the new color.
    */
   onReplacePaletteColor?: (index: number, newColor: string) => void;
+  overlayImage?: HTMLCanvasElement | null;
 }
 
 export function ImageEditor({
@@ -47,6 +48,7 @@ export function ImageEditor({
   imageName,
   paletteColors,
   onReplacePaletteColor,
+  overlayImage = null,
 }: ImageEditorProps) {
   const [tool] = useState<"brush">("brush");
   const [brushSize, setBrushSize] = useState([5]);
@@ -65,6 +67,7 @@ export function ImageEditor({
   const [baseScale, setBaseScale] = useState(1);
   const [highlightSelectedColorUsage, setHighlightSelectedColorUsage] =
     useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
 
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
@@ -355,6 +358,9 @@ export function ImageEditor({
             onReplacePaletteColor={onReplacePaletteColor}
             highlightSelectedColorUsage={highlightSelectedColorUsage}
             setHighlightSelectedColorUsage={setHighlightSelectedColorUsage}
+            hasOverlay={overlayImage !== null}
+            showOverlay={showOverlay}
+            setShowOverlay={setShowOverlay}
           />
           <ImageEditorCanvas
             image={image}
@@ -374,6 +380,7 @@ export function ImageEditor({
             handleMouseUp={handleMouseUp}
             handleWheel={handleStageWheel}
             selectedColorHighlightCanvas={selectedColorHighlightCanvas}
+            overlayImage={showOverlay ? overlayImage : null}
             strokes={strokes}
             currentStroke={currentStroke}
           />

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: pangearsedit-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Database__Provider
+        value: postgres
+      - key: ConnectionStrings__Default
+        sync: false
+      - key: Cors__AllowedOrigins__0
+        sync: false
+      - key: Multiplayer__ParticipantSigningKey
+        sync: false

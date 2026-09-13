@@ -1,10 +1,4 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   formatLobbyModeLabel,
   formatLobbyVisibility,
@@ -89,7 +84,6 @@ export function MultiplayerSessionSidebar({
   statusText,
   errorText,
   isHost,
-  readyPlayerCount,
   busy,
   chatMessages,
   chatDraft,
@@ -119,92 +113,51 @@ export function MultiplayerSessionSidebar({
   const trackOptions = getTrackOptions(lobby.gameId, lobby.mode);
 
   return (
-    <aside className="min-h-0">
-      <Card className="flex max-h-full min-h-0 flex-col border-border bg-card shadow-sm">
-        <CardHeader className="space-y-2 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">Session</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={onCopyLobbyId}
-            >
-              Copy ID
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="min-h-0 flex-1 space-y-3 overflow-y-auto text-xs">
-          <section className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
-                <strong>Connection:</strong> {connectionStatus}
-              </div>
-              <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
-                <strong>Phase:</strong> {currentMatchPhase}
-              </div>
-              <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
-                <strong>RTC:</strong> {rtcStatusText}
-              </div>
-              <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
-                <strong>Ping:</strong>{" "}
-                {displayedPingMs === null ? "n/a" : `${displayedPingMs} ms`}
-              </div>
-            </div>
-            <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
-              <strong>Kind:</strong> {currentMatchKind}
-            </div>
-            <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
-              <strong>HUD:</strong> {hudLabel}
-            </div>
-            <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
-              <strong>Status:</strong> {statusText}
-            </div>
-            {errorText ? (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-destructive">
-                <strong>Error:</strong> {errorText}
-              </div>
+    <aside className="min-h-0 border-l border-border pl-4">
+      <div className="min-h-0 max-h-full overflow-hidden text-xs">
+        <Tabs defaultValue="lobby" className="min-h-0">
+          <TabsList className="h-9 bg-transparent p-0">
+            <TabsTrigger value="lobby" className="text-xs">Lobby</TabsTrigger>
+            {showDebugOverlay ? (
+              <TabsTrigger value="debug" className="text-xs">Debug</TabsTrigger>
             ) : null}
-          </section>
-
-          <Separator />
-
-          <section className="space-y-3">
-            <div className="grid gap-1.5">
-              <div className="break-all">
-                <strong>Lobby:</strong> {lobby.id}
-              </div>
+          </TabsList>
+          <TabsContent value="lobby" className="space-y-3 overflow-hidden text-xs">
+          <section aria-labelledby="multiplayer-lobby-heading" className="space-y-3">
+            <div className="flex items-start justify-between gap-2">
               <div>
-                <strong>Join Code:</strong> {lobby.joinCode}
+                <h3 id="multiplayer-lobby-heading" className="font-semibold text-foreground">Lobby</h3>
+                <div className="mt-1 font-mono text-lg font-semibold tracking-wide text-foreground">
+                  {lobby.joinCode}
+                </div>
+                <div className="text-muted-foreground">Join code</div>
               </div>
+            </div>
+            <div className="grid gap-1 text-muted-foreground">
               <div>
-                <strong>State:</strong> {lobby.state}
-              </div>
-              <div>
-                <strong>You:</strong> {isHost ? "host" : "guest"}
-              </div>
-              <div>
-                <strong>Visibility:</strong>{" "}
+                <strong className="text-foreground">Visibility:</strong>{" "}
                 {formatLobbyVisibility(lobby.isPublic)}
               </div>
+              <div><strong className="text-foreground">Mode:</strong> {formatLobbyModeLabel(lobby.mode)}</div>
               <div>
-                <strong>Mode:</strong> {formatLobbyModeLabel(lobby.mode)}
-              </div>
-              <div>
-                <strong>Map:</strong>{" "}
+                <strong className="text-foreground">Map:</strong>{" "}
                 {getLevelOptionLabel(trackOptions, lobby.trackOrLevel)}
               </div>
               {usesCroMagTagDuration(lobby.gameId, lobby.mode) ? (
                 <div>
-                  <strong>Tag Duration:</strong>{" "}
+                  <strong className="text-foreground">Tag Duration:</strong>{" "}
                   {String(lobby.tagDurationMinutes)} minutes
                 </div>
               ) : null}
-              <div>
-                <strong>Ready:</strong> {String(readyPlayerCount)}/
-                {String(lobby.players.length)}
-              </div>
             </div>
+            <div className="text-muted-foreground" aria-live="polite">
+              {statusText}
+            </div>
+            {errorText ? (
+              <div className="text-destructive" role="alert">
+                <strong>Error:</strong> {errorText}
+              </div>
+            ) : null}
             {canEditSelection ? (
               <div className="grid gap-2">
                 <div className="grid gap-1">
@@ -290,8 +243,8 @@ export function MultiplayerSessionSidebar({
 
           <Separator />
 
-          <section className="space-y-2">
-            <strong>Roster</strong>
+          <section aria-labelledby="multiplayer-roster-heading" className="space-y-2">
+            <h3 id="multiplayer-roster-heading" className="font-semibold text-foreground">Players</h3>
             <LobbyRoster
               players={lobby.players}
               isHost={isHost}
@@ -302,8 +255,25 @@ export function MultiplayerSessionSidebar({
 
           <Separator />
 
-          <section className="space-y-2">
-            <strong>Lobby Chat</strong>
+          <HostStartControls
+            hasLocalParticipant={hasLocalParticipant}
+            localParticipantIsReady={localParticipantIsReady}
+            busy={busy}
+            isHost={isHost}
+            canStart={canStartLobby}
+            canForceStart={canForceStartLobby}
+            canEndMatch={canEndMatch}
+            onToggleReady={onToggleReady}
+            onStart={onStart}
+            onStartAnyway={onStartAnyway}
+            onEndMatch={onEndMatch}
+            onLeave={onLeave}
+          />
+
+          <Separator />
+
+          <section aria-labelledby="multiplayer-chat-heading" className="space-y-2">
+            <h3 id="multiplayer-chat-heading" className="font-semibold text-foreground">Lobby Chat</h3>
             <div className="max-h-28 space-y-1 overflow-y-auto rounded border p-2">
               {chatMessages.length === 0 ? (
                 <div className="text-muted-foreground">No messages yet.</div>
@@ -333,6 +303,7 @@ export function MultiplayerSessionSidebar({
               />
               <Button
                 variant="secondary"
+                size="default"
                 disabled={chatDraft.trim().length === 0}
                 onClick={onSendChat}
               >
@@ -341,25 +312,37 @@ export function MultiplayerSessionSidebar({
             </div>
           </section>
 
-          <Separator />
-
-          <HostStartControls
-            hasLocalParticipant={hasLocalParticipant}
-            localParticipantIsReady={localParticipantIsReady}
-            busy={busy}
-            isHost={isHost}
-            canStart={canStartLobby}
-            canForceStart={canForceStartLobby}
-            canEndMatch={canEndMatch}
-            onToggleReady={onToggleReady}
-            onStart={onStart}
-            onStartAnyway={onStartAnyway}
-            onEndMatch={onEndMatch}
-            onLeave={onLeave}
-          />
+          </TabsContent>
 
           {showDebugOverlay ? (
-            <>
+            <TabsContent value="debug" className="max-h-[calc(100vh-8rem)] space-y-4 overflow-y-auto text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-semibold text-foreground">Developer tools</h3>
+                <Button
+                  variant="outline"
+                  size="default"
+                  disabled={busy}
+                  onClick={onCopyLobbyId}
+                >
+                  Copy Lobby ID
+                </Button>
+              </div>
+              <section aria-labelledby="multiplayer-status-heading" className="space-y-1 text-muted-foreground">
+                <h3 id="multiplayer-status-heading" className="font-semibold text-foreground">Runtime status</h3>
+                <div className="grid gap-x-3 gap-y-1 sm:grid-cols-2">
+                  <div><strong className="text-foreground">Connection:</strong> {connectionStatus}</div>
+                  <div><strong className="text-foreground">Phase:</strong> {currentMatchPhase}</div>
+                  <div><strong className="text-foreground">RTC:</strong> {rtcStatusText}</div>
+                  <div><strong className="text-foreground">Ping:</strong> {displayedPingMs === null ? "n/a" : `${displayedPingMs} ms`}</div>
+                  <div><strong className="text-foreground">Kind:</strong> {currentMatchKind}</div>
+                  <div><strong className="text-foreground">HUD:</strong> {hudLabel}</div>
+                  <div className="sm:col-span-2"><strong className="text-foreground">Status:</strong> {statusText}</div>
+                </div>
+                {errorText ? (
+                  <div className="pt-1 text-destructive"><strong>Error:</strong> {errorText}</div>
+                ) : null}
+              </section>
+
               <Separator />
               <NetworkDebugControls
                 networkDebugOptions={networkDebugOptions}
@@ -378,10 +361,10 @@ export function MultiplayerSessionSidebar({
                 nativeDebugStats={nativeDebugStats}
                 errorText={errorText}
               />
-            </>
+            </TabsContent>
           ) : null}
-        </CardContent>
-      </Card>
+        </Tabs>
+      </div>
     </aside>
   );
 }

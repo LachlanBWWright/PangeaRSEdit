@@ -41,6 +41,7 @@ export function getLiquidPatchLayout(
   p1: number,
   p2: number,
   p3: number,
+  levelNumber: number | undefined,
   itemPosX: number,
   itemPosZ: number,
 ): {
@@ -61,6 +62,7 @@ export function getLiquidPatchLayout(
     p1,
     p2,
     p3,
+    levelNumber,
   );
   const rectX = itemPosX - dimensions.width2D / 2;
   const rectZ = itemPosZ - dimensions.depth2D / 2;

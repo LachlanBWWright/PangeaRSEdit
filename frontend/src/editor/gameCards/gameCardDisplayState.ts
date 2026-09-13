@@ -41,7 +41,10 @@ export function getTextureFileType(
   isBugdom1: boolean,
   isNanosaur1: boolean,
 ): string | null {
-  if (isMightyMike || isBugdom1) {
+  if (isMightyMike) {
+    return ".tileset";
+  }
+  if (isBugdom1) {
     return null;
   }
   return isNanosaur1 ? ".trt" : ".ter";
@@ -51,8 +54,15 @@ export function getSupportedUploadTypes(
   levelFileType: string,
   textureFileType: string | null,
   isBugdom2: boolean,
+  metadataCompanionGame = false,
+  levelMetadataEnabled = false,
 ): string[] {
-  return [levelFileType, textureFileType, isBugdom2 ? ".tun" : null].filter(
+  return [
+    levelFileType,
+    textureFileType,
+    isBugdom2 ? ".tun" : null,
+    metadataCompanionGame && levelMetadataEnabled ? ".Meta.rsrc" : null,
+  ].filter(
     (type): type is string => type !== null,
   );
 }

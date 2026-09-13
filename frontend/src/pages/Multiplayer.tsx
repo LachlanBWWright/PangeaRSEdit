@@ -599,7 +599,7 @@ export function MultiplayerPage() {
       className={
         lobby
           ? "flex h-full min-h-0 w-full flex-col overflow-y-auto p-3 text-foreground md:p-4 lg:overflow-hidden"
-          : "min-h-full w-full space-y-6 overflow-y-auto p-4 text-foreground md:p-8"
+          : "flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden p-4 text-foreground md:p-8"
       }
     >
       {!lobby ? (

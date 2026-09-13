@@ -13,7 +13,7 @@ export function createReindexedRecord<T extends { obj: unknown }>(
 
   return Object.fromEntries(
     entries.map(([key, value]) => [key > removedKey ? key - 1 : key, value]),
-  ) as Record<number, T>;
+  );
 }
 
 export function removeSplineAtIndex(

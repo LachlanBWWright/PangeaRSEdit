@@ -65,4 +65,14 @@ describe("getBugdomSourceDerivedMapping", () => {
       verificationStatus: "verified",
     });
   });
+
+  it("keeps weed on its dedicated model slot regardless of the unused parameter", () => {
+    const weed = getBugdomSourceDerivedMapping(ItemType.Weed, {
+      params: { p0: 1, p1: 0, p2: 0, p3: 0 },
+    });
+
+    expect(weed?.modelIndex).toBe(2);
+    expect(weed?.paramDomains).toBeUndefined();
+    expect(weed?.scale).toBe(0.2);
+  });
 });

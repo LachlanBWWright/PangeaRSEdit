@@ -16,6 +16,7 @@ import { Game } from "../../globals/globals";
 import {
   type GameItemModelMapper,
   type ItemModelKind,
+  type ModelPartMapping,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
 import {
@@ -33,6 +34,89 @@ export const NANOSAUR2_LEVEL_MODEL_FILES: Record<number, string> = {
   1: "desert.bg3d", // Desert
   2: "swamp.bg3d", // Swamp
 };
+
+function nanosaurPart(
+  partId: string,
+  modelFile: string,
+  modelIndex: number,
+  description: string,
+  line: number,
+  scale?: number,
+  positionOffset?: [number, number, number],
+): ModelPartMapping {
+  return {
+    partId,
+    modelFile,
+    modelPath: "models",
+    modelIndex,
+    ...(scale === undefined ? {} : { scale }),
+    ...(positionOffset === undefined ? {} : { positionOffset }),
+    citations: [
+      {
+        file: `Source/${description === "mobjtypes.h" ? "Headers" : "Items"}/${description}`,
+        line,
+        description: `Nanosaur 2 source defines the ${partId} model part.`,
+        proves: "model-index",
+        partId,
+      },
+    ],
+  };
+}
+
+function globalPart(
+  partId: string,
+  modelIndex: number,
+  description: string,
+  line: number,
+  scale = 10,
+  positionOffset?: [number, number, number],
+): ModelPartMapping {
+  return nanosaurPart(partId, "global.bg3d", modelIndex, description, line, scale, positionOffset);
+}
+
+function makeForestDoorMapping(modelFile: string, wallIndex: number): UniversalItemModelMapping {
+  return {
+    modelFile,
+    modelPath: "models",
+    modelIndex: wallIndex,
+    scale: 1.85,
+    modelParts: [
+      nanosaurPart("wall", modelFile, wallIndex, "mobjtypes.h", modelFile === "forest.bg3d" ? 148 : modelFile === "desert.bg3d" ? 225 : 281, 1.85),
+      globalPart("door", 26, "mobjtypes.h", 54, 1.85, [0, 70, 0]),
+    ],
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY },
+  };
+}
+
+function makeTowerTurretMapping(modelFile: string, baseIndex: number): UniversalItemModelMapping {
+  return {
+    modelFile,
+    modelPath: "models",
+    modelIndex: baseIndex,
+    scale: 2.5,
+    modelParts: [
+      nanosaurPart("base", modelFile, baseIndex, "mobjtypes.h", modelFile === "forest.bg3d" ? 154 : modelFile === "desert.bg3d" ? 227 : 283, 2.5),
+      nanosaurPart("turret", modelFile, baseIndex + 1, "mobjtypes.h", modelFile === "forest.bg3d" ? 154 : modelFile === "desert.bg3d" ? 227 : 283, 2.5),
+      nanosaurPart("wheel", modelFile, baseIndex + 2, "Turrets.c", 245, 2.5, [31.837, 282.548, 0]),
+      nanosaurPart("gun", modelFile, baseIndex + 3, "Turrets.c", 246, 2.5, [0, 283.141, 0]),
+      globalPart("lens", 21, "mobjtypes.h", 49, 2.5),
+    ],
+  };
+}
+
+function makeAirMineMapping(modelFile: string, baseIndex: number, chainOffset: number): UniversalItemModelMapping {
+  return {
+    modelFile,
+    modelPath: "models",
+    modelIndex: baseIndex,
+    scale: 1.2,
+    modelParts: [
+      nanosaurPart("base", modelFile, baseIndex, "mobjtypes.h", modelFile === "forest.bg3d" ? 150 : modelFile === "desert.bg3d" ? 170 : 277, 1.2),
+      nanosaurPart("chain", modelFile, baseIndex + 1, "Mines.c", 107, 1.2, [0, -chainOffset, 0]),
+      nanosaurPart("mine", modelFile, baseIndex + 2, "Mines.c", 131, 1.2, [0, -chainOffset, 0]),
+    ],
+  };
+}
 
 /**
  * Base mappings for Nanosaur 2 items.
@@ -66,28 +150,51 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 9,
-    groupSize: 2,
+    scale: 10,
+    modelParts: [
+      globalPart("frame", 9, "mobjtypes.h", 35),
+      globalPart("membrane", 15, "POWs.c", 128),
+    ],
   },
   [ItemType.HealthPOW]: {
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 9,
-    groupSize: 3,
+    scale: 10,
+    modelParts: [
+      globalPart("frame", 10, "mobjtypes.h", 36),
+      globalPart("membrane", 11, "POWs.c", 314),
+    ],
   }, // POWFrame + HealthPOWFrame + HealthPOWMembrane
   [ItemType.FuelPOW]: {
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 9,
+    scale: 10,
+    modelParts: [
+      globalPart("frame", 9, "mobjtypes.h", 35),
+      globalPart("membrane", 12, "POWs.c", 403),
+    ],
   }, // POWFrame + FuelPOWMembrane (index 12)
   [ItemType.ShieldPOW]: {
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 9,
+    scale: 10,
+    modelParts: [
+      globalPart("frame", 9, "mobjtypes.h", 35),
+      globalPart("membrane", 13, "POWs.c", 495),
+    ],
   }, // POWFrame + ShieldPOWMembrane (index 13)
   [ItemType.FreeLifePOW]: {
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 9,
+    scale: 10,
+    modelParts: [
+      globalPart("frame", 9, "mobjtypes.h", 35),
+      globalPart("membrane", 14, "POWs.c", 590),
+    ],
   }, // POWFrame + FreeLifePOWMembrane (index 14)
 
   // GLOBAL_ObjType_Electrode_Pole = 23, TopBottom = 24, Middle = 25
@@ -95,15 +202,16 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "global.bg3d",
     modelPath: "models",
     modelIndex: 23,
-    groupSize: 3,
+    modelParts: [
+      globalPart("pole", 23, "mobjtypes.h", 52),
+      globalPart("top-bottom", 24, "mobjtypes.h", 53),
+      globalPart("middle", 25, "mobjtypes.h", 54),
+    ],
   },
 
   // GLOBAL_ObjType_ForestDoor_Door = 26, KeyHolder = 27
   [ItemType.ForestDoor]: {
-    modelFile: "global.bg3d",
-    modelPath: "models",
-    modelIndex: 26,
-    groupSize: 2,
+    ...makeForestDoorMapping("forest.bg3d", 42),
     // parm[1] * (PI/2) sets rotation (0-3, 90° per step) - Source/Items/ForestDoor.c:61
     rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY },
   },
@@ -112,8 +220,12 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   [ItemType.ForestDoorKey]: {
     modelFile: "global.bg3d",
     modelPath: "models",
-    modelIndex: 28,
-    groupSize: 2,
+    modelIndex: 27,
+    scale: 1.85,
+    modelParts: [
+      globalPart("key-holder", 27, "mobjtypes.h", 55, 1.85),
+      globalPart("key", 28, "mobjtypes.h", 56, 1.85),
+    ],
     rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
   },
 
@@ -195,8 +307,11 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 19,
-    groupSize: 2,
     scale: 1.2,
+    modelParts: [
+      nanosaurPart("trunk", "forest.bg3d", 19, "mobjtypes.h", 119, 1.2),
+      nanosaurPart("leaves", "forest.bg3d", 21, "mobjtypes.h", 119, 1.2),
+    ],
     rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
   },
 
@@ -292,19 +407,15 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 43,
-    groupSize: 3,
     scale: 1.2,
+    modelParts: makeAirMineMapping("forest.bg3d", 43, 300).modelParts,
   },
 
   // LEVEL1_ObjType_TowerTurret_Base = 46, Turret = 47, Wheel = 48, Gun = 49
   // LEVEL2_ObjType_TowerTurret_Base = 48, Turret = 49, Wheel = 50, Gun = 51
   // LEVEL3_ObjType_TowerTurret_Base = 33, Turret = 34, Wheel = 35, Gun = 36
   [ItemType.TowerTurret]: {
-    modelFile: "forest.bg3d",
-    modelPath: "models",
-    modelIndex: 46,
-    groupSize: 4,
-    scale: 2.5,
+    ...makeTowerTurretMapping("forest.bg3d", 46),
   },
 
   // ---- LEVEL 2: DESERT (desert.bg3d) ----
@@ -398,12 +509,12 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 33,
-    groupSize: 2, // crystal + base
-    variants: {
-      0: { modelIndex: 33 },
-      1: { modelIndex: 34 },
-      2: { modelIndex: 35 },
-    },
+    scale: 1.5,
+    modelParts: [
+      nanosaurPart("crystal", "desert.bg3d", 33, "mobjtypes.h", 211, 1.5),
+      nanosaurPart("base", "desert.bg3d", 36, "mobjtypes.h", 211, 1.5),
+    ],
+    variants: { 0: { modelIndex: 33 }, 1: { modelIndex: 34 }, 2: { modelIndex: 35 } },
   },
 
   // ---- LEVEL 3: SWAMP (swamp.bg3d) ----
@@ -580,19 +691,11 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
   0: {
     // Forest: LEVEL1_ObjType_AirMine_Base = 43, Chain = 44, Mine = 45 (Mines.c: scale = 1.2)
     [ItemType.AirMine]: {
-      modelFile: "forest.bg3d",
-      modelPath: "models",
-      modelIndex: 43,
-      groupSize: 3,
-      scale: 1.2,
+      ...makeAirMineMapping("forest.bg3d", 43, 300),
     },
     // Forest: LEVEL1_ObjType_TowerTurret_Base = 46, Turret = 47, Wheel = 48, Gun = 49
     [ItemType.TowerTurret]: {
-      modelFile: "forest.bg3d",
-      modelPath: "models",
-      modelIndex: 46,
-      groupSize: 4,
-      scale: 2.5,
+      ...makeTowerTurretMapping("forest.bg3d", 46),
     },
     // Forest: LEVEL1_ObjType_Rock1 = 31 ... TallRock2 = 36 (Items.c: scale = 2.0)
     [ItemType.Rock]: {
@@ -621,19 +724,11 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
   1: {
     // Desert: LEVEL2_ObjType_AirMine_Base = 2, Chain = 3, Mine = 4 (Mines.c: scale = 1.2)
     [ItemType.AirMine]: {
-      modelFile: "desert.bg3d",
-      modelPath: "models",
-      modelIndex: 2,
-      groupSize: 3,
-      scale: 1.2,
+      ...makeAirMineMapping("desert.bg3d", 2, 700),
     },
     // Desert: LEVEL2_ObjType_TowerTurret_Base = 48, Turret = 49, Wheel = 50, Gun = 51
     [ItemType.TowerTurret]: {
-      modelFile: "desert.bg3d",
-      modelPath: "models",
-      modelIndex: 48,
-      groupSize: 4,
-      scale: 2.5,
+      ...makeTowerTurretMapping("desert.bg3d", 48),
     },
     // Desert: LEVEL2_ObjType_Rock_Small1 = 39 ... Rock_Large3 = 44 (Items.c: scale = 2.0)
     [ItemType.Rock]: {
@@ -662,19 +757,11 @@ const NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS: Record<
   2: {
     // Swamp: LEVEL3_ObjType_AirMine_Base = 29, Chain = 30, Mine = 31 (Mines.c: scale = 1.2)
     [ItemType.AirMine]: {
-      modelFile: "swamp.bg3d",
-      modelPath: "models",
-      modelIndex: 29,
-      groupSize: 3,
-      scale: 1.2,
+      ...makeAirMineMapping("swamp.bg3d", 29, 700),
     },
     // Swamp: LEVEL3_ObjType_TowerTurret_Base = 33, Turret = 34, Wheel = 35, Gun = 36
     [ItemType.TowerTurret]: {
-      modelFile: "swamp.bg3d",
-      modelPath: "models",
-      modelIndex: 33,
-      groupSize: 4,
-      scale: 2.5,
+      ...makeTowerTurretMapping("swamp.bg3d", 33),
     },
     // Swamp: LEVEL3_ObjType_Grass_Single = 13, Grass_Small = 14, Grass_Patch = 15 (Bushes.c: scale = 2.0)
     [ItemType.Grass]: {
@@ -733,12 +820,15 @@ export class Nanosaur2ItemMapper implements GameItemModelMapper {
     _flags?: number,
     kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
-    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
-      return undefined;
-    }
     if (
       kind === "splineItem" &&
       !hasVisibleSplineItemModel(this.game, itemType)
+    ) {
+      return undefined;
+    }
+    if (
+      kind === "terrainItem" &&
+      isSplineOnlyItemType(this.game, itemType)
     ) {
       return undefined;
     }
@@ -760,6 +850,14 @@ export class Nanosaur2ItemMapper implements GameItemModelMapper {
 
     // Check level-specific overrides first (level 0 = forest default if levelNum is undefined)
     const effectiveLevelNum = levelNum ?? 0;
+    if (itemType === ItemType.ForestDoor) {
+      const doorByLevel: Record<number, UniversalItemModelMapping> = {
+        0: makeForestDoorMapping("forest.bg3d", 42),
+        1: makeForestDoorMapping("desert.bg3d", 47),
+        2: makeForestDoorMapping("swamp.bg3d", 32),
+      };
+      return doorByLevel[effectiveLevelNum] ?? doorByLevel[0];
+    }
     if (NANOSAUR2_LEVEL_DEPENDENT_TYPES.has(itemType)) {
       const levelOverrides =
         NANOSAUR2_LEVEL_SPECIFIC_MAPPINGS[effectiveLevelNum];
@@ -770,7 +868,38 @@ export class Nanosaur2ItemMapper implements GameItemModelMapper {
     const base = NANOSAUR2_BASE_MAPPINGS[itemType];
     if (!base) return undefined;
 
-    return this.resolveVariant(base, params);
+    const resolved = this.resolveVariant(base, params);
+    if (itemType === ItemType.WeaponPOW) {
+      const weaponType = Math.min(Math.max(params?.p0 ?? 0, 0), 4);
+      return {
+        ...resolved,
+        modelParts: [
+          globalPart("frame", 9, "mobjtypes.h", 35),
+          globalPart("membrane", 15 + weaponType, "POWs.c", 128),
+        ],
+      };
+    }
+    if (itemType === ItemType.Crystal) {
+      const variant = Math.min(Math.max(params?.p0 ?? 0, 0), 2);
+      return {
+        ...resolved,
+        modelParts: [
+          nanosaurPart("crystal", "desert.bg3d", 33 + variant, "mobjtypes.h", 211, 1.5),
+          nanosaurPart("base", "desert.bg3d", 36 + variant, "mobjtypes.h", 211, 1.5),
+        ],
+      };
+    }
+    if (itemType === ItemType.BentPineTree) {
+      const variant = Math.min(Math.max(params?.p0 ?? 0, 0), 1);
+      return {
+        ...resolved,
+        modelParts: [
+          nanosaurPart("trunk", "forest.bg3d", 19 + variant, "mobjtypes.h", 119, 1.2),
+          nanosaurPart("leaves", "forest.bg3d", 21 + variant, "mobjtypes.h", 119, 1.2),
+        ],
+      };
+    }
+    return resolved;
   }
 
   /**

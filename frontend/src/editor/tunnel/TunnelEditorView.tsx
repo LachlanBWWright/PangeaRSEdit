@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  getGutterItemName,
-  getPlumbingItemName,
+import type {
+  TunnelData,
+  TunnelItem,
+  TunnelSplinePoint,
 } from "@/data/tunnelParser/types";
-import type { TunnelData, TunnelItem } from "@/data/tunnelParser/types";
 import { serializeTunnelFile } from "@/data/tunnelParser/serializeTunnelFile";
 import { TunnelViewer } from "./TunnelViewer";
 import { TunnelItemEditor } from "./TunnelItemEditor";
@@ -11,11 +11,13 @@ import { SectionInspector } from "./SectionInspector";
 import type { TunnelSectionMesh } from "@/data/tunnelParser/types";
 import { SplineEditor } from "./SplineEditor";
 import { TunnelTexturesPanel } from "./TunnelTexturesPanel";
+import { TunnelCanvasHistoryControls } from "./TunnelCanvasHistoryControls";
+import { TunnelViewerOptionsMenu } from "./TunnelViewerOptionsMenu";
+import {
+  TunnelEditorNavbar,
+  type TunnelEditorTab,
+} from "./TunnelEditorNavbar";
 import { getTunnelValidationIssues } from "./tunnelValidation";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { TestGameDialog } from "@/editor/TestGameDialog";
 import { Game } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntime";
@@ -28,9 +30,8 @@ import {
   deleteTunnelSection,
   duplicateTunnelSection,
   updateTunnelItemAtIndex,
+  updateTunnelSplinePointAtIndex,
 } from "@/editor/tunnel/tunnelEditorState";
-
-type EditorTab = "items" | "sections" | "spline" | "textures" | "validation";
 
 function buildMeshBoundingBox(
   mesh: TunnelSectionMesh,
@@ -83,7 +84,7 @@ export function TunnelEditorView({
   onUpdateTunnelData,
   onClose,
 }: TunnelEditorViewProps) {
-  const [activeTab, setActiveTab] = useState<EditorTab>("items");
+  const [activeTab, setActiveTab] = useState<TunnelEditorTab>("items");
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(
     null,
   );
@@ -103,46 +104,77 @@ export function TunnelEditorView({
   const [previewFiles, setPreviewFiles] = useState<
     readonly PreviewVfsFile[] | undefined
   >(undefined);
+  const [history, setHistory] = useState<{
+    past: TunnelData[];
+    future: TunnelData[];
+  }>({ past: [], future: [] });
+
+  const commitTunnelData = useCallback(
+    (nextData: TunnelData) => {
+      setHistory((current) => ({
+        past: [...current.past, tunnelData].slice(-50),
+        future: [],
+      }));
+      onUpdateTunnelData(nextData);
+    },
+    [onUpdateTunnelData, tunnelData],
+  );
+
+  const handleUndo = useCallback(() => {
+    const previous = history.past.at(-1);
+    if (!previous) return;
+    setHistory({
+      past: history.past.slice(0, -1),
+      future: [tunnelData, ...history.future].slice(0, 50),
+    });
+    onUpdateTunnelData(previous);
+  }, [history, onUpdateTunnelData, tunnelData]);
+
+  const handleRedo = useCallback(() => {
+    const next = history.future[0];
+    if (!next) return;
+    setHistory({
+      past: [...history.past, tunnelData].slice(-50),
+      future: history.future.slice(1),
+    });
+    onUpdateTunnelData(next);
+  }, [history, onUpdateTunnelData, tunnelData]);
 
   const validationIssues = useMemo(
-    () => getTunnelValidationIssues(tunnelData),
-    [tunnelData],
+    () => getTunnelValidationIssues(tunnelData, isPlumbing ? "plumbing" : "gutter"),
+    [isPlumbing, tunnelData],
   );
-  const selectedItem =
-    selectedItemIndex !== null ? tunnelData.items[selectedItemIndex] : null;
-  const getItemName = isPlumbing ? getPlumbingItemName : getGutterItemName;
-
   const handleUpdateItem = useCallback(
     (index: number, item: TunnelItem) => {
-      onUpdateTunnelData(updateTunnelItemAtIndex(tunnelData, index, item));
+      commitTunnelData(updateTunnelItemAtIndex(tunnelData, index, item));
     },
-    [tunnelData, onUpdateTunnelData],
+    [tunnelData, commitTunnelData],
   );
 
   const handleDeleteItem = useCallback(
     (index: number) => {
-      onUpdateTunnelData(deleteTunnelItemAtIndex(tunnelData, index));
+      commitTunnelData(deleteTunnelItemAtIndex(tunnelData, index));
     },
-    [tunnelData, onUpdateTunnelData],
+    [tunnelData, commitTunnelData],
   );
 
   const handleAddItem = useCallback(
     (item: TunnelItem) => {
       const result = addTunnelItem(tunnelData, item);
-      onUpdateTunnelData(result.data);
+      commitTunnelData(result.data);
       setSelectedItemIndex(result.newIndex);
     },
-    [tunnelData, onUpdateTunnelData],
+    [tunnelData, commitTunnelData],
   );
 
   const handleAddSection = useCallback(
     (afterIndex?: number) => {
       const result = addTunnelSection(tunnelData, afterIndex);
-      onUpdateTunnelData(result.data);
+      commitTunnelData(result.data);
       setSelectedSection(result.insertedIndex);
       toast.success(`Added section at position ${result.insertedIndex}`);
     },
-    [tunnelData, onUpdateTunnelData],
+    [tunnelData, commitTunnelData],
   );
 
   const handleDeleteSection = useCallback(
@@ -151,25 +183,31 @@ export function TunnelEditorView({
         toast.error("Cannot delete the last section");
         return;
       }
-      onUpdateTunnelData(deleteTunnelSection(tunnelData, index));
+      commitTunnelData(deleteTunnelSection(tunnelData, index));
       setSelectedSection(null);
       toast.success(`Deleted section ${index}`);
     },
-    [tunnelData, onUpdateTunnelData],
+    [tunnelData, commitTunnelData],
   );
 
   const handleDuplicateSection = useCallback(
     (index: number) => {
       const result = duplicateTunnelSection(tunnelData, index);
       if (!result) return;
-      onUpdateTunnelData(result.data);
+      commitTunnelData(result.data);
       setSelectedSection(result.duplicatedIndex);
       toast.success(`Duplicated section ${index}`);
     },
-    [tunnelData, onUpdateTunnelData],
+    [tunnelData, commitTunnelData],
   );
 
   const handleSave = useCallback(() => {
+    if (validationIssues.length > 0) {
+      toast.error("Cannot download tunnel", {
+        description: `${validationIssues.length} validation issue${validationIssues.length === 1 ? "" : "s"} must be fixed first.`,
+      });
+      return;
+    }
     const result = serializeTunnelFile(tunnelData);
     if (result.isErr()) {
       toast.error("Failed to save", { description: result.error });
@@ -183,9 +221,15 @@ export function TunnelEditorView({
     link.click();
     URL.revokeObjectURL(url);
     toast.success("Tunnel file saved!");
-  }, [tunnelData, fileName]);
+  }, [fileName, tunnelData, validationIssues.length]);
 
   const handlePreviewInGame = useCallback(() => {
+    if (validationIssues.length > 0) {
+      toast.error("Cannot preview invalid tunnel", {
+        description: "Fix the issues in the Validation tab first.",
+      });
+      return;
+    }
     const serialized = serializeTunnelFile(tunnelData);
     if (serialized.isErr()) {
       toast.error("Failed to prepare tunnel preview", {
@@ -205,7 +249,7 @@ export function TunnelEditorView({
     ]);
     setPreviewLevelNumber(isPlumbing ? 3 : 6);
     setTestDialogOpen(true);
-  }, [isPlumbing, tunnelData]);
+  }, [isPlumbing, tunnelData, validationIssues.length]);
 
   // Update UVs for a section mesh
   const handleUpdateSectionMeshUv = useCallback(
@@ -227,9 +271,9 @@ export function TunnelEditorView({
           ? { ...section, tunnelMesh: updatedMesh }
           : { ...section, waterMesh: updatedMesh };
       });
-      onUpdateTunnelData({ ...tunnelData, sections });
+      commitTunnelData({ ...tunnelData, sections });
     },
-    [tunnelData, onUpdateTunnelData],
+    [tunnelData, commitTunnelData],
   );
 
   const handleReplaceSectionMesh = useCallback(
@@ -251,12 +295,12 @@ export function TunnelEditorView({
         return { ...section, waterMesh: normalizedMesh };
       });
 
-      onUpdateTunnelData({
+      commitTunnelData({
         ...tunnelData,
         sections,
       });
     },
-    [onUpdateTunnelData, tunnelData],
+    [commitTunnelData, tunnelData],
   );
 
   const handleDragItemSplineIndex = useCallback(
@@ -268,129 +312,63 @@ export function TunnelEditorView({
       if (item.splineIndex === splineIndex) {
         return;
       }
-      onUpdateTunnelData(
+      commitTunnelData(
         updateTunnelItemAtIndex(tunnelData, itemIndex, {
           ...item,
           splineIndex,
         }),
       );
     },
-    [onUpdateTunnelData, tunnelData],
+    [commitTunnelData, tunnelData],
+  );
+
+  const handleUpdateSplinePoint = useCallback(
+    (index: number, point: TunnelSplinePoint) => {
+      commitTunnelData(updateTunnelSplinePointAtIndex(tunnelData, index, point));
+    },
+    [commitTunnelData, tunnelData],
   );
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-4 p-4 bg-gray-800 border-b border-gray-700">
-        <Button variant="outline" onClick={onClose}>
-          ← Back
-        </Button>
-        <div className="flex-1 text-white font-medium">{fileName}</div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="showWater"
-              checked={showWater}
-              onCheckedChange={(checked) => setShowWater(checked === true)}
-            />
-            <Label htmlFor="showWater" className="text-white text-sm">
-              Water
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="showSpline"
-              checked={showSpline}
-              onCheckedChange={(checked) => setShowSpline(checked === true)}
-            />
-            <Label htmlFor="showSpline" className="text-white text-sm">
-              Spline
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="showItems"
-              checked={showItems}
-              onCheckedChange={(checked) => setShowItems(checked === true)}
-            />
-            <Label htmlFor="showItems" className="text-white text-sm">
-              Items
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="ghostTunnel"
-              checked={ghostTunnel}
-              onCheckedChange={(checked) => setGhostTunnel(checked === true)}
-            />
-            <Label htmlFor="ghostTunnel" className="text-white text-sm">
-              Ghost Tunnel
-            </Label>
-          </div>
-          {ghostTunnel && (
-            <div className="flex items-center gap-2">
-              <Label htmlFor="ghostOpacity" className="text-white text-xs">
-                Opacity
-              </Label>
-              <Slider
-                id="ghostOpacity"
-                min={0.15}
-                max={0.95}
-                step={0.05}
-                value={[ghostOpacity]}
-                onValueChange={([next]) => {
-                  if (next !== undefined) setGhostOpacity(next);
-                }}
-                aria-label="Ghost tunnel opacity"
-                className="w-28"
-              />
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Switch
-              id="autoSnapToSelection"
-              checked={autoSnapToSelection}
-              onCheckedChange={(checked) =>
-                setAutoSnapToSelection(checked === true)
-              }
-            />
-            <Label htmlFor="autoSnapToSelection" className="text-white text-sm">
-              Auto Snap
-            </Label>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSnapToItemToken((current) => current + 1)}
-            disabled={selectedItemIndex === null}
-          >
-            Snap Camera
-          </Button>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="dragSensitivity" className="text-white text-xs">
-              Drag Speed
-            </Label>
-            <Slider
-              id="dragSensitivity"
-              min={0.3}
-              max={5}
-              step={0.1}
-              value={[dragSensitivity]}
-              onValueChange={([next]) => {
-                if (next !== undefined) setDragSensitivity(next);
-              }}
-              aria-label="Tunnel drag speed"
-              className="w-28"
-            />
-          </div>
-        </div>
-        <Button variant="outline" onClick={handlePreviewInGame}>
-          Test in Game
-        </Button>
-        <Button onClick={handleSave}>Download</Button>
-      </div>
+      <TunnelEditorNavbar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onClose={onClose}
+        onPreview={handlePreviewInGame}
+        onSave={handleSave}
+      />
 
       <div className="flex flex-1 min-h-0">
-        <div className="flex-1 min-w-0">
+        <div className="relative flex-1 min-w-0">
+          <div className="absolute left-2 top-2 z-10">
+            <TunnelViewerOptionsMenu
+              showWater={showWater}
+              showSpline={showSpline}
+              showItems={showItems}
+              ghostTunnel={ghostTunnel}
+              ghostOpacity={ghostOpacity}
+              autoSnapToSelection={autoSnapToSelection}
+              dragSensitivity={dragSensitivity}
+              selectedItem={selectedItemIndex}
+              onShowWaterChange={setShowWater}
+              onShowSplineChange={setShowSpline}
+              onShowItemsChange={setShowItems}
+              onGhostTunnelChange={setGhostTunnel}
+              onGhostOpacityChange={setGhostOpacity}
+              onAutoSnapChange={setAutoSnapToSelection}
+              onSnapCamera={() => setSnapToItemToken((current) => current + 1)}
+              onDragSensitivityChange={setDragSensitivity}
+            />
+          </div>
+          <div className="absolute right-2 top-2 z-10">
+            <TunnelCanvasHistoryControls
+              canUndo={history.past.length > 0}
+              canRedo={history.future.length > 0}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+            />
+          </div>
           <TunnelViewer
             tunnelData={tunnelData}
             isPlumbing={isPlumbing}
@@ -407,44 +385,7 @@ export function TunnelEditorView({
             onUpdateItemSplineIndex={handleDragItemSplineIndex}
           />
         </div>
-        <div className="w-80 bg-gray-900 border-l border-gray-700 flex flex-col">
-          <div className="flex border-b border-gray-700">
-            <Button
-              type="button" variant="menu" aria-pressed={activeTab === "items"}
-              className="flex-1"
-              onClick={() => setActiveTab("items")}
-            >
-              Items
-            </Button>
-            <Button
-              type="button" variant="menu" aria-pressed={activeTab === "spline"}
-              className="flex-1"
-              onClick={() => setActiveTab("spline")}
-            >
-              Spline
-            </Button>
-            <Button
-              type="button" variant="menu" aria-pressed={activeTab === "sections"}
-              className="flex-1"
-              onClick={() => setActiveTab("sections")}
-            >
-              Sections
-            </Button>
-            <Button
-              type="button" variant="menu" aria-pressed={activeTab === "textures"}
-              className="flex-1"
-              onClick={() => setActiveTab("textures")}
-            >
-              Textures
-            </Button>
-            <Button
-              type="button" variant="menu" aria-pressed={activeTab === "validation"}
-              className="flex-1"
-              onClick={() => setActiveTab("validation")}
-            >
-              Validation
-            </Button>
-          </div>
+        <div className="w-80 min-w-0 bg-gray-900 border-l border-gray-700 flex flex-col">
           <div className="flex-1 min-h-0 overflow-hidden">
             {activeTab === "items" && (
               <TunnelItemEditor
@@ -464,6 +405,7 @@ export function TunnelEditorView({
                 selectedItemIndex={selectedItemIndex}
                 onSelectItem={setSelectedItemIndex}
                 onUpdateItem={handleUpdateItem}
+                onUpdateSplinePoint={handleUpdateSplinePoint}
               />
             )}
             {activeTab === "sections" && (
@@ -523,34 +465,6 @@ export function TunnelEditorView({
         customFiles={previewFiles}
       />
 
-      <div className="flex items-center gap-4 px-4 py-2 bg-gray-800 border-t border-gray-700 text-sm text-gray-400">
-        {selectedItem && selectedItemIndex !== null ? (
-          <span className="text-amber-300">
-            Selected #{selectedItemIndex}: {getItemName(selectedItem.type)}{" "}
-            (Spline {selectedItem.splineIndex})
-          </span>
-        ) : (
-          <span className="text-gray-300">No item selected</span>
-        )}
-        <span>•</span>
-        <span>{tunnelData.header.fullPipe ? "Full Pipe" : "Half Pipe"}</span>
-        <span>•</span>
-        <span>{tunnelData.header.numSections} Sections</span>
-        <span>•</span>
-        <span>{tunnelData.items.length} Items</span>
-        <span>•</span>
-        <span>{tunnelData.splinePoints.length} Spline Points</span>
-        <span>•</span>
-        <span>
-          Tunnel Texture {tunnelData.tunnelTexture.width}x
-          {tunnelData.tunnelTexture.height}
-        </span>
-        <span>•</span>
-        <span>
-          Water Texture {tunnelData.waterTexture.width}x
-          {tunnelData.waterTexture.height}
-        </span>
-      </div>
     </div>
   );
 }

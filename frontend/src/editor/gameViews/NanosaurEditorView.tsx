@@ -15,6 +15,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { ScriptsMenu } from "../subviews/scripts/ScriptsMenu";
@@ -25,6 +26,8 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { CanvasViewToggle } from "../subviews/CanvasViewToggle";
+import { supportsThreeCanvas } from "../canvas/canvasViewState";
 import { MenuSection } from "./MenuSection";
 import {
   createNonNullUpdater,
@@ -42,6 +45,7 @@ import { EmptyItemPrompt } from "../subviews/EmptyDataPrompts";
 import { createEmptyItemData } from "../utils/dataInitializers";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import { NanosaurCollisionPathMenu } from "../subviews/tiles/NanosaurCollisionPathMenu";
+import { LevelMetadataMenu } from "../subviews/metadata/LevelMetadataMenu";
 
 export function NanosaurEditorView({
   headerData,
@@ -61,6 +65,7 @@ export function NanosaurEditorView({
   const storedView = useAtomValue(ActiveView);
   const setView = useSetAtom(ActiveView);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
+  const { levelMetadata } = useFeatureFlags();
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -79,8 +84,8 @@ export function NanosaurEditorView({
   );
 
   const allowedViews = ENABLE_SCRIPTS
-    ? [View.items, View.scripts, View.tiles, View.supertiles, View.collisionPath]
-    : [View.items, View.tiles, View.supertiles, View.collisionPath];
+    ? [View.items, View.scripts, View.tiles, View.supertiles, View.collisionPath, ...(levelMetadata ? [View.metadata] : [])]
+    : [View.items, View.tiles, View.supertiles, View.collisionPath, ...(levelMetadata ? [View.metadata] : [])];
   const view = normalizeEditorView(
     storedView,
     allowedViews,
@@ -111,8 +116,11 @@ export function NanosaurEditorView({
   };
 
   return (
-    <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MenuSection key={view} scrollable={true}>
+    <div className={`flex flex-col flex-1 w-full gap-2 min-h-0 ${view === View.tiles || view === View.scripts ? "" : "pt-2 md:pt-6"}`}>
+      <MenuSection
+        key={view}
+        className={view === View.scripts || view === View.metadata ? "!h-full" : undefined}
+      >
         {view === View.items &&
           (itemData ? (
             <ItemMenu
@@ -157,8 +165,14 @@ export function NanosaurEditorView({
         {view === View.collisionPath && (
           <NanosaurCollisionPathMenu terrainData={terrainData} />
         )}
+        {levelMetadata && view === View.metadata && (
+          <LevelMetadataMenu terrainData={terrainData} setTerrainData={setTerrainData} />
+        )}
       </MenuSection>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
+      {view !== View.scripts && view !== View.metadata && <div
+          className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative"
+      >
+        {supportsThreeCanvas(view) && <CanvasViewToggle />}
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
@@ -168,9 +182,9 @@ export function NanosaurEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
-          {itemData && <ItemFilterToggle />}
+          {itemData && <ItemFilterToggle itemData={itemData} splineData={null} />}
         </div>
-        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
+        {canvasViewMode === CanvasView.THREE_D && supportsThreeCanvas(view) ? (
           <ThreeView
             headerData={headerData}
             fenceData={null}
@@ -179,6 +193,7 @@ export function NanosaurEditorView({
             splineData={null}
             terrainData={terrainData}
             mapImages={mapImages}
+            setItemData={setItemData}
             setTerrainData={setTerrainData}
           />
         ) : (
@@ -195,7 +210,7 @@ export function NanosaurEditorView({
             onResize={handleSupertileResize}
           />
         )}
-      </div>
+      </div>}
     </div>
   );
 }

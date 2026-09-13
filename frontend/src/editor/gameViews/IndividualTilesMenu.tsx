@@ -56,6 +56,7 @@ import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl
 import { LevelScaleControl } from "../subviews/tiles/LevelScaleControl";
 import {
   supportsLevelScale,
+  supportsLevelScalePlacement,
   type LevelScaleMode,
 } from "../utils/levelScaleState";
 
@@ -159,7 +160,7 @@ export function IndividualTilesMenu({
   };
 
   return (
-    <div className="flex flex-col gap-2 p-1">
+    <div className="editor-tabbed-menu flex flex-col gap-2 p-1">
       {semanticAttributes.length > 0 && (
         <Tabs
           value={tileView === TileViews.Attributes ? "attributes" : "topology"}
@@ -170,7 +171,7 @@ export function IndividualTilesMenu({
             setCanvasViewMode(CanvasView.TWO_D);
           }}
         >
-          <TabsList className="grid grid-cols-2 gap-2 w-full overflow-clip">
+          <TabsList className="editor-subnavbar grid grid-cols-2 gap-2 w-full overflow-clip">
             <TabsTrigger className="w-full" value="topology">
               Topology
             </TabsTrigger>
@@ -332,20 +333,13 @@ export function IndividualTilesMenu({
           {supportsLevelScale(globals.GAME_TYPE) && onApplyLevelScale && (
             <LevelScaleControl
               tileSize={headerData.Hedr[1000].obj.tileSize}
+              supportsPlacementBehavior={supportsLevelScalePlacement(
+                globals.GAME_TYPE,
+              )}
               onApply={onApplyLevelScale}
             />
           )}
           <TopologyOpacityControl />
-          {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
-            canShowAccessibilityOverlay && (
-              <div className="col-span-2 flex items-center justify-between rounded border border-gray-700 px-3 py-2 sm:col-span-4">
-                <p>{getAccessibilityOverlayLabel()}</p>
-                <Switch
-                  checked={showAccessibilityOverlay}
-                  onCheckedChange={setShowAccessibilityOverlay}
-                />
-              </div>
-            )}
           {hasRoofLayer && (
             <>
               {layerEditMode === TopologyLayerEditMode.BOTH && (
@@ -385,16 +379,17 @@ export function IndividualTilesMenu({
               )}
             </>
           )}
-          <div className="flex flex-row justify-between gap-2 items-center col-span-2">
-            <div className="flex items-center gap-2">
-              <p>Show 3D View</p>
-              <Switch
-                checked={canvasViewMode === CanvasView.THREE_D}
-                onCheckedChange={(e) =>
-                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)
-                }
-              />
-            </div>
+          <div className="col-span-2 flex flex-wrap items-center justify-between gap-3 sm:col-span-4">
+            {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
+              canShowAccessibilityOverlay && (
+                <div className="flex items-center gap-2">
+                  <p>{getAccessibilityOverlayLabel()}</p>
+                  <Switch
+                    checked={showAccessibilityOverlay}
+                    onCheckedChange={setShowAccessibilityOverlay}
+                  />
+                </div>
+              )}
             <div className="flex items-center gap-2">
               <Button onClick={() => setExport3DScene((c) => c + 1)}>
                 Download 3D (GLB)

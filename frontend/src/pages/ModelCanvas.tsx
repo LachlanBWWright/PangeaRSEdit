@@ -6,6 +6,7 @@ import { ModelCanvasProps } from "@/components/model-viewer/types";
 import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
+import { PreviewAttachments } from "@/editor/gameCards/previewAttachments";
 import { MOUSE, Object3D } from "three";
 import {
   buildModelCanvasCameraConfig,
@@ -15,7 +16,10 @@ import {
 } from "@/pages/modelCanvasState";
 
 export function ModelCanvas(props: ModelCanvasProps) {
-  const cameraConfig = buildModelCanvasCameraConfig(props.gameType);
+  const cameraConfig = buildModelCanvasCameraConfig(
+    props.gameType,
+    props.cameraDistanceMultiplier,
+  );
   const {
     gltfUrl,
     setModelNodes,
@@ -38,6 +42,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     weightVisualizationMode,
     onWeightBrushStroke,
     sceneUpdateRevision,
+    previewAttachments = false,
   } = props;
 
   // Always call hooks unconditionally (must be called in every render in same order)
@@ -168,17 +173,26 @@ export function ModelCanvas(props: ModelCanvasProps) {
             position={modelPosition}
           />
         )}
+        {previewAttachments &&
+          gltfResult?.scene &&
+          props.gameType !== undefined && (
+            <PreviewAttachments
+              gameType={props.gameType}
+              scene={gltfResult.scene}
+            />
+          )}
         {selectedBoneObject &&
-          (interactionMode === "bone-edit" || interactionMode === "animate") && (
-          <TransformControls
-            object={selectedBoneObject}
-            mode={gizmoMode}
-            size={0.7}
-            onObjectChange={handleBoneTransformChange}
-            onMouseDown={() => setIsTransforming(true)}
-            onMouseUp={() => setIsTransforming(false)}
-          />
-        )}
+          (interactionMode === "bone-edit" ||
+            interactionMode === "animate") && (
+            <TransformControls
+              object={selectedBoneObject}
+              mode={gizmoMode}
+              size={0.7}
+              onObjectChange={handleBoneTransformChange}
+              onMouseDown={() => setIsTransforming(true)}
+              onMouseUp={() => setIsTransforming(false)}
+            />
+          )}
         <AnimationUpdater
           animationMixer={animationMixer}
           logBonePositions={logBonePositions}

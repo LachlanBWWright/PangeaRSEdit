@@ -151,14 +151,14 @@ export const WaterMenu = memo(function WaterMenu({
   }
 
   return (
-    <div className="flex flex-col gap-2 w-full min-h-full">
-      <p>
-        Water Body {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
-      </p>
-      <SnappingToggle />
+    <div className="grid h-full min-h-0 min-w-0 w-full grid-cols-[minmax(0,1fr)_12rem] gap-2 px-3">
+      <div className="flex min-h-0 min-w-0 flex-col gap-2">
+        <p>
+          Water Body {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
+        </p>
+        <SnappingToggle />
 
-      <div className="grid min-h-0 w-full flex-1 grid-cols-[1fr_auto] gap-2">
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
         {waterBodyData !== null && waterBodyData !== undefined && (
           <>
             <Select
@@ -399,15 +399,15 @@ export const WaterMenu = memo(function WaterMenu({
           </>
         )}
         </div>
+      </div>
 
-        <div className="flex w-48 self-stretch items-center justify-center rounded border border-gray-600 bg-gray-800 p-2">
+        <div className="flex min-h-0 min-w-0 items-center justify-center overflow-hidden">
           <LiquidPreview
             alt={getWaterBodyTypeName(globals, waterBodyData.type)}
             globals={globals}
             liquidType={waterBodyData.type}
           />
         </div>
-      </div>
     </div>
   );
 });

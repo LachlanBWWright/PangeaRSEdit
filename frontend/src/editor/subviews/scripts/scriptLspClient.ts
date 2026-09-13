@@ -8,7 +8,7 @@ import {
   lspMessageSchema,
   publishDiagnosticsParamsSchema,
 } from "./scriptLspSchemas";
-import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
+import type { ScriptDiagnostic, ScriptWorkspaceState } from "./scriptWorkspaceState";
 
 const VIRTUAL_WORKSPACE_URI = "file:///workspace/";
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -21,6 +21,11 @@ export interface LspClientError {
 interface PendingRequest {
   readonly resolve: (result: Result<unknown, LspClientError>) => void;
   readonly timeoutId: ReturnType<typeof setTimeout>;
+}
+
+export interface ScriptLspDiagnosticsEvent {
+  readonly filePath: string;
+  readonly diagnostics: readonly ScriptDiagnostic[];
 }
 
 const parseJson = Result.fromThrowable(
@@ -44,6 +49,7 @@ export class ScriptLspClient {
   private state: ScriptWorkspaceState | null = null;
   private workspaceUri = "";
   private listeners = new Set<() => void>();
+  private diagnosticListeners = new Set<(event: ScriptLspDiagnosticsEvent) => void>();
   public status: "disconnected" | "connecting" | "connected" | "unavailable" =
     "disconnected";
 
@@ -117,6 +123,13 @@ export class ScriptLspClient {
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  public subscribeDiagnostics(
+    listener: (event: ScriptLspDiagnosticsEvent) => void,
+  ): () => void {
+    this.diagnosticListeners.add(listener);
+    return () => this.diagnosticListeners.delete(listener);
   }
 
   public documentUri(model: monaco.editor.ITextModel): string {
@@ -264,7 +277,23 @@ export class ScriptLspClient {
   private publishDiagnostics(params: unknown): void {
     const parsed = publishDiagnosticsParamsSchema.safeParse(params);
     if (!parsed.success) return;
-    const uri = this.clientUri(parsed.data.uri).toString();
+    const clientUri = this.clientUri(parsed.data.uri).toString();
+    if (!clientUri.startsWith(VIRTUAL_WORKSPACE_URI)) return;
+    const filePath = clientUri.slice(VIRTUAL_WORKSPACE_URI.length);
+    if (filePath.length === 0) return;
+    const diagnostics: ScriptDiagnostic[] = parsed.data.diagnostics.map((diagnostic) => ({
+      category: "luals",
+      severity: diagnostic.severity === 1 ? "error" : "warning",
+      message: diagnostic.message,
+      code: "luals",
+      filePath,
+      line: diagnostic.range.start.line + 1,
+      column: diagnostic.range.start.character + 1,
+    }));
+    const event: ScriptLspDiagnosticsEvent = { filePath, diagnostics };
+    for (const listener of this.diagnosticListeners) listener(event);
+
+    const uri = clientUri;
     const model = monaco.editor.getModels().find(
       (candidate) => candidate.uri.toString() === uri,
     );

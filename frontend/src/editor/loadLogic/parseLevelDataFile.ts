@@ -10,9 +10,15 @@ import {
 } from "@/data/level-io/terrainImageSnapshots";
 import { parseLevelWithWorker } from "@/data/level-io/levelIoWorkerClient";
 import type { LevelIoProgress } from "@/data/level-io/levelIoTypes";
-import type { LevelData } from "@/python/structSpecs/LevelTypes";
+import type {
+  LevelData,
+  LevelMetadataResource,
+  MetadataResource,
+} from "@/python/structSpecs/LevelTypes";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
 import { clearItemImageCache } from "@/utils/mightyMikeShapeImageLoader";
+import { parseMetadataResourceFork } from "@/editor/subviews/metadata/metadataResource";
+import { getFeatureFlags } from "@/config/featureFlags";
 
 export interface ParsedLevelDataFile {
   readonly levelData: LevelData;
@@ -25,6 +31,7 @@ export interface ParseLevelDataFileArgs {
   readonly gameType: GlobalsInterface;
   readonly fileUrl?: string;
   readonly companionTextureFile?: File;
+  readonly companionMetadataFile?: File;
   readonly onProgress?: (progress: LevelIoProgress) => void;
 }
 
@@ -50,10 +57,27 @@ interface ParsedLevelPayload {
   readonly nanosaurRawBytes?: ArrayBuffer;
 }
 
+function metadataGameMatches(
+  metadata: LevelMetadataResource,
+  gameType: GlobalsInterface,
+): boolean {
+  const gameIds = gameType.GAME_TYPE === Game.MIGHTY_MIKE
+    ? ["mightymike", "Mighty Mike"]
+    : ["nanosaur1", "Nanosaur", "Nanosaur 1"];
+  return gameIds.includes(metadata.game);
+}
+
 function cloneArrayBuffer(buffer: Uint8Array): ArrayBuffer {
   const clone = new Uint8Array(buffer.byteLength);
   clone.set(buffer);
   return clone.buffer;
+}
+
+function withoutLevelMetadata(levelData: LevelData): LevelData {
+  if (getFeatureFlags().levelMetadata) return levelData;
+  const withoutMetadata = { ...levelData };
+  delete withoutMetadata.Meta;
+  return withoutMetadata;
 }
 
 async function loadMightyMikeCompanionData({
@@ -105,6 +129,39 @@ async function loadMightyMikeCompanionData({
     mapImagesFile,
     sceneName: getMightyMikeSceneFromPath(fileUrl),
   });
+}
+
+async function loadCompanionMetadata(
+  fileUrl: string | undefined,
+  companionMetadataFile: File | undefined,
+  gameType: GlobalsInterface,
+): Promise<LevelMetadataResource | undefined> {
+  let bytes: ArrayBuffer | undefined;
+  if (companionMetadataFile) {
+    const result = await ResultAsync.fromPromise(
+      companionMetadataFile.arrayBuffer(),
+      mapErr,
+    );
+    if (result.isOk()) bytes = result.value;
+  } else if (fileUrl) {
+    const companionUrl = gameType.GAME_TYPE === Game.MIGHTY_MIKE
+      ? `${fileUrl}.Meta.rsrc`
+      : fileUrl.replace(/\.ter(?:\.rsrc)?$/i, ".Meta.rsrc");
+    const responseResult = await ResultAsync.fromPromise(fetch(companionUrl), mapErr);
+    if (responseResult.isOk() && responseResult.value.ok) {
+      const bytesResult = await ResultAsync.fromPromise(
+        responseResult.value.arrayBuffer(),
+        mapErr,
+      );
+      if (bytesResult.isOk()) bytes = bytesResult.value;
+    }
+  }
+  if (!bytes) return undefined;
+  const parsedResult = await parseMetadataResourceFork(bytes, gameType.STRUCT_SPECS);
+  if (parsedResult.isErr() || !parsedResult.value) return undefined;
+  return metadataGameMatches(parsedResult.value, gameType)
+    ? parsedResult.value
+    : undefined;
 }
 
 function attachCollisionImages(
@@ -186,6 +243,7 @@ export async function parseLevelDataFile({
   gameType,
   fileUrl,
   companionTextureFile,
+  companionMetadataFile,
   onProgress,
 }: ParseLevelDataFileArgs): Promise<Result<ParsedLevelDataFile, string>> {
   const levelBytesResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
@@ -205,6 +263,11 @@ export async function parseLevelDataFile({
   if (mightyMikeCompanionResult.isErr()) {
     return err(mightyMikeCompanionResult.error);
   }
+
+  const companionMetadata = getFeatureFlags().levelMetadata &&
+    (gameType.GAME_TYPE === Game.NANOSAUR || gameType.GAME_TYPE === Game.MIGHTY_MIKE)
+    ? await loadCompanionMetadata(fileUrl, companionMetadataFile, gameType)
+    : undefined;
 
   if (
     gameType.DATA_TYPE === DataType.MIGHTY_MIKE &&
@@ -243,11 +306,23 @@ export async function parseLevelDataFile({
     return err(collisionImagesResult.error);
   }
 
-  const levelData = attachNanosaurRawLevelBytes(
-    workerResult.value.levelData,
+  const levelDataWithRawBytes = attachNanosaurRawLevelBytes(
+    withoutLevelMetadata(workerResult.value.levelData),
     gameType,
     workerResult.value.nanosaurRawBytes,
   );
+  const metadata: MetadataResource | undefined = companionMetadata
+    ? {
+        1000: {
+          name: "Level Metadata",
+          obj: companionMetadata,
+          order: 0,
+        },
+      }
+    : undefined;
+  const levelData: LevelData = metadata
+    ? { ...levelDataWithRawBytes, Meta: metadata }
+    : levelDataWithRawBytes;
 
   return ok({
     levelData: attachCollisionImages(levelData, collisionImagesResult.value),

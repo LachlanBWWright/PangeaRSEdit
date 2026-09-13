@@ -69,7 +69,7 @@ export function ItemThumbnail({
           <img
             src={screenshot.imageUrl}
             alt={`${label} screenshot`}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
           />
         </div>
       ) : (

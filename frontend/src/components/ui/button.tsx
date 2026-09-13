@@ -22,8 +22,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     if (selected) {
       if (variant === "destructive") {
         selectedClass = "bg-red-700 text-white";
-      } else if (variant === "zoom") {
-        selectedClass = "bg-green-700 text-white";
       } else {
         selectedClass = "bg-blue-700 text-white";
       }

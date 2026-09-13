@@ -44,17 +44,13 @@ import {
   shouldForceTwoDForTileView,
 } from "@/editor/gameViews/tilesMenuState";
 import { TopologyOpacityControl } from "../subviews/tiles/TopologyOpacityControl";
-import { LevelScaleControl } from "../subviews/tiles/LevelScaleControl";
-import type { LevelScaleMode } from "../utils/levelScaleState";
 
 export function OttoMaticTilesMenu({
   headerData,
   setHeaderData,
-  onApplyLevelScale,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
-  onApplyLevelScale: (nextTileSize: number, mode: LevelScaleMode) => void;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -80,7 +76,7 @@ export function OttoMaticTilesMenu({
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div className="editor-tabbed-menu flex min-w-0 flex-col gap-2">
       <Tabs
         value={getOttoTileTabValue(tileView)}
         onValueChange={(value) => {
@@ -91,7 +87,7 @@ export function OttoMaticTilesMenu({
           }
         }}
       >
-        <TabsList className="grid w-full min-w-0 grid-flow-col auto-cols-fr gap-2 overflow-clip">
+        <TabsList className="editor-subnavbar grid w-full min-w-0 grid-flow-col auto-cols-fr gap-2 overflow-clip">
           <TabsTrigger className="w-full min-w-0 truncate" value="topology">
             Topology
           </TabsTrigger>
@@ -172,21 +168,8 @@ export function OttoMaticTilesMenu({
           <Input type="number" value={minY} onChange={handleMinYChange} />
           <p>Max Height</p>
           <Input type="number" value={maxY} onChange={handleMaxYChange} />
-          <LevelScaleControl
-            tileSize={headerData.Hedr[1000].obj.tileSize}
-            onApply={onApplyLevelScale}
-          />
           <TopologyOpacityControl />
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
-            <div className="flex items-center gap-2">
-              <p>Show 3D View</p>
-              <Switch
-                checked={canvasViewMode === CanvasView.THREE_D}
-                onCheckedChange={(e) =>
-                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)
-                }
-              />
-            </div>
             <div className="flex items-center gap-2">
               <Button onClick={() => setExport3DScene((c) => c + 1)}>
                 Download 3D (GLB)

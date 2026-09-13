@@ -8,6 +8,14 @@ export function getParamTooltip(param: ParamDescription | string): string {
     t += `\nExample: ${param.defaultCitation.code}`;
     return t;
   }
+  if (param && param.type === "TypeSelector") {
+    return `${param.description}\n${Object.entries(param.options)
+      .map(([value, label]) => `${value}: ${label}`)
+      .join("\n")}`;
+  }
+  if (param && param.type === "Rotation") {
+    return `${param.description}\nSteps: ${param.divisions}\nMultiplier: ${param.multiplier}`;
+  }
   if (param && param.type === "Bit Flags" && Array.isArray(param.flags)) {
     const fmt = (f: (typeof param.flags)[number]) =>
       `${f.index}: ${f.description}` +

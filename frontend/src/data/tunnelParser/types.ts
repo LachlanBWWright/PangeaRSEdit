@@ -169,6 +169,8 @@ export interface TunnelData {
   sections: TunnelSection[];
 }
 
+export type TunnelLevelKind = "plumbing" | "gutter";
+
 /**
  * Plumbing level item types
  */

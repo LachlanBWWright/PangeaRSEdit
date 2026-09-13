@@ -638,6 +638,13 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
       textures,
     };
   });
+  if (materials.length === 0) {
+    materials.push({
+      diffuseColor: [1, 1, 1, 1],
+      flags: 0,
+      textures: [],
+    });
+  }
 
   // 2. Restore skeleton data purely from glTF Skin and Animations
   let skeleton: BG3DSkeleton | undefined = undefined;

@@ -1,4 +1,8 @@
-import type { TunnelData, TunnelSectionMesh } from "@/data/tunnelParser/types";
+import type {
+  TunnelData,
+  TunnelLevelKind,
+  TunnelSectionMesh,
+} from "@/data/tunnelParser/types";
 
 export interface TunnelValidationIssue {
   readonly id: string;
@@ -11,6 +15,13 @@ function validateMesh(
   meshName: "tunnel" | "water",
   mesh: TunnelSectionMesh,
 ): void {
+  if (mesh.numPoints < 0 || mesh.numTriangles < 0) {
+    issues.push({
+      id: `${meshName}-${sectionIndex}-negative-count`,
+      message: `Section ${sectionIndex} ${meshName} mesh has negative counts.`,
+    });
+  }
+
   if (mesh.points.length !== mesh.numPoints) {
     issues.push({
       id: `${meshName}-${sectionIndex}-point-count`,
@@ -59,6 +70,7 @@ function validateMesh(
 
 export function getTunnelValidationIssues(
   tunnelData: TunnelData,
+  levelKind: TunnelLevelKind = "plumbing",
 ): readonly TunnelValidationIssue[] {
   const issues: TunnelValidationIssue[] = [];
 
@@ -66,6 +78,13 @@ export function getTunnelValidationIssues(
     issues.push({
       id: "header-section-count",
       message: `Header says ${tunnelData.header.numSections} sections, but data has ${tunnelData.sections.length}.`,
+    });
+  }
+
+  if (tunnelData.sections.length > 140) {
+    issues.push({
+      id: "runtime-section-limit",
+      message: `The original game supports at most 140 tunnel sections; this file has ${tunnelData.sections.length}.`,
     });
   }
 
@@ -84,6 +103,43 @@ export function getTunnelValidationIssues(
   }
 
   tunnelData.items.forEach((item, itemIndex) => {
+    const maxItemType = levelKind === "plumbing" ? 4 : 3;
+    if (item.type > maxItemType) {
+      issues.push({
+        id: `item-${itemIndex}-level-type`,
+        message: `Item ${itemIndex} type ${item.type} is not valid for the ${levelKind} tunnel.`,
+      });
+    }
+    if (!Number.isInteger(item.type) || item.type < 0) {
+      issues.push({
+        id: `item-${itemIndex}-type`,
+        message: `Item ${itemIndex} has invalid type ${item.type}.`,
+      });
+    }
+
+    if (!Number.isFinite(item.scale) || item.scale <= 0) {
+      issues.push({
+        id: `item-${itemIndex}-scale`,
+        message: `Item ${itemIndex} has invalid scale ${item.scale}.`,
+      });
+    }
+
+    for (const [name, value] of Object.entries({
+      "rotation X": item.rot.x,
+      "rotation Y": item.rot.y,
+      "rotation Z": item.rot.z,
+      "offset X": item.positionOffset.x,
+      "offset Y": item.positionOffset.y,
+      "offset Z": item.positionOffset.z,
+    })) {
+      if (!Number.isFinite(value)) {
+        issues.push({
+          id: `item-${itemIndex}-${name.replace(" ", "-").toLowerCase()}`,
+          message: `Item ${itemIndex} has a non-finite ${name}.`,
+        });
+      }
+    }
+
     if (
       item.splineIndex < 0 ||
       item.splineIndex >= tunnelData.splinePoints.length
@@ -94,7 +150,10 @@ export function getTunnelValidationIssues(
       });
     }
 
-    if (item.sectionNum >= tunnelData.sections.length) {
+    if (
+      item.sectionNum < -1 ||
+      item.sectionNum >= tunnelData.sections.length
+    ) {
       issues.push({
         id: `item-${itemIndex}-section-index`,
         message: `Item ${itemIndex} uses section ${item.sectionNum}, out of range for ${tunnelData.sections.length} sections.`,
@@ -105,6 +164,24 @@ export function getTunnelValidationIssues(
   tunnelData.sections.forEach((section, sectionIndex) => {
     validateMesh(issues, sectionIndex, "tunnel", section.tunnelMesh);
     validateMesh(issues, sectionIndex, "water", section.waterMesh);
+  });
+
+  tunnelData.splinePoints.forEach((splinePoint, splineIndex) => {
+    for (const [name, value] of Object.entries({
+      x: splinePoint.point.x,
+      y: splinePoint.point.y,
+      z: splinePoint.point.z,
+      "up X": splinePoint.up.x,
+      "up Y": splinePoint.up.y,
+      "up Z": splinePoint.up.z,
+    })) {
+      if (!Number.isFinite(value)) {
+        issues.push({
+          id: `spline-${splineIndex}-${name.replace(" ", "-").toLowerCase()}`,
+          message: `Spline point ${splineIndex} has a non-finite ${name}.`,
+        });
+      }
+    }
   });
 
   return issues;

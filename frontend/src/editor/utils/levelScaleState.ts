@@ -20,6 +20,14 @@ export function supportsLevelScale(game: Game): boolean {
   );
 }
 
+export function supportsLevelScalePlacement(game: Game): boolean {
+  return (
+    game === Game.BUGDOM_2 ||
+    game === Game.NANOSAUR_2 ||
+    game === Game.BILLY_FRONTIER
+  );
+}
+
 function scaleInteger(value: number, factor: number): number {
   return Math.round(value * factor);
 }

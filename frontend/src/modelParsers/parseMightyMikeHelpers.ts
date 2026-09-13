@@ -138,9 +138,7 @@ function buildTileImagePayloads(
         imageData[pixelOffset + 0] = colorPalette[paletteOffset] ?? 0;
         imageData[pixelOffset + 1] = colorPalette[paletteOffset + 1] ?? 0;
         imageData[pixelOffset + 2] = colorPalette[paletteOffset + 2] ?? 0;
-        imageData[pixelOffset + 3] = transparentSet.has(colorIndex)
-          ? 0
-          : (colorPalette[paletteOffset + 3] ?? 255);
+        imageData[pixelOffset + 3] = colorPalette[paletteOffset + 3] ?? 255;
       }
 
       if (!transparentSet.has(colorIndex)) {

@@ -8,8 +8,6 @@ import {
   SafeItemTypes,
   FilterToSafeItems,
 } from "../../../data/items/itemAtoms";
-import type { FlagDescription } from "../../../data/items/itemParams";
-import { parseU8 } from "../../../utils/numberParsers";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,6 +41,8 @@ import { TerrainItemScriptSection } from "@/editor/subviews/scripts/ScriptBindin
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 import { ItemStateFlags } from "./ItemStateFlags";
+import { ParameterField } from "./ParameterField";
+import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -93,7 +93,7 @@ export const ItemMenu = memo(function ItemMenu({
   }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
-    <div className="flex h-full min-h-full flex-col gap-2">
+    <div className="flex h-full min-h-full flex-col gap-2 px-3">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu hasItems={itemCount > 0} />
       ) : (
@@ -147,7 +147,12 @@ export const ItemMenu = memo(function ItemMenu({
                     game={globals.GAME_TYPE}
                     kind="terrainItem"
                     itemType={key}
-                    label={getItemName(globals, key)}
+                    label={`${getItemName(globals, key)} — ${getItemLevelSupportLabel(
+                      globals.GAME_TYPE,
+                      "terrainItem",
+                      key,
+                      levelNum,
+                    )}`}
                     levelNum={levelNum}
                     compact
                   />
@@ -196,13 +201,6 @@ export const ItemMenu = memo(function ItemMenu({
                   updateSelectedItemParam(draft, selectedItem, paramKey, v);
                 });
               };
-              const flags =
-                param &&
-                typeof param !== "string" &&
-                param.type === "Bit Flags" &&
-                Array.isArray(param.flags)
-                  ? param.flags
-                  : [];
               return (
                 <div
                   key={paramKey}
@@ -222,42 +220,23 @@ export const ItemMenu = memo(function ItemMenu({
                         : param.additionalCitations
                     }
                   />
-                  <Input
-                    type="number"
-                    value={value.toString()}
-                    className="h-7 text-xs"
-                    onChange={(e) => setValue(parseU8(e.target.value))}
-                  />
-                  {flags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 border-t border-gray-700 pt-2">
-                      {flags.map((flag: FlagDescription) => {
-                        const checked = (value & (1 << flag.index)) !== 0;
-                        return (
-                          <label
-                            key={flag.index}
-                            className="inline-flex items-center gap-1"
-                          >
-                            <Checkbox
-                              className="font-bold"
-                              checked={checked}
-                              onCheckedChange={(checked) => {
-                                setItemData((draft) => {
-                                  updateSelectedItemBitFlag(
-                                    draft,
-                                    selectedItem,
-                                    paramKey,
-                                    flag,
-                                    checked === true,
-                                  );
-                                });
-                              }}
-                            />
-                            <span>{flag.description}</span>
-                          </label>
+                  <ParameterField
+                    paramIndex={i}
+                    param={param}
+                    value={value}
+                    onValueChange={setValue}
+                    onFlagChange={(flag, checked) => {
+                      setItemData((draft) => {
+                        updateSelectedItemBitFlag(
+                          draft,
+                          selectedItem,
+                          paramKey,
+                          flag,
+                          checked,
                         );
-                      })}
-                    </div>
-                  )}
+                      });
+                    }}
+                  />
                 </div>
               );
             })}
@@ -299,6 +278,7 @@ export const ItemMenu = memo(function ItemMenu({
 function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
+  const levelNum = useAtomValue(LevelNumber);
 
   useEffect(() => {
     return () => setClickToAddItem(undefined);
@@ -332,7 +312,12 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
                   game={globals.GAME_TYPE}
                   kind="terrainItem"
                   itemType={key}
-                  label={getItemName(globals, key)}
+                  label={`${getItemName(globals, key)} — ${getItemLevelSupportLabel(
+                    globals.GAME_TYPE,
+                    "terrainItem",
+                    key,
+                    levelNum,
+                  )}`}
                   compact
                 />
               </SelectItem>

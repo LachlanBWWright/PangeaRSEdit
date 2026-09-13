@@ -17,7 +17,6 @@ const matchConfig: MultiplayerMatchConfig = {
   maxPlayers: 3,
   requiredProtocolVersion: 1,
   requiredRuntimeVersion: "host-authoritative-v2",
-  requiredContentHash: "content",
   hostParticipantId: "host-id",
   players: [
     { participantId: "host-id", playerIndex: 0, displayName: "Host", connectionState: "connected" },

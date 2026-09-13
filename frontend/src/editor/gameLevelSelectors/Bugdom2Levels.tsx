@@ -2,26 +2,32 @@ import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { LevelGrid } from "../LevelGrid";
 import type { GlobalsInterface } from "@/data/globals/globals";
-import type { TunnelData } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 import { createBugdom2TunnelLoader } from "@/editor/gameLevelSelectors/bugdom2TunnelLoader";
 import {
   BUGDOM2_STANDARD_LEVELS,
   BUGDOM2_TUNNEL_LEVELS,
   LEVEL_SELECTOR_GLOBALS,
 } from "@/editor/gameLevelSelectors/levelSelectorData";
-import { OpenFileButtons } from "@/editor/gameLevelSelectors/levelSelectorRender";
+import { OpenFileButtons, ScriptItemDemoButton } from "@/editor/gameLevelSelectors/levelSelectorRender";
 
 export function Bugdom2Levels({
   openFile,
   onTunnelLoad,
+  onCreateScriptItemDemoLevel,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
-  onTunnelLoad?: (data: TunnelData, fileName: string) => void;
+  onTunnelLoad?: (
+    data: TunnelData,
+    fileName: string,
+    levelKind: TunnelLevelKind,
+  ) => void;
+  onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
 }) {
   const tunnelLoader = useCallback(
-    (path: string, fileName: string) => {
+      (path: string, fileName: string, levelKind: TunnelLevelKind) => {
       const loader = createBugdom2TunnelLoader({ onTunnelLoad });
-      return loader(path, fileName);
+      return loader(path, fileName, levelKind);
     },
     [onTunnelLoad],
   );
@@ -36,7 +42,7 @@ export function Bugdom2Levels({
       {BUGDOM2_TUNNEL_LEVELS.slice(0, 1).map((level) => (
         <Button
           key={level.path}
-          onClick={() => tunnelLoader(level.path, level.fileName)}
+          onClick={() => tunnelLoader(level.path, level.fileName, "plumbing")}
         >
           {level.label}
         </Button>
@@ -49,7 +55,7 @@ export function Bugdom2Levels({
       {BUGDOM2_TUNNEL_LEVELS.slice(1).map((level) => (
         <Button
           key={level.path}
-          onClick={() => tunnelLoader(level.path, level.fileName)}
+          onClick={() => tunnelLoader(level.path, level.fileName, "gutter")}
         >
           {level.label}
         </Button>
@@ -59,6 +65,7 @@ export function Bugdom2Levels({
         globals: LEVEL_SELECTOR_GLOBALS.bugdom2,
         openFile,
       })}
+      <ScriptItemDemoButton globals={LEVEL_SELECTOR_GLOBALS.bugdom2} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
     </LevelGrid>
   );
 }

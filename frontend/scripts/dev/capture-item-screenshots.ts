@@ -158,10 +158,10 @@ async function waitForServer(url: string, timeoutMs: number): Promise<boolean> {
 
 async function selectByTriggerAndLabel(
   page: Page,
-  triggerTestId: string,
+  triggerIndex: number,
   label: string,
 ): Promise<void> {
-  const trigger = page.getByTestId(triggerTestId);
+  const trigger = page.getByRole("combobox").nth(triggerIndex);
   await trigger.click();
   await page.getByRole("option", { name: label, exact: true }).first().click();
 }
@@ -171,14 +171,17 @@ async function selectItemByType(
   itemType: number,
   isSpline: boolean,
 ): Promise<void> {
-  const trigger = page.getByTestId("item-model-item-select-trigger");
+  const trigger = page.getByRole("combobox").nth(2);
   await trigger.click();
-  await page
-    .locator(
-      `[role="option"][data-item-type="${String(itemType)}"][data-item-spline="${isSpline ? "1" : "0"}"]`,
-    )
-    .first()
-    .click();
+  const options = await page.getByRole("option").all();
+  for (const option of options) {
+    const parsed = parseItemLabel((await option.textContent()) ?? "");
+    if (parsed?.itemType === itemType && parsed.isSpline === isSpline) {
+      await option.click();
+      return;
+    }
+  }
+  return;
 }
 
 async function readOpenSelectOptions(page: Page): Promise<string[]> {
@@ -219,45 +222,23 @@ async function readOpenSelectOptionEntries(
 }
 
 async function waitForLoadCompletion(page: Page): Promise<string> {
-  const status = page.getByTestId("item-model-status");
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < STATUS_TIMEOUT_MS) {
-    const statusText = (await status.textContent()) ?? "";
-    if (
-      statusText.startsWith("Loaded:") ||
-      statusText.startsWith("Error loading") ||
-      statusText.includes("No model mapping available")
-    ) {
-      break;
-    }
-
-    await page.waitForTimeout(100);
+  await page.getByRole("button", { name: /Loading model/u }).waitFor({
+    state: "hidden",
+    timeout: STATUS_TIMEOUT_MS,
+  });
+  const alert = page.getByRole("alert");
+  if (await alert.isVisible()) {
+    return `Error: ${(await alert.textContent()) ?? "model load failed"}`;
   }
-
-  const statusText = (await status.textContent()) ?? "";
-  if (statusText.startsWith("Loaded:")) {
-    const fitReadyResult = await ResultAsync.fromPromise(
-      page
-        .locator(
-          '[data-testid="item-model-canvas-container"][data-fit-ready="1"]',
-        )
-        .waitFor({ timeout: 10000 }),
-      mapErr,
-    );
-    ignoreError(fitReadyResult);
-  }
-
+  await page.locator("canvas").first().waitFor({ timeout: STATUS_TIMEOUT_MS });
   await page.waitForTimeout(LOAD_SETTLE_DELAY_MS);
-  return statusText;
+  return "Loaded: canvas";
 }
 
 async function captureCanvasScreenshot(
   page: Page,
 ): Promise<Result<Buffer, string>> {
-  const canvas = page
-    .locator('[data-testid="item-model-canvas-container"] canvas')
-    .first();
+  const canvas = page.locator("canvas").first();
   return ResultAsync.fromPromise(canvas.screenshot({ type: "png" }), mapErr);
 }
 
@@ -267,6 +248,33 @@ function resolveFrontendRoot(): string {
   return path.resolve(scriptsDir, "../..");
 }
 
+async function enableMappingPreviewFlag(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "pangea-feature-flags",
+      JSON.stringify({
+        multiplayer: false,
+        scripting: false,
+        itemModelMappingPreview: true,
+      }),
+    );
+  });
+}
+
+async function openMappingPreview(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      "pangea-feature-flags",
+      JSON.stringify({
+        multiplayer: false,
+        scripting: false,
+        itemModelMappingPreview: true,
+      }),
+    );
+  });
+  await page.getByRole("link", { name: "Item Models", exact: true }).click();
+}
+
 async function runCapture(): Promise<number> {
   const frontendRoot = resolveFrontendRoot();
   const baseOrigin =
@@ -274,7 +282,7 @@ async function runCapture(): Promise<number> {
     `http://${DEFAULT_HOST}:${DEFAULT_PORT}`;
   const appPath =
     process.env.ITEM_CAPTURE_APP_PATH ??
-    "/PangeaRSEdit/#/item-models?capture=1";
+    "/PangeaRSEdit/#/item-model-mapping-preview?capture=1";
   const appUrl = `${baseOrigin}${appPath}`;
   const serverProbeUrl = `${baseOrigin}/PangeaRSEdit/`;
   const skipServer = process.env.ITEM_CAPTURE_SKIP_SERVER === "1";
@@ -319,12 +327,15 @@ async function runCapture(): Promise<number> {
         viewport: { width: 1920, height: 1080 },
       });
 
+      await enableMappingPreviewFlag(discoverPage);
       await discoverPage.goto(appUrl, { waitUntil: "domcontentloaded" });
+      await openMappingPreview(discoverPage);
       await discoverPage
-        .getByTestId("item-model-game-select-trigger")
+        .getByRole("combobox")
+        .first()
         .waitFor({ state: "visible", timeout: 120000 });
 
-      await discoverPage.getByTestId("item-model-game-select-trigger").click();
+      await discoverPage.getByRole("combobox").first().click();
       const discoveredGameLabels = await readOpenSelectOptions(discoverPage);
       await discoverPage.keyboard.press("Escape");
       await discoverBrowser.close();
@@ -365,26 +376,23 @@ async function runCapture(): Promise<number> {
               viewport: { width: 1920, height: 1080 },
             });
 
+            await enableMappingPreviewFlag(page);
             await page.goto(appUrl, { waitUntil: "domcontentloaded" });
+            await openMappingPreview(page);
             await page
-              .getByTestId("item-model-game-select-trigger")
+              .getByRole("combobox")
+              .first()
               .waitFor({ state: "visible", timeout: 30000 });
 
             await selectByTriggerAndLabel(
               page,
-              "item-model-game-select-trigger",
+              0,
               gameLabel,
             );
 
-            const itemSelectVisibleResult = await ResultAsync.fromPromise(
-              page
-                .getByTestId("item-model-item-select-trigger")
-                .waitFor({ state: "visible", timeout: 3000 }),
-              mapErr,
-            );
-            ignoreError(itemSelectVisibleResult);
+            await page.getByRole("combobox").nth(2).waitFor({ state: "visible", timeout: 3000 });
 
-            await page.getByTestId("item-model-item-select-trigger").click();
+            await page.getByRole("combobox").nth(2).click();
             const itemOptions = await readOpenSelectOptionEntries(page);
             await page.keyboard.press("Escape");
             console.log(`Found ${itemOptions.length} items for ${gameLabel}`);
@@ -427,7 +435,7 @@ async function runCapture(): Promise<number> {
 
                   await selectItemByType(page, itemType, isSpline);
 
-                  const loadButton = page.getByTestId("item-model-load-button");
+                  const loadButton = page.getByRole("button", { name: "Load model" });
                   const canLoadModel = await loadButton.isEnabled();
 
                   let statusText = "";
@@ -435,10 +443,7 @@ async function runCapture(): Promise<number> {
                     await loadButton.click();
                     statusText = await waitForLoadCompletion(page);
                   } else {
-                    statusText =
-                      (await page
-                        .getByTestId("item-model-status")
-                        .textContent()) ?? "";
+                    statusText = "No model mapping available";
                   }
 
                   const gameDir = path.join(

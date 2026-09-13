@@ -19,10 +19,7 @@ import {
   type ItemModelKind,
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import {
-  hasVisibleSplineItemModel,
-  isSplineOnlyItemType,
-} from "../splineItemModelVisibility";
+import { hasVisibleSplineItemModel } from "../splineItemModelVisibility";
 import { ItemType } from "../billyFrontierItemType";
 import { ROTATION_4_WAY, ROTATION_8_WAY } from "../standardParamTypes";
 
@@ -242,6 +239,9 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
     modelFile: "buildings.bg3d",
     modelPath: "models",
     modelIndex: 0,
+    // Three.js items are rooted at terrainY + 25; native placement raises the
+    // saloon by -BBox.min.y (-(-441.2409668)), so the remaining offset is 416.2409668.
+    yOffset: 416.2409668,
   },
 
   // ---- SWAMP (swamp.bg3d) ----
@@ -377,9 +377,6 @@ export class BillyFrontierItemMapper implements GameItemModelMapper {
     _flags?: number,
     kind?: ItemModelKind,
   ): UniversalItemModelMapping | undefined {
-    if (kind !== "splineItem" && isSplineOnlyItemType(this.game, itemType)) {
-      return undefined;
-    }
     if (
       kind === "splineItem" &&
       !hasVisibleSplineItemModel(this.game, itemType)

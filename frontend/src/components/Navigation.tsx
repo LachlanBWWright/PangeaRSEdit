@@ -28,7 +28,6 @@ export function Navigation() {
   const editorNavbarLeft = useAtomValue(editorNavbarLeftAtom);
   const editorNavbarActions = useAtomValue(editorNavbarActionsAtom);
   const editorNavbarTabs = useAtomValue(editorNavbarTabsAtom);
-  const showExperimentalLinks = false;
   const showEditorNavbar = location.pathname === "/" && editorNavbarOpen;
 
   return (
@@ -37,9 +36,11 @@ export function Navigation() {
         <div className="flex-1 min-w-0 overflow-visible">
           <div className="flex items-center gap-2 md:gap-4 whitespace-nowrap w-full pr-1 overflow-visible">
             {editorNavbarLeft}
-            <div className="flex flex-1 min-w-0 overflow-x-auto items-stretch rounded-md bg-muted p-1 text-muted-foreground border border-border">
-              {editorNavbarTabs}
-            </div>
+            {editorNavbarTabs && (
+              <div className="flex flex-1 min-w-0 overflow-x-auto items-stretch rounded-md bg-muted p-1 text-muted-foreground border border-border">
+                {editorNavbarTabs}
+              </div>
+            )}
             <div className="relative flex items-center gap-2 shrink-0 overflow-visible">
               {editorNavbarActions}
             </div>
@@ -96,6 +97,20 @@ export function Navigation() {
                 </Link>
               </Button>
             )}
+            {featureFlags.scripting && (
+              <Button
+                asChild
+                variant={
+                  location.pathname === "/custom-objects" ? "default" : "ghost"
+                }
+                className="flex items-center gap-2"
+              >
+                <Link to="/custom-objects" className="text-white">
+                  <Boxes className="w-4 h-4" />
+                  <span>Custom Objects</span>
+                </Link>
+              </Button>
+            )}
             <Button
               asChild
               variant={
@@ -108,16 +123,16 @@ export function Navigation() {
                 <span>Custom Levels</span>
               </Link>
             </Button>
-            {showExperimentalLinks && (
+            {featureFlags.itemModelMappingPreview && (
               <>
                 <Button
                   asChild
                   variant={
-                    location.pathname === "/item-models" ? "default" : "ghost"
+                    location.pathname === "/item-model-mapping-preview" ? "default" : "ghost"
                   }
                   className="flex items-center gap-2"
                 >
-                  <Link to="/item-models" className="text-white">
+                  <Link to="/item-model-mapping-preview" className="text-white">
                     <Boxes className="w-4 h-4" />
                     <span>Item Models</span>
                   </Link>

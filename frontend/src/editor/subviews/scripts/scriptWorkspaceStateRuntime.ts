@@ -4,7 +4,18 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { z } from "zod";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntimeTypes";
-import { validateScriptPackage } from "./scriptPackageValidator";
+import {
+  buildScriptPackageManifest,
+  SCRIPT_PACKAGE_MANIFEST_PATH,
+  validateScriptPackage,
+  type ScriptPackageValidationOptions,
+} from "./scriptPackageValidator";
+import { SCRIPT_CONTRACT_VERSION } from "./scriptContract";
+import {
+  validateScriptPackageAssetsAsync,
+  validateScriptWorkspaceAssets,
+  validateScriptWorkspaceAssetsAsync,
+} from "./scriptAssetValidation";
 
 import {
   BUNDLED_RUNTIME_PATH,
@@ -26,9 +37,14 @@ import {
   scriptSplineBindingSchema,
   scriptTagDefinitionSchema,
   scriptTerrainBindingSchema,
+  runtimeLevelConfigSchema,
 } from "./scriptWorkspaceStateTypes";
 import { getDefaultHoverBeaconVisual } from "./scriptDefaultCustomVisuals";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
+import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
+import { materializeCustomObjectSourceTemplate } from "./scriptCustomObjectTemplate";
+import { SCRIPTING_CONTRACT } from "./scriptContract";
+import { migrateLegacyScriptSource } from "./scriptLegacyMigration";
 import type {
   ScriptBehaviorDefinition,
   ScriptAssetFile,
@@ -41,6 +57,7 @@ import type {
   ScriptLevelState,
   ScriptMapItemBinding,
   ScriptMapItemSignature,
+  ScriptMapReplacement,
   ScriptParameterDefinition,
   ScriptSourceFile,
   ScriptSplineBinding,
@@ -63,6 +80,7 @@ function defaultLevelState(): ScriptLevelState {
     mapItemBindings: [],
     customPlacements: [],
     terrainReplacements: [],
+    mapReplacements: [],
     splineReplacements: [],
   };
 }
@@ -97,7 +115,10 @@ function encodeText(value: string): Uint8Array {
 }
 
 function toEditorRelativePath(path: string): string {
-  return path.replace(/^Data\/Scripts\/src\//, "./");
+  return path
+    .replace(/^Data\/Scripts\/src\//, "")
+    .replace(/\.lua$/, "")
+    .replaceAll("/", ".");
 }
 
 function addStatusLog(
@@ -107,6 +128,39 @@ function addStatusLog(
   return {
     ...state,
     statusLog: [...state.statusLog, message].slice(-20),
+  };
+}
+
+export function appendScriptDiagnostic(
+  state: ScriptWorkspaceState,
+  diagnostic: ScriptDiagnostic,
+): ScriptWorkspaceState {
+  const isRuntimeDiagnostic = diagnostic.category === "runtime-traceback" ||
+    diagnostic.category === "native-adapter";
+  const isDuplicate = isRuntimeDiagnostic && state.diagnostics.some(
+    (existing) => existing.category === diagnostic.category &&
+      existing.code === diagnostic.code &&
+      existing.filePath === diagnostic.filePath &&
+      existing.message === diagnostic.message,
+  );
+  if (isDuplicate) return state;
+  return {
+    ...state,
+    diagnostics: [...state.diagnostics, diagnostic].slice(-100),
+  };
+}
+
+export function replaceLuaLSDiagnostics(
+  state: ScriptWorkspaceState,
+  filePath: string,
+  diagnostics: readonly ScriptDiagnostic[],
+): ScriptWorkspaceState {
+  const retained = state.diagnostics.filter(
+    (diagnostic) => !(diagnostic.category === "luals" && diagnostic.filePath === filePath),
+  );
+  return {
+    ...state,
+    diagnostics: [...retained, ...diagnostics].slice(-100),
   };
 }
 
@@ -260,6 +314,9 @@ function getRaceHooks(): readonly ScriptHookId[] {
     "onObjectFrame",
     "onRaceComplete",
     "onRaceUnload",
+    "onLapComplete",
+    "onRaceFinish",
+    "onObjectiveComplete",
     "onTerrainItem",
     "onPickupCollected",
     "onWeaponHit",
@@ -416,6 +473,9 @@ function getGameTags(gameId: string): readonly ScriptTagDefinition[] {
       createTag("nanosaur2.egg", "Nanosaur 2 Egg", "Eggs to capture/protect.", ["global", "terrainItem"], "game"),
       createTag("nanosaur2.weaponPow", "Weapon Powerup", "Laser/fire weapon powerups.", ["global", "terrainItem"], "game"),
       createTag("nanosaur2.healthPow", "Health Powerup", "Dinosaur health pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.fuelPow", "Fuel Powerup", "Jetpack fuel pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.shieldPow", "Shield Powerup", "Shield pickups.", ["global", "terrainItem"], "game"),
+      createTag("nanosaur2.freeLifePow", "Free Life Powerup", "Extra-life pickups.", ["global", "terrainItem"], "game"),
       createTag("nanosaur2.wormhole", "Wormhole", "Wormhole gate.", ["global", "customObject"], "game"),
       createTag("nanosaur2.bonuswormhole", "Bonus Wormhole", "Bonus wormhole gate.", ["global", "customObject"], "game"),
       createTag("nanosaur2.enemy.raptor", "Raptor Robot", "Raptor robot enemy.", ["global", "customObject"], "game"),
@@ -568,23 +628,13 @@ function buildBehaviorCatalog(
       ],
       template: [
         "local hoverBeacon = {}",
-        "local origins = {}",
         "",
         "function hoverBeacon.onUpdate(self, ctx)",
-        "  local current = pangea.object.position(self.handle)",
-        "  if not current then",
-        "    return",
-        "  end",
-        "  local origin = origins[self.handle.id]",
-        "  if not origin then",
-        "    origin = current",
-        "    origins[self.handle.id] = origin",
-        "  end",
         "  local wave = math.sin(ctx.levelTimeSeconds * 4) * 16",
-        "  pangea.object.setPosition(self.handle, {",
-        "    x = origin.x,",
-        "    y = origin.y + wave,",
-        "    z = origin.z,",
+        "  pangea.object.setPositionOffset(self.handle, {",
+        "    x = 0,",
+        "    y = wave,",
+        "    z = 0,",
         "  })",
         "  pangea.object.setRotation(self.handle, {",
         "    x = 0,",
@@ -594,7 +644,7 @@ function buildBehaviorCatalog(
         "end",
         "",
         "local module = {",
-        "  sampleHoverbeacon = hoverBeacon,",
+        "  sampleHoverBeacon = hoverBeacon,",
         "}",
         "return module",
         "",
@@ -644,13 +694,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 8) * getBobHeight(ctx.tags),",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -691,13 +739,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 6) * 20,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -740,13 +786,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 5) * 15,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -787,13 +831,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 7) * 25,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -834,13 +876,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 4) * 12,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -881,13 +921,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 6) * 18,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -928,13 +966,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 5) * 14,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -975,13 +1011,11 @@ function buildBehaviorCatalog(
           "    return",
           "  end",
           "",
-          "  return {",
-          "    positionOffset = {",
+          "  pangea.object.setPositionOffset(ctx.object, {",
           "      x = 0,",
           "      y = math.sin(ctx.levelTimeSeconds * 5) * 16,",
           "      z = 0,",
-          "    },",
-          "  }",
+          "  })",
           "end",
           "",
           "return module",
@@ -1004,15 +1038,11 @@ export interface ScriptSampleDefinition {
 }
 
 function buildWorkspaceId(context: ScriptWorkspaceContext): string {
-  return `${context.gameId}:${context.levelKey}`;
+  return context.gameId;
 }
 
-function levelLabelFromContext(context: ScriptWorkspaceContext): string {
-  if (context.levelNumber === null) {
-    return context.levelKey;
-  }
-
-  return `level-${String(context.levelNumber)}`;
+function buildLegacyWorkspaceId(context: ScriptWorkspaceContext): string {
+  return `${context.gameId}:${context.levelKey}`;
 }
 
 function buildGeneratedEntryModule(
@@ -1067,6 +1097,12 @@ function buildGeneratedEntryModule(
   const customObjectRequires: string[] = [];
   const customObjectExports: string[] = [];
   const customObjectFrameDispatch: string[] = [];
+  const objectEventHandlers = Object.fromEntries(
+    SCRIPTING_CONTRACT.objectEvents.map((event) => [event.id, event.handler]),
+  );
+  const objectEventHandlersLua = Object.entries(objectEventHandlers)
+    .map(([event, handler]) => `[${JSON.stringify(event)}] = ${JSON.stringify(handler)}`)
+    .join(", ");
   state.customObjects.forEach((objectDefinition, index) => {
     const varName = `__customObjectModule${index}`;
     const relPath = toEditorRelativePath(objectDefinition.sourceFilePath);
@@ -1079,7 +1115,7 @@ function buildGeneratedEntryModule(
     customObjectFrameDispatch.push(
       `  if ctx.objectType == ${JSON.stringify(objectDefinition.id)} then`,
       `    local behavior = ${varName}.${objectDefinition.exportName}`,
-      "    local handlerNames = { spawn = 'onSpawn', update = 'onUpdate', triggerEnter = 'onTriggerEnter', animationEvent = 'onAnimationEvent', animationComplete = 'onAnimationComplete', destroy = 'onDestroy' }",
+      `    local handlerNames = { ${objectEventHandlersLua} }`,
       "    local handlerName = handlerNames[ctx.event or 'update']",
       "    local handler = type(behavior) == 'table' and behavior[handlerName] or nil",
       "    if type(handler) == 'function' then",
@@ -1361,11 +1397,16 @@ function buildRequireDiagnostics(
 
   for (const match of output.matchAll(requirePattern)) {
     const requireTarget = match[1]?.slice(1, -1);
-    if (!requireTarget || requireTarget.startsWith("pangea")) {
+    if (
+      !requireTarget ||
+      requireTarget.startsWith("pangea") ||
+      sourcePath === GENERATED_ENTRY_PATH
+    ) {
       continue;
     }
 
     diagnostics.push({
+      category: "source-validation",
       severity: "warning",
       message: `External require '${requireTarget}' may not resolve in preview runtime`,
       code: "preview.require",
@@ -1517,6 +1558,9 @@ function cloneLevelState(
     mapItemBindings: levelState.mapItemBindings.map(cloneMapItemBinding),
     customPlacements: levelState.customPlacements.map(cloneCustomPlacement),
     terrainReplacements: levelState.terrainReplacements.map((replacement) => ({
+      ...replacement,
+    })),
+    mapReplacements: levelState.mapReplacements.map((replacement) => ({
       ...replacement,
     })),
     splineReplacements: levelState.splineReplacements.map((replacement) => ({
@@ -1676,7 +1720,13 @@ export function ensureScriptWorkspace(
   store: Readonly<Record<string, ScriptWorkspaceState>>,
   context: ScriptWorkspaceContext,
 ): ScriptWorkspaceState {
-  return store[buildWorkspaceId(context)] ?? createEmptyWorkspace(context);
+  const gameWorkspace = store[buildWorkspaceId(context)];
+  if (gameWorkspace) return retargetScriptWorkspace(gameWorkspace, context);
+
+  const legacyWorkspace = store[buildLegacyWorkspaceId(context)];
+  if (legacyWorkspace) return retargetScriptWorkspace(legacyWorkspace, context);
+
+  return createEmptyWorkspace(context);
 }
 
 export function replaceScriptWorkspace(
@@ -1703,8 +1753,10 @@ export function retargetScriptWorkspace(
     return state;
   }
 
-  const sourceLevel =
-    state.levels[state.context.levelKey] ?? defaultLevelState();
+  const sourceLevel = {
+    ...cloneLevelState(state.levels[state.context.levelKey] ?? defaultLevelState()),
+    customPlacements: [],
+  };
 
   return {
     ...state,
@@ -2198,7 +2250,10 @@ export function createCustomObjectFromBehavior(
     (_, letter: string) => letter.toUpperCase(),
   );
   const sourcePath = `Data/Scripts/src/objects/${slugify(objectId)}.lua`;
-  const sourceContent = behavior.template;
+  const sourceContent = materializeCustomObjectSourceTemplate(
+    behavior.template,
+    exportName,
+  );
   const existingObject = state.customObjects.find(
     (candidate) => candidate.id === objectId,
   );
@@ -2287,6 +2342,33 @@ export function replaceTerrainItemWithCustomObject(
       ),
       replacement,
     ],
+  }));
+}
+
+export function replaceMapItemWithCustomObject(
+  state: ScriptWorkspaceState,
+  replacement: ScriptMapReplacement,
+): ScriptWorkspaceState {
+  return updateWorkspaceLevel(state, state.context.levelKey, (levelState) => ({
+    ...levelState,
+    mapReplacements: [
+      ...levelState.mapReplacements.filter(
+        (candidate) => candidate.itemIndex !== replacement.itemIndex,
+      ),
+      replacement,
+    ],
+  }));
+}
+
+export function removeMapItemReplacement(
+  state: ScriptWorkspaceState,
+  itemIndex: number,
+): ScriptWorkspaceState {
+  return updateWorkspaceLevel(state, state.context.levelKey, (levelState) => ({
+    ...levelState,
+    mapReplacements: levelState.mapReplacements.filter(
+      (candidate) => candidate.itemIndex !== itemIndex,
+    ),
   }));
 }
 
@@ -2435,31 +2517,26 @@ export function compileScriptWorkspace(
 function buildRuntimeLevelsJson(
   state: ScriptWorkspaceState,
 ): z.infer<typeof runtimeLevelsSchema> {
-  const context = state.context;
-  if (context.levelNumber === null) {
-    return {
-      version: 1,
-      levels: {},
-    };
-  }
-
+  type RuntimeLevelConfig = z.infer<typeof runtimeLevelConfigSchema>;
+  const levelEntries: [string, RuntimeLevelConfig][] = Object.entries(state.levels).flatMap(([levelKey, levelState]) => {
+    const levelNumber = levelKey === "current" ? state.context.levelNumber : Number(levelKey);
+    if (levelNumber === null || !Number.isInteger(levelNumber) || levelNumber < 0) {
+      return [];
+    }
+    return [[String(levelNumber), {
+      script: BUNDLED_RUNTIME_PATH,
+      extraNativeItems: [],
+      itemOverrides: [],
+      customObjects: state.customObjects.map(cloneCustomObjectDefinition),
+      terrainReplacements: levelState.terrainReplacements.map((replacement) => ({ ...replacement })),
+      mapReplacements: levelState.mapReplacements.map((replacement) => ({ ...replacement })),
+      splineReplacements: levelState.splineReplacements.map((replacement) => ({ ...replacement })),
+      levelSettings: {},
+    }]];
+  });
   return {
     version: 1,
-    levels: {
-      [String(context.levelNumber)]: {
-        script: BUNDLED_RUNTIME_PATH,
-        extraNativeItems: [],
-        itemOverrides: [],
-        customObjects: state.customObjects.map(cloneCustomObjectDefinition),
-        terrainReplacements: (
-          state.levels[context.levelKey]?.terrainReplacements ?? []
-        ).map((replacement) => ({ ...replacement })),
-        splineReplacements: (
-          state.levels[context.levelKey]?.splineReplacements ?? []
-        ).map((replacement) => ({ ...replacement })),
-        levelSettings: {},
-      },
-    },
+    levels: Object.fromEntries(levelEntries),
   };
 }
 
@@ -2468,6 +2545,7 @@ function buildProjectJson(
 ): z.infer<typeof scriptProjectSchema> {
   return {
     schemaVersion: 1,
+    contractVersion: SCRIPT_CONTRACT_VERSION,
     gameId: state.context.gameId,
     entryCompiledPath: BUNDLED_RUNTIME_PATH,
     editor: {
@@ -2531,7 +2609,7 @@ export interface ScriptPackageFile {
   readonly bytes: Uint8Array;
 }
 
-export function buildScriptPackageFiles(
+function buildScriptPackageFilesUnchecked(
   state: ScriptWorkspaceState,
 ): Result<readonly ScriptPackageFile[], string> {
   const compiledState = compileScriptWorkspace(state);
@@ -2550,16 +2628,6 @@ export function buildScriptPackageFiles(
       bytes: encodeJson(buildRuntimeLevelsJson(compiled)),
     },
     {
-      path: `Data/Scripts/config/bindings/${levelLabelFromContext(compiled.context)}.json`,
-      bytes: encodeJson(buildBindingsJson(compiled, compiled.context.levelKey)),
-    },
-    {
-      path: `Data/Scripts/config/placements/${levelLabelFromContext(compiled.context)}.json`,
-      bytes: encodeJson(
-        buildPlacementsJson(compiled, compiled.context.levelKey),
-      ),
-    },
-    {
       path: "Data/Scripts/config/objects.json",
       bytes: encodeJson(buildObjectsJson(compiled)),
     },
@@ -2569,7 +2637,22 @@ export function buildScriptPackageFiles(
     },
   ];
 
+  for (const levelKey of Object.keys(compiled.levels).sort()) {
+    const levelLabel = levelKey === "current" ? "current" : `level-${levelKey}`;
+    files.push(
+      {
+        path: `Data/Scripts/config/bindings/${levelLabel}.json`,
+        bytes: encodeJson(buildBindingsJson(compiled, levelKey)),
+      },
+      {
+        path: `Data/Scripts/config/placements/${levelLabel}.json`,
+        bytes: encodeJson(buildPlacementsJson(compiled, levelKey)),
+      },
+    );
+  }
+
   files.push(...buildScriptTypePackageFiles(compiled));
+  files.push(...buildScriptIdeSupportFiles(compiled));
 
   for (const sourceFile of Object.values(compiled.sourceFiles)) {
     if (sourceFile.path === GENERATED_ENTRY_PATH) {
@@ -2582,9 +2665,6 @@ export function buildScriptPackageFiles(
   }
 
   for (const compiledFile of Object.values(compiled.compiledFiles)) {
-    if (compiledFile.path !== BUNDLED_RUNTIME_PATH) {
-      continue;
-    }
     files.push({
       path: compiledFile.path,
       bytes: encodeText(compiledFile.content),
@@ -2598,13 +2678,57 @@ export function buildScriptPackageFiles(
     });
   }
 
+  const fileMap: Record<string, Uint8Array> = Object.fromEntries(
+    files.map((file) => [file.path, file.bytes]),
+  );
+  files.push({
+    path: SCRIPT_PACKAGE_MANIFEST_PATH,
+    bytes: encodeJson(buildScriptPackageManifest(fileMap)),
+  });
+
   return ok(files);
+}
+
+export function buildScriptPackageFiles(
+  state: ScriptWorkspaceState,
+): Result<readonly ScriptPackageFile[], string> {
+  const assetsResult = validateScriptWorkspaceAssets(state);
+  if (assetsResult.isErr()) {
+    return err(`Custom asset validation failed: ${assetsResult.error}`);
+  }
+  return buildScriptPackageFilesUnchecked(state);
+}
+
+export async function buildScriptPackageFilesAsync(
+  state: ScriptWorkspaceState,
+): Promise<Result<readonly ScriptPackageFile[], string>> {
+  const assetsResult = await validateScriptWorkspaceAssetsAsync(state);
+  if (assetsResult.isErr()) {
+    return err(`Custom asset validation failed: ${assetsResult.error}`);
+  }
+  return buildScriptPackageFilesUnchecked(state);
 }
 
 export function buildPreviewScriptFiles(
   state: ScriptWorkspaceState,
 ): Result<readonly PreviewVfsFile[], string> {
   const packageResult = buildScriptPackageFiles(state);
+  if (packageResult.isErr()) {
+    return err(packageResult.error);
+  }
+
+  return ok(
+    packageResult.value.map((file) => ({
+      path: `/${file.path}`,
+      data: file.bytes,
+    })),
+  );
+}
+
+export async function buildPreviewScriptFilesAsync(
+  state: ScriptWorkspaceState,
+): Promise<Result<readonly PreviewVfsFile[], string>> {
+  const packageResult = await buildScriptPackageFilesAsync(state);
   if (packageResult.isErr()) {
     return err(packageResult.error);
   }
@@ -2629,6 +2753,23 @@ export function buildScriptPackageZip(
     packageResult.value.map((file) => [file.path, file.bytes]),
   );
 
+  return Result.fromThrowable(
+    () => zipSync(zipInput, { level: 6 }),
+    () => "Failed to build script package zip",
+  )();
+}
+
+export async function buildScriptPackageZipAsync(
+  state: ScriptWorkspaceState,
+): Promise<Result<Uint8Array, string>> {
+  const packageResult = await buildScriptPackageFilesAsync(state);
+  if (packageResult.isErr()) {
+    return err(packageResult.error);
+  }
+
+  const zipInput: Record<string, Uint8Array> = Object.fromEntries(
+    packageResult.value.map((file) => [file.path, file.bytes]),
+  );
   return Result.fromThrowable(
     () => zipSync(zipInput, { level: 6 }),
     () => "Failed to build script package zip",
@@ -2661,9 +2802,43 @@ function decodeJsonFile<T>(
   return ok(parsed.data);
 }
 
+export interface ImportedScriptLevelSidecars {
+  readonly terrainBindings: readonly ScriptTerrainBinding[];
+  readonly splineBindings: readonly ScriptSplineBinding[];
+  readonly mapItemBindings: readonly ScriptMapItemBinding[];
+  readonly customPlacements: readonly ScriptCustomObjectPlacement[];
+}
+
+export function decodeScriptLevelSidecars(
+  files: Readonly<Record<string, Uint8Array>>,
+  bindingsPath: string,
+  placementsPath: string,
+): Result<ImportedScriptLevelSidecars, string> {
+  const bindingsResult = decodeJsonFile(
+    files,
+    bindingsPath,
+    scriptBindingsFileSchema,
+  );
+  if (bindingsResult.isErr()) return err(bindingsResult.error);
+  const placementsResult = decodeJsonFile(
+    files,
+    placementsPath,
+    scriptPlacementsFileSchema,
+  );
+  if (placementsResult.isErr()) return err(placementsResult.error);
+
+  return ok({
+    terrainBindings: bindingsResult.value?.terrainBindings ?? [],
+    splineBindings: bindingsResult.value?.splineBindings ?? [],
+    mapItemBindings: bindingsResult.value?.mapItemBindings ?? [],
+    customPlacements: placementsResult.value?.placements ?? [],
+  });
+}
+
 export function importScriptPackageZip(
   bytes: Uint8Array,
   context: ScriptWorkspaceContext,
+  validationOptions: ScriptPackageValidationOptions = {},
 ): Result<ScriptWorkspaceState, string> {
   const unzipResult = Result.fromThrowable(
     () => unzipSync(bytes),
@@ -2676,7 +2851,11 @@ export function importScriptPackageZip(
   const files = unzipResult.value;
 
   // Run validation
-  const validationResult = validateScriptPackage(files, context);
+  const validationResult = validateScriptPackage(
+    files,
+    context,
+    { ...validationOptions, allowLegacySources: true },
+  );
   if (validationResult.isErr()) {
     return err(validationResult.error);
   }
@@ -2721,24 +2900,34 @@ export function importScriptPackageZip(
     .filter(([path]) => path.startsWith("Data/Scripts/src/"))
     .filter(([path]) => path !== GENERATED_ENTRY_PATH);
 
-  const legacyTsPath = importedFiles.find(
-    ([path]) => path.endsWith(".ts") || path.endsWith(".tsx") || path.endsWith(".js")
-  );
-  if (legacyTsPath) {
-    return err("Legacy TypeScript/JavaScript package detected. This editor only supports Lua 5.4 scripting. Please convert your scripts to Lua before importing.");
-  }
-
   const nonLuaSourcePath = importedFiles.find(
     ([path]) => !isLuaSourcePath(path),
   );
-  if (nonLuaSourcePath) {
+  if (nonLuaSourcePath && !/\.(?:tsx?|jsx?)$/i.test(nonLuaSourcePath[0])) {
     return err(`Script source files must be Lua: ${nonLuaSourcePath[0]}`);
   }
 
-  const importedSourceFiles = importedFiles
-    .map(([path, fileBytes]) =>
-      createSourceFile(path, strFromU8(fileBytes), "user"),
-    );
+  const migratedSources = importedFiles.map(([path, fileBytes]) => {
+    if (isLuaSourcePath(path)) {
+      return ok({
+        file: createSourceFile(path, strFromU8(fileBytes), "user"),
+        warnings: [] as readonly string[],
+      });
+    }
+    return migrateLegacyScriptSource(path, strFromU8(fileBytes)).map((migrated) => ({
+      file: createSourceFile(migrated.path, migrated.content, "user"),
+      warnings: migrated.warnings,
+    }));
+  });
+  const failedMigration = migratedSources.find((result) => result.isErr());
+  if (failedMigration?.isErr()) return err(failedMigration.error);
+  const importedSourceFiles: ScriptSourceFile[] = [];
+  const migrationWarnings: string[] = [];
+  for (const result of migratedSources) {
+    if (result.isErr()) return err(result.error);
+    importedSourceFiles.push(result.value.file);
+    migrationWarnings.push(...result.value.warnings);
+  }
 
   const sourceFiles: Record<string, ScriptSourceFile> = Object.fromEntries(
     importedSourceFiles.map((file) => [file.path, file]),
@@ -2747,10 +2936,8 @@ export function importScriptPackageZip(
     sourceFiles[USER_BOOTSTRAP_PATH] ??
     createSourceFile(USER_BOOTSTRAP_PATH, buildBaseRuntimeTemplate(), "user");
 
-  const importedAssets = Object.entries(files).filter(
-    ([path]) =>
-      path.startsWith("Data/Scripts/assets/models/") ||
-      path.startsWith("Data/Scripts/assets/skeletons/"),
+  const importedAssets = Object.entries(files).filter(([path]) =>
+    path.startsWith("Data/Scripts/assets/"),
   );
   const assets: Record<string, ScriptAssetFile> = Object.fromEntries(
     importedAssets.map(([path, assetBytes]) => [
@@ -2771,37 +2958,23 @@ export function importScriptPackageZip(
       const bindingsPath = `Data/Scripts/config/bindings/${levelLabel}.json`;
       const placementsPath = `Data/Scripts/config/placements/${levelLabel}.json`;
 
-      let terrainBindings: ScriptTerrainBinding[] = [];
-      let splineBindings: ScriptSplineBinding[] = [];
-      let mapItemBindings: ScriptMapItemBinding[] = [];
-      let customPlacements: ScriptCustomObjectPlacement[] = [];
-
-      const bBytes = files[bindingsPath];
-      if (bBytes) {
-        const bResult = decodeJsonFile(files, bindingsPath, scriptBindingsFileSchema);
-        if (bResult.isOk() && bResult.value) {
-          terrainBindings = [...bResult.value.terrainBindings];
-          splineBindings = [...bResult.value.splineBindings];
-          mapItemBindings = [...bResult.value.mapItemBindings];
-        }
-      }
-
-      const pBytes = files[placementsPath];
-      if (pBytes) {
-        const pResult = decodeJsonFile(files, placementsPath, scriptPlacementsFileSchema);
-        if (pResult.isOk() && pResult.value) {
-          customPlacements = [...pResult.value.placements];
-        }
-      }
+      const sidecarsResult = decodeScriptLevelSidecars(
+        files,
+        bindingsPath,
+        placementsPath,
+      );
+      if (sidecarsResult.isErr()) return err(sidecarsResult.error);
 
       nextLevels[levelKey] = {
         globalHooks: projectJson.editor.levels[levelKey]?.globalHooks ?? [],
-        terrainBindings,
-        splineBindings,
-        mapItemBindings,
-        customPlacements,
+        terrainBindings: [...sidecarsResult.value.terrainBindings],
+        splineBindings: [...sidecarsResult.value.splineBindings],
+        mapItemBindings: [...sidecarsResult.value.mapItemBindings],
+        customPlacements: [...sidecarsResult.value.customPlacements],
         terrainReplacements:
           projectJson.editor.levels[levelKey]?.terrainReplacements ?? [],
+        mapReplacements:
+          projectJson.editor.levels[levelKey]?.mapReplacements ?? [],
         splineReplacements:
           projectJson.editor.levels[levelKey]?.splineReplacements ?? [],
       };
@@ -2817,6 +2990,7 @@ export function importScriptPackageZip(
       mapItemBindings: [],
       customPlacements: [],
       terrainReplacements: [],
+      mapReplacements: [],
       splineReplacements: [],
     };
   }
@@ -2837,7 +3011,14 @@ export function importScriptPackageZip(
       customObjects: objectsResult.value?.objects ?? [],
       params: paramsResult.value?.params ?? [],
       diagnostics: projectJson?.editor.diagnostics ?? [],
-      statusLog: projectJson?.editor.statusLog ?? ["Imported script package"],
+      statusLog: [
+        ...(projectJson?.editor.statusLog ?? ["Imported script package"]),
+        ...(migrationWarnings.length > 0
+          ? ["Legacy source migrated with warnings", ...migrationWarnings]
+          : importedFiles.some(([path]) => !isLuaSourcePath(path))
+            ? ["Legacy TypeScript/JavaScript source migrated to Lua 5.4"]
+            : []),
+      ],
       sampleId: projectJson?.editor.sampleId ?? null,
       levels: nextLevels,
     },
@@ -2848,6 +3029,25 @@ export function importScriptPackageZip(
   return compileResult.isOk()
     ? ok(compileResult.value)
     : err(compileResult.error);
+}
+
+export async function importScriptPackageZipAsync(
+  bytes: Uint8Array,
+  context: ScriptWorkspaceContext,
+): Promise<Result<ScriptWorkspaceState, string>> {
+  const unzipResult = Result.fromThrowable(
+    () => unzipSync(bytes),
+    () => "Failed to read uploaded script package",
+  )();
+  if (unzipResult.isErr()) return err(unzipResult.error);
+
+  const assetValidation = await validateScriptPackageAssetsAsync(
+    unzipResult.value,
+  );
+  if (assetValidation.isErr()) {
+    return err(`Custom asset validation failed: ${assetValidation.error}`);
+  }
+  return importScriptPackageZip(bytes, context, { assetsPrevalidated: true });
 }
 
 function createSampleWorkspace(

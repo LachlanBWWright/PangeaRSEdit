@@ -60,7 +60,7 @@ export function addPlacedItem(
 }
 
 export function getPointerTilePosition(
-  event: Konva.KonvaEventObject<MouseEvent>,
+  event: Konva.KonvaEventObject<unknown>,
 ): { x: number; z: number } | null {
   const stage = event.target.getStage();
   const pointerPosition = stage?.getRelativePointerPosition();
@@ -71,6 +71,23 @@ export function getPointerTilePosition(
     x: Math.round(pointerPosition.x),
     z: Math.round(pointerPosition.y),
   };
+}
+
+export function isPointerWithinMap(
+  event: Konva.KonvaEventObject<unknown>,
+  tileSize: number,
+  mapWidth: number,
+  mapHeight: number,
+): boolean {
+  const position = event.target.getStage()?.getRelativePointerPosition();
+  if (!position) return false;
+
+  return (
+    position.x >= 0 &&
+    position.y >= 0 &&
+    position.x < mapWidth * tileSize &&
+    position.y < mapHeight * tileSize
+  );
 }
 
 export function clearCanvasSelections(
@@ -130,5 +147,4 @@ export function getStickyStageOffset(
   }
   return { x: stage.x, y: stage.y };
 }
-
 

@@ -97,17 +97,17 @@ export function MightyMikeAssetBrowser({
               }
             }}
           >
-            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Select asset type" />
             </SelectTrigger>
-            <SelectContent className="bg-gray-700 border-gray-600">
-              <SelectItem value="sprites" className="text-white focus:bg-gray-600">
+            <SelectContent>
+              <SelectItem value="sprites">
                 Sprites (.shapes)
               </SelectItem>
-              <SelectItem value="tga" className="text-white focus:bg-gray-600">
+              <SelectItem value="tga">
                 Scene Images (.tga)
               </SelectItem>
-              <SelectItem value="tileset" className="text-white focus:bg-gray-600">
+              <SelectItem value="tileset">
                 Tilesets (.tileset)
               </SelectItem>
             </SelectContent>
@@ -125,10 +125,10 @@ export function MightyMikeAssetBrowser({
             }}
             disabled={loading}
           >
-            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a file..." />
             </SelectTrigger>
-            <SelectContent className="bg-gray-700 border-gray-600">
+            <SelectContent>
               {availableFiles.map((file) => (
                 <SelectItem
                   key={file}

@@ -211,7 +211,7 @@ export interface AddParamDefinitionInput {
   definition: ScriptParamDefinition;
 }
 
-export const SCRIPT_HOOKS: ReadonlyArray<ScriptHookDefinition> = [
+export const SCRIPT_HOOKS: readonly ScriptHookDefinition[] = [
   {
     id: "level.onLoad",
     label: "Level Load",
@@ -232,13 +232,13 @@ export const SCRIPT_HOOKS: ReadonlyArray<ScriptHookDefinition> = [
   },
 ];
 
-export const SCRIPT_ASSET_FORMATS: ReadonlyArray<ScriptAssetFormat> = [
+export const SCRIPT_ASSET_FORMATS: readonly ScriptAssetFormat[] = [
   "bg3d",
   "qd3d",
   "Skeleton.rsrc",
 ];
 
-export const SCRIPT_PARAM_KINDS: ReadonlyArray<ScriptParamKind> = [
+export const SCRIPT_PARAM_KINDS: readonly ScriptParamKind[] = [
   "number",
   "boolean",
   "enum",

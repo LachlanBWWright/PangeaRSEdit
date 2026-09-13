@@ -3,13 +3,14 @@ import { useAtom } from "jotai";
 import { useThree } from "@react-three/fiber";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { toast } from "sonner";
-import { Vector3 } from "three";
+import { Ray, Vector3 } from "three";
 import type { Event } from "three";
 import { Export3DScene } from "@/data/canvasView/canvasViewAtoms";
 import { arrayBufferSchema } from "@/schemas/common";
 
 export interface ThreeEventWithPoint extends Event<string, unknown> {
   point: Vector3;
+  ray: Ray;
   nativeEvent?: PointerEvent;
   stopPropagation?: () => void;
 }
