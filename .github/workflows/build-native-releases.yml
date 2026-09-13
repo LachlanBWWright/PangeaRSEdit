@@ -50,7 +50,7 @@ jobs:
             libdecor-0-dev liburing-dev cmake ninja-build python3 zip unzip
       - name: Build Linux AppImage
         run: |
-          cd "${{ matrix.path }}"
+          cd "games/pangea-ports/${{ matrix.path }}"
           python3 build.py --dependencies --configure --build --package --dist-dir "$RUNNER_TEMP/dist"
           cp "$RUNNER_TEMP/dist/"*.AppImage "$RUNNER_TEMP/${{ matrix.name }}-linux.AppImage"
       - name: Upload Linux package
@@ -74,7 +74,7 @@ jobs:
           submodules: recursive
       - name: Build macOS DMG
         run: |
-          cd "${{ matrix.path }}"
+          cd "games/pangea-ports/${{ matrix.path }}"
           python3 build.py --dependencies --configure --build --package --dist-dir "$RUNNER_TEMP/dist"
           cp "$RUNNER_TEMP/dist/"*.dmg "$RUNNER_TEMP/${{ matrix.name }}-mac.dmg"
       - name: Upload macOS package
@@ -99,7 +99,7 @@ jobs:
       - name: Build Windows ZIP
         shell: bash
         run: |
-          cd "${{ matrix.path }}"
+          cd "games/pangea-ports/${{ matrix.path }}"
           python build.py --dependencies --configure --build --package --dist-dir "$RUNNER_TEMP/dist"
           cp "$RUNNER_TEMP/dist/"*.zip "$RUNNER_TEMP/${{ matrix.name }}-windows.zip"
       - name: Upload Windows package
@@ -128,7 +128,7 @@ jobs:
           java-version: "17"
       - name: Build Android APK
         run: |
-          cd "${{ matrix.path }}/android"
+          cd "games/pangea-ports/${{ matrix.path }}/android"
           chmod +x gradlew
           ./gradlew assembleRelease
           find app/build -name "*.apk" -exec cp {} "$RUNNER_TEMP/${{ matrix.name }}-android.apk" \;
