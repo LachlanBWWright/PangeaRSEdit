@@ -28,6 +28,39 @@ jobs:
         id: games
         run: echo "matrix=$(python3 games/pangea-ports/scripts/ports.py matrix native)" >> "$GITHUB_OUTPUT"
 
+  build-wasm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: "./pnpm-lock.yaml"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build game WASM bundles
+        env:
+          PANGEA_WASM_JOBS: "2"
+        run: pnpm --dir frontend run build:games
+      - name: Upload game WASM bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-game-wasm
+          path: frontend/public/generated/pangea-ports/wasm
+          if-no-files-found: error
+
   build-linux:
     needs: prepare-matrix
     runs-on: ubuntu-22.04
@@ -140,7 +173,7 @@ jobs:
           if-no-files-found: error
 
   deploy-pages:
-    needs: [build-linux, build-macos, build-windows, build-android]
+    needs: [build-wasm, build-linux, build-macos, build-windows, build-android]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -162,10 +195,11 @@ jobs:
           cache-dependency-path: "./pnpm-lock.yaml"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install wasm-pack
-        run: cargo install wasm-pack --locked
-      - name: Build game WASM bundles
-        run: pnpm --dir frontend run build:games
+      - name: Download game WASM bundles
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-game-wasm
+          path: frontend/public/generated/pangea-ports/wasm
       - name: Build project
         env:
           VITE_API_ORIGIN: https://pangearsedit.onrender.com

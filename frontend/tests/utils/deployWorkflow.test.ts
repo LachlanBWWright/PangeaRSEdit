@@ -11,8 +11,21 @@ const workflowPath = resolve(
 describe("Pages deployment workflow", () => {
   it("keeps generated Pangea Ports wasm artifacts in the Pages output", async () => {
     const workflow = await readFile(workflowPath, "utf8");
+    const wasmJobIndex = workflow.indexOf("  build-wasm:");
+    const deployJobIndex = workflow.indexOf("  deploy-pages:");
+    const wasmBuildIndex = workflow.indexOf(
+      "run: pnpm --dir frontend run build:games",
+    );
 
-    expect(workflow).toContain("pnpm --dir frontend run build:games");
+    expect(wasmJobIndex).toBeGreaterThanOrEqual(0);
+    expect(deployJobIndex).toBeGreaterThan(wasmJobIndex);
+    expect(wasmBuildIndex).toBeGreaterThan(wasmJobIndex);
+    expect(wasmBuildIndex).toBeLessThan(deployJobIndex);
+    expect(workflow).toContain("name: frontend-game-wasm");
+    expect(workflow).toContain("name: frontend-game-wasm\n          path:");
+    expect(workflow).toContain(
+      "needs: [build-wasm, build-linux, build-macos, build-windows, build-android]",
+    );
     expect(workflow).toContain("path: ./frontend/dist");
     expect(workflow).not.toContain("frontend/dist/generated");
   });

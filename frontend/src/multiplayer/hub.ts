@@ -15,6 +15,10 @@ import {
 import type { MultiplayerLobbyDetails, MultiplayerMatchConfig } from "./types";
 import { getParticipantToken } from "./api";
 import { MultiplayerReconnectPolicy } from "./reconnectPolicy";
+import {
+  parseSignaledIceCandidate,
+  type SignaledIceCandidate,
+} from "./webrtc/iceCandidate";
 
 export interface MultiplayerHubEvents {
   onPeerJoined: (participantId: string) => void;
@@ -27,7 +31,7 @@ export interface MultiplayerHubEvents {
   onReceiveIceCandidate: (
     fromId: string,
     targetId: string,
-    candidate: string,
+    candidate: SignaledIceCandidate,
   ) => void;
   onPlayerReadyChanged: (
     participantId: string,
@@ -160,7 +164,11 @@ export class MultiplayerHubClient {
     this.connection.on(
       "ReceiveIceCandidate",
       (fromId: string, targetId: string, candidate: string) => {
-        this.events.onReceiveIceCandidate?.(fromId, targetId, candidate);
+        this.events.onReceiveIceCandidate?.(
+          fromId,
+          targetId,
+          parseSignaledIceCandidate(candidate),
+        );
       },
     );
 

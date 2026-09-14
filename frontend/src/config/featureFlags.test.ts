@@ -13,6 +13,21 @@ describe("item model mapping preview feature flag", () => {
   });
 });
 
+describe("multiplayer debugging feature flag", () => {
+  it("is disabled by default", () => {
+    expect(DEFAULT_FEATURE_FLAGS.multiplayerDebug).toBe(false);
+  });
+
+  it("migrates stored flags that predate the setting", () => {
+    const result = featureFlagsSchema.safeParse({
+      multiplayer: false,
+      scripting: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.multiplayerDebug).toBe(false);
+  });
+});
+
 describe("script item demo levels feature flag", () => {
   it("is disabled by default", () => {
     expect(DEFAULT_FEATURE_FLAGS.scriptItemDemoLevels).toBe(false);

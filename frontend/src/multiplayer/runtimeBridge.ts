@@ -8,6 +8,7 @@ import {
   isPnetHostPacketType,
 } from "./pnetPacket";
 import { decodeMultiplayerPacket } from "./protocol";
+import { getFeatureFlags } from "@/config/featureFlags";
 
 const packetSchema = z.instanceof(ArrayBuffer);
 
@@ -190,6 +191,9 @@ function cloneBuffer(buffer: ArrayBuffer): ArrayBuffer {
 }
 
 function shouldDropForNetworkDebug(): boolean {
+  if (!getFeatureFlags().multiplayerDebug) {
+    return false;
+  }
   if (networkDebugBurstRemaining > 0) {
     networkDebugBurstRemaining -= 1;
     return true;
@@ -217,12 +221,7 @@ function recordNetworkDebugDelay(): void {
 }
 
 function shouldTraceRuntimePackets(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  return (
-    new URLSearchParams(window.location.search).get("multiplayerDebug") === "1"
-  );
+  return getFeatureFlags().multiplayerDebug;
 }
 
 function tracePacket(
@@ -308,6 +307,9 @@ export function createMultiplayerRuntimeBridge(
     bytes: ArrayBuffer,
     sendNow: (packet: ArrayBuffer) => boolean,
   ): boolean => {
+    if (!getFeatureFlags().multiplayerDebug) {
+      return sendNow(bytes);
+    }
     if (shouldDropForNetworkDebug()) {
       recordNetworkDebugDrop(bytes);
       return true;
@@ -366,6 +368,9 @@ export function createMultiplayerRuntimeBridge(
   };
 
   const impairIncoming = (bytes: ArrayBuffer): Result<void, string> => {
+    if (!getFeatureFlags().multiplayerDebug) {
+      return queueIncoming(bytes);
+    }
     if (shouldDropForNetworkDebug()) {
       recordNetworkDebugDrop(bytes);
       return ok(undefined);

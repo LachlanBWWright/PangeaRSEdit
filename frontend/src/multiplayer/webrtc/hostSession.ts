@@ -1,5 +1,10 @@
 import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import { ignoreRtcError, observeRtcResult } from "./observeRtcResult";
+import {
+  normalizeIceCandidate,
+  serializeIceCandidate,
+  type IceCandidateInput,
+} from "./iceCandidate";
 
 export type WebRtcSessionState =
   | "connecting"
@@ -94,7 +99,7 @@ export interface HostSession {
   ) => ResultAsync<void, string>;
   readonly applyIceCandidate: (
     participantId: string,
-    candidate: string,
+    candidate: IceCandidateInput,
   ) => ResultAsync<void, string>;
   readonly closePeer: (participantId: string) => void;
   readonly closeAll: () => void;
@@ -230,11 +235,20 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
           }
         };
         connection.onicecandidate = (event) => {
-          if (!event.candidate || !event.candidate.candidate) {
+          const candidate = event.candidate;
+          if (!candidate || !candidate.candidate) {
             return;
           }
           observeRtcResult(
-            deps.sendIceCandidate(participantId, event.candidate.candidate),
+            serializeIceCandidate({
+              candidate: candidate.candidate,
+              sdpMid: candidate.sdpMid,
+              sdpMLineIndex: candidate.sdpMLineIndex,
+              usernameFragment: candidate.usernameFragment,
+            }).match(
+              (candidate) => deps.sendIceCandidate(participantId, candidate),
+              (error) => errAsync(error),
+            ),
             "Unable to send ICE candidate",
             deps.onError ?? ignoreRtcError,
           );
@@ -308,19 +322,20 @@ export function createHostSession(deps: HostSessionDeps): HostSession {
     },
 
     applyIceCandidate: (participantId, candidate) => {
+      const normalizedCandidate = normalizeIceCandidate(candidate);
       const peer = peers.get(participantId);
       if (!peer) {
         const queued = pendingIceCandidates.get(participantId) ?? [];
-        queued.push({ candidate });
+        queued.push(normalizedCandidate);
         pendingIceCandidates.set(participantId, queued);
         return okAsync(undefined);
       }
       if (!peer.remoteDescriptionApplied) {
-        peer.pendingIceCandidates.push({ candidate });
+        peer.pendingIceCandidates.push(normalizedCandidate);
         return okAsync(undefined);
       }
       return ResultAsync.fromPromise(
-        peer.connection.addIceCandidate({ candidate }),
+        peer.connection.addIceCandidate(normalizedCandidate),
         () => "Failed to apply remote ICE candidate",
       );
     },

@@ -77,6 +77,9 @@ function adaptPeerConnection(connection: RTCPeerConnection): HostPeerConnection 
     onicecandidate?.({
       candidate: event.candidate
         ? {
+            sdpMid: event.candidate.sdpMid,
+            sdpMLineIndex: event.candidate.sdpMLineIndex,
+            usernameFragment: event.candidate.usernameFragment,
             candidate: event.candidate.candidate,
           }
         : null,

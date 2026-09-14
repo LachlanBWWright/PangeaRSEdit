@@ -1,5 +1,10 @@
 import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import { ignoreRtcError, observeRtcResult } from "./observeRtcResult";
+import {
+  normalizeIceCandidate,
+  serializeIceCandidate,
+  type IceCandidateInput,
+} from "./iceCandidate";
 import type {
   HostPeerConnection,
   HostSessionDataChannel,
@@ -30,7 +35,9 @@ export interface ClientSession {
     sourceParticipantId: string,
     sdp: string,
   ) => ResultAsync<void, string>;
-  readonly applyIceCandidate: (candidate: string) => ResultAsync<void, string>;
+  readonly applyIceCandidate: (
+    candidate: IceCandidateInput,
+  ) => ResultAsync<void, string>;
   readonly close: () => void;
 }
 
@@ -102,21 +109,6 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
     deps.onStateChanged("closed");
   };
 
-  const applyIceCandidate = (candidate: string): ResultAsync<void, string> => {
-    if (!peerConnection) {
-      pendingIceCandidates.push({ candidate });
-      return okAsync(undefined);
-    }
-    if (!remoteDescriptionApplied) {
-      pendingIceCandidates.push({ candidate });
-      return okAsync(undefined);
-    }
-    return ResultAsync.fromPromise(
-      peerConnection.addIceCandidate({ candidate }),
-      () => "Failed to apply ICE candidate",
-    );
-  };
-
   return {
     receiveOffer: (sourceParticipantId, sdp) => {
       if (peerConnection) {
@@ -153,13 +145,19 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
           }
         };
         connection.onicecandidate = (event) => {
-          if (!event.candidate || !event.candidate.candidate) {
+          const candidate = event.candidate;
+          if (!candidate || !candidate.candidate) {
             return;
           }
           observeRtcResult(
-            deps.sendIceCandidate(
-              sourceParticipantId,
-              event.candidate.candidate,
+            serializeIceCandidate({
+              candidate: candidate.candidate,
+              sdpMid: candidate.sdpMid,
+              sdpMLineIndex: candidate.sdpMLineIndex,
+              usernameFragment: candidate.usernameFragment,
+            }).match(
+              (candidate) => deps.sendIceCandidate(sourceParticipantId, candidate),
+              (error) => errAsync(error),
             ),
             "Unable to send ICE candidate",
             deps.onError ?? ignoreRtcError,
@@ -251,7 +249,21 @@ export function createClientSession(deps: ClientSessionDeps): ClientSession {
       });
     },
 
-    applyIceCandidate,
+    applyIceCandidate: (candidate) => {
+      const normalizedCandidate = normalizeIceCandidate(candidate);
+      if (!peerConnection) {
+        pendingIceCandidates.push(normalizedCandidate);
+        return okAsync(undefined);
+      }
+      if (!remoteDescriptionApplied) {
+        pendingIceCandidates.push(normalizedCandidate);
+        return okAsync(undefined);
+      }
+      return ResultAsync.fromPromise(
+        peerConnection.addIceCandidate(normalizedCandidate),
+        () => "Failed to apply ICE candidate",
+      );
+    },
     close,
   };
 }

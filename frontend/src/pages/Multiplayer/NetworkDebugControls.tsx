@@ -23,7 +23,7 @@ export function NetworkDebugControls({
         <div>
           <div className="font-semibold">Network Impairment</div>
           <div className="text-xs text-emerald-300">
-            Applies only in this browser while multiplayerDebug=1.
+            Applies only in this browser while Multiplayer debugging is enabled.
           </div>
         </div>
         <Button

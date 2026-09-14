@@ -1,3 +1,5 @@
+import { getFeatureFlags } from "@/config/featureFlags";
+
 function readSearchParam(name: string): string | null {
   const location = globalThis.window?.location;
   if (!location) {
@@ -8,13 +10,13 @@ function readSearchParam(name: string): string | null {
 }
 
 export function shouldShowDebugOverlay(): boolean {
-  return readSearchParam("multiplayerDebug") === "1";
+  return getFeatureFlags().multiplayerDebug;
 }
 
 export function shouldUseMockHub(): boolean {
-  return readSearchParam("multiplayerMockHub") === "1";
+  return getFeatureFlags().multiplayerDebug && readSearchParam("multiplayerMockHub") === "1";
 }
 
 export function shouldForceLocalTransport(): boolean {
-  return readSearchParam("multiplayerForceLocal") === "1";
+  return getFeatureFlags().multiplayerDebug && readSearchParam("multiplayerForceLocal") === "1";
 }

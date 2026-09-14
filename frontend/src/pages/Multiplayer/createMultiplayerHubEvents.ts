@@ -212,7 +212,13 @@ export function createMultiplayerHubEvents(
       const hubClient = input.hubClientRef.current;
       if (hubClient && !input.runtimeStartNotifiedRef.current) {
         input.runtimeStartNotifiedRef.current = true;
-        void hubClient.notifyRuntimeStartNow(activeLobby.id);
+        input.setStatusText("Starting match…");
+        input.observeRtcResult(
+          hubClient
+            .notifyRuntimeStartNow(activeLobby.id)
+            .mapErr((error) => error.message),
+          "Unable to start the multiplayer match",
+        );
       }
     },
     onRuntimeStartNow: (runtimeLobbyId) => {

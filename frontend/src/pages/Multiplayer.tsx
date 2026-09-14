@@ -54,7 +54,6 @@ import {
 } from "@/multiplayer/lobbyState";
 import {
   shouldForceLocalTransport,
-  shouldShowDebugOverlay,
   shouldUseMockHub,
 } from "@/multiplayer/browserFlags";
 import { createMultiplayerHubEvents } from "./Multiplayer/createMultiplayerHubEvents";
@@ -64,8 +63,10 @@ import {
   type MultiplayerRuntimeTransportHandle,
 } from "./Multiplayer/useMultiplayerGameRuntime";
 import { useMultiplayerRuntimeTransport } from "./Multiplayer/useMultiplayerRuntimeTransport";
+import { useFeatureFlags } from "@/config/useFeatureFlags";
 
 export function MultiplayerPage() {
+  const featureFlags = useFeatureFlags();
   const [isCreateLobbyOpen, setIsCreateLobbyOpen] = useState(false);
   const [formState, setFormState] = useState<LobbyFormState>(
     defaultLobbyFormState,
@@ -497,7 +498,7 @@ export function MultiplayerPage() {
     (player) => player.participantId === localParticipantId,
   );
   const isHost = Boolean(localParticipant?.isHost);
-  const showDebugOverlay = shouldShowDebugOverlay();
+  const showDebugOverlay = featureFlags.multiplayerDebug;
   const displayedPublicLobbies = filterPublicLobbies(
     publicLobbies,
     joinGameFilter,

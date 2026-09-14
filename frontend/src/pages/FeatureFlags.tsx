@@ -23,6 +23,23 @@ export function FeatureFlagsPage() {
     );
   };
 
+  const handleMultiplayerDebugChange = (enabled: boolean) => {
+    const result = setFeatureFlags({
+      ...featureFlags,
+      multiplayerDebug: enabled,
+    });
+
+    result.match(
+      () =>
+        toast.success(
+          enabled
+            ? "Multiplayer debugging enabled"
+            : "Multiplayer debugging disabled",
+        ),
+      (error) => toast.error(error.message),
+    );
+  };
+
   const handleScriptingChange = (enabled: boolean) => {
     const result = setFeatureFlags({
       ...featureFlags,
@@ -116,6 +133,28 @@ export function FeatureFlagsPage() {
               checked={featureFlags.multiplayer}
               onCheckedChange={handleMultiplayerChange}
               aria-label="Toggle multiplayer experience"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <div className="flex min-w-0 gap-3">
+              <Network className="mt-0.5 h-5 w-5 shrink-0 text-fuchsia-300" />
+              <div>
+                <label
+                  htmlFor="multiplayer-debug-feature-flag"
+                  className="font-medium text-slate-100"
+                >
+                  Multiplayer debugging
+                </label>
+                <p className="mt-1 text-sm leading-5 text-slate-400">
+                  Show runtime diagnostics and enable multiplayer transport test controls.
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="multiplayer-debug-feature-flag"
+              checked={featureFlags.multiplayerDebug}
+              onCheckedChange={handleMultiplayerDebugChange}
+              aria-label="Toggle multiplayer debugging"
             />
           </div>
           <div className="mt-3 flex items-center justify-between gap-6 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
