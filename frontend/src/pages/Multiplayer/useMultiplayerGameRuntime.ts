@@ -8,6 +8,7 @@ import type { StartNetworkMatchFn } from "@/editor/utils/gamePreviewRuntime";
 import type { MultiplayerUiState } from "./types";
 import { shouldUseMockHub } from "@/multiplayer/browserFlags";
 import type { Result as NtResult } from "neverthrow";
+import type { MultiplayerHubClient } from "@/multiplayer/hub";
 
 export interface MultiplayerRuntimeTransportHandle {
   readonly transport: {
@@ -36,9 +37,7 @@ interface UseMultiplayerGameRuntimeInput {
   readonly forceLocalRuntimeTransport: boolean;
   readonly runtimeTransportRevision: number;
   readonly lobbyRef: RefObject<MultiplayerLobbyDetails | null>;
-  readonly hubClientRef: RefObject<{
-    readonly reportRuntimeLevelReady: (lobbyId: string) => unknown;
-  } | null>;
+  readonly hubClientRef: RefObject<Pick<MultiplayerHubClient, "reportRuntimeLevelReady"> | null>;
   readonly runtimeTransportRef: RefObject<MultiplayerRuntimeTransportHandle | null>;
   readonly runtimeReadyPeersRef: MutableRefObject<Set<string>>;
   readonly startNetworkMatchRef: MutableRefObject<StartNetworkMatchFn | null>;
@@ -158,6 +157,7 @@ export function useMultiplayerGameRuntime(
       };
     }
 
+    let cancelled = false;
     const stop = startGamePreview({
       canvas,
       config: launchSpec.config,
@@ -188,6 +188,10 @@ export function useMultiplayerGameRuntime(
         setStatusText("Match started");
       },
       onRuntimeEvent: (event) => {
+        if (event.type === "runtimeInitialized") {
+          setStatusText("Applying multiplayer configuration…");
+          return;
+        }
         if (event.type === "runtimeConfigApplied") {
           setUiState("waiting-for-peer-runtime");
           setStatusText("Runtime configured. Waiting for peers…");
@@ -198,7 +202,15 @@ export function useMultiplayerGameRuntime(
           const activeLobby = lobbyRef.current;
           const hubClient = hubClientRef.current;
           if (hubClient && activeLobby) {
-            void hubClient.reportRuntimeLevelReady(activeLobby.id);
+            void hubClient.reportRuntimeLevelReady(activeLobby.id).match(
+              () => undefined,
+              (error) => {
+                if (cancelled) return;
+                setErrorText(`Unable to report runtime readiness: ${error.message}`);
+                setUiState("disconnected");
+                setStatusText("Runtime readiness failed");
+              },
+            );
           }
           return;
         }
@@ -210,7 +222,7 @@ export function useMultiplayerGameRuntime(
         }
       },
       onStatus: (text) => {
-        setStatusText(text.trim().length > 0 ? text : "Runtime ready");
+        if (text.trim().length > 0) setStatusText(text);
       },
       onError: (message) => {
         setErrorText(message);
@@ -221,6 +233,7 @@ export function useMultiplayerGameRuntime(
     stopGameRef.current = stop;
 
     return () => {
+      cancelled = true;
       startNetworkMatchRef.current = null;
       runtimeStartRequestedRef.current = false;
       runtimeStartNotifiedRef.current = false;

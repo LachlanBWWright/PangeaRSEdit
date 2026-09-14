@@ -155,6 +155,9 @@ async function installMockApi(
   state: MockBackendState,
   participantId: string,
 ): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem("pangea-feature-flags", JSON.stringify({ multiplayer: true }));
+  });
   await page.route("**/api/multiplayer/lobbies**", async (route) => {
     const request = route.request();
     const method = request.method();
@@ -312,9 +315,10 @@ async function waitForGameAndScreenshot(
   const canvas = page.locator('canvas[aria-label="Multiplayer Game"]');
   await expect(canvas).toBeVisible({ timeout: 10_000 });
 
-  // Give the runtime a short window to present a live frame instead of only
-  // the loading state.
-  await page.waitForTimeout(3_000);
+  await expect.poll(
+    () => page.evaluate(() => window.Module?.calledRun ?? false),
+    { timeout: 60_000, message: "Game runtime must initialize" },
+  ).toBe(true);
 
   // Full-page screenshot capturing the canvas in context
   await page.screenshot({

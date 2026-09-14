@@ -167,6 +167,7 @@ function createNetworkPreviewModule(
   networkMatchConfig: unknown,
   onError?: (text: string) => void,
   onFailure?: (failure: PreviewRuntimeFailure) => void,
+  onStatus: (text: string) => void = () => undefined,
 ) {
   return createPreviewModule({
     config: GAME_PORT_CONFIGS[game],
@@ -181,13 +182,55 @@ function createNetworkPreviewModule(
     terrainPaths: null,
     networkMatchConfig,
     localParticipantId: "host",
-    onStatus: () => undefined,
+    onStatus,
     onError: onError ?? (() => undefined),
     onFailure,
   });
 }
 
 describe("game preview runtime loader", () => {
+  it("keeps multiplayer dependency progress visible after eight seconds", () => {
+    vi.useFakeTimers();
+    const onStatus = vi.fn();
+    const module = createNetworkPreviewModule(
+      Game.NANOSAUR_2,
+      buildValidMatchConfig("nanosaur2", "multiplayerRace", "0"),
+      undefined,
+      undefined,
+      onStatus,
+    );
+    module.preRun.forEach((run) => run());
+    module.monitorRunDependencies?.(2);
+    vi.advanceTimersByTime(8_000);
+    expect(onStatus).not.toHaveBeenCalledWith("");
+    module.monitorRunDependencies?.(1);
+    expect(onStatus).toHaveBeenLastCalledWith("Loading game… (1)");
+    vi.useRealTimers();
+  });
+
+  it("leaves replacement runtime globals intact when an older download is cancelled", async () => {
+    let resolveResponse: (response: Response) => void = () => undefined;
+    const response = new Promise<Response>((resolve) => {
+      resolveResponse = resolve;
+    });
+    vi.stubGlobal("fetch", vi.fn(() => response));
+    const module = createNetworkPreviewModule(Game.CRO_MAG, null);
+    const originalRaf = window.requestAnimationFrame;
+    let cancelled = false;
+    const pending = loadPreviewRuntime(module, "https://example.com/game.js", () => cancelled);
+    expect(window.requestAnimationFrame).toBe(originalRaf);
+
+    const replacementRaf = vi.fn(originalRaf);
+    window.requestAnimationFrame = replacementRaf;
+    cancelled = true;
+    resolveResponse(new Response(""));
+    const result = await pending;
+    expect(result.isOk()).toBe(true);
+    expect(window.requestAnimationFrame).toBe(replacementRaf);
+    window.requestAnimationFrame = originalRaf;
+    vi.unstubAllGlobals();
+  });
+
   const launchCases: readonly {
     readonly gameId: "cromagrally" | "nanosaur2";
     readonly mode: string;

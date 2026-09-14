@@ -22,8 +22,8 @@ import {
   writeTerrainToVfs,
 } from "./gamePreviewRuntimeVfs";
 import { mapErr } from "../../utils/mapErr";
+import { fetchPreviewRuntimeScript } from "./fetchPreviewRuntimeScript";
 
-const RUNTIME_SCRIPT_FETCH_TIMEOUT_MS = 20_000;
 const SCRIPT_BUNDLE_RETRY_DELAY_MS = 50;
 const SCRIPT_BUNDLE_MAX_RETRIES = 200;
 const SCRIPT_STATUS_NOT_ENABLED = 1;
@@ -387,7 +387,7 @@ export function createPreviewModule(
   let runtimeInitialized = false;
   let overlayFallbackTimer: number | undefined;
   function scheduleOverlayFallback(): void {
-    if (overlayFallbackTimer !== undefined) return;
+    if (networkMatchConfig || overlayFallbackTimer !== undefined) return;
     overlayFallbackTimer = window.setTimeout(() => {
       if (!runtimeInitialized) {
         runtimeInitialized = true;
@@ -574,6 +574,13 @@ export async function loadPreviewRuntime(
   isCancelled: () => boolean = () => false,
   onRuntimeModule?: (module: PreviewRuntimeModule) => void,
 ): Promise<Result<() => void, string>> {
+  // Fetch before taking ownership of browser globals so a cancelled download
+  // cannot restore its globals over a replacement runtime.
+  const sourceResult = await fetchPreviewRuntimeScript(scriptUrl);
+  if (isCancelled()) return ok(() => undefined);
+  if (sourceResult.isErr()) return err(sourceResult.error);
+  const source = sourceResult.value;
+
   let stopped = false;
   let stopRequested = false;
   const pendingRafIds = new Set<number>();
@@ -876,25 +883,6 @@ export async function loadPreviewRuntime(
     )();
   }
 
-  const abortController = new AbortController();
-  const fetchTimeoutId = realSetTimeout(() => {
-    abortController.abort();
-  }, RUNTIME_SCRIPT_FETCH_TIMEOUT_MS);
-
-  const response = await ResultAsync.fromPromise(
-    fetch(scriptUrl, {
-      credentials: "same-origin",
-      signal: abortController.signal,
-    }),
-    (e) => mapErr(e),
-  );
-  realClearTimeout(fetchTimeoutId);
-
-  if (isCancelled()) {
-    restoreWindowGlobals();
-    return ok(() => undefined);
-  }
-
   function restoreWindowGlobals(): void {
     Result.fromThrowable(
       () => {
@@ -915,27 +903,6 @@ export async function loadPreviewRuntime(
       },
       (e) => mapErr(e),
     )();
-  }
-
-  if (response.isErr() || !response.value.ok) {
-    const status = response.isOk() ? response.value.status : 0;
-    restoreWindowGlobals();
-    return err(`Failed to load ${scriptUrl}: ${String(status)}`);
-  }
-
-  const sourceResult = await ResultAsync.fromPromise(
-    response.value.text(),
-    (e) => mapErr(e),
-  );
-  if (sourceResult.isErr()) {
-    restoreWindowGlobals();
-    return err(sourceResult.error);
-  }
-  const source = sourceResult.value;
-
-  if (isCancelled()) {
-    restoreWindowGlobals();
-    return ok(() => undefined);
   }
 
   const runner = Result.fromThrowable(
