@@ -1,5 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { err, ok } from "neverthrow";
+import {
+  getFeatureFlags,
+  setFeatureFlags,
+} from "@/config/featureFlags";
 import {
   createManagedMultiplayerRuntimeBridge,
   createMultiplayerRuntimeBridge,
@@ -30,7 +34,20 @@ function encodePnetV2Header(input: {
 }
 
 describe("multiplayer runtime bridge", () => {
+  const initialFeatureFlags = getFeatureFlags();
+
+  beforeEach(() => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => undefined,
+      },
+    });
+  });
+
   afterEach(() => {
+    setFeatureFlags(initialFeatureFlags);
     setMultiplayerNetworkDebugOptions({
       latencyMs: 0,
       packetLossPercent: 0,
@@ -165,6 +182,11 @@ describe("multiplayer runtime bridge", () => {
   });
 
   it("can drop outgoing packets with debug impairment enabled", () => {
+    const featureFlagResult = setFeatureFlags({
+      ...getFeatureFlags(),
+      multiplayerDebug: true,
+    });
+    expect(featureFlagResult.isOk()).toBe(true);
     const sendReliable = vi.fn(() => ok(undefined));
     setMultiplayerNetworkDebugOptions({
       latencyMs: 0,
@@ -202,6 +224,11 @@ describe("multiplayer runtime bridge", () => {
   });
 
   it("can drop incoming packets with debug impairment enabled", () => {
+    const featureFlagResult = setFeatureFlags({
+      ...getFeatureFlags(),
+      multiplayerDebug: true,
+    });
+    expect(featureFlagResult.isOk()).toBe(true);
     setMultiplayerNetworkDebugOptions({
       latencyMs: 0,
       packetLossPercent: 100,

@@ -32,14 +32,10 @@ test("convert", () => {
   const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
   sixteenBitToImageData(data, imageData);
 
-  console.log("imagedata", imageData);
-
   const output = imageDataToSixteenBit(imageData.data);
-  console.log(output);
 
   //Expect output to equal data
   for (let i = 0; i < data.byteLength; i++) {
-    console.log(i, data, output);
     expect(data.getUint8(i)).toEqual(output.getUint8(i));
   }
 });
