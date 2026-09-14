@@ -46,10 +46,6 @@ import {
   deriveMatchKind,
 } from "@/multiplayer/matchState";
 import {
-  resolveMultiplayerLaunchSpecFromSelection,
-} from "@/multiplayer/launchSpec";
-import { preloadGameRuntimeAssets } from "@/multiplayer/runtimeAssetPreload";
-import {
   getConnectionStatus,
 } from "@/multiplayer/lobbyState";
 import {
@@ -124,7 +120,6 @@ export function MultiplayerPage() {
   const gameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const stopGameRef = useRef<(() => void) | null>(null);
   const runTokenRef = useRef(0);
-  const preloadedRuntimeKeysRef = useRef<Set<string>>(new Set());
   const runtimeReadyPeersRef = useRef<Set<string>>(new Set());
   const startNetworkMatchRef = useRef<StartNetworkMatchFn | null>(null);
   const runtimeStartRequestedRef = useRef(false);
@@ -192,30 +187,6 @@ export function MultiplayerPage() {
   }, [closeRtcSessions, stopActiveGame]);
 
   const lobbyId = lobby?.id ?? null;
-
-  useEffect(() => {
-    if (!lobby || lobby.state === "started") {
-      return;
-    }
-
-    const preloadSpec = resolveMultiplayerLaunchSpecFromSelection(
-      lobby.gameId,
-      lobby.trackOrLevel,
-    );
-    if (!preloadSpec) {
-      return;
-    }
-
-    const preloadKey = `lobby:${lobby.id}:${lobby.gameId}:${lobby.trackOrLevel}`;
-    if (preloadedRuntimeKeysRef.current.has(preloadKey)) {
-      return;
-    }
-
-    preloadedRuntimeKeysRef.current.add(preloadKey);
-    void preloadGameRuntimeAssets(preloadSpec.config).then(() => {
-      setStatusText("Game assets preloaded; ready to start");
-    });
-  }, [lobby]);
 
   useEffect(() => {
     if (!lobbyId) {

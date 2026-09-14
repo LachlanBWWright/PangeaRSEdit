@@ -87,7 +87,7 @@ describe("startGamePreview", () => {
     vi.useRealTimers();
   });
 
-  it("starts the runtime after a stable canvas size and restores globals on cleanup", async () => {
+  it.each([7, 8])("starts run %i with reusable asset URLs and restores globals on cleanup", async (runToken) => {
     const canvas = createCanvas();
     const previousModule = {
       canvas,
@@ -100,7 +100,7 @@ describe("startGamePreview", () => {
     const stopGame = vi.fn();
     vi.mocked(applyPreviewGlobals).mockReturnValueOnce(cleanupGlobals);
     vi.mocked(loadPreviewRuntime).mockResolvedValueOnce(ok(stopGame));
-    const options = startOptions(canvas);
+    const options = { ...startOptions(canvas), runToken };
 
     const cleanup = startGamePreview(options);
     await vi.advanceTimersByTimeAsync(0);
@@ -110,7 +110,7 @@ describe("startGamePreview", () => {
     expect(options.onStatus).toHaveBeenCalledWith("Loading runtime script...");
     expect(loadPreviewRuntime).toHaveBeenCalledWith(
       expect.objectContaining({ canvas }),
-      "https://assets.test/CroMagRally.js?v=development-5-1-7",
+      "https://assets.test/CroMagRally.js?v=development",
       expect.any(Function),
     );
     expect(canvas.width).toBe(640);

@@ -237,7 +237,6 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
     terrainRsrcBytes,
     terrainTextureBytes,
     customFiles,
-    runToken,
     normalLaunch,
     networkMatchConfig,
     localParticipantId,
@@ -284,7 +283,7 @@ export function startGamePreview(options: StartGamePreviewOptions): () => void {
   );
   const assetBaseUrls = buildPreviewAssetBaseUrls(config);
   const assetVersion = import.meta.env.VITE_GAME_ASSET_VERSION ?? "development";
-  const cacheBustToken = `${assetVersion}-${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
+  const cacheBustToken = assetVersion;
   reportStatus("Waiting for game canvas...");
 
   const handleFullscreenChange = () => {
