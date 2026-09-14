@@ -218,7 +218,7 @@ jobs:
         run: |
           rm -rf frontend/dist/games/pangea-ports frontend/dist/downloads
           mkdir -p frontend/dist/downloads
-          find release-artifacts -type f -print0 | while IFS= read -r -d '' file; do
+          find release-artifacts -mindepth 2 -maxdepth 2 -type f -print0 | while IFS= read -r -d '' file; do
             artifact_name=$(basename "$(dirname "$file")")
             case "$artifact_name" in
               *-linux) platform=linux ;;

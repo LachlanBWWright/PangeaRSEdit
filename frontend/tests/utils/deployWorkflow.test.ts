@@ -26,6 +26,9 @@ describe("Pages deployment workflow", () => {
     expect(workflow).toContain(
       "needs: [build-wasm, build-linux, build-macos, build-windows, build-android]",
     );
+    expect(workflow).toContain(
+      "find release-artifacts -mindepth 2 -maxdepth 2 -type f -print0",
+    );
     expect(workflow).toContain("path: ./frontend/dist");
     expect(workflow).not.toContain("frontend/dist/generated");
   });
