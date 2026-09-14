@@ -1,6 +1,8 @@
 import {
   Boxes,
+  Bug,
   ClipboardList,
+  Database,
   FlaskConical,
   Network,
   Settings,
@@ -82,6 +84,22 @@ export function SettingsMenu() {
           </span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
+          checked={featureFlags.multiplayerDebug}
+          onCheckedChange={(multiplayerDebug) =>
+            saveFeatureFlags({ ...featureFlags, multiplayerDebug })
+          }
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <Bug className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-fuchsia-300" />
+          <span>
+            <span className="block font-medium">Multiplayer debugging</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">
+              Show runtime diagnostics and enable multiplayer transport test controls.
+            </span>
+          </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
           checked={featureFlags.scripting}
           onCheckedChange={(scripting) =>
             saveFeatureFlags({ ...featureFlags, scripting })
@@ -142,6 +160,22 @@ export function SettingsMenu() {
             <span className="block font-medium">Show level metadata</span>
             <span className="mt-0.5 block text-xs leading-4 text-slate-400">
               Enable editable per-level behavior metadata and Meta resources.
+            </span>
+          </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={featureFlags.levelOutputCache}
+          onCheckedChange={(levelOutputCache) =>
+            saveFeatureFlags({ ...featureFlags, levelOutputCache })
+          }
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <Database className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+          <span>
+            <span className="block font-medium">Level output cache</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">
+              Cache generated level output to speed up repeated saves and downloads.
             </span>
           </span>
         </DropdownMenuCheckboxItem>

@@ -107,7 +107,7 @@ jobs:
           if [ "$test_status" -ne 0 ]; then
             echo "Frontend unit or Storybook tests failed (exit $test_status)."
             echo "Failure summary:"
-            rg -n -C 2 "FAIL|FAILED|AssertionError|Unhandled Error|Error:|Test Files|Tests|Coverage was not generated" \
+            grep -n -C 2 -E "FAIL|FAILED|AssertionError|Unhandled Error|Error:|Test Files|Tests|Coverage was not generated" \
               ../ci-test-results/frontend-test-suite.log | tail -160 || true
             exit "$test_status"
           fi
@@ -124,7 +124,7 @@ jobs:
             echo
             echo '### Failure summary'
             echo '```text'
-            rg -n "FAIL|AssertionError|Error:|Test Files|Tests|Coverage was not generated" ci-test-results/frontend-test-suite.log | tail -120 || true
+            grep -n -E "FAIL|AssertionError|Error:|Test Files|Tests|Coverage was not generated" ci-test-results/frontend-test-suite.log | tail -120 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
