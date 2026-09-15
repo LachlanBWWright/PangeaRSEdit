@@ -189,6 +189,37 @@ function createNetworkPreviewModule(
 }
 
 describe("game preview runtime loader", () => {
+  it("waits for Cro-Mag track preparation before reporting deferred readiness", () => {
+    const onRuntimeEvent = vi.fn();
+    const onStartNetworkMatchReady = vi.fn();
+    const module = createPreviewModule({
+      config: GAME_PORT_CONFIGS[Game.CRO_MAG],
+      levelNumber: 1,
+      currentLevelInfo: undefined,
+      canvas: document.createElement("canvas"),
+      assetBaseUrl: "https://example.com/",
+      cacheBustToken: "test",
+      terrainDataBytes: null,
+      terrainRsrcBytes: null,
+      terrainTextureBytes: null,
+      terrainPaths: null,
+      networkMatchConfig: buildValidMatchConfig("cromagrally", "multiplayerRace", "1"),
+      localParticipantId: "host",
+      deferNetworkStart: true,
+      onRuntimeEvent,
+      onStartNetworkMatchReady,
+      onStatus: () => undefined,
+      onError: vi.fn(),
+    });
+    module.ccall = createCcallAdapter(vi.fn(), 0);
+    module.onRuntimeInitialized?.();
+    expect(onStartNetworkMatchReady).toHaveBeenCalledOnce();
+    expect(onRuntimeEvent).not.toHaveBeenCalledWith({ type: "runtimeLevelReady" });
+    expect(module.pangeaNetworkStartRequested).toBe(false);
+    module.onNetworkLevelReady?.();
+    expect(onRuntimeEvent).toHaveBeenLastCalledWith({ type: "runtimeLevelReady" });
+  });
+
   it("keeps multiplayer dependency progress visible after eight seconds", () => {
     vi.useFakeTimers();
     const onStatus = vi.fn();

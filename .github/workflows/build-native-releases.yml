@@ -18,19 +18,26 @@ jobs:
   prepare-matrix:
     runs-on: ubuntu-latest
     outputs:
-      games: ${{ steps.games.outputs.matrix }}
+      native-games: ${{ steps.games.outputs.native }}
+      wasm-games: ${{ steps.games.outputs.wasm }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Prepare native game matrix
+      - name: Prepare game matrices
         id: games
-        run: echo "matrix=$(python3 games/pangea-ports/scripts/ports.py matrix native)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "native=$(python3 games/pangea-ports/scripts/ports.py matrix native)" >> "$GITHUB_OUTPUT"
+          echo "wasm=$(python3 games/pangea-ports/scripts/ports.py matrix wasm)" >> "$GITHUB_OUTPUT"
 
   build-wasm:
+    needs: prepare-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.wasm-games) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,14 +57,22 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
+      - name: Restore game WASM cache
+        id: wasm-cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/public/generated/pangea-ports/wasm
+          key: game-wasm-${{ runner.os }}-emscripten-3.1.74-${{ matrix.name }}-${{ hashFiles(format('{0}/**', matrix.path), 'games/pangea-ports/shared/**', 'games/pangea-ports/scripts/**', 'scripts/build-pangea-ports.sh') }}
+          restore-keys: |
+            game-wasm-${{ runner.os }}-emscripten-3.1.74-${{ matrix.name }}-
       - name: Build game WASM bundles
         env:
-          PANGEA_WASM_JOBS: "2"
-        run: pnpm --dir frontend run build:games
+          PANGEA_WASM_JOBS: "1"
+        run: pnpm --dir frontend run build:games --game "${{ matrix.name }}"
       - name: Upload game WASM bundles
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-game-wasm
+          name: ${{ matrix.name }}-game-wasm
           path: frontend/public/generated/pangea-ports/wasm
           if-no-files-found: error
 
@@ -67,7 +82,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.games) }}
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.native-games) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -81,7 +96,16 @@ jobs:
             libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev \
             libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev libpipewire-0.3-dev libwayland-dev \
             libdecor-0-dev liburing-dev cmake ninja-build python3 zip unzip desktop-file-utils
+      - name: Restore Linux package cache
+        id: linux-package-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/${{ matrix.name }}-linux.AppImage
+          key: game-package-linux-22.04-${{ matrix.name }}-${{ hashFiles(format('{0}/**', matrix.path), 'games/pangea-ports/shared/**', 'games/pangea-ports/scripts/**', 'scripts/build-pangea-ports.sh') }}
+          restore-keys: |
+            game-package-linux-22.04-${{ matrix.name }}-
       - name: Build Linux AppImage
+        if: steps.linux-package-cache.outputs.cache-hit != 'true'
         run: |
           cd "games/pangea-ports/${{ matrix.path }}"
           python3 build.py --dependencies --configure --build --package --dist-dir "$RUNNER_TEMP/dist"
@@ -99,13 +123,22 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.games) }}
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.native-games) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Restore macOS package cache
+        id: macos-package-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/${{ matrix.name }}-mac.dmg
+          key: game-package-macos-14-${{ matrix.name }}-${{ hashFiles(format('{0}/**', matrix.path), 'games/pangea-ports/shared/**', 'games/pangea-ports/scripts/**', 'scripts/build-pangea-ports.sh') }}
+          restore-keys: |
+            game-package-macos-14-${{ matrix.name }}-
       - name: Build macOS DMG
+        if: steps.macos-package-cache.outputs.cache-hit != 'true'
         run: |
           cd "games/pangea-ports/${{ matrix.path }}"
           python3 build.py --dependencies --configure --build --package --dist-dir "$RUNNER_TEMP/dist"
@@ -123,13 +156,22 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.games) }}
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.native-games) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Restore Windows package cache
+        id: windows-package-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/${{ matrix.name }}-windows.zip
+          key: game-package-windows-2022-${{ matrix.name }}-${{ hashFiles(format('{0}/**', matrix.path), 'games/pangea-ports/shared/**', 'games/pangea-ports/scripts/**', 'scripts/build-pangea-ports.sh') }}
+          restore-keys: |
+            game-package-windows-2022-${{ matrix.name }}-
       - name: Build Windows ZIP
+        if: steps.windows-package-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           cd "games/pangea-ports/${{ matrix.path }}"
@@ -148,7 +190,7 @@ jobs:
     timeout-minutes: 75
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.games) }}
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.native-games) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -159,7 +201,16 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Restore Android package cache
+        id: android-package-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/${{ matrix.name }}-android.apk
+          key: game-package-android-java17-${{ matrix.name }}-${{ hashFiles(format('{0}/**', matrix.path), 'games/pangea-ports/shared/**', 'games/pangea-ports/scripts/**', 'scripts/build-pangea-ports.sh') }}
+          restore-keys: |
+            game-package-android-java17-${{ matrix.name }}-
       - name: Build Android APK
+        if: steps.android-package-cache.outputs.cache-hit != 'true'
         run: |
           cd "games/pangea-ports/${{ matrix.path }}/android"
           chmod +x gradlew
@@ -200,7 +251,8 @@ jobs:
       - name: Download game WASM bundles
         uses: actions/download-artifact@v4
         with:
-          name: frontend-game-wasm
+          pattern: "*-game-wasm"
+          merge-multiple: true
           path: frontend/public/generated/pangea-ports/wasm
       - name: Build project
         env:

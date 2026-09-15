@@ -78,6 +78,8 @@ export interface PreviewRuntimeModule {
   setStatus?: (text: string) => void;
   monitorRunDependencies?: (left: number) => void;
   onRuntimeInitialized?: () => void;
+  onNetworkLevelReady?: () => void;
+  pangeaNetworkStartRequested?: boolean;
   onAbort?: (reason: unknown) => void;
   requestQuitFn?: string;
   FS?: {

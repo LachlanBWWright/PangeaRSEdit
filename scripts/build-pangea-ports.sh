@@ -282,7 +282,7 @@ build_game() {
       [[ "$(<"$FINGERPRINT_FILE")" == "$INPUT_FINGERPRINT" ]] &&
       wasm_assets_are_complete "$DEST"; then
       echo "Up to date: $PORT_NAME"
-      continue
+      return 0
     fi
   fi
 
@@ -295,7 +295,7 @@ build_game() {
       GAME_DIR="$PANGEA_PORTS/games/$PORT_NAME"
       if [[ ! -d "$GAME_DIR/android" ]]; then
         echo "WARNING: $PORT_NAME has no android/ directory — skipping" >&2
-        continue
+        return 0
       fi
       (cd "$GAME_DIR/android" && run_step ./gradlew assembleDebug)
       echo "Done: $PORT_NAME Android debug APK under $GAME_DIR/android/app/build/outputs/apk/"
@@ -314,7 +314,7 @@ build_game() {
     if [[ "$DRY_RUN" -eq 0 ]]; then
       rm -rf "$STAGE_TMP"
     fi
-    continue
+    return 0
   fi
 
   if [[ "$DRY_RUN" -eq 0 ]]; then

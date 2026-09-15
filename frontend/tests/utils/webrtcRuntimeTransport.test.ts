@@ -67,7 +67,7 @@ describe("webrtc runtime transport", () => {
     expect(onPacket).not.toHaveBeenCalled();
   });
 
-  it.each([6, 7])("delivers native PNET v%i inputs and snapshots on both channels", (version) => {
+  it.each([6, 7, 8])("delivers native PNET v%i inputs and snapshots on both channels", (version) => {
     const reliable = new FakeDataChannel();
     const unreliable = new FakeDataChannel();
     const handle = createWebRtcRuntimeTransport({

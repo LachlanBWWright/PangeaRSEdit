@@ -1,6 +1,7 @@
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { z, ZodError } from "zod";
 import { MultiplayerMatchConfigSchema } from "@/multiplayer/schemas";
+import { Game } from "@/data/globals/globals";
 import type { MultiplayerMatchConfig } from "@/multiplayer/types";
 import { deriveRuntimeMatchIdPair } from "@/multiplayer/pnetPacket";
 import { resolveLocalPlayerIndex } from "@/multiplayer/participantIndex";
@@ -385,6 +386,9 @@ export function createPreviewModule(
   } = options;
 
   let runtimeInitialized = false;
+  const waitForNativeLevel = Boolean(
+    networkMatchConfig && deferNetworkStart && config.game === Game.CRO_MAG,
+  );
   let overlayFallbackTimer: number | undefined;
   function scheduleOverlayFallback(): void {
     if (networkMatchConfig || overlayFallbackTimer !== undefined) return;
@@ -405,6 +409,10 @@ export function createPreviewModule(
   const moduleRef: { current: PreviewRuntimeModule | null } = { current: null };
 
   const result: PreviewRuntimeModule = {
+    pangeaNetworkStartRequested: false,
+    onNetworkLevelReady: waitForNativeLevel
+      ? () => onRuntimeEvent?.({ type: "runtimeLevelReady" })
+      : undefined,
     canvas,
     keyboardListeningElement: canvas,
     webglContextAttributes: {
@@ -531,7 +539,9 @@ export function createPreviewModule(
         onRuntimeEvent?.({ type: "runtimeConfigApplied" });
         const startNetworkMatch = createStartNetworkMatch(module);
         onStartNetworkMatchReady?.(startNetworkMatch);
-        onRuntimeEvent?.({ type: "runtimeLevelReady" });
+        if (!waitForNativeLevel) {
+          onRuntimeEvent?.({ type: "runtimeLevelReady" });
+        }
         if (!deferNetworkStart) {
           const startResult = startNetworkMatch();
           if (startResult.isErr()) {
