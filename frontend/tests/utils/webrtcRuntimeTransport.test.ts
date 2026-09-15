@@ -52,6 +52,52 @@ class FakeDataChannel {
 }
 
 describe("webrtc runtime transport", () => {
+  it("consumes transport heartbeats without forwarding them as native packets", () => {
+    const reliable = new FakeDataChannel();
+    const handle = createWebRtcRuntimeTransport({ reliableChannel: reliable });
+    const onPacket = vi.fn();
+    handle.transport.subscribeIncoming(onPacket);
+    const heartbeat = new ArrayBuffer(20);
+    const view = new DataView(heartbeat);
+    view.setUint32(0, 0x504e4554);
+    view.setUint16(4, 1);
+    view.setUint8(6, 1);
+    reliable.emit(heartbeat);
+    handle.dispose();
+    expect(onPacket).not.toHaveBeenCalled();
+  });
+
+  it.each([6, 7])("delivers native PNET v%i inputs and snapshots on both channels", (version) => {
+    const reliable = new FakeDataChannel();
+    const unreliable = new FakeDataChannel();
+    const handle = createWebRtcRuntimeTransport({
+      reliableChannel: reliable,
+      unreliableChannel: unreliable,
+    });
+    const received: ArrayBuffer[] = [];
+    handle.transport.subscribeIncoming((bytes) => received.push(bytes));
+
+    const packets = [2, 3].map((packetType) => {
+      const bytes = new ArrayBuffer(32);
+      const view = new DataView(bytes);
+      view.setUint32(0, 0x54454e50, true);
+      view.setUint16(4, version, true);
+      view.setUint16(6, packetType, true);
+      view.setUint32(8, 123, true);
+      view.setUint32(12, 456, true);
+      view.setUint32(20, 1960, true);
+      view.setUint16(24, packetType === 2 ? 1 : 0, true);
+      view.setUint32(28, 42, true);
+      return bytes;
+    });
+    for (const packet of packets) {
+      reliable.emit(packet);
+      unreliable.emit(packet);
+    }
+    handle.dispose();
+    expect(received).toEqual(packets.flatMap((packet) => [packet, packet]));
+  });
+
   it("sends reliable and unreliable packets", () => {
     const reliable = new FakeDataChannel();
     const unreliable = new FakeDataChannel();

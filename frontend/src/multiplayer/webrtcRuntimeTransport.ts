@@ -1,4 +1,5 @@
 import { Result, err, ok } from "neverthrow";
+import { decodePnetHeader } from "./pnetPacket";
 import type { MultiplayerRuntimeManagedTransport } from "./runtimeBridge";
 import {
   GameplaySequenceTracker,
@@ -198,6 +199,10 @@ function decodeTransportPacket(
 
   const view = new DataView(bytes);
   if (view.getUint32(0) !== TRANSPORT_MAGIC) {
+    return err("transport.not-wrapped");
+  }
+  // Native gameplay shares the PNET magic but has a little-endian header.
+  if (decodePnetHeader(bytes).isOk()) {
     return err("transport.not-wrapped");
   }
   if (view.getUint16(4) !== TRANSPORT_VERSION) {
