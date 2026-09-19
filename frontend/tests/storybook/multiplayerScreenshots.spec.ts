@@ -13,6 +13,7 @@ test("captures the multiplayer session sidebar at its narrow desktop width", asy
   await expect(page.getByRole("heading", { name: "Players" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy Lobby ID" })).toHaveCount(0);
   await expect(page.getByText("cromag-rally-lobby-7f3a2b9c", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Lobby" })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: "Debug" })).toHaveCount(0);
   await expect(
     page.locator("div.font-medium").filter({

@@ -49,7 +49,7 @@ export function CreateLobbyDialog({
         <DialogHeader>
           <DialogTitle>Create Lobby</DialogTitle>
           <DialogDescription>
-            Choose the match setup, then invite others by lobby ID or join code.
+            Choose the match setup, then invite others with the join code.
           </DialogDescription>
         </DialogHeader>
 

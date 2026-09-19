@@ -116,12 +116,12 @@ export function MultiplayerSessionSidebar({
     <aside className="min-h-0 border-l border-border pl-4">
       <div className="min-h-0 max-h-full overflow-hidden text-xs">
         <Tabs defaultValue="lobby" className="min-h-0">
-          <TabsList className="h-9 bg-transparent p-0">
-            <TabsTrigger value="lobby" className="text-xs">Lobby</TabsTrigger>
-            {showDebugOverlay ? (
+          {showDebugOverlay ? (
+            <TabsList className="h-9 bg-transparent p-0">
+              <TabsTrigger value="lobby" className="text-xs">Lobby</TabsTrigger>
               <TabsTrigger value="debug" className="text-xs">Debug</TabsTrigger>
-            ) : null}
-          </TabsList>
+            </TabsList>
+          ) : null}
           <TabsContent value="lobby" className="space-y-3 overflow-hidden text-xs">
           <section aria-labelledby="multiplayer-lobby-heading" className="space-y-3">
             <div className="flex items-start justify-between gap-2">

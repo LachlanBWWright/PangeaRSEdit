@@ -53,9 +53,6 @@ export function MultiplayerLobbyList({
               <div className="text-sm text-muted-foreground">
                 {String(lobby.playerCount)}/{String(lobby.maxPlayers)} players · Join code {lobby.joinCode}
               </div>
-              <div className="break-all text-xs text-muted-foreground">
-                {lobby.id}
-              </div>
             </div>
             <Button
               type="button"

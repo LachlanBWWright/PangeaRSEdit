@@ -37,7 +37,7 @@ export function JoinLobbyDialog({
         <DialogHeader>
           <DialogTitle>Join a Lobby</DialogTitle>
           <DialogDescription>
-            Enter your name and the lobby ID or join code.
+            Enter your name and the lobby join code.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -56,13 +56,11 @@ export function JoinLobbyDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="multiplayer-join-lobby-id">
-              Lobby ID or Code
-            </Label>
+            <Label htmlFor="multiplayer-join-lobby-id">Join code</Label>
             <Input
               id="multiplayer-join-lobby-id"
               value={joinLobbyId}
-              placeholder="Paste an ID or enter a code"
+              placeholder="Enter the join code"
               disabled={busy}
               onChange={(event) => {
                 onJoinLobbyIdChange(event.target.value);
