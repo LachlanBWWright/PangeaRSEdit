@@ -75,6 +75,7 @@ function LobbyBrowserStory() {
         busy={false}
         isPreloading={false}
         lobbyListErrorText={null}
+        errorText={null}
         displayedPublicLobbies={displayedPublicLobbies}
         joinGameFilter={joinGameFilter}
         joinModeFilter={joinModeFilter}
@@ -87,6 +88,7 @@ function LobbyBrowserStory() {
         onCreateLobby={() => setIsCreateLobbyOpen(false)}
         onJoinLobby={() => undefined}
         onQuickJoinLobby={() => undefined}
+        onClearError={() => undefined}
       />
     </div>
   );

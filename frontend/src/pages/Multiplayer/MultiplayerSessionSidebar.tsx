@@ -84,6 +84,7 @@ export function MultiplayerSessionSidebar({
   statusText,
   errorText,
   isHost,
+  readyPlayerCount,
   busy,
   chatMessages,
   chatDraft,
@@ -263,6 +264,9 @@ export function MultiplayerSessionSidebar({
             canStart={canStartLobby}
             canForceStart={canForceStartLobby}
             canEndMatch={canEndMatch}
+            lobbyState={lobby.state}
+            readyPlayerCount={readyPlayerCount}
+            playerCount={lobby.players.length}
             onToggleReady={onToggleReady}
             onStart={onStart}
             onStartAnyway={onStartAnyway}
@@ -289,6 +293,7 @@ export function MultiplayerSessionSidebar({
             </div>
             <div className="flex gap-2">
               <Input
+                aria-label="Chat message"
                 value={chatDraft}
                 placeholder="Send a message"
                 onChange={(event) => {

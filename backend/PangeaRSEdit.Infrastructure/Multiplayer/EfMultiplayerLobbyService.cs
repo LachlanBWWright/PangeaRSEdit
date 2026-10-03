@@ -152,9 +152,14 @@ public sealed class EfMultiplayerLobbyService(
         }
 
         var existing = lobby.Players.SingleOrDefault(x => x.ParticipantId == request.ParticipantId);
+        var displayName = ResolveUniqueDisplayName(
+            lobby,
+            request.DisplayName,
+            request.ParticipantId);
+
         if (existing is not null)
         {
-            existing.DisplayName = request.DisplayName;
+            existing.DisplayName = displayName;
             existing.LastSeenAt = DateTimeOffset.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -175,7 +180,7 @@ public sealed class EfMultiplayerLobbyService(
             Id = Guid.CreateVersion7(),
             LobbyId = lobby.Id,
             ParticipantId = request.ParticipantId,
-            DisplayName = request.DisplayName,
+            DisplayName = displayName,
             PlayerIndex = nextIndex,
             IsHost = false,
             IsReady = false,
@@ -195,6 +200,32 @@ public sealed class EfMultiplayerLobbyService(
         }
         MultiplayerMetrics.LobbyJoined(lobby.GameId, lobby.Mode);
         return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby));
+    }
+
+    private static string ResolveUniqueDisplayName(
+        MultiplayerLobbyEntity lobby,
+        string requestedDisplayName,
+        string participantId)
+    {
+        var occupiedNames = lobby.Players
+            .Where(player => player.ParticipantId != participantId)
+            .Select(player => player.DisplayName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!occupiedNames.Contains(requestedDisplayName))
+        {
+            return requestedDisplayName;
+        }
+
+        for (var suffix = 2; suffix <= lobby.MaxPlayers + 1; suffix += 1)
+        {
+            var candidate = $"{requestedDisplayName} ({suffix})";
+            if (!occupiedNames.Contains(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return $"{requestedDisplayName} ({lobby.Players.Count + 1})";
     }
 
     public async Task<AppResult<bool>> LeaveLobbyAsync(

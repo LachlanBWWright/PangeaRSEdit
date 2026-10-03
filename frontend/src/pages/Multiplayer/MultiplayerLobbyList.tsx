@@ -7,6 +7,7 @@ import {
   isLobbyJoinable,
 } from "@/multiplayer/lobbyDisplay";
 import type { MultiplayerLobbySummary } from "@/multiplayer/types";
+import { getLevelOptionLabel, getTrackOptions } from "@/multiplayer/menuOptions";
 
 interface MultiplayerLobbyListProps {
   readonly lobbies: readonly MultiplayerLobbySummary[];
@@ -47,7 +48,11 @@ export function MultiplayerLobbyList({
                   {formatLobbyGameLabel(lobby.gameId)}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {formatLobbyModeLabel(lobby.mode)} · Track / Level {lobby.trackOrLevel}
+                  {formatLobbyModeLabel(lobby.mode)} ·{" "}
+                  {getLevelOptionLabel(
+                    getTrackOptions(lobby.gameId, lobby.mode),
+                    lobby.trackOrLevel,
+                  )}
                 </div>
               </div>
               <div className="text-sm text-muted-foreground">

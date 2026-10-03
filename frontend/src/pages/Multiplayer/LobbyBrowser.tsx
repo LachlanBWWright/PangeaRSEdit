@@ -15,6 +15,7 @@ export function LobbyBrowser({
   busy,
   isPreloading,
   lobbyListErrorText,
+  errorText,
   displayedPublicLobbies,
   joinGameFilter,
   joinModeFilter,
@@ -27,6 +28,7 @@ export function LobbyBrowser({
   onCreateLobby,
   onJoinLobby,
   onQuickJoinLobby,
+  onClearError,
 }: LobbyBrowserProps) {
   const controlsDisabled = busy || isPreloading;
   const [isJoinLobbyOpen, setIsJoinLobbyOpen] = useState(false);
@@ -52,6 +54,7 @@ export function LobbyBrowser({
               className="h-9"
               disabled={controlsDisabled}
               onClick={() => {
+                onClearError();
                 setIsJoinLobbyOpen(true);
               }}
             >
@@ -64,6 +67,7 @@ export function LobbyBrowser({
               className="h-9"
               disabled={controlsDisabled}
               onClick={() => {
+                onClearError();
                 onCreateLobbyOpenChange(true);
               }}
             >
@@ -74,6 +78,11 @@ export function LobbyBrowser({
         </header>
 
         <section className="flex min-h-0 flex-1 flex-col gap-3" aria-label="Open lobbies">
+          {errorText && !isJoinLobbyOpen && !isCreateLobbyOpen ? (
+            <Alert variant="destructive" role="alert">
+              <AlertDescription>{errorText}</AlertDescription>
+            </Alert>
+          ) : null}
           {lobbyListErrorText ? (
             <Alert variant="destructive" className="border-destructive/40 bg-destructive/10 py-2 text-destructive">
               <AlertDescription>{lobbyListErrorText}</AlertDescription>
@@ -92,19 +101,18 @@ export function LobbyBrowser({
         formState={formState}
         joinLobbyId={joinLobbyId}
         busy={controlsDisabled}
+        errorText={errorText}
         onOpenChange={setIsJoinLobbyOpen}
         onFormStateChange={onFormStateChange}
         onJoinLobbyIdChange={onJoinLobbyIdChange}
-        onJoin={() => {
-          setIsJoinLobbyOpen(false);
-          onJoinLobby();
-        }}
+        onJoin={onJoinLobby}
       />
 
       <CreateLobbyDialog
         open={isCreateLobbyOpen}
         formState={formState}
         busy={controlsDisabled}
+        errorText={errorText}
         onOpenChange={onCreateLobbyOpenChange}
         onFormStateChange={onFormStateChange}
         onCreate={onCreateLobby}

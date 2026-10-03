@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ interface CreateLobbyDialogProps {
   readonly open: boolean;
   readonly formState: LobbyFormState;
   readonly busy: boolean;
+  readonly errorText: string | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onFormStateChange: (nextState: LobbyFormState) => void;
   readonly onCreate: () => void;
@@ -39,6 +41,7 @@ export function CreateLobbyDialog({
   open,
   formState,
   busy,
+  errorText,
   onOpenChange,
   onFormStateChange,
   onCreate,
@@ -204,6 +207,11 @@ export function CreateLobbyDialog({
             </Select>
           </div>
         </div>
+        {errorText ? (
+          <Alert variant="destructive" role="alert">
+            <AlertDescription>{errorText}</AlertDescription>
+          </Alert>
+        ) : null}
 
         <div className="flex justify-end">
           <Button

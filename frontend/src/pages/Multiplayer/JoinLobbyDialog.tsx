@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { LobbyFormState } from "@/multiplayer/menuOptions";
@@ -15,6 +16,7 @@ interface JoinLobbyDialogProps {
   readonly formState: LobbyFormState;
   readonly joinLobbyId: string;
   readonly busy: boolean;
+  readonly errorText: string | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onFormStateChange: (nextState: LobbyFormState) => void;
   readonly onJoinLobbyIdChange: (nextLobbyId: string) => void;
@@ -26,6 +28,7 @@ export function JoinLobbyDialog({
   formState,
   joinLobbyId,
   busy,
+  errorText,
   onOpenChange,
   onFormStateChange,
   onJoinLobbyIdChange,
@@ -68,6 +71,11 @@ export function JoinLobbyDialog({
             />
           </div>
         </div>
+        {errorText ? (
+          <Alert variant="destructive" role="alert">
+            <AlertDescription>{errorText}</AlertDescription>
+          </Alert>
+        ) : null}
         <div className="flex justify-end">
           <Button
             type="button"
