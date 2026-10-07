@@ -6,6 +6,7 @@ import { CreateLobbyDialog } from "./CreateLobbyDialog";
 import { JoinLobbyDialog } from "./JoinLobbyDialog";
 import { MultiplayerLobbyFilters } from "./MultiplayerLobbyFilters";
 import { MultiplayerLobbyList } from "./MultiplayerLobbyList";
+import { LobbyProgress } from "./LobbyProgress";
 import type { LobbyBrowserProps } from "./types";
 
 export function LobbyBrowser({
@@ -78,13 +79,16 @@ export function LobbyBrowser({
         </header>
 
         <section className="flex min-h-0 flex-1 flex-col gap-3" aria-label="Open lobbies">
+          {controlsDisabled && !isJoinLobbyOpen && !isCreateLobbyOpen ? (
+            <LobbyProgress isPreloading={isPreloading} action="join" />
+          ) : null}
           {errorText && !isJoinLobbyOpen && !isCreateLobbyOpen ? (
             <Alert variant="destructive" role="alert">
               <AlertDescription>{errorText}</AlertDescription>
             </Alert>
           ) : null}
           {lobbyListErrorText ? (
-            <Alert variant="destructive" className="border-destructive/40 bg-destructive/10 py-2 text-destructive">
+            <Alert variant="destructive" className="border-destructive/40 bg-destructive/10 py-2 text-red-300">
               <AlertDescription>{lobbyListErrorText}</AlertDescription>
             </Alert>
           ) : null}
@@ -101,6 +105,7 @@ export function LobbyBrowser({
         formState={formState}
         joinLobbyId={joinLobbyId}
         busy={controlsDisabled}
+        isPreloading={isPreloading}
         errorText={errorText}
         onOpenChange={setIsJoinLobbyOpen}
         onFormStateChange={onFormStateChange}
@@ -112,6 +117,7 @@ export function LobbyBrowser({
         open={isCreateLobbyOpen}
         formState={formState}
         busy={controlsDisabled}
+        isPreloading={isPreloading}
         errorText={errorText}
         onOpenChange={onCreateLobbyOpenChange}
         onFormStateChange={onFormStateChange}

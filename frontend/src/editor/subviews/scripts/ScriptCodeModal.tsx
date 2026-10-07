@@ -21,6 +21,10 @@ import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 import { scriptLspClient } from "./scriptLspClient";
 import { hasConfiguredApiEndpoint } from "@/api/apiBase";
 import { preflightScriptSource } from "./scriptSourcePreflight";
+import type { ScriptSourceEditorProps, ScriptEditorReveal } from "./ScriptSourceEditor";
+import { ScriptEditorReferenceLayout } from "./ScriptEditorReferenceLayout";
+import { ScriptCodeWorkspacePanel } from "./ScriptCodeWorkspacePanel";
+import { scriptEditorUri } from "./scriptEditorUris";
 
 interface ScriptCodeModalProps {
   open: boolean;
@@ -33,6 +37,7 @@ interface ScriptCodeModalProps {
   isReadOnly?: boolean;
   onSave?: (newContent: string) => void;
   onDelete?: () => void;
+  editor?: ScriptSourceEditorProps;
 }
 
 export function getLuaIntelligenceStatus(
@@ -56,13 +61,20 @@ export function ScriptCodeModal({
   isReadOnly = false,
   onSave,
   onDelete,
+  editor: integratedEditor,
 }: ScriptCodeModalProps) {
   const lspStatus = useSyncExternalStore(
     (listener) => scriptLspClient.subscribe(listener),
     (): ReturnType<typeof scriptLspClient.getStatus> => scriptLspClient.getStatus(),
     (): ReturnType<typeof scriptLspClient.getStatus> => "disconnected",
   );
+  const capabilities = useSyncExternalStore(
+    (listener) => scriptLspClient.subscribe(listener),
+    () => scriptLspClient.getCapabilities(),
+  );
   const [draft, setDraft] = useState({ base: content, value: content });
+  const [referenceOpen, setReferenceOpen] = useState(false);
+  const [diagnosticReveal, setDiagnosticReveal] = useState<ScriptEditorReveal>();
   const editorContent = draft.base === content ? draft.value : content;
   const hasChanges = editorContent !== content;
   const preflightFindings = useMemo(
@@ -74,7 +86,7 @@ export function ScriptCodeModal({
   );
 
   useEffect(() => {
-    if (!open) {
+    if (!open || integratedEditor) {
       return;
     }
 
@@ -87,7 +99,7 @@ export function ScriptCodeModal({
         disposable.dispose();
       }
     };
-  }, [open, workspace]);
+  }, [integratedEditor, open, workspace]);
 
   const handleEditorMount: OnMount = useCallback(
     (editor) => {
@@ -131,19 +143,20 @@ export function ScriptCodeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] w-[90vw] h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-3 border-b border-slate-700">
-          <DialogTitle className="flex items-center justify-between">
+      <DialogContent className="flex h-[90vh] w-[96vw] flex-col gap-0 overflow-hidden bg-slate-950 p-0 sm:max-w-[96vw] xl:max-w-[1400px]">
+        <DialogHeader className="border-b border-slate-800 px-4 py-4 pr-14">
+          <DialogTitle className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-lg font-semibold text-white">
-              {fileName}
-              {isReadOnly && (
+              {integratedEditor ? "Lua workspace" : fileName}
+              {isReadOnly && !integratedEditor && (
                 <span className="ml-2 text-xs text-slate-400">(read-only)</span>
               )}
-              {hasChanges && !isReadOnly && (
+              {hasChanges && !isReadOnly && !integratedEditor && (
                 <span className="ml-2 text-xs text-amber-400">*</span>
               )}
             </span>
-            <div className="flex items-center gap-2">
+            {integratedEditor && <span className="text-sm font-normal text-slate-400">{workspace.context.gameLabel}</span>}
+            {!integratedEditor && <div className="flex items-center gap-2">
               {!isReadOnly && hasChanges && (
                 <>
                   <Button size="sm" variant="outline" onClick={handleRevert}>
@@ -155,7 +168,7 @@ export function ScriptCodeModal({
                 </>
               )}
               {!isReadOnly && (
-                <Button size="sm" variant="outline" onClick={handleFormat}>
+                <Button size="sm" variant="outline" onClick={handleFormat} disabled={lspStatus !== "connected" || !capabilities.formatting} title="Requires LuaLS formatting support">
                   Format
                 </Button>
               )}
@@ -168,22 +181,40 @@ export function ScriptCodeModal({
                   Delete
                 </Button>
               )}
-            </div>
+            </div>}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Edit the Lua source file and save or revert its changes.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 relative">
+        <div className={`relative min-h-0 flex-1 overflow-auto ${integratedEditor ? "px-4" : ""}`}>
+          {integratedEditor ? <ScriptEditorReferenceLayout context={workspace.context} open={referenceOpen} onClose={() => setReferenceOpen(false)}>
+            <ScriptCodeWorkspacePanel
+              editor={{ ...integratedEditor, onExpand: undefined, onOpenReference: () => setReferenceOpen(true), reveal: diagnosticReveal ?? integratedEditor.reveal }}
+              activeCodePath={filePath}
+              activeCodeDescription="Choose a source file to edit."
+              hasActiveCodeFile
+              onOpenEditor={() => undefined}
+              onCompile={integratedEditor.onValidate}
+              buildErrorCount={workspace.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length}
+              diagnostics={workspace.diagnostics}
+              onNavigateDiagnostic={(diagnostic) => {
+                integratedEditor.onSelectFile(diagnostic.filePath);
+                setDiagnosticReveal((previous) => ({ filePath: diagnostic.filePath, line: diagnostic.line, column: diagnostic.column, sequence: (previous?.sequence ?? 0) + 1 }));
+              }}
+            />
+          </ScriptEditorReferenceLayout> : (
           <Editor
             height="100%"
             language={language}
-            path={`file:///workspace/${filePath}`}
+            path={scriptEditorUri(workspace.context.gameId, filePath)}
             value={editorContent}
             onChange={handleContentChange}
             onMount={handleEditorMount}
             theme="vs-dark"
+            keepCurrentModel
+            saveViewState
             options={{
               minimap: { enabled: false },
               fontSize: 14,
@@ -194,9 +225,10 @@ export function ScriptCodeModal({
               readOnly: isReadOnly,
             }}
           />
+          )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-slate-700 px-6 py-3 text-xs text-slate-400">
+        {!integratedEditor && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-4 py-2 text-xs text-slate-400">
           <span>
             {filePath}
             {preflightFindings.length > 0 && (
@@ -211,7 +243,11 @@ export function ScriptCodeModal({
               lspStatus,
             )}
           </span>
-        </div>
+        </div>}
+        {integratedEditor && preflightFindings.length > 0 && <details className="border-t border-slate-800 px-4 py-2 text-xs text-amber-300">
+          <summary className="cursor-pointer">{preflightFindings.length} preflight warning{preflightFindings.length === 1 ? "" : "s"}</summary>
+          <ul className="mt-2 max-h-24 space-y-1 overflow-auto">{preflightFindings.map((finding, index) => <li key={index}>Line {finding.line}: {finding.message}</li>)}</ul>
+        </details>}
       </DialogContent>
     </Dialog>
   );

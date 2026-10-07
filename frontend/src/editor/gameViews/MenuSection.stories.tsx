@@ -1,5 +1,6 @@
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { MemoryRouter } from "react-router-dom";
 import {
   GameEditorStory,
   enableStoryScripting,
@@ -23,6 +24,7 @@ const meta = {
     layout: "fullscreen",
   },
   tags: ["autodocs"],
+  decorators: [(Story) => <MemoryRouter><Story /></MemoryRouter>],
 } satisfies Meta<typeof GameEditorStory>;
 
 export default meta;
@@ -58,7 +60,7 @@ export const ResponsiveGallery: Story = {
 };
 
 export const ScriptingWorkflow: Story = {
-  args: { game: Game.OTTO_MATIC, view: View.scripts },
+  args: { game: Game.OTTO_MATIC, view: View.scripts, withScriptSample: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() =>
@@ -72,58 +74,11 @@ export const ScriptingWorkflow: Story = {
     expect(canvasElement.querySelectorAll("canvas")).toHaveLength(0);
 
     const dialog = within(document.body);
-    await userEvent.click(dialog.getByRole("tab", { name: "Overview" }));
-    const loadButtons = dialog.getAllByRole("button", { name: "Load" });
-    expect(loadButtons.length).toBeGreaterThan(0);
-    const lastLoadButton = loadButtons[loadButtons.length - 1];
-    if (lastLoadButton) {
-      await userEvent.click(lastLoadButton);
-    }
     await userEvent.click(dialog.getByRole("tab", { name: "Assignments" }));
+    expect(dialog.getByRole("tab", { name: "Custom items" })).toHaveAttribute("aria-selected", "true");
     expect(dialog.getAllByText("Hover Beacon").length).toBeGreaterThan(0);
-    const objectScript = dialog.getByRole("combobox", { name: "Object script" });
-    await userEvent.click(objectScript);
-    const objectScriptOptions = within(document.body).getAllByRole("option");
-    const firstObjectScriptOption = objectScriptOptions[0];
-    if (firstObjectScriptOption) {
-      await userEvent.click(firstObjectScriptOption);
-    }
-    await userEvent.click(dialog.getByRole("button", { name: "Save Object" }));
-    expect(dialog.getAllByText("Hover Beacon").length).toBeGreaterThan(1);
-
-    const replaceButtons = dialog.getAllByRole("button", {
-      name: "Replace selected native item",
-    });
-    expect(replaceButtons.length).toBeGreaterThan(0);
-    const replaceButton = replaceButtons[0];
-    if (replaceButton) {
-      await userEvent.click(replaceButton);
-    }
-    expect(
-      dialog.getAllByRole("button", { name: "Restore native item" }).length,
-    ).toBeGreaterThan(0);
-
-    const collisionSelectors = dialog.getAllByRole("combobox", {
-      name: "Hover Beacon collision",
-    });
-    const collisionSelector = collisionSelectors[0];
-    if (collisionSelector) {
-      await userEvent.click(collisionSelector);
-    }
-    await userEvent.click(dialog.getByRole("option", { name: "Trigger box" }));
-    const collisionWidths = dialog.getAllByLabelText(
-      "Hover Beacon collision width",
-    );
-    const collisionWidth = collisionWidths[0];
-    expect(collisionWidth).toBeDefined();
-    if (!collisionWidth) {
-      return;
-    }
-    await userEvent.clear(collisionWidth);
-    await userEvent.type(collisionWidth, "2");
-    expect(collisionWidth).toHaveValue(2);
-
-    await userEvent.click(dialog.getByRole("tab", { name: "Code" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Edit item script" }));
+    await waitFor(() => expect(dialog.getByRole("tab", { name: "Code" })).toHaveAttribute("aria-selected", "true"));
     const fileName = dialog.getByLabelText("Add file");
     await userEvent.clear(fileName);
     await userEvent.type(fileName, "workflow");
@@ -167,6 +122,9 @@ export const ScriptingWorkflow: Story = {
       dialog.getByLabelText("Upload Script Package"),
       packageFile,
     );
+    const review = await dialog.findByRole("dialog", { name: /Review/ });
+    await userEvent.click(within(review).getByRole("button", { name: "Add to project" }));
+    await waitFor(() => expect(dialog.queryByRole("dialog", { name: /Review/ })).not.toBeInTheDocument());
     await waitFor(() =>
       expect(dialog.getByRole("tab", { name: "Code" })).toBeInTheDocument(),
     );

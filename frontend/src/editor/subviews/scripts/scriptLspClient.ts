@@ -9,6 +9,7 @@ import {
   publishDiagnosticsParamsSchema,
 } from "./scriptLspSchemas";
 import type { ScriptDiagnostic, ScriptWorkspaceState } from "./scriptWorkspaceState";
+import { scriptDecodedPath, scriptEditorPath, scriptEditorUri, scriptUriPath } from "./scriptEditorUris";
 
 const VIRTUAL_WORKSPACE_URI = "file:///workspace/";
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -26,6 +27,29 @@ interface PendingRequest {
 export interface ScriptLspDiagnosticsEvent {
   readonly filePath: string;
   readonly diagnostics: readonly ScriptDiagnostic[];
+}
+
+const initializeCapabilitiesSchema = z.object({
+  capabilities: z.object({
+    documentFormattingProvider: z.union([z.boolean(), z.object({})]).optional(),
+    renameProvider: z.union([z.boolean(), z.object({})]).optional(),
+    signatureHelpProvider: z.object({}).optional(),
+    completionProvider: z.object({resolveProvider: z.boolean().optional()}).optional(),
+  }).optional(),
+});
+
+export interface ScriptLanguageCapabilities {
+  readonly formatting: boolean;
+  readonly rename: boolean;
+  readonly signatureHelp: boolean;
+  readonly completionResolve: boolean;
+}
+
+export interface ScriptLspDocument {
+  readonly uri: { toString: () => string };
+  getLanguageId: () => string;
+  getVersionId: () => number;
+  getValue: () => string;
 }
 
 const parseJson = Result.fromThrowable(
@@ -50,28 +74,47 @@ export class ScriptLspClient {
   private workspaceUri = "";
   private listeners = new Set<() => void>();
   private diagnosticListeners = new Set<(event: ScriptLspDiagnosticsEvent) => void>();
+  private capabilities: ScriptLanguageCapabilities = { formatting: false, rename: false, signatureHelp: false, completionResolve: false };
+  private connectionGeneration = 0;
+  private connecting: ResultAsync<void, LspClientError> | null = null;
+  private documentVersions = new Map<string, number>();
+  private synchronizedFiles = new Map<string, string>();
+  private declarationKey = "";
+  private declarationFiles: readonly { readonly path: string; readonly content: string }[] = [];
+  private openedDocuments = new Set<string>();
+  private initialized = false;
+  private syncQueue: Promise<void> = Promise.resolve();
   public status: "disconnected" | "connecting" | "connected" | "unavailable" =
     "disconnected";
 
   public connect(state: ScriptWorkspaceState): ResultAsync<void, LspClientError> {
     this.state = state;
+    if (this.connecting !== null && this.gameId === state.context.gameId) return this.connecting;
     if (this.status === "connected" && this.gameId === state.context.gameId) {
       return this.syncWorkspaceFiles();
     }
     if (this.status === "connecting" && this.gameId === state.context.gameId) {
-      return ResultAsync.fromSafePromise(Promise.resolve());
+      return this.connecting ?? errAsync(connectionError("LuaLS is reconnecting."));
     }
-
+    const generation = ++this.connectionGeneration;
+    this.rejectPending(connectionError("LuaLS workspace changed."));
     const stopPrevious = this.connection === null
       ? ResultAsync.fromSafePromise(Promise.resolve())
       : this.stopConnection();
 
     this.gameId = state.context.gameId;
     this.setStatus("connecting");
-    return stopPrevious.andThen(() => this.startConnection());
+    const result = stopPrevious.andThen(() => generation === this.connectionGeneration
+      ? this.startConnection() : errAsync(connectionError("LuaLS workspace changed.")))
+      .map(() => {if (generation === this.connectionGeneration) this.connecting = null;})
+      .mapErr(error => {if (generation === this.connectionGeneration) {this.connecting = null; this.setStatus("unavailable");} return error;});
+    this.connecting = result;
+    return result;
   }
 
   public disconnect(): ResultAsync<void, LspClientError> {
+    this.connectionGeneration++;
+    this.connecting = null;
     this.setStatus("disconnected");
     this.rejectPending(connectionError("LuaLS connection closed."));
     return this.stopConnection();
@@ -80,6 +123,7 @@ export class ScriptLspClient {
   public request(
     method: string,
     params: unknown,
+    timeoutMs = REQUEST_TIMEOUT_MS,
   ): Promise<Result<unknown, LspClientError>> {
     if (this.status !== "connected" || this.connection === null) {
       return Promise.resolve(
@@ -93,7 +137,7 @@ export class ScriptLspClient {
       const timeoutId = setTimeout(() => {
         this.pendingRequests.delete(id);
         resolve(err({ code: "timeout", message: `${method} timed out.` }));
-      }, REQUEST_TIMEOUT_MS);
+      }, Number.isFinite(timeoutMs) ? Math.min(REQUEST_TIMEOUT_MS, Math.max(1, timeoutMs)) : REQUEST_TIMEOUT_MS);
       this.pendingRequests.set(id, { resolve, timeoutId });
       void ResultAsync.fromPromise(
         this.connection?.invoke("SendLspPayload", payload) ?? Promise.resolve(),
@@ -120,6 +164,32 @@ export class ScriptLspClient {
     return this.status;
   }
 
+  public getCapabilities(): ScriptLanguageCapabilities {
+    return this.capabilities;
+  }
+
+  public isWorkspaceConnected(gameId: string): boolean {
+    return this.status === "connected" && this.initialized && this.gameId === gameId;
+  }
+
+  public sourcePath(serverUri: string): string | null {
+    if (this.workspaceUri.length > 0 && serverUri.startsWith(this.workspaceUri)) {
+      return scriptDecodedPath(serverUri.slice(this.workspaceUri.length));
+    }
+    const scopedPath = scriptEditorPath(serverUri, this.gameId);
+    if (scopedPath !== null) return scopedPath;
+    const uri = this.clientUri(serverUri).toString();
+    if (!uri.startsWith(VIRTUAL_WORKSPACE_URI)) return null;
+    return scriptDecodedPath(uri.slice(VIRTUAL_WORKSPACE_URI.length));
+  }
+
+  public trackDocumentContent(model: ScriptLspDocument): void {
+    const path = this.sourcePath(model.uri.toString());
+    if (scriptEditorPath(model.uri.toString(), this.gameId) === null) return;
+    if (path) this.documentVersions.set(path, model.getVersionId());
+    if (this.status === "connected" && path) this.synchronizedFiles.set(path, model.getValue());
+  }
+
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -132,8 +202,10 @@ export class ScriptLspClient {
     return () => this.diagnosticListeners.delete(listener);
   }
 
-  public documentUri(model: monaco.editor.ITextModel): string {
+  public documentUri(model: Pick<ScriptLspDocument, "uri">): string {
     const modelUri = model.uri.toString();
+    const path = scriptEditorPath(modelUri, this.gameId);
+    if (path !== null && this.workspaceUri.length > 0) return `${this.workspaceUri}${scriptUriPath(path)}`;
     if (!modelUri.startsWith(VIRTUAL_WORKSPACE_URI) || this.workspaceUri.length === 0) {
       return modelUri;
     }
@@ -142,8 +214,10 @@ export class ScriptLspClient {
 
   public clientUri(serverUri: string): monaco.Uri {
     if (this.workspaceUri.length > 0 && serverUri.startsWith(this.workspaceUri)) {
+      const path = scriptDecodedPath(serverUri.slice(this.workspaceUri.length));
+      if (path === null) return monaco.Uri.parse(serverUri);
       return monaco.Uri.parse(
-        `${VIRTUAL_WORKSPACE_URI}${serverUri.slice(this.workspaceUri.length)}`,
+        scriptEditorUri(this.gameId, path),
       );
     }
     return monaco.Uri.parse(serverUri);
@@ -156,20 +230,25 @@ export class ScriptLspClient {
       .configureLogging(LogLevel.None)
       .build();
     this.connection = connection;
-    connection.on("ReceiveLspPayload", (payload: string) => this.receive(payload));
+    connection.on("ReceiveLspPayload", (payload: string) => {if (this.connection === connection) this.receive(payload);});
     connection.on("ReceiveLspError", (text: string) => console.warn("LuaLS:", text));
     connection.onreconnecting(() => {
+      if (this.connection !== connection) return;
+      this.initialized = false;
       this.setStatus("connecting");
       this.rejectPending(connectionError("LuaLS is reconnecting."));
     });
     connection.onreconnected(() => {
+      if (this.connection !== connection) return;
       this.setStatus("connecting");
       void this.initializeSession().match(
         () => undefined,
-        () => this.setStatus("unavailable"),
+        () => { if (this.connection === connection) this.setStatus("unavailable"); },
       );
     });
     connection.onclose(() => {
+      if (this.connection !== connection) return;
+      this.initialized = false;
       this.setStatus("unavailable");
       this.rejectPending(connectionError("LuaLS connection closed."));
     });
@@ -177,19 +256,26 @@ export class ScriptLspClient {
     return ResultAsync.fromPromise(
       connection.start(),
       () => connectionError("Could not connect to LuaLS."),
-    ).andThen(() => this.initializeSession());
+    ).andThen(() => this.connection === connection ? this.initializeSession() : errAsync(connectionError("LuaLS workspace changed.")));
   }
 
   private initializeSession(): ResultAsync<void, LspClientError> {
     if (this.connection === null) {
       return errAsync(connectionError("LuaLS connection is missing."));
     }
+    const connection = this.connection;
+    const gameId = this.gameId;
 
+    this.synchronizedFiles.clear();
+    this.openedDocuments.clear();
+    this.initialized = false;
+    this.capabilities = { formatting: false, rename: false, signatureHelp: false, completionResolve: false };
     return ResultAsync.fromPromise(
-      this.connection.invoke<unknown>("InitializeSession", this.gameId),
+      connection.invoke<unknown>("InitializeSession", gameId),
       () => connectionError("LuaLS session initialization failed."),
     )
       .andThen((workspaceUri) => {
+        if (this.connection !== connection || this.gameId !== gameId) return err(connectionError("LuaLS workspace changed."));
         const parsed = z.string().url().safeParse(workspaceUri);
         if (!parsed.success) {
           return err(protocolError("LuaLS returned an invalid workspace URI."));
@@ -205,53 +291,132 @@ export class ScriptLspClient {
         workspaceFolders: [{ uri: this.workspaceUri, name: "Pangea Scripts" }],
         capabilities: {
           textDocument: {
-            completion: { completionItem: { snippetSupport: true } },
+            completion: {
+              completionItem: {
+                snippetSupport: true,
+                labelDetailsSupport: true,
+                insertReplaceSupport: true,
+                documentationFormat: ["markdown", "plaintext"],
+                resolveSupport: { properties: ["documentation", "detail", "additionalTextEdits"] },
+              },
+              completionList: { itemDefaults: ["commitCharacters", "editRange", "insertTextFormat", "insertTextMode", "data"] },
+            },
+            signatureHelp: {signatureInformation: {documentationFormat: ["markdown", "plaintext"], parameterInformation: {labelOffsetSupport: true}}},
             hover: {},
-            definition: {},
+            definition: { linkSupport: true },
             references: {},
             documentSymbol: {},
-            publishDiagnostics: {},
+            formatting: {},
+            rename: { prepareSupport: false },
+            publishDiagnostics: { versionSupport: true },
           },
           workspace: { workspaceFolders: true },
         },
       })))
       .andThen((initializeResult) => initializeResult)
-      .andThen(() => this.notify("initialized", {}))
+      .andThen((result) => {
+        if (this.connection !== connection) return err(connectionError("LuaLS workspace changed."));
+        const parsed = initializeCapabilitiesSchema.safeParse(result);
+        if (!parsed.success) return err(protocolError("LuaLS returned invalid capabilities."));
+        const supported = parsed.data.capabilities;
+        this.capabilities = {
+          formatting: supported?.documentFormattingProvider !== undefined && supported.documentFormattingProvider !== false,
+          rename: supported?.renameProvider !== undefined && supported.renameProvider !== false,
+          signatureHelp: supported?.signatureHelpProvider !== undefined,
+          completionResolve: supported?.completionProvider?.resolveProvider === true,
+        };
+        for (const listener of this.listeners) listener();
+        return this.notify("initialized", {});
+      })
       .andThen(() => {
+        if (this.connection !== connection) return err(connectionError("LuaLS workspace changed."));
+        this.initialized = true;
         this.openExistingDocuments();
         return ok(undefined);
       });
   }
 
   private syncWorkspaceFiles(): ResultAsync<void, LspClientError> {
+    const result = ResultAsync.fromSafePromise(this.syncQueue).andThen(() => this.syncWorkspaceFilesNow());
+    this.syncQueue = result.match(() => undefined, () => undefined);
+    return result;
+  }
+
+  private syncWorkspaceFilesNow(): ResultAsync<void, LspClientError> {
     if (this.connection === null || this.state === null) {
       return ResultAsync.fromSafePromise(Promise.resolve());
     }
+    const connection = this.connection;
+    const key = JSON.stringify({
+      game: this.state.context.gameId, hooks: this.state.context.supportedHooks,
+      tags: this.state.context.allowedTags,
+      contributedTags: this.state.behaviorCatalog.map((behavior) => behavior.contributedTags),
+      objects: this.state.customObjects.map((definition) => definition.id),
+      parameters: this.state.params,
+    });
+    if (key !== this.declarationKey) {
+      this.declarationFiles = buildScriptTypeDeclarationFiles(this.state);
+      this.declarationKey = key;
+    }
     const files = [
       ...Object.values(this.state.sourceFiles),
-      ...buildScriptTypeDeclarationFiles(this.state),
+      ...this.declarationFiles,
     ];
-    return files.reduce<ResultAsync<void, LspClientError>>(
-      (result, file) => result.andThen(() => ResultAsync.fromPromise(
-        this.connection?.invoke("SyncFile", file.path, file.content) ?? Promise.resolve(),
-        () => connectionError(`Failed to synchronize ${file.path}.`),
-      )),
+    const paths = new Set(files.map((file) => file.path));
+    const removals = [...this.synchronizedFiles.keys()].filter((path) => !paths.has(path));
+    const deleteFiles = removals.reduce<ResultAsync<void, LspClientError>>(
+      (result, path) => result.andThen(() => this.connection === connection && this.openedDocuments.has(path)
+        ? this.notify("textDocument/didClose", {textDocument: {uri: `${this.workspaceUri}${scriptUriPath(path)}`}}) : ok(undefined))
+      .andThen(() => ResultAsync.fromPromise(
+        this.connection === connection ? connection.invoke("DeleteFile", path) : Promise.resolve(),
+        () => connectionError(`Failed to remove ${path} from LuaLS.`),
+      ).map(() => { if (this.connection === connection) {this.synchronizedFiles.delete(path); this.openedDocuments.delete(path); this.documentVersions.delete(path);} })),
       ResultAsync.fromSafePromise(Promise.resolve()),
+    );
+    return files.filter((file) => this.synchronizedFiles.get(file.path) !== file.content).reduce<ResultAsync<void, LspClientError>>(
+      (result, file) => result.andThen(() => ResultAsync.fromPromise(
+        this.connection === connection ? connection.invoke("SyncFile", file.path, file.content) : Promise.resolve(),
+        () => connectionError(`Failed to synchronize ${file.path}.`),
+      ).map(() => { if (this.connection === connection) this.synchronizedFiles.set(file.path, file.content); })),
+      deleteFiles,
     );
   }
 
   private openExistingDocuments(): void {
     for (const model of monaco.editor.getModels()) {
-      if (model.getLanguageId() !== "lua") continue;
-      void this.notify("textDocument/didOpen", {
-        textDocument: {
-          uri: this.documentUri(model),
-          languageId: "lua",
-          version: model.getVersionId(),
-          text: model.getValue(),
-        },
-      });
+      this.openDocument(model);
     }
+  }
+
+  public openDocument(model: ScriptLspDocument): void {
+    const path = scriptEditorPath(model.uri.toString(), this.gameId);
+    if (!path || !this.initialized || this.status !== "connected" || model.getLanguageId() !== "lua" || this.openedDocuments.has(path)
+      || (!this.state?.sourceFiles[path] && !this.state?.compiledFiles[path] && !this.declarationFiles.some(file => file.path === path))) return;
+    this.openedDocuments.add(path);
+    const connection = this.connection;
+    this.trackDocumentContent(model);
+    void this.notify("textDocument/didOpen", { textDocument: { uri: this.documentUri(model), languageId: "lua", version: model.getVersionId(), text: model.getValue() } }).mapErr(error => {if (this.connection === connection) { this.openedDocuments.delete(path); this.synchronizedFiles.delete(path); } return error;});
+  }
+
+  public changeDocument(model: ScriptLspDocument, event: Pick<monaco.editor.IModelContentChangedEvent, "changes">): void {
+    const path = scriptEditorPath(model.uri.toString(), this.gameId);
+    if (!path || !this.initialized || this.status !== "connected") return;
+    this.trackDocumentContent(model);
+    if (!this.openedDocuments.has(path)) { this.openDocument(model); return; }
+    const connection = this.connection;
+    void this.notify("textDocument/didChange", {
+      textDocument: { uri: this.documentUri(model), version: model.getVersionId() },
+      contentChanges: event.changes.map((change) => ({
+        range: { start: { line: change.range.startLineNumber - 1, character: change.range.startColumn - 1 }, end: { line: change.range.endLineNumber - 1, character: change.range.endColumn - 1 } },
+        rangeLength: change.rangeLength, text: change.text,
+      })),
+    }).mapErr(error => { if (this.connection === connection) { this.openedDocuments.delete(path); this.synchronizedFiles.delete(path); } return error; });
+  }
+
+  public closeDocument(model: ScriptLspDocument): void {
+    const path = scriptEditorPath(model.uri.toString(), this.gameId);
+    if (!path || !this.openedDocuments.delete(path)) return;
+    void this.notify("textDocument/didClose", { textDocument: { uri: this.documentUri(model) } });
   }
 
   private receive(payload: string): void {
@@ -275,12 +440,17 @@ export class ScriptLspClient {
   }
 
   private publishDiagnostics(params: unknown): void {
-    const parsed = publishDiagnosticsParamsSchema.safeParse(params);
+    const parsed = publishDiagnosticsParamsSchema.extend({version: z.number().int().optional()}).safeParse(params);
     if (!parsed.success) return;
+    if (scriptEditorPath(parsed.data.uri, this.gameId) === null && !parsed.data.uri.startsWith(this.workspaceUri)) return;
     const clientUri = this.clientUri(parsed.data.uri).toString();
     if (!clientUri.startsWith(VIRTUAL_WORKSPACE_URI)) return;
-    const filePath = clientUri.slice(VIRTUAL_WORKSPACE_URI.length);
+    const filePath = this.sourcePath(parsed.data.uri);
+    if (filePath === null) return;
     if (filePath.length === 0) return;
+    if (!this.state?.sourceFiles[filePath] && !this.declarationFiles.some(file => file.path === filePath)) return;
+    const version = this.documentVersions.get(filePath);
+    if (parsed.data.version !== undefined && version !== undefined && parsed.data.version !== version) return;
     const diagnostics: ScriptDiagnostic[] = parsed.data.diagnostics.map((diagnostic) => ({
       category: "luals",
       severity: diagnostic.severity === 1 ? "error" : "warning",
@@ -336,6 +506,11 @@ export class ScriptLspClient {
   private stopConnection(): ResultAsync<void, LspClientError> {
     const connection = this.connection;
     this.connection = null;
+    this.initialized = false;
+    this.workspaceUri = "";
+    this.openedDocuments.clear();
+    this.documentVersions.clear();
+    this.synchronizedFiles.clear();
     if (connection === null) {
       return ResultAsync.fromSafePromise(Promise.resolve());
     }

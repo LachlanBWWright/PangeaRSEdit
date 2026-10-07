@@ -1,6 +1,6 @@
 import type { ApiFunction } from "./scriptApiSchema";
 
-function luaFieldType(field: ApiFunction["parameters"][number]): string {
+export function luaFieldType(field: ApiFunction["parameters"][number]): string {
   if (field.type === "stringUnion" && field.unionValues !== undefined) {
     return field.unionValues.map((value) => JSON.stringify(value)).join("|");
   }
@@ -32,10 +32,11 @@ export function getContextualApiName(
 ): string {
   const parts = qualifiedName.split(".");
   const namespace = parts[1];
-  if (namespace !== undefined && linePrefix.endsWith(`pangea.${namespace}.`)) {
+  const prefix = linePrefix.match(/[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]*)*$/)?.[0] ?? "";
+  if (namespace !== undefined && prefix.startsWith(`pangea.${namespace}.`)) {
     return parts.slice(2).join(".");
   }
-  if (linePrefix.endsWith("pangea.")) {
+  if (prefix.startsWith("pangea.")) {
     return parts.slice(1).join(".");
   }
   return qualifiedName;

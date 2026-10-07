@@ -6,7 +6,7 @@ import type {
 import type { SkeletonResource } from "@/python/structSpecs/skeleton/skeletonInterface";
 import { mapErr } from "@/utils/mapErr";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
-import { err, ok, ResultAsync, type Result } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 
 /** Supported model upload formats. */
 export type ModelUploadKind = "bg3d" | "3dmf" | "gltf";
@@ -104,7 +104,9 @@ export async function loadOptionalSkeleton(
 export async function runWorkerMessage(
   message: BG3DGltfWorkerMessage,
 ): Promise<Result<BG3DGltfWorkerResponse, string>> {
-  const worker = new BG3DGltfWorker();
+  const created = Result.fromThrowable(() => new BG3DGltfWorker(), mapErr)();
+  if (created.isErr()) return err(created.error);
+  const worker = created.value;
   const workerPromise = new Promise<BG3DGltfWorkerResponse>(
     (resolve, reject) => {
       worker.onmessage = (event) => {
@@ -115,7 +117,11 @@ export async function runWorkerMessage(
         reject(event);
         worker.terminate();
       };
-      worker.postMessage(message);
+      const posted = Result.fromThrowable(() => worker.postMessage(message), mapErr)();
+      if (posted.isErr()) {
+        worker.terminate();
+        reject(posted.error);
+      }
     },
   );
 

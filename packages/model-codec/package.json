@@ -1,0 +1,46 @@
+{
+  "name": "@pangea/model-codec",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BG3D, 3DMF and Pangea skeleton codecs with glTF conversion",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./node": { "types": "./dist/node/index.d.ts", "import": "./dist/node.js" }
+  },
+  "bin": { "pangea-model": "./dist/cli.js" },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "cli": "tsx src/cli/main.ts",
+    "check": "tsc --noEmit",
+    "lint": "eslint .",
+    "build": "tsc -p tsconfig.build.json --emitDeclarationOnly && esbuild src/index.ts --bundle --packages=external --format=esm --platform=neutral --outfile=dist/index.js && esbuild src/node/index.ts --bundle --packages=external --format=esm --platform=node --outfile=dist/node.js && esbuild src/cli/main.ts --bundle --packages=external --format=esm --platform=node --outfile=dist/cli.js",
+    "test": "pnpm run build && vitest run"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@gltf-transform/functions": "^4.3.0",
+    "@lachlanbwwright/rsrcdump-ts": "^1.0.6",
+    "buffer": "^6.0.3",
+    "gltf-validator": "^2.0.0-dev.3.10",
+    "jpeg-js": "^0.4.4",
+    "neverthrow": "^8.2.0",
+    "pngjs": "^7.0.0",
+    "three": "^0.182.0",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.6.0",
+    "@types/pngjs": "^6.0.5",
+    "@types/three": "^0.182.0",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.39.2",
+    "eslint-plugin-functional": "^9.0.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.50.1",
+    "vitest": "^4.1.7"
+  }
+}

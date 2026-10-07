@@ -1,4 +1,6 @@
 import { Game } from "@/data/globals/globals";
+import { addOrdinaryBehaviorOption } from "./metadataBehaviorControls";
+import { getCroMagItemMetadataRules } from "./croMagItemMetadataRules";
 
 export interface MetadataRule {
   readonly key: string;
@@ -335,6 +337,10 @@ export function getMetadataCitations(source: string): readonly MetadataCitation[
 }
 
 function getMetadataControl(key: string): MetadataControl {
+  return addOrdinaryBehaviorOption(Game.BUGDOM, key, getOriginalMetadataControl(key));
+}
+
+function getOriginalMetadataControl(key: string): MetadataControl {
   switch (key) {
     case "level.gravity":
       return { kind: "slider", min: 0, max: 8000, step: 100 };
@@ -1568,12 +1574,12 @@ function getBugdom2BehaviorControl(key: string): MetadataControl {
   const optionDescriptions = getBugdom2BehaviorOptionDescriptions(key) ?? {
     "source-default": "Keep the behavior selected by the original level number.",
   };
-  return {
+  return addOrdinaryBehaviorOption(Game.BUGDOM_2, key, {
     kind: "select",
     options: bugdom2BehaviorOptions[key] ?? ["source-default"],
     ...(optionLabels ? { optionLabels } : {}),
     optionDescriptions,
-  };
+  });
 }
 
 function getBugdom2PresetControl(key: string): MetadataControl {
@@ -1720,6 +1726,7 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
       ];
     case Game.CRO_MAG:
       return [
+        ...getCroMagItemMetadataRules(levelIndex, editableRule),
         rule("track.id", "Track identity", "System/Main.c:112-119", "resolved"),
         editableRule("track.mode", "Track rules", "Selects race or battle scoring and lap-timing rules. The original game mode is the default; this does not change the track's asset identity or progression slot.", "source-default", "Screens/RaceTimes.c:29-42; Screens/SelectTrack.c:194-205", { kind: "select", options: ["source-default", "race", "battle"], optionLabels: { "source-default": "Original game mode", race: "Race scoring", battle: "Battle scoring" }, optionDescriptions: croMagOptionDescriptions["track.mode"] }),
         editableRule("track.waterAnimation", "Water animation", "Selects how water surfaces move during play. This does not create water patches or change their heights.", levelIndex === 1 || levelIndex === 3 ? "scroll-both" : levelIndex === 5 ? "scroll-v" : "none", "Terrain/Liquids.c:196-213", { kind: "select", options: ["none", "scroll-both", "scroll-v"], optionLabels: { none: "No water animation", "scroll-both": "Scroll horizontally and vertically", "scroll-v": "Scroll vertically" }, optionDescriptions: croMagOptionDescriptions["track.waterAnimation"] }),
@@ -1812,7 +1819,7 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
         editableRule("level.cloudBlankTiles", "Cloud blank-tile pits", "Treats blank Cloud terrain tiles as bottomless pits when calculating the terrain surface. This is separate from the enemy and player pit responses below.", levelIndex === 4 ? "true" : "false", "Terrain/Terrain.c:1325-1338", { kind: "checkbox" }),
         editableRule("level.cloudPits", "Cloud bottomless pits", "Enables the Cloud bottomless-pit checks used by enemies and the robot player. It does not change terrain rendering or cannon entry.", levelIndex === 4 ? "true" : "false", "Enemies/Enemy.c:311-323; Player/Player_Robot.c:1218-1229; Player/Player_Robot.c:2872-2878", { kind: "checkbox" }),
         editableRule("level.cloudCannon", "Cloud cannon entry", "Allows the player to enter a Cloud cannon when jumping near its entry point. It does not enable the Cloud terrain or electric-floor damage by itself.", levelIndex === 4 ? "true" : "false", "Player/Player_Robot.c:2860-2880", { kind: "checkbox" }),
-        editableRule("level.cloudBalloonPowerups", "Cloud balloon power-ups", "Allows balloon power-up items to be created. Keep this enabled only when the level’s item data contains Cloud balloon items, because other levels do not have the required Cloud model resources.", levelIndex === 4 ? "true" : "false", "Items/Powerups.c:1643-1650", { kind: "checkbox" }),
+        editableRule("level.cloudBalloonPowerups", "Cloud balloon power-ups", "Allow balloon power-up items. Editor builds load the Cloud models across levels; disabling this override prevents balloon creation.", "true", "Items/Powerups.c:1643-1650", { kind: "checkbox" }),
         editableRule("level.cloudTransparentBlack", "Transparent black Cloud textures", "Treats black pixels as transparent while converting level textures. This is an asset-conversion option for Cloud scaffolding textures, not a terrain-collision setting.", levelIndex === 4 ? "true" : "false", "System/File.c:1702-1712", { kind: "checkbox" }),
         editableRule("level.fences", "Fence post sinking", "When enabled, fence posts are adjusted to the level’s normal terrain height. Disable it for levels whose fences must keep their authored vertical position.", levelIndex === 4 || levelIndex === 8 ? "false" : "true", "Terrain/Fences.c:314", { kind: "checkbox" }),
         editableRule("level.saucers", "Alien saucer encounters", "Allows the game to create enemy flying-saucer encounters. This is separate from Player type: changing it does not turn the player into a saucer or alter Human spline movement.", levelIndex === 2 || levelIndex === 8 || levelIndex === 9 ? "false" : "true", "Enemies/Saucer.c:85", { kind: "checkbox" }),
@@ -1833,15 +1840,16 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
         editableRule("level.autoFade", "Object draw distance", "Choose how far objects remain visible before they fade or are culled. Standard uses the ordinary range; Fog Only, Apocalypse, and Saucer use their corresponding visibility ranges. This changes visibility, not object placement or collision.", levelIndex === 1 ? "fog-only" : levelIndex === 3 ? "apocalypse" : levelIndex === 8 ? "saucer" : "standard", "System/GameMain.c:701-735", getOttoControl("level.autoFade", ["standard", "fog-only", "apocalypse", "saucer"])),
         editableRule("level.blobDeformation", "Blob terrain deformation", "Selects the Blob terrain deformation strength. None leaves the terrain static, Blob World adds the ordinary waves, and Blob Boss adds its larger waves. Gravity and slipperiness are separate settings.", levelIndex === 1 ? "blob" : levelIndex === 2 ? "blob-boss" : "none", "System/GameMain.c:897-958", getOttoControl("level.blobDeformation", ["none", "blob", "blob-boss"])),
         editableRule("level.blobBossMachine", "Blob Boss machine", "Creates the Blob Boss machine at level start. This is independent from Blob Boss terrain deformation, gravity, camera, platform, and robot behavior.", levelIndex === 2 ? "true" : "false", "System/GameMain.c:927-934", { kind: "checkbox" }),
-        editableRule("level.teleporters", "Teleporters", "Creates the Apocalypse teleporters at level start. This does not create Apocalypse space pods or zip-lines.", levelIndex === 3 ? "true" : "false", "System/GameMain.c:960-964", { kind: "checkbox" }),
-        editableRule("level.spacePods", "Space pods", "Creates the Apocalypse space pods at level start. This does not create Apocalypse teleporters or zip-lines.", levelIndex === 3 ? "true" : "false", "System/GameMain.c:960-964", { kind: "checkbox" }),
-        editableRule("level.bumperCars", "Cloud bumper cars", "Creates the Cloud bumper-car system at level start. This is independent from Cloud terrain and electric-floor behavior.", levelIndex === 4 ? "true" : "false", "System/GameMain.c:966-968", { kind: "checkbox" }),
+        editableRule("level.teleporters", "Teleporters", "Initialize teleporter support for authored items across levels. Disable this to prevent teleporter initialization and creation. Space pods and zip-lines have separate controls.", "true", "System/GameMain.c:960-964", { kind: "checkbox" }),
+        editableRule("level.spacePods", "Space pods", "Initialize space-pod support for authored items across levels. Disable this to prevent space-pod initialization and creation. Teleporters and zip-lines have separate controls.", "true", "System/GameMain.c:960-964", { kind: "checkbox" }),
+        editableRule("level.bumperCars", "Cloud bumper cars", "Initialize bumper-car support for authored items across levels. Disable this to prevent bumper-car initialization and creation. Cloud terrain and electric-floor behavior have separate controls.", "true", "System/GameMain.c:966-968", { kind: "checkbox" }),
         editableRule("level.jungleBoss", "Jungle Boss systems", "Creates the Jungle Boss gameplay systems at level start. This does not automatically enable Jungle weapons, flytrap targeting, or the bonus tractor beam.", levelIndex === 6 ? "true" : "false", "System/GameMain.c:970-972", { kind: "checkbox" }),
-        editableRule("level.zipLines", "Zip-lines", "Creates zip-line systems at level start. The separate Zip-line style setting selects their visual and item variant.", levelIndex === 3 || levelIndex === 7 ? "true" : "false", "System/GameMain.c:960-964; System/GameMain.c:974-976", { kind: "checkbox" }),
+        editableRule("level.zipLines", "Zip-lines", "Initialize zip-line support for authored items across levels. Disable this to prevent zip-line initialization and creation. The separate style setting selects the matching visual and item variant.", "true", "System/GameMain.c:960-964; System/GameMain.c:974-976", { kind: "checkbox" }),
         editableRule("level.brainBoss", "Brain Boss systems", "Creates the Brain Boss system at level start. This is independent from the Brain Alien death attack and the final-level save rule.", levelIndex === 9 ? "true" : "false", "System/GameMain.c:978-980", { kind: "checkbox" }),
         editableRule("level.player", "Starting vehicle", "Choose the vehicle sequence used when the player starts. Rocket and Robot creates the normal rocket and robot setup; Robot starts directly with the robot; Saucer starts with the saucer. This changes the starting setup, not terrain or save identity.", levelIndex === 8 ? "saucer" : levelIndex === 2 ? "robot" : "rocket-and-robot", "Player/Player.c:129-181", getOttoControl("level.player", ["rocket-and-robot", "robot", "saucer"])),
         editableRule("level.saucerMode", "Saucer gameplay mode", "Enables the player-saucer camera, human scaling and abduction behavior, saucer help, and HUD layout. It is separate from the starting vehicle and the exit-door behavior, so each can be changed independently.", levelIndex === 8 ? "true" : "false", "3D/Camera.c:246-344; Items/Humans.c:103-1110; Screens/Infobar.c:333-348; Player/Player.c:503", { kind: "checkbox" }),
         editableRule("level.rocketDoorStaysOpen", "Exit door stays open", "Keeps the open exit-rocket door from closing when the player moves away. This is the Saucer-level convenience behavior and is independent from player-saucer controls and exit-fuel gates.", levelIndex === 8 ? "true" : "false", "Player/Player.c:1513-1519", { kind: "checkbox" }),
+        editableRule("level.rocketStreaming", "Stream exit rocket with terrain", "Remove and recreate the exit rocket as its terrain item streams out and back in. Disable this to keep the rocket resident for boss or saucer sequences.", ![6, 8, 9].includes(levelIndex) ? "true" : "false", "Player/Player.c:1446", { kind: "checkbox" }),
         editableRule("level.startingFuel", "Starting fuel", "Choose how much fuel the player has at the start of the vehicle sequence. Empty requires fuel collection before normal flight; Full starts with a full tank. This does not change fuel use after starting.", levelIndex === 2 || levelIndex === 6 ? "full" : "empty", "Player/Player.c:150-152", getOttoControl("level.startingFuel", ["empty", "full"])),
         editableRule("level.rocketScale", "Rocket size", "Chooses the authored size of the exit rocket model. Small is the compact rocket used on the Saucer level; Normal uses the regular exit-rocket size.", levelIndex === 8 ? "small" : "normal", "Player/Player.c:129", getOttoControl("level.rocketScale", ["normal", "small"])),
         editableRule("level.jungleWeapons", "Jungle weapon set", "Choose which weapon initialization runs. Standard creates the ordinary weapon set; Jungle creates the Jungle weapon set and its related weapon behavior. This does not change the player vehicle or terrain.", levelIndex === 5 || levelIndex === 6 ? "jungle" : "standard", "Player/Player_Weapons.c:393", getOttoControl("level.jungleWeapons", ["standard", "jungle"])),
@@ -1851,7 +1859,7 @@ export function getRuntimeMetadataRules(game: Game, levelIndex: number): readonl
         editableRule("level.splineSurface", "Spline item surface", "Chooses the height used to draw spline items. Terrain or water surface follows the world; Flat places them on the fixed surface used by Blob Boss.", levelIndex === 2 ? "flat" : "terrain-or-water", "Terrain/SplineItems.c:580-589", getOttoControl("level.splineSurface", ["terrain-or-water", "flat"])),
         editableRule("level.blobPlatforms", "Blob Boss falling platforms", "Chooses whether falling slime platforms use their Blob Boss model and height behavior. Standard keeps ordinary platform handling.", levelIndex === 2 ? "blob-boss" : "standard", "Items/Triggers.c:1083-1095", getOttoControl("level.blobPlatforms", ["standard", "blob-boss"])),
         editableRule("level.reducedPowerupSparkles", "Reduced power-up sparkles", "Limits each power-up to four sparkles to reduce the Brain Boss level’s effect load. Disabled uses the normal sparkle count.", levelIndex === 9 ? "true" : "false", "Items/Powerups.c:666-669", { kind: "checkbox" }),
-        editableRule("level.growthPowerups", "Growth power-ups", "Marks growth power-ups as valid for the level. The game rejects invalid growth-power-up placement, so enable this only where the level’s content expects it.", levelIndex === 5 ? "true" : "false", "Items/Powerups.c:1064-1065", { kind: "checkbox" }),
+        editableRule("level.growthPowerups", "Growth power-ups", "Allow growth power-ups across levels using their loaded native assets. Disabling this override prevents growth-power-up creation.", "true", "Items/Powerups.c:1064-1065", { kind: "checkbox" }),
         editableRule("level.transport", "Transport type", "Chooses the transport presentation and impact behavior. Rocket sled selects the Cloud level’s sled; Standard uses the ordinary transport behavior.", levelIndex === 4 ? "rocket-sled" : "standard", "Items/RocketSled.c:57-508", getOttoControl("level.transport", ["standard", "rocket-sled"])),
         editableRule("level.zipLineStyle", "Zip-line style", "Choose the zip-line posts, ropes, and related art. Fire Ice creates the Fire Ice style; Apocalypse creates the Apocalypse style. This changes appearance and associated item setup, not the level’s terrain or save identity.", levelIndex === 3 ? "apocalypse" : "fire-ice", "Items/ZipLine.c:198-201; Items/ZipLine.c:423-426; Items/ZipLine.c:565-568", getOttoControl("level.zipLineStyle", ["fire-ice", "apocalypse"])),
         editableRule("level.rocketExit", "Landing rocket can become the exit", "Enables the landed transport rocket to remain as the level exit instead of departing. The exact trigger is selected below; this setting does not change the rocket model’s size.", levelIndex === 6 || levelIndex === 9 ? "true" : "false", "Player/Player.c:1187-1203", { kind: "checkbox" }),

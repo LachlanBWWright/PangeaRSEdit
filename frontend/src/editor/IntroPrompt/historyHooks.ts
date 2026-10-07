@@ -3,8 +3,8 @@
  */
 
 import { useAtom } from "jotai";
-import { useCallback } from "react";
-import { Updater, useImmer } from "use-immer";
+import { useCallback, useState } from "react";
+import { Updater } from "use-immer";
 import { BlockHistoryUpdate } from "../../data/globals/history";
 import type { AtomicLevelData } from "../../data/utils/levelDataUtils";
 
@@ -14,7 +14,7 @@ export interface DataHistory {
 }
 
 export function useDataHistory() {
-  const [dataHistory, setDataHistory] = useImmer<DataHistory>({
+  const [dataHistory, setDataHistory] = useState<DataHistory>({
     items: [],
     index: 0,
   });
@@ -27,9 +27,7 @@ export function useDataHistory() {
       setAllAtomicData: (data: AtomicLevelData) => void,
     ) => {
       if (dataHistory.index > 0) {
-        setDataHistory((draft) => {
-          draft.index -= 1;
-        });
+        setDataHistory((current) => ({ ...current, index: current.index - 1 }));
         const historyItem = dataHistory.items[dataHistory.index - 1];
         if (historyItem) {
           setAllAtomicData(historyItem);
@@ -46,9 +44,7 @@ export function useDataHistory() {
       setAllAtomicData: (data: AtomicLevelData) => void,
     ) => {
       if (dataHistory.index < dataHistory.items.length - 1) {
-        setDataHistory((draft) => {
-          draft.index += 1;
-        });
+        setDataHistory((current) => ({ ...current, index: current.index + 1 }));
         const historyItem = dataHistory.items[dataHistory.index + 1];
         if (historyItem) {
           setAllAtomicData(historyItem);

@@ -46,6 +46,7 @@ import {
 import type Konva from "konva";
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { ItemCanvasEditing, ItemCanvasStageBridge } from "../subviews/items/ItemCanvasEditing";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 
@@ -205,6 +206,8 @@ export function MightyMikeKonvaView({
   );
 
   return (
+    <ItemCanvasEditing stage={stage} setStage={setStage} itemData={itemData} setItemData={setItemData} headerData={headerData}
+      terrainData={terrainData} enabled={tileBrushMode === "select"}>
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage
         width={containerSize.width}
@@ -351,7 +354,9 @@ export function MightyMikeKonvaView({
           tilesPerUnit={1}
           onResize={onResize}
         />
+        <ItemCanvasStageBridge />
       </Stage>
     </div>
+    </ItemCanvasEditing>
   );
 }

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { ok } from "neverthrow";
+import { describe, expect, it, vi } from "vitest";
+import { err, ok } from "neverthrow";
 import {
   createClientRuntimeTransportGuard,
   createHostRuntimeTransportMultiplexer,
@@ -81,6 +81,33 @@ function createFakeManagedTransport() {
 }
 
 describe("runtime transport multiplexer", () => {
+  it("reports partial broadcast failures without skipping healthy peers", () => {
+    const mux = createHostRuntimeTransportMultiplexer({
+      getExpectedPlayerIndexForParticipant: () => 1,
+      getExpectedMatchIdentity: () => null,
+      reportDesync: () => undefined,
+      reportMatchEnded: () => undefined,
+    });
+    const failed = createFakePeerHandle();
+    const healthy = createFakePeerHandle();
+    const sendHealthy = vi.fn(() => ok(undefined));
+    mux.attachPeer("failed", {
+      ...failed.handle,
+      transport: { ...failed.handle.transport, sendReliable: () => err("closed") },
+    });
+    mux.attachPeer("healthy", {
+      ...healthy.handle,
+      transport: { ...healthy.handle.transport, sendReliable: sendHealthy },
+    });
+    const result = mux.transport.sendReliable(new ArrayBuffer(1));
+    expect(result.isErr()).toBe(true);
+    expect(sendHealthy).toHaveBeenCalledTimes(1);
+    if (result.isErr()) expect(result.error).toContain("failed");
+    mux.detachPeer("failed");
+    expect(mux.transport.sendReliable(new ArrayBuffer(1)).isOk()).toBe(true);
+    mux.dispose();
+  });
+
   it("forwards valid raw PNET client packets from mapped peer", () => {
     const peer = createFakePeerHandle();
     const mux = createHostRuntimeTransportMultiplexer({

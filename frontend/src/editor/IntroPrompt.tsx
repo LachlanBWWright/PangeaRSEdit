@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { zipSync } from "fflate";
-import { ResultAsync } from "neverthrow";
+import { err, ok, ResultAsync } from "neverthrow";
 import {
   HeaderData,
   ItemData,
@@ -20,7 +20,7 @@ import {
   Game,
   type GlobalsInterface,
 } from "../data/globals/globals";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import { toast } from "sonner";
 import { errorSchema } from "@/schemas/common";
@@ -74,6 +74,8 @@ import {
 } from "./subviews/scripts/scriptWorkspaceState";
 import { summarizeScriptWorkspace } from "./subviews/scripts/scriptWorkspaceSelectors";
 import { createScriptItemDemoWorkspace } from "./subviews/scripts/scriptItemDemoLevel";
+import { restoreScriptEditorHistory, scriptEditorHistoryStoreAtom } from "./subviews/scripts/scriptEditorHistory";
+import { editorDataHistoryAtom, recordEditorDataHistoryAtom } from "./IntroPrompt/editorDataHistory";
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
   const match = MIGHTY_MIKE_LEVELS.find(
@@ -101,6 +103,7 @@ export interface DataHistory {
 }
 
 export function IntroPrompt() {
+  const atomStore = useStore();
   const globals = useAtomValue(Globals);
   const authUser = useAtomValue(currentAuthUserAtom);
   const setGlobals = useSetAtom(Globals);
@@ -111,6 +114,7 @@ export function IntroPrompt() {
   const [scriptWorkspaceStore, setScriptWorkspaceStore] = useAtom(
     scriptWorkspaceStoreAtom,
   );
+  const scriptHistoryStore = useAtomValue(scriptEditorHistoryStoreAtom);
 
   // Atomic data types instead of monolithic data
   const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
@@ -131,13 +135,10 @@ export function IntroPrompt() {
   const setSafeSplineItemTypes = useSetAtom(SafeSplineItemTypes);
 
   //History of previous states for undo/redo purposes
-  const [dataHistory, setDataHistory] = useImmer<DataHistory>({
-    items: [],
-    index: 0,
-  });
+  const [dataHistory, setDataHistory] = useAtom(editorDataHistoryAtom);
   //Set to true to block updating history, so that undo/redo doesn't change the history
-  const [blockHistoryUpdate, setBlockHistoryUpdate] =
-    useAtom(BlockHistoryUpdate);
+  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
+  const recordDataHistory = useSetAtom(recordEditorDataHistoryAtom);
 
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
   const [mapImagesFile, setMapImagesFile] = useState<undefined | File>(
@@ -189,12 +190,18 @@ export function IntroPrompt() {
       fenceData,
       splineData,
       terrainData,
+      scriptWorkspaceStore: scriptHistoryStore,
     };
-  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
+  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData, scriptHistoryStore]);
 
   // Helper to set all atomic data from AtomicLevelData
   const setAllAtomicData = useCallback(
     (atomicData: AtomicLevelData) => {
+      if (atomicData.scriptWorkspaceStore) {
+        const restored = restoreScriptEditorHistory(atomStore.get(scriptWorkspaceStoreAtom), atomicData.scriptWorkspaceStore);
+        if (restored.isErr()) { toast.error(restored.error); return err(restored.error); }
+        setScriptWorkspaceStore(restored.value);
+      }
       setHeaderData(atomicData.headerData);
       setItemData(atomicData.itemData);
       setLiquidData(atomicData.liquidData);
@@ -215,6 +222,7 @@ export function IntroPrompt() {
       // Update the atoms
       setSafeItemTypes(itemTypes);
       setSafeSplineItemTypes(splineItemTypes);
+      return ok(undefined);
     },
     [
       setHeaderData,
@@ -225,6 +233,8 @@ export function IntroPrompt() {
       setTerrainData,
       setSafeItemTypes,
       setSafeSplineItemTypes,
+      setScriptWorkspaceStore,
+      atomStore,
     ],
   );
 
@@ -251,33 +261,7 @@ export function IntroPrompt() {
 
   //Update History
   useEffect(() => {
-    //Wipe history for new map
-    if (!headerData) {
-      setDataHistory(() => ({ items: [], index: 0 }));
-    }
-    /*
-    Don't update history if change is coming from undo/redo, or something that 
-    will trigger an immediate change (e.g spline nubs triggering spline points change)
-    */
-    if (blockHistoryUpdate) {
-      setBlockHistoryUpdate(false);
-      return;
-    }
-
-    setDataHistory((draft) => {
-      if (!headerData) return;
-      const currentData = getCurrentAtomicData();
-      //Remove subsequent history
-      draft.items.splice(draft.index + 1, draft.items.length - draft.index - 1);
-      draft.items.push(currentData);
-      draft.index = draft.items.length - 1;
-
-      //Limit history size
-      if (draft.items.length > 10) {
-        draft.items.shift();
-        draft.index -= 1;
-      }
-    });
+    recordDataHistory(getCurrentAtomicData());
   }, [
     headerData,
     itemData,
@@ -285,10 +269,8 @@ export function IntroPrompt() {
     fenceData,
     splineData,
     terrainData,
-    blockHistoryUpdate,
     getCurrentAtomicData,
-    setBlockHistoryUpdate,
-    setDataHistory,
+    recordDataHistory,
   ]);
 
   // When a terrain file is loaded, infer the level number from the filename
@@ -353,11 +335,10 @@ export function IntroPrompt() {
     if (dataHistory.index > 0) {
       // Read target item BEFORE setDataHistory so we use the current (correct) index
       const historyItem = dataHistory.items[dataHistory.index - 1];
-      setDataHistory((draft) => {
-        draft.index -= 1;
-      });
       if (historyItem) {
-        setAllAtomicData(historyItem);
+        const restored = setAllAtomicData(historyItem);
+        if (restored.isErr()) return;
+        setDataHistory((current) => ({ ...current, index: current.index - 1 }));
         setBlockHistoryUpdate(true);
       }
     }
@@ -367,11 +348,10 @@ export function IntroPrompt() {
     if (dataHistory.index < dataHistory.items.length - 1) {
       // Read target item BEFORE setDataHistory so we use the current (correct) index
       const historyItem = dataHistory.items[dataHistory.index + 1];
-      setDataHistory((draft) => {
-        draft.index += 1;
-      });
       if (historyItem) {
-        setAllAtomicData(historyItem);
+        const restored = setAllAtomicData(historyItem);
+        if (restored.isErr()) return;
+        setDataHistory((current) => ({ ...current, index: current.index + 1 }));
         setBlockHistoryUpdate(true);
       }
     }

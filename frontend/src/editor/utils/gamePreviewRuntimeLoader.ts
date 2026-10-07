@@ -877,12 +877,28 @@ export async function loadPreviewRuntime(
   )();
 
   const trackedAudioContexts = new Set<AudioContext>();
+  let previewAudioMuted = false;
+  module.setPreviewAudioMuted = (muted) => {
+    previewAudioMuted = muted;
+    return ResultAsync.combine([...trackedAudioContexts].filter((context) => context.state !== "closed").map((context) =>
+      Result.fromThrowable(() => muted ? context.suspend() : savedAudioContext.prototype.resume.call(context), (error) => mapErr(error))()
+        .asyncAndThen((promise) => ResultAsync.fromPromise(promise, (error) => mapErr(error))),
+    )).map(() => undefined);
+  };
   const savedAudioContext = window.AudioContext;
   if (savedAudioContext) {
     class TrackedAudioContext extends savedAudioContext {
       constructor(opts?: AudioContextOptions) {
         super(opts);
         trackedAudioContexts.add(this);
+        if (previewAudioMuted) void Result.fromThrowable(() => this.suspend(), (error) => mapErr(error))()
+          .asyncAndThen((promise) => ResultAsync.fromPromise(promise, (error) => mapErr(error)));
+      }
+      override resume(): Promise<void> {
+        if (previewAudioMuted) return Promise.resolve();
+        return Result.fromThrowable(() => super.resume(), (error) => mapErr(error))()
+          .asyncAndThen((promise) => ResultAsync.fromPromise(promise, (error) => mapErr(error)))
+          .match(() => undefined, () => undefined);
       }
     }
     Result.fromThrowable(

@@ -26,6 +26,7 @@ export const SCRIPT_RUNTIME_CAPABILITY_FIELDS = [
   { name: "spawnNative", luaType: "boolean" },
   { name: "spawnScripted", luaType: "boolean" },
   { name: "objectQueries", luaType: "boolean" },
+  { name: "groundQuery", luaType: "boolean" },
   { name: "timers", luaType: "boolean" },
   { name: "tasks", luaType: "boolean" },
   { name: "events", luaType: "boolean" },
@@ -295,6 +296,7 @@ export const SCRIPTING_CONTRACT: ScriptingContract = scriptingContractSchema.par
     { id: "streamIn", handler: "onStreamIn", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
     { id: "streamOut", handler: "onStreamOut", applicationPhase: "callback", cleanup: "owner-resources", statePolicy: "clear", invalidatesHandle: true },
     { id: "checkpointReset", handler: "onCheckpointReset", applicationPhase: "callback", cleanup: "owner-resources", statePolicy: "preserve", invalidatesHandle: false },
+    { id: "death", handler: "onDeath", applicationPhase: "callback", cleanup: "none", statePolicy: "preserve", invalidatesHandle: false },
     { id: "destroy", handler: "onDestroy", applicationPhase: "callback", cleanup: "owner-resources", statePolicy: "clear", invalidatesHandle: true },
   ],
   objectCapabilities: [

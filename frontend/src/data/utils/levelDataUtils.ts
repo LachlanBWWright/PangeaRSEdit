@@ -10,6 +10,7 @@ import {
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
 import { plainObjectSchema, recordSchema } from "../../schemas/common";
+import type { ScriptWorkspaceState } from "@/editor/subviews/scripts/scriptWorkspaceStateTypes";
 
 // Zod schema for LevelData-like objects
 const levelDataLikeSchema = recordSchema.refine(
@@ -38,6 +39,7 @@ export function isLevelDataLike(value: unknown): value is LevelData {
  */
 
 export interface AtomicLevelData {
+  scriptWorkspaceStore?: Readonly<Record<string, ScriptWorkspaceState>>;
   headerData: HeaderData | null;
   itemData: ItemData | null;
   liquidData: LiquidData | null;

@@ -1,4 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { useSetAtom } from "jotai";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
+import { mapItemFocusRequestAtom, setMapItemSelectionAtom } from "../items/mapItemSelection";
 import type {
   ScriptCustomObjectDefinition,
   ScriptCustomObjectPlacement,
@@ -15,17 +19,19 @@ export function ScriptCustomObjectInstancesPanel({
   definitions,
   onRemovePlacement,
 }: ScriptCustomObjectInstancesPanelProps) {
+  const setFocus = useSetAtom(mapItemFocusRequestAtom);
+  const setSelection = useSetAtom(setMapItemSelectionAtom);
+  const setView = useSetAtom(ActiveView);
   const definitionLabels = new Map(
     definitions.map((definition) => [definition.id, definition.label]),
   );
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
+    <section className="min-w-0">
       <div>
         <h3 className="font-medium text-white">Instances on this level</h3>
         <p className="mt-1 text-xs text-slate-400">
-          Definitions describe reusable scripted object types. Each instance is
-          a placement of one definition in this level.
+          Manage placements of your Lua item definitions.
         </p>
       </div>
       {placements.length === 0 ? (
@@ -34,27 +40,32 @@ export function ScriptCustomObjectInstancesPanel({
           Items menu, then position it on the map.
         </p>
       ) : (
-        <div className="mt-3 grid gap-2">
+        <div className="mt-3 divide-y divide-slate-800 border-y border-slate-800">
           {placements.map((placement) => (
             <div
               key={placement.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950/70 p-2"
+              className="flex min-w-0 flex-wrap items-start justify-between gap-3 py-3"
             >
-              <div>
-                <p className="text-sm text-slate-100">{placement.label}</p>
-                <p className="text-xs text-slate-400">
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-sm text-slate-100">{placement.label}</p>
+                <p className="break-words text-xs text-slate-400">
                   {definitionLabels.get(placement.objectId) ?? placement.objectId}
-                  {" · "}
-                  x {String(placement.position.x)}, y {String(placement.position.y)}, z {String(placement.position.z)}
                 </p>
+                <details className="mt-1 text-xs text-slate-400"><summary className="cursor-pointer">Position</summary><p className="mt-1">World X {String(placement.position.x)}, Y {String(placement.position.y)}, Z {String(placement.position.z)}</p></details>
               </div>
-              <Button
+              <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => {
+                const target = { kind: "custom", id: placement.id } satisfies import("../items/mapItemSelection").MapItemTarget;
+                setSelection([target]);
+                setFocus((previous) => ({ target, sequence: (previous?.sequence ?? 0) + 1 }));
+                setView(View.items);
+              }}>Show on map</Button><Button
                 size="sm"
-                variant="destructive"
+                variant="ghost"
                 onClick={() => onRemovePlacement(placement.id)}
               >
-                Remove instance
+                Remove
               </Button>
+              </div>
             </div>
           ))}
         </div>

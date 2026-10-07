@@ -31,7 +31,20 @@ jobs:
         run: dotnet build backend/PangeaRSEdit.sln --configuration Release --no-restore
 
       - name: Test backend with coverage
-        run: dotnet test backend/PangeaRSEdit.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --settings backend/PangeaRSEdit.Tests/coverlet.runsettings
+        run: dotnet test backend/PangeaRSEdit.sln --configuration Release --no-build --filter 'Category!=LuaLSIntegration' --collect:"XPlat Code Coverage" --settings backend/PangeaRSEdit.Tests/coverlet.runsettings
+
+      - name: Provision pinned LuaLS
+        run: |
+          curl --fail --location --silent --show-error https://github.com/LuaLS/lua-language-server/releases/download/3.19.1/lua-language-server-3.19.1-linux-x64.tar.gz --output /tmp/luals.tar.gz
+          echo 'e9235d2d72ef55bc41cf8c99cda2ed64777682024b4bb81f5dea425060c5cbb8  /tmp/luals.tar.gz' | sha256sum --check --strict
+          mkdir -p /tmp/pangea-luals
+          tar -xzf /tmp/luals.tar.gz -C /tmp/pangea-luals
+          /tmp/pangea-luals/bin/lua-language-server --version
+
+      - name: Test real LuaLS integration
+        env:
+          LUALS_EXECUTABLE: /tmp/pangea-luals/bin/lua-language-server
+        run: dotnet test backend/PangeaRSEdit.sln --configuration Release --no-build --filter 'Category=LuaLSIntegration'
 
       - name: Upload backend coverage report
         if: always()

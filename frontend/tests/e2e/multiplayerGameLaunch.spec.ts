@@ -367,9 +367,10 @@ test.describe("Multiplayer game launch", () => {
     await guestPage.getByRole("button", { name: "Join Lobby" }).click();
     await expect(guestPage.getByText(lobbyId).first()).toBeVisible();
 
-    await hostPage.getByRole("button", { name: "Set Ready" }).click();
-    await guestPage.getByRole("button", { name: "Set Ready" }).click();
-    await hostPage.getByRole("button", { name: "Start Anyway", exact: true }).click();
+    await hostPage.getByRole("button", { name: "Ready up" }).click();
+    await guestPage.getByRole("button", { name: "Ready up" }).click();
+    await hostPage.getByRole("button", { name: "More match actions" }).click();
+    await hostPage.getByRole("menuitem", { name: "Start Anyway", exact: true }).click();
 
     await expect(hostPage.getByText(/State:\s*started/i).first()).toBeVisible();
     await waitForGameAndScreenshot(
@@ -418,9 +419,10 @@ test.describe("Multiplayer game launch", () => {
     await guestPage.getByRole("button", { name: "Join Lobby" }).click();
     await expect(guestPage.getByText(lobbyId).first()).toBeVisible();
 
-    await hostPage.getByRole("button", { name: "Set Ready" }).click();
-    await guestPage.getByRole("button", { name: "Set Ready" }).click();
-    await hostPage.getByRole("button", { name: "Start Anyway", exact: true }).click();
+    await hostPage.getByRole("button", { name: "Ready up" }).click();
+    await guestPage.getByRole("button", { name: "Ready up" }).click();
+    await hostPage.getByRole("button", { name: "More match actions" }).click();
+    await hostPage.getByRole("menuitem", { name: "Start Anyway", exact: true }).click();
 
     await expect(hostPage.getByText(/State:\s*started/i).first()).toBeVisible();
     await waitForGameAndScreenshot(

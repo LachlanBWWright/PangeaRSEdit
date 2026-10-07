@@ -274,6 +274,11 @@ export const hexDataEntrySchema = z.object({
 });
 
 /** The four-character resource used for editable level behavior metadata. */
+const metadataTextSchema = z.string().refine(
+  (value) => !value.includes("\0"),
+  "Metadata text cannot contain NUL characters",
+);
+
 export const metadataResourceSchema = z.object({
   schemaVersion: z.literal(1),
   game: z.enum([
@@ -295,8 +300,8 @@ export const metadataResourceSchema = z.object({
     "Cro-Mag Rally",
     "Billy Frontier",
   ]),
-  identity: z.string().min(1),
-  properties: z.record(z.string(), z.string()),
+  identity: metadataTextSchema.refine((value) => value.length > 0, "Metadata identity must not be empty"),
+  properties: z.record(metadataTextSchema, metadataTextSchema),
 }).strict();
 
 export const metadataResourceTypeSchema = z.object({

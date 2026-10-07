@@ -1,13 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -15,14 +7,13 @@ import {
   formatLobbyVisibility,
 } from "@/multiplayer/lobbyDisplay";
 import {
-  CROMAG_TAG_DURATION_OPTIONS,
-  defaultTrackForMode,
   getLevelOptionLabel,
-  getModeOptions,
   getTrackOptions,
   usesCroMagTagDuration,
 } from "@/multiplayer/menuOptions";
 import { HostStartControls } from "./HostStartControls";
+import { LobbyJoinCode } from "./LobbyJoinCode";
+import { LobbySelectionControls } from "./LobbySelectionControls";
 import { LobbyRoster } from "./LobbyRoster";
 import { MultiplayerDebugOverlay } from "./MultiplayerDebugOverlay";
 import { NetworkDebugControls } from "./NetworkDebugControls";
@@ -114,26 +105,20 @@ export function MultiplayerSessionSidebar({
   const trackOptions = getTrackOptions(lobby.gameId, lobby.mode);
 
   return (
-    <aside className="min-h-0 border-l border-border pl-4">
-      <div className="min-h-0 max-h-full overflow-hidden text-xs">
-        <Tabs defaultValue="lobby" className="min-h-0">
+    <aside className="flex h-full min-h-0 min-w-0 max-h-[calc(100dvh-6rem)] flex-col border-t border-border pt-4 lg:max-h-none lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+      <div className="flex min-h-0 flex-1 flex-col text-sm">
+        <Tabs defaultValue="lobby" className="flex min-h-0 flex-1 flex-col">
           {showDebugOverlay ? (
-            <TabsList className="h-9 bg-transparent p-0">
+            <TabsList className="h-9 shrink-0 bg-transparent p-0">
               <TabsTrigger value="lobby" className="text-xs">Lobby</TabsTrigger>
               <TabsTrigger value="debug" className="text-xs">Debug</TabsTrigger>
             </TabsList>
           ) : null}
-          <TabsContent value="lobby" className="space-y-3 overflow-hidden text-xs">
+          <TabsContent value="lobby" className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 pb-3">
           <section aria-labelledby="multiplayer-lobby-heading" className="space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 id="multiplayer-lobby-heading" className="font-semibold text-foreground">Lobby</h3>
-                <div className="mt-1 font-mono text-lg font-semibold tracking-wide text-foreground">
-                  {lobby.joinCode}
-                </div>
-                <div className="text-muted-foreground">Join code</div>
-              </div>
-            </div>
+            <h3 id="multiplayer-lobby-heading" className="font-semibold text-foreground">Lobby</h3>
+            <LobbyJoinCode key={lobby.joinCode} joinCode={lobby.joinCode} />
             <div className="grid gap-1 text-muted-foreground">
               <div>
                 <strong className="text-foreground">Visibility:</strong>{" "}
@@ -155,90 +140,12 @@ export function MultiplayerSessionSidebar({
               {statusText}
             </div>
             {errorText ? (
-              <div className="text-destructive" role="alert">
+              <div className="text-red-300" role="alert">
                 <strong>Error:</strong> {errorText}
               </div>
             ) : null}
             {canEditSelection ? (
-              <div className="grid gap-2">
-                <div className="grid gap-1">
-                  <Label>Mode</Label>
-                  <Select
-                    value={lobby.mode}
-                    disabled={busy}
-                    onValueChange={(nextMode) => {
-                      onUpdateSelection(
-                        nextMode,
-                        defaultTrackForMode(lobby.gameId, nextMode),
-                        lobby.tagDurationMinutes,
-                      );
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getModeOptions(lobby.gameId).map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-1">
-                  <Label>Map</Label>
-                  <Select
-                    value={lobby.trackOrLevel}
-                    disabled={busy}
-                    onValueChange={(nextTrackOrLevel) => {
-                      onUpdateSelection(
-                        lobby.mode,
-                        nextTrackOrLevel,
-                        lobby.tagDurationMinutes,
-                      );
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select map" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {trackOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {usesCroMagTagDuration(lobby.gameId, lobby.mode) ? (
-                  <div className="grid gap-1">
-                    <Label>Tag Duration</Label>
-                    <Select
-                      value={String(lobby.tagDurationMinutes)}
-                      disabled={busy}
-                      onValueChange={(value) => {
-                        onUpdateSelection(
-                          lobby.mode,
-                          lobby.trackOrLevel,
-                          Number.parseInt(value, 10),
-                        );
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select tag duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CROMAG_TAG_DURATION_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : null}
-              </div>
+              <LobbySelectionControls lobby={lobby} busy={busy} onUpdateSelection={onUpdateSelection} />
             ) : null}
           </section>
 
@@ -256,29 +163,9 @@ export function MultiplayerSessionSidebar({
 
           <Separator />
 
-          <HostStartControls
-            hasLocalParticipant={hasLocalParticipant}
-            localParticipantIsReady={localParticipantIsReady}
-            busy={busy}
-            isHost={isHost}
-            canStart={canStartLobby}
-            canForceStart={canForceStartLobby}
-            canEndMatch={canEndMatch}
-            lobbyState={lobby.state}
-            readyPlayerCount={readyPlayerCount}
-            playerCount={lobby.players.length}
-            onToggleReady={onToggleReady}
-            onStart={onStart}
-            onStartAnyway={onStartAnyway}
-            onEndMatch={onEndMatch}
-            onLeave={onLeave}
-          />
-
-          <Separator />
-
           <section aria-labelledby="multiplayer-chat-heading" className="space-y-2">
             <h3 id="multiplayer-chat-heading" className="font-semibold text-foreground">Lobby Chat</h3>
-            <div className="max-h-28 space-y-1 overflow-y-auto rounded border p-2">
+            <div role="log" aria-label="Lobby messages" tabIndex={0} className="max-h-28 space-y-1 overflow-y-auto rounded border p-2">
               {chatMessages.length === 0 ? (
                 <div className="text-muted-foreground">No messages yet.</div>
               ) : (
@@ -316,11 +203,30 @@ export function MultiplayerSessionSidebar({
               </Button>
             </div>
           </section>
-
+          </div>
+          <div className="shrink-0 border-t border-border bg-background pt-3">
+            <HostStartControls
+              hasLocalParticipant={hasLocalParticipant}
+              localParticipantIsReady={localParticipantIsReady}
+              busy={busy}
+              isHost={isHost}
+              canStart={canStartLobby}
+              canForceStart={canForceStartLobby}
+              canEndMatch={canEndMatch}
+              lobbyState={lobby.state}
+              readyPlayerCount={readyPlayerCount}
+              playerCount={lobby.players.length}
+              onToggleReady={onToggleReady}
+              onStart={onStart}
+              onStartAnyway={onStartAnyway}
+              onEndMatch={onEndMatch}
+              onLeave={onLeave}
+            />
+          </div>
           </TabsContent>
 
           {showDebugOverlay ? (
-            <TabsContent value="debug" className="max-h-[calc(100vh-8rem)] space-y-4 overflow-y-auto text-xs">
+            <TabsContent value="debug" className="min-h-0 flex-1 space-y-4 overflow-y-auto text-xs">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-semibold text-foreground">Developer tools</h3>
                 <Button
@@ -344,7 +250,7 @@ export function MultiplayerSessionSidebar({
                   <div className="sm:col-span-2"><strong className="text-foreground">Status:</strong> {statusText}</div>
                 </div>
                 {errorText ? (
-                  <div className="pt-1 text-destructive"><strong>Error:</strong> {errorText}</div>
+                  <div className="pt-1 text-red-300"><strong>Error:</strong> {errorText}</div>
                 ) : null}
               </section>
 

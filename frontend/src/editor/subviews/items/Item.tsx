@@ -2,7 +2,6 @@ import { Updater } from "use-immer";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { Group, Image as KonvaImage, Rect } from "react-konva";
 import type Konva from "konva";
-import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, memo, useMemo } from "react";
 import { Globals } from "@/data/globals/globals";
@@ -25,6 +24,9 @@ import { useItemLiquidTexture } from "./useItemLiquidTexture";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { ShowItemThumbnailPreviews } from "@/data/canvasView/canvasDisplaySettingsAtoms";
 import { useCanvasItemThumbnail } from "../canvasItemThumbnail";
+import { selectMapItemAtom, type MapItemTarget } from "./mapItemSelection";
+import { useMapItemVisualState } from "./useMapItemVisualState";
+import { useMapItemEditing } from "./mapItemEditingContext";
 
 export const Item = memo(function Item({
   itemData,
@@ -44,7 +46,10 @@ export const Item = memo(function Item({
   onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
   const item = itemData.Itms[1000].obj[itemIdx];
-  const setSelectedItem = useSetAtom(SelectedItem);
+  const selectItem = useSetAtom(selectMapItemAtom);
+  const controller = useMapItemEditing();
+  const target = useMemo<MapItemTarget>(() => ({ kind: "native", index: itemIdx }), [itemIdx]);
+  const visual = useMapItemVisualState(target);
   const globals = useAtomValue(Globals);
   const levelNumber = useAtomValue(LevelNumber);
   const showItemThumbnail = useAtomValue(ShowItemThumbnailPreviews);
@@ -53,8 +58,8 @@ export const Item = memo(function Item({
   const itemP1 = item?.p1 ?? 0;
   const itemP2 = item?.p2 ?? 0;
   const itemP3 = item?.p3 ?? 0;
-  const itemPosX = item?.x ?? 0;
-  const itemPosZ = item?.z ?? 0;
+  const itemPosX = (item?.x ?? 0) + visual.offset.x;
+  const itemPosZ = (item?.z ?? 0) + visual.offset.z;
   const liquidTexture = useItemLiquidTexture(globals, itemType, levelNumber);
   const thumbnail = useCanvasItemThumbnail({
     game: globals.GAME_TYPE,
@@ -65,20 +70,30 @@ export const Item = memo(function Item({
   });
 
   const handleMouseDown = useCallback(
-    () => setSelectedItem(itemIdx),
-    [itemIdx, setSelectedItem],
+    (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      event.cancelBubble = true;
+      selectItem({ target, additive: event.evt.shiftKey || event.evt.ctrlKey || event.evt.metaKey, forDrag: true });
+    },
+    [target, selectItem],
   );
+  const handleDragStart = useCallback((event: Konva.KonvaEventObject<DragEvent>) => {
+    event.cancelBubble = true;
+    if (controller) controller.startDrag(target);
+    else selectItem({ target, forDrag: true });
+  }, [controller, target, selectItem]);
+  const handlePlacementDrag = useCallback((event: Konva.KonvaEventObject<DragEvent>, offsetX: number, offsetZ: number, finish: boolean) => {
+    event.cancelBubble = true;
+    const point = { x: event.target.x() + offsetX, z: event.target.y() + offsetZ };
+    if (controller) {
+      if (finish) controller.finishDrag(target, point);
+      else controller.previewDrag(target, point);
+    } else if (finish) updateItem(setItemData, itemIdx, { x: Math.round(point.x), z: Math.round(point.z) });
+  }, [controller, target, setItemData, itemIdx]);
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      setItemData((data) => {
-        const item = data.Itms[1000].obj[itemIdx];
-        if (item) {
-          item.x = Math.round(e.target.x() + ITEM_BOX_OFFSET);
-          item.z = Math.round(e.target.y() + ITEM_BOX_OFFSET);
-        }
-      });
+      handlePlacementDrag(e, ITEM_BOX_OFFSET, ITEM_BOX_OFFSET, true);
     },
-    [itemIdx, setItemData],
+    [handlePlacementDrag],
   );
   const itemBoxPosition = getItemBoxPosition(itemPosX, itemPosZ);
 
@@ -172,21 +187,22 @@ export const Item = memo(function Item({
     if (liquidPatchCanvas) {
       return (
         <KonvaImage
+          name="map-item"
           image={liquidPatchCanvas.canvas}
           x={rectX}
           y={rectZ}
           width={liquidPatchCanvas.width}
           height={liquidPatchCanvas.height}
+          stroke={visual.selected ? "#facc15" : undefined}
+          strokeWidth={visual.selected ? 3 : 0}
           draggable
           onMouseOver={handleLiquidMouseOver}
           onMouseLeave={handleLiquidMouseLeave}
           onMouseDown={handleMouseDown}
-          onDragStart={handleMouseDown}
+          onDragStart={handleDragStart}
+          onDragMove={(event) => handlePlacementDrag(event, liquidPatchCanvas.width / 2, liquidPatchCanvas.height / 2, false)}
           onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-            updateItem(setItemData, itemIdx, {
-              x: Math.round(e.target.x() + liquidPatchCanvas.width / 2),
-              z: Math.round(e.target.y() + liquidPatchCanvas.height / 2),
-            });
+            handlePlacementDrag(e, liquidPatchCanvas.width / 2, liquidPatchCanvas.height / 2, true);
           }}
           perfectDrawEnabled={false}
         />
@@ -197,23 +213,22 @@ export const Item = memo(function Item({
       <>
         {/* Main liquid rectangle */}
         <Rect
+          name="map-item"
           x={rectX}
           y={rectZ}
           width={dims.width2D}
           height={dims.depth2D}
-          stroke={style.color2D}
+          stroke={visual.selected ? "#facc15" : style.color2D}
           strokeWidth={3}
           fill={style.fill2D}
           draggable
           onMouseOver={handleLiquidMouseOver}
           onMouseLeave={handleLiquidMouseLeave}
           onMouseDown={handleMouseDown}
-          onDragStart={handleMouseDown}
+          onDragStart={handleDragStart}
+          onDragMove={(event) => handlePlacementDrag(event, dims.width2D / 2, dims.depth2D / 2, false)}
           onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-            updateItem(setItemData, itemIdx, {
-              x: Math.round(e.target.x() + dims.width2D / 2),
-              z: Math.round(e.target.y() + dims.depth2D / 2),
-            });
+            handlePlacementDrag(e, dims.width2D / 2, dims.depth2D / 2, true);
           }}
         />
         {/* Inner rectangle for visual effect */}
@@ -228,8 +243,8 @@ export const Item = memo(function Item({
         />
         {/* Center marker */}
         <Rect
-          x={item.x - 4}
-          y={item.z - 4}
+          x={itemPosX - 4}
+          y={itemPosZ - 4}
           width={8}
           height={8}
           fill={style.color2D}
@@ -255,16 +270,18 @@ export const Item = memo(function Item({
   };
 
   // Default rendering for regular items
-  const isSelected = selected;
+  const isSelected = visual.selected || selected;
   return (
     <Group
+      name="map-item"
       x={itemBoxPosition.x}
       y={itemBoxPosition.z}
       draggable
       onMouseOver={handleMouseOver}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}
-      onDragStart={handleMouseDown}
+      onDragStart={handleDragStart}
+      onDragMove={(event) => handlePlacementDrag(event, ITEM_BOX_OFFSET, ITEM_BOX_OFFSET, false)}
       onDragEnd={handleDragEnd}
     >
       <Rect
@@ -272,7 +289,7 @@ export const Item = memo(function Item({
         y={0}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
-        stroke="black"
+        stroke={isSelected ? "#facc15" : "black"}
         strokeWidth={isSelected ? 2 : 1}
         fill={isSelected ? "red" : "blue"}
         perfectDrawEnabled={false}

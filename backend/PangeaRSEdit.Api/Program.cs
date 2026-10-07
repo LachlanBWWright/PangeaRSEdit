@@ -216,6 +216,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/healthz");
+app.MapGet("/api/lsp/health", () => LspHub.IsLanguageServerAvailable()
+    ? Results.Json(new { status = "available" })
+    : Results.Json(new { status = "unavailable" }, statusCode: StatusCodes.Status503ServiceUnavailable));
 app.MapHub<MultiplayerHub>("/api/multiplayer/signaling")
     .RequireRateLimiting("multiplayer-hub");
 app.MapHub<LspHub>("/api/lsp")

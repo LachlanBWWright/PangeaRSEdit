@@ -33,6 +33,7 @@ import { MightyMikeTileMenu } from "@/editor/subviews/mightymike/MightyMikeTileM
 import { MightyMikeTilesetDataPanel } from "@/editor/subviews/mightymike/MightyMikeTilesetDataPanel";
 import { getFeatureFlags, setFeatureFlags } from "@/config/featureFlags";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { createScriptWorkspaceContext, loadScriptSample, replaceScriptWorkspace, scriptWorkspaceStoreAtom } from "@/editor/subviews/scripts/scriptWorkspaceState";
 
 export interface GameMenuConfig {
   readonly game: Game;
@@ -177,12 +178,13 @@ const EMPTY_SPLINE_DATA: SplineData = {
   SpIt: {},
 };
 
-function createStoryStore(config: GameMenuConfig, initialView?: View) {
+function createStoryStore(config: GameMenuConfig, initialView?: View, withScriptSample = false) {
   const store = createStore();
   store.set(Globals, GLOBALS_BY_GAME[config.game]);
   store.set(ActiveView, initialView ?? config.tabs[0]?.view ?? View.items);
   store.set(LevelNumber, 1);
   store.set(CanvasViewMode, CanvasView.TWO_D);
+  if (withScriptSample) store.set(scriptWorkspaceStoreAtom, replaceScriptWorkspace({}, loadScriptSample(createScriptWorkspaceContext(GLOBALS_BY_GAME[config.game], 1), "hover-beacon")));
   return store;
 }
 
@@ -290,10 +292,10 @@ function EditorMenuPanel({
   const props = { headerData, setHeaderData, terrainData, setTerrainData, mapImages, setMapImages: replaceMapImages, undoData: noOp, redoData: noOp, dataHistory: { items: [], index: 0 }, config, itemData, setItemData, liquidData, setLiquidData, fenceData, setFenceData, splineData, setSplineData };
 
   return (
-    <div data-storybook-editor-menu data-editor-game={config.name} data-editor-tab={selectedTab?.label ?? ""}>
+    <div className={`min-h-screen bg-slate-900 text-slate-100 ${view === View.scripts ? "flex h-screen min-h-0 flex-col" : ""}`} data-storybook-editor-menu data-editor-game={config.name} data-editor-tab={selectedTab?.label ?? ""}>
       <div className="min-w-0">
         <div data-editor-menu-toolbar className="min-w-0 border-b border-gray-700 p-2"><EditorToolbar config={config} hasSupertiles={Boolean(terrainData.STgd)} /></div>
-        <div data-editor-menu-surface><MenuSection><ActualMenu {...props} /></MenuSection></div>
+        <div data-editor-menu-surface><MenuSection className={view === View.scripts ? "!h-[calc(100vh-3rem)]" : undefined}><ActualMenu {...props} /></MenuSection></div>
       </div>
     </div>
   );
@@ -302,11 +304,13 @@ function EditorMenuPanel({
 function StoryPanel({
   config,
   initialView,
+  withScriptSample,
 }: {
   config: GameMenuConfig;
   initialView?: View;
+  withScriptSample?: boolean;
 }) {
-  const [store] = useState(() => createStoryStore(config, initialView));
+  const [store] = useState(() => createStoryStore(config, initialView, withScriptSample));
   const [level, setLevel] = useState<AtomicLevelData | null>(null);
   const [mapImages, setMapImages] = useState<HTMLCanvasElement[]>([]);
 
@@ -362,10 +366,12 @@ export function enableStoryScripting(): void {
 export function GameEditorStory({
   game,
   view,
+  withScriptSample,
 }: {
   game: Game;
   view?: View;
+  withScriptSample?: boolean;
 }) {
   const config = EDITOR_MENUS.find((candidate) => candidate.game === game);
-  return config ? <StoryPanel config={config} initialView={view} /> : null;
+  return config ? <StoryPanel config={config} initialView={view} withScriptSample={withScriptSample} /> : null;
 }

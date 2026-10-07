@@ -292,6 +292,8 @@ namespace PangeaRSEdit.Api.Hubs
             return true;
         }
 
+        public static bool IsLanguageServerAvailable() => FindLuaLanguageServer() != null;
+
         private static string? FindLuaLanguageServer()
         {
             var paths = new[]

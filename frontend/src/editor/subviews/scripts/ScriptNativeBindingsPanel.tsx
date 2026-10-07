@@ -3,7 +3,7 @@ import {
   SplineItemScriptSection,
   TerrainItemScriptSection,
 } from "./ScriptBindingSection";
-import { ScriptAssignmentCard } from "./ScriptSharedComponents";
+import { ScriptNativeBindingRow } from "./ScriptNativeBindingRow";
 import type {
   ScriptMapItemBinding,
   ScriptMapItemSignature,
@@ -13,7 +13,6 @@ import type {
   ScriptTerrainBinding,
   ScriptTerrainBindingSignature,
 } from "./scriptWorkspaceState";
-import { MenuEmptyState } from "../MenuEmptyState";
 import { ScriptFieldHelpTooltip } from "./ScriptFieldHelpTooltip";
 
 interface ScriptNativeBindingsPanelProps {
@@ -26,6 +25,7 @@ interface ScriptNativeBindingsPanelProps {
   splineBindings: readonly ScriptSplineBinding[];
   mapItemBindings: readonly ScriptMapItemBinding[];
   onRemoveBinding: (bindingId: string) => void;
+  onEditSource?: (path: string) => void;
 }
 
 export function ScriptNativeBindingsPanel({
@@ -38,16 +38,17 @@ export function ScriptNativeBindingsPanel({
   splineBindings,
   mapItemBindings,
   onRemoveBinding,
+  onEditSource,
 }: ScriptNativeBindingsPanelProps) {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <h3 className="font-semibold text-white">Native Item Bindings</h3>
+        <h3 className="font-semibold text-white">Native item behaviors</h3>
         <ScriptFieldHelpTooltip label="About native item bindings">
           Bindings target the selected native item using generated predicate guards.
         </ScriptFieldHelpTooltip>
       </div>
-      <div className="grid gap-3">
+      <div className="divide-y divide-slate-800">
         {selectionTargetKind === "terrainItem" && terrainSelectionSignature ? (
           <TerrainItemScriptSection
             selectionLabel={selectionLabel}
@@ -67,15 +68,11 @@ export function ScriptNativeBindingsPanel({
           />
         ) : null}
         {selectionTargetKind === null ? (
-          <MenuEmptyState
-            title="No Item Selected"
-            description="Select a terrain item, spline item, or Mighty Mike item to attach a script."
-            compact
-          />
+          <p className="py-3 text-sm text-slate-400">Select a terrain, spline or map item to attach a behavior.</p>
         ) : null}
 
         {terrainBindings.map((binding) => (
-          <ScriptAssignmentCard
+          <ScriptNativeBindingRow
             key={binding.id}
             title={binding.label}
             subtitle={`Terrain item type ${String(binding.signature.itemType)}`}
@@ -83,10 +80,11 @@ export function ScriptNativeBindingsPanel({
             tags={binding.tags}
             compatibility={binding.compatibility}
             onRemove={() => onRemoveBinding(binding.id)}
+            onEditSource={onEditSource}
           />
         ))}
         {splineBindings.map((binding) => (
-          <ScriptAssignmentCard
+          <ScriptNativeBindingRow
             key={binding.id}
             title={binding.label}
             subtitle={`Spline ${String(binding.signature.splineNum)} at ${String(binding.signature.placement)}`}
@@ -94,10 +92,11 @@ export function ScriptNativeBindingsPanel({
             tags={binding.tags}
             compatibility={binding.compatibility}
             onRemove={() => onRemoveBinding(binding.id)}
+            onEditSource={onEditSource}
           />
         ))}
         {mapItemBindings.map((binding) => (
-          <ScriptAssignmentCard
+          <ScriptNativeBindingRow
             key={binding.id}
             title={binding.label}
             subtitle={`Mighty Mike item ${String(binding.signature.itemType)}`}
@@ -105,6 +104,7 @@ export function ScriptNativeBindingsPanel({
             tags={binding.tags}
             compatibility={binding.compatibility}
             onRemove={() => onRemoveBinding(binding.id)}
+            onEditSource={onEditSource}
           />
         ))}
       </div>

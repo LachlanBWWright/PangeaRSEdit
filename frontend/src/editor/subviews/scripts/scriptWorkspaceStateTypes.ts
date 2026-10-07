@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { scriptNativeVisualGroupSchema } from "./scriptNativeVisualGroups";
+
+const scriptConfigUtf8Encoder = new TextEncoder();
 
 export const scriptHookIdSchema = z.enum([
   "onGameStart",
@@ -250,6 +253,10 @@ export interface ScriptParameterDefinition {
   readonly type: "number" | "boolean" | "string";
   readonly description: string;
   readonly defaultValue: string;
+  readonly minimum?: number;
+  readonly maximum?: number;
+  readonly unit?: string;
+  readonly choices?: readonly string[];
 }
 
 export const scriptParameterDefinitionSchema = z.object({
@@ -258,13 +265,21 @@ export const scriptParameterDefinitionSchema = z.object({
   type: z.enum(["number", "boolean", "string"]),
   description: z.string().min(1),
   defaultValue: z.string(),
+  minimum: z.number().finite().optional(),
+  maximum: z.number().finite().optional(),
+  unit: z.string().optional(),
+  choices: z.array(z.string().min(1)).optional(),
 });
+
+export const scriptParameterValueSchema = z.union([z.string(), z.number().finite(), z.boolean()]);
+export type ScriptParameterValue = z.infer<typeof scriptParameterValueSchema>;
+export type ScriptParameterValues = Readonly<Record<string, ScriptParameterValue>>;
 
 const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("none") }),
   z.object({
     kind: z.literal("nativeDisplayGroup"),
-    group: z.enum(["global", "levelSpecific"]),
+    group: scriptNativeVisualGroupSchema,
     modelObject: z.number().int().nonnegative(),
     scale: z.number().positive().max(100),
     slot: z.number().int().min(0).max(32767),
@@ -329,6 +344,7 @@ export const scriptCustomObjectDefinitionSchema = z.object({
   description: z.string().min(1),
   visual: scriptCustomObjectVisualSchema.default({ kind: "none" }),
   collision: scriptCustomObjectCollisionSchema.default({ kind: "none" }),
+  parameters: z.record(z.string(), scriptParameterValueSchema).optional(),
 });
 
 export type ScriptCustomObjectDefinition = z.infer<
@@ -345,6 +361,7 @@ export interface ScriptCustomObjectPlacement {
     readonly z: number;
   };
   readonly levelKey: string;
+  readonly parameters?: ScriptParameterValues;
 }
 
 export const scriptCustomObjectPlacementSchema = z.object({
@@ -353,6 +370,7 @@ export const scriptCustomObjectPlacementSchema = z.object({
   label: z.string().min(1),
   position: vector3Schema,
   levelKey: z.string().min(1),
+  parameters: z.record(z.string(), scriptParameterValueSchema).optional(),
 });
 
 export const scriptTerrainReplacementSchema = z.object({
@@ -421,7 +439,7 @@ export interface ScriptDiagnostic {
   readonly column: number;
 }
 
-const scriptDiagnosticSchema = z.object({
+export const scriptDiagnosticSchema = z.object({
   category: scriptDiagnosticCategorySchema.default("source-validation"),
   severity: scriptSeveritySchema,
   message: z.string().min(1),
@@ -523,6 +541,17 @@ export const scriptParamsFileSchema = z.object({
   params: z.array(scriptParameterDefinitionSchema),
 });
 
+const scriptAssetDependenciesSchema = z.array(z.object({
+  kind: z.string().min(1).refine((value) => scriptConfigUtf8Encoder.encode(value).length <= 31),
+  id: z.string().min(1).refine((value) => scriptConfigUtf8Encoder.encode(value).length <= 95),
+})).max(64);
+
+const scriptLevelSettingValueSchema = z.union([
+  z.string().refine((value) => scriptConfigUtf8Encoder.encode(value).length <= 255),
+  z.number().finite().min(-3.402823466e38).max(3.402823466e38),
+  z.boolean(),
+]);
+
 export const runtimeLevelConfigSchema = z.object({
   script: z.string().min(1),
   extraNativeItems: z.array(z.string()).default([]),
@@ -540,34 +569,44 @@ export const runtimeLevelConfigSchema = z.object({
   splineReplacements: z.array(scriptSplineReplacementSchema).default([]),
   levelSettings: z
     .object({
-      assetDependencies: z
-        .array(
-          z.object({
-            kind: z.string().min(1),
-            id: z.string().min(1),
-          }),
-        )
-        .optional(),
+      assetDependencies: scriptAssetDependenciesSchema.optional(),
     })
-    .catchall(
-      z.union([
-        z.string(),
-        z.number(),
-        z.boolean(),
-        z.array(
-          z.object({
-            kind: z.string().min(1),
-            id: z.string().min(1),
-          }),
-        ),
-      ]),
-    )
+    .catchall(z.union([scriptLevelSettingValueSchema, scriptAssetDependenciesSchema]))
+    .superRefine((settings, context) => {
+      const settingKeys = Object.keys(settings).filter((key) => key !== "assetDependencies");
+      if (settingKeys.length > 64) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "levelSettings supports at most 64 settings",
+        });
+      }
+      for (const key of settingKeys) {
+        if (!scriptLevelSettingValueSchema.safeParse(settings[key]).success) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: "Only assetDependencies may contain a collection",
+          });
+        }
+        if (scriptConfigUtf8Encoder.encode(key).length > 63) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "levelSettings keys must be at most 63 characters",
+          });
+        }
+      }
+    })
     .optional(),
 });
 
+const runtimeLevelKeySchema = z.string().regex(/^(?:current|0|[1-9][0-9]*)$/).refine(
+  (key) => key === "current" || Number(key) <= 2147483647,
+  "Level keys must be canonical nonnegative integers or 'current'",
+);
+
 export const runtimeLevelsSchema = z.object({
   version: z.literal(1),
-  levels: z.record(z.string(), runtimeLevelConfigSchema),
+  levels: z.record(runtimeLevelKeySchema, runtimeLevelConfigSchema),
 });
 
 export const GENERATED_ENTRY_PATH = "Data/Scripts/src/main.lua";

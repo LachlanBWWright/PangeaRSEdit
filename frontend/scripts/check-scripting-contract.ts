@@ -561,7 +561,7 @@ const playerIntegrationCallSites: readonly {
   {
     gameId: "BillyFrontier-Android",
     hook: "onDeath",
-    sourcePath: "../games/pangea-ports/games/BillyFrontier-Android/Source/System/Areas/Shootout.c",
+    sourcePath: "../games/pangea-ports/games/BillyFrontier-Android/Source/Player/PlayerDamage.c",
     call: "BillyScript_OnDeath(player, 0);",
   },
 ];

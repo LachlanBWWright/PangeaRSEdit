@@ -8,7 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { StatusChip } from "./ScriptSharedComponents";
 import {
   parseScriptSourceDirectory,
   SCRIPT_SOURCE_DIRECTORY_OPTIONS,
@@ -51,20 +50,21 @@ export function ScriptProjectFilesPanel({
       <div className="grid gap-6">
         <div className="grid gap-2">
           <Label htmlFor="new-script-file">Add file</Label>
-          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_auto]">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
             <Input
               id="new-script-file"
               value={newFileName}
               onChange={(event) => onNewFileNameChange(event.target.value)}
               placeholder="helpers"
             />
+            <Button variant="outline" onClick={onCreateSourceFile}>Add</Button>
             <Select
               value={newFileDirectory}
               onValueChange={(value) =>
                 onNewFileDirectoryChange(parseScriptSourceDirectory(value))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="col-span-2" aria-label="Script file folder">
                 <SelectValue placeholder="Folder" />
               </SelectTrigger>
               <SelectContent>
@@ -75,15 +75,12 @@ export function ScriptProjectFilesPanel({
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={onCreateSourceFile}>
-              Add
-            </Button>
           </div>
-          <Input value={generatedNewFilePath} readOnly />
+          <p className="break-all text-xs text-slate-500"><code>{generatedNewFilePath}</code></p>
         </div>
 
-        <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="grid">
+          <p className="mb-2 text-sm font-medium text-slate-400">
             Source
           </p>
           {orderedSourcePaths.map((path) => {
@@ -91,22 +88,23 @@ export function ScriptProjectFilesPanel({
             return (
               <Button
                 key={path}
-                variant="menu"
+                variant="ghost"
                 aria-pressed={activeFilePath === path}
-                className={`h-auto border-l-2 py-2 ${activeFilePath === path ? "border-orange-400 bg-orange-500/10" : "border-transparent"}`}
+                className={`h-auto min-w-0 justify-start rounded-none border-l-2 py-2 ${activeFilePath === path ? "border-blue-400 bg-blue-500/10" : "border-transparent"}`}
+                title={path}
                 onClick={() => onOpenFile(path)}
                 type="button"
               >
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
                   <span className="truncate font-medium text-white">
                     {path.replace("Data/Scripts/src/", "")}
                   </span>
                   {sourceFile?.role === "generated-entry" ? (
-                    <StatusChip label="Generated" tone="warning" />
+                    <span className="shrink-0 text-xs font-normal text-slate-500">Generated</span>
                   ) : isSourceFileDirty(path) ? (
-                    <StatusChip label="Dirty" tone="danger" />
+                    <span className="shrink-0 text-xs font-normal text-amber-300">Unsaved</span>
                   ) : (
-                    <StatusChip label="Saved" tone="good" />
+                    null
                   )}
                 </div>
               </Button>
@@ -114,21 +112,22 @@ export function ScriptProjectFilesPanel({
           })}
         </div>
 
-        <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="grid border-t border-slate-800 pt-4">
+          <p className="mb-2 text-sm font-medium text-slate-400">
             Build Output
           </p>
           {compiledFilePaths.length === 0 ? (
             <p className="py-2 text-xs text-slate-400">
-              Compile the project to inspect bundled output.
+              Validate the bundle to inspect generated output.
             </p>
           ) : (
             compiledFilePaths.map((path) => (
               <Button
                 key={path}
-                variant="menu"
+                variant="ghost"
                 aria-pressed={activeFilePath === path}
-                className={`h-auto border-l-2 py-2 ${activeFilePath === path ? "border-orange-400 bg-orange-500/10" : "border-transparent"}`}
+                className={`h-auto min-w-0 justify-start rounded-none border-l-2 py-2 ${activeFilePath === path ? "border-blue-400 bg-blue-500/10" : "border-transparent"}`}
+                title={path}
                 onClick={() => onOpenFile(path)}
                 type="button"
               >

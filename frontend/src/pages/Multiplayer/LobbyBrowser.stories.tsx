@@ -1,113 +1,99 @@
-import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { filterPublicLobbies, defaultLobbyFormState, type LobbyFormState } from "@/multiplayer/menuOptions";
-import type { MultiplayerLobbySummary } from "@/multiplayer/types";
-import { LobbyBrowser } from "./LobbyBrowser";
-
-const STORY_LOBBIES = [
-  {
-    id: "cromag-race-lobby",
-    gameId: "cromagrally",
-    mode: "multiplayerRace",
-    trackOrLevel: "3",
-    tagDurationMinutes: 3,
-    maxPlayers: 4,
-    isPublic: true,
-    joinCode: "RALLY3",
-    state: "open",
-    playerCount: 2,
-    createdAt: "2026-01-01T12:00:00.000Z",
-    expiresAt: "2026-01-01T13:00:00.000Z",
-    canJoin: true,
-  },
-  {
-    id: "nanosaur-race-lobby",
-    gameId: "nanosaur2",
-    mode: "multiplayerRace",
-    trackOrLevel: "3",
-    tagDurationMinutes: 3,
-    maxPlayers: 2,
-    isPublic: true,
-    joinCode: "NANO22",
-    state: "open",
-    playerCount: 1,
-    createdAt: "2026-01-01T12:05:00.000Z",
-    expiresAt: "2026-01-01T13:05:00.000Z",
-    canJoin: true,
-  },
-  {
-    id: "full-lobby",
-    gameId: "cromagrally",
-    mode: "multiplayerBattle",
-    trackOrLevel: "12",
-    tagDurationMinutes: 3,
-    maxPlayers: 2,
-    isPublic: true,
-    joinCode: "FULL12",
-    state: "open",
-    playerCount: 2,
-    createdAt: "2026-01-01T12:10:00.000Z",
-    expiresAt: "2026-01-01T13:10:00.000Z",
-    canJoin: false,
-  },
-] satisfies readonly MultiplayerLobbySummary[];
-
-function LobbyBrowserStory() {
-  const [isCreateLobbyOpen, setIsCreateLobbyOpen] = useState(false);
-  const [formState, setFormState] = useState<LobbyFormState>(
-    defaultLobbyFormState,
-  );
-  const [joinLobbyId, setJoinLobbyId] = useState("");
-  const [joinGameFilter, setJoinGameFilter] = useState<"all" | "cromagrally" | "nanosaur2">("all");
-  const [joinModeFilter, setJoinModeFilter] = useState<"all" | "race" | "battle" | "capture-the-flag">("all");
-  const displayedPublicLobbies = filterPublicLobbies(
-    STORY_LOBBIES,
-    joinGameFilter,
-    joinModeFilter,
-  );
-
-  return (
-    <div className="flex min-h-screen w-full flex-col bg-slate-950 p-6 text-slate-100">
-      <LobbyBrowser
-        isCreateLobbyOpen={isCreateLobbyOpen}
-        formState={formState}
-        joinLobbyId={joinLobbyId}
-        busy={false}
-        isPreloading={false}
-        lobbyListErrorText={null}
-        errorText={null}
-        displayedPublicLobbies={displayedPublicLobbies}
-        joinGameFilter={joinGameFilter}
-        joinModeFilter={joinModeFilter}
-        onCreateLobbyOpenChange={setIsCreateLobbyOpen}
-        onFormStateChange={setFormState}
-        onJoinLobbyIdChange={setJoinLobbyId}
-        onJoinGameFilterChange={setJoinGameFilter}
-        onJoinModeFilterChange={setJoinModeFilter}
-        onRefreshLobbies={() => undefined}
-        onCreateLobby={() => setIsCreateLobbyOpen(false)}
-        onJoinLobby={() => undefined}
-        onQuickJoinLobby={() => undefined}
-        onClearError={() => undefined}
-      />
-    </div>
-  );
-}
+import { expect, fn, userEvent, within } from "storybook/test";
+import { LobbyBrowserStory } from "@/storybook/multiplayer/LobbyBrowserStory";
+import { STORY_LOBBIES } from "@/storybook/multiplayer/multiplayerStoryFixtures";
 
 const meta = {
   title: "Multiplayer/Lobby Browser",
   component: LobbyBrowserStory,
   parameters: {
     layout: "fullscreen",
+    docs: { story: { inline: false, height: "720px" }, description: { component: "Public matchmaking browser. The fixture supplies typed API summaries; filtering and dialogs are the production UI. Actions are spies, so these stories do not contact matchmaking servers or download games." } },
   },
-  render: () => <LobbyBrowserStory />,
+  args: { onCreateLobby: fn(), onJoinLobby: fn(), onQuickJoinLobby: fn(), onRefreshLobbies: fn() },
   tags: ["test", "smoke", "a11y", "visual", "overflow", "interaction"],
 } satisfies Meta<typeof LobbyBrowserStory>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  parameters: { docs: { description: { story: "Cro-Mag Rally and Nanosaur 2 lobbies, including full and started entries. Unavailable entries cannot be joined." } } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Full" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "started" })).toBeDisabled();
+    const [join] = canvas.getAllByRole("button", { name: "Join Lobby" });
+    await expect(join).toBeDefined();
+    if (join) await userEvent.click(join);
+    await expect(args.onQuickJoinLobby).toHaveBeenCalledWith(STORY_LOBBIES[0]?.id);
+    await userEvent.click(canvas.getByRole("button", { name: "Refresh lobbies" }));
+    await expect(args.onRefreshLobbies).toHaveBeenCalled();
+  },
+};
 
 export const NarrowLayout: Story = {
+  args: { narrow: true },
+  parameters: { docs: { description: { story: "320 px browser content: filters wrap and lobby actions span the row. Use a phone viewport to inspect the dialogs as well." } } },
+};
+
+export const Empty: Story = {
+  args: { lobbies: [] },
+  parameters: { docs: { description: { story: "No public lobbies are available. Creation and joining by code remain available." } } },
+};
+
+export const NoFilterMatches: Story = {
+  args: { initialModeFilter: "capture-the-flag" },
+  parameters: { docs: { description: { story: "The selected filter has no matches. The current UI uses the same empty message as an empty lobby list." } } },
+};
+
+export const FilterByGame: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("combobox", { name: "Game filter" }));
+    await userEvent.click(within(canvasElement.ownerDocument.body).getByRole("option", { name: "Nanosaur 2" }));
+    await expect(canvas.queryByText("Cro-Mag Rally")).toBeNull();
+    await expect(canvas.getAllByRole("button", { name: "Join Lobby" })).toHaveLength(1);
+  },
+};
+
+export const FilterByMode: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("combobox", { name: "Mode filter" }));
+    await userEvent.click(within(canvasElement.ownerDocument.body).getByRole("option", { name: "Battle / Survival / Tag" }));
+    await expect(canvas.queryByRole("button", { name: "Join Lobby" })).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Full" })).toBeDisabled();
+  },
+};
+
+export const ListUnavailable: Story = {
+  args: { lobbies: [], lobbyListErrorText: "Could not reach matchmaking. Check your connection and refresh." },
+  parameters: { docs: { description: { story: "A list request failed. This documents the current error and empty-state combination; recovery uses Refresh lobbies." } } },
+};
+
+export const QuickJoinFailure: Story = {
+  args: { initialError: "This lobby filled up before you joined. Choose another lobby.", actionError: "This lobby filled up before you joined. Choose another lobby." },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const [join] = canvas.getAllByRole("button", { name: "Join Lobby" });
+    await expect(join).toBeDefined();
+    if (join) await userEvent.click(join);
+    await expect(canvas.getByRole("alert")).toHaveTextContent(args.actionError ?? "");
+  },
+};
+
+export const PreparingGame: Story = {
+  args: { busy: true, isPreloading: true },
+  parameters: { docs: { description: { story: "A quick join is preparing game files. Matchmaking actions are disabled while the operation is in progress." } } },
+};
+
+export const JoiningLobby: Story = {
+  args: { busy: true },
+  parameters: { docs: { description: { story: "Preparation has finished and a quick join is awaiting a lobby response." } } },
+};
+
+export const CreatingLobby: Story = {
+  args: { busy: true, isPreloading: true, initialCreateLobbyOpen: true },
+  parameters: { docs: { description: { story: "The create dialog remains visible during preparation and freezes the submitted setup." } } },
 };

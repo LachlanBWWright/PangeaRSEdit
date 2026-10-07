@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface HostStartControlsProps {
   readonly hasLocalParticipant: boolean;
@@ -44,47 +45,36 @@ export function HostStartControls({
 
   return (
     <div className="space-y-2">
-      {isHost && isWaitingForPlayers ? (
+      {isWaitingForPlayers ? (
         <p className="text-muted-foreground" aria-live="polite">
-          {startHelp}
+          {isHost ? startHelp : localParticipantIsReady ? "You’re ready. Waiting for the host to start." : "Ready up when you’re set to play."}
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         {isWaitingForPlayers ? (
           <Button
             type="button"
-            size="sm"
+            size="default"
+            variant={localParticipantIsReady ? "outline" : "default"}
             disabled={busy || !hasLocalParticipant}
             onClick={onToggleReady}
           >
-            {localParticipantIsReady ? "Set Not Ready" : "Set Ready"}
+            {localParticipantIsReady ? "Not ready" : "Ready up"}
           </Button>
         ) : null}
         {isHost && isWaitingForPlayers ? (
-          <>
-            <Button
-              type="button"
-              size="sm"
-              disabled={busy || !canStart}
-              onClick={onStart}
-            >
-              {lobbyState === "match_ended" ? "Start Rematch" : "Start"}
-            </Button>
-            {canForceStart ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={onStartAnyway}
-              >
-                {lobbyState === "match_ended"
-                  ? "Rematch Anyway"
-                  : "Start Anyway"}
-              </Button>
-            ) : null}
-          </>
+          <Button
+            type="button"
+            size="default"
+            variant={localParticipantIsReady ? "default" : "outline"}
+            disabled={busy || !canStart}
+            onClick={onStart}
+          >
+            {lobbyState === "match_ended" ? "Start rematch" : "Start match"}
+          </Button>
         ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           size="sm"
@@ -94,6 +84,23 @@ export function HostStartControls({
         >
           Leave Lobby
         </Button>
+        {isHost && isWaitingForPlayers && canForceStart ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" size="sm" variant="outline" disabled={busy}>
+                More match actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-w-72">
+              <DropdownMenuLabel className="whitespace-normal text-xs text-muted-foreground">
+                Start even when some players are not ready.
+              </DropdownMenuLabel>
+              <DropdownMenuItem onSelect={onStartAnyway}>
+                {lobbyState === "match_ended" ? "Rematch Anyway" : "Start Anyway"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </div>
       {isHost && canEndMatch ? (
         <div className="border-t border-border pt-2">

@@ -90,11 +90,13 @@ export function TestGameDialog(props: Props) {
   const [runtimeDiagnosticMessage, setRuntimeDiagnosticMessage] = useState<string | null>(null);
   const [runtimeInitialized, setRuntimeInitialized] = useState(false);
   const activePreviewModuleRef = useRef<PreviewRuntimeModule | null>(null);
+  const [audioEnabled, setAudioEnabled] = useState(true);
   const lastReportedScriptError = useRef("");
   const lastReportedScriptErrorCount = useRef(0);
   const handlePreviewRuntimeModule = useCallback(
     (module: PreviewRuntimeModule | null): void => {
       activePreviewModuleRef.current = module;
+      setAudioEnabled(true);
     },
     [],
   );
@@ -166,6 +168,7 @@ export function TestGameDialog(props: Props) {
   };
 
   const handleLaunch = () => {
+    setAudioEnabled(true);
     setRuntimeInitialized(false);
     setScriptStatus(null);
     setRuntimeDiagnosticMessage(null);
@@ -238,6 +241,11 @@ export function TestGameDialog(props: Props) {
               Fullscreen
             </Button>
           )}
+          {previewStarted && <Button variant="outline" aria-pressed={audioEnabled} disabled={!runtimeInitialized} onClick={() => {
+            const control = activePreviewModuleRef.current?.setPreviewAudioMuted;
+            if (!control) return;
+            void control(audioEnabled).match(() => setAudioEnabled(!audioEnabled), (message) => setRuntimeDiagnosticMessage(message));
+          }}>{audioEnabled ? "Mute audio" : "Enable audio"}</Button>}
         </div>
 
         <div className="flex-1 min-h-0 flex gap-4">
@@ -251,6 +259,7 @@ export function TestGameDialog(props: Props) {
               </div>
             ) : (
               <GamePreviewHost
+                initialAudioMuted
                 key={`${String(gameType)}-${String(runToken)}`}
                 config={config}
                 levelNumber={levelNumber}

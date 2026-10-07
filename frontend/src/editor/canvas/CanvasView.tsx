@@ -8,6 +8,8 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
+import { ItemCanvasEditing, ItemCanvasStageBridge } from "../subviews/items/ItemCanvasEditing";
+import { useAtomicDataUpdaters } from "../IntroPrompt/historyHooks";
 import { isRenderableContainerSize } from "@/hooks/useContainerSize";
 import { Updater } from "use-immer";
 import { CanvasStageLayers, CanvasViewMode } from "./CanvasStageLayers";
@@ -73,6 +75,10 @@ export function KonvaView({
   const clickToAddItem = useAtomValue(ClickToAddItem);
   const customObjectPlacement = useCustomObjectPlacement();
   const globals = useAtomValue(Globals);
+  const setItemDataNotNull = useAtomicDataUpdaters(setItemData);
+  const setLiquidDataNotNull = useAtomicDataUpdaters(setLiquidData);
+  const setFenceDataNotNull = useAtomicDataUpdaters(setFenceData);
+  const setSplineDataNotNull = useAtomicDataUpdaters(setSplineData);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -129,12 +135,11 @@ export function KonvaView({
       }
       if (clickToAddItem === undefined) return;
 
-      // Updater<T | null> can be safely cast to Updater<T> when component only renders when data is non-null
-      (setItemData as Updater<ItemData>)((itemData) => { // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
+      setItemDataNotNull((itemData) => {
         addPlacedItem(itemData, position.x, position.z, clickToAddItem);
       });
     },
-    [clickToAddItem, customObjectPlacement, headerData, setItemData],
+    [clickToAddItem, customObjectPlacement, headerData, setItemDataNotNull],
   );
 
   const handleStageDblClick = useCallback(() => {
@@ -164,6 +169,8 @@ export function KonvaView({
   const stageOffset = getStickyStageOffset(isTopologyMode, scrollOffset, stage);
 
   return (
+    <ItemCanvasEditing stage={stage} setStage={setStage} itemData={itemData} setItemData={setItemData} headerData={headerData}
+      terrainData={terrainData} enabled={view === CanvasViewMode.items}>
     <div
       ref={(el) => {
         scrollContainerRef.current = el;
@@ -228,18 +235,20 @@ export function KonvaView({
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             itemData={itemData}
-            setItemData={setItemData as Updater<ItemData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
+            setItemData={setItemDataNotNull}
             liquidData={liquidData}
-            setLiquidData={setLiquidData as Updater<LiquidData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
+            setLiquidData={setLiquidDataNotNull}
             fenceData={fenceData}
-            setFenceData={setFenceData as Updater<FenceData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
+            setFenceData={setFenceDataNotNull}
             splineData={splineData}
-            setSplineData={setSplineData as Updater<SplineData>} // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
+            setSplineData={setSplineDataNotNull}
             mapImages={mapImages}
             view={view}
           />
+          <ItemCanvasStageBridge />
         </Stage>
       </div>
     </div>
+    </ItemCanvasEditing>
   );
 }

@@ -1,5 +1,5 @@
-import { useAtom, useAtomValue } from "jotai";
-import { ResultAsync } from "neverthrow";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
+import { err, ok, ResultAsync } from "neverthrow";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +21,20 @@ import type {
 import { DefineBehaviorModal } from "./DefineBehaviorModal";
 import { ScriptCodeModal } from "./ScriptCodeModal";
 import { ScriptCodeWorkspacePanel } from "./ScriptCodeWorkspacePanel";
+import { ScriptEditorReferenceLayout } from "./ScriptEditorReferenceLayout";
+import { ScriptFileUsage } from "./ScriptFileUsage";
+import type { ScriptSourceEditorProps, ScriptEditorReveal } from "./ScriptSourceEditor";
+import { applyScriptWorkspaceFileEdits } from "./scriptWorkspaceFileActions";
+import { scriptEditorNavigationAtom } from "./scriptEditorNavigation";
+import { scriptRecoveryStatusAtom } from "./scriptWorkspaceRecovery";
+import { ScriptWorkspaceImportDialog } from "./ScriptWorkspaceImportDialog";
+import { mergeScriptWorkspace } from "./scriptWorkspaceImport";
+import { getScriptRuntimeDiagnosticLocation } from "./scriptRuntimeDiagnosticLocation";
+import { getCustomObjectUsageCounts, duplicateCustomObjectDefinition, deleteCustomObjectDefinition } from "./scriptObjectLifecycle";
+import { createCustomObjectFromStarter } from "./scriptObjectStarters";
+import { CustomObjectToPlaceAtom } from "./scriptPlacementSelectionState";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { ScriptCustomObjectsPanel } from "./ScriptCustomObjectsPanel";
 import { ScriptGlobalHooksPanel } from "./ScriptGlobalHooksPanel";
 import { ScriptGettingStartedPanel } from "./ScriptGettingStartedPanel";
@@ -29,6 +43,8 @@ import { ScriptNativeBindingsPanel } from "./ScriptNativeBindingsPanel";
 import { ScriptObjectTypeBehaviorsPanel } from "./ScriptObjectTypeBehaviorsPanel";
 import { ScriptOverviewPanel } from "./ScriptOverviewPanel";
 import { ScriptParametersPanel } from "./ScriptParametersPanel";
+import type { ScriptParameterEditingDetails } from "./ScriptParameterConstraintsFields";
+import { buildScriptParameterDefinition, removeScriptParameter } from "./scriptParameters";
 import {
   buildExtendedLevelArchive,
   buildOriginalCompatibleArchive,
@@ -95,13 +111,8 @@ import {
   type ScriptTargetKind,
   type ScriptWorkspaceState,
 } from "./scriptWorkspaceState";
-import { validateUploadedScriptAssetAsync } from "./scriptAssetValidation";
+import { commitPreparedObjectAsset, prepareObjectAssetUpload } from "./scriptObjectAssetUpload";
 import { scriptLspClient } from "./scriptLspClient";
-import { convertGltfAsset } from "./scriptAssetConversion";
-import {
-  applyUploadedAssetPath,
-  buildScriptAssetPaths,
-} from "./scriptAssetPaths";
 import { getNativeReplacementCompatibility } from "./scriptNativeAudit";
 import {
   buildScriptDefinitionBundle,
@@ -178,6 +189,11 @@ export function ScriptsMenu({
   const selectedSpline = useAtomValue(SelectedSpline);
   const selectedSplineItem = useAtomValue(SelectedSplineItem);
   const [workspaceStore, setWorkspaceStore] = useAtom(scriptWorkspaceStoreAtom);
+  const atomStore = useStore();
+  const editorNavigation = useAtomValue(scriptEditorNavigationAtom);
+  const recoveryStatus = useAtomValue(scriptRecoveryStatusAtom);
+  const setObjectToPlace = useSetAtom(CustomObjectToPlaceAtom);
+  const setActiveView = useSetAtom(ActiveView);
 
   const context = useMemo(
     () => createScriptWorkspaceContext(globals, levelNumber ?? null),
@@ -205,7 +221,13 @@ export function ScriptsMenu({
     selectedSplineItemData,
   );
 
-  const [activeTab, setActiveTab] = useState<ScriptsTab>("overview");
+  const [activeTab, setActiveTabState] = useState<ScriptsTab>("overview");
+  const [seenNavigation, setSeenNavigation] = useState(0);
+  const navigationPending = editorNavigation?.gameId === context.gameId && editorNavigation.sequence !== seenNavigation;
+  const setActiveTab = (tab: ScriptsTab) => {
+    setSeenNavigation(editorNavigation?.sequence ?? 0);
+    setActiveTabState(tab);
+  };
   const [defineBehaviorOpen, setDefineBehaviorOpen] = useState(false);
   const [globalHookForNewBehavior, setGlobalHookForNewBehavior] =
     useState<ScriptHookId | null>(null);
@@ -214,6 +236,11 @@ export function ScriptsMenu({
   const [creatingCustomObjectBehavior, setCreatingCustomObjectBehavior] =
     useState(false);
   const [codeEditorOpen, setCodeEditorOpen] = useState(false);
+  const [codeReferenceOpen, setCodeReferenceOpen] = useState(false);
+  const [assignmentSection, setAssignmentSection] = useState("objects");
+  const [editorReveal, setEditorReveal] = useState<ScriptEditorReveal | undefined>();
+  const [pendingImport, setPendingImport] = useState<{ label: string; workspace: ScriptWorkspaceState; allowReplace: boolean } | null>(null);
+  const [importBackup, setImportBackup] = useState<ScriptWorkspaceState | null>(null);
   const [customObjectBehaviorId, setCustomObjectBehaviorId] = useState("");
   const [newFileName, setNewFileName] = useState("helpers");
   const [newFileDirectory, setNewFileDirectory] =
@@ -225,6 +252,7 @@ export function ScriptsMenu({
     "number",
   );
   const [paramDefaultValue, setParamDefaultValue] = useState("1");
+  const [paramDetails, setParamDetails] = useState<ScriptParameterEditingDetails>({ minimum: "", maximum: "", unit: "", choices: [] });
   const [paramDescription, setParamDescription] = useState(
     "Script parameter exposed in the Scripts workspace.",
   );
@@ -367,6 +395,7 @@ export function ScriptsMenu({
   const diagnostics = workspace.diagnostics;
   const sampleDefinitions = useMemo(() => getScriptSamples(context), [context]);
   useEffect(() => {
+    if (recoveryStatus.phase === "loading") return;
     if (workspaceStore[workspaceId]) {
       return;
     }
@@ -376,7 +405,7 @@ export function ScriptsMenu({
         ensureScriptWorkspace(currentStore, context),
       ),
     );
-  }, [context, setWorkspaceStore, workspaceId, workspaceStore]);
+  }, [context, setWorkspaceStore, workspaceId, workspaceStore, recoveryStatus.phase]);
 
   useEffect(() => scriptLspClient.subscribeDiagnostics((event) => {
     setWorkspaceStore((currentStore) => {
@@ -520,33 +549,24 @@ export function ScriptsMenu({
   };
 
   const handleImportDefinitions = async (file: File) => {
-    const buffer = await file.arrayBuffer();
+    const buffer = await ResultAsync.fromPromise(file.arrayBuffer(), () => `Could not read ${file.name}`);
+    if (buffer.isErr()) { toast.error(buffer.error); return; }
     const bundleResult = importScriptDefinitionBundle(
-      new Uint8Array(buffer),
+      new Uint8Array(buffer.value),
       context,
     );
     if (bundleResult.isErr()) {
       toast.error(bundleResult.error);
       return;
     }
-    updateWorkspace((state) => {
-      const importedIds = new Set(bundleResult.value.definitions.map((definition) => definition.id));
-      let nextState: ScriptWorkspaceState = {
-        ...state,
-        customObjects: [
-          ...state.customObjects.filter((definition) => !importedIds.has(definition.id)),
-          ...bundleResult.value.definitions,
-        ],
-      };
+    let incoming: ScriptWorkspaceState = { ...workspace, customObjects: bundleResult.value.definitions, sourceFiles: {}, assets: {}, behaviorCatalog: [], params: [], levels: {}, compiledFiles: {}, moduleOrder: [] };
       for (const [path, content] of Object.entries(bundleResult.value.sources)) {
-        nextState = upsertScriptSourceFile(nextState, path, content, "user");
+        incoming = upsertScriptSourceFile(incoming, path, content, "user");
       }
       for (const [path, bytes] of Object.entries(bundleResult.value.assets)) {
-        nextState = addScriptAsset(nextState, path, bytes, path.split("/").at(-1) ?? path);
+        incoming = addScriptAsset(incoming, path, bytes, path.split("/").at(-1) ?? path);
       }
-      return nextState;
-    });
-    toast.success(`Imported ${file.name} for ${context.gameLabel}`);
+    setPendingImport({ label: file.name, workspace: incoming, allowReplace: false });
   };
 
   const handleDownloadOriginalCompatible = async () => {
@@ -633,9 +653,11 @@ export function ScriptsMenu({
       return;
     }
 
-    const buffer = await file.arrayBuffer();
+    event.target.value = "";
+    const buffer = await ResultAsync.fromPromise(file.arrayBuffer(), () => `Could not read ${file.name}`);
+    if (buffer.isErr()) { toast.error(buffer.error); return; }
     const importResult = await importScriptPackageZipAsync(
-      new Uint8Array(buffer),
+      new Uint8Array(buffer.value),
       context,
     );
     if (importResult.isErr()) {
@@ -654,9 +676,7 @@ export function ScriptsMenu({
       return;
     }
 
-    persistWorkspace(importResult.value);
-    toast.success(`Imported ${file.name}`);
-    event.target.value = "";
+    setPendingImport({ label: file.name, workspace: importResult.value, allowReplace: true });
   };
 
   const handleCreateSourceFile = () => {
@@ -681,15 +701,15 @@ export function ScriptsMenu({
       return;
     }
 
-    updateWorkspace((state) =>
-      addScriptParam(state, {
+    const result = buildScriptParameterDefinition({
         id: paramId.trim(),
         label: paramLabel.trim() || paramId.trim(),
         type: paramType,
         description: paramDescription.trim(),
         defaultValue: paramDefaultValue,
-      }),
-    );
+    }, paramDetails);
+    if (result.isErr()) { toast.error(result.error); return; }
+    updateWorkspace((state) => addScriptParam(state, result.value));
     toast.success("Saved parameter definition");
   };
 
@@ -727,117 +747,48 @@ export function ScriptsMenu({
       toast.error(message);
     };
 
-    if (file.size > 16 * 1024 * 1024) {
-      reportAssetFailure(
-        "Custom item assets are limited to 16 MiB each",
-        "asset.size",
-      );
-      return;
-    }
-    const bytesResult = await ResultAsync.fromPromise(
-      file.arrayBuffer(),
-      () => `Could not read ${file.name}`,
-    );
-    if (bytesResult.isErr()) {
-      reportAssetFailure(bytesResult.error, "asset.read");
-      return;
-    }
-
-    const paths = buildScriptAssetPaths(definition, file.name, role);
-    if (!paths) {
-      reportAssetFailure(
-        role === "model"
-          ? "Select a .bg3d, .3dmf, .shapes, .gltf, or .glb model"
-          : "Select a .rsrc skeleton resource",
-        "asset.path",
-      );
-      return;
-    }
-    const sourceBytes = new Uint8Array(bytesResult.value);
-    const conversionResult = paths.sourcePath
-      ? await convertGltfAsset(file.name, sourceBytes)
-      : null;
-    if (conversionResult?.isErr()) {
-      reportAssetFailure(
-        `Could not convert ${file.name}: ${conversionResult.error}`,
-        "asset.gltf-conversion",
-      );
-      return;
-    }
-    const runtimeBytes = conversionResult?.isOk()
-      ? conversionResult.value.nativeBytes
-      : sourceBytes;
-    const currentAssetBytes = Object.values(workspace.assets).reduce(
-      (total, asset) => total + asset.bytes.byteLength,
-      0,
-    );
-    const addedAssetBytes = runtimeBytes.byteLength +
-      (paths.sourcePath ? sourceBytes.byteLength : 0);
-    if (currentAssetBytes + addedAssetBytes > 64 * 1024 * 1024) {
-      reportAssetFailure(
-        "This script package has reached its 64 MiB asset budget",
-        "asset.budget",
-      );
-      return;
-    }
-    const assetValidation = await validateUploadedScriptAssetAsync(paths.assetPath, runtimeBytes);
-    if (assetValidation.isErr()) {
-      reportAssetFailure(
-        `Could not add ${file.name}: ${assetValidation.error}`,
-        "asset.validation",
-      );
-      return;
-    }
-    const nextDefinition = applyUploadedAssetPath(
-      definition,
-      paths.manifestPath,
-      role,
-    );
-    const conversionWarnings: readonly ScriptDiagnostic[] = conversionResult?.isOk()
-      ? conversionResult.value.warnings.map((message, index): ScriptDiagnostic => ({
-          category: "source-validation",
-          severity: "warning",
-          message: `${file.name}: ${message}`,
-          code: `asset.gltf.compatibility.${String(index)}`,
-          filePath: paths.sourcePath ?? paths.assetPath,
-          line: 0,
-          column: 0,
-        }))
-      : [];
-    updateWorkspace((state) => {
-      const withRuntimeAsset = addScriptAsset(
-        state,
-        paths.assetPath,
-        runtimeBytes,
-        file.name,
-      );
-      const withSourceAsset = paths.sourcePath
-        ? addScriptAsset(withRuntimeAsset, paths.sourcePath, sourceBytes, file.name)
-        : withRuntimeAsset;
-      const nextState = updateCustomObjectDefinition(withSourceAsset, nextDefinition);
-      return conversionWarnings.length === 0
-        ? nextState
-        : {
-            ...nextState,
-            diagnostics: [...nextState.diagnostics, ...conversionWarnings].slice(-100),
-            statusLog: [
-              ...nextState.statusLog,
-              `Imported ${file.name} with ${String(conversionWarnings.length)} glTF compatibility warning(s)`,
-            ].slice(-20),
-          };
-    });
+    const prepared = await prepareObjectAssetUpload(definition, file, role);
+    if (prepared.isErr()) { reportAssetFailure(prepared.error, "asset.upload"); return; }
+    const current = ensureScriptWorkspace(atomStore.get(scriptWorkspaceStoreAtom), context);
+    const committed = commitPreparedObjectAsset(current, prepared.value);
+    if (committed.isErr()) { reportAssetFailure(committed.error, "asset.commit"); return; }
+    persistWorkspace(committed.value);
     toast.success(`Added ${file.name} to the scripted item package`);
   };
+
+  const openSource = (filePath: string, line = 1, column = 1) => {
+    updateWorkspace((state) => setScriptActiveFile(state, filePath));
+    setActiveTab("code");
+    setEditorReveal((previous) => ({ filePath, line, column, sequence: (previous?.sequence ?? 0) + 1 }));
+  };
+  const editor: ScriptSourceEditorProps | undefined = activeCodeFile ? {
+    workspace, filePath: activeCodeFile.path, content: activeCodeFile.content,
+    readOnly: !activeSourceFile || activeSourceFile.readOnly,
+    onChange: (path, content) => updateWorkspace((state) => updateScriptSourceContent(state, path, content)),
+    onSave: (path, content) => updateWorkspace((state) => saveScriptSourceFile(updateScriptSourceContent(state, path, content), path)),
+    onSelectFile: (path) => openSource(path),
+    onValidate: () => { handleCompile(); },
+    onOpenReference: () => setCodeReferenceOpen(true),
+    onApplyEdits: (edits) => {
+      const current = ensureScriptWorkspace(atomStore.get(scriptWorkspaceStoreAtom), context);
+      const result = applyScriptWorkspaceFileEdits(current, edits);
+      if (result.isErr()) return err(result.error);
+      persistWorkspace(result.value);
+      return ok(undefined);
+    },
+    reveal: navigationPending && editorNavigation ? editorNavigation : editorReveal,
+    onExpand: () => setCodeEditorOpen(true),
+  } : undefined;
 
   return (
     <>
       <div className="h-full overflow-y-auto text-sm">
             <Tabs
               className="editor-script-tabs"
-              value={activeTab}
+              value={navigationPending ? "code" : activeTab}
               onValueChange={(value) => setActiveTab(parseScriptsTab(value))}
             >
-        <TabsList className="editor-subnavbar grid grid-cols-4 gap-1">
+        <TabsList aria-label="Scripting workspace" className="editor-subnavbar script-workspace-tabs grid grid-cols-4 gap-0">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="code">Code</TabsTrigger>
@@ -846,6 +797,7 @@ export function ScriptsMenu({
 
         <TabsContent value="overview" className="grid gap-3">
           <ScriptGettingStartedPanel
+            onCreateItem={() => setActiveTab("assignments")}
             hasScripts={summary.hasScripts}
             onCreateHook={() => {
               const hookId = context.supportedHooks.includes("onLevelStart")
@@ -857,7 +809,6 @@ export function ScriptsMenu({
             }}
             onOpenCode={() => {
               setActiveTab("code");
-              if (activeCodeFile !== null) setCodeEditorOpen(true);
             }}
             onCompile={() => {
               handleCompile();
@@ -875,8 +826,7 @@ export function ScriptsMenu({
             customObjectsCount={workspace.customObjects.length}
             samples={sampleDefinitions}
             onLoadSample={(sampleId, sampleLabel) => {
-              persistWorkspace(loadScriptSample(context, sampleId));
-              toast.success(`Loaded ${sampleLabel}`);
+              setPendingImport({ label: sampleLabel, workspace: loadScriptSample(context, sampleId), allowReplace: true });
             }}
           />
           <ScriptHookApiExplorer
@@ -891,10 +841,19 @@ export function ScriptsMenu({
 
         <TabsContent
           value="assignments"
-          className="grid gap-4 xl:grid-cols-[1.2fr_1fr]"
+          className="script-assignments-content"
         >
-          <div className="grid gap-4">
+          <Tabs value={assignmentSection} onValueChange={setAssignmentSection} className="script-assignment-workspace">
+            <TabsList aria-label="Assignment categories" className="script-assignment-navigation">
+              <TabsTrigger value="objects">Custom items</TabsTrigger>
+              <TabsTrigger value="events">Level events</TabsTrigger>
+              <TabsTrigger value="native">Native bindings</TabsTrigger>
+              <TabsTrigger value="parameters">Parameters</TabsTrigger>
+            </TabsList>
+          <div className="min-w-0">
+          <TabsContent value="events" className="m-0">
             <ScriptGlobalHooksPanel
+              onEditSource={openSource}
               supportedHooks={context.supportedHooks}
               globalHooks={levelState.globalHooks}
               getBehaviorOptionsForHook={(hookId) =>
@@ -917,9 +876,11 @@ export function ScriptsMenu({
                 );
               }}
             />
-
+          </TabsContent>
+          <TabsContent value="native" className="m-0 grid gap-6">
             <ScriptObjectTypeBehaviorsPanel
               behaviors={objectTypeBehaviors}
+              onEditSource={openSource}
               onCreate={() => {
                 setCreatingObjectTypeBehavior(true);
                 setDefineBehaviorOpen(true);
@@ -927,6 +888,7 @@ export function ScriptsMenu({
             />
 
             <ScriptNativeBindingsPanel
+              onEditSource={openSource}
               selectionTargetKind={selectionTargetKind}
               selectionLabel={selectionLabel}
               terrainSelectionSignature={
@@ -989,9 +951,8 @@ export function ScriptsMenu({
                 updateWorkspace((state) => removeBindingById(state, bindingId));
               }}
             />
-          </div>
-
-          <div className="grid gap-4">
+          </TabsContent>
+          <TabsContent value="objects" className="m-0">
             <ScriptCustomObjectsPanel
               gameId={context.gameId}
               customObjectBehaviorId={effectiveCustomObjectBehaviorId}
@@ -1002,6 +963,26 @@ export function ScriptsMenu({
               generatedCustomObjectId={generatedCustomObjectId}
               customObjectOptions={customObjectOptions}
               customObjectPlacements={levelState.customPlacements}
+              assetFiles={workspace.assets}
+              parameters={workspace.params}
+              objectUsageCounts={getCustomObjectUsageCounts(workspace)}
+              onDuplicateObject={(id) => {
+                const result = duplicateCustomObjectDefinition(workspace, id);
+                if (result.isErr()) { toast.error(result.error); return; }
+                persistWorkspace(result.value);
+              }}
+              onDeleteObject={(id) => {
+                const result = deleteCustomObjectDefinition(workspace, id);
+                if (result.isErr()) { toast.error(result.error); return; }
+                persistWorkspace(result.value);
+              }}
+              onEditObjectScript={(definition) => openSource(definition.sourceFilePath)}
+              onPlaceObject={(id) => { setObjectToPlace(id); setActiveView(View.items); }}
+              onCreateFromTemplate={(template, label) => {
+                const result = createCustomObjectFromStarter(workspace, template, label);
+                if (result.isErr()) { toast.error(result.error); return; }
+                persistWorkspace(result.value);
+              }}
               onExportDefinitions={handleExportDefinitions}
               onImportDefinitions={(file) => {
                 void handleImportDefinitions(file);
@@ -1147,14 +1128,26 @@ export function ScriptsMenu({
                 );
               }}
             />
-
+          </TabsContent>
+          <TabsContent value="parameters" className="m-0">
             <ScriptParametersPanel
+              details={paramDetails}
+              onDetailsChange={setParamDetails}
+              onEditParam={(parameter) => {
+                setParamId(parameter.id); setParamLabel(parameter.label); setParamType(parameter.type); setParamDefaultValue(parameter.defaultValue); setParamDescription(parameter.description);
+                setParamDetails({ minimum: parameter.minimum === undefined ? "" : String(parameter.minimum), maximum: parameter.maximum === undefined ? "" : String(parameter.maximum), unit: parameter.unit ?? "", choices: parameter.choices ?? [] });
+              }}
+              onDeleteParam={(id) => {
+                const result = removeScriptParameter(workspace, id);
+                if (result.isErr()) { toast.error(result.error); return; }
+                persistWorkspace(result.value);
+              }}
               paramId={paramId}
               onParamIdChange={setParamId}
               paramLabel={paramLabel}
               onParamLabelChange={setParamLabel}
               paramType={paramType}
-              onParamTypeChange={setParamType}
+              onParamTypeChange={(type) => { setParamType(type); setParamDefaultValue(type === "boolean" ? "false" : type === "number" ? "1" : ""); }}
               paramDefaultValue={paramDefaultValue}
               onParamDefaultValueChange={setParamDefaultValue}
               paramDescription={paramDescription}
@@ -1162,12 +1155,14 @@ export function ScriptsMenu({
               paramOptions={paramOptions}
               onSaveParam={handleAddParam}
             />
+          </TabsContent>
           </div>
+          </Tabs>
         </TabsContent>
 
         <TabsContent
           value="code"
-          className="grid gap-4 xl:grid-cols-[360px_1fr]"
+          className="script-code-layout grid items-start gap-0 lg:grid-cols-[15rem_minmax(0,1fr)]"
         >
           <ScriptProjectFilesPanel
             newFileName={newFileName}
@@ -1181,13 +1176,19 @@ export function ScriptsMenu({
             activeFilePath={workspace.activeFilePath}
             sourceFiles={workspace.sourceFiles}
             onOpenFile={(path) => {
-              updateWorkspace((state) => setScriptActiveFile(state, path));
-              setCodeEditorOpen(true);
+              openSource(path);
             }}
             isSourceFileDirty={(path) => isSourceFileDirty(workspace, path)}
           />
 
+          <ScriptEditorReferenceLayout context={context} open={codeReferenceOpen} onClose={() => setCodeReferenceOpen(false)}>
+          {activeCodeFile && <ScriptFileUsage workspace={workspace} filePath={activeCodeFile.path} onOpenAssignments={() => setActiveTab("assignments")} />}
           <ScriptCodeWorkspacePanel
+            editor={editor ? { ...editor, showFileNavigation: false } : undefined}
+            onNavigateDiagnostic={(diagnostic) => {
+              if (workspace.sourceFiles[diagnostic.filePath] || workspace.compiledFiles[diagnostic.filePath]) openSource(diagnostic.filePath, diagnostic.line, diagnostic.column);
+              else { setActiveTab("assignments"); toast.info(diagnostic.message); }
+            }}
             activeCodePath={activeCodeFile?.path ?? null}
             activeCodeDescription={
               activeSourceFile
@@ -1210,10 +1211,12 @@ export function ScriptsMenu({
             buildErrorCount={summary.buildErrorCount}
             diagnostics={diagnostics}
           />
+          </ScriptEditorReferenceLayout>
         </TabsContent>
 
         <TabsContent value="preview" className="grid gap-4">
           <ScriptPreviewExportPanel
+            workspace={workspace}
             isPreparingPreview={isPreparingPreview}
             onPreview={(withScripts) => {
               void handlePreview(withScripts);
@@ -1246,6 +1249,11 @@ export function ScriptsMenu({
           />
         </TabsContent>
             </Tabs>
+        <footer role="status" className="script-workspace-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-slate-800 px-5 py-2 text-xs text-slate-500">
+          <span>{context.gameLabel} · Level {context.levelKey}</span>
+          <span>{recoveryStatus.message}</span>
+          {importBackup && <button className="text-slate-300 underline underline-offset-4" onClick={() => { persistWorkspace(importBackup); setImportBackup(null); toast.success("Restored workspace before import"); }}>Undo last import</button>}
+        </footer>
       </div>
 
       <DefineBehaviorModal
@@ -1298,6 +1306,7 @@ export function ScriptsMenu({
 
       {activeCodeFile && (
         <ScriptCodeModal
+          editor={editor}
           open={codeEditorOpen}
           onOpenChange={setCodeEditorOpen}
           workspace={workspace}
@@ -1338,6 +1347,23 @@ export function ScriptsMenu({
         />
       )}
 
+      {pendingImport && <ScriptWorkspaceImportDialog
+        current={workspace}
+        incoming={pendingImport.workspace}
+        label={pendingImport.label}
+        allowReplace={pendingImport.allowReplace}
+        onCancel={() => setPendingImport(null)}
+        onApply={(mode, overwrite) => {
+          const current = ensureScriptWorkspace(atomStore.get(scriptWorkspaceStoreAtom), context);
+          const result = mode === "replace" ? ok(pendingImport.workspace) : mergeScriptWorkspace(current, pendingImport.workspace, overwrite);
+          if (result.isErr()) { toast.error(result.error); return; }
+          setImportBackup(current);
+          persistWorkspace(result.value);
+          setPendingImport(null);
+          toast.success("Imported project changes; validate before preview or export");
+        }}
+      />}
+
       <TestGameDialog
         open={previewOpen}
         onOpenChange={setPreviewOpen}
@@ -1357,9 +1383,7 @@ export function ScriptsMenu({
               severity: "error",
               message: failure.message,
               code: failure.code,
-              filePath: "Data/Scripts/dist/main.lua",
-              line: 0,
-              column: 0,
+              ...getScriptRuntimeDiagnosticLocation(state, failure.message),
             }),
           );
         }}

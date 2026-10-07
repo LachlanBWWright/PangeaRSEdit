@@ -49,6 +49,18 @@ function getMetadataReaderCall(game: Game, key: string): string | undefined {
     ],
   };
   if (floatKeys[game]?.includes(key)) return `GetLevelMetadataFloat("${key}"`;
+  if (game === Game.CRO_MAG && ["track.startLineBeamOffset", "track.startLineBeamRadius"].includes(key)) {
+    return `GetLevelMetadataFloat("${key}"`;
+  }
+  if (game === Game.CRO_MAG && /^track\.waterHeight[0-5]$/.test(key)) {
+    return 'snprintf(key, sizeof(key), "track.waterHeight%u"';
+  }
+  if (game === Game.CRO_MAG && ["track.boat", "track.rockOverhang", "track.waterHeights", "track.startLineDimensions"].includes(key)) {
+    return `MetadataTrack("${key}"`;
+  }
+  if (game === Game.CRO_MAG && ["track.tree", "track.pillar", "track.statue", "track.house"].includes(key)) {
+    return `"${key}"`;
+  }
   const boolKeys: Readonly<Record<number, readonly string[]>> = {
     [Game.BUGDOM_2]: ["level.renderingFog", "level.renderingLensFlare"],
     [Game.NANOSAUR_2]: ["level.renderingLensFlare"],
@@ -200,7 +212,8 @@ describe("level metadata details", () => {
       );
 
       editableKeys.forEach((key) => {
-        expect(nativeSource, `${game} metadata key ${key}`).toContain(key);
+        const usesWaterSlotLoop = game === Game.CRO_MAG && /^track\.waterHeight[0-5]$/.test(key);
+        expect(nativeSource.includes(usesWaterSlotLoop ? "track.waterHeight%u" : key), `${game} metadata key ${key}`).toBe(true);
       });
     });
   });
@@ -338,7 +351,7 @@ describe("level metadata details", () => {
     if (!fidoRule || fidoRule.control.kind !== "select") return;
 
     expect(fidoRule.defaultValue).toBe("source-default");
-    expect(fidoRule.control.options).toEqual(["source-default", "fido"]);
+    expect(fidoRule.control.options).toEqual(["source-default", "ordinary", "fido"]);
     expect(getMetadataRuleValueLabel(fidoRule, "source-default")).toBe("Use original enemy behavior");
     expect(getMetadataRuleValueLabel(fidoRule, "fido")).toBe("Enable Fido enemy rules");
 
@@ -368,13 +381,13 @@ describe("level metadata details", () => {
 
     const ruleFor = (key: string) => rules.find((rule) => rule.key === key);
     expect(ruleFor("level.objects")?.control).toEqual(expect.objectContaining({
-      options: ["source-default", "balsa"],
+      options: ["source-default", "ordinary", "balsa"],
     }));
     expect(ruleFor("level.powerups")?.control).toEqual(expect.objectContaining({
-      options: ["source-default", "balsa"],
+      options: ["source-default", "ordinary", "balsa"],
     }));
     expect(ruleFor("level.mapPowerup")?.control).toEqual(expect.objectContaining({
-      options: ["source-default", "closet"],
+      options: ["source-default", "ordinary", "closet"],
     }));
   });
 
@@ -494,6 +507,7 @@ describe("level metadata details", () => {
       "level.brainBoss",
       "level.saucerMode",
       "level.rocketDoorStaysOpen",
+      "level.rocketStreaming",
       "level.environmentLensFlare",
       "level.rocketBossGate",
       "level.rocketTractorBeamGate",
@@ -515,7 +529,9 @@ describe("level metadata details", () => {
     ];
     checkboxKeys.forEach((key) => {
       expect(rulesByKey.get(key)?.control.kind, key).toBe("checkbox");
-      expect(nativeSource, key).toContain(`GetLevelMetadataBool("${key}"`);
+      const reader = ["level.cloudBalloonPowerups", "level.growthPowerups", "level.teleporters", "level.spacePods", "level.bumperCars", "level.zipLines"].includes(key)
+        ? "OttoItemFeatureEnabled" : "GetLevelMetadataBool";
+      expect(nativeSource.includes(`${reader}("${key}"`), key).toBe(true);
     });
 
     const profileKeys = [
@@ -657,6 +673,7 @@ describe("level metadata details", () => {
       "level.player",
       "level.saucerMode",
       "level.rocketDoorStaysOpen",
+      "level.rocketStreaming",
       "level.startingFuel",
       "level.rocketScale",
       "level.jungleWeapons",
@@ -999,6 +1016,8 @@ describe("level metadata details", () => {
       "Player/Player.c",
       "Player/Player_Car.c",
       "Items/Items.c",
+      "Items/ItemProfiles.c",
+      "Items/ItemThemes.c",
       "Screens/RaceTimes.c",
       "Terrain/Liquids.c",
       "Items/Triggers.c",
@@ -1013,6 +1032,11 @@ describe("level metadata details", () => {
     ).runtimeRules.filter((rule) => rule.editable).map((rule) => rule.key);
 
     expect(editableKeys).toEqual([
+      "track.tree", "track.pillar", "track.statue", "track.house",
+      "track.boat", "track.rockOverhang", "track.waterHeights",
+      "track.waterHeight0", "track.waterHeight1", "track.waterHeight2",
+      "track.waterHeight3", "track.waterHeight4", "track.waterHeight5",
+      "track.startLineDimensions", "track.startLineBeamOffset", "track.startLineBeamRadius",
       "track.mode",
       "track.waterAnimation",
       "track.surfaceEffects",
@@ -1038,7 +1062,10 @@ describe("level metadata details", () => {
       "track.startLineMovement",
       "track.objectTint",
     ]);
-    editableKeys.forEach((key) => expect(portSource).toContain(key));
+    editableKeys.forEach((key) => {
+      const readerKey = /^track\.waterHeight[0-5]$/.test(key) ? "track.waterHeight%u" : key;
+      expect(portSource.includes(readerKey), key).toBe(true);
+    });
   });
 
   it("gives Cro-Mag settings user-facing option labels and original defaults", () => {
@@ -1328,8 +1355,7 @@ describe("level metadata details", () => {
     expect(loadAreaArtSource.indexOf("LoadLevelMetadata(gCustomMapPath")).toBeLessThan(
       loadAreaArtSource.indexOf("LoadPlayfield(path);"),
     );
-    expect(metadataSource).toContain("static Boolean IsBalancedJSON");
-    expect(metadataSource).toContain("!IsBalancedJSON(json)");
+    expect(metadataSource).not.toContain("IsBalancedJSON");
     expect(metadataSource).toContain('#include "LevelMetadataJSON.h"');
     expect(metadataSource).toContain("PangeaLevelMetadataJSONIsValid");
     expect(cmakeSource).toContain('option(PANGEA_ENABLE_LEVEL_METADATA "Enable per-level metadata overrides" ON)');

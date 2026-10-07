@@ -393,16 +393,16 @@ describe("scriptWorkspaceState", () => {
     expect(runtimeDeclaration.content).toContain("---@class LevelContext");
     expect(runtimeDeclaration.content).toContain("---@class CustomObjectBehavior");
     expect(runtimeDeclaration.content).toContain(
-      '---@field onAnimationEvent fun(self: ObjectBehaviorSelf, ctx: AnimationMarkerObjectFrameContext)|nil',
+      '---@field onAnimationEvent? fun(self: ObjectBehaviorSelf, ctx: AnimationMarkerObjectFrameContext)',
     );
     expect(runtimeDeclaration.content).toContain(
-      '---@field onAnimationComplete fun(self: ObjectBehaviorSelf, ctx: AnimationCompleteObjectFrameContext)|nil',
+      '---@field onAnimationComplete? fun(self: ObjectBehaviorSelf, ctx: AnimationCompleteObjectFrameContext)',
     );
     expect(runtimeDeclaration.content).toContain("---@alias ObjectiveOutcome 0|1|2");
     expect(runtimeDeclaration.content).toContain("---@class ObjectiveEventContext : PlayerEventContext");
     expect(runtimeDeclaration.content).toContain('---@field eventValue nil');
     expect(runtimeDeclaration.content).toContain(
-      "---@field onCheckpointReset fun(self: ObjectBehaviorSelf, ctx: ObjectFrameContext)|nil",
+      "---@field onCheckpointReset? fun(self: ObjectBehaviorSelf, ctx: ObjectFrameContext)",
     );
     expect(runtimeDeclaration.content).toContain("---@field levelNum number");
     expect(runtimeDeclaration.content).toContain("---@field playerMode string|nil");
@@ -667,13 +667,13 @@ describe("scriptWorkspaceState", () => {
     if (importedResult.isErr()) return;
 
     expect(importedResult.value.levels["1"]?.terrainBindings).toHaveLength(1);
-    expect(importedResult.value.levels["2"]?.terrainBindings).toHaveLength(2);
+    expect(importedResult.value.levels["2"]?.terrainBindings).toHaveLength(1);
     expect(importedResult.value.levels["1"]?.terrainBindings[0]?.label).toBe(
       "Level one item",
     );
     expect(
       importedResult.value.levels["2"]?.terrainBindings.map((binding) => binding.label),
-    ).toEqual(expect.arrayContaining(["Level one item", "Level two item"]));
+    ).toEqual(["Level two item"]);
   });
 
   it("rejects a package that drops a declared level sidecar", () => {
@@ -886,8 +886,7 @@ describe("scriptWorkspaceState", () => {
     );
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
-    const files = unzipSync(packageResult.value);
-    delete files[SCRIPT_PACKAGE_MANIFEST_PATH];
+    const files = Object.fromEntries(Object.entries(unzipSync(packageResult.value)).filter(([path]) => path !== SCRIPT_PACKAGE_MANIFEST_PATH));
     files["Data/Scripts/src/legacy.ts"] = strToU8(
       "export function onLevelStart(): void {}",
     );
@@ -956,7 +955,7 @@ describe("scriptWorkspaceState", () => {
       state.sourceFiles["Data/Scripts/src/objects/sample-hoverbeacon.lua"]
         ?.content,
     ).toContain("pangea.object.setRotation");
-    expect(bundle).toContain("handler({ handle = ctx.object }, ctx)");
+    expect(bundle).toContain("handler(__makeObjectSelf(ctx.object, ctx.objectType), ctx)");
     expect(bundle).toContain('["animationEvent"] = "onAnimationEvent"');
     expect(bundle).toContain('["animationComplete"] = "onAnimationComplete"');
     expect(bundle).toContain('["triggerEnter"] = "onTriggerEnter"');

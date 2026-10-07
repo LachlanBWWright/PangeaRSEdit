@@ -1,0 +1,110 @@
+import { Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as Browser from './LobbyBrowser.stories';
+import * as Setup from './LobbySetup.stories';
+import * as Session from './MultiplayerSession.stories';
+
+<Meta title="Multiplayer/Overview" />
+
+# Multiplayer UI
+
+Multiplayer supports **Cro-Mag Rally** (2–6 players) and **Nanosaur 2** (2 players).
+These stories mount the production browser, dialogs, session view, sidebar, and game canvas.
+Typed fixtures supply the lobby data and telemetry normally provided by the API and runtime.
+
+## Start here
+
+1. **Lobby Browser**: discover public lobbies, filter by game or mode, refresh, or join directly.
+2. **Lobby Setup**: choose game, mode, map, capacity, and public or private visibility.
+3. **Join by Code**: enter your name and a host's code; inspect preparation and failure states.
+4. **Session**: invite friends, ready up, change host settings, chat, start, leave, and rematch.
+5. **Session Sidebar**: inspect the narrow column, full rosters, role permissions, and debug panels.
+
+Every group has a Documentation page with individual story descriptions.
+The interactive examples record actions in Storybook; the full Session fixture also updates local readiness, map selection, chat, and impairment settings.
+
+## Discovery and invitations
+
+Public lobbies show game, named map, mode, capacity, and join code.
+Full or started entries cannot be joined. Private lobbies are omitted from the public list.
+The browser refreshes automatically in the application; Storybook's refresh action is recorded without a network request.
+
+<Canvas of={Browser.Default} story={{ inline: false, height: '600px' }} />
+
+Use **Empty**, **No Filter Matches**, **List Unavailable**, and **Quick Join Failure** to review edge cases.
+The current UI shares the same empty message for empty lists and unmatched filters; a list failure can appear alongside that empty state.
+**Preparing Game** and **Joining Lobby** document why matchmaking actions are disabled during a join.
+
+The session's **Copy Join Code** story exercises the browser clipboard boundary.
+Clipboard availability and permission depend on the browser and origin; failure leaves a selectable code and manual-copy guidance.
+There is currently no copy-invite-link action.
+
+## Game and mode setup
+
+| Game | Modes | Map choices | Capacity |
+| --- | --- | --- | --- |
+| Cro-Mag Rally | Race | Tracks 1–9 | 2–6 |
+| Cro-Mag Rally | Keep Away, Stampede, Survival, Quest for Fire | Arenas 10–17 | 2–6 |
+| Nanosaur 2 | Race, Battle, Capture the Flag | Mode-specific bundled levels | 2 |
+
+Keep Away and Stampede expose a tag duration of 2, 3, or 4 minutes.
+Changing game or mode selects a compatible default map and capacity.
+All eight supported modes have individual **Lobby Setup** examples.
+**Change Game And Mode** checks the dependent selectors; **Create Failure** checks that a failed submission preserves entered data.
+
+<Canvas of={Setup.CroMagKeepAway} story={{ inline: false, height: '600px' }} />
+
+## Host and guest behavior
+
+The host can edit match setup while the lobby is open and remove guests.
+Guests see the selected map and mode but cannot edit them, remove players, start, or end matches.
+Each player controls their own readiness.
+
+Starting normally requires at least two players and everyone ready.
+**More match actions** exposes **Start Anyway** when players are present but some are not ready.
+During a match, only the host sees **End Match**; everyone can leave.
+After a match ends, the current UI returns to the waiting stage with rematch actions. It does not render a results table.
+
+<Canvas of={Session.ToggleGuestReady} story={{ inline: false, height: '600px' }} />
+
+**Host Alone**, **Everyone Ready**, **Guest Ready**, **Toggle Guest Ready**, **Match In Progress**, **Guest In Progress**, **Rematch Ready**, and **Rematch Waiting** document these permissions and transitions.
+**Send Chat With Enter** checks submission, message display, and draft clearing.
+**Change Host Mode And Duration** exercises the real host selectors.
+
+## Layout and accessibility
+
+**Narrow Layout** constrains browser content to 320 px.
+**Phone Layout** selects Storybook's phone viewport and mounts the production session grid.
+**Short Layout** and **Short Session Layout** stress the persistent action footer.
+**Full Roster** uses six real player records with mixed readiness; **Long Chat** fills the chat scroll area.
+Use the viewport toolbar for phone, tablet, and desktop sizes.
+
+Automated checks cover short desktop sessions, phone layouts, small dialogs, long rosters, progress, and serious or critical accessibility violations across multiplayer stories.
+Stories and fixtures remain outside production components.
+
+## Diagnostics and runtime boundaries
+
+Debug panels are feature-flagged in the application.
+**Debug Sidebar**, **Debug Controls**, **Impaired Network**, and **Desync Reported** document signaling status, packet counters, latency/loss/burst controls, and synchronization telemetry.
+Their telemetry values are fixtures. Impairment changes in the Session fixture update the displayed controls locally.
+
+**Connecting Peers**, **Loading Runtime**, **Waiting For Peer Runtime**, **Connection Lost**, and **Runtime Failure** document the session shell around connection and launch states.
+The runtime stories mount the production canvas but do not initialize or paint a game.
+
+The top-level `MultiplayerPage` owns API polling, SignalR, WebRTC, preflight downloads, and native runtime launch.
+It is not mounted by these stories because those external services and game-runtime boundaries need an integration environment.
+These stories document the production UI composition; they do not prove matchmaking, reconnection, gameplay, packet transport, or deterministic synchronization.
+Use the multiplayer integration and game-launch tests with the required backend and built game assets for those checks.
+
+## Run the documentation and checks
+
+From `frontend/`:
+
+```sh
+pnpm storybook
+pnpm exec vitest run --config vitest.storybook.config.ts src/pages/Multiplayer
+pnpm exec playwright test --config playwright.storybook.config.ts multiplayerLayoutOverflow.spec.ts multiplayerAccessibility.spec.ts
+```
+
+The first command opens the catalog on port 6006.
+The second runs multiplayer story interactions in Chromium.
+The third checks production UI layout and accessibility; its configuration starts Storybook if needed.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Globals } from "@/data/globals/globals";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { View } from "@/editor/viewEnum";
+import { scriptEditorNavigationAtom } from "./scriptEditorNavigation";
 import {
   applyMapItemBehavior,
   applySplineBehavior,
@@ -104,10 +105,12 @@ type ScriptBindingPanelProps =
     };
 
 function ScriptBindingPanel(props: ScriptBindingPanelProps) {
+  const behaviorSelectId = useId();
   const { title, targetKind, selectionLabel } = props;
   const globals = useAtomValue(Globals);
   const levelNumber = useAtomValue(LevelNumber);
   const setActiveView = useSetAtom(ActiveView);
+  const setEditorNavigation = useSetAtom(scriptEditorNavigationAtom);
   const [workspaceStore, setWorkspaceStore] = useAtom(scriptWorkspaceStoreAtom);
 
   const context = useMemo(
@@ -215,27 +218,23 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
       return;
     }
     updateWorkspace((current) => setScriptActiveFile(current, existingBinding.sourceFilePath));
+    setEditorNavigation((previous) => ({ gameId: context.gameId, filePath: existingBinding.sourceFilePath, line: 1, column: 1, sequence: (previous?.sequence ?? 0) + 1 }));
     setActiveView(View.scripts);
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+    <section className="min-w-0 py-2" aria-label={`${title} for ${selectionLabel}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-medium text-white">{title}</p>
           <p className="text-xs text-slate-400">{selectionLabel}</p>
         </div>
-        {existingBinding && (
-          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100">
-            {existingBinding.compatibility === "preview-ready" ? "Preview Ready" : "Extended Only"}
-          </span>
-        )}
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto] md:items-end">
-        <div className="grid gap-2">
-          <Label>Select behavior</Label>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <div className="grid min-w-0 flex-1 gap-2">
+          <Label htmlFor={behaviorSelectId}>Select behavior</Label>
           <Select value={selectedBehaviorId} onValueChange={setBehaviorId}>
-            <SelectTrigger>
+            <SelectTrigger id={behaviorSelectId}>
               <SelectValue placeholder="Select a behavior" />
             </SelectTrigger>
             <SelectContent>
@@ -250,30 +249,26 @@ function ScriptBindingPanel(props: ScriptBindingPanelProps) {
         <Button onClick={handleAttach} disabled={selectedBehaviorId.length === 0}>
           {existingBinding ? "Replace" : "Attach"}
         </Button>
-        <Button variant="outline" onClick={handleEditCode} disabled={!existingBinding}>
-          Edit Code
+        <Button variant="ghost" onClick={handleEditCode} disabled={!existingBinding}>
+          Edit
         </Button>
-      </div>
       {existingBinding && (
-        <div className="mt-2 flex justify-end">
           <Button
             size="sm"
-            variant="outline"
+            variant="ghost"
             onClick={() => {
               updateWorkspace((current) => removeBindingById(current, existingBinding.id));
               toast.success("Removed script behavior");
             }}
           >
-            Remove Binding
+            Remove
           </Button>
-        </div>
       )}
+      </div>
       {existingBinding && (
-        <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-300">
-          Source file: {existingBinding.sourceFilePath}
-        </div>
+        <details className="mt-2 text-xs text-slate-400"><summary className="cursor-pointer">Behavior details</summary><p className="mt-1 break-all font-mono">{existingBinding.sourceFilePath}</p>{existingBinding.compatibility === "extended-only" && <p className="mt-1">Requires extended scripting</p>}</details>
       )}
-    </div>
+    </section>
   );
 }
 

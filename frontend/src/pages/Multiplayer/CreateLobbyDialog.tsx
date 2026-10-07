@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LobbyProgress } from "./LobbyProgress";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ interface CreateLobbyDialogProps {
   readonly open: boolean;
   readonly formState: LobbyFormState;
   readonly busy: boolean;
+  readonly isPreloading: boolean;
   readonly errorText: string | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onFormStateChange: (nextState: LobbyFormState) => void;
@@ -41,6 +43,7 @@ export function CreateLobbyDialog({
   open,
   formState,
   busy,
+  isPreloading,
   errorText,
   onOpenChange,
   onFormStateChange,
@@ -48,7 +51,7 @@ export function CreateLobbyDialog({
 }: CreateLobbyDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Lobby</DialogTitle>
           <DialogDescription>
@@ -56,7 +59,7 @@ export function CreateLobbyDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <fieldset disabled={busy} className="grid min-w-0 gap-4">
           <div className="space-y-2">
             <Label htmlFor="multiplayer-create-display-name">Display Name</Label>
             <Input
@@ -72,7 +75,7 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Game</Label>
+            <Label htmlFor="multiplayer-create-game">Game</Label>
             <Select
               value={formState.gameId}
               onValueChange={(nextGameId) => {
@@ -81,7 +84,7 @@ export function CreateLobbyDialog({
                 );
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-game">
                 <SelectValue placeholder="Select game" />
               </SelectTrigger>
               <SelectContent>
@@ -92,14 +95,14 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Mode</Label>
+            <Label htmlFor="multiplayer-create-mode">Mode</Label>
             <Select
               value={formState.mode}
               onValueChange={(nextMode) => {
                 onFormStateChange(buildUpdatedLobbyModeState(formState, nextMode));
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-mode">
                 <SelectValue placeholder="Select mode" />
               </SelectTrigger>
               <SelectContent>
@@ -113,7 +116,7 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Track / Level</Label>
+            <Label htmlFor="multiplayer-create-map">Track / Level</Label>
             <Select
               value={formState.trackOrLevel}
               onValueChange={(value) => {
@@ -123,7 +126,7 @@ export function CreateLobbyDialog({
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-map">
                 <SelectValue placeholder="Select track or level" />
               </SelectTrigger>
               <SelectContent>
@@ -138,7 +141,7 @@ export function CreateLobbyDialog({
 
           {usesCroMagTagDuration(formState.gameId, formState.mode) ? (
             <div className="space-y-2">
-              <Label>Tag Duration</Label>
+              <Label htmlFor="multiplayer-create-tag-duration">Tag Duration</Label>
               <Select
                 value={String(formState.tagDurationMinutes)}
                 onValueChange={(value) => {
@@ -148,7 +151,7 @@ export function CreateLobbyDialog({
                   });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger id="multiplayer-create-tag-duration">
                   <SelectValue placeholder="Select tag duration" />
                 </SelectTrigger>
                 <SelectContent>
@@ -163,7 +166,7 @@ export function CreateLobbyDialog({
           ) : null}
 
           <div className="space-y-2">
-            <Label>Max Players</Label>
+            <Label htmlFor="multiplayer-create-max-players">Max Players</Label>
             <Select
               value={String(formState.maxPlayers)}
               onValueChange={(value) => {
@@ -173,7 +176,7 @@ export function CreateLobbyDialog({
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-max-players">
                 <SelectValue placeholder="Select max players" />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +190,7 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Lobby Visibility</Label>
+            <Label htmlFor="multiplayer-create-visibility">Lobby Visibility</Label>
             <Select
               value={formState.isPublic ? "public" : "private"}
               onValueChange={(value) => {
@@ -197,7 +200,7 @@ export function CreateLobbyDialog({
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-visibility">
                 <SelectValue placeholder="Select lobby visibility" />
               </SelectTrigger>
               <SelectContent>
@@ -206,14 +209,15 @@ export function CreateLobbyDialog({
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </fieldset>
         {errorText ? (
           <Alert variant="destructive" role="alert">
             <AlertDescription>{errorText}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="flex justify-end">
+        {busy ? <LobbyProgress isPreloading={isPreloading} action="create" /> : null}
+        <div className="sticky bottom-0 flex justify-end bg-background py-2">
           <Button
             type="button"
             size="default"

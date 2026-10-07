@@ -1,4 +1,5 @@
-import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { strFromU8, strToU8, zipSync } from "fflate";
+import { readBoundedScriptZip } from "./scriptZipImport";
 import { err, ok, Result } from "neverthrow";
 import { z } from "zod";
 import type {
@@ -7,6 +8,7 @@ import type {
   ScriptWorkspaceState,
 } from "./scriptWorkspaceState";
 import { scriptCustomObjectDefinitionSchema } from "./scriptWorkspaceStateTypes";
+import { validateScriptAssetPath } from "./scriptAssetValidation";
 
 const definitionBundleManifestSchema = z.object({
   schemaVersion: z.literal(1),
@@ -34,7 +36,7 @@ function assetPathsForDefinition(
   }
   return definition.visual.kind === "customDisplayGroup"
     ? [definition.visual.modelPath]
-    : [definition.visual.modelPath, definition.visual.skeletonPath];
+    : [definition.visual.modelPath, `${definition.visual.skeletonPath}.rsrc`];
 }
 
 export function buildScriptDefinitionBundle(
@@ -48,7 +50,7 @@ export function buildScriptDefinitionBundle(
   if (missingAsset) return err(`Definition asset is missing: ${missingAsset}`);
 
   const manifest = {
-    schemaVersion: 1 as const,
+    schemaVersion: 1,
     gameId: state.context.gameId,
     definitions: [...state.customObjects],
     sourcePaths: [...new Set(sourcePaths)].sort(),
@@ -66,7 +68,7 @@ export function importScriptDefinitionBundle(
   bytes: Uint8Array,
   context: ScriptWorkspaceContext,
 ): Result<ScriptDefinitionBundle, string> {
-  const unzipResult = Result.fromThrowable(() => unzipSync(bytes), () => "Failed to read definition bundle")();
+  const unzipResult = readBoundedScriptZip(bytes);
   if (unzipResult.isErr()) return err(unzipResult.error);
   const files = unzipResult.value;
   const manifestBytes = files["manifest.json"];
@@ -77,16 +79,31 @@ export function importScriptDefinitionBundle(
   if (!manifest.success) return err(`Invalid definition bundle manifest: ${manifest.error.message}`);
   if (manifest.data.gameId !== context.gameId) return err(`Definition bundle targets ${manifest.data.gameId}, not ${context.gameId}`);
 
+  for (const definition of manifest.data.definitions) {
+    if (!manifest.data.sourcePaths.includes(definition.sourceFilePath)) {
+      return err(`Definition bundle omits source: ${definition.sourceFilePath}`);
+    }
+    for (const path of assetPathsForDefinition(definition)) {
+      if (!manifest.data.assetPaths.includes(path)) return err(`Definition bundle omits asset: ${path}`);
+    }
+  }
+
   const sources: Record<string, string> = {};
   for (const path of manifest.data.sourcePaths) {
+    if (!path.startsWith("Data/Scripts/src/") || !path.endsWith(".lua") || path.includes("..") || path.includes("\\")) {
+      return err(`Definition source path is invalid: ${path}`);
+    }
     const source = files[path];
     if (!source) return err(`Definition bundle is missing source: ${path}`);
     sources[path] = strFromU8(source);
   }
   const assets: Record<string, Uint8Array> = {};
   for (const path of manifest.data.assetPaths) {
+    const pathResult = validateScriptAssetPath(path);
+    if (pathResult.isErr()) return err(pathResult.error);
     const asset = files[path];
     if (!asset) return err(`Definition bundle is missing asset: ${path}`);
+    if (asset.byteLength > 16 * 1024 * 1024) return err(`Definition asset exceeds 16 MiB limit: ${path}`);
     assets[path] = asset;
   }
   return ok({ gameId: manifest.data.gameId, definitions: manifest.data.definitions, sources, assets });

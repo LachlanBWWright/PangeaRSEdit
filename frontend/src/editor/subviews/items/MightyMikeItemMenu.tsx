@@ -8,9 +8,9 @@ import { mapErr } from "@/utils/mapErr";
 
 import { Updater } from "use-immer";
 import { ItemData, HeaderData } from "@/python/structSpecs/LevelTypes";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
-import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
+import { SelectedItem } from "../../../data/items/itemAtoms";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,7 +35,6 @@ import {
 } from "@/utils/mightyMikeShapeImageLoader";
 import { ResultAsync } from "neverthrow";
 import { TileCanvas } from "../shared/TileCanvas";
-import { EmptyDataPrompt } from "../EmptyDataPrompts";
 import {
   deleteSelectedMightyMikeItem,
   getMightyMikeItemValues,
@@ -48,13 +47,16 @@ import { MapItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSec
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 import { ParameterField } from "./ParameterField";
+import { ItemPalette } from "./ItemPalette";
+import { useBoundNativeItemUpdater } from "./useBoundNativeItemUpdater";
+import { mapItemCommandHandlerAtom, requestMapItemCommandAtom } from "./mapItemEditingContext";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
 
 export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   itemData,
-  setItemData,
+  setItemData: setUnboundItemData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -62,6 +64,9 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   setHeaderData: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
+  const commandHandler = useAtomValue(mapItemCommandHandlerAtom);
+  const command = useSetAtom(requestMapItemCommandAtom);
+  const setItemData = useBoundNativeItemUpdater(itemData, setUnboundItemData);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const [showItemImages, setShowItemImages] = useAtom(ShowMightyMikeItemImages);
   const currentScene = useAtomValue(CurrentScene);
@@ -74,7 +79,8 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   if (itemData.Itms === undefined) return null;
 
   return (
-    <div className="flex min-h-full flex-col gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
       {selectedItemData === null || selectedItemData === undefined ? (
         <>
           <Toggle
@@ -94,19 +100,18 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               </>
             )}
           </Toggle>
-          <AddItemMenu hasItems={itemCount > 0} />
-          {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
+          <div className="min-h-0 flex-1"><ItemPalette hasItems={itemCount > 0} renderNativeItem={itemType => <MightyMikeItemSelectLabel itemType={itemType} scene={currentScene} />} /></div>
         </>
       ) : (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-2 gap-y-1 text-sm">
-          <span className="text-gray-400">X</span>
-          <Input type="number" className="h-7 text-xs" value={selectedItemData.x} onChange={(e) => {
+          <span className="text-gray-400">Map X</span>
+          <Input aria-label="Native item map X" type="number" className="h-7 text-xs" value={selectedItemData.x} onChange={(e) => {
             const value = parseInt(e.target.value);
             if (Number.isNaN(value)) return;
             setItemData((draft) => updateSelectedMightyMikeItemPosition(draft, selectedItem, "x", value));
           }} />
-          <span className="text-gray-400">Z</span>
-          <Input type="number" className="h-7 text-xs" value={selectedItemData.z} onChange={(e) => {
+          <span className="text-gray-400">Map Y</span>
+          <Input aria-label="Native item map Y" type="number" className="h-7 text-xs" value={selectedItemData.z} onChange={(e) => {
             const value = parseInt(e.target.value);
             if (Number.isNaN(value)) return;
             setItemData((draft) => updateSelectedMightyMikeItemPosition(draft, selectedItem, "z", value));
@@ -213,6 +218,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               variant="destructive"
               disabled={selectedItem === undefined}
               onClick={() => {
+                if (commandHandler) {command("delete"); return;}
                 if (selectedItem === undefined) return;
                 setItemData((itemData) => {
                   deleteSelectedMightyMikeItem(itemData, selectedItem);
@@ -228,69 +234,6 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
     </div>
   );
 });
-
-function AddItemMenu({ hasItems }: { hasItems: boolean }) {
-  const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
-  const globals = useAtomValue(Globals);
-  const currentScene = useAtomValue(CurrentScene);
-
-  const itemValues = useMemo(() => {
-    return getMightyMikeItemValues(globals);
-  }, [globals]);
-
-  if (clickToAddItem !== undefined)
-    return (
-      <>
-        <Select
-          value={clickToAddItem.toString()}
-          onValueChange={(e) => {
-            const newItemType = parseInt(e);
-            setClickToAddItem(newItemType);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select an item" />
-          </SelectTrigger>
-          <SelectContent>
-            {itemValues.map((key) => (
-              <SelectItem
-                key={key}
-                className="text-white"
-                value={key.toString()}
-              >
-                <MightyMikeItemSelectLabel
-                  itemType={key}
-                  scene={currentScene}
-                />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <p className="text-sm">Click on the Canvas to add the selected item</p>
-        <Button
-          variant="destructive"
-          onClick={() => setClickToAddItem(undefined)}
-        >
-          Stop Adding Items
-        </Button>
-      </>
-    );
-
-  return (
-    <EmptyDataPrompt
-      title={hasItems ? "No Item Selected" : "No Items"}
-      description={
-        hasItems
-          ? "Select an item on the canvas or add another one."
-          : "This level doesn't have any items yet. Add your first item to get started."
-      }
-      buttonText={hasItems ? "Add More Items" : "Add First Item"}
-      onInitialize={() => setClickToAddItem(0)}
-      fillHeight
-    />
-  );
-}
 
 const MightyMikeItemSelectLabel = memo(function MightyMikeItemSelectLabel({
   itemType,

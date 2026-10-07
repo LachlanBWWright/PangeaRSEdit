@@ -48,6 +48,7 @@ import {
 } from "@/data/tileBrushes/tileBrushApply";
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { ItemCanvasEditing, ItemCanvasStageBridge } from "../subviews/items/ItemCanvasEditing";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 import { NanosaurPathLayer } from "../subviews/tiles/NanosaurPathLayer";
 import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
@@ -214,6 +215,8 @@ export function Nanosaur1KonvaView({
   );
 
   return (
+    <ItemCanvasEditing stage={stage} setStage={setStage} itemData={itemData} setItemData={setItemData} headerData={headerData}
+      terrainData={terrainData} enabled={view === View.items}>
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage
         width={containerSize.width}
@@ -384,7 +387,9 @@ export function Nanosaur1KonvaView({
           tilesPerUnit={globals.TILES_PER_SUPERTILE}
           onResize={onResize}
         />
+        <ItemCanvasStageBridge />
       </Stage>
     </div>
+    </ItemCanvasEditing>
   );
 }

@@ -85,7 +85,7 @@ export type ApiFunction = z.infer<typeof ApiFunctionSchema>;
 
 type CommandMetadata = NonNullable<ApiFunction["command"]>;
 
-const OBJECT_COMMAND_METADATA: Readonly<Record<"position" | "positionOffset" | "velocity" | "rotation" | "scale" | "animation" | "collision" | "activation" | "delete", CommandMetadata>> = {
+const OBJECT_COMMAND_METADATA: Readonly<Record<"position" | "positionOffset" | "velocity" | "rotation" | "scale" | "health" | "animation" | "collision" | "activation" | "delete", CommandMetadata>> = {
   position: {
     capability: "object-position",
     authority: "disabled-network",
@@ -121,6 +121,12 @@ const OBJECT_COMMAND_METADATA: Readonly<Record<"position" | "positionOffset" | "
     authority: "disabled-network",
     applicationPhase: "callback",
     validation: ["generation-checked handle", "finite speed and blend seconds", "declared animation index or name"],
+  },
+  health: {
+    capability: "object-health",
+    authority: "disabled-network",
+    applicationPhase: "callback",
+    validation: ["generation-checked handle", "finite non-negative health", "scripted object health mutation support"],
   },
   collision: {
     capability: "object-collision",
@@ -1771,6 +1777,8 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     { name: "pangea.object.setScaleResult", description: "Sets an object's uniform scale and returns structured status and diagnostics.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "scale", type: "number" }], returnType: "ObjectCommandResult", command: OBJECT_COMMAND_METADATA.scale },
     { name: "pangea.object.setAnimation", description: "Sets an object's animation by name or numeric ID.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "animation", type: "unknown" }, { name: "speed", type: "number", optional: true }, { name: "blendSeconds", type: "number", optional: true }], returnType: "boolean", command: OBJECT_COMMAND_METADATA.animation },
     { name: "pangea.object.setAnimationResult", description: "Sets an object's animation and returns structured status and diagnostics.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "animation", type: "unknown" }, { name: "speed", type: "number", optional: true }, { name: "blendSeconds", type: "number", optional: true }], returnType: "ObjectCommandResult", command: OBJECT_COMMAND_METADATA.animation },
+    { name: "pangea.object.setHealth", description: "Sets a scripted object's health without invoking native damage effects.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "health", type: "number" }], returnType: "boolean", command: OBJECT_COMMAND_METADATA.health },
+    { name: "pangea.object.setHealthResult", description: "Sets scripted object health and returns structured status and diagnostics.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "health", type: "number" }], returnType: "ObjectCommandResult", command: OBJECT_COMMAND_METADATA.health },
     { name: "pangea.object.setCollisionEnabled", description: "Enables or disables an object's native collision checks.", availabilityCapability: "objectCollision", parameters: [{ name: "handle", type: "objectHandle" }, { name: "enabled", type: "boolean" }], returnType: "boolean", command: OBJECT_COMMAND_METADATA.collision },
     { name: "pangea.object.setCollisionEnabledResult", description: "Enables or disables native collision checks and returns structured status and diagnostics.", availabilityCapability: "objectCollision", parameters: [{ name: "handle", type: "objectHandle" }, { name: "enabled", type: "boolean" }], returnType: "ObjectCommandResult", command: OBJECT_COMMAND_METADATA.collision },
     { name: "pangea.object.setActive", description: "Activates or deactivates an object through a validated enabled-state transition.", parameters: [{ name: "handle", type: "objectHandle" }, { name: "active", type: "boolean" }], returnType: "boolean", command: OBJECT_COMMAND_METADATA.activation },
@@ -1788,6 +1796,18 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       parameters: [{ name: "handle", type: "objectHandle" }],
       returnType: "ObjectCommandResult",
       command: OBJECT_COMMAND_METADATA.delete,
+    },
+    {
+      name: "pangea.world.groundHeight",
+      description: "Returns terrain height at finite in-bounds XZ coordinates, or nil when unavailable.",
+      parameters: [{ name: "x", type: "number" }, { name: "z", type: "number" }],
+      returnType: "number|nil",
+    },
+    {
+      name: "pangea.world.groundHeightResult",
+      description: "Queries terrain height with structured status; unavailable worlds and invalid coordinates return failure.",
+      parameters: [{ name: "x", type: "number" }, { name: "z", type: "number" }],
+      returnType: "GroundHeightResult",
     },
   ],
   games: [
@@ -1881,7 +1901,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "BillyFrontier-Android",
       gameName: "Billy Frontier",
-      supportedHooks: ["onGameStart", "onGameShutdown", "onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onDamage", "onDamageApplied", "onPlayerSpawn", "onDeath", "onSave", "onLoad"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onWeaponHit", "onDamage", "onDamageApplied", "onPlayerSpawn", "onDeath", "onSave", "onLoad"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"], optional: true },
         { name: "modePhase", type: "number", optional: true },

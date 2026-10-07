@@ -1,100 +1,22 @@
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { NativeVisualDebugStats } from "@/multiplayer/nativeVisualDebugStats";
-import type {
-  MultiplayerRuntimeDebugStats,
-  MultiplayerNetworkDebugOptions,
-} from "@/multiplayer/runtimeBridge";
-import type { MultiplayerLobbyDetails } from "@/multiplayer/types";
 import { MultiplayerSessionSidebar } from "./MultiplayerSessionSidebar";
-
-const LOBBY = {
-  id: "cromag-rally-lobby-7f3a2b9c",
-  gameId: "cromagrally",
-  mode: "multiplayerRace",
-  trackOrLevel: "3",
-  tagDurationMinutes: 3,
-  maxPlayers: 4,
-  isPublic: true,
-  hostParticipantId: "participant-host",
-  joinCode: "RALLY3",
-  state: "open",
-  createdAt: "2026-08-27T09:00:00.000Z",
-  expiresAt: "2026-08-27T10:00:00.000Z",
-  participantId: "participant-host",
-  players: [
-    {
-      participantId: "participant-host",
-      displayName: "Alex (host)",
-      playerIndex: 0,
-      isHost: true,
-      isReady: true,
-      region: "Sydney",
-      pingMs: 18,
-      joinedAt: "2026-08-27T09:01:00.000Z",
-      lastSeenAt: "2026-08-27T09:05:00.000Z",
-    },
-    {
-      participantId: "participant-guest-1",
-      displayName: "SamiraWithAQuiteLongDisplayName",
-      playerIndex: 1,
-      isHost: false,
-      isReady: true,
-      region: "Melbourne",
-      pingMs: 42,
-      joinedAt: "2026-08-27T09:02:00.000Z",
-      lastSeenAt: "2026-08-27T09:05:00.000Z",
-    },
-    {
-      participantId: "participant-guest-2",
-      displayName: "Jordan",
-      playerIndex: 2,
-      isHost: false,
-      isReady: false,
-      region: "Auckland",
-      pingMs: 76,
-      joinedAt: "2026-08-27T09:03:00.000Z",
-      lastSeenAt: "2026-08-27T09:05:00.000Z",
-    },
-  ],
-} satisfies MultiplayerLobbyDetails;
-
-const runtimeDebugStats: MultiplayerRuntimeDebugStats = {
-  sentReliable: 128,
-  sentUnreliable: 64,
-  received: 124,
-  polled: 120,
-  rejected: 0,
-  impairedDropped: 0,
-  impairedDelayed: 0,
-  queueDepth: 1,
-  lastPacketType: 4,
-  lastPacketSequence: 128,
-  lastPacketDirection: "recv",
-  lastError: null,
-};
-
-const nativeDebugStats: NativeVisualDebugStats = {
-  frameNumber: 642,
-  hasDesync: false,
-  lastSyncHash: 1842,
-  lastVisualEventSequence: 8,
-  appliedVisualEventSequence: 8,
-  duplicateVisualEventCount: 0,
-  staleVisualEventCount: 0,
-};
-
-const networkDebugOptions: MultiplayerNetworkDebugOptions = {
-  latencyMs: 0,
-  packetLossPercent: 0,
-  packetBurstPercent: 0,
-  packetBurstSize: 1,
-};
+import { MultiplayerSessionView } from "./MultiplayerSessionView";
+import { createSessionStoryProps, FULL_STORY_LOBBY, GUEST, NANOSAUR_STORY_LOBBY, STORY_LOBBY } from "@/storybook/multiplayer/multiplayerStoryFixtures";
 
 const meta = {
   title: "Multiplayer/Session Sidebar",
   component: MultiplayerSessionSidebar,
-  parameters: { layout: "fullscreen" },
+  args: createSessionStoryProps(),
+  parameters: {
+    layout: "fullscreen",
+    docs: { story: { inline: false, height: "760px" }, description: { component: "Production lobby sidebar at its desktop column width. Fixtures exercise host and guest permissions, map selection, player removal, readiness, and debug telemetry. Action spies record requests; full composed sessions are documented under Multiplayer/Session." } },
+  },
+  render: (args) => (
+    <div className="flex min-h-screen w-full justify-end bg-background p-4 text-foreground">
+      <div className="h-[720px] w-[360px] max-w-full"><MultiplayerSessionSidebar {...args} /></div>
+    </div>
+  ),
   tags: ["test", "a11y", "visual", "overflow", "interaction"],
 } satisfies Meta<typeof MultiplayerSessionSidebar>;
 
@@ -102,76 +24,78 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const CroMagLobby: Story = {
-  args: {
-    lobby: LOBBY,
-    showDebugOverlay: false,
-    localParticipantId: "participant-host",
-    localPlayerIndex: 0,
-    connectionStatus: "connected",
-    currentMatchPhase: "lobby",
-    rtcStatusText: "waiting for peers",
-    displayedPingMs: 18,
-    currentMatchKind: "race",
-    hudLabel: "Ready when all players are set",
-    statusText: "Waiting for players",
-    errorText: null,
-    isHost: true,
-    readyPlayerCount: 2,
-    busy: false,
-    chatMessages: [
-      {
-        lobbyId: LOBBY.id,
-        participantId: "participant-guest-1",
-        displayName: "SamiraWithAQuiteLongDisplayName",
-        message: "Ready when you are!",
-        createdAt: "2026-08-27T09:04:00.000Z",
-      },
-    ],
-    chatDraft: "",
-    localParticipantIsReady: true,
-    hasLocalParticipant: true,
-    canStartLobby: false,
-    canForceStartLobby: true,
-    canEndMatch: false,
-    packetCounts: { hostSnapshot: 64, clientInput: 60 },
-    runtimeDebugStats,
-    nativeDebugStats,
-    networkDebugOptions,
-    onCopyLobbyId: fn(),
-    onRemoveParticipant: fn(),
-    onChatDraftChange: fn(),
-    onSendChat: fn(),
-    onToggleReady: fn(),
-    onStart: fn(),
-    onStartAnyway: fn(),
-    onUpdateSelection: fn(),
-    onEndMatch: fn(),
-    onLeave: fn(),
-    onResetNetworkDebugOptions: fn(),
-    onUpdateNetworkDebugOption: fn(),
+  parameters: { docs: { description: { story: "Three players, two ready. The host can change map and mode, remove guests, or explicitly force a start from More match actions." } } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const [remove] = canvas.getAllByRole("button", { name: "Remove" });
+    await expect(remove).toBeDefined();
+    if (remove) await userEvent.click(remove);
+    await expect(args.onRemoveParticipant).toHaveBeenCalledWith(GUEST.participantId);
   },
-  render: (args) => (
-    <div className="flex min-h-screen w-full justify-end bg-slate-950 p-4 text-slate-100">
-      <div className="h-[720px] w-[360px] max-w-full">
-        <MultiplayerSessionSidebar {...args} />
-      </div>
-    </div>
-  ),
 };
 
 export const DebugSidebar: Story = {
-  ...CroMagLobby,
-  args: {
-    ...CroMagLobby.args,
-    showDebugOverlay: true,
-  },
-  play: async ({ canvasElement }) => {
+  args: { showDebugOverlay: true },
+  parameters: { docs: { description: { story: "Feature-flagged diagnostics: signaling and RTC state, packet counters, impairment controls, and native synchronization telemetry. These values are fixtures, not live network measurements." } } },
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("tab", { name: "Debug" }));
-    await expect(
-      canvas.getByRole("button", { name: "Copy Lobby ID" }),
-    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Copy Lobby ID" })).toBeVisible();
     await expect(canvas.getByText("Network Impairment")).toBeVisible();
     await expect(canvas.getByText("Multiplayer Debug")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Reset" }));
+    await expect(args.onResetNetworkDebugOptions).toHaveBeenCalled();
+  },
+};
+
+export const ShortSessionLayout: Story = {
+  render: (args) => (
+    <div className="flex h-[480px] w-full bg-background p-4 text-foreground">
+      <MultiplayerSessionView {...createSessionStoryProps()} {...args} activeMatchConfigPresent={false} />
+    </div>
+  ),
+  parameters: { docs: { description: { story: "The production session composition in a short container. Lobby content scrolls above the persistent action footer. Browser layout tests verify chat and match controls remain reachable." } } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Start match" })).toBeDisabled();
+    await expect(canvas.getByText("2 of 3 players ready")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "More match actions" }));
+    await userEvent.click(within(canvasElement.ownerDocument.body).getByRole("menuitem", { name: "Start Anyway" }));
+    await expect(args.onStartAnyway).toHaveBeenCalled();
+  },
+};
+
+export const GuestReady: Story = {
+  args: createSessionStoryProps(STORY_LOBBY, GUEST.participantId),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("You’re ready. Waiting for the host to start.")).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: "Start match" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Remove" })).toBeNull();
+    await expect(canvas.queryByRole("combobox")).toBeNull();
+  },
+};
+
+export const FullRoster: Story = {
+  args: createSessionStoryProps(FULL_STORY_LOBBY),
+  parameters: { docs: { description: { story: "Cro-Mag Rally's maximum six-player roster with long names and mixed readiness. The footer remains outside the scrolling roster and chat area." } } },
+};
+
+export const NanosaurCaptureTheFlag: Story = {
+  args: createSessionStoryProps(NANOSAUR_STORY_LOBBY),
+  parameters: { docs: { description: { story: "Nanosaur 2 uses its own two-player limit, modes, and bundled multiplayer level names." } } },
+};
+
+export const ImpairedNetwork: Story = {
+  ...DebugSidebar,
+  args: { showDebugOverlay: true, networkDebugOptions: { latencyMs: 250, packetLossPercent: 8, packetBurstPercent: 15, packetBurstSize: 3 } },
+};
+
+export const DesyncReported: Story = {
+  ...DebugSidebar,
+  args: {
+    showDebugOverlay: true,
+    errorText: "Players are out of sync. End the match and start a rematch.",
+    nativeDebugStats: { ...createSessionStoryProps().nativeDebugStats, hasDesync: true },
   },
 };

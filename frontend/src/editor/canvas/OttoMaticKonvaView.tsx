@@ -40,6 +40,7 @@ import { HoverTagOverlayLayer } from "../subviews/shared/HoverTagOverlayLayer";
 import { PendingCreationOverlay } from "../subviews/shared/PendingCreationOverlay";
 import { View } from "../viewEnum";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
+import { ItemCanvasEditing, ItemCanvasStageBridge } from "../subviews/items/ItemCanvasEditing";
 import { Globals } from "@/data/globals/globals";
 import {
   MapResizeEdgeControls,
@@ -220,6 +221,8 @@ export function OttoMaticKonvaView({
   );
 
   return (
+    <ItemCanvasEditing stage={stage} setStage={setStage} itemData={itemData} setItemData={setItemData} headerData={headerData}
+      terrainData={terrainData} enabled={view === View.items}>
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage
         width={containerSize.width}
@@ -378,7 +381,9 @@ export function OttoMaticKonvaView({
           tilesPerUnit={globals.TILES_PER_SUPERTILE}
           onResize={onResize}
         />
+        <ItemCanvasStageBridge />
       </Stage>
     </div>
+    </ItemCanvasEditing>
   );
 }

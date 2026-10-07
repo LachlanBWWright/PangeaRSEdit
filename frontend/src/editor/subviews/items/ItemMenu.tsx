@@ -1,14 +1,13 @@
 import { Updater } from "use-immer";
 import { ItemData, HeaderData } from "@/python/structSpecs/LevelTypes";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import {
-  ClickToAddItem,
   SelectedItem,
   SafeItemTypes,
   FilterToSafeItems,
 } from "../../../data/items/itemAtoms";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -22,7 +21,6 @@ import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
-import { EmptyDataPrompt } from "../EmptyDataPrompts";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import {
@@ -43,10 +41,13 @@ import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 import { ItemStateFlags } from "./ItemStateFlags";
 import { ParameterField } from "./ParameterField";
 import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
+import { ItemPalette } from "./ItemPalette";
+import { useBoundNativeItemUpdater } from "./useBoundNativeItemUpdater";
+import { mapItemCommandHandlerAtom, requestMapItemCommandAtom } from "./mapItemEditingContext";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
-  setItemData,
+  setItemData: setUnboundItemData,
   headerData,
 }: {
   itemData: ItemData;
@@ -55,6 +56,9 @@ export const ItemMenu = memo(function ItemMenu({
   setHeaderData?: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
+  const commandHandler = useAtomValue(mapItemCommandHandlerAtom);
+  const command = useSetAtom(requestMapItemCommandAtom);
+  const setItemData = useBoundNativeItemUpdater(itemData, setUnboundItemData);
   const levelNum = useAtomValue(LevelNumber);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const safeItemTypes = useAtomValue(SafeItemTypes);
@@ -85,22 +89,26 @@ export const ItemMenu = memo(function ItemMenu({
   );
 
   const handleDeleteItem = useCallback(() => {
+    if (commandHandler) {command("delete"); return;}
     if (selectedItem === undefined) return;
     setItemData((draft) => {
       deleteSelectedItem(draft, selectedItem);
     });
     setSelectedItem(undefined);
-  }, [selectedItem, setItemData, setSelectedItem]);
+  }, [commandHandler, command, selectedItem, setItemData, setSelectedItem]);
 
   return (
     <div className="flex h-full min-h-full flex-col gap-2 px-3">
+      <ItemPalette hasItems={itemCount > 0} />
+      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
       {selectedItemData === null || selectedItemData === undefined ? (
-        <AddItemMenu hasItems={itemCount > 0} />
+        null
       ) : (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm">
-          <span className="text-gray-400">X</span>
+          <span className="text-gray-400">Map X</span>
           <Input
             type="number"
+            aria-label="Native item map X"
             className="h-7 text-xs"
             value={selectedItemData.x}
             onChange={(e) => {
@@ -111,9 +119,10 @@ export const ItemMenu = memo(function ItemMenu({
               });
             }}
           />
-          <span className="text-gray-400">Z</span>
+          <span className="text-gray-400">Map Z</span>
           <Input
             type="number"
+            aria-label="Native item map Z"
             className="h-7 text-xs"
             value={selectedItemData.z}
             onChange={(e) => {
@@ -274,81 +283,3 @@ export const ItemMenu = memo(function ItemMenu({
     </div>
   );
 });
-
-function AddItemMenu({ hasItems }: { hasItems: boolean }) {
-  const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
-  const globals = useAtomValue(Globals);
-  const levelNum = useAtomValue(LevelNumber);
-
-  useEffect(() => {
-    return () => setClickToAddItem(undefined);
-  }, [setClickToAddItem]);
-
-  const itemValues = useMemo(() => {
-    return getAllItemValues(globals);
-  }, [globals]);
-
-  if (clickToAddItem !== undefined)
-    return (
-      <>
-        <Select
-          value={getItemName(globals, clickToAddItem)}
-          onValueChange={(e) => {
-            const newItemType = parseInt(e);
-            setClickToAddItem(newItemType);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select an item" />
-          </SelectTrigger>
-          <SelectContent>
-            {itemValues.map((key) => (
-              <SelectItem
-                key={key}
-                className="text-white"
-                value={key.toString()}
-              >
-                <ItemThumbnail
-                  game={globals.GAME_TYPE}
-                  kind="terrainItem"
-                  itemType={key}
-                  label={`${getItemName(globals, key)} — ${getItemLevelSupportLabel(
-                    globals.GAME_TYPE,
-                    "terrainItem",
-                    key,
-                    levelNum,
-                  )}`}
-                  compact
-                />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <p>Click on the Canvas to add the selected item</p>
-        <Button
-          variant="destructive"
-          onClick={() => setClickToAddItem(undefined)}
-        >
-          Stop Adding Items
-        </Button>
-      </>
-    );
-
-  return (
-    <>
-      <EmptyDataPrompt
-        title={hasItems ? "No Item Selected" : "No Items"}
-        description={
-          hasItems
-            ? "Select an item on the canvas or add another one."
-            : "This level doesn't have any items yet. Add your first item to get started."
-        }
-        buttonText={hasItems ? "Add More Items" : "Add First Item"}
-        onInitialize={() => setClickToAddItem(0)}
-        fillHeight
-      />
-      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
-    </>
-  );
-}

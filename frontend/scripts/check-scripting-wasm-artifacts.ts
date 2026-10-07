@@ -141,6 +141,11 @@ async function validateArtifacts(): Promise<Result<true, string>> {
         return err(`${game.gameId}: staged artifact is not a WebAssembly module: ${relativePath}`);
       }
       if (relativePath.endsWith(".wasm")) {
+        const runtimeStrings = new TextDecoder().decode(artifact.value);
+        const missingLuaApi = ["groundHeightResult", "setHealthResult"].find((name) => !runtimeStrings.includes(name));
+        if (missingLuaApi !== undefined) {
+          return err(`${game.gameId}: staged runtime lacks Lua API ${missingLuaApi}; rebuild this game's WASM artifact`);
+        }
         const wasmBuffer = new ArrayBuffer(artifact.value.byteLength);
         new Uint8Array(wasmBuffer).set(artifact.value);
         const compilation = await ResultAsync.fromPromise(

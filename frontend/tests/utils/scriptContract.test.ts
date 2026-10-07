@@ -257,7 +257,7 @@ describe("scripting contract", () => {
     const commands = SCRIPTING_CONTRACT.api.apis.filter(
       (api) => api.command !== undefined,
     );
-    expect(commands).toHaveLength(41);
+    expect(commands).toHaveLength(43);
     for (const command of commands) {
       expect(command.command?.capability).toBeTruthy();
       expect(command.command?.authority).toBe("disabled-network");
@@ -268,7 +268,9 @@ describe("scripting contract", () => {
 
   it("declares cleanup and handle policy for every object lifecycle event", () => {
     const events = SCRIPTING_CONTRACT.objectEvents;
-    expect(events).toHaveLength(13);
+    expect(events).toHaveLength(14);
+    expect(events.find((event) => event.id === "death")?.statePolicy).toBe("preserve");
+    expect(events.find((event) => event.id === "death")?.invalidatesHandle).toBe(false);
     expect(events.find((event) => event.id === "checkpointReset")?.cleanup).toBe("owner-resources");
     expect(events.find((event) => event.id === "checkpointReset")?.statePolicy).toBe("preserve");
     expect(events.find((event) => event.id === "deactivate")?.statePolicy).toBe("clear");

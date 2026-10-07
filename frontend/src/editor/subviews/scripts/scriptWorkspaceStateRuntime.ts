@@ -1,6 +1,7 @@
-import { atom } from "jotai";
+import { recoverableScriptWorkspaceStoreAtom } from "./scriptWorkspaceRecovery";
 import { err, ok, Result } from "neverthrow";
-import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { strFromU8, strToU8, zipSync } from "fflate";
+import { readBoundedScriptZip } from "./scriptZipImport";
 import { z } from "zod";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntimeTypes";
@@ -40,9 +41,14 @@ import {
   runtimeLevelConfigSchema,
 } from "./scriptWorkspaceStateTypes";
 import { getDefaultHoverBeaconVisual } from "./scriptDefaultCustomVisuals";
+import { getScriptModelBankDependencies } from "./scriptModelBankDependencies";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
 import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
 import { materializeCustomObjectSourceTemplate } from "./scriptCustomObjectTemplate";
+import { buildCustomObjectGameplayDispatch } from "./scriptCustomObjectDispatch";
+import { buildObjectParameterHelpers, buildParameterizedPlacementSpawn } from "./scriptObjectParameters";
+import { getScriptParameterDiagnostics } from "./scriptParameters";
+import { getScriptGameHooks } from "./scriptGameHooks";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
 import { migrateLegacyScriptSource } from "./scriptLegacyMigration";
 import type {
@@ -185,7 +191,7 @@ function replaceToken(template: string, token: string, value: string): string {
   return template.split(token).join(value);
 }
 
-function buildTerrainPredicate(
+export function buildTerrainPredicate(
   signature: ScriptTerrainBindingSignature,
 ): string {
   return [
@@ -213,7 +219,7 @@ function buildSplinePredicate(signature: ScriptSplineBindingSignature): string {
   ].join(" and ");
 }
 
-function buildMapPredicate(signature: ScriptMapItemSignature): string {
+export function buildMapPredicate(signature: ScriptMapItemSignature): string {
   const sceneCheck = signature.sceneName
     ? [`ctx.gameName == ctx.gameName`, `true`]
     : ["true"];
@@ -242,86 +248,6 @@ function buildBaseRuntimeTemplate(): string {
     "return module",
     "",
   ].join("\n");
-}
-
-function getAdventureHooks(): readonly ScriptHookId[] {
-  return [
-    "onLevelLoad",
-    "onLevelStart",
-    "onFrame",
-    "onObjectFrame",
-    "onLevelComplete",
-    "onLevelUnload",
-    "onTerrainItem",
-    "onSplineItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
-}
-
-function getNanosaurHooks(): readonly ScriptHookId[] {
-  return [
-    "onLevelLoad",
-    "onLevelStart",
-    "onFrame",
-    "onObjectFrame",
-    "onLevelComplete",
-    "onLevelUnload",
-    "onTerrainItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
-}
-
-function getBillyFrontierHooks(): readonly ScriptHookId[] {
-  return [
-    "onAreaLoad",
-    "onAreaStart",
-    "onAreaFrame",
-    "onObjectFrame",
-    "onAreaComplete",
-    "onAreaUnload",
-    "onTerrainItem",
-    "onSplineItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
-}
-
-function getMightyMikeHooks(): readonly ScriptHookId[] {
-  return [
-    "onAreaLoad",
-    "onAreaStart",
-    "onAreaFrame",
-    "onObjectFrame",
-    "onMapItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-    "onAreaComplete",
-    "onAreaUnload",
-  ];
-}
-
-function getRaceHooks(): readonly ScriptHookId[] {
-  return [
-    "onRaceLoad",
-    "onRaceStart",
-    "onRaceFrame",
-    "onObjectFrame",
-    "onRaceComplete",
-    "onRaceUnload",
-    "onLapComplete",
-    "onRaceFinish",
-    "onObjectiveComplete",
-    "onTerrainItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
 }
 
 function createTag(
@@ -1049,8 +975,17 @@ function buildGeneratedEntryModule(
   state: ScriptWorkspaceState,
   context: ScriptWorkspaceContext,
 ): string {
+  const level = state.levels[context.levelKey] ?? defaultLevelState();
+  const activeAssignments = new Set([
+    ...level.globalHooks, ...level.terrainBindings, ...level.mapItemBindings, ...level.splineBindings,
+  ].map(assignment => assignment.sourceFilePath));
+  const libraryModules = new Set([
+    ...state.customObjects.map(definition => definition.sourceFilePath),
+    ...state.behaviorCatalog.filter(behavior => behavior.targetKinds.includes("objectType")).map(behavior => behavior.sourceFilePath),
+  ]);
   const runtimeModules = state.moduleOrder.filter(
-    (path) => path !== GENERATED_ENTRY_PATH,
+    (path) => path !== GENERATED_ENTRY_PATH && (state.sourceFiles[path]?.role !== "generated-assignment"
+      || activeAssignments.has(path) || libraryModules.has(path)),
   );
   const objectTypeBehaviors = state.behaviorCatalog.filter(
     (behavior) =>
@@ -1119,7 +1054,10 @@ function buildGeneratedEntryModule(
       "    local handlerName = handlerNames[ctx.event or 'update']",
       "    local handler = type(behavior) == 'table' and behavior[handlerName] or nil",
       "    if type(handler) == 'function' then",
-      "      handler({ handle = ctx.object }, ctx)",
+      "      handler(__makeObjectSelf(ctx.object, ctx.objectType), ctx)",
+      "    end",
+      "    if ctx.event == 'destroy' or ctx.event == 'streamOut' then",
+      "      __objectParameters[__objectParameterKey(ctx.object)] = nil",
       "    end",
       "  end",
     );
@@ -1141,7 +1079,9 @@ function buildGeneratedEntryModule(
       const dispatchBody: string[] = [];
 
       dispatchBody.push(
-        "  for _, candidate in ipairs(__modules) do",
+        hookId === "onDamageApplied"
+          ? "  for _, candidate in ipairs(__gameplayModules(ctx, 'onDamageApplied', ctx.target)) do"
+          : "  for _, candidate in ipairs(__modules) do",
         `    local hook = candidate[${JSON.stringify(hookId)}]`,
         "    if type(hook) == 'function' then",
         "      hook(ctx)",
@@ -1155,9 +1095,7 @@ function buildGeneratedEntryModule(
             (candidate) => candidate.id === placement.objectId,
           );
           if (objectDefinition) {
-            dispatchBody.push(
-              `  pangea.spawn.scripted(${JSON.stringify(placement.objectId)}, { x = ${placement.position.x}, y = ${placement.position.y}, z = ${placement.position.z} })`
-            );
+            dispatchBody.push(...buildParameterizedPlacementSpawn(state, objectDefinition, placement));
           }
         });
       }
@@ -1195,7 +1133,7 @@ function buildGeneratedEntryModule(
           "  local scoreDelta = 0",
           "  local healthDelta = 0",
           "  local consumePickup = nil",
-          "  for _, candidate in ipairs(__modules) do",
+          "  for _, candidate in ipairs(__gameplayModules(ctx, 'onPickupCollected', ctx.pickup)) do",
           `    local hook = candidate[${JSON.stringify(hookId)}]`,
           "    if type(hook) == 'function' then",
           "      local result = hook(ctx)",
@@ -1227,7 +1165,7 @@ function buildGeneratedEntryModule(
           "  local scoreDelta = 0",
           "  local applyDamage = nil",
           "  local destroyTarget = nil",
-          "  for _, candidate in ipairs(__modules) do",
+          "  for _, candidate in ipairs(__gameplayModules(ctx, 'onWeaponHit', ctx.target)) do",
           `    local hook = candidate[${JSON.stringify(hookId)}]`,
           "    if type(hook) == 'function' then",
           "      local result = hook(ctx)",
@@ -1255,6 +1193,29 @@ function buildGeneratedEntryModule(
         ].join("\n");
       }
 
+      if (hookId === "onDamage") {
+        return [
+          "function entry.onDamage(ctx)",
+          "  local damage = nil",
+          "  local applyDamage = nil",
+          "  for _, candidate in ipairs(__gameplayModules(ctx, 'onDamage', ctx.target)) do",
+          "    local hook = candidate.onDamage",
+          "    if type(hook) == 'function' then",
+          "      local result = hook(ctx)",
+          "      if result then",
+          "        if result.damage ~= nil then damage = result.damage end",
+          "        if result.applyDamage ~= nil then applyDamage = result.applyDamage end",
+          "        if result.handled then",
+          "          return { handled = true, damage = damage, applyDamage = applyDamage }",
+          "        end",
+          "      end",
+          "    end",
+          "  end",
+          "  return { handled = false, damage = damage, applyDamage = applyDamage }",
+          "end",
+        ].join("\n");
+      }
+
       if (hookId === "onTriggerEnter") {
         return [
           `function entry.${hookId}(ctx)`,
@@ -1264,7 +1225,7 @@ function buildGeneratedEntryModule(
           "  local solid = nil",
           "  local deleteSelf = nil",
           "  local deleteOther = nil",
-          "  for _, candidate in ipairs(__modules) do",
+          "  for _, candidate in ipairs(__gameplayModules(ctx, 'onTriggerEnter', ctx.self)) do",
           `    local hook = candidate[${JSON.stringify(hookId)}]`,
           "    if type(hook) == 'function' then",
           "      local result = hook(ctx)",
@@ -1344,6 +1305,8 @@ function buildGeneratedEntryModule(
     customObjectRequires.length > 0 ? "\n" + customObjectRequires.join("\n") : "",
     "",
     `local __modules = { ${moduleList} }`,
+    buildObjectParameterHelpers(state),
+    buildCustomObjectGameplayDispatch(state.customObjects),
     "local __objectTypeModules = {",
     objectTypeRoutes,
     "}",
@@ -1545,6 +1508,7 @@ function cloneCustomPlacement(
     label: placement.label,
     position: { ...placement.position },
     levelKey: placement.levelKey,
+    ...(placement.parameters ? { parameters: { ...placement.parameters } } : {}),
   };
 }
 
@@ -1588,6 +1552,7 @@ function cloneCustomObjectDefinition(
           }
         : { ...objectDefinition.visual },
     collision: { ...objectDefinition.collision },
+    ...(objectDefinition.parameters ? { parameters: { ...objectDefinition.parameters } } : {}),
   };
 }
 
@@ -1595,6 +1560,10 @@ function cloneParameterDefinition(
   param: ScriptParameterDefinition,
 ): z.infer<typeof scriptParameterDefinitionSchema> {
   return {
+    ...(param.minimum === undefined ? {} : { minimum: param.minimum }),
+    ...(param.maximum === undefined ? {} : { maximum: param.maximum }),
+    ...(param.unit === undefined ? {} : { unit: param.unit }),
+    ...(param.choices ? { choices: [...param.choices] } : {}),
     id: param.id,
     label: param.label,
     type: param.type,
@@ -1687,16 +1656,7 @@ export function createScriptWorkspaceContext(
     }
   })();
 
-  const supportedHooks =
-    globals.GAME_TYPE === Game.MIGHTY_MIKE
-      ? getMightyMikeHooks()
-      : globals.GAME_TYPE === Game.CRO_MAG
-        ? getRaceHooks()
-        : gameId === "Nanosaur-android"
-          ? getNanosaurHooks()
-          : gameId === "BillyFrontier-Android"
-            ? getBillyFrontierHooks()
-            : getAdventureHooks();
+  const supportedHooks = getScriptGameHooks(gameId);
 
   return {
     gameId,
@@ -1712,9 +1672,7 @@ export function getScriptWorkspaceId(context: ScriptWorkspaceContext): string {
   return buildWorkspaceId(context);
 }
 
-export const scriptWorkspaceStoreAtom = atom<
-  Readonly<Record<string, ScriptWorkspaceState>>
->({});
+export const scriptWorkspaceStoreAtom = recoverableScriptWorkspaceStoreAtom;
 
 export function ensureScriptWorkspace(
   store: Readonly<Record<string, ScriptWorkspaceState>>,
@@ -1753,11 +1711,6 @@ export function retargetScriptWorkspace(
     return state;
   }
 
-  const sourceLevel = {
-    ...cloneLevelState(state.levels[state.context.levelKey] ?? defaultLevelState()),
-    customPlacements: [],
-  };
-
   return {
     ...state,
     context,
@@ -1765,7 +1718,7 @@ export function retargetScriptWorkspace(
       ? state.levels
       : {
           ...state.levels,
-          [context.levelKey]: sourceLevel,
+          [context.levelKey]: defaultLevelState(),
         },
   };
 }
@@ -2471,7 +2424,10 @@ export function compileScriptWorkspace(
   state: ScriptWorkspaceState,
 ): Result<ScriptWorkspaceState, string> {
   const refreshed = refreshGeneratedEntry(state, state.context);
-  const diagnostics: ScriptDiagnostic[] = [];
+  const diagnostics: ScriptDiagnostic[] = [
+    ...state.diagnostics.filter((diagnostic) => diagnostic.category === "luals"),
+    ...getScriptParameterDiagnostics(state),
+  ];
   const compiledFiles: Record<string, ScriptCompiledFile> = {};
 
   for (const sourceFile of Object.values(refreshed.sourceFiles)) {
@@ -2531,7 +2487,9 @@ function buildRuntimeLevelsJson(
       terrainReplacements: levelState.terrainReplacements.map((replacement) => ({ ...replacement })),
       mapReplacements: levelState.mapReplacements.map((replacement) => ({ ...replacement })),
       splineReplacements: levelState.splineReplacements.map((replacement) => ({ ...replacement })),
-      levelSettings: {},
+      levelSettings: {
+        assetDependencies: getScriptModelBankDependencies(state.context.gameId, state.customObjects.map((definition) => definition.visual)),
+      },
     }]];
   });
   return {
@@ -2840,10 +2798,7 @@ export function importScriptPackageZip(
   context: ScriptWorkspaceContext,
   validationOptions: ScriptPackageValidationOptions = {},
 ): Result<ScriptWorkspaceState, string> {
-  const unzipResult = Result.fromThrowable(
-    () => unzipSync(bytes),
-    () => "Failed to read uploaded script package",
-  )();
+  const unzipResult = readBoundedScriptZip(bytes);
   if (unzipResult.isErr()) {
     return err(unzipResult.error);
   }
@@ -3035,10 +2990,7 @@ export async function importScriptPackageZipAsync(
   bytes: Uint8Array,
   context: ScriptWorkspaceContext,
 ): Promise<Result<ScriptWorkspaceState, string>> {
-  const unzipResult = Result.fromThrowable(
-    () => unzipSync(bytes),
-    () => "Failed to read uploaded script package",
-  )();
+  const unzipResult = readBoundedScriptZip(bytes);
   if (unzipResult.isErr()) return err(unzipResult.error);
 
   const assetValidation = await validateScriptPackageAssetsAsync(
