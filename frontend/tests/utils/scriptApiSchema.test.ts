@@ -23,4 +23,19 @@ describe("scripting API schema", () => {
       expect(new Set(ids).size, game.gameName).toBe(ids.length);
     }
   });
+
+  it("exposes native action discovery and consistent structured mutation results", () => {
+    const methods = [
+      "carry", "drop", "handover", "mount", "dismount", "fire", "reload", "transform",
+      "respawn", "capture", "deliver", "resetCarried", "releaseBuddy", "grab", "interact", "commandBuddy",
+    ];
+    for (const method of methods) {
+      const api = AUTHORITATIVE_API_SCHEMA.apis.find((candidate) => candidate.name === `pangea.player.${method}`);
+      expect(api?.returnType, method).toBe("GameplayOperationResult");
+      expect(api?.command?.capability, method).toBe(`player-${method}`);
+      expect(api?.availabilityCapability, method).toBeUndefined();
+    }
+    expect(AUTHORITATIVE_API_SCHEMA.apis.find((api) => api.name === "pangea.player.actions")?.returnType).toBe("string[]");
+    expect(AUTHORITATIVE_API_SCHEMA.apis.find((api) => api.name === "pangea.player.relations")?.returnType).toBe("PlayerRelations|nil");
+  });
 });

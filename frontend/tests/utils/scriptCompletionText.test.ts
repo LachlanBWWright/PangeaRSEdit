@@ -25,6 +25,8 @@ describe("script completion text", () => {
     expect(getContextualApiName("", "pangea.spawn.native")).toBe(
       "pangea.spawn.native",
     );
+    expect(getContextualApiName("pangea.world.ray", "pangea.world.raycast")).toBe("raycast");
+    expect(getContextualApiName("pangea.wor", "pangea.world.raycast")).toBe("world.raycast");
   });
 
   it("offers the supported native IDs as a snippet choice", () => {
@@ -68,5 +70,32 @@ describe("script completion text", () => {
     );
     expect(apis.some((api) => api.name === "pangea.player.setForm")).toBe(false);
     expect(apis.some((api) => api.name === "pangea.player.setHealth")).toBe(true);
+  });
+
+  it("offers gameplay APIs with structured signatures within their namespace", () => {
+    const apis = getAvailableApiFunctions("MightyMike-Android", AUTHORITATIVE_API_SCHEMA.apis);
+    const sweep = apis.find((api) => api.name === "pangea.world.sweepBox");
+    const state = apis.find((api) => api.name === "pangea.player.setState");
+    expect(sweep).toBeDefined();
+    expect(state).toBeDefined();
+    if (!sweep || !state) return;
+    expect(buildApiSignature(sweep)).toBe("pangea.world.sweepBox(bounds: WorldBounds, delta: Vector3, category: string, ignore: ObjectHandle?): CollisionHit|nil");
+    expect(buildApiSignature(state)).toBe("pangea.player.setState(playerNum: number, key: string, value: number|boolean): CommandResult");
+    expect(buildApiCompletionInsertText(sweep, (name) => getContextualApiName("pangea.world.", name))).toBe("sweepBox(${1:bounds}, ${2:delta}, ${3:category}, ${4:ignore})");
+  });
+
+  it("offers native player operations with typed options and live relationship results", () => {
+    const apis = getAvailableApiFunctions("Nanosaur2-Android", AUTHORITATIVE_API_SCHEMA.apis);
+    const fire = apis.find((api) => api.name === "pangea.player.fire");
+    const deliver = apis.find((api) => api.name === "pangea.player.deliver");
+    const relations = apis.find((api) => api.name === "pangea.player.relations");
+    expect(fire).toBeDefined();
+    expect(deliver).toBeDefined();
+    expect(relations).toBeDefined();
+    if (!fire || !deliver || !relations) return;
+    expect(buildApiSignature(fire)).toBe("pangea.player.fire(playerNum: number, options: PlayerOperationOptions?): GameplayOperationResult");
+    expect(buildApiSignature(deliver)).toBe("pangea.player.deliver(playerNum: number, target: ObjectHandle?): GameplayOperationResult");
+    expect(buildApiSignature(relations)).toBe("pangea.player.relations(playerNum: number): PlayerRelations|nil");
+    expect(buildApiCompletionInsertText(fire, (name) => getContextualApiName("pangea.player.", name))).toBe("fire(${1:playerNum}, ${2:options})");
   });
 });

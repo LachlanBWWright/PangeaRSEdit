@@ -469,6 +469,43 @@ describe("scriptWorkspaceState", () => {
     );
   });
 
+  it("exposes typed gameplay input and controller ownership in LuaLS", () => {
+    const state = ensureScriptWorkspace({}, createScriptWorkspaceContext(Nanosaur2Globals, 1));
+    const declaration = buildScriptTypeDeclarationFiles(state).find(
+      (file) => file.path === "Data/Scripts/types/pangea-runtime.lua",
+    );
+    expect(declaration?.content).toContain("---@field input PangeaInputApi");
+    expect(declaration?.content).toContain("---@field get fun(playerNum: integer|nil): GameplayInput|nil");
+    expect(declaration?.content).toContain("---@field actions table<string, GameplayAction>");
+    expect(declaration?.content).toContain("---@field setScriptControlled fun(handle: ObjectHandle, enabled: boolean): boolean");
+    expect(declaration?.content).toContain("---@field rulesControlled fun(): boolean");
+    expect(declaration?.content).toContain("---@field setRulesControlled fun(enabled: boolean): CommandResult");
+    expect(declaration?.content).toContain("---@field sampleTerrain fun(x: number, z: number): TerrainSample|nil");
+    expect(declaration?.content).toContain("---@field overlapBox fun(bounds: WorldBounds, category: string): ObjectHandle[]|nil");
+    expect(declaration?.content).toContain("---@field setState fun(playerNum: integer, key: string, value: number|boolean): CommandResult");
+    expect(declaration?.content).toContain("---@field attach fun(child: ObjectHandle, parent: ObjectHandle, options: AttachmentOptions|nil): ObjectCommandResult");
+    expect(declaration?.content).toContain("---@field gameplay GameplayCapabilities");
+    expect(declaration?.content).toContain("---@field raycast fun(from: Vector3, to: Vector3, category: string, ignore: ObjectHandle|nil): CollisionHit|nil");
+    expect(declaration?.content).toContain("---@field sweepBox fun(bounds: WorldBounds, delta: Vector3, category: string, ignore: ObjectHandle|nil): CollisionHit|nil");
+    expect(declaration?.content).toContain("---@field moveKinematic fun(handle: ObjectHandle, delta: Vector3, category: string): KinematicResult");
+  });
+
+  it("declares native player operations without claiming universal game support", () => {
+    const state = ensureScriptWorkspace({}, createScriptWorkspaceContext(Nanosaur2Globals, 1));
+    const declaration = buildScriptTypeDeclarationFiles(state).find(
+      (file) => file.path === "Data/Scripts/types/pangea-runtime.lua",
+    );
+    expect(declaration?.content).toContain("---@field actions fun(): string[]");
+    expect(declaration?.content).toContain("---@field relations fun(playerNum: integer): PlayerRelations|nil");
+    expect(declaration?.content).toContain("---@field carry fun(playerNum: integer, target: ObjectHandle): GameplayOperationResult");
+    expect(declaration?.content).toContain("---@field fire fun(playerNum: integer, options: PlayerOperationOptions|nil): GameplayOperationResult");
+    expect(declaration?.content).toContain("---@field deliver fun(playerNum: integer, target: ObjectHandle|nil): GameplayOperationResult");
+    expect(declaration?.content).toContain("---@class GameplayOperationResult : CommandResult");
+    expect(declaration?.content).toContain("---@field object ObjectHandle|nil");
+    expect(declaration?.content).toContain("---@field mounted ObjectHandle|nil");
+    expect(declaration?.content).toContain("---@field capturedCount integer");
+  });
+
   it("omits unsupported player commands from LuaLS declarations", () => {
     const context = createScriptWorkspaceContext(Nanosaur2Globals, 1);
     const state = ensureScriptWorkspace({}, context);
@@ -886,8 +923,9 @@ describe("scriptWorkspaceState", () => {
     );
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
-    const files = unzipSync(packageResult.value);
-    delete files[SCRIPT_PACKAGE_MANIFEST_PATH];
+    const files = Object.fromEntries(Object.entries(unzipSync(packageResult.value)).filter(
+      ([path]) => path !== SCRIPT_PACKAGE_MANIFEST_PATH,
+    ));
     files["Data/Scripts/src/legacy.ts"] = strToU8(
       "export function onLevelStart(): void {}",
     );

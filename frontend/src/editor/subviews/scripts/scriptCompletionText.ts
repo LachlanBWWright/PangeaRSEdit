@@ -1,4 +1,6 @@
 import type { ApiFunction } from "./scriptApiSchema";
+import { gameplayParameterType } from "./scriptGameplayApi";
+import { presentationParameterType } from "./scriptPresentationDeclarations";
 
 function luaFieldType(field: ApiFunction["parameters"][number]): string {
   if (field.type === "stringUnion" && field.unionValues !== undefined) {
@@ -20,8 +22,14 @@ function luaFieldType(field: ApiFunction["parameters"][number]): string {
 }
 
 export function buildApiSignature(api: ApiFunction): string {
+  const [, namespace = "", method = ""] = api.name.split(".");
   const parameters = api.parameters
-    .map((parameter) => `${parameter.name}: ${luaFieldType(parameter)}${parameter.optional ? "?" : ""}`)
+    .map((parameter) => {
+      const type = gameplayParameterType(namespace, method, parameter.name)
+        ?? presentationParameterType(namespace, method, parameter.name)
+        ?? luaFieldType(parameter);
+      return `${parameter.name}: ${type}${parameter.optional ? "?" : ""}`;
+    })
     .join(", ");
   return `${api.name}(${parameters}): ${api.returnType}`;
 }
@@ -32,10 +40,11 @@ export function getContextualApiName(
 ): string {
   const parts = qualifiedName.split(".");
   const namespace = parts[1];
-  if (namespace !== undefined && linePrefix.endsWith(`pangea.${namespace}.`)) {
+  const namespacePrefix = /pangea\.([A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z0-9_]*$/.exec(linePrefix);
+  if (namespace !== undefined && namespacePrefix?.[1] === namespace) {
     return parts.slice(2).join(".");
   }
-  if (linePrefix.endsWith("pangea.")) {
+  if (/pangea\.[A-Za-z0-9_]*$/.test(linePrefix)) {
     return parts.slice(1).join(".");
   }
   return qualifiedName;

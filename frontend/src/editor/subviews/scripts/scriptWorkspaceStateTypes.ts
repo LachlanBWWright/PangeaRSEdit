@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const scriptHookIdSchema = z.enum([
+  "onDialogueResult",
   "onGameStart",
   "onGameShutdown",
   "onLevelLoad",

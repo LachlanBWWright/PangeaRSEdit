@@ -4,6 +4,8 @@ import { buildNativeSpawnDeclarations, buildNativeSpawnOverloads } from "./scrip
 import type { ApiFunction, Field } from "./scriptApiSchema";
 import { SCRIPT_FAILURE_CODES, SCRIPTING_CONTRACT, SCRIPT_RUNTIME_CAPABILITY_FIELDS } from "./scriptContract";
 import { getAvailableApiFunctions } from "./scriptApiAvailability";
+import { PRESENTATION_DECLARATIONS, presentationParameterType } from "./scriptPresentationDeclarations";
+import { GAMEPLAY_DECLARATIONS, gameplayParameterType } from "./scriptGameplayApi";
 
 export interface ScriptTypeDeclarationFile {
   readonly path: string;
@@ -153,6 +155,10 @@ function luaApiParameterType(
   methodName: string,
   field: Field,
 ): string {
+  const presentationType = presentationParameterType(namespace, methodName, field.name);
+  if (presentationType !== undefined) return presentationType + (field.optional ? "|nil" : "");
+  const gameplayType = gameplayParameterType(namespace, methodName, field.name);
+  if (gameplayType !== undefined) return gameplayType + (field.optional ? "|nil" : "");
   if (field.type === "function") {
     const callbackType = namespace === "events" ? "fun(payload: unknown)" : "fun()";
     return callbackType + (field.optional ? "|nil" : "");
@@ -503,6 +509,8 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     "---@field blendSeconds number|nil",
     "",
     "---@class PangeaCapabilities",
+    "---@field presentation PresentationCapabilities",
+    "---@field gameplay GameplayCapabilities",
     ...SCRIPT_RUNTIME_CAPABILITY_FIELDS.map((field) => `---@field ${field.name} ${field.luaType}`),
     "",
     "---@class PangeaRuntimeApi",
@@ -691,7 +699,27 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
     ...buildApiClassDeclarations("persistence", state.context.gameId),
     "",
     nativeOptionDeclarations,
+    ...PRESENTATION_DECLARATIONS,
+    ...GAMEPLAY_DECLARATIONS,
+    "---@class PangeaInputApi",
+    ...buildApiClassDeclarations("input", state.context.gameId),
+    "---@class PangeaWorldApi",
+    ...buildApiClassDeclarations("world", state.context.gameId),
+    "---@class PangeaUiApi",
+    ...buildApiClassDeclarations("ui", state.context.gameId),
+    "---@class PangeaDialogueApi",
+    ...buildApiClassDeclarations("dialogue", state.context.gameId),
+    "---@class PangeaAudioApi",
+    ...buildApiClassDeclarations("audio", state.context.gameId),
+    "---@class PangeaEffectsApi",
+    ...buildApiClassDeclarations("effects", state.context.gameId),
     "---@class PangeaApi",
+    "---@field input PangeaInputApi",
+    "---@field world PangeaWorldApi",
+    "---@field ui PangeaUiApi",
+    "---@field dialogue PangeaDialogueApi",
+    "---@field audio PangeaAudioApi",
+    "---@field effects PangeaEffectsApi",
     "---@field api PangeaRuntimeApi",
     "---@field game PangeaGameApi",
     "---@field level PangeaLevelApi",

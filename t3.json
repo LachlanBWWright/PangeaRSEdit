@@ -1,0 +1,176 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "defaultThreadEnvMode": "local",
+  "scripts": [
+    {
+      "name": "Install JavaScript Dependencies",
+      "command": "pnpm install --frozen-lockfile",
+      "icon": "configure"
+    },
+    {
+      "name": "Restore Backend Dependencies",
+      "command": "dotnet restore backend/PangeaRSEdit.sln",
+      "icon": "configure"
+    },
+    {
+      "name": "Install Playwright Chromium and Linux Dependencies",
+      "command": "pnpm --dir frontend exec playwright install --with-deps chromium",
+      "icon": "configure"
+    },
+    {
+      "name": "Start Full Development Stack",
+      "command": "./scripts/dev-everything.sh",
+      "icon": "play",
+      "previewUrl": "http://localhost:5177/PangeaRSEdit/",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Start Frontend",
+      "command": "pnpm --dir frontend run dev --host 127.0.0.1 --port 5173 --strictPort",
+      "icon": "play",
+      "previewUrl": "http://localhost:5173/PangeaRSEdit/",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Start Backend",
+      "command": "./scripts/dev-backend.sh",
+      "icon": "play"
+    },
+    {
+      "name": "Start Multiplayer Stack",
+      "command": "./scripts/multiplayer.sh",
+      "icon": "play",
+      "previewUrl": "http://localhost:5177/PangeaRSEdit/multiplayer?multiplayerDebug=1",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Start Storybook",
+      "command": "pnpm --dir frontend run storybook --host 127.0.0.1 --exact-port",
+      "icon": "play",
+      "previewUrl": "http://localhost:6006/",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Lint",
+      "command": "./scripts/lint.sh",
+      "icon": "lint"
+    },
+    {
+      "name": "Check Frontend Types",
+      "command": "pnpm --dir frontend exec tsc -b --pretty",
+      "icon": "lint"
+    },
+    {
+      "name": "Check Scripting Contract",
+      "command": "pnpm --dir frontend run check:scripting-contract",
+      "icon": "lint"
+    },
+    {
+      "name": "Check Scripting WASM Artifacts",
+      "command": "pnpm --dir frontend run check:scripting-wasm",
+      "icon": "lint"
+    },
+    {
+      "name": "Run Tests",
+      "command": "./scripts/test.sh",
+      "icon": "test"
+    },
+    {
+      "name": "Run Root Unit Tests",
+      "command": "pnpm run test:run",
+      "icon": "test"
+    },
+    {
+      "name": "Run Frontend Tests with Coverage",
+      "command": "pnpm --dir frontend run test:coverage --run",
+      "icon": "test"
+    },
+    {
+      "name": "Run Backend Tests",
+      "command": "dotnet test backend/PangeaRSEdit.sln --configuration Release",
+      "icon": "test"
+    },
+    {
+      "name": "Run Rust Terrain Codec Tests",
+      "command": "cargo test --manifest-path terrain-codec-rust/Cargo.toml --locked",
+      "icon": "test"
+    },
+    {
+      "name": "Run Storybook Tests",
+      "command": "pnpm --dir frontend run storybook:test",
+      "icon": "test"
+    },
+    {
+      "name": "Run End-to-End Tests",
+      "command": "./scripts/test-e2e.sh",
+      "icon": "test"
+    },
+    {
+      "name": "Run Backend Container Smoke Test",
+      "command": "./scripts/test-container.sh",
+      "icon": "test"
+    },
+    {
+      "name": "Build Production",
+      "command": "./scripts/build-production.sh",
+      "icon": "build"
+    },
+    {
+      "name": "Build Frontend",
+      "command": "pnpm --dir frontend run build",
+      "icon": "build"
+    },
+    {
+      "name": "Build Backend",
+      "command": "dotnet build backend/PangeaRSEdit.sln --configuration Release",
+      "icon": "build"
+    },
+    {
+      "name": "Build Terrain Codec WASM",
+      "command": "pnpm --dir frontend run build:terrain-codec",
+      "icon": "build"
+    },
+    {
+      "name": "Build Game Runtimes",
+      "command": "./scripts/build-games.sh",
+      "icon": "build"
+    },
+    {
+      "name": "Build Storybook",
+      "command": "pnpm --dir frontend run build-storybook",
+      "icon": "build"
+    },
+    {
+      "name": "Preview Production Frontend",
+      "command": "pnpm --dir frontend run preview --host 127.0.0.1 --port 4173 --strictPort",
+      "icon": "play",
+      "previewUrl": "http://localhost:4173/PangeaRSEdit/",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Run CI Checks Locally",
+      "command": "./scripts/test-ci.sh",
+      "icon": "test"
+    },
+    {
+      "name": "Inspect Listening TCP Ports",
+      "command": "ss -ltnp",
+      "icon": "debug"
+    },
+    {
+      "name": "Inspect Memory Usage",
+      "command": "free -h",
+      "icon": "debug"
+    },
+    {
+      "name": "Inspect Workspace Disk Space",
+      "command": "df -h .",
+      "icon": "debug"
+    },
+    {
+      "name": "Inspect Git and Submodule Status",
+      "command": "git status --short && git submodule status games/pangea-ports",
+      "icon": "debug"
+    }
+  ]
+}

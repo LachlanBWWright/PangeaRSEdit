@@ -257,7 +257,17 @@ describe("scripting contract", () => {
     const commands = SCRIPTING_CONTRACT.api.apis.filter(
       (api) => api.command !== undefined,
     );
-    expect(commands).toHaveLength(41);
+    expect(commands.map((command) => command.name)).toEqual(expect.arrayContaining([
+      "pangea.object.setScriptControlled",
+      "pangea.object.setHealth",
+      "pangea.object.setDamage",
+      "pangea.object.attach",
+      "pangea.object.detach",
+      "pangea.player.setState",
+      "pangea.level.complete",
+      "pangea.level.setRulesControlled",
+      "pangea.object.moveKinematic",
+    ]));
     for (const command of commands) {
       expect(command.command?.capability).toBeTruthy();
       expect(command.command?.authority).toBe("disabled-network");

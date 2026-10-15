@@ -319,9 +319,24 @@ const animationMarkerCallSites: readonly {
 const animationCompletionCallSites: readonly {
   readonly gameId: string;
   readonly sourcePath: string;
+  readonly extractedRunner?: {
+    readonly name: string;
+    readonly callerPath: string;
+    readonly headerPath: string;
+    readonly cmakePath: string;
+  };
 }[] = [
   { gameId: "OttoMatic-Android", sourcePath: "../games/pangea-ports/games/OttoMatic-Android/src/Scripting/ScriptBindings.c" },
-  { gameId: "Bugdom-android", sourcePath: "../games/pangea-ports/games/Bugdom-android/src/Scripting/ScriptBindings.c" },
+  {
+    gameId: "Bugdom-android",
+    sourcePath: "../games/pangea-ports/games/Bugdom-android/src/Scripting/ScriptObjectFrame.c",
+    extractedRunner: {
+      name: "BugdomScript_RunObjectFrame",
+      callerPath: "../games/pangea-ports/games/Bugdom-android/src/System/Objects.c",
+      headerPath: "../games/pangea-ports/games/Bugdom-android/src/Scripting/ScriptBindings.h",
+      cmakePath: "../games/pangea-ports/games/Bugdom-android/CMakeLists.txt",
+    },
+  },
   { gameId: "Bugdom2-Android", sourcePath: "../games/pangea-ports/games/Bugdom2-Android/Source/Scripting/ScriptBindings.c" },
   { gameId: "Nanosaur-android", sourcePath: "../games/pangea-ports/games/Nanosaur-android/src/Scripting/ScriptBindings.c" },
   { gameId: "Nanosaur2-Android", sourcePath: "../games/pangea-ports/games/Nanosaur2-Android/Source/Scripting/ScriptBindings.c" },
@@ -335,6 +350,7 @@ const playerIntegrationCallSites: readonly {
   readonly hook: string;
   readonly sourcePath: string;
   readonly call: string;
+  readonly requiredSource?: readonly string[];
 }[] = [
   {
     gameId: "MightyMike-Android",
@@ -358,7 +374,8 @@ const playerIntegrationCallSites: readonly {
     gameId: "MightyMike-Android",
     hook: "onWeaponHit",
     sourcePath: "../games/pangea-ports/games/MightyMike-Android/src/MeAndMo/Enemy.c",
-    call: "MikeScript_OnWeaponHit(weapon, gThisNodePtr",
+    call: "MikeScript_OnWeaponHit(weapon, target, hitDamage, &hitDamage, &destroyTarget)",
+    requiredSource: ["ObjNode* target = gThisNodePtr;", "ObjNode* weapon = gCollisionList[i].objectPtr;"],
   },
   {
     gameId: "OttoMatic-Android",
@@ -664,11 +681,11 @@ function parseRuntimeEvents(source: string): Result<readonly RuntimeEventDescrip
 function parseLuaBindings(source: string): Result<readonly string[], string> {
   const bindings: string[] = [];
   for (const line of source.split("\n")) {
-    const namespaceMatches = [...line.matchAll(/lua_setfield\(lua, -2, "([^"]+)"\)/g)];
+    const namespaceMatches = [...line.matchAll(/lua_setfield\(lua,\s*-2,\s*"([^"]+)"\)/g)];
     const namespace = namespaceMatches.at(-1)?.[1];
     if (!namespace) continue;
     const functions = [
-      ...line.matchAll(/set_(?:backend_)?function\(lua, "([^"]+)"/g),
+      ...line.matchAll(/(?:set_(?:backend_)?function|function)\(lua,\s*"([^"]+)"/g),
     ].map((match) => match[1]);
     for (const functionName of functions) {
       if (functionName) bindings.push(`pangea.${namespace}.${functionName}`);
@@ -677,7 +694,26 @@ function parseLuaBindings(source: string): Result<readonly string[], string> {
   if (source.includes('lua_setfield(lua, -2, level == PANGEA_LOG_INFO ? "info" : level == PANGEA_LOG_WARN ? "warn" : "error")')) {
     bindings.push("pangea.log.info", "pangea.log.warn", "pangea.log.error");
   }
+  const operationBindings = parsePlayerOperationBindings(source);
+  if (operationBindings.isErr()) return err(operationBindings.error);
+  bindings.push(...operationBindings.value);
   return ok([...new Set(bindings)].sort());
+}
+
+function parsePlayerOperationBindings(source: string): Result<readonly string[], string> {
+  const catalog = source.match(/operationNames\[PANGEA_SCRIPT_OP_COUNT\]\s*=\s*\{([^}]+)\}/)?.[1];
+  const registration = source.match(/static void install_player_operations\(lua_State\* lua\)\s*\{([\s\S]*?)\n\}/)?.[1];
+  if (!catalog || !registration) return err("Player operation catalog or Lua registration is missing");
+  if (!registration.includes('lua_getfield(lua, -1, "player")') ||
+      !registration.includes("lua_pushcclosure(lua, lua_player_operation, 1)") ||
+      !registration.includes("lua_setfield(lua, -2, PangeaScript_GetOperationName((PangeaScriptPlayerOperation)i))") ||
+      !registration.includes("i < PANGEA_SCRIPT_OP_COUNT")) {
+    return err("Player operation catalog is not registered in the player namespace");
+  }
+  const names = [...catalog.matchAll(/"([^"]+)"/g)].flatMap((match) => match[1] ? [match[1]] : []);
+  if (names.length === 0 || new Set(names).size !== names.length) return err("Player operation catalog is empty or duplicated");
+  const queries = [...registration.matchAll(/set_function\(lua,\s*"([^"]+)"/g)].flatMap((match) => match[1] ? [match[1]] : []);
+  return ok([...names, ...queries].map((name) => `pangea.player.${name}`));
 }
 
 function compareLuaBindings(source: string): Result<true, string> {
@@ -688,7 +724,9 @@ function compareLuaBindings(source: string): Result<true, string> {
     .filter((name) => name.startsWith("pangea."))
     .sort();
   if (JSON.stringify(actual.value) !== JSON.stringify(expected)) {
-    return err("Lua binding registration drift");
+    const missing = expected.filter((name) => !actual.value.includes(name));
+    const extra = actual.value.filter((name) => !expected.includes(name));
+    return err(`Lua binding registration drift: missing [${missing.join(", ")}]; unexpected [${extra.join(", ")}]`);
   }
   return ok(true);
 }
@@ -860,6 +898,20 @@ function validateAnimationCompletionCallSites(): Result<true, string> {
     if (!source.value.includes("ScriptAnimationCompletionSent")) {
       return err(`Animation completion is not guarded against duplicate delivery: ${callSite.gameId}`);
     }
+    const runner = callSite.extractedRunner;
+    if (!runner) continue;
+    const caller = readRuntimeSource(resolve(process.cwd(), runner.callerPath));
+    if (caller.isErr()) return err(caller.error);
+    const header = readRuntimeSource(resolve(process.cwd(), runner.headerPath));
+    if (header.isErr()) return err(header.error);
+    const cmake = readRuntimeSource(resolve(process.cwd(), runner.cmakePath));
+    if (cmake.isErr()) return err(cmake.error);
+    if (!source.value.includes(`void ${runner.name}(`) || !header.value.includes(`void ${runner.name}(`) || !caller.value.includes(`${runner.name}(`)) {
+      return err(`Extracted animation completion runner is not wired into production: ${callSite.gameId}`);
+    }
+    if (!cmake.value.includes("file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS ${GAME_SRCDIR}/*.c")) {
+      return err(`Extracted animation completion source is missing from the production source glob: ${callSite.gameId}`);
+    }
   }
   return ok(true);
 }
@@ -905,7 +957,7 @@ function validatePlayerIntegrationCallSites(): Result<true, string> {
     if (!game?.supportedHooks.includes(callSite.hook)) continue;
     const source = readRuntimeSource(resolve(process.cwd(), callSite.sourcePath));
     if (source.isErr()) return err(source.error);
-    if (!source.value.includes(callSite.call)) {
+    if (!source.value.includes(callSite.call) || callSite.requiredSource?.some((required) => !source.value.includes(required))) {
       return err(
         `Player integration call site is missing ${callSite.hook}: ${callSite.gameId}`,
       );
@@ -1367,6 +1419,9 @@ const headerResult = readRuntimeSource(runtimeHeader);
 const sourceResult = readRuntimeSource(runtimeSource);
 const metadataResult = readRuntimeSource(runtimeMetadata);
 const luaBackendResult = readRuntimeSource(luaBackendSource);
+const presentationLuaResult = readRuntimeSource(resolve(process.cwd(), "../games/pangea-ports/shared/script/pangea_presentation_lua.c"));
+const playerOperationsLuaResult = readRuntimeSource(resolve(process.cwd(), "../games/pangea-ports/shared/script/pangea_player_operations_lua.inc"));
+const playerOperationsResult = readRuntimeSource(resolve(process.cwd(), "../games/pangea-ports/shared/script/pangea_player_operations.inc"));
 
 const validation = validateScriptingContract();
 if (validation.isErr()) {
@@ -1384,6 +1439,15 @@ if (validation.isErr()) {
 } else if (luaBackendResult.isErr()) {
   console.error(luaBackendResult.error);
   process.exitCode = 1;
+} else if (presentationLuaResult.isErr()) {
+  console.error(presentationLuaResult.error);
+  process.exitCode = 1;
+} else if (playerOperationsLuaResult.isErr()) {
+  console.error(playerOperationsLuaResult.error);
+  process.exitCode = 1;
+} else if (playerOperationsResult.isErr()) {
+  console.error(playerOperationsResult.error);
+  process.exitCode = 1;
 } else {
   const nativeAuditValidation = validateNativeItemAuditCatalog();
   if (nativeAuditValidation.isErr()) {
@@ -1399,7 +1463,7 @@ if (validation.isErr()) {
     console.error(`Runtime contract drift: ${runtimeValidation.error}`);
     process.exitCode = 1;
   } else {
-    const luaBindingValidation = compareLuaBindings(luaBackendResult.value);
+    const luaBindingValidation = compareLuaBindings(`${luaBackendResult.value}\n${presentationLuaResult.value}\n${playerOperationsLuaResult.value}\n${playerOperationsResult.value}`);
     if (luaBindingValidation.isErr()) {
       console.error(`Lua binding drift: ${luaBindingValidation.error}`);
       process.exitCode = 1;

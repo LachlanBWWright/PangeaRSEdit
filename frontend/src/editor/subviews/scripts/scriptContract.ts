@@ -351,10 +351,10 @@ export function validateScriptingContract(): Result<true, string> {
     commandMetadata.set(command.capability, signature);
   }
   const incompleteCommands = commandApis
-    .filter((api) => api.returnType !== "boolean" && api.returnType !== "ObjectCommandResult" && api.returnType !== "PlayerCommandResult")
+    .filter((api) => !["boolean", "ObjectCommandResult", "PlayerCommandResult", "CommandResult", "KinematicResult", "GameplayOperationResult"].includes(api.returnType))
     .map((api) => api.name);
   if (incompleteCommands.length > 0) {
-    return err(`Command APIs must return boolean or ObjectCommandResult: ${incompleteCommands.join(", ")}`);
+    return err(`Command APIs must return boolean or a structured command result: ${incompleteCommands.join(", ")}`);
   }
 
   const duplicateHooks = duplicate(

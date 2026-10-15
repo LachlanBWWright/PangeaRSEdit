@@ -21,6 +21,8 @@ import type {
 import { DefineBehaviorModal } from "./DefineBehaviorModal";
 import { ScriptCodeModal } from "./ScriptCodeModal";
 import { ScriptCodeWorkspacePanel } from "./ScriptCodeWorkspacePanel";
+import { ScriptDialoguePanel } from "./ScriptDialoguePanel";
+import { saveDialogueToWorkspace } from "./scriptDialogueAuthoring";
 import { ScriptCustomObjectsPanel } from "./ScriptCustomObjectsPanel";
 import { ScriptGlobalHooksPanel } from "./ScriptGlobalHooksPanel";
 import { ScriptGettingStartedPanel } from "./ScriptGettingStartedPanel";
@@ -1169,6 +1171,7 @@ export function ScriptsMenu({
           value="code"
           className="grid gap-4 xl:grid-cols-[360px_1fr]"
         >
+          <ScriptDialoguePanel gameId={workspace.context.gameId} onSave={(draft) => saveDialogueToWorkspace(workspace, draft, persistWorkspace, toast.error)} />
           <ScriptProjectFilesPanel
             newFileName={newFileName}
             onNewFileNameChange={setNewFileName}

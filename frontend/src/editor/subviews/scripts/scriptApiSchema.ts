@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { appendPresentationHook, PRESENTATION_APIS } from "./scriptPresentationApi";
+import { GAMEPLAY_APIS } from "./scriptGameplayApi";
 import { billyFrontierItemTypeParams as billyItemParams, itemTypeNames as billyItemTypeNames } from "@/data/items/billyFrontierItemType";
 import { bugdomItemTypeParams as bugdomItemParams, itemTypeNames as bugdomItemTypeNames } from "@/data/items/bugdomItemType";
 import { bugdom2ItemTypeParams as bugdom2ItemParams, itemTypeNames as bugdom2ItemTypeNames } from "@/data/items/bugdom2ItemType";
@@ -1099,7 +1101,7 @@ const cromagTerrainCategoryOverrides: Readonly<Record<number, string>> = {
 export const GameSchema = z.object({
   gameId: z.string(),
   gameName: z.string(),
-  supportedHooks: z.array(z.string()),
+  supportedHooks: z.array(z.string()).transform(appendPresentationHook),
   contextFields: z.array(FieldSchema),
   nativeSpawns: z.array(NativeSpawnSchema),
 });
@@ -1117,6 +1119,7 @@ export type ApiSchemaType = z.infer<typeof ApiSchema>;
 // The single source of truth for the scripting APIs
 export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
   hooks: [
+    { name: "onDialogueResult", description: "Receives deferred dialogue completion, cancellation, or choice results.", contextType: "DialogueResultContext", returnType: "nil" },
     {
       name: "onGameStart",
       description: "Triggered when the game boots.",
@@ -1329,6 +1332,8 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     },
   ],
   apis: [
+    ...PRESENTATION_APIS,
+    ...GAMEPLAY_APIS,
     {
       name: "pangea.log.info",
       description: "Logs an informational message.",
@@ -1881,7 +1886,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "BillyFrontier-Android",
       gameName: "Billy Frontier",
-      supportedHooks: ["onGameStart", "onGameShutdown", "onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onDamage", "onDamageApplied", "onPlayerSpawn", "onDeath", "onSave", "onLoad"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onAreaLoad", "onAreaStart", "onAreaFrame", "onAreaComplete", "onAreaUnload", "onTerrainItem", "onSplineItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onDamage", "onDamageApplied", "onPlayerSpawn", "onWeaponHit", "onDeath", "onSave", "onLoad"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["duel", "shootout", "stampede", "targetPractice"], optional: true },
         { name: "modePhase", type: "number", optional: true },
