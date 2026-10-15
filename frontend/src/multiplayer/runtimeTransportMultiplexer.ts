@@ -129,20 +129,18 @@ export function createHostRuntimeTransportMultiplexer(input: {
       return err("No connected runtime peers");
     }
 
-    let delivered = false;
     let firstFailure: string | null = null;
-    for (const handle of peers.values()) {
+    for (const [participantId, handle] of peers) {
       const sent = sender(handle.transport);
       if (sent.isOk()) {
-        delivered = true;
         continue;
       }
       if (firstFailure === null) {
-        firstFailure = sent.error;
+        firstFailure = `Peer ${participantId}: ${sent.error}`;
       }
     }
 
-    if (delivered) {
+    if (firstFailure === null) {
       return ok(undefined);
     }
     return err(firstFailure ?? "Failed to send packet to peers");

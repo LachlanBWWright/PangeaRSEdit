@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { Game } from "@/data/globals/globals";
 import { GAME_PORT_CONFIGS } from "./gamePortConfig";
@@ -41,6 +41,87 @@ const launchPayloadSchema = z.object({
   playerCount: z.number(),
   matchIdLow: z.number(),
   matchIdHigh: z.number(),
+});
+
+describe("headless preview audio controls", () => {
+  const cleanups: (() => void)[] = [];
+  afterEach(() => {
+    for (const cleanup of cleanups.splice(0)) cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  function audioFixture() {
+    const contexts: MockAudioContext[] = [];
+    class MockAudioContext {
+      state: AudioContextState = "running";
+      failResume = false;
+      failSuspend = false;
+      suspend = vi.fn(() => {
+        if (this.failSuspend) return Promise.reject(new Error("Audio suspension denied"));
+        this.state = "suspended";
+        return Promise.resolve();
+      });
+      resume() {
+        this.resumeCalls += 1;
+        if (this.failResume) return Promise.reject(new Error("Audio resume denied"));
+        this.state = "running";
+        return Promise.resolve();
+      }
+      resumeCalls = 0;
+      close = vi.fn(() => { this.state = "closed"; return Promise.resolve(); });
+      constructor() { contexts.push(this); }
+    }
+    vi.stubGlobal("AudioContext", MockAudioContext);
+    vi.stubGlobal("Module", undefined);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("window.Module = Module; const context = new window.AudioContext(); context.resume();")));
+    return { contexts, MockAudioContext, module: createNetworkPreviewModule(Game.CRO_MAG, null) };
+  }
+
+  it("plays audio by default, supports muting, then closes contexts and restores the host", async () => {
+    const fixture = audioFixture();
+    const loaded = await loadPreviewRuntime(fixture.module, "https://example.com/mock-audio.js");
+    expect(loaded.isOk()).toBe(true);
+    if (loaded.isErr()) return;
+    cleanups.push(loaded.value);
+    const context = fixture.contexts[0];
+    expect(context).toBeDefined();
+    if (!context) return;
+    expect(context.state).toBe("running");
+    expect(context.suspend).not.toHaveBeenCalled();
+    expect(context.resumeCalls).toBe(1);
+    expect((await fixture.module.setPreviewAudioMuted?.(false))?.isOk()).toBe(true);
+    expect(context.state).toBe("running");
+    expect(context.resumeCalls).toBe(2);
+    const later = new window.AudioContext();
+    expect(later.state).toBe("running");
+    expect((await fixture.module.setPreviewAudioMuted?.(true))?.isOk()).toBe(true);
+    expect(context.state).toBe("suspended");
+    expect(later.state).toBe("suspended");
+    await later.resume();
+    expect(later.state).toBe("suspended");
+    loaded.value();
+    expect(fixture.contexts.every((item) => item.state === "closed")).toBe(true);
+    expect(fixture.contexts.every((item) => item.close.mock.calls.length === 1)).toBe(true);
+    expect(window.AudioContext).toBe(fixture.MockAudioContext);
+  });
+
+  it.each(["resume", "suspend"])("returns a typed failure when audio %s rejects", async (operation) => {
+    const fixture = audioFixture();
+    const loaded = await loadPreviewRuntime(fixture.module, "https://example.com/mock-audio.js");
+    expect(loaded.isOk()).toBe(true);
+    if (loaded.isErr()) return;
+    cleanups.push(loaded.value);
+    const context = fixture.contexts[0];
+    if (!context) return;
+    if (operation === "resume") context.failResume = true;
+    else {
+      expect((await fixture.module.setPreviewAudioMuted?.(false))?.isOk()).toBe(true);
+      context.failSuspend = true;
+    }
+    const result = await fixture.module.setPreviewAudioMuted?.(operation === "suspend");
+    expect(result?.isErr()).toBe(true);
+    if (result?.isErr()) expect(result.error).toContain(operation === "resume" ? "Audio resume denied" : "Audio suspension denied");
+  });
 });
 
 type Ccall = NonNullable<PreviewRuntimeModule["ccall"]>;

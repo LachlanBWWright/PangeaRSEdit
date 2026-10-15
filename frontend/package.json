@@ -105,6 +105,7 @@
     "@gltf-transform/core": "^4.2.1",
     "@playwright/test": "^1.57.0",
     "@storybook/addon-a11y": "^10.5.8",
+    "@storybook/addon-docs": "10.5.8",
     "@storybook/addon-vitest": "^10.5.8",
     "@storybook/react-vite": "^10.5.8",
     "@tailwindcss/postcss": "^4.1.18",

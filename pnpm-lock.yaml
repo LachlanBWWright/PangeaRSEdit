@@ -190,6 +190,9 @@ importers:
       '@storybook/addon-a11y':
         specifier: ^10.5.8
         version: 10.5.8(storybook@10.5.8(@types/react@19.2.15)(react@19.2.6))
+      '@storybook/addon-docs':
+        specifier: 10.5.8
+        version: 10.5.8(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(rollup@4.60.4)(storybook@10.5.8(@types/react@19.2.15)(react@19.2.6))(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.3))
       '@storybook/addon-vitest':
         specifier: ^10.5.8
         version: 10.5.8(@vitest/browser-playwright@4.1.7)(@vitest/browser@4.1.7)(@vitest/runner@4.1.7)(react@19.2.6)(storybook@10.5.8(@types/react@19.2.15)(react@19.2.6))(vitest@4.1.7)
@@ -1300,6 +1303,12 @@ packages:
     resolution: {integrity: sha512-KaP8ECtCsLSWiE0g64yoh6v3zEujksWZwMNE1gpnMqbFqNUGQlPPFvH5vhZynqyaHaJj/qbW6w4Hx+pIheG+rg==}
     engines: {node: '>=18.0.0'}
     hasBin: true
+
+  '@mdx-js/react@3.1.1':
+    resolution: {integrity: sha512-f++rKLQgUVYDAtECQ6fn/is15GkEH9+nZPM3MS0RcxVqoTfawHvDlSCH7JbMhAM6uJ32v3eXLvLmLvjGu7PTQw==}
+    peerDependencies:
+      '@types/react': '>=16'
+      react: '>=16'
 
   '@mediapipe/tasks-vision@0.10.17':
     resolution: {integrity: sha512-CZWV/q6TTe8ta61cZXjfnnHsfWIdFhms03M9T7Cnd5y2mdpylJM0rF1qRq+wsQVRMLz1OYPVEBU9ph2Bx8cxrg==}
@@ -2494,6 +2503,15 @@ packages:
     peerDependencies:
       storybook: ^10.5.8
 
+  '@storybook/addon-docs@10.5.8':
+    resolution: {integrity: sha512-NlHiMKW/UvW/uL8HXFDCEVwoH3qZeGYZ/qlWax4d7H471b/T54MBq2KcB4ZrdA785FfIH3numAJdBb5jwn00Mg==}
+    peerDependencies:
+      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      storybook: ^10.5.8
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
   '@storybook/addon-vitest@10.5.8':
     resolution: {integrity: sha512-/2K6JXncyHEM8v7UfOeR0KGd7s46Q2XlfaBJUnBoGsEG6JF46la8sh43b+kIOG7JGPUqlyfA6uOMewUmG6S17w==}
     peerDependencies:
@@ -2867,6 +2885,9 @@ packages:
 
   '@types/lodash@4.17.24':
     resolution: {integrity: sha512-gIW7lQLZbue7lRSWEFql49QJJWThrTFFeIMJdp3eH4tKoxm1OvEPg02rm4wCCSHS0cL3/Fizimb35b7k8atwsQ==}
+
+  '@types/mdx@2.0.14':
+    resolution: {integrity: sha512-T48PeuJtvLosNTPVhfnIp3i/n3a4g4Bad7YCq5k64D4u7NwDrAotikQ+5+sjtUvBmxCMlbo3dVL+C2dP0rWHzg==}
 
   '@types/micromatch@4.0.10':
     resolution: {integrity: sha512-5jOhFDElqr4DKTrTEbnW8DZ4Hz5LRUEmyrGpCMrD/NphYv3nUnaF08xmSLx1rGGnyEs/kFnhiw6dCgcDqMr5PQ==}
@@ -6602,6 +6623,12 @@ snapshots:
 
   '@lachlanbwwright/rsrcdump-ts@1.0.6': {}
 
+  '@mdx-js/react@3.1.1(@types/react@19.2.15)(react@19.2.6)':
+    dependencies:
+      '@types/mdx': 2.0.14
+      '@types/react': 19.2.15
+      react: 19.2.6
+
   '@mediapipe/tasks-vision@0.10.17': {}
 
   '@microsoft/signalr@10.0.0':
@@ -7613,6 +7640,25 @@ snapshots:
       axe-core: 4.13.0
       storybook: 10.5.8(@types/react@19.2.15)(react@19.2.6)
 
+  '@storybook/addon-docs@10.5.8(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(rollup@4.60.4)(storybook@10.5.8(@types/react@19.2.15)(react@19.2.6))(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.3))':
+    dependencies:
+      '@mdx-js/react': 3.1.1(@types/react@19.2.15)(react@19.2.6)
+      '@storybook/csf-plugin': 10.5.8(esbuild@0.28.0)(rollup@4.60.4)(storybook@10.5.8(@types/react@19.2.15)(react@19.2.6))(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.3))
+      '@storybook/icons': 2.1.0(react@19.2.6)
+      '@storybook/react-dom-shim': 10.5.8(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.5.8(@types/react@19.2.15)(react@19.2.6))
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      storybook: 10.5.8(@types/react@19.2.15)(react@19.2.6)
+      ts-dedent: 2.3.0
+    optionalDependencies:
+      '@types/react': 19.2.15
+    transitivePeerDependencies:
+      - '@types/react-dom'
+      - esbuild
+      - rollup
+      - vite
+      - webpack
+
   '@storybook/addon-vitest@10.5.8(@vitest/browser-playwright@4.1.7)(@vitest/browser@4.1.7)(@vitest/runner@4.1.7)(react@19.2.6)(storybook@10.5.8(@types/react@19.2.15)(react@19.2.6))(vitest@4.1.7)':
     dependencies:
       '@storybook/global': 5.0.0
@@ -7948,6 +7994,8 @@ snapshots:
   '@types/language-tags@1.0.4': {}
 
   '@types/lodash@4.17.24': {}
+
+  '@types/mdx@2.0.14': {}
 
   '@types/micromatch@4.0.10':
     dependencies:

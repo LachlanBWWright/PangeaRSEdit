@@ -45,6 +45,7 @@ export function NetworkDebugControls({
           </div>
           <Slider
             id="network-debug-latency"
+            aria-label="Artificial latency"
             min={0}
             max={1000}
             step={25}
@@ -63,6 +64,7 @@ export function NetworkDebugControls({
           </div>
           <Slider
             id="network-debug-loss"
+            aria-label="Packet loss"
             min={0}
             max={100}
             step={1}
@@ -81,6 +83,7 @@ export function NetworkDebugControls({
           </div>
           <Slider
             id="network-debug-burst"
+            aria-label="Packet burst chance"
             min={0}
             max={100}
             step={1}
@@ -101,6 +104,7 @@ export function NetworkDebugControls({
           </div>
           <Slider
             id="network-debug-burst-size"
+            aria-label="Burst packet count"
             min={1}
             max={20}
             step={1}

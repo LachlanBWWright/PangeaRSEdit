@@ -48,6 +48,7 @@ interface Props {
   readonly onRuntimeModule?: (module: PreviewRuntimeModule | null) => void;
   /** When true, launch from the title screen without level injection or level-jump globals. */
   readonly normalLaunch?: boolean;
+  readonly initialAudioMuted?: boolean;
 }
 
 export function GamePreviewHost({
@@ -66,8 +67,10 @@ export function GamePreviewHost({
   onRuntimeEvent,
   onRuntimeModule,
   normalLaunch = false,
+  initialAudioMuted = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioInitializedModule = useRef<PreviewRuntimeModule | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>({
     runToken,
     statusText: "Preparing game runtime…",
@@ -110,7 +113,13 @@ export function GamePreviewHost({
       },
       onFailure: onRuntimeFailure,
       onRuntimeEvent,
-      onRuntimeModule,
+      onRuntimeModule: (module) => {
+        if (module && module !== audioInitializedModule.current) {
+          audioInitializedModule.current = module;
+          void module.setPreviewAudioMuted?.(initialAudioMuted).match(() => undefined, (message) => onRuntimeError?.(message));
+        }
+        onRuntimeModule?.(module);
+      },
     });
   }, [
     config,
@@ -124,6 +133,7 @@ export function GamePreviewHost({
     onRuntimeFailure,
     onRuntimeEvent,
     onRuntimeModule,
+    initialAudioMuted,
     terrainDataBytes,
     terrainRsrcBytes,
     terrainTextureBytes,

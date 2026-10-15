@@ -485,12 +485,14 @@ export function MultiplayerPage() {
   const canStartLobby = Boolean(
     isHost &&
     lobby &&
+    (lobby.state === "open" || lobby.state === "match_ended") &&
     lobby.players.length >= 2 &&
     readyPlayerCount === lobby.players.length,
   );
   const canForceStartLobby = Boolean(
     isHost &&
     lobby &&
+    (lobby.state === "open" || lobby.state === "match_ended") &&
     lobby.players.length >= 2 &&
     readyPlayerCount < lobby.players.length,
   );
@@ -582,6 +584,7 @@ export function MultiplayerPage() {
           busy={busy}
           isPreloading={uiState === "preloading-game"}
           lobbyListErrorText={lobbyListErrorText}
+          errorText={errorText}
           displayedPublicLobbies={displayedPublicLobbies}
           joinGameFilter={joinGameFilter}
           joinModeFilter={joinModeFilter}
@@ -600,6 +603,7 @@ export function MultiplayerPage() {
           onQuickJoinLobby={(lobbyIdToJoin) => {
             void handleQuickJoinLobby(lobbyIdToJoin);
           }}
+          onClearError={() => setErrorText(null)}
         />
       ) : null}
 

@@ -105,6 +105,27 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     }
 
     [Fact]
+    public async Task JoinLobby_AddsNumericSuffixToDuplicateDisplayName()
+    {
+        var hostClient = _factory.CreateClient();
+        var (lobbyId, _) = await CreateLobbyAsync(hostClient);
+
+        var guestClient = _factory.CreateClient();
+        guestClient.DefaultRequestHeaders.Add("X-Participant-Id", "guest-duplicate-name");
+        var joinResponse = await guestClient.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new
+        {
+            displayName = "host"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, joinResponse.StatusCode);
+        using var document = JsonDocument.Parse(await joinResponse.Content.ReadAsStringAsync());
+        var guest = document.RootElement.GetProperty("players")
+            .EnumerateArray()
+            .Single(player => player.GetProperty("participantId").GetString() == "guest-duplicate-name");
+        Assert.Equal("host (2)", guest.GetProperty("displayName").GetString());
+    }
+
+    [Fact]
     public async Task JoinLobby_ReusesVacatedPlayerIndex()
     {
         var hostClient = _factory.CreateClient();

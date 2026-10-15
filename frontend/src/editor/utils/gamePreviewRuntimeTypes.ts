@@ -1,6 +1,6 @@
 import { Game } from "../../data/globals/globals";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
-import type { Result } from "neverthrow";
+import type { Result, ResultAsync } from "neverthrow";
 
 export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
   [Game.OTTO_MATIC]: "Otto Matic",
@@ -59,6 +59,7 @@ export interface PreviewRuntimeFailure {
 }
 
 export interface PreviewRuntimeModule {
+  setPreviewAudioMuted?: (muted: boolean) => ResultAsync<void, string>;
   canvas: HTMLCanvasElement;
   keyboardListeningElement?: HTMLCanvasElement;
   preinitializedWebGLContext?:

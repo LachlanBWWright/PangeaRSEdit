@@ -12,6 +12,26 @@ describe("GameplaySequenceTracker", () => {
     tracker = new GameplaySequenceTracker(false);
   });
 
+  it("rejects packets older than the bounded receive window", () => {
+    for (let sequence = 1; sequence <= 2000; sequence++) {
+      expect(tracker.validate({
+        protocolVersion: 1, gameId: 1, messageType: "clientInput", flags: 0,
+        matchSequence: sequence, frameNumber: sequence, senderPlayerIndex: 0,
+        reliability: "ordered",
+      }).isValid).toBe(true);
+    }
+    const result = tracker.validate({
+      protocolVersion: 1, gameId: 1, messageType: "clientInput", flags: 0,
+      matchSequence: 1, frameNumber: 1, senderPlayerIndex: 0, reliability: "ordered",
+    });
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain("receive window");
+    expect(tracker.validate({
+      protocolVersion: 1, gameId: 1, messageType: "clientInput", flags: 0,
+      matchSequence: 1999, frameNumber: 1999, senderPlayerIndex: 0, reliability: "ordered",
+    }).isDuplicate).toBe(true);
+  });
+
   describe("strict reliability (host authority)", () => {
     it("accepts strictly increasing sequences", () => {
       const result1 = tracker.validate({

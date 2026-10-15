@@ -140,6 +140,7 @@ export interface MultiplayerRuntimeBridgeConfig {
 }
 
 export interface MultiplayerRuntimeBridge {
+  readonly dispose: () => void;
   readonly isEnabled: () => boolean;
   readonly isHost: () => boolean;
   readonly getLocalPlayerIndex: () => number;
@@ -260,6 +261,15 @@ export function createMultiplayerRuntimeBridge(
   transport: MultiplayerRuntimeTransport,
 ): MultiplayerRuntimeBridge {
   const maxIncomingQueueLength = 256;
+  const pendingTimers = new Set<number>();
+  let disposed = false;
+  const schedulePacket = (callback: () => void): void => {
+    const timer = window.setTimeout(() => {
+      pendingTimers.delete(timer);
+      if (!disposed) callback();
+    }, networkDebugOptions.latencyMs);
+    pendingTimers.add(timer);
+  };
   const incomingQueue: {
     readonly bytes: ArrayBuffer;
     readonly isSnapshot: boolean;
@@ -300,13 +310,14 @@ export function createMultiplayerRuntimeBridge(
     if (unreliableResult.isOk()) {
       return true;
     }
-    return sendReliableNow(bytes);
+    return false;
   };
 
   const impairOutgoing = (
     bytes: ArrayBuffer,
     sendNow: (packet: ArrayBuffer) => boolean,
   ): boolean => {
+    if (disposed) return false;
     if (!getFeatureFlags().multiplayerDebug) {
       return sendNow(bytes);
     }
@@ -317,9 +328,9 @@ export function createMultiplayerRuntimeBridge(
     if (networkDebugOptions.latencyMs > 0) {
       const copied = cloneBuffer(bytes);
       recordNetworkDebugDelay();
-      window.setTimeout(() => {
+      schedulePacket(() => {
         sendNow(copied);
-      }, networkDebugOptions.latencyMs);
+      });
       return true;
     }
     return sendNow(bytes);
@@ -368,6 +379,7 @@ export function createMultiplayerRuntimeBridge(
   };
 
   const impairIncoming = (bytes: ArrayBuffer): Result<void, string> => {
+    if (disposed) return err("Runtime bridge is disposed");
     if (!getFeatureFlags().multiplayerDebug) {
       return queueIncoming(bytes);
     }
@@ -378,15 +390,21 @@ export function createMultiplayerRuntimeBridge(
     if (networkDebugOptions.latencyMs > 0) {
       const copied = cloneBuffer(bytes);
       recordNetworkDebugDelay();
-      window.setTimeout(() => {
+      schedulePacket(() => {
         queueIncoming(copied);
-      }, networkDebugOptions.latencyMs);
+      });
       return ok(undefined);
     }
     return queueIncoming(bytes);
   };
 
   return {
+    dispose: () => {
+      disposed = true;
+      for (const timer of pendingTimers) window.clearTimeout(timer);
+      pendingTimers.clear();
+      incomingQueue.length = 0;
+    },
     isEnabled: () => true,
     isHost: () => config.isHost,
     getLocalPlayerIndex: () => config.localPlayerIndex,
@@ -411,9 +429,12 @@ export function createMultiplayerRuntimeBridge(
         return null;
       }
       if (next.bytes.byteLength > maxByteCount) {
+        incomingQueue.shift();
         Object.assign(runtimeDebugStats, {
+          rejected: runtimeDebugStats.rejected + 1,
           queueDepth: incomingQueue.length,
         });
+        updateRuntimeDebugStats("reject", next.bytes, "Packet exceeds runtime receive buffer");
         return null;
       }
       incomingQueue.shift();
@@ -532,6 +553,7 @@ export function installMultiplayerRuntimeBridge(
 
   return () => {
     Reflect.deleteProperty(target, "PangeaNet");
+    bridge.dispose();
   };
 }
 
@@ -549,6 +571,9 @@ export function createManagedMultiplayerRuntimeBridge(
 
   return {
     bridge,
-    dispose: unsubscribe,
+    dispose: () => {
+      unsubscribe();
+      bridge.dispose();
+    },
   };
 }

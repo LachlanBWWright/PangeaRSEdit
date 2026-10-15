@@ -37,6 +37,15 @@ export class GameplaySequenceTracker {
       };
     }
 
+    if (envelope.matchSequence <= this.lastValidSequence - 1000) {
+      return {
+        isValid: false,
+        isDuplicate: false,
+        isGap: false,
+        reason: "Sequence is outside the receive window",
+      };
+    }
+
     const reliability = envelope.reliability ?? "ordered";
 
     // Check for duplicates
@@ -68,6 +77,7 @@ export class GameplaySequenceTracker {
       this.lastValidSequence = envelope.matchSequence;
       this.lastValidFrame = envelope.frameNumber;
       this.seenSequences.add(envelope.matchSequence);
+      if (this.seenSequences.size > 1064) this.prune();
 
       // Check for gaps in host-authority
       if (envelope.matchSequence > previousSequence + 1) {
@@ -91,6 +101,7 @@ export class GameplaySequenceTracker {
     );
     this.lastValidFrame = envelope.frameNumber;
     this.seenSequences.add(envelope.matchSequence);
+    if (this.seenSequences.size > 1064) this.prune();
 
     return { isValid: true, isDuplicate: false, isGap: false };
   }
@@ -124,12 +135,7 @@ export class GameplaySequenceTracker {
    */
   prune(keepRecentCount = 1000): void {
     if (this.seenSequences.size > keepRecentCount) {
-      const sorted = Array.from(this.seenSequences).sort((a, b) => a - b);
-      const thresholdIndex = sorted.length - keepRecentCount;
-      const threshold = sorted[thresholdIndex];
-      if (threshold === undefined) {
-        return;
-      }
+      const threshold = this.lastValidSequence - keepRecentCount + 1;
       for (const seq of this.seenSequences) {
         if (seq < threshold) {
           this.seenSequences.delete(seq);

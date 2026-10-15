@@ -94,7 +94,7 @@ describe("multiplayer runtime bridge", () => {
     expect(Array.from(new Uint8Array(out2))).toEqual([3]);
   });
 
-  it("keeps packets queued when max byte count is too small", () => {
+  it("rejects oversized packets so subsequent packets can be polled", () => {
     const bridge = createMultiplayerRuntimeBridge(
       {
         isHost: false,
@@ -115,14 +115,15 @@ describe("multiplayer runtime bridge", () => {
 
     const packet = Uint8Array.from([7, 8, 9]).buffer;
     expect(bridge.enqueueIncoming(packet).isOk()).toBe(true);
+    expect(bridge.enqueueIncoming(Uint8Array.from([1]).buffer).isOk()).toBe(true);
 
     expect(bridge.pollMessage(2)).toBeNull();
-    const replay = bridge.pollMessage(3);
+    const replay = bridge.pollMessage(2);
     expect(replay).not.toBeNull();
     if (!replay) {
       return;
     }
-    expect(Array.from(new Uint8Array(replay))).toEqual([7, 8, 9]);
+    expect(Array.from(new Uint8Array(replay))).toEqual([1]);
   });
 
   it("reports transport callbacks", () => {
@@ -154,7 +155,7 @@ describe("multiplayer runtime bridge", () => {
     expect(reportMatchEnded).toHaveBeenCalledWith(3);
   });
 
-  it("falls back to reliable send when unreliable send fails", () => {
+  it("does not transfer congested state packets to the reliable channel", () => {
     const sendReliable = vi.fn(() => ok(undefined));
     const sendUnreliable = vi.fn(() => err("State data channel is congested"));
     const bridge = createMultiplayerRuntimeBridge(
@@ -176,9 +177,9 @@ describe("multiplayer runtime bridge", () => {
     );
 
     const payload = Uint8Array.from([1, 2, 3]).buffer;
-    expect(bridge.sendUnreliable(payload)).toBe(true);
+    expect(bridge.sendUnreliable(payload)).toBe(false);
     expect(sendUnreliable).toHaveBeenCalledTimes(1);
-    expect(sendReliable).toHaveBeenCalledTimes(1);
+    expect(sendReliable).not.toHaveBeenCalled();
   });
 
   it("can drop outgoing packets with debug impairment enabled", () => {
@@ -310,6 +311,28 @@ describe("multiplayer runtime bridge", () => {
 
     dispose();
     expect(listeners.length).toBe(0);
+  });
+
+  it("cancels delayed incoming and outgoing packets on disposal", () => {
+    vi.useFakeTimers();
+    expect(setFeatureFlags({ ...getFeatureFlags(), multiplayerDebug: true }).isOk()).toBe(true);
+    setMultiplayerNetworkDebugOptions({ latencyMs: 100, packetLossPercent: 0, packetBurstPercent: 0, packetBurstSize: 1 });
+    const sendReliable = vi.fn(() => ok(undefined));
+    const bridge = createMultiplayerRuntimeBridge(
+      { isHost: true, localPlayerIndex: 0, playerCount: 2, matchSeed: 1, hostPlayerIndex: 0, matchIdLow: 11, matchIdHigh: 22 },
+      { sendReliable, sendUnreliable: () => ok(undefined), reportDesync: () => undefined, reportMatchEnded: () => undefined },
+    );
+    const bytes = Uint8Array.from([1]).buffer;
+    expect(bridge.sendReliable(bytes)).toBe(true);
+    expect(bridge.enqueueIncoming(bytes).isOk()).toBe(true);
+    bridge.dispose();
+    vi.advanceTimersByTime(200);
+    expect(sendReliable).not.toHaveBeenCalled();
+    expect(bridge.pollMessage(16)).toBeNull();
+    expect(bridge.sendReliable(bytes)).toBe(false);
+    expect(bridge.enqueueIncoming(bytes).isErr()).toBe(true);
+    vi.useRealTimers();
+    setMultiplayerNetworkDebugOptions({ latencyMs: 0, packetLossPercent: 0, packetBurstPercent: 0, packetBurstSize: 1 });
   });
 
   it("exposes static runtime config values", () => {

@@ -12,7 +12,7 @@ const preview: Preview = {
     },
     layout: "centered",
     viewport: {
-      viewports: {
+      options: {
         narrow: { name: "Narrow phone", styles: { width: "320px", height: "568px" } },
         phone: { name: "Phone", styles: { width: "390px", height: "844px" } },
         tablet: { name: "Tablet", styles: { width: "768px", height: "1024px" } },
