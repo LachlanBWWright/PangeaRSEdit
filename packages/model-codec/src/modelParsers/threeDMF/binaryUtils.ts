@@ -1,0 +1,316 @@
+/**
+ * Big-endian binary reader for parsing 3DMF files
+ * 3DMF files use big-endian byte order
+ */
+
+import { ok, err, type Result } from "neverthrow";
+
+export class BigEndianReader {
+  private view: DataView;
+  private offset: number;
+  private buffer: ArrayBuffer;
+
+  constructor(buffer: ArrayBuffer, initialOffset = 0) {
+    this.buffer = buffer;
+    this.view = new DataView(buffer);
+    this.offset = initialOffset;
+  }
+
+  /**
+   * Get current read position
+   */
+  tell(): number {
+    return this.offset;
+  }
+
+  /**
+   * Seek to an absolute position
+   */
+  goto(offset: number): void {
+    this.offset = offset;
+  }
+
+  /**
+   * Skip bytes from current position
+   */
+  skip(bytes: number): void {
+    this.offset += bytes;
+  }
+
+  /**
+   * Get remaining bytes in buffer
+   */
+  remaining(): number {
+    return this.buffer.byteLength - this.offset;
+  }
+
+  /**
+   * Check if we've reached the end of the buffer
+   */
+  isEOF(): boolean {
+    return this.offset >= this.buffer.byteLength;
+  }
+
+  /**
+   * Get the total length of the buffer
+   */
+  length(): number {
+    return this.buffer.byteLength;
+  }
+
+  private canRead(count: number): boolean {
+    return Number.isSafeInteger(this.offset) && this.offset >= 0
+      && Number.isSafeInteger(count) && count >= 0
+      && count <= this.buffer.byteLength - this.offset;
+  }
+
+  /**
+   * Read a uint8
+   */
+  readUint8(): Result<number, string> {
+    if (!this.canRead(1)) {
+      return err(`EOF reading uint8 at offset ${this.offset}`);
+    }
+    const value = this.view.getUint8(this.offset);
+    this.offset += 1;
+    return ok(value);
+  }
+
+  /**
+   * Read a uint16 (big-endian)
+   */
+  readUint16(): Result<number, string> {
+    if (!this.canRead(2)) {
+      return err(`EOF reading uint16 at offset ${this.offset}`);
+    }
+    const value = this.view.getUint16(this.offset, false);
+    this.offset += 2;
+    return ok(value);
+  }
+
+  /**
+   * Read a uint32 (big-endian)
+   */
+  readUint32(): Result<number, string> {
+    if (!this.canRead(4)) {
+      return err(`EOF reading uint32 at offset ${this.offset}`);
+    }
+    const value = this.view.getUint32(this.offset, false);
+    this.offset += 4;
+    return ok(value);
+  }
+
+  /**
+   * Read a uint64 (big-endian) as a JavaScript number.
+   *
+   * Reject offsets beyond Number.MAX_SAFE_INTEGER rather than silently
+   * seeking to a rounded file position.
+   *
+   * @returns Result<number, string> The 64-bit integer as a JavaScript number
+   */
+  readUint64(): Result<number, string> {
+    if (!this.canRead(8)) {
+      return err(`EOF reading uint64 at offset ${this.offset}`);
+    }
+    const high = this.view.getUint32(this.offset, false);
+    const low = this.view.getUint32(this.offset + 4, false);
+    this.offset += 8;
+    // Combine as JavaScript number (safe for values <= Number.MAX_SAFE_INTEGER)
+    const value = high * 0x100000000 + low;
+    if (!Number.isSafeInteger(value)) return err("64-bit offset exceeds JavaScript integer precision");
+    return ok(value);
+  }
+
+  /**
+   * Read a float32 (big-endian)
+   */
+  readFloat32(): Result<number, string> {
+    if (!this.canRead(4)) {
+      return err(`EOF reading float32 at offset ${this.offset}`);
+    }
+    const value = this.view.getFloat32(this.offset, false);
+    this.offset += 4;
+    return ok(value);
+  }
+
+  /**
+   * Read raw bytes
+   */
+  readBytes(count: number): Result<Uint8Array, string> {
+    if (!this.canRead(count)) {
+      return err(`EOF reading ${count} bytes at offset ${this.offset}`);
+    }
+    const bytes = new Uint8Array(this.buffer, this.offset, count);
+    this.offset += count;
+    return ok(bytes);
+  }
+
+  /**
+   * Read a FourCC code as a string
+   */
+  readFourCC(): Result<string, string> {
+    const result = this.readUint32();
+    if (result.isErr()) {
+      return err(result.error);
+    }
+    const fourCC = result.value;
+    const chars = String.fromCharCode(
+      (fourCC >> 24) & 0xff,
+      (fourCC >> 16) & 0xff,
+      (fourCC >> 8) & 0xff,
+      fourCC & 0xff,
+    );
+    return ok(chars);
+  }
+
+  /**
+   * Get a copy of the internal buffer slice
+   */
+  getBufferSlice(start: number, end: number): Uint8Array {
+    return new Uint8Array(this.buffer.slice(start, end));
+  }
+
+  /**
+   * Get the raw buffer
+   */
+  getBuffer(): ArrayBuffer {
+    return this.buffer;
+  }
+}
+
+/**
+ * Big-endian binary writer for creating 3DMF files
+ */
+export class BigEndianWriter {
+  private buffer: ArrayBuffer;
+  private view: DataView;
+  private offset: number;
+  private capacity: number;
+
+  constructor(initialCapacity: number = 1024 * 1024) {
+    // 1MB default
+    this.capacity = initialCapacity;
+    this.buffer = new ArrayBuffer(this.capacity);
+    this.view = new DataView(this.buffer);
+    this.offset = 0;
+  }
+
+  /**
+   * Ensure we have enough capacity for additional bytes
+   */
+  private ensureCapacity(additionalBytes: number): void {
+    const required = this.offset + additionalBytes;
+    if (required <= this.capacity) return;
+    while (this.capacity < required) {
+      this.capacity *= 2;
+    }
+    const newBuffer = new ArrayBuffer(this.capacity);
+    const newArray = new Uint8Array(newBuffer);
+    newArray.set(new Uint8Array(this.buffer, 0, this.offset));
+    this.buffer = newBuffer;
+    this.view = new DataView(this.buffer);
+  }
+
+  /**
+   * Get current write position
+   */
+  tell(): number {
+    return this.offset;
+  }
+
+  /**
+   * Seek to an absolute position
+   */
+  goto(offset: number): void {
+    this.ensureCapacity(offset - this.offset);
+    this.offset = offset;
+  }
+
+  /**
+   * Write a uint8
+   */
+  writeUint8(value: number): void {
+    this.ensureCapacity(1);
+    this.view.setUint8(this.offset, value);
+    this.offset += 1;
+  }
+
+  /**
+   * Write a uint16 (big-endian)
+   */
+  writeUint16(value: number): void {
+    this.ensureCapacity(2);
+    this.view.setUint16(this.offset, value, false);
+    this.offset += 2;
+  }
+
+  /**
+   * Write a uint32 (big-endian)
+   */
+  writeUint32(value: number): void {
+    this.ensureCapacity(4);
+    this.view.setUint32(this.offset, value, false);
+    this.offset += 4;
+  }
+
+  /**
+   * Write a uint64 (big-endian)
+   */
+  writeUint64(value: number): void {
+    this.ensureCapacity(8);
+    const high = Math.floor(value / 0x100000000);
+    const low = value >>> 0;
+    this.view.setUint32(this.offset, high, false);
+    this.view.setUint32(this.offset + 4, low, false);
+    this.offset += 8;
+  }
+
+  /**
+   * Write a float32 (big-endian)
+   */
+  writeFloat32(value: number): void {
+    this.ensureCapacity(4);
+    this.view.setFloat32(this.offset, value, false);
+    this.offset += 4;
+  }
+
+  /**
+   * Write raw bytes
+   */
+  writeBytes(bytes: Uint8Array): void {
+    this.ensureCapacity(bytes.length);
+    const target = new Uint8Array(this.buffer, this.offset, bytes.length);
+    target.set(bytes);
+    this.offset += bytes.length;
+  }
+
+  /**
+   * Write a FourCC code from string
+   */
+  writeFourCC(str: string): Result<void, string> {
+    if (str.length !== 4) {
+      return err("FourCC must be exactly 4 characters: ${str}");
+    }
+    const value =
+      ((str.charCodeAt(0) & 0xff) << 24) |
+      ((str.charCodeAt(1) & 0xff) << 16) |
+      ((str.charCodeAt(2) & 0xff) << 8) |
+      (str.charCodeAt(3) & 0xff);
+    this.writeUint32(value);
+    return ok(undefined);
+  }
+
+  /**
+   * Get the final buffer (trimmed to actual content)
+   */
+  getBuffer(): ArrayBuffer {
+    return this.buffer.slice(0, this.offset);
+  }
+
+  /**
+   * Get the current size of written data
+   */
+  size(): number {
+    return this.offset;
+  }
+}
