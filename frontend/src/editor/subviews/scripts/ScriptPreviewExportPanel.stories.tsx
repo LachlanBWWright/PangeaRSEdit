@@ -39,23 +39,23 @@ export const ExtendedWorkspace: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      canvas.getByRole("button", { name: "Preview with Scripts" }),
+      canvas.getByRole("button", { name: "Test with scripts" }),
     );
     await userEvent.click(
-      canvas.getByRole("button", { name: "Preview in Game (No Scripts)" }),
+      canvas.getByRole("button", { name: "Test without scripts" }),
     );
-    await userEvent.click(canvas.getByRole("button", { name: "Compile Bundle" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Rebuild bundle" }));
     await userEvent.click(
-      canvas.getByRole("button", { name: "Download Extended Package" }),
-    );
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Download Original-Compatible Level" }),
+      canvas.getByRole("button", { name: "Export extended level" }),
     );
     await userEvent.click(
-      canvas.getByRole("button", { name: "Download Script Package" }),
+      canvas.getByRole("button", { name: "Export without scripts" }),
     );
     await userEvent.click(
-      canvas.getByRole("button", { name: "Upload Script Package" }),
+      canvas.getByRole("button", { name: "Export script package" }),
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Import script package" }),
     );
 
     expect(args.onPreview).toHaveBeenNthCalledWith(1, true);

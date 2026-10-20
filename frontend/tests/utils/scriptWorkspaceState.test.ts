@@ -704,13 +704,13 @@ describe("scriptWorkspaceState", () => {
     if (importedResult.isErr()) return;
 
     expect(importedResult.value.levels["1"]?.terrainBindings).toHaveLength(1);
-    expect(importedResult.value.levels["2"]?.terrainBindings).toHaveLength(2);
+    expect(importedResult.value.levels["2"]?.terrainBindings).toHaveLength(1);
     expect(importedResult.value.levels["1"]?.terrainBindings[0]?.label).toBe(
       "Level one item",
     );
     expect(
       importedResult.value.levels["2"]?.terrainBindings.map((binding) => binding.label),
-    ).toEqual(expect.arrayContaining(["Level one item", "Level two item"]));
+    ).toEqual(["Level two item"]);
   });
 
   it("rejects a package that drops a declared level sidecar", () => {

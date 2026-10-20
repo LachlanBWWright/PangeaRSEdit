@@ -7,6 +7,7 @@ import { imagePayloadsToCanvases } from "@/data/level-io/terrainImageSnapshots";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
 import { MightyMikePreview } from "./MightyMikePreview";
+import { useGameAssetAvailability } from "@/platform/desktop/assetAvailability";
 import { Card, CardContent } from "@/components/ui/card";
 import { Result } from "neverthrow";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
@@ -63,6 +64,7 @@ export function GameCard({
 }) {
   const { levelMetadata: levelMetadataEnabled } = useFeatureFlags();
   const modelPath = getGameCardModelPath(globals.GAME_TYPE);
+  const assets = useGameAssetAvailability(globals.GAME_TYPE);
   const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
   const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
   const isBugdom1 = globals.DATA_TYPE === DataType.RSRC_FORK;
@@ -424,7 +426,10 @@ export function GameCard({
         </div>
 
         <div className="flex-none flex flex-col items-center">
-          {isMightyMike ? (
+          {!assets.available ? <div className={cn(GAME_CARD_PREVIEW_HEIGHT_CLASS, "flex flex-col items-center justify-center gap-3 text-center text-sm text-slate-300")}>
+            <p>Stock levels and previews are an optional download.</p>
+            <Button variant="outline" onClick={assets.openDownloads}>Get editor assets</Button>
+          </div> : isMightyMike ? (
             <MightyMikePreview className={GAME_CARD_PREVIEW_HEIGHT_CLASS} />
           ) : (
             <MiniThreeView
@@ -443,7 +448,7 @@ export function GameCard({
             >
               Create Blank Level
             </Button>
-            {children}
+            {assets.available && children}
           </div>
         </div>
 

@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runScriptPackageRoundTrip } from "./scriptPackageRoundTrip";
-import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
+import { openScriptWorkspace, loadScriptSampleFromUI, buildScriptWorkspaceFromUI, createScriptObjectFromUI } from "./scriptWorkspaceTestHelpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,17 +68,11 @@ test("uses the production Otto Scripts workspace through preview launch", async 
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   const workspace = await openScriptWorkspace(page);
-  await workspace.getByRole("button", { name: "Load", exact: true }).first().click();
-  await workspace
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await workspace.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled")).toBeVisible({
-    timeout: 30_000,
-  });
+  await loadScriptSampleFromUI(workspace);
+  await buildScriptWorkspaceFromUI(workspace);
 
   await workspace
-    .getByRole("button", { name: "Preview with Scripts", exact: true })
+    .getByRole("button", { name: "Test with scripts", exact: true })
     .click();
   const previewDialog = page.getByRole("dialog").last();
   await expect(
@@ -130,23 +124,8 @@ test("creates, places, edits, and reopens an Otto scripted object", async ({
   ).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  const openScriptsButton = page.getByRole("button", { name: "Open Scripts", exact: true });
-  if ((await openScriptsButton.count()) > 0) {
-    await openScriptsButton.click();
-  }
-  const dialog = page.getByRole("dialog").last();
-  const workspace: Locator | Page = (await dialog.count()) > 0 ? dialog : page;
-  await workspace.getByRole("tab", { name: "Assignments", exact: true }).click();
-  await workspace.locator("#custom-object-label").fill("Otto Test Object");
-  await workspace.getByRole("button", { name: "Save Object", exact: true }).click();
-  await expect(workspace.getByText("Otto Test Object", { exact: true }).first()).toBeVisible();
-
-  const visualType = workspace.getByRole("combobox", {
-    name: "Otto Test Object visual type",
-  });
-  await visualType.click();
-  await page.getByRole("option", { name: "No visual", exact: true }).click();
-  await page.keyboard.press("Escape");
+  const workspace = await openScriptWorkspace(page);
+  await createScriptObjectFromUI(page, workspace, "Otto Test Object");
   await page.getByRole("tab", { name: "Items", exact: true }).click();
   await page.getByText("Select a scripted item", { exact: true }).click();
   await page.getByRole("option", { name: "Otto Test Object", exact: true }).click();
@@ -159,22 +138,10 @@ test("creates, places, edits, and reopens an Otto scripted object", async ({
   await expect(page.locator("#scripted-item-x")).toHaveValue("240");
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  if ((await openScriptsButton.count()) > 0) {
-    await openScriptsButton.click();
-  }
-  const reopenedDialog = page.getByRole("dialog").last();
-  const reopenedWorkspace: Locator | Page = (await reopenedDialog.count()) > 0 ? reopenedDialog : page;
-  await reopenedWorkspace.getByRole("tab", { name: "Assignments", exact: true }).click();
+  const reopenedWorkspace = await openScriptWorkspace(page);
+  await reopenedWorkspace.getByRole("button", { name: "Objects", exact: true }).click();
   await expect(reopenedWorkspace.getByText("Otto Test Object", { exact: true }).first()).toBeVisible();
-  await reopenedWorkspace
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await reopenedWorkspace
-    .getByRole("button", { name: "Compile Bundle", exact: true })
-    .click();
-  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
+  await buildScriptWorkspaceFromUI(reopenedWorkspace);
 });
 
 test("surfaces a production Lua runtime traceback in the preview monitor", async ({
@@ -199,38 +166,26 @@ test("surfaces a production Lua runtime traceback in the preview monitor", async
   await ottoCard(page)
     .locator('input[type="file"]')
     .setInputFiles([earthFarmLevelPath, earthFarmTexturePath]);
-  const levelActions = page.locator("summary").filter({
-    hasText: "Level Actions",
-  });
+  const levelActions = page.getByRole("button", { name: "Level Actions", exact: true });
   await expect(levelActions).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog.getByRole("tab", { name: "Code", exact: true }).click();
-  await dialog.getByRole("button", { name: /user\.lua Saved/ }).click();
+  const dialog = await openScriptWorkspace(page);
+  await loadScriptSampleFromUI(dialog);
+  await dialog.getByRole("button", { name: "Lua source", exact: true }).click();
+  await dialog.getByRole("button", { name: "user.lua", exact: true }).click();
 
-  const editorDialog = page.getByRole("dialog").last();
+  const editorDialog = dialog;
   await editorDialog.locator(".monaco-editor").click();
   await page.keyboard.press("Control+A");
   await page.keyboard.insertText(
     'local pangea = require("pangea")\nlocal entry = {}\nfunction entry.onFrame(ctx)\n  error("production traceback regression")\nend\nreturn entry',
   );
-  await editorDialog.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByText("Saved source file", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
-
+  await editorDialog.getByRole("button", { name: "Save source", exact: true }).click();
+  await expect(editorDialog.getByRole("button", { name: "Save source", exact: true })).toBeDisabled();
+  await buildScriptWorkspaceFromUI(dialog);
   await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
-  await dialog
-    .getByRole("button", { name: "Preview with Scripts", exact: true })
+    .getByRole("button", { name: "Test with scripts", exact: true })
     .click();
   const previewDialog = page.getByRole("dialog").last();
   await previewDialog
@@ -272,19 +227,11 @@ test("surfaces a native-adapter runtime load failure in the preview monitor", as
     page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
+  const dialog = await openScriptWorkspace(page);
+  await loadScriptSampleFromUI(dialog);
+  await buildScriptWorkspaceFromUI(dialog);
   await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
-  await dialog
-    .getByRole("button", { name: "Preview with Scripts", exact: true })
+    .getByRole("button", { name: "Test with scripts", exact: true })
     .click();
   await page.route(
     "**/generated/pangea-ports/wasm/ottomatic/OttoMatic.js*",

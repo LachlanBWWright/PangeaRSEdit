@@ -37,6 +37,33 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+ensure_backend_runtime() {
+  if ! command -v dotnet >/dev/null 2>&1; then
+    echo "ERROR: Install the .NET SDK before starting the multiplayer stack." >&2
+    echo "See: https://dotnet.microsoft.com/download" >&2
+    exit 1
+  fi
+
+  local framework
+  local version
+  local runtimes
+  local runtime
+  framework="$(dotnet msbuild "$REPO_ROOT/backend/PangeaRSEdit.Api/PangeaRSEdit.Api.csproj" -getProperty:TargetFramework)"
+  version="${framework#net}"
+  runtimes="$(dotnet --list-runtimes)"
+
+  for runtime in Microsoft.NETCore.App Microsoft.AspNetCore.App; do
+    if ! awk -v name="$runtime" -v version="$version" \
+      '$1 == name && index($2, version ".") == 1 { found = 1 } END { exit !found }' <<<"$runtimes"; then
+      echo "ERROR: Backend requires $runtime $version, which is not installed." >&2
+      echo "A newer SDK can build the backend without providing its required runtime." >&2
+      echo "Install the ASP.NET Core $version runtime alongside your existing SDK:" >&2
+      echo "https://dotnet.microsoft.com/download/dotnet/$version" >&2
+      exit 1
+    fi
+  done
+}
+
 ensure_runtime_assets() {
   echo "Ensuring all game runtime assets are current..."
   if [[ "$FORCE_REBUILD_GAMES" -eq 1 ]]; then
@@ -274,6 +301,7 @@ start_frontend() {
 trap shutdown EXIT
 trap handle_interrupt INT TERM HUP
 
+ensure_backend_runtime
 ensure_runtime_assets
 build_backend
 

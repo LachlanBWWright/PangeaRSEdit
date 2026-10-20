@@ -3,10 +3,11 @@ import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { z } from "zod";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
-import { hasConfiguredApiEndpoint } from "@/api/apiBase";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
 import { getAvailableApiFunctions } from "./scriptApiAvailability";
 import { scriptLspClient } from "./scriptLspClient";
+import { mapLspCompletionItem, mapLspRange, lspDocumentation } from "./scriptLspMapping";
+import { apiHoverAtPosition } from "./scriptApiAssistance";
 import {
   buildApiCompletionInsertText,
   buildApiSignature,
@@ -15,18 +16,20 @@ import {
   nativeIdInsertText,
 } from "./scriptCompletionText";
 import type { ApiFunction } from "./scriptApiSchema";
+import { buildModuleHookSnippets } from "./scriptHookSnippets";
 import type {
   LspCompletionItem,
   LspDocumentSymbol,
   LspLocation,
-  LspRange,
 } from "./scriptLspSchemas";
 import {
   lspCompletionResultSchema,
+  lspCompletionItemSchema,
   lspDocumentSymbolSchema,
   lspHoverSchema,
   lspLocationSchema,
   lspLocationsSchema,
+  lspSignatureHelpSchema,
 } from "./scriptLspSchemas";
 
 declare global {
@@ -39,63 +42,10 @@ declare global {
 
 let configured = false;
 
-function mapLspRange(range: LspRange): monaco.IRange {
-  return {
-    startLineNumber: range.start.line + 1,
-    startColumn: range.start.character + 1,
-    endLineNumber: range.end.line + 1,
-    endColumn: range.end.character + 1
-  };
-}
-
 function mapLspLocation(location: LspLocation): monaco.languages.Location {
   return {
     uri: scriptLspClient.clientUri(location.uri),
     range: mapLspRange(location.range)
-  };
-}
-
-function mapLspCompletionItem(
-  item: LspCompletionItem,
-  range: monaco.IRange,
-): monaco.languages.CompletionItem {
-  const kindMap: Record<number, number> = {
-    1: monaco.languages.CompletionItemKind.Text,
-    2: monaco.languages.CompletionItemKind.Method,
-    3: monaco.languages.CompletionItemKind.Function,
-    4: monaco.languages.CompletionItemKind.Constructor,
-    5: monaco.languages.CompletionItemKind.Field,
-    6: monaco.languages.CompletionItemKind.Variable,
-    7: monaco.languages.CompletionItemKind.Class,
-    8: monaco.languages.CompletionItemKind.Interface,
-    9: monaco.languages.CompletionItemKind.Module,
-    10: monaco.languages.CompletionItemKind.Property,
-    11: monaco.languages.CompletionItemKind.Unit,
-    12: monaco.languages.CompletionItemKind.Value,
-    13: monaco.languages.CompletionItemKind.Enum,
-    14: monaco.languages.CompletionItemKind.Keyword,
-    15: monaco.languages.CompletionItemKind.Snippet,
-    16: monaco.languages.CompletionItemKind.Color,
-    17: monaco.languages.CompletionItemKind.File,
-    18: monaco.languages.CompletionItemKind.Reference,
-    19: monaco.languages.CompletionItemKind.Folder,
-    20: monaco.languages.CompletionItemKind.EnumMember,
-    21: monaco.languages.CompletionItemKind.Constant,
-    22: monaco.languages.CompletionItemKind.Struct,
-    23: monaco.languages.CompletionItemKind.Event,
-    24: monaco.languages.CompletionItemKind.Operator,
-    25: monaco.languages.CompletionItemKind.TypeParameter
-  };
-
-  return {
-    label: item.label,
-    kind: item.kind === undefined
-      ? monaco.languages.CompletionItemKind.Property
-      : kindMap[item.kind] ?? monaco.languages.CompletionItemKind.Property,
-    detail: item.detail,
-    documentation: item.documentation,
-    insertText: item.insertText ?? item.label,
-    range
   };
 }
 
@@ -121,40 +71,19 @@ function getHoverValue(content: unknown): string | null {
 }
 
 function buildCompletionItems(
-  state: ScriptWorkspaceState,
+  state: Pick<ScriptWorkspaceState, "context">,
   model: monaco.editor.ITextModel,
   position: monaco.Position,
   range: monaco.IRange,
 ): readonly monaco.languages.CompletionItem[] {
-  const getHookContextType = (hookId: string): string => {
-    const hook = SCRIPTING_CONTRACT.api.hooks.find(
-      (candidate) => candidate.name === hookId,
-    );
-    return hook?.contextType ?? "LevelContext";
-  };
-  const buildHookSnippet = (
-    hookId: string,
-    body: string,
-  ): string =>
-    `---@param ctx ${getHookContextType(hookId)}\nfunction ${hookId}(ctx)\n  ${body}\nend\n`;
-
-  const hookItems = state.context.supportedHooks.map((hookId) => ({
-    label: hookId,
+  const hookItems = buildModuleHookSnippets(model.getValue(), state.context.supportedHooks).map((snippet) => ({
+    label: snippet.name,
     kind: monaco.languages.CompletionItemKind.Snippet,
     range,
     insertTextRules:
       monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-    documentation: `Insert a ${hookId} hook using the current scripting runtime shape.`,
-    insertText:
-      hookId === "onObjectFrame"
-        ? buildHookSnippet(hookId, "$0")
-        : hookId === "onTerrainItem"
-          ? buildHookSnippet(hookId, "return { handled = false }")
-          : hookId === "onSplineItem"
-            ? buildHookSnippet(hookId, "return { handled = false }")
-            : hookId === "onMapItem"
-              ? buildHookSnippet(hookId, "return { handled = false }")
-              : buildHookSnippet(hookId, "$0"),
+    documentation: `Insert ${snippet.name} on this module's exported table. Insert handlers before the final return statement.`,
+    insertText: snippet.insertText,
   }));
 
   const linePrefix = model
@@ -257,7 +186,7 @@ function buildCompletionRange(
 }
 
 function findApiAtCallSite(
-  state: ScriptWorkspaceState,
+  state: Pick<ScriptWorkspaceState, "context">,
   model: monaco.editor.ITextModel,
   position: monaco.Position,
 ): ApiFunction | null {
@@ -300,16 +229,11 @@ export function ensureScriptMonacoConfigured(): void {
 }
 
 export function configureScriptMonaco(
-  state: ScriptWorkspaceState,
+  state: Pick<ScriptWorkspaceState, "context">,
 ): readonly monaco.IDisposable[] {
   ensureScriptMonacoConfigured();
 
-  if (hasConfiguredApiEndpoint()) {
-    void scriptLspClient.connect(state).match(
-      () => undefined,
-      () => undefined,
-    );
-  }
+  const completionSources = new WeakMap<monaco.languages.CompletionItem, { item: LspCompletionItem; range: monaco.IRange }>();
 
   const completionDisposable = monaco.languages.registerCompletionItemProvider(
     "lua",
@@ -330,7 +254,11 @@ export function configureScriptMonaco(
                 ? parsed.data
                 : parsed.data.items;
               return {
-                suggestions: items.map((item) => mapLspCompletionItem(item, range)),
+                suggestions: items.map((item) => {
+                  const completion = mapLspCompletionItem(item, range);
+                  completionSources.set(completion, { item, range });
+                  return completion;
+                }),
               };
             }
           }
@@ -343,6 +271,14 @@ export function configureScriptMonaco(
           ],
         };
       },
+      async resolveCompletionItem(completion) {
+        const source = completionSources.get(completion);
+        if (!source || scriptLspClient.status !== "connected") return completion;
+        const response = await scriptLspClient.request("completionItem/resolve", source.item);
+        if (response.isErr()) return completion;
+        const parsed = lspCompletionItemSchema.safeParse(response.value);
+        return parsed.success ? mapLspCompletionItem(parsed.data, source.range) : completion;
+      },
     },
   );
 
@@ -351,7 +287,28 @@ export function configureScriptMonaco(
     {
       signatureHelpTriggerCharacters: ["(", ","],
       signatureHelpRetriggerCharacters: [",", ")"],
-      provideSignatureHelp(model, position) {
+      async provideSignatureHelp(model, position) {
+        if (scriptLspClient.status === "connected") {
+          const response = await scriptLspClient.request("textDocument/signatureHelp", {
+            textDocument: { uri: scriptLspClient.documentUri(model) },
+            position: { line: position.lineNumber - 1, character: position.column - 1 },
+          });
+          if (response.isOk()) {
+            const parsed = lspSignatureHelpSchema.safeParse(response.value);
+            if (parsed.success && parsed.data.signatures.length) return {
+              value: {
+                signatures: parsed.data.signatures.map((signature) => ({
+                  ...signature,
+                  documentation: lspDocumentation(signature.documentation),
+                  parameters: (signature.parameters ?? []).map((parameter) => ({ ...parameter, documentation: lspDocumentation(parameter.documentation) })),
+                })),
+                activeSignature: parsed.data.activeSignature ?? 0,
+                activeParameter: parsed.data.activeParameter ?? parsed.data.signatures[parsed.data.activeSignature ?? 0]?.activeParameter ?? 0,
+              },
+              dispose: () => undefined,
+            };
+          }
+        }
         const api = findApiAtCallSite(state, model, position);
         if (api === null) return null;
         return {
@@ -380,14 +337,16 @@ export function configureScriptMonaco(
     "lua",
     {
       async provideHover(model, position) {
-        if (scriptLspClient.status !== "connected") return null;
+        const fallback = apiHoverAtPosition(state.context.gameId, model.getLineContent(position.lineNumber), position.column - 1);
+        const fallbackHover = fallback ? { contents: [{ value: fallback }] } : null;
+        if (scriptLspClient.status !== "connected") return fallbackHover;
         const result = await scriptLspClient.request("textDocument/hover", {
             textDocument: { uri: scriptLspClient.documentUri(model) },
             position: { line: position.lineNumber - 1, character: position.column - 1 }
           });
-        if (result.isErr()) return null;
+        if (result.isErr()) return fallbackHover;
         const parsed = lspHoverSchema.safeParse(result.value);
-        if (!parsed.success) return null;
+        if (!parsed.success) return fallbackHover;
         const rawContents = Array.isArray(parsed.data.contents)
           ? parsed.data.contents
           : [parsed.data.contents];
@@ -502,13 +461,5 @@ export function configureScriptMonaco(
     referencesDisposable,
     symbolDisposable,
     contentChangeDisposable,
-    {
-      dispose: () => {
-        void scriptLspClient.disconnect().match(
-          () => undefined,
-          () => undefined,
-        );
-      },
-    },
   ];
 }

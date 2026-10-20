@@ -270,9 +270,9 @@ export function DefineBehaviorModal({
   const [selectedObjectTypeId, setSelectedObjectTypeId] = useState("");
   const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
 
-  const availableHooks = HOOK_OPTIONS[target].filter((hook) =>
-    hookOptions ? hookOptions.includes(hook.id) : true,
-  );
+  const availableHooks = target === "global" && hookOptions
+    ? hookOptions.map((id) => ({ id, label: id.replace(/^on/, "").replace(/([a-z])([A-Z])/g, "$1 $2") }))
+    : HOOK_OPTIONS[target].filter((hook) => hookOptions ? hookOptions.includes(hook.id) : true);
   const objectTypeOptions = useMemo(
     () => getObjectTypeOptions(tagOptions),
     [tagOptions],

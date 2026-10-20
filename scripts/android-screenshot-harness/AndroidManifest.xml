@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name="io.pangea.screenshots.ScreenshotActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
+            android:exported="true"
+            android:screenOrientation="landscape">
+            <meta-data android:name="SDL_MAIN_ENTRY_POINT" android:value="main" />
+        </activity>
+    </application>
+</manifest>

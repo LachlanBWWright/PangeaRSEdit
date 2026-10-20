@@ -1,11 +1,14 @@
 packages:
   - "."
   - "frontend"
+  - "desktop"
+  - "packages/desktop-contracts"
   - "packages/model-codec"
   - "games/pangea-ports/shared/script-types"
   - "lzss-rust/pkg"
   - "terrain-codec-rust/pkg"
 allowBuilds:
+  electron: true
   '@swc/core': false
   esbuild: false
   sharp: false

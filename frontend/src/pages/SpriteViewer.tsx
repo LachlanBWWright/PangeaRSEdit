@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { ProjectAssetBinding } from "@/platform/desktop/ProjectAssetBinding";
+import { readSpriteProject, spriteProjectFiles } from "@/platform/desktop/spriteProjectFiles";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Download, Paintbrush, Eraser, Pipette, Eye } from "lucide-react";
@@ -50,6 +52,7 @@ export function SpriteViewer() {
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(initialDisplayOptions);
   const [editMode, setEditMode] = useState<EditMode>("view");
   const [selectedPaletteColorIndex, setSelectedPaletteColorIndex] = useState(0);
+  const projectChangeToken = useMemo(() => loadedData ? { loadedData, currentPalette } : null, [loadedData, currentPalette]);
   const loaders = useSpriteViewerLoaders({
     setLoadedData,
     setLoading,
@@ -181,6 +184,16 @@ export function SpriteViewer() {
 
   return (
     <div className="h-full overflow-hidden bg-gray-900 p-2 text-white">
+      <ProjectAssetBinding kind="sprites" extension="sprite\\.json|shapes|tileset|tga" changeToken={projectChangeToken}
+        exportFiles={async (stem) => spriteProjectFiles(stem, loadedData, currentPalette)}
+        onOpen={async (file, companions) => {
+          if (file.name.endsWith(".sprite.json")) {
+            const snapshot = await readSpriteProject(file, companions);
+            if (snapshot.isErr()) { toast.error(snapshot.error); return; }
+            setLoadedData(snapshot.value.data); setCurrentPalette(snapshot.value.palette);
+            setSelectedShapeIndex(0); setSelectedFrameIndex(0);
+          } else await loaders.loadCustomFileUpload(file, file.name.endsWith(".tileset") ? "tileset" : file.name.endsWith(".tga") ? "tga" : "sprites");
+        }} />
       <ResizablePanelGroup orientation="horizontal" className="h-full w-full min-w-0">
         <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pr-2">
           <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">

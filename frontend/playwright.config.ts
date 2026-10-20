@@ -12,6 +12,7 @@ export default defineConfig({
       process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173/PangeaRSEdit/',
     trace: 'on-first-retry',
     headless: true,
+    launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH },
   },
 
   projects: [

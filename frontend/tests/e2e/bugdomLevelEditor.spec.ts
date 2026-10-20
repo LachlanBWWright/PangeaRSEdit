@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runScriptPackageRoundTrip } from "./scriptPackageRoundTrip";
 import { runScriptObjectAuthoringRoundTrip } from "./scriptObjectAuthoringRoundTrip";
+import { buildScriptWorkspaceFromUI, loadScriptSampleFromUI, openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,23 +81,13 @@ test("uses the production Bugdom Scripts workspace through preview launch", asyn
     .locator('input[type="file"]')
     .setInputFiles(levelPath);
   await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
+    page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled")).toBeVisible({
-    timeout: 30_000,
-  });
-  await dialog.getByRole("button", { name: "Preview with Scripts", exact: true }).click();
+  const dialog = await openScriptWorkspace(page);
+  await loadScriptSampleFromUI(dialog);
+  await buildScriptWorkspaceFromUI(dialog);
+  await dialog.getByRole("button", { name: "Test with scripts", exact: true }).click();
 
   const previewDialog = page.getByRole("dialog").last();
   await expect(
@@ -139,35 +130,24 @@ test("surfaces a production Lua runtime traceback in the Bugdom preview monitor"
 
   await bugdomCard(page).locator('input[type="file"]').setInputFiles(levelPath);
   await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
+    page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog.getByRole("tab", { name: "Code", exact: true }).click();
-  await dialog.getByRole("button", { name: /user\.lua Saved/ }).click();
+  const dialog = await openScriptWorkspace(page);
+  await loadScriptSampleFromUI(dialog);
+  await dialog.getByRole("button", { name: "Lua source", exact: true }).click();
+  await dialog.getByRole("button", { name: "user.lua", exact: true }).click();
 
-  const editorDialog = page.getByRole("dialog").last();
+  const editorDialog = dialog;
   await editorDialog.locator(".monaco-editor").click();
   await page.keyboard.press("Control+A");
   await page.keyboard.insertText(
     'local pangea = require("pangea")\nlocal entry = {}\nfunction entry.onFrame(ctx)\n  error("bugdom production traceback regression")\nend\nreturn entry',
   );
-  await editorDialog.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByText("Saved source file", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
-
+  await editorDialog.getByRole("button", { name: "Save source", exact: true }).click();
+  await buildScriptWorkspaceFromUI(dialog);
   await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
-  await dialog
-    .getByRole("button", { name: "Preview with Scripts", exact: true })
+    .getByRole("button", { name: "Test with scripts", exact: true })
     .click();
   const previewDialog = page.getByRole("dialog").last();
   await previewDialog

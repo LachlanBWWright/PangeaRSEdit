@@ -15,10 +15,10 @@ test.describe("game custom-object library", () => {
     await page.goto("#/custom-objects");
   });
 
-  test("exposes a compact game library without level navigation or placement controls", async ({ page }) => {
+  test("exposes a game object library with a clear first action", async ({ page }) => {
     await expect(page.getByRole("combobox", { name: "Game" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create Custom Object Script" })).toBeVisible();
-    await expect(page.getByText("Game-wide definitions · instances are placed per level")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create your first object" })).toBeVisible();
+    await expect(page.getByText("Build an object once. Use it throughout your game.")).toBeVisible();
     await expect(page.getByText("Instances on this level")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Levels", exact: true })).toHaveCount(0);
   });
@@ -29,10 +29,14 @@ test.describe("game custom-object library", () => {
     await expect(page.getByRole("combobox", { name: "Game" })).toHaveText("Bugdom 2");
   });
 
-  test("opens the custom-object script creation flow", async ({ page }) => {
-    await page.getByRole("button", { name: "Create Custom Object Script" }).click();
+  test("creates a definition and its editable behavior together", async ({ page }) => {
+    await page.getByRole("button", { name: "New object", exact: true }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Create Script" })).toBeVisible();
-    await expect(page.locator("#target")).toHaveText("Custom Object");
+    await page.getByLabel("Object name", { exact: true }).fill("Checkpoint lantern");
+    await page.getByRole("button", { name: "Create object", exact: true }).click();
+    await expect(page.getByLabel("Object name", { exact: true })).toHaveValue("Checkpoint lantern");
+    await page.getByRole("button", { name: "Edit behavior" }).click();
+    await expect(page.locator(".monaco-editor")).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("Lua intelligence");
   });
 });

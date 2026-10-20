@@ -1,5 +1,6 @@
 import { strToU8 } from "fflate";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
+export type ScriptTypeWorkspace = Pick<ScriptWorkspaceState, "context" | "customObjects" | "behaviorCatalog">;
 import { buildNativeSpawnDeclarations, buildNativeSpawnOverloads } from "./scriptNativeDeclarations";
 import type { ApiFunction, Field } from "./scriptApiSchema";
 import { SCRIPT_FAILURE_CODES, SCRIPTING_CONTRACT, SCRIPT_RUNTIME_CAPABILITY_FIELDS } from "./scriptContract";
@@ -56,7 +57,7 @@ function buildFrameFields(gameId: string): readonly string[] {
   return [...commonFields, ...game.contextFields.map(mapFieldToLuaLS)];
 }
 
-function buildHookSignatures(state: ScriptWorkspaceState): string {
+function buildHookSignatures(state: ScriptTypeWorkspace): string {
   return state.context.supportedHooks
     .map((hookId) => {
       const hook = SCRIPTING_CONTRACT.api.hooks.find((h) => h.name === hookId);
@@ -75,7 +76,7 @@ function buildStringAlias(values: readonly string[]): string {
     : "string";
 }
 
-function buildTagDeclarations(state: ScriptWorkspaceState): string {
+function buildTagDeclarations(state: ScriptTypeWorkspace): string {
   return buildStringAlias(
     state.context.allowedTags
       .concat(
@@ -85,7 +86,7 @@ function buildTagDeclarations(state: ScriptWorkspaceState): string {
   );
 }
 
-function buildObjectTypeDeclarations(state: ScriptWorkspaceState): string {
+function buildObjectTypeDeclarations(state: ScriptTypeWorkspace): string {
   return buildStringAlias([
     ...state.context.allowedTags
       .filter((tag) => tag.targetKinds.includes("customObject"))
@@ -94,13 +95,13 @@ function buildObjectTypeDeclarations(state: ScriptWorkspaceState): string {
   ]);
 }
 
-function objectEventContextType(eventId: string): string {
+export function objectEventContextType(eventId: string): string {
   if (eventId === "animationEvent") return "AnimationMarkerObjectFrameContext";
   if (eventId === "animationComplete") return "AnimationCompleteObjectFrameContext";
   return "ObjectFrameContext";
 }
 
-function buildNativeSpawnIdDeclarations(state: ScriptWorkspaceState): string {
+function buildNativeSpawnIdDeclarations(state: ScriptTypeWorkspace): string {
   const game = SCRIPTING_CONTRACT.api.games.find(
     (candidate) => candidate.gameId === state.context.gameId,
   );
@@ -261,7 +262,7 @@ function buildSpawnApiDeclarations(gameId: string): readonly string[] {
     });
 }
 
-function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
+function buildRuntimeDeclaration(state: ScriptTypeWorkspace): string {
   const game = SCRIPTING_CONTRACT.api.games.find((candidate) => candidate.gameId === state.context.gameId);
   const gameFields = buildContextFields(state.context.gameId);
   const frameFields = buildFrameFields(state.context.gameId);
@@ -741,9 +742,13 @@ function buildRuntimeDeclaration(state: ScriptWorkspaceState): string {
 }
 
 export function buildScriptTypeDeclarationFiles(
-  state: ScriptWorkspaceState,
+  state: ScriptTypeWorkspace,
 ): readonly ScriptTypeDeclarationFile[] {
   return [
+    {
+      path: "Data/Scripts/types/pangea.lua",
+      content: "---@meta\n---@type PangeaApi\nlocal pangea = {}\nreturn pangea\n",
+    },
     {
       path: "Data/Scripts/types/pangea-runtime.lua",
       content: buildRuntimeDeclaration(state),

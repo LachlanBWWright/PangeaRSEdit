@@ -37,6 +37,21 @@
       "icon": "play"
     },
     {
+      "name": "Install Electron Runtime",
+      "command": "node desktop/node_modules/electron/install.js",
+      "icon": "configure"
+    },
+    {
+      "name": "Build and Start Electron Editor",
+      "command": "pnpm run build:terrain-codec && pnpm --dir desktop run build && env -u ELECTRON_RUN_AS_NODE pnpm --dir desktop run start",
+      "icon": "play"
+    },
+    {
+      "name": "Start Electron Editor (Existing Build)",
+      "command": "env -u ELECTRON_RUN_AS_NODE pnpm --dir desktop run start",
+      "icon": "play"
+    },
+    {
       "name": "Start Multiplayer Stack",
       "command": "./scripts/multiplayer.sh",
       "icon": "play",

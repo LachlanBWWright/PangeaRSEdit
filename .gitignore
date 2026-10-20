@@ -6,8 +6,13 @@
 .DS_Store
 .tmp/
 node_modules/
+__pycache__/
+*.py[cod]
 plans/
 dist/
+frontend/dist-desktop/
+desktop/release/
+desktop/test-results/
 build/pangea-script/
 build/pangea-script-wasm/
 **/build/Testing/Temporary/

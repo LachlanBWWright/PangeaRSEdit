@@ -1,7 +1,8 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-import { Result } from "neverthrow";
+import { Result, ResultAsync } from "neverthrow";
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
+import { buildScriptWorkspaceFromUI, loadScriptSampleFromUI } from "./scriptWorkspaceTestHelpers";
 import {
   compareNormalizedLifecycleTraces,
   type PangeaScriptLifecycleTrace,
@@ -22,7 +23,7 @@ const lifecycleTraceSchema = z.object({
 });
 
 async function readLifecycleTrace(page: Page): Promise<PangeaScriptLifecycleTrace | null> {
-  const rawTrace = await page.evaluate(() => {
+  const traceResult = await ResultAsync.fromPromise(page.evaluate(() => {
     const runtime = window.Module;
     if (!runtime?.ccall) return null;
     return runtime.ccall(
@@ -31,7 +32,8 @@ async function readLifecycleTrace(page: Page): Promise<PangeaScriptLifecycleTrac
       [],
       [],
     );
-  });
+  }), () => null);
+  const rawTrace = traceResult.unwrapOr(null);
   if (rawTrace === null) return null;
   const parsedJSON = Result.fromThrowable(
     () => JSON.parse(rawTrace),
@@ -58,7 +60,7 @@ async function openScriptsWorkspace(page: Page): Promise<Locator> {
   }
   const workspace = await getScriptsWorkspace(page);
   await expect(
-    workspace.getByRole("tab", { name: "Overview", exact: true }),
+    workspace.getByRole("button", { name: "Level events", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
   return workspace;
 }
@@ -76,15 +78,8 @@ export async function runScriptPackageRoundTrip(
   await expect(levelActions).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   let dialog = await openScriptsWorkspace(page);
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true }).last()).toBeVisible({
-    timeout: 30_000,
-  });
+  await loadScriptSampleFromUI(dialog);
+  await buildScriptWorkspaceFromUI(dialog);
 
   const downloadLevelVariant = async (name: string, pattern: RegExp): Promise<void> => {
     const downloadPromise = page.waitForEvent("download", { timeout: 15_000 });
@@ -92,14 +87,14 @@ export async function runScriptPackageRoundTrip(
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(pattern);
   };
-  await downloadLevelVariant("Download Extended Package", /^extended-level-.*\.zip$/);
+  await downloadLevelVariant("Export extended level", /^extended-level-.*\.zip$/);
   await downloadLevelVariant(
-    "Download Original-Compatible Level",
-    /^original-compatible-.*\.zip$/,
+    "Export without scripts",
+    /^original-level-.*\.zip$/,
   );
 
   const downloadPromise = page.waitForEvent("download", { timeout: 15_000 });
-  await dialog.getByRole("button", { name: "Download Script Package", exact: true }).click();
+  await dialog.getByRole("button", { name: "Export script package", exact: true }).click();
   const download = await downloadPromise;
   const packagePath = await download.path();
   expect(packagePath).not.toBeNull();
@@ -116,15 +111,9 @@ export async function runScriptPackageRoundTrip(
   await page.keyboard.press("Escape");
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   dialog = await openScriptsWorkspace(page);
-  await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true }).last()).toBeVisible({
-    timeout: 30_000,
-  });
+  await buildScriptWorkspaceFromUI(dialog);
 
-  await dialog.getByRole("button", { name: "Preview with Scripts", exact: true }).click();
+  await dialog.getByRole("button", { name: "Test with scripts", exact: true }).click();
   const previewDialog = page.getByRole("dialog").last();
   await expect(
     previewDialog.getByRole("button", { name: "Launch Game", exact: true }),
@@ -144,6 +133,7 @@ export async function runScriptPackageRoundTrip(
     timeout: 30_000,
   });
   await expect(previewDialog.getByText("LOADED", { exact: true })).toHaveCount(2);
+  await expect.poll(() => readLifecycleTrace(page), { timeout: 30_000 }).not.toBeNull();
   const scriptedLifecycleTrace = await readLifecycleTrace(page);
   expect(scriptedLifecycleTrace).not.toBeNull();
   await previewDialog
@@ -174,6 +164,7 @@ export async function runScriptPackageRoundTrip(
   await expect(
     nativePreviewDialog.getByRole("button", { name: "Reload Game", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => readLifecycleTrace(page), { timeout: 30_000 }).not.toBeNull();
   const nativeLifecycleTrace = await readLifecycleTrace(page);
   expect(nativeLifecycleTrace).not.toBeNull();
   if (scriptedLifecycleTrace === null || nativeLifecycleTrace === null) return;

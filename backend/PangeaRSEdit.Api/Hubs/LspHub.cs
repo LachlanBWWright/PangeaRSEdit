@@ -21,6 +21,13 @@ namespace PangeaRSEdit.Api.Hubs
 
     public sealed class LspHub : Hub
     {
+        private readonly IHubContext<LspHub> _hubContext;
+
+        public LspHub(IHubContext<LspHub> hubContext)
+        {
+            _hubContext = hubContext;
+        }
+
         private static readonly ConcurrentDictionary<string, LspSession> Sessions = new();
 
         private static readonly Timer CleanupTimer = new(CleanupIdleSessions, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
@@ -174,7 +181,7 @@ namespace PangeaRSEdit.Api.Hubs
                 {
                     var payload = await session.Transport.ReadPayloadAsync(session.Cts.Token);
                     if (payload == null) break;
-                    await Clients.Client(session.ConnectionId).SendAsync("ReceiveLspPayload", payload, session.Cts.Token);
+                    await _hubContext.Clients.Client(session.ConnectionId).SendAsync("ReceiveLspPayload", payload, session.Cts.Token);
                 }
             }
             catch { }
@@ -188,7 +195,7 @@ namespace PangeaRSEdit.Api.Hubs
                 {
                     var line = await reader.ReadLineAsync(session.Cts.Token);
                     if (line == null) break;
-                    await Clients.Client(session.ConnectionId).SendAsync("ReceiveLspError", line, session.Cts.Token);
+                    await _hubContext.Clients.Client(session.ConnectionId).SendAsync("ReceiveLspError", line, session.Cts.Token);
                 }
             }
             catch { }

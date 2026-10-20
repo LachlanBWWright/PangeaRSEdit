@@ -74,6 +74,10 @@ import {
 } from "./subviews/scripts/scriptWorkspaceState";
 import { summarizeScriptWorkspace } from "./subviews/scripts/scriptWorkspaceSelectors";
 import { createScriptItemDemoWorkspace } from "./subviews/scripts/scriptItemDemoLevel";
+import { useDesktopLevel } from "@/platform/desktop/useDesktopLevel";
+import { desktopBridge } from "@/platform/desktop/client";
+import { playInstalledGame } from "@/platform/desktop/projectActions";
+import { desktopLevelIdAtom, desktopProjectAtom } from "@/platform/desktop/projectState";
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
   const match = MIGHTY_MIKE_LEVELS.find(
@@ -101,6 +105,10 @@ export interface DataHistory {
 }
 
 export function IntroPrompt() {
+  const boundProject = useAtomValue(desktopProjectAtom);
+  const boundLevelId = useAtomValue(desktopLevelIdAtom);
+  const setBoundLevelId = useSetAtom(desktopLevelIdAtom);
+  const boundBaseLevel = boundProject?.manifest.levels.find((level) => level.id === boundLevelId)?.baseLevel;
   const globals = useAtomValue(Globals);
   const authUser = useAtomValue(currentAuthUserAtom);
   const setGlobals = useSetAtom(Globals);
@@ -249,6 +257,18 @@ export function IntroPrompt() {
     [setTerrainData],
   );
 
+  const desktopInput = useMemo(() => mapFile && mapImages && headerData && terrainData ? {
+    globals, data: getCurrentAtomicData(), mapImages, mapFile,
+    workspace: scriptWorkspace, baseLevel: previewLevelNumber,
+  } : null, [globals, getCurrentAtomicData, mapFile, mapImages, headerData, terrainData, scriptWorkspace, previewLevelNumber]);
+  const clearDesktopLevel = useCallback(() => {
+    setMapFile(undefined); setMapImages(undefined); setMapImagesFile(undefined);
+    setAllAtomicData(splitLevelData(null));
+  }, [setAllAtomicData]);
+  const { test: testDesktopLevel } = useDesktopLevel({ input: desktopInput,
+    handlers: { setGlobals, setMapFile, setMapImagesFile, setMapImages, setData: setAllAtomicData },
+    setBaseLevel: setPreviewLevelNumber, setScriptStore: setScriptWorkspaceStore, clearLevel: clearDesktopLevel });
+
   //Update History
   useEffect(() => {
     //Wipe history for new map
@@ -302,9 +322,9 @@ export function IntroPrompt() {
       globals.GAME_TYPE,
       mapFile.name,
     );
-    const level = inferred ?? portConfig?.defaultLevel ?? 0;
+    const level = (desktopBridge() ? boundBaseLevel : undefined) ?? inferred ?? portConfig?.defaultLevel ?? 0;
     Promise.resolve().then(() => setPreviewLevelNumber(level));
-  }, [mapFile, globals.GAME_TYPE]);
+  }, [mapFile, globals.GAME_TYPE, boundBaseLevel]);
 
   useEffect(() => {
     if (!mapFile) {
@@ -450,6 +470,7 @@ export function IntroPrompt() {
 
   // Clear all state helper
   const clearAllState = useCallback(() => {
+    if (desktopBridge()) setBoundLevelId(null);
     setMapFile(undefined);
     setAllAtomicData(splitLevelData(null));
     setMapImages(undefined);
@@ -463,7 +484,7 @@ export function IntroPrompt() {
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
     setTerrainTextureBytes(undefined);
-  }, [setAllAtomicData, setLevelNumber]);
+  }, [setAllAtomicData, setLevelNumber, setBoundLevelId]);
 
   const handleCreateBlankLevel = useCallback(
     (gameType: GlobalsInterface, includePlayerStart = false) => {
@@ -471,7 +492,7 @@ export function IntroPrompt() {
       const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
       const result = createBlankLevel(gameType.GAME_TYPE, {
         ...dimensions,
-        includePlayerStart,
+        includePlayerStart: includePlayerStart || Boolean(desktopBridge()),
       });
       if (result.isErr()) {
         toast.error("Failed to create blank level", {
@@ -578,6 +599,11 @@ export function IntroPrompt() {
 
   const prepareTestLevel = useCallback(
     (customFiles?: readonly PreviewVfsFile[], fromMainMenu = false) => {
+      if (desktopBridge()) {
+        if (fromMainMenu && desktopInput) void playInstalledGame(desktopInput);
+        else void testDesktopLevel(customFiles !== undefined);
+        return;
+      }
       setPreviewFromMainMenu(fromMainMenu);
       if (fromMainMenu) {
         setPreviewCustomFiles(customFiles);
@@ -672,7 +698,7 @@ export function IntroPrompt() {
           setTerrainTextureBytes(null);
         });
     },
-    [getCurrentAtomicData, globals, mapImages, previewLevelNumber],
+    [getCurrentAtomicData, globals, mapImages, previewLevelNumber, desktopInput, testDesktopLevel],
   );
 
   const handleTestLevel = useCallback(() => {

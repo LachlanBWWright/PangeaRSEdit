@@ -45,6 +45,11 @@ import {
 import { getParsedToGlbWorkerResponse } from "./ModelViewer/utils/bg3dGltfWorkerResponses";
 import { prepareSceneForAnimationExport } from "./ModelViewer/utils/prepareSceneForAnimationExport";
 import { useFileUpload } from "./ModelViewer/hooks/useFileUpload";
+import { ProjectAssetBinding } from "@/platform/desktop/ProjectAssetBinding";
+import { modelProjectFiles } from "@/platform/desktop/modelProjectFiles";
+import { useAtomValue } from "jotai";
+import { desktopProjectAtom } from "@/platform/desktop/projectState";
+import { DESKTOP_GAMES } from "@/platform/desktop/games";
 import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
 import type { UploadStep } from "./ModelViewer/types";
 import type { Texture, ModelNode } from "./ModelViewer/types";
@@ -94,6 +99,7 @@ type ViewerHistoryAction =
     };
 
 export function ModelViewer() {
+  const folderProject = useAtomValue(desktopProjectAtom);
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
   const [modelSessionId, setModelSessionId] = useState(0);
   const [modelBaseName, setModelBaseName] = useState<string>("model");
@@ -1432,6 +1438,14 @@ export function ModelViewer() {
 
   return (
     <div className="h-full overflow-hidden p-2 bg-gray-900 text-white">
+      <ProjectAssetBinding kind="models" extension="glb|gltf|bg3d|3dmf" changeToken={gltfBuffer ? viewerHistory : null}
+        onOpen={async (file, companions) => { await handleFileUpload(file, companions.find((entry) => entry.name === file.name.replace(/\.[^.]+$/, ".skeleton.rsrc"))); }}
+        exportFiles={async (stem) => {
+          const buffer = await getCurrentExportBuffer();
+          if (buffer.isErr()) return buffer;
+          const game = DESKTOP_GAMES.find((entry) => entry.id === folderProject?.manifest.game);
+          return game ? modelProjectFiles(stem, buffer.value, game.globals) : err("Open a project first");
+        }} />
       <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pr-2">
           <ModelViewerSidebar

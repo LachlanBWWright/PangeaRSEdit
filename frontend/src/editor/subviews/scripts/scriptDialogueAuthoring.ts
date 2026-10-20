@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "neverthrow";
 import { z } from "zod";
 import { presentationSounds } from "./scriptPresentationSounds";
-import { addBehaviorDefinition, upsertScriptSourceFile, type ScriptHookId, type ScriptWorkspaceState } from "./scriptWorkspaceState";
+import { addBehaviorDefinition, applyGlobalBehavior, type ScriptHookId, type ScriptWorkspaceState } from "./scriptWorkspaceState";
 
 const identifier = z.string().regex(/^[a-z][a-z0-9_-]{0,47}$/);
 function boundedText(bytes: number, required: boolean) {
@@ -109,7 +109,8 @@ export function saveDialogueModule(state: ScriptWorkspaceState, input: unknown):
     target: "global", hooks: [dialogueStartHook(state.context.gameId), "onDialogueResult"], id,
     label: `Dialogue: ${draft.id}`, description: "Native branching dialogue", tags: [], sourceFilePath: path, sourceTemplate: source,
   });
-  return ok(upsertScriptSourceFile(next, path, source));
+  const withStart = applyGlobalBehavior(next, dialogueStartHook(state.context.gameId), id);
+  return ok(applyGlobalBehavior(withStart, "onDialogueResult", id));
 }
 
 export function saveDialogueToWorkspace(state: ScriptWorkspaceState, draft: DialogueDraft, persist: (state: ScriptWorkspaceState) => void, reportError: (message: string) => void): void {

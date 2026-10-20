@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { runScriptObjectAuthoringRoundTrip } from "./scriptObjectAuthoringRoundTrip";
 import { runScriptPackageRoundTrip } from "./scriptPackageRoundTrip";
 import { runScriptRuntimeTraceback } from "./scriptRuntimeTraceback";
-import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
+import { openScriptWorkspace, loadScriptSampleFromUI, buildScriptWorkspaceFromUI } from "./scriptWorkspaceTestHelpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,16 +54,9 @@ test("uses the production Nanosaur 2 Scripts workspace through preview launch", 
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   const dialog = await openScriptWorkspace(page);
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled")).toBeVisible({
-    timeout: 30_000,
-  });
-  await dialog.getByRole("button", { name: "Preview with Scripts", exact: true }).click();
+  await loadScriptSampleFromUI(dialog);
+  await buildScriptWorkspaceFromUI(dialog);
+  await dialog.getByRole("button", { name: "Test with scripts", exact: true }).click();
 
   const previewDialog = page.getByRole("dialog").last();
   await expect(
@@ -181,18 +174,11 @@ test("exports, reopens, and recompiles a Nanosaur 2 script package", async ({
   };
 
   let dialog = await openScripts();
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true }).last()).toBeVisible({
-    timeout: 30_000,
-  });
+  await loadScriptSampleFromUI(dialog);
+  await buildScriptWorkspaceFromUI(dialog);
 
   const downloadPromise = page.waitForEvent("download", { timeout: 15_000 });
-  await dialog.getByRole("button", { name: "Download Script Package", exact: true }).click();
+  await dialog.getByRole("button", { name: "Export script package", exact: true }).click();
   const download = await downloadPromise;
   const packagePath = await download.path();
   expect(packagePath).not.toBeNull();
@@ -209,11 +195,5 @@ test("exports, reopens, and recompiles a Nanosaur 2 script package", async ({
 
   await page.keyboard.press("Escape");
   dialog = await openScripts();
-  await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true }).last()).toBeVisible({
-    timeout: 30_000,
-  });
+  await buildScriptWorkspaceFromUI(dialog);
 });

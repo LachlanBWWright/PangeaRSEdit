@@ -25,14 +25,14 @@ export interface LoadedItemModel {
 }
 
 export const GAME_BASE_PATHS: Record<Game, string> = {
-  [Game.OTTO_MATIC]: "/PangeaRSEdit/games/ottomatic",
-  [Game.BUGDOM]: "/PangeaRSEdit/games/bugdom1",
-  [Game.BUGDOM_2]: "/PangeaRSEdit/games/bugdom2",
-  [Game.NANOSAUR]: "/PangeaRSEdit/games/nanosaur1",
-  [Game.NANOSAUR_2]: "/PangeaRSEdit/games/nanosaur2",
-  [Game.CRO_MAG]: "/PangeaRSEdit/games/cromagrally",
-  [Game.BILLY_FRONTIER]: "/PangeaRSEdit/games/billyfrontier",
-  [Game.MIGHTY_MIKE]: "/PangeaRSEdit/games/mightymike",
+  [Game.OTTO_MATIC]: `${import.meta.env.BASE_URL}games/ottomatic`,
+  [Game.BUGDOM]: `${import.meta.env.BASE_URL}games/bugdom1`,
+  [Game.BUGDOM_2]: `${import.meta.env.BASE_URL}games/bugdom2`,
+  [Game.NANOSAUR]: `${import.meta.env.BASE_URL}games/nanosaur1`,
+  [Game.NANOSAUR_2]: `${import.meta.env.BASE_URL}games/nanosaur2`,
+  [Game.CRO_MAG]: `${import.meta.env.BASE_URL}games/cromagrally`,
+  [Game.BILLY_FRONTIER]: `${import.meta.env.BASE_URL}games/billyfrontier`,
+  [Game.MIGHTY_MIKE]: `${import.meta.env.BASE_URL}games/mightymike`,
 };
 
 function errorMessage(error: unknown): string {

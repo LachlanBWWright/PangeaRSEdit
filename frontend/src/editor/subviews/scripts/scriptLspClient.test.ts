@@ -1,6 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 
+const invocations = vi.hoisted(() => new Array<{ method: string; args: string[] }>());
+
 vi.mock("@microsoft/signalr", () => {
   class FakeConnection {
     private payloadHandler: ((payload: string) => void) | undefined;
@@ -35,6 +37,7 @@ vi.mock("@microsoft/signalr", () => {
     }
 
     public invoke(method: string, ...args: string[]): Promise<unknown> {
+      invocations.push({ method, args });
       if (method === "InitializeSession") {
         return Promise.resolve(
           args[0] === "invalid-uri" ? "not a URI" : "https://luals.test/workspace",
@@ -162,6 +165,7 @@ function makeState(gameId = "cromagrally"): ScriptWorkspaceState {
 describe("ScriptLspClient", () => {
   beforeEach(() => {
     vi.useRealTimers();
+    invocations.length = 0;
   });
 
   afterEach(() => {
@@ -178,6 +182,9 @@ describe("ScriptLspClient", () => {
 
     expect(result.isOk()).toBe(true);
     expect(client.getStatus()).toBe("connected");
+    const configuration = invocations.find((call) => call.method === "SyncFile" && call.args[0] === ".luarc.json");
+    expect(configuration?.args[1]).toContain('"Lua 5.4"');
+    expect(configuration?.args[1]).toContain("Data/Scripts/types/?.lua");
     expect(listener).toHaveBeenCalled();
     const callsBeforeUnsubscribe = listener.mock.calls.length;
     unsubscribe();
@@ -260,7 +267,7 @@ describe("ScriptLspClient", () => {
     if (result.isErr()) {
       expect(result.error.code).toBe("protocol");
     }
-    expect(client.getStatus()).toBe("connecting");
+    expect(client.getStatus()).toBe("unavailable");
 
     const healthy = new ScriptLspClient();
     await healthy.connect(makeState());

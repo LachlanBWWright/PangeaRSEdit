@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { runScriptPackageRoundTrip } from "./scriptPackageRoundTrip";
 import { runScriptObjectAuthoringRoundTrip } from "./scriptObjectAuthoringRoundTrip";
 import { runScriptRuntimeTraceback } from "./scriptRuntimeTraceback";
+import { buildScriptWorkspaceFromUI, loadScriptSampleFromUI, openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,23 +81,13 @@ test("uses the production Cro-Mag Rally Scripts workspace through preview launch
     .locator('input[type="file"]')
     .setInputFiles([levelPath, texturePath]);
   await expect(
-    page.locator("summary").filter({ hasText: "Level Actions" }),
+    page.getByRole("button", { name: "Level Actions", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-  await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-  await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
-  await dialog
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await dialog.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled")).toBeVisible({
-    timeout: 30_000,
-  });
-  await dialog.getByRole("button", { name: "Preview with Scripts", exact: true }).click();
+  const dialog = await openScriptWorkspace(page);
+  await loadScriptSampleFromUI(dialog);
+  await buildScriptWorkspaceFromUI(dialog);
+  await dialog.getByRole("button", { name: "Test with scripts", exact: true }).click();
 
   const previewDialog = page.getByRole("dialog").last();
   await expect(

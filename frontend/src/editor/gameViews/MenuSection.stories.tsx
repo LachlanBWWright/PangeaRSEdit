@@ -1,30 +1,15 @@
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  GameEditorStory,
-  enableStoryScripting,
-  EDITOR_MENUS,
-} from "@/storybook/actualEditorMenuStory";
+import { GameEditorStory, enableStoryScripting, EDITOR_MENUS } from "@/storybook/actualEditorMenuStory";
 import { Game, OttoGlobals } from "@/data/globals/globals";
 import { View } from "@/editor/viewEnum";
-import {
-  buildScriptPackageZipAsync,
-  createScriptWorkspaceContext,
-  ensureScriptWorkspace,
-  upsertScriptSourceFile,
-} from "@/editor/subviews/scripts/scriptWorkspaceState";
+import { buildScriptPackageZipAsync, createScriptWorkspaceContext, ensureScriptWorkspace, upsertScriptSourceFile } from "@/editor/subviews/scripts/scriptWorkspaceState";
 
 enableStoryScripting();
-
 const meta = {
-  title: "Level Editor/Menu Layouts",
-  component: GameEditorStory,
-  parameters: {
-    layout: "fullscreen",
-  },
-  tags: ["autodocs"],
+  title: "Level Editor/Menu Layouts", component: GameEditorStory,
+  parameters: { layout: "fullscreen" }, tags: ["autodocs"],
 } satisfies Meta<typeof GameEditorStory>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -36,145 +21,61 @@ export const Nanosaur2: Story = { args: { game: Game.NANOSAUR_2 } };
 export const CroMagRally: Story = { args: { game: Game.CRO_MAG } };
 export const BillyFrontier: Story = { args: { game: Game.BILLY_FRONTIER } };
 export const MightyMike: Story = { args: { game: Game.MIGHTY_MIKE } };
-
-export const StandardWidth: Story = {
-  args: { game: Game.OTTO_MATIC },
-  parameters: { viewport: { defaultViewport: "desktop" } },
-};
-
+export const StandardWidth: Story = { args: { game: Game.OTTO_MATIC }, parameters: { viewport: { defaultViewport: "desktop" } } };
 export const ResponsiveGallery: Story = {
   args: { game: Game.OTTO_MATIC },
-  render: () => (
-    <div className="grid min-w-0 gap-6 bg-slate-950 p-4 text-slate-100 md:grid-cols-2">
-      {EDITOR_MENUS.map((config) => (
-        <section key={config.name} className="min-w-0 overflow-hidden rounded border border-slate-700">
-          <h2 className="border-b border-slate-700 px-3 py-2 text-sm font-semibold">{config.name}</h2>
-          <GameEditorStory game={config.game} />
-        </section>
-      ))}
-    </div>
-  ),
-  parameters: { layout: "fullscreen", viewport: { defaultViewport: "desktop" } },
+  render: () => <div className="grid min-w-0 gap-6 bg-slate-950 p-4 text-slate-100 md:grid-cols-2">{EDITOR_MENUS.map((config) => <section key={config.name} className="min-w-0 overflow-hidden rounded border border-slate-700"><h2 className="border-b border-slate-700 px-3 py-2 text-sm font-semibold">{config.name}</h2><GameEditorStory game={config.game} /></section>)}</div>,
 };
 
 export const ScriptingWorkflow: Story = {
   args: { game: Game.OTTO_MATIC, view: View.scripts },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() =>
-      expect(
-        canvas.getByRole("tab", { name: "Overview" }),
-      ).toBeInTheDocument(),
-      { timeout: 30_000 },
-    );
-    expect(canvas.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
-    expect(canvas.queryAllByRole("button", { name: "Open Scripts" })).toHaveLength(0);
-    expect(canvasElement.querySelectorAll("canvas")).toHaveLength(0);
-
-    const dialog = within(document.body);
-    await userEvent.click(dialog.getByRole("tab", { name: "Overview" }));
-    const loadButtons = dialog.getAllByRole("button", { name: "Load" });
-    expect(loadButtons.length).toBeGreaterThan(0);
-    const lastLoadButton = loadButtons[loadButtons.length - 1];
-    if (lastLoadButton) {
-      await userEvent.click(lastLoadButton);
+    const body = within(document.body);
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Level events" })).toBeVisible(), { timeout: 30_000 });
+    await userEvent.click(canvas.getByRole("button", { name: "Create Level Start handler" }));
+    const eventDialog = body.getByRole("dialog");
+    await userEvent.click(within(eventDialog).getByRole("button", { name: "Create Script" }));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "globals/level-start-script.lua" })).toBeVisible());
+    await userEvent.click(canvas.getByRole("button", { name: "Level events" }));
+    expect(canvas.getByText("Level Start Script")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Edit source" }));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Save source" })).toBeDisabled());
+    await userEvent.click(canvas.getByRole("button", { name: "Objects" }));
+    await userEvent.click(canvas.getByRole("button", { name: "New object" }));
+    const dialog = body.getByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Object name"), "Workflow lantern");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create object" }));
+    await waitFor(() => expect(canvas.getByLabelText("Object name")).toHaveValue("Workflow lantern"));
+    await userEvent.click(canvas.getByRole("button", { name: "Collision" }));
+    await userEvent.click(canvas.getByRole("radio", { name: /Trigger An overlap/ }));
+    await userEvent.clear(canvas.getByLabelText("Collision width"));
+    await userEvent.type(canvas.getByLabelText("Collision width"), "160");
+    await userEvent.tab();
+    expect(canvas.getByLabelText("Collision width")).toHaveValue(160);
+    await userEvent.click(canvas.getByRole("button", { name: "Level events" }));
+    const replace = canvas.queryByRole("button", { name: "Replace selected item" });
+    if (replace && !replace.hasAttribute("disabled")) {
+      await userEvent.click(replace);
+      expect(canvas.getByRole("button", { name: "Restore native item" })).toBeVisible();
     }
-    await userEvent.click(dialog.getByRole("tab", { name: "Assignments" }));
-    expect(dialog.getAllByText("Hover Beacon").length).toBeGreaterThan(0);
-    const objectScript = dialog.getByRole("combobox", { name: "Object script" });
-    await userEvent.click(objectScript);
-    const objectScriptOptions = within(document.body).getAllByRole("option");
-    const firstObjectScriptOption = objectScriptOptions[0];
-    if (firstObjectScriptOption) {
-      await userEvent.click(firstObjectScriptOption);
-    }
-    await userEvent.click(dialog.getByRole("button", { name: "Save Object" }));
-    expect(dialog.getAllByText("Hover Beacon").length).toBeGreaterThan(1);
-
-    const replaceButtons = dialog.getAllByRole("button", {
-      name: "Replace selected native item",
-    });
-    expect(replaceButtons.length).toBeGreaterThan(0);
-    const replaceButton = replaceButtons[0];
-    if (replaceButton) {
-      await userEvent.click(replaceButton);
-    }
-    expect(
-      dialog.getAllByRole("button", { name: "Restore native item" }).length,
-    ).toBeGreaterThan(0);
-
-    const collisionSelectors = dialog.getAllByRole("combobox", {
-      name: "Hover Beacon collision",
-    });
-    const collisionSelector = collisionSelectors[0];
-    if (collisionSelector) {
-      await userEvent.click(collisionSelector);
-    }
-    await userEvent.click(dialog.getByRole("option", { name: "Trigger box" }));
-    const collisionWidths = dialog.getAllByLabelText(
-      "Hover Beacon collision width",
-    );
-    const collisionWidth = collisionWidths[0];
-    expect(collisionWidth).toBeDefined();
-    if (!collisionWidth) {
-      return;
-    }
-    await userEvent.clear(collisionWidth);
-    await userEvent.type(collisionWidth, "2");
-    expect(collisionWidth).toHaveValue(2);
-
-    await userEvent.click(dialog.getByRole("tab", { name: "Code" }));
-    const fileName = dialog.getByLabelText("Add file");
-    await userEvent.clear(fileName);
-    await userEvent.type(fileName, "workflow");
-    await userEvent.click(dialog.getByRole("button", { name: "Add" }));
-    expect(
-      dialog.getByRole("button", { name: /workflow\.lua/ }),
-    ).toBeInTheDocument();
-
-    await userEvent.click(
-      dialog.getByRole("tab", { name: "Preview and Export" }),
-    );
-    expect(
-      dialog.getByRole("button", { name: "Preview with Scripts" }),
-    ).toBeInTheDocument();
-    expect(
-      dialog.getByRole("button", { name: "Download Script Package" }),
-    ).toBeInTheDocument();
-
-    let importedWorkspace = ensureScriptWorkspace(
-      {},
-      createScriptWorkspaceContext(OttoGlobals, 1),
-    );
-    importedWorkspace = upsertScriptSourceFile(
-      importedWorkspace,
-      "Data/Scripts/src/imported.lua",
-      "return { onFrame = function() end }",
-    );
-    const packageResult = await buildScriptPackageZipAsync(importedWorkspace);
-    expect(packageResult.isErr()).toBe(false);
-    if (packageResult.isErr()) {
-      return;
-    }
-    const packageBytes = new ArrayBuffer(packageResult.value.byteLength);
-    new Uint8Array(packageBytes).set(packageResult.value);
-    const packageFile = new File(
-      [packageBytes],
-      "reopen-workflow.zip",
-      { type: "application/zip" },
-    );
-    await userEvent.upload(
-      dialog.getByLabelText("Upload Script Package"),
-      packageFile,
-    );
-    await waitFor(() =>
-      expect(dialog.getByRole("tab", { name: "Code" })).toBeInTheDocument(),
-    );
-    await userEvent.click(dialog.getByRole("tab", { name: "Code" }));
-    await waitFor(() =>
-      expect(
-        dialog.getAllByRole("button", { name: /imported\.lua/ }).length,
-      ).toBeGreaterThan(0),
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Lua source" }));
+    expect(canvas.getByRole("region", { name: "Lua API reference" })).toBeVisible();
+    await userEvent.type(canvas.getByLabelText("New helper module"), "workflow");
+    await userEvent.click(canvas.getByRole("button", { name: "Add file" }));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "workflow.lua" })).toBeVisible());
+    await userEvent.click(canvas.getByRole("button", { name: "Test & export" }));
+    expect(canvas.getByRole("button", { name: "Test with scripts" })).toBeVisible();
+    expect(canvas.getByRole("button", { name: "Export extended level" })).toBeVisible();
+    const context = createScriptWorkspaceContext(OttoGlobals, 1);
+    const imported = upsertScriptSourceFile(ensureScriptWorkspace({}, context), "Data/Scripts/src/imported.lua", "return { onFrame = function() end }");
+    const packageResult = await buildScriptPackageZipAsync(imported);
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+    const bytes = new Uint8Array(packageResult.value.byteLength);
+    bytes.set(packageResult.value);
+    await userEvent.upload(canvas.getByLabelText("Upload Script Package"), new File([bytes], "workflow.zip", { type: "application/zip" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Lua source" }));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "imported.lua" })).toBeVisible());
   },
 };

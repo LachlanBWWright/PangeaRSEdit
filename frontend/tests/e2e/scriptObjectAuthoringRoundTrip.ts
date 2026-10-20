@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
+import { buildScriptWorkspaceFromUI, createScriptObjectFromUI, openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 export async function runScriptObjectAuthoringRoundTrip(
   page: Page,
@@ -16,15 +16,8 @@ export async function runScriptObjectAuthoringRoundTrip(
 
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   const workspace = await openScriptWorkspace(page);
-  await workspace.getByRole("tab", { name: "Assignments", exact: true }).click();
-  await workspace.locator("#custom-object-label").fill(objectLabel);
-  await workspace.getByRole("button", { name: "Save Object", exact: true }).click();
-  await expect(workspace.getByText(objectLabel, { exact: true })).toBeVisible();
-
-  await workspace
-    .getByRole("combobox", { name: `${objectLabel} visual type` })
-    .click();
-  await page.getByRole("option", { name: "No visual", exact: true }).click();
+  await createScriptObjectFromUI(page, workspace, objectLabel);
+  await expect(workspace.getByRole("combobox", { name: "Appearance", exact: true })).toHaveText("Invisible / logic only");
   await page.keyboard.press("Escape");
   await page.getByRole("tab", { name: "Items", exact: true }).click();
   await page.getByText("Select a scripted item", { exact: true }).click();
@@ -50,16 +43,8 @@ export async function runScriptObjectAuthoringRoundTrip(
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   const reopenedWorkspace = await openScriptWorkspace(page);
   await reopenedWorkspace
-    .getByRole("tab", { name: "Assignments", exact: true })
+    .getByRole("button", { name: "Objects", exact: true })
     .click();
   await expect(reopenedWorkspace.getByText(objectLabel, { exact: true }).first()).toBeVisible();
-  await reopenedWorkspace
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await reopenedWorkspace
-    .getByRole("button", { name: "Compile Bundle", exact: true })
-    .click();
-  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
+  await buildScriptWorkspaceFromUI(reopenedWorkspace);
 }

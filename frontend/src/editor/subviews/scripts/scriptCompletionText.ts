@@ -22,16 +22,20 @@ function luaFieldType(field: ApiFunction["parameters"][number]): string {
 }
 
 export function buildApiSignature(api: ApiFunction): string {
-  const [, namespace = "", method = ""] = api.name.split(".");
   const parameters = api.parameters
     .map((parameter) => {
-      const type = gameplayParameterType(namespace, method, parameter.name)
-        ?? presentationParameterType(namespace, method, parameter.name)
-        ?? luaFieldType(parameter);
+      const type = getApiParameterType(api, parameter);
       return `${parameter.name}: ${type}${parameter.optional ? "?" : ""}`;
     })
     .join(", ");
   return `${api.name}(${parameters}): ${api.returnType}`;
+}
+
+export function getApiParameterType(api: ApiFunction, parameter: ApiFunction["parameters"][number]): string {
+  const [, namespace = "", method = ""] = api.name.split(".");
+  return gameplayParameterType(namespace, method, parameter.name)
+    ?? presentationParameterType(namespace, method, parameter.name)
+    ?? luaFieldType(parameter);
 }
 
 export function getContextualApiName(

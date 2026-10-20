@@ -1,0 +1,49 @@
+{
+  "name": "@pangea/desktop",
+  "productName": "Pangea RS Edit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pangea RS Edit desktop editor",
+  "author": "PangeaRSEdit contributors",
+  "homepage": "https://github.com/lachlanbwwright/PangeaRSEdit",
+  "desktopName": "pangea-rs-edit.desktop",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build:host": "node build.mjs",
+    "build": "pnpm --dir ../frontend run build:desktop && pnpm run build:host",
+    "start": "electron .",
+    "check": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "package": "pnpm run build && electron-builder --publish never"
+  },
+  "dependencies": {
+    "@pangea/desktop-contracts": "workspace:*",
+    "fflate": "^0.8.2",
+    "neverthrow": "^8.2.0",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.6.0",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.7"
+  },
+  "build": {
+    "directories": { "output": "release" },
+    "appId": "org.pangea.rsedit",
+    "productName": "Pangea RS Edit",
+    "executableName": "pangea-rs-edit",
+    "artifactName": "Pangea-RS-Edit-${version}-${arch}.${ext}",
+    "asar": true,
+    "files": ["dist/**/*", "package.json"],
+    "extraResources": [{ "from": "../frontend/dist-desktop", "to": "renderer" }],
+    "linux": { "target": ["AppImage", "deb"], "category": "Development", "syncDesktopName": true, "maintainer": "PangeaRSEdit contributors" },
+    "deb": { "packageName": "pangea-rs-edit" },
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.developer-tools" }
+  }
+}

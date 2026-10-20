@@ -46,6 +46,12 @@ frontend plus a freshly compiled multiplayer backend. `multiplayer.sh` uses the
 same preparation path; pass `--rebuild-games` only when you intentionally want
 a refresh of every staged runtime.
 
+The backend requires the .NET 9 runtime and ASP.NET Core 9 runtime, even when
+building with a newer SDK. Install the .NET 9 SDK or the
+[ASP.NET Core 9 runtime](https://dotnet.microsoft.com/download/dotnet/9.0)
+alongside your existing SDK. The multiplayer launcher checks these requirements
+before preparing game assets.
+
 `test-container.sh` uses `pangearsedit-api:local` as its image tag. Override it
 with `PANGEA_BACKEND_IMAGE`, for example:
 

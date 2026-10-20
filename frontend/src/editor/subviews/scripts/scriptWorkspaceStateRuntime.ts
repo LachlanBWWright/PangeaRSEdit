@@ -27,6 +27,7 @@ import {
   scriptCustomObjectDefinitionSchema,
   scriptCustomObjectPlacementSchema,
   scriptGlobalAssignmentSchema,
+  scriptHookIdSchema,
   scriptLevelStateSchema,
   scriptMapItemBindingSchema,
   scriptParameterDefinitionSchema,
@@ -44,6 +45,8 @@ import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
 import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
 import { materializeCustomObjectSourceTemplate } from "./scriptCustomObjectTemplate";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
+import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
+import { buildLevelModuleRouting, buildLevelPlacementSpawns, getScopedModulePaths, scriptModuleVariable } from "./scriptLevelRouting";
 import { migrateLegacyScriptSource } from "./scriptLegacyMigration";
 import type {
   ScriptBehaviorDefinition,
@@ -235,6 +238,7 @@ function buildBaseRuntimeTemplate(): string {
     "",
     "local module = {}",
     "",
+    "---@param ctx LevelContext",
     "function module.onLevelStart(ctx)",
     "  pangea.log.info('Scripts ready for level ' .. tostring(ctx.levelNum))",
     "end",
@@ -242,86 +246,6 @@ function buildBaseRuntimeTemplate(): string {
     "return module",
     "",
   ].join("\n");
-}
-
-function getAdventureHooks(): readonly ScriptHookId[] {
-  return [
-    "onLevelLoad",
-    "onLevelStart",
-    "onFrame",
-    "onObjectFrame",
-    "onLevelComplete",
-    "onLevelUnload",
-    "onTerrainItem",
-    "onSplineItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
-}
-
-function getNanosaurHooks(): readonly ScriptHookId[] {
-  return [
-    "onLevelLoad",
-    "onLevelStart",
-    "onFrame",
-    "onObjectFrame",
-    "onLevelComplete",
-    "onLevelUnload",
-    "onTerrainItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
-}
-
-function getBillyFrontierHooks(): readonly ScriptHookId[] {
-  return [
-    "onAreaLoad",
-    "onAreaStart",
-    "onAreaFrame",
-    "onObjectFrame",
-    "onAreaComplete",
-    "onAreaUnload",
-    "onTerrainItem",
-    "onSplineItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
-}
-
-function getMightyMikeHooks(): readonly ScriptHookId[] {
-  return [
-    "onAreaLoad",
-    "onAreaStart",
-    "onAreaFrame",
-    "onObjectFrame",
-    "onMapItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-    "onAreaComplete",
-    "onAreaUnload",
-  ];
-}
-
-function getRaceHooks(): readonly ScriptHookId[] {
-  return [
-    "onRaceLoad",
-    "onRaceStart",
-    "onRaceFrame",
-    "onObjectFrame",
-    "onRaceComplete",
-    "onRaceUnload",
-    "onLapComplete",
-    "onRaceFinish",
-    "onObjectiveComplete",
-    "onTerrainItem",
-    "onPickupCollected",
-    "onWeaponHit",
-    "onTriggerEnter",
-  ];
 }
 
 function createTag(
@@ -569,6 +493,7 @@ function buildBehaviorCatalog(
       template: [
         "local module = {}",
         "",
+        "---@param ctx LevelContext",
         "function module.__HOOK__(ctx)",
         '  pangea.log.info("LEVEL_EDITOR_SCRIPTING: start hook fired")',
         "end",
@@ -629,6 +554,8 @@ function buildBehaviorCatalog(
       template: [
         "local hoverBeacon = {}",
         "",
+        "---@param self ObjectBehaviorSelf",
+        "---@param ctx ObjectFrameContext",
         "function hoverBeacon.onUpdate(self, ctx)",
         "  local wave = math.sin(ctx.levelTimeSeconds * 4) * 16",
         "  pangea.object.setPositionOffset(self.handle, {",
@@ -644,7 +571,7 @@ function buildBehaviorCatalog(
         "end",
         "",
         "local module = {",
-        "  sampleHoverBeacon = hoverBeacon,",
+        "  __PANGEA_CUSTOM_OBJECT_EXPORT__ = hoverBeacon,",
         "}",
         "return module",
         "",
@@ -1061,11 +988,15 @@ function buildGeneratedEntryModule(
   const objectTypeModulePaths = new Set(
     objectTypeBehaviors.map((behavior) => behavior.sourceFilePath),
   );
+  const scopedModulePaths = getScopedModulePaths(state);
   const globalRuntimeModules = runtimeModules.filter(
-    (path) => !objectTypeModulePaths.has(path),
+    (path) => !objectTypeModulePaths.has(path) && !scopedModulePaths.has(path)
+      && state.sourceFiles[path]?.role !== "generated-assignment"
+      && !path.startsWith("Data/Scripts/src/bindings/")
+      && !path.startsWith("Data/Scripts/src/objects/")
+      && !path.startsWith("Data/Scripts/src/assignments/"),
   );
-  const getModuleVariable = (path: string): string =>
-    `__module_${path.replace(/[^a-zA-Z0-9]+/g, "_")}`;
+  const getModuleVariable = scriptModuleVariable;
 
   const moduleRequires = runtimeModules
     .map(
@@ -1125,18 +1056,9 @@ function buildGeneratedEntryModule(
     );
   });
 
-  const placementBlocks = state.levels[context.levelKey]?.customPlacements ?? [];
-  const hasPlacements = placementBlocks.length > 0;
-
-  const preferredHook = context.supportedHooks.includes("onLevelStart")
-    ? "onLevelStart"
-    : context.supportedHooks.includes("onAreaStart")
-      ? "onAreaStart"
-      : "onRaceStart";
-
   const hookDispatchers = context.supportedHooks
     .map((hookId) => {
-      const isStartHook = hookId === preferredHook;
+      const header = `function entry.${hookId}(ctx)\n  local __modules = __modulesForHook(${JSON.stringify(hookId)}, ctx)`;
 
       const dispatchBody: string[] = [];
 
@@ -1149,18 +1071,7 @@ function buildGeneratedEntryModule(
         "  end"
       );
 
-      if (isStartHook && hasPlacements) {
-        placementBlocks.forEach((placement) => {
-          const objectDefinition = state.customObjects.find(
-            (candidate) => candidate.id === placement.objectId,
-          );
-          if (objectDefinition) {
-            dispatchBody.push(
-              `  pangea.spawn.scripted(${JSON.stringify(placement.objectId)}, { x = ${placement.position.x}, y = ${placement.position.y}, z = ${placement.position.z} })`
-            );
-          }
-        });
-      }
+      dispatchBody.push(...buildLevelPlacementSpawns(state, hookId));
 
       if (
         hookId === "onTerrainItem" ||
@@ -1168,7 +1079,7 @@ function buildGeneratedEntryModule(
         hookId === "onMapItem"
       ) {
         return [
-          `function entry.${hookId}(ctx)`,
+          header,
           "  local markInUse = nil",
           "  for _, candidate in ipairs(__modules) do",
           `    local hook = candidate[${JSON.stringify(hookId)}]`,
@@ -1191,7 +1102,7 @@ function buildGeneratedEntryModule(
 
       if (hookId === "onPickupCollected") {
         return [
-          `function entry.${hookId}(ctx)`,
+          header,
           "  local scoreDelta = 0",
           "  local healthDelta = 0",
           "  local consumePickup = nil",
@@ -1222,7 +1133,7 @@ function buildGeneratedEntryModule(
 
       if (hookId === "onWeaponHit") {
         return [
-          `function entry.${hookId}(ctx)`,
+          header,
           "  local damage = ctx.damage",
           "  local scoreDelta = 0",
           "  local applyDamage = nil",
@@ -1257,7 +1168,7 @@ function buildGeneratedEntryModule(
 
       if (hookId === "onTriggerEnter") {
         return [
-          `function entry.${hookId}(ctx)`,
+          header,
           "  local scoreDelta = 0",
           "  local healthDelta = 0",
           "  local damagePlayer = 0",
@@ -1300,7 +1211,7 @@ function buildGeneratedEntryModule(
 
       if (hookId === "onObjectFrame") {
         return [
-          `function entry.${hookId}(ctx)`,
+          header,
           "  local objectResult = nil",
           ...customObjectFrameDispatch,
           "  local typedModules = __objectTypeModules[ctx.objectType]",
@@ -1329,8 +1240,18 @@ function buildGeneratedEntryModule(
         ].join("\n");
       }
 
+      if (hookId === "onDamage") {
+        return [header,
+          "  for _, candidate in ipairs(__modules) do",
+          "    if type(candidate.onDamage) == 'function' then",
+          "      local result = candidate.onDamage(ctx)",
+          "      if result ~= nil then return result end",
+          "    end",
+          "  end", "end"].join("\n");
+      }
+
       return [
-        `function entry.${hookId}(ctx)`,
+        header,
         ...dispatchBody,
         "end",
       ].join("\n");
@@ -1344,6 +1265,7 @@ function buildGeneratedEntryModule(
     customObjectRequires.length > 0 ? "\n" + customObjectRequires.join("\n") : "",
     "",
     `local __modules = { ${moduleList} }`,
+    buildLevelModuleRouting(state),
     "local __objectTypeModules = {",
     objectTypeRoutes,
     "}",
@@ -1687,16 +1609,11 @@ export function createScriptWorkspaceContext(
     }
   })();
 
-  const supportedHooks =
-    globals.GAME_TYPE === Game.MIGHTY_MIKE
-      ? getMightyMikeHooks()
-      : globals.GAME_TYPE === Game.CRO_MAG
-        ? getRaceHooks()
-        : gameId === "Nanosaur-android"
-          ? getNanosaurHooks()
-          : gameId === "BillyFrontier-Android"
-            ? getBillyFrontierHooks()
-            : getAdventureHooks();
+  const gameHooks = AUTHORITATIVE_API_SCHEMA.games.find((game) => game.gameId === gameId)?.supportedHooks ?? [];
+  const supportedHooks = gameHooks.flatMap((hook) => {
+    const parsed = scriptHookIdSchema.safeParse(hook);
+    return parsed.success ? [parsed.data] : [];
+  });
 
   return {
     gameId,
@@ -1753,11 +1670,6 @@ export function retargetScriptWorkspace(
     return state;
   }
 
-  const sourceLevel = {
-    ...cloneLevelState(state.levels[state.context.levelKey] ?? defaultLevelState()),
-    customPlacements: [],
-  };
-
   return {
     ...state,
     context,
@@ -1765,7 +1677,7 @@ export function retargetScriptWorkspace(
       ? state.levels
       : {
           ...state.levels,
-          [context.levelKey]: sourceLevel,
+          [context.levelKey]: defaultLevelState(),
         },
   };
 }
@@ -1955,15 +1867,17 @@ export function applyGlobalBehavior(
   }
 
   const assignmentId = buildAssignmentId("global", `${hookId}-${behavior.id}`);
-  const sourcePath = behavior.sourceFilePath;
-  const hookName =
-    hookId === "onAreaStart" || hookId === "onRaceStart" ? hookId : hookId;
-  const sourceContent = materializeBehaviorTemplate(behavior, {
-    __HOOK__: hookName,
+  const sourcePath = behavior.template.includes("__HOOK__")
+    ? `Data/Scripts/src/assignments/${state.context.levelKey}-${hookId}-${slugify(behavior.id)}.lua`
+    : behavior.sourceFilePath;
+  const sourceContent = state.sourceFiles[sourcePath]?.content ?? materializeBehaviorTemplate(behavior, {
+    __HOOK__: hookId,
   });
 
   const nextState = upsertScriptSourceFile(
-    state,
+    sourcePath !== behavior.sourceFilePath && !state.sourceFiles[behavior.sourceFilePath]
+      ? upsertScriptSourceFile(state, behavior.sourceFilePath, sourceContent, "generated-assignment", behavior.id)
+      : state,
     sourcePath,
     sourceContent,
     "generated-assignment",
@@ -1975,7 +1889,7 @@ export function applyGlobalBehavior(
       ...levelState,
       globalHooks: [
         ...levelState.globalHooks.filter(
-          (candidate) => candidate.hookId !== hookId,
+          (candidate) => candidate.id !== assignmentId,
         ),
         {
           id: assignmentId,
@@ -2017,7 +1931,13 @@ export function removeGlobalBehavior(
     return refreshGeneratedEntry(withoutHook, state.context);
   }
 
-  return removeScriptSourceFile(withoutHook, existing.sourceFilePath);
+  return refreshGeneratedEntry(withoutHook, state.context);
+}
+
+export function removeGlobalAssignment(state: ScriptWorkspaceState, assignmentId: string): ScriptWorkspaceState {
+  return refreshGeneratedEntry(updateWorkspaceLevel(state, state.context.levelKey, (level) => ({
+    ...level, globalHooks: level.globalHooks.filter((assignment) => assignment.id !== assignmentId),
+  })), state.context);
 }
 
 export function applyTerrainBehavior(
@@ -2508,8 +2428,8 @@ export function compileScriptWorkspace(
     addStatusLog(
       updatedState,
       diagnostics.some((diagnostic) => diagnostic.severity === "error")
-        ? "Compile completed with errors"
-        : "Compile completed successfully",
+        ? "Bundle generated with errors"
+        : "Bundle generated; test in game to verify behavior",
     ),
   );
 }

@@ -9,7 +9,7 @@ import {
 } from "../../python/structSpecs/LevelTypes";
 import { ok, err } from "neverthrow";
 import { Result } from "neverthrow";
-import { plainObjectSchema, recordSchema } from "../../schemas/common";
+import { plainObjectSchema, recordSchema, stringSchema } from "../../schemas/common";
 
 // Zod schema for LevelData-like objects
 const levelDataLikeSchema = recordSchema.refine(
@@ -346,7 +346,7 @@ export function sanitizeResourceForkJson(
       const hasObj =
         (Array.isArray(obj) && obj.length > 0) ||
         (isRecord(obj) && !Array.isArray(obj));
-      const hasData = typeof dataField === "string" && dataField.trim().length > 0;
+      const hasData = stringSchema.safeParse(dataField).success;
       if (!hasObj && !hasData) {
         continue;
       }

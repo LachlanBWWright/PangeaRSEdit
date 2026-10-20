@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildScriptWorkspaceFromUI, loadScriptSampleFromUI, openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,21 +113,11 @@ for (const adapterCase of nativeAdapterCases) {
       page.locator("summary").filter({ hasText: "Level Actions" }),
     ).toBeVisible({ timeout: 30_000 });
     await page.getByRole("tab", { name: "Scripts", exact: true }).click();
-    await page.getByRole("button", { name: "Open Scripts", exact: true }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
-    await dialog.getByRole("button", { name: "Load", exact: true }).first().click();
+    const dialog = await openScriptWorkspace(page);
+    await loadScriptSampleFromUI(dialog);
+    await buildScriptWorkspaceFromUI(dialog);
     await dialog
-      .getByRole("tab", { name: "Preview and Export", exact: true })
-      .click();
-    await dialog
-      .getByRole("button", { name: "Compile Bundle", exact: true })
-      .click();
-    await expect(
-      page.getByText("Script bundle compiled", { exact: true }),
-    ).toBeVisible({ timeout: 30_000 });
-    await dialog
-      .getByRole("button", { name: "Preview with Scripts", exact: true })
+      .getByRole("button", { name: "Test with scripts", exact: true })
       .click();
     await page.route(adapterCase.runtimeUrlPattern, (route) =>
       route.abort("failed"),

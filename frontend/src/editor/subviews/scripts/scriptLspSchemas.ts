@@ -20,7 +20,7 @@ export const lspLocationsSchema = z.union([
 ]);
 
 const markupContentSchema = z.object({
-  kind: z.string(),
+  kind: z.enum(["plaintext", "markdown"]),
   value: z.string(),
 });
 
@@ -45,12 +45,36 @@ export const lspCompletionItemSchema = z.object({
   detail: z.string().optional(),
   documentation: z.union([z.string(), markupContentSchema]).optional(),
   insertText: z.string().optional(),
+  insertTextFormat: z.union([z.literal(1), z.literal(2)]).optional(),
+  sortText: z.string().optional(),
+  filterText: z.string().optional(),
+  preselect: z.boolean().optional(),
+  data: z.unknown().optional(),
+  textEdit: z.union([
+    z.object({ range: lspRangeSchema, newText: z.string() }),
+    z.object({ insert: lspRangeSchema, replace: lspRangeSchema, newText: z.string() }),
+  ]).optional(),
+  additionalTextEdits: z.array(z.object({ range: lspRangeSchema, newText: z.string() })).optional(),
 });
 
 export const lspCompletionResultSchema = z.union([
   z.array(lspCompletionItemSchema),
   z.object({ items: z.array(lspCompletionItemSchema) }),
 ]);
+
+export const lspSignatureHelpSchema = z.object({
+  signatures: z.array(z.object({
+    label: z.string(),
+    documentation: z.union([z.string(), markupContentSchema]).optional(),
+    parameters: z.array(z.object({
+      label: z.union([z.string(), z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])]),
+      documentation: z.union([z.string(), markupContentSchema]).optional(),
+    })).optional(),
+    activeParameter: z.number().int().nonnegative().optional(),
+  })),
+  activeSignature: z.number().int().nonnegative().optional(),
+  activeParameter: z.number().int().nonnegative().optional(),
+});
 
 export interface LspDocumentSymbol {
   name: string;

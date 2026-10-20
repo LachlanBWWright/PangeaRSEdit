@@ -4,6 +4,7 @@ import { err, errAsync, ok, Result, ResultAsync } from "neverthrow";
 import { z } from "zod";
 import { buildApiUrl } from "@/api/apiBase";
 import { buildScriptTypeDeclarationFiles } from "./scriptTypeDeclarations";
+import { buildLuaLsConfig } from "./scriptLuaLsConfig";
 import {
   lspMessageSchema,
   publishDiagnosticsParamsSchema,
@@ -41,6 +42,11 @@ function protocolError(message: string): LspClientError {
   return { code: "protocol", message };
 }
 
+function externalConnectionError(cause: unknown, message: string): LspClientError {
+  const parsed = z.object({ message: z.string() }).safeParse(cause);
+  return connectionError(parsed.success ? `${message} ${parsed.data.message}` : message);
+}
+
 export class ScriptLspClient {
   private connection: HubConnection | null = null;
   private nextRequestId = 0;
@@ -52,6 +58,7 @@ export class ScriptLspClient {
   private diagnosticListeners = new Set<(event: ScriptLspDiagnosticsEvent) => void>();
   public status: "disconnected" | "connecting" | "connected" | "unavailable" =
     "disconnected";
+  public lastError: string | null = null;
 
   public connect(state: ScriptWorkspaceState): ResultAsync<void, LspClientError> {
     this.state = state;
@@ -67,8 +74,13 @@ export class ScriptLspClient {
       : this.stopConnection();
 
     this.gameId = state.context.gameId;
+    this.lastError = null;
     this.setStatus("connecting");
-    return stopPrevious.andThen(() => this.startConnection());
+    return stopPrevious.andThen(() => this.startConnection()).mapErr((error) => {
+      this.lastError = error.message;
+      this.setStatus("unavailable");
+      return error;
+    });
   }
 
   public disconnect(): ResultAsync<void, LspClientError> {
@@ -81,7 +93,7 @@ export class ScriptLspClient {
     method: string,
     params: unknown,
   ): Promise<Result<unknown, LspClientError>> {
-    if (this.status !== "connected" || this.connection === null) {
+    if ((this.status !== "connected" && method !== "initialize") || this.connection === null) {
       return Promise.resolve(
         err({ code: "unavailable", message: "LuaLS is not connected." }),
       );
@@ -176,7 +188,7 @@ export class ScriptLspClient {
 
     return ResultAsync.fromPromise(
       connection.start(),
-      () => connectionError("Could not connect to LuaLS."),
+      (cause) => externalConnectionError(cause, "Could not connect to LuaLS."),
     ).andThen(() => this.initializeSession());
   }
 
@@ -187,7 +199,7 @@ export class ScriptLspClient {
 
     return ResultAsync.fromPromise(
       this.connection.invoke<unknown>("InitializeSession", this.gameId),
-      () => connectionError("LuaLS session initialization failed."),
+      (cause) => externalConnectionError(cause, "LuaLS session initialization failed."),
     )
       .andThen((workspaceUri) => {
         const parsed = z.string().url().safeParse(workspaceUri);
@@ -195,7 +207,6 @@ export class ScriptLspClient {
           return err(protocolError("LuaLS returned an invalid workspace URI."));
         }
         this.workspaceUri = parsed.data.endsWith("/") ? parsed.data : `${parsed.data}/`;
-        this.setStatus("connected");
         return ok(undefined);
       })
       .andThen(() => this.syncWorkspaceFiles())
@@ -205,7 +216,8 @@ export class ScriptLspClient {
         workspaceFolders: [{ uri: this.workspaceUri, name: "Pangea Scripts" }],
         capabilities: {
           textDocument: {
-            completion: { completionItem: { snippetSupport: true } },
+            completion: { completionItem: { snippetSupport: true, documentationFormat: ["markdown", "plaintext"], resolveSupport: { properties: ["documentation", "detail", "additionalTextEdits"] } } },
+            signatureHelp: { signatureInformation: { documentationFormat: ["markdown", "plaintext"], parameterInformation: { labelOffsetSupport: true }, activeParameterSupport: true } },
             hover: {},
             definition: {},
             references: {},
@@ -215,7 +227,7 @@ export class ScriptLspClient {
           workspace: { workspaceFolders: true },
         },
       })))
-      .andThen((initializeResult) => initializeResult)
+      .andThen((initializeResult) => initializeResult.map(() => this.setStatus("connected")))
       .andThen(() => this.notify("initialized", {}))
       .andThen(() => {
         this.openExistingDocuments();
@@ -228,13 +240,14 @@ export class ScriptLspClient {
       return ResultAsync.fromSafePromise(Promise.resolve());
     }
     const files = [
+      { path: ".luarc.json", content: buildLuaLsConfig() },
       ...Object.values(this.state.sourceFiles),
       ...buildScriptTypeDeclarationFiles(this.state),
     ];
     return files.reduce<ResultAsync<void, LspClientError>>(
       (result, file) => result.andThen(() => ResultAsync.fromPromise(
         this.connection?.invoke("SyncFile", file.path, file.content) ?? Promise.resolve(),
-        () => connectionError(`Failed to synchronize ${file.path}.`),
+        (cause) => externalConnectionError(cause, `Failed to synchronize ${file.path}.`),
       )),
       ResultAsync.fromSafePromise(Promise.resolve()),
     );

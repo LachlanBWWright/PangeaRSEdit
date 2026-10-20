@@ -1,0 +1,24 @@
+.desktop-title-bar {
+  -webkit-app-region: drag;
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 150px 0 8px;
+  background: #111827;
+  border-bottom: 1px solid #1e293b;
+  user-select: none;
+}
+
+.desktop-title-bar[data-platform="darwin"] {
+  padding-left: 80px;
+  padding-right: 8px;
+}
+
+.desktop-title-bar-actions {
+  -webkit-app-region: no-drag;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}

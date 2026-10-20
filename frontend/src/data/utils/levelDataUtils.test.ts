@@ -87,6 +87,12 @@ describe("type guards and validation helpers", () => {
     expect("Timg" in sanitized).toBe(true);
   });
 
+  it("preserves zero-length raw resources required by blank level validation", () => {
+    const input = { ItCo: { 1000: { name: "Item colors", data: "", order: 0 } },
+      alis: { 1000: { name: "Aliases", data: "", order: 1 } } };
+    expect(sanitizeResourceForkJson(input)).toEqual(input);
+  });
+
   it("preserves object-backed resources like Hedr", () => {
     const input = {
       _metadata: {},

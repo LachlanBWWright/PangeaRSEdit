@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import { listAnimationSoundAssets } from "./src/components/AnimationViewer/animationSoundAssets";
+import { desktopAssets } from "./desktopAssets";
 
 // https://vitejs.dev/config/
 const repoRoot = path.resolve(__dirname, "..");
@@ -126,7 +127,8 @@ function serveStaticDirectory(basePath: string, rootDir: string): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  publicDir: mode === "desktop" ? false : "public",
   assetsInclude: [
     "**/*.ter.rsrc",
     "**/*.ter",
@@ -143,6 +145,7 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
+    outDir: mode === "desktop" ? "dist-desktop" : "dist",
   },
   esbuild: {
     target: "es2022",
@@ -175,7 +178,7 @@ export default defineConfig({
       },
     }),
     wasm(),
-    emitAnimationSoundAssets(),
+    mode === "desktop" ? desktopAssets(path.resolve(__dirname, "public")) : emitAnimationSoundAssets(),
     serveStaticDirectory(generatedAssetsMount, generatedAssetsDir),
     serveStaticDirectory(pangeaPortsMount, pangeaPortsSrcDir),
   ],
@@ -188,8 +191,9 @@ export default defineConfig({
   },
   define: {
     "global.Buffer": ["buffer", "Buffer"],
+    ...(mode === "desktop" ? { "import.meta.env.VITE_SCRIPTING_ENABLED": JSON.stringify("true") } : {}),
   },
-  base: "/PangeaRSEdit/",
+  base: mode === "desktop" ? "/" : "/PangeaRSEdit/",
 
   test: {
     setupFiles: ["./vitest.setup.ts"],
@@ -202,4 +206,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

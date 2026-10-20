@@ -1,0 +1,16 @@
+gradle.beforeProject { project ->
+    project.pluginManager.withPlugin('com.android.application') {
+        def harness = new File(project.property('pangeaScreenshotHarness'))
+        project.android.sourceSets.debug.java.srcDir(new File(harness, 'java'))
+        project.android.sourceSets.debug.manifest.srcFile(new File(harness, 'AndroidManifest.xml'))
+        project.extensions.getByName('androidComponents').finalizeDsl { android ->
+            android.externalNativeBuild.cmake.version = '3.31.6'
+            android.defaultConfig.externalNativeBuild.cmake.arguments.add(
+                "-DCMAKE_PROJECT_INCLUDE=${new File(harness, 'native-libraries.cmake')}"
+            )
+            android.defaultConfig.externalNativeBuild.cmake.arguments.add(
+                "-DPANGEA_TOUCH_CONTROLS_ROOT=${project.property('pangeaTouchControlsRoot')}"
+            )
+        }
+    }
+}

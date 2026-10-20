@@ -7,13 +7,14 @@ import type {
   ScriptWorkspaceState,
 } from "./scriptWorkspaceState";
 import { scriptCustomObjectDefinitionSchema } from "./scriptWorkspaceStateTypes";
+import { collectDefinitionSources, definitionAssetPaths, isDefinitionAssetPath, isDefinitionSourcePath } from "./scriptDefinitionDependencies";
 
 const definitionBundleManifestSchema = z.object({
   schemaVersion: z.literal(1),
   gameId: z.string().min(1),
   definitions: z.array(scriptCustomObjectDefinitionSchema),
-  sourcePaths: z.array(z.string().min(1)),
-  assetPaths: z.array(z.string().min(1)),
+  sourcePaths: z.array(z.string().refine(isDefinitionSourcePath, "Invalid definition source path")),
+  assetPaths: z.array(z.string().refine(isDefinitionAssetPath, "Invalid definition asset path")),
 });
 
 export interface ScriptDefinitionBundle {
@@ -23,25 +24,13 @@ export interface ScriptDefinitionBundle {
   readonly assets: Readonly<Record<string, Uint8Array>>;
 }
 
-function assetPathsForDefinition(
-  definition: ScriptCustomObjectDefinition,
-): readonly string[] {
-  if (
-    definition.visual.kind !== "customDisplayGroup" &&
-    definition.visual.kind !== "customSkeleton"
-  ) {
-    return [];
-  }
-  return definition.visual.kind === "customDisplayGroup"
-    ? [definition.visual.modelPath]
-    : [definition.visual.modelPath, definition.visual.skeletonPath];
-}
-
 export function buildScriptDefinitionBundle(
   state: ScriptWorkspaceState,
 ): Result<Uint8Array, string> {
-  const sourcePaths = state.customObjects.map((definition) => definition.sourceFilePath);
-  const assetPaths = state.customObjects.flatMap(assetPathsForDefinition);
+  const sources = collectDefinitionSources(state);
+  if (sources.isErr()) return err(sources.error);
+  const sourcePaths = sources.value;
+  const assetPaths = [...new Set([...state.customObjects.flatMap(definitionAssetPaths), ...Object.keys(state.assets)])];
   const missingSource = sourcePaths.find((path) => !state.sourceFiles[path]);
   if (missingSource) return err(`Definition source is missing: ${missingSource}`);
   const missingAsset = assetPaths.find((path) => !state.assets[path]);
@@ -76,6 +65,12 @@ export function importScriptDefinitionBundle(
   const manifest = definitionBundleManifestSchema.safeParse(jsonResult.value);
   if (!manifest.success) return err(`Invalid definition bundle manifest: ${manifest.error.message}`);
   if (manifest.data.gameId !== context.gameId) return err(`Definition bundle targets ${manifest.data.gameId}, not ${context.gameId}`);
+  for (const definition of manifest.data.definitions) {
+    if (!manifest.data.sourcePaths.includes(definition.sourceFilePath)) return err(`Definition source is missing: ${definition.sourceFilePath}`);
+    for (const path of definitionAssetPaths(definition)) {
+      if (!manifest.data.assetPaths.includes(path)) return err(`Definition asset is missing: ${path}`);
+    }
+  }
 
   const sources: Record<string, string> = {};
   for (const path of manifest.data.sourcePaths) {

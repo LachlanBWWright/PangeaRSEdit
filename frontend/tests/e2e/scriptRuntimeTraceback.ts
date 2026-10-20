@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-import { openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
+import { buildScriptWorkspaceFromUI, loadScriptSampleFromUI, openScriptWorkspace } from "./scriptWorkspaceTestHelpers";
 
 export async function runScriptRuntimeTraceback(
   page: Page,
@@ -14,30 +14,21 @@ export async function runScriptRuntimeTraceback(
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Scripts", exact: true }).click();
   const workspace = await openScriptWorkspace(page);
-  await workspace.getByRole("tab", { name: "Overview", exact: true }).click();
-  await workspace.getByRole("button", { name: "Load", exact: true }).first().click();
-  await workspace.getByRole("tab", { name: "Code", exact: true }).click();
-  await workspace.getByRole("button", { name: /user\.lua Saved/ }).click();
+  await loadScriptSampleFromUI(workspace);
+  await workspace.getByRole("button", { name: "Lua source", exact: true }).click();
+  await workspace.getByRole("button", { name: "user.lua", exact: true }).click();
 
-  const editorDialog = page.getByRole("dialog").last();
+  const editorDialog = workspace;
   await editorDialog.locator(".monaco-editor").click();
   await page.keyboard.press("Control+A");
   await page.keyboard.insertText(
     `local pangea = require("pangea")\nlocal entry = {}\nfunction entry.${hookName}(ctx)\n  error("${errorMessage}")\nend\nreturn entry`,
   );
-  await editorDialog.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByText("Saved source file", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
-
+  await editorDialog.getByRole("button", { name: "Save source", exact: true }).click();
+  await expect(editorDialog.getByRole("button", { name: "Save source", exact: true })).toBeDisabled();
+  await buildScriptWorkspaceFromUI(workspace);
   await workspace
-    .getByRole("tab", { name: "Preview and Export", exact: true })
-    .click();
-  await workspace.getByRole("button", { name: "Compile Bundle", exact: true }).click();
-  await expect(page.getByText("Script bundle compiled", { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
-  await workspace
-    .getByRole("button", { name: "Preview with Scripts", exact: true })
+    .getByRole("button", { name: "Test with scripts", exact: true })
     .click();
   const previewDialog = page.getByRole("dialog").last();
   await previewDialog

@@ -1,4 +1,5 @@
-import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
+import { createHashRouter, RouterProvider, Navigate, Routes, Route } from "react-router-dom";
+import { useState } from "react";
 import { Navigation } from "./components/Navigation";
 import { LevelEditor } from "./pages/LevelEditor";
 import { ModelViewer } from "./pages/ModelViewer";
@@ -12,17 +13,29 @@ import { CustomObjectsPage } from "./pages/CustomObjectsPage";
 import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { DesktopProjectController } from "@/platform/desktop/DesktopProjectController";
+import { GamesPage } from "@/platform/desktop/GamesPage";
+import { DesktopNavigationGuard } from "@/platform/desktop/DesktopNavigationGuard";
+import { DesktopTitleBar } from "@/platform/desktop/DesktopTitleBar";
 
 export function App() {
+  const [router] = useState(() => createHashRouter([{ path: "*", element: <AppContent /> }]));
+  return <RouterProvider router={router} />;
+}
+
+function AppContent() {
   const featureFlags = useFeatureFlags();
 
   return (
     <TooltipProvider>
-      <HashRouter>
+      <DesktopNavigationGuard />
         <div className="dark flex flex-col h-screen bg-gray-900">
+          <DesktopTitleBar />
           <Navigation />
+          <DesktopProjectController />
           <div className="flex-1 min-h-0 overflow-auto flex flex-col">
             <Routes>
+              <Route path="/games" element={<GamesPage />} />
               <Route path="/" element={<LevelEditor />} />
               <Route path="/model-viewer" element={<ModelViewer />} />
               <Route path="/sprite-viewer" element={<SpriteViewer />} />
@@ -73,7 +86,6 @@ export function App() {
             </Routes>
           </div>
         </div>
-      </HashRouter>
       <Toaster />
     </TooltipProvider>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OttoGlobals } from "@/data/globals/globals";
-import { createScriptWorkspaceContext, ensureScriptWorkspace } from "./scriptWorkspaceState";
+import { applyGlobalBehavior, createScriptWorkspaceContext, ensureScriptWorkspace } from "./scriptWorkspaceState";
 import { buildDialogueSource, createDialogueLine, dialogueDraftSchema, removeDialogueLine, saveDialogueModule } from "./scriptDialogueAuthoring";
 import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
 
@@ -33,13 +33,14 @@ describe("dialogue authoring", () => {
 
   it("creates a real workspace module without replacing existing assignments", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 0);
-    const workspace = ensureScriptWorkspace({}, context);
+    const workspace = applyGlobalBehavior(ensureScriptWorkspace({}, context), "onLevelStart", "sample.log-level-start");
     const saved = saveDialogueModule(workspace, { id: "intro", nodes: [createDialogueLine([])] });
     expect(saved.isOk()).toBe(true);
     if (saved.isErr()) return;
     expect(saved.value.sourceFiles["Data/Scripts/src/dialogue_intro.lua"]?.content).toContain("pangea.dialogue.define");
     expect(saved.value.behaviorCatalog.some((behavior) => behavior.id === "dialogue.intro")).toBe(true);
-    expect(saved.value.levels[context.levelKey]?.globalHooks).toEqual(workspace.levels[context.levelKey]?.globalHooks);
+    expect(saved.value.levels[context.levelKey]?.globalHooks).toEqual(expect.arrayContaining([...(workspace.levels[context.levelKey]?.globalHooks ?? [])]));
+    expect(saved.value.levels[context.levelKey]?.globalHooks.map((entry) => entry.hookId)).toEqual(["onLevelStart", "onLevelStart", "onDialogueResult"]);
     expect(saveDialogueModule(saved.value, { id: "intro", nodes: [createDialogueLine([])] }).isErr()).toBe(true);
   });
 
