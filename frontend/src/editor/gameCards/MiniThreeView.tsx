@@ -5,6 +5,8 @@ import { Game } from "@/data/globals/globals";
 import type { AnimationAction, AnimationMixer } from "three";
 import type { AnimationInfo } from "@/components/AnimationViewer";
 import { cn } from "@/lib/utils";
+import { reportAssetFailure, resetAssets } from "@/assets/assetState";
+import { useAssetState } from "@/assets/useAssetState";
 import {
   getDefaultAnimationName,
   pickTargetAnimation,
@@ -24,8 +26,12 @@ export function MiniThreeView({
   const [mounted, setMounted] = useState(false);
   const actionRef = useRef<AnimationAction | null>(null);
 
-  const resolvedGltfUrl = resolveGltfUrl(gltfUrl);
+  const { revision } = useAssetState();
+  const resolvedGltfUrl = resolveGltfUrl(gltfUrl, revision);
   const defaultAnimationName = getDefaultAnimationName(gameType);
+  const handleError = useCallback((error: Error) => {
+    reportAssetFailure({ code: "preview", url: resolvedGltfUrl ?? "", message: error.message });
+  }, [resolvedGltfUrl]);
 
   const handleAnimationsReady = useCallback(
     (animationInfos: AnimationInfo[], mixer: AnimationMixer | null) => {
@@ -83,7 +89,7 @@ export function MiniThreeView({
       )}
       style={{ contain: "paint" }}
     >
-      <ErrorBoundary>
+      <ErrorBoundary key={resolvedGltfUrl ?? "none"} onError={handleError} onRetry={resetAssets}>
         <Suspense
           fallback={
             <div className="flex items-center justify-center h-full text-gray-500">

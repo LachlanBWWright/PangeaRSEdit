@@ -1,8 +1,7 @@
 import { MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
-import { mapErr } from "@/utils/mapErr";
+import { fetchAsset } from "@/assets/fetchAsset";
 import { mightyMikeTileSetSchema } from "@/schemas/common";
 import { extractTGAPaletteRaw } from "../../utils/tgaParser";
-import { ResultAsync } from "neverthrow";
 import type { MightyMikeTileSet } from "@/schemas/common";
 
 export function getMightyMikeSceneFromPath(
@@ -31,14 +30,7 @@ export async function loadBorderPalette(
       ? `${basePath.substring(0, basePath.lastIndexOf("/") + 1)}${tgaFilename}`
       : `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
 
-  const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
-  if (fetchResult.isErr()) return null;
-  if (!fetchResult.value.ok) return null;
-
-  const bufferResult = await ResultAsync.fromPromise(
-    fetchResult.value.arrayBuffer(),
-    mapErr,
-  );
+  const bufferResult = await fetchAsset(tgaUrl);
   if (bufferResult.isErr()) return null;
 
   const paletteResult = extractTGAPaletteRaw(bufferResult.value);

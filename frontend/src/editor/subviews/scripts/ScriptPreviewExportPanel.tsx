@@ -1,6 +1,9 @@
 import { Play, Download, Upload, PackageCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ScriptDiagnostic } from "./scriptWorkspaceState";
+import type { ScriptDiagnostic, ScriptWorkspaceState } from "./scriptWorkspaceState";
+import { getScriptDiagnosticTarget, type ScriptDiagnosticTarget } from "./scriptDiagnosticTarget";
+import type { ScriptWorkflowEvidence } from "./scriptWorkflowEvidence";
+import { ScriptWorkflowStatus } from "./ScriptWorkflowStatus";
 import "./scriptWorkbench.css";
 
 interface ScriptPreviewExportPanelProps {
@@ -17,6 +20,9 @@ interface ScriptPreviewExportPanelProps {
   warnings: readonly string[];
   hasScripts: boolean;
   diagnostics?: readonly ScriptDiagnostic[];
+  workspace?: ScriptWorkspaceState;
+  evidence?: ScriptWorkflowEvidence;
+  onOpenDiagnostic?: (target: ScriptDiagnosticTarget) => void;
 }
 
 export function ScriptPreviewExportPanel(props: ScriptPreviewExportPanelProps) {
@@ -26,9 +32,13 @@ export function ScriptPreviewExportPanel(props: ScriptPreviewExportPanelProps) {
       <section className="workbench-section">
         <div><h2>Test it in the game</h2><p className="workbench-muted mt-1">Run this level with your Lua, or compare it with native behavior.</p></div>
         <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={() => props.onPreview(true)}><Play size={15} className="mr-2" />{busy ? "Preparing game…" : "Test with scripts"}</Button><Button disabled={busy} variant="secondary" onClick={() => props.onPreview(false)}>Test without scripts</Button></div>
-        <div className="workbench-notice"><p className="font-medium">A generated bundle is ready to run, not a passed test.</p><p className="mt-1">LuaLS checks source when available. The game checks Lua loading, native assets and behavior. Watch its diagnostic output when testing.</p></div>
+        <div className="workbench-notice"><p className="font-medium">Test with scripts automatically builds and validates your current draft.</p><p className="mt-1">A separate build is optional. Lua 5.4 syntax, local modules and object behavior exports must pass validation. LuaLS suggestions remain advisory. Test in the game to check native assets and behavior.</p></div>
+        {props.workspace && props.evidence && <ScriptWorkflowStatus workspace={props.workspace} evidence={props.evidence} />}
         {props.warnings.length > 0 && <div className="workbench-notice" data-tone="warning"><h3>Check before testing</h3><ul className="mt-2 list-disc space-y-1 pl-4">{props.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
-        {(props.diagnostics?.length ?? 0) > 0 && <div className="grid gap-2" aria-label="Script diagnostics">{props.diagnostics?.map((entry, index) => <div key={`${entry.code}-${index}`} className="workbench-notice" data-tone="warning"><p className="font-medium">{entry.category}: {entry.code}</p><p>{entry.message}</p><p className="mt-1 break-all text-xs">{entry.filePath}{entry.line > 0 ? `, line ${entry.line}` : ""}</p></div>)}</div>}
+        {(props.diagnostics?.length ?? 0) > 0 && <div className="grid gap-2" aria-label="Script diagnostics">{props.diagnostics?.map((entry, index) => {
+          const target = props.workspace ? getScriptDiagnosticTarget(props.workspace, entry) : null;
+          return <div key={`${entry.code}-${index}`} className="workbench-notice" data-tone="warning"><p className="font-medium">{entry.category}: {entry.code}</p><p>{entry.message}</p><p className="mt-1 break-all text-xs">{entry.filePath}{entry.line > 0 ? `, line ${entry.line}` : ""}</p>{target && props.onOpenDiagnostic && <Button size="sm" variant="ghost" onClick={() => props.onOpenDiagnostic?.(target)}>{target.kind === "source" ? "Open source location" : target.kind === "definition" ? "Inspect object definition" : "Open level events"}</Button>}</div>;
+        })}</div>}
       </section>
       <section className="grid gap-3 border-t border-slate-700 pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><h3>Recent activity</h3><Button size="sm" variant="ghost" disabled={busy} onClick={props.onCompile}><PackageCheck size={15} className="mr-2" />Rebuild bundle</Button></div>
         <ol className="grid gap-2">{props.statusLog.length === 0 ? <li className="workbench-muted">Build or test your level to see activity here.</li> : props.statusLog.slice(-8).reverse().map((line, index) => <li key={`${index}-${line}`} className="workbench-muted border-l-2 border-slate-600 pl-3">{line}</li>)}</ol>

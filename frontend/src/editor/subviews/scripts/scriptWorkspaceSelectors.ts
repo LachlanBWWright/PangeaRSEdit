@@ -21,7 +21,6 @@ export interface ScriptWorkspaceSummary {
 
 function isBuildDiagnostic(diagnostic: ScriptDiagnostic): boolean {
   return diagnostic.category === "source-validation" ||
-    diagnostic.category === "luals" ||
     diagnostic.category === "packaging";
 }
 

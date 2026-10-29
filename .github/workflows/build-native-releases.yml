@@ -26,7 +26,9 @@ jobs:
         with:
           submodules: recursive
       - name: Test native package validation
-        run: python3 -m unittest discover -s scripts -p 'test_native_packages.py'
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_native_packages.py'
+          python3 -m unittest discover -s scripts -p 'test_editor_game_catalog.py'
       - name: Prepare game matrices
         id: games
         run: |
@@ -228,10 +230,10 @@ jobs:
           pattern: editor-macos-*
           merge-multiple: true
           path: desktop-artifacts
-      - name: Build optional editor asset packs and release catalog
+      - name: Build compatible runtime release catalog
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
-        run: python3 scripts/build_editor_game_catalog.py frontend/public release-artifacts desktop-artifacts
+        run: python3 scripts/build_editor_game_catalog.py release-artifacts desktop-artifacts
       - name: Publish packages to existing release
         env:
           GH_TOKEN: ${{ github.token }}

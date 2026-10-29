@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 import { err, errAsync, ok, okAsync, type Result, type ResultAsync } from "neverthrow";
-import { parseBG3D, type BG3DParseResult } from "../modelParsers/parseBG3D";
+import { parseBG3D, type BG3DParseResult } from "../modelParsers/parseBG3D.js";
 import { parse3DMF } from "../modelParsers/parse3dmf";
 import { parseBG3DWithSkeletonResource } from "../modelParsers/bg3dWithSkeleton";
 import { parseSkeletonRsrcResult } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
@@ -14,7 +14,7 @@ export interface NativeInputOptions { readonly model?: string; readonly skeleton
 
 export function nativeFormat(path: string): NativeFormat | null {
   const extension = extname(path).toLowerCase();
-  if (extension === ".bg3d") return "bg3d";
+  if (extension === ".bg3d" || extension === ".bg3") return "bg3d";
   return extension === ".3dmf" || extension === ".3df" ? "3dmf" : null;
 }
 

@@ -55,7 +55,7 @@ export async function prepareProjectSave(project: ProjectSnapshot, levelId: stri
   const owned = project.files.filter((file) => file.path.startsWith("Data/Scripts/")
     || previous?.files.includes(file.path));
   return ok({ level, files,
-    manifest: { ...project.manifest, levels: [...project.manifest.levels.filter((entry) => entry.id !== id), level] },
+    manifest: { ...project.manifest, levels: previous ? project.manifest.levels.map((entry) => entry.id === id ? level : entry) : [...project.manifest.levels, level] },
     removed: owned.filter((file) => !files.some((next) => next.path === file.path)).map((file) => file.path),
   });
 }

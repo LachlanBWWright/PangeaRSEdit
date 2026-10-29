@@ -5,6 +5,7 @@ import { parseTGAHeader } from "./tgaCommon";
 export function parseTGAToCanvas(
   buffer: ArrayBuffer,
 ): Result<HTMLCanvasElement, string> {
+  if (buffer.byteLength < 18) return err("Incomplete TGA header");
   const data = new DataView(buffer);
   const header = parseTGAHeader(data);
   console.log("[TGA] Parsing TGA header:", {
@@ -21,11 +22,11 @@ export function parseTGAToCanvas(
     header.imageType === 9 ||
     header.imageType === 10 ||
     header.imageType === 11;
-  const isUncompressed = header.imageType === 2 || header.imageType === 3;
-  const isIndexed = header.imageType === 9 || header.colorMapType === 1;
+  const isUncompressed = header.imageType === 1 || header.imageType === 2 || header.imageType === 3;
+  const isIndexed = header.imageType === 1 || header.imageType === 9 || header.colorMapType === 1;
   if (!isRLE && !isUncompressed) {
     return err(
-      `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
+      `Unsupported TGA image type: ${header.imageType} (only types 1, 2, 3, 9, 10, 11 supported)`,
     );
   }
   let bytesPerPixel = header.pixelDepth / 8;
@@ -36,6 +37,7 @@ export function parseTGAToCanvas(
         `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
       );
     }
+    if (header.colorMapType !== 1 || header.colorMapLength === 0) return err("Indexed TGA requires a color map");
     bytesPerPixel = 1; // indexed color is 1 byte per pixel
   } else {
     if (header.pixelDepth === 16) {
@@ -47,6 +49,9 @@ export function parseTGAToCanvas(
       );
     }
   }
+  const colorMapSize = header.colorMapType === 1 ? header.colorMapLength * header.colorMapDepth / 8 : 0;
+  if (!Number.isInteger(colorMapSize) || 18 + header.idLength + colorMapSize > buffer.byteLength)
+    return err("Incomplete TGA image ID or color map");
   const canvas = document.createElement("canvas");
   canvas.width = header.imageWidth;
   canvas.height = header.imageHeight;

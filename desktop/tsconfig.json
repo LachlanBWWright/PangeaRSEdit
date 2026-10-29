@@ -5,5 +5,5 @@
     "noUnusedParameters": true, "skipLibCheck": true, "noEmit": true,
     "allowImportingTsExtensions": true, "types": ["node"]
   },
-  "include": ["src", "tests", "../packages/desktop-contracts/src"]
+  "include": ["src", "tests", "scripts", "../packages/desktop-contracts/src"]
 }

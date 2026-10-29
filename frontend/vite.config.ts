@@ -139,6 +139,7 @@ export default defineConfig(({ mode }) => ({
     "**/*.map-3",
   ],
   optimizeDeps: {
+    include: ["wasmoon"],
     esbuildOptions: {
       target: "es2022",
     },

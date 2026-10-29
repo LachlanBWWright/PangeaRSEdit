@@ -1,26 +1,11 @@
 import { DataType, Game } from "@/data/globals/globals";
+import { GAME_ASSET_CATALOG } from "@pangea/desktop-contracts";
+import { desktopGameId } from "@/platform/desktop/games";
+import { homeAssetUrl } from "@/assets/gameAssetUrls";
 
 export function getGameCardModelPath(gameType: Game): string | undefined {
-  switch (gameType) {
-    case Game.OTTO_MATIC:
-      return "/glbModels/OttoMatic.glb";
-    case Game.BUGDOM:
-      return "/glbModels/Bugdom1.glb";
-    case Game.BUGDOM_2:
-      return "/glbModels/Bugdom2.glb";
-    case Game.CRO_MAG:
-      return "/glbModels/CroMag.glb";
-    case Game.NANOSAUR:
-      return "/glbModels/Nanosaur1.glb";
-    case Game.NANOSAUR_2:
-      return "/glbModels/Nanosaur2.glb";
-    case Game.BILLY_FRONTIER:
-      return "/glbModels/BillyFrontier.glb";
-    case Game.MIGHTY_MIKE:
-      return undefined;
-    default:
-      return "/glbModels/OttoMatic.glb";
-  }
+  const definition = GAME_ASSET_CATALOG[desktopGameId(gameType)].home;
+  return definition ? homeAssetUrl(gameType, `/glbModels/${definition.filename}`) : undefined;
 }
 
 export function getLevelFileType(

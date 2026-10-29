@@ -23,8 +23,11 @@
     ".storybook",
     "playwright.storybook-screenshots.config.ts",
     "playwright.storybook.config.ts",
+    "playwright.runtime.config.ts",
+    "playwright.lua-validation.config.ts",
     "vitest.storybook.config.ts",
     "vite.config.ts",
+    "desktopAssets.ts",
     "scripts/dev/capture-item-screenshots.ts"
   ]
 }

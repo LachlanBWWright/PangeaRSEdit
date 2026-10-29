@@ -237,7 +237,7 @@ export function CanvasStageLayers({
               setItemData={setItemData}
             />
           )}
-          <CustomScriptPlacements />
+          <CustomScriptPlacements headerData={headerData} terrainData={terrainData} />
         </>
       )}
     </>

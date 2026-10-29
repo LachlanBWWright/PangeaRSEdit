@@ -3,7 +3,7 @@ import { gameIdSchema, releaseAssetSchema, type ReleaseManifest } from "@pangea/
 import { completeRelease, fetchCatalog, releaseUrl } from "../src/gameCatalog.ts";
 
 function manifest(tag = "v1"): ReleaseManifest {
-  return { version: 1, tag, sourceRevision: "abc", assetRootVersion: 1, scriptContractVersion: 1,
+  return { version: 1, tag, sourceRevision: "abc", assetRootVersion: 2, scriptContractVersion: 2,
     assets: gameIdSchema.options.flatMap((game) => [
       { game, kind: "editor-assets", platform: "web", arch: "wasm", filename: `${game}-assets.zip`, size: 42, sha256: "a".repeat(64), format: "zip" },
       ...["linux", "win32", "darwin"].map((platform) => ({ game, kind: "runtime", platform, arch: "x64", filename: `${game}-${platform}.zip`, size: 42, sha256: "a".repeat(64), format: "zip" })),
@@ -24,10 +24,11 @@ function listing(release: ReleaseManifest, prerelease = false, draft = false) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("release catalog boundary", () => {
-  it("requires all games, editor packs, and all three runtime platforms", () => {
+  it("requires all games and three runtime platforms, without requiring editor packs", () => {
     const full = manifest();
     expect(completeRelease(full)).toBe(true);
-    for (const asset of full.assets)
+    expect(completeRelease({ ...full, assets: full.assets.filter((asset) => asset.kind === "runtime") })).toBe(true);
+    for (const asset of full.assets.filter((entry) => entry.kind === "runtime"))
       expect(completeRelease({ ...full, assets: full.assets.filter((entry) => entry !== asset) })).toBe(false);
   });
 
@@ -59,12 +60,12 @@ describe("release catalog boundary", () => {
       if (reason === "invalid-json") return new Response("invalid JSON");
       return Response.json({ ...bad,
         tag: reason === "wrong-tag" ? "another-tag" : bad.tag,
-        scriptContractVersion: reason === "incompatible" ? 99 : 1,
+        scriptContractVersion: reason === "incompatible" ? 99 : 2,
         assets: reason === "incomplete" ? [] : bad.assets,
       });
     });
     const result = await fetchCatalog(false);
-    expect(result.isOk() && result.value).toEqual([good]);
+    expect(result.isOk() && result.value).toEqual([{ ...good, assets: good.assets.filter((asset) => asset.kind === "runtime") }]);
   });
 
   it.each([401, 403, 429, 500])("returns a network failure for HTTP %s", async (status) => {

@@ -12,6 +12,20 @@ export interface PangeaScriptStatusJS {
   budgetExceededCount: number;
   hooksCalledCount: number;
   scriptsDisabled: boolean;
+  statusComplete: boolean;
+}
+
+const nativeBooleanSchema = z.union([z.boolean(), z.literal(0), z.literal(1)]).transform((value) => value === true || value === 1);
+const counterSchema = z.number().int().nonnegative();
+const runtimeStatusSchema = z.object({
+  enabled: nativeBooleanSchema, configLoaded: nativeBooleanSchema, bundleLoaded: nativeBooleanSchema,
+  activeScriptPath: z.string(), lastError: z.string(), errorCount: counterSchema,
+  budgetExceededCount: counterSchema, hooksCalledCount: counterSchema, scriptsDisabled: nativeBooleanSchema,
+});
+
+function parsedField<T>(schema: z.ZodType<T>, value: unknown, fallback: T): T {
+  const parsed = schema.safeParse(value);
+  return parsed.success ? parsed.data : fallback;
 }
 
 const lifecycleTraceEntrySchema = z.object({
@@ -76,35 +90,34 @@ function readValue(
   );
 }
 
-function readBoolean(module: PreviewRuntimeModule, ident: string): boolean {
-  const parsed = z.coerce.boolean().safeParse(readValue(module, ident, "number", 0));
-  return parsed.success ? parsed.data : false;
-}
-
-function readNumber(module: PreviewRuntimeModule, ident: string): number {
-  const parsed = z.coerce.number().safeParse(readValue(module, ident, "number", 0));
-  return parsed.success ? parsed.data : 0;
-}
-
-function readString(module: PreviewRuntimeModule, ident: string): string {
-  const parsed = z.coerce.string().safeParse(readValue(module, ident, "string", ""));
-  return parsed.success ? parsed.data : "";
-}
-
 export function queryScriptingStatus(
   module: PreviewRuntimeModule | null,
 ): PangeaScriptStatusJS | null {
   if (!module?.ccall) return null;
+  const raw = {
+    enabled: readValue(module, "PangeaScript_GetStatusEnabled", "number", undefined),
+    configLoaded: readValue(module, "PangeaScript_GetStatusConfigLoaded", "number", undefined),
+    bundleLoaded: readValue(module, "PangeaScript_GetStatusBundleLoaded", "number", undefined),
+    activeScriptPath: readValue(module, "PangeaScript_GetStatusActiveScriptPath", "string", undefined),
+    lastError: readValue(module, "PangeaScript_GetStatusLastError", "string", undefined),
+    errorCount: readValue(module, "PangeaScript_GetStatusErrorCount", "number", undefined),
+    budgetExceededCount: readValue(module, "PangeaScript_GetStatusBudgetExceededCount", "number", undefined),
+    hooksCalledCount: readValue(module, "PangeaScript_GetStatusHooksCalledCount", "number", undefined),
+    scriptsDisabled: readValue(module, "PangeaScript_GetStatusScriptsDisabled", "number", undefined),
+  };
+  const parsed = runtimeStatusSchema.safeParse(raw);
+  if (parsed.success) return { ...parsed.data, statusComplete: true };
   return {
-    enabled: readBoolean(module, "PangeaScript_GetStatusEnabled"),
-    configLoaded: readBoolean(module, "PangeaScript_GetStatusConfigLoaded"),
-    bundleLoaded: readBoolean(module, "PangeaScript_GetStatusBundleLoaded"),
-    activeScriptPath: readString(module, "PangeaScript_GetStatusActiveScriptPath"),
-    lastError: readString(module, "PangeaScript_GetStatusLastError"),
-    errorCount: readNumber(module, "PangeaScript_GetStatusErrorCount"),
-    budgetExceededCount: readNumber(module, "PangeaScript_GetStatusBudgetExceededCount"),
-    hooksCalledCount: readNumber(module, "PangeaScript_GetStatusHooksCalledCount"),
-    scriptsDisabled: readBoolean(module, "PangeaScript_GetStatusScriptsDisabled"),
+    enabled: parsedField(nativeBooleanSchema, raw.enabled, false),
+    configLoaded: parsedField(nativeBooleanSchema, raw.configLoaded, false),
+    bundleLoaded: parsedField(nativeBooleanSchema, raw.bundleLoaded, false),
+    activeScriptPath: parsedField(z.string(), raw.activeScriptPath, ""),
+    lastError: parsedField(z.string(), raw.lastError, ""),
+    errorCount: parsedField(counterSchema, raw.errorCount, 0),
+    budgetExceededCount: parsedField(counterSchema, raw.budgetExceededCount, 0),
+    hooksCalledCount: parsedField(counterSchema, raw.hooksCalledCount, 0),
+    scriptsDisabled: parsedField(nativeBooleanSchema, raw.scriptsDisabled, false),
+    statusComplete: false,
   };
 }
 

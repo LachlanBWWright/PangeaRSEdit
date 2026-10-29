@@ -7,6 +7,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EditorField, EditorPanel } from "./EditorPanel";
+import { Game } from "@/data/globals/globals";
+import { useGameAssetAvailability } from "@/platform/desktop/assetAvailability";
 
 type FileType = "sprites" | "tga" | "tileset";
 
@@ -66,6 +68,7 @@ export function MightyMikeAssetBrowser({
   loading,
   loadedFilename,
 }: MightyMikeAssetBrowserProps) {
+  const { available } = useGameAssetAvailability(Game.MIGHTY_MIKE);
   const [selectedAsset, setSelectedAsset] = useState<string>("");
   const getAvailableFiles = (type: FileType): string[] => {
     switch (type) {
@@ -85,11 +88,12 @@ export function MightyMikeAssetBrowser({
         <p className="text-xs text-gray-400">
           Load a bundled sprite asset from the game library.
         </p>
+        {!available && <p className="text-xs text-gray-400">Download Mighty Mike data in Games to use these assets.</p>}
         <EditorField label="Asset Type">
           <Select
             value={selectedType}
             onValueChange={(value) => {
-              if (value === "sprites" || value === "tga" || value === "tileset") {
+              if (available && (value === "sprites" || value === "tga" || value === "tileset")) {
                 setSelectedAsset("");
                 onTypeChange(value);
               } else {
@@ -97,17 +101,17 @@ export function MightyMikeAssetBrowser({
               }
             }}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" aria-label="Bundled sprite asset type">
               <SelectValue placeholder="Select asset type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="sprites">
+              <SelectItem value="sprites" disabled={!available}>
                 Sprites (.shapes)
               </SelectItem>
-              <SelectItem value="tga">
+              <SelectItem value="tga" disabled={!available}>
                 Scene Images (.tga)
               </SelectItem>
-              <SelectItem value="tileset">
+              <SelectItem value="tileset" disabled={!available}>
                 Tilesets (.tileset)
               </SelectItem>
             </SelectContent>
@@ -116,16 +120,16 @@ export function MightyMikeAssetBrowser({
 
         <EditorField label="Select Asset">
           <Select
-            value={selectedAsset}
+            value={available ? selectedAsset : ""}
             onValueChange={(value) => {
-              if (value) {
+              if (available && value) {
                 setSelectedAsset(value);
                 onAssetSelect(value);
               }
             }}
             disabled={loading}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" aria-label="Bundled sprite asset">
               <SelectValue placeholder="Select a file..." />
             </SelectTrigger>
             <SelectContent>
@@ -133,6 +137,7 @@ export function MightyMikeAssetBrowser({
                 <SelectItem
                   key={file}
                   value={file}
+                  disabled={!available}
                   className="text-white focus:bg-gray-600"
                 >
                   {file}

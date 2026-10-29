@@ -1,5 +1,7 @@
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
-import { useMemo } from "react";
+import { gameAssetUrl } from "@/assets/gameAssetUrls";
+import { useAssetState } from "@/assets/useAssetState";
+import { desktopBridge } from "@/platform/desktop/client";
 import {
   useTextureCanvas,
   type LiquidTextureSource,
@@ -19,6 +21,9 @@ export function getItemLiquidTextureSource(
   levelNumber?: number,
 ): LiquidTextureSource | null {
   if (game === Game.NANOSAUR) {
+    if (desktopBridge() && (itemType === 4 || itemType === 14)) return {
+      url: gameAssetUrl(game, "Models/Level1_Models.3dmf", ""), format: "model", modelIndex: itemType === 4 ? 1 : 2,
+    };
     if (itemType === 4) return { url: NANOSAUR_LAVA_URL, format: "image" };
     if (itemType === 14) return { url: NANOSAUR_WATER_URL, format: "image" };
     return null;
@@ -28,15 +33,15 @@ export function getItemLiquidTextureSource(
   switch (itemType) {
     case 14:
       return {
-        url: levelNumber === 2 ? bugdomPondWaterUrl : bugdomWaterUrl,
+        url: gameAssetUrl(game, `Images/Textures/${levelNumber === 2 ? 129 : 128}.tga`, levelNumber === 2 ? bugdomPondWaterUrl : bugdomWaterUrl),
         format: "tga",
       };
     case 27:
-      return { url: bugdomHoneyUrl, format: "tga" };
+      return { url: gameAssetUrl(game, "Images/Textures/200.tga", bugdomHoneyUrl), format: "tga" };
     case 55:
-      return { url: bugdomSlimeUrl, format: "tga" };
+      return { url: gameAssetUrl(game, "Images/Textures/201.tga", bugdomSlimeUrl), format: "tga" };
     case 56:
-      return { url: bugdomLavaUrl, format: "tga" };
+      return { url: gameAssetUrl(game, "Images/Textures/202.tga", bugdomLavaUrl), format: "tga" };
     default:
       return null;
   }
@@ -47,9 +52,7 @@ export function useItemLiquidTexture(
   itemType: number,
   levelNumber?: number,
 ): HTMLCanvasElement | null {
-  const source = useMemo(
-    () => getItemLiquidTextureSource(globals.GAME_TYPE, itemType, levelNumber),
-    [globals.GAME_TYPE, itemType, levelNumber],
-  );
+  useAssetState();
+  const source = getItemLiquidTextureSource(globals.GAME_TYPE, itemType, levelNumber);
   return useTextureCanvas(source);
 }

@@ -2,6 +2,8 @@ import { atom } from "jotai";
 import { err, ok, Result } from "neverthrow";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { z } from "zod";
+import { buildObjectParameterRuntime } from "./scriptObjectParameterLua";
+import { validateObjectParameters } from "./scriptObjectParameters";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntimeTypes";
 import {
@@ -11,6 +13,7 @@ import {
   type ScriptPackageValidationOptions,
 } from "./scriptPackageValidator";
 import { SCRIPT_CONTRACT_VERSION } from "./scriptContract";
+import { resolveDesktopProjectAssets } from "@/platform/desktop/projectScriptAssets";
 import {
   validateScriptPackageAssetsAsync,
   validateScriptWorkspaceAssets,
@@ -41,13 +44,16 @@ import {
   runtimeLevelConfigSchema,
 } from "./scriptWorkspaceStateTypes";
 import { getDefaultHoverBeaconVisual } from "./scriptDefaultCustomVisuals";
+import { OTTO_OBJECT_STARTERS, ottoStarterDefaults } from "./scriptOttoObjectStarters";
 import { buildScriptTypePackageFiles } from "./scriptTypeDeclarations";
 import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
 import { materializeCustomObjectSourceTemplate } from "./scriptCustomObjectTemplate";
+import { authoringArchiveFiles, collectScriptAuthoringAssets, isAuthoringArchivePath, readAuthoringArchiveFiles } from "./scriptAuthoringAttachments";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
 import { AUTHORITATIVE_API_SCHEMA } from "./scriptApiSchema";
 import { buildLevelModuleRouting, buildLevelPlacementSpawns, getScopedModulePaths, scriptModuleVariable } from "./scriptLevelRouting";
 import { migrateLegacyScriptSource } from "./scriptLegacyMigration";
+import { validateLuaWorkspace } from "./scriptLuaValidation";
 import type {
   ScriptBehaviorDefinition,
   ScriptAssetFile,
@@ -582,6 +588,7 @@ function buildBehaviorCatalog(
   if (gameId === "OttoMatic-Android") {
     return [
       ...sharedBehaviors,
+      ...OTTO_OBJECT_STARTERS,
       {
         id: "otto.humans-jump",
         label: "Otto Humans Jump",
@@ -1044,13 +1051,14 @@ function buildGeneratedEntryModule(
       `end`
     );
     customObjectFrameDispatch.push(
-      `  if ctx.objectType == ${JSON.stringify(objectDefinition.id)} then`,
+      `  if __definitionForObject(ctx) == ${JSON.stringify(objectDefinition.id)} then`,
+      "    local parameters = __parametersForObject(ctx)",
       `    local behavior = ${varName}.${objectDefinition.exportName}`,
       `    local handlerNames = { ${objectEventHandlersLua} }`,
       "    local handlerName = handlerNames[ctx.event or 'update']",
       "    local handler = type(behavior) == 'table' and behavior[handlerName] or nil",
       "    if type(handler) == 'function' then",
-      "      handler({ handle = ctx.object }, ctx)",
+      "      handler({ handle = ctx.object, parameters = parameters }, ctx)",
       "    end",
       "  end",
     );
@@ -1134,7 +1142,7 @@ function buildGeneratedEntryModule(
       if (hookId === "onWeaponHit") {
         return [
           header,
-          "  local damage = ctx.damage",
+          "  local damage = nil",
           "  local scoreDelta = 0",
           "  local applyDamage = nil",
           "  local destroyTarget = nil",
@@ -1143,7 +1151,7 @@ function buildGeneratedEntryModule(
           "    if type(hook) == 'function' then",
           "      local result = hook(ctx)",
           "      if result then",
-          "        if result.damage then",
+          "        if result.damage ~= nil then",
           "          damage = result.damage",
           "        end",
           "        if result.scoreDelta then",
@@ -1271,6 +1279,7 @@ function buildGeneratedEntryModule(
     "}",
     "",
     "local entry = {}",
+    buildObjectParameterRuntime(state),
     "local function __hasTag(tags, expected)",
     "  for _, tag in ipairs(tags or {}) do",
     "    if tag == expected then",
@@ -1294,51 +1303,6 @@ function getCompiledModulePath(sourcePath: string): string {
     "Data/Scripts/dist/modules/",
   );
   return distPath.endsWith(".lua") ? distPath : `${distPath}.lua`;
-}
-
-function compileModule(
-  sourceFile: ScriptSourceFile,
-): Result<
-  {
-    readonly output: string;
-    readonly diagnostics: readonly ScriptDiagnostic[];
-  },
-  string
-> {
-  const diagnostics: ScriptDiagnostic[] = [];
-  const output = sourceFile.content;
-  return ok({ output, diagnostics });
-}
-
-function buildRequireDiagnostics(
-  sourcePath: string,
-  output: string,
-): readonly ScriptDiagnostic[] {
-  const diagnostics: ScriptDiagnostic[] = [];
-  const requirePattern = /require\((['"][^'"]+['"])\)/g;
-
-  for (const match of output.matchAll(requirePattern)) {
-    const requireTarget = match[1]?.slice(1, -1);
-    if (
-      !requireTarget ||
-      requireTarget.startsWith("pangea") ||
-      sourcePath === GENERATED_ENTRY_PATH
-    ) {
-      continue;
-    }
-
-    diagnostics.push({
-      category: "source-validation",
-      severity: "warning",
-      message: `External require '${requireTarget}' may not resolve in preview runtime`,
-      code: "preview.require",
-      filePath: sourcePath,
-      line: 1,
-      column: 1,
-    });
-  }
-
-  return diagnostics;
 }
 
 function cloneLevelMap(
@@ -1467,6 +1431,7 @@ function cloneCustomPlacement(
     label: placement.label,
     position: { ...placement.position },
     levelKey: placement.levelKey,
+    parameterOverrides: placement.parameterOverrides ? { ...placement.parameterOverrides } : undefined,
   };
 }
 
@@ -1502,6 +1467,10 @@ function cloneCustomObjectDefinition(
     tags: [...objectDefinition.tags],
     compatibility: objectDefinition.compatibility,
     description: objectDefinition.description,
+    assetId: objectDefinition.assetId,
+    assetAnimations: objectDefinition.assetAnimations ? { ...objectDefinition.assetAnimations } : undefined,
+    controllerOwnership: objectDefinition.controllerOwnership,
+    parameterDefinitions: objectDefinition.parameterDefinitions?.map((parameter) => parameter.kind === "enum" ? { ...parameter, options: parameter.options.map((option) => ({ ...option })) } : { ...parameter }),
     visual:
       objectDefinition.visual.kind === "customSkeleton"
         ? {
@@ -1682,7 +1651,7 @@ export function retargetScriptWorkspace(
   };
 }
 
-function updateWorkspaceLevel(
+export function updateWorkspaceLevel(
   state: ScriptWorkspaceState,
   levelKey: string,
   updater: (levelState: ScriptLevelState) => ScriptLevelState,
@@ -2188,9 +2157,8 @@ export function createCustomObjectFromBehavior(
     behavior.id === "sample.hover-beacon"
       ? getDefaultHoverBeaconVisual(state.context.gameId)
       : { kind: "none" };
-  const collision: ScriptCustomObjectDefinition["collision"] = {
-    kind: "none",
-  };
+  const defaults = ottoStarterDefaults(behavior.id);
+  const collision: ScriptCustomObjectDefinition["collision"] = defaults?.collision ?? { kind: "none" };
 
   return refreshGeneratedEntry(
     {
@@ -2208,6 +2176,8 @@ export function createCustomObjectFromBehavior(
                   description: behavior.description,
                   visual,
                   collision,
+                  parameterDefinitions: defaults?.parameterDefinitions,
+                  controllerOwnership: "script",
                 }
               : candidate,
           )
@@ -2223,6 +2193,8 @@ export function createCustomObjectFromBehavior(
               description: behavior.description,
               visual,
               collision,
+              parameterDefinitions: defaults?.parameterDefinitions,
+              controllerOwnership: "script",
             },
           ],
     },
@@ -2387,27 +2359,23 @@ export function moveCustomPlacement(
   }));
 }
 
+/** Generates editor records only. Run compileScriptWorkspaceAsync before executing or exporting Lua. */
 export function compileScriptWorkspace(
   state: ScriptWorkspaceState,
 ): Result<ScriptWorkspaceState, string> {
+  for (const definition of state.customObjects) {
+    const parameters = validateObjectParameters(definition.parameterDefinitions ?? []);
+    if (parameters.isErr()) return err(parameters.error);
+  }
   const refreshed = refreshGeneratedEntry(state, state.context);
-  const diagnostics: ScriptDiagnostic[] = [];
+  const diagnostics = refreshed.diagnostics.filter((entry) => entry.category === "luals");
   const compiledFiles: Record<string, ScriptCompiledFile> = {};
 
   for (const sourceFile of Object.values(refreshed.sourceFiles)) {
-    const compileResult = compileModule(sourceFile);
-    if (compileResult.isErr()) {
-      return err(compileResult.error);
-    }
-
-    diagnostics.push(...compileResult.value.diagnostics);
-    diagnostics.push(
-      ...buildRequireDiagnostics(sourceFile.path, compileResult.value.output),
-    );
     const compiledPath = getCompiledModulePath(sourceFile.path);
     compiledFiles[compiledPath] = {
       path: compiledPath,
-      content: compileResult.value.output,
+      content: sourceFile.content,
       sourcePath: sourceFile.path,
     };
   }
@@ -2427,11 +2395,36 @@ export function compileScriptWorkspace(
   return ok(
     addStatusLog(
       updatedState,
-      diagnostics.some((diagnostic) => diagnostic.severity === "error")
-        ? "Bundle generated with errors"
-        : "Bundle generated; test in game to verify behavior",
+      "Source records generated; Lua validation is required before running or exporting",
     ),
   );
+}
+
+export interface ScriptWorkspaceBuildFailure {
+  readonly message: string;
+  readonly diagnostics: readonly ScriptDiagnostic[];
+}
+
+export async function compileScriptWorkspaceAsync(
+  state: ScriptWorkspaceState,
+): Promise<Result<ScriptWorkspaceState, ScriptWorkspaceBuildFailure>> {
+  const generated = compileScriptWorkspace(state);
+  if (generated.isErr()) return err({ message: generated.error, diagnostics: [] });
+  const workspace = generated.value;
+  const validation = await validateLuaWorkspace({
+    modules: Object.values(workspace.compiledFiles).map((file) => ({ path: file.path, source: file.content })),
+    behaviors: workspace.customObjects.map((definition) => ({ modulePath: getCompiledModulePath(definition.sourceFilePath), exportName: definition.exportName })),
+  });
+  if (validation.isErr()) {
+    const diagnostics: ScriptDiagnostic[] = validation.error.map((finding) => ({
+      category: "source-validation", severity: "error", code: `lua.${finding.phase}`,
+      filePath: workspace.compiledFiles[finding.filePath]?.sourcePath ?? (finding.filePath || GENERATED_ENTRY_PATH),
+      line: finding.line ?? 1, column: finding.column ?? 1, message: finding.message,
+    }));
+    const message = diagnostics.map((finding) => `${finding.filePath}:${finding.line}:${finding.column}: ${finding.message}`).join("\n");
+    return err({ message, diagnostics });
+  }
+  return ok(addStatusLog(workspace, "Lua 5.4 syntax, modules and behavior exports validated; test in game to verify behavior"));
 }
 
 function buildRuntimeLevelsJson(
@@ -2529,12 +2522,12 @@ export interface ScriptPackageFile {
   readonly bytes: Uint8Array;
 }
 
-function buildScriptPackageFilesUnchecked(
+async function buildScriptPackageFilesUnchecked(
   state: ScriptWorkspaceState,
-): Result<readonly ScriptPackageFile[], string> {
-  const compiledState = compileScriptWorkspace(state);
+): Promise<Result<readonly ScriptPackageFile[], string>> {
+  const compiledState = await compileScriptWorkspaceAsync(state);
   if (compiledState.isErr()) {
-    return err(compiledState.error);
+    return err(compiledState.error.message);
   }
 
   const compiled = compiledState.value;
@@ -2609,9 +2602,9 @@ function buildScriptPackageFilesUnchecked(
   return ok(files);
 }
 
-export function buildScriptPackageFiles(
+export async function buildScriptPackageFiles(
   state: ScriptWorkspaceState,
-): Result<readonly ScriptPackageFile[], string> {
+): Promise<Result<readonly ScriptPackageFile[], string>> {
   const assetsResult = validateScriptWorkspaceAssets(state);
   if (assetsResult.isErr()) {
     return err(`Custom asset validation failed: ${assetsResult.error}`);
@@ -2622,17 +2615,19 @@ export function buildScriptPackageFiles(
 export async function buildScriptPackageFilesAsync(
   state: ScriptWorkspaceState,
 ): Promise<Result<readonly ScriptPackageFile[], string>> {
-  const assetsResult = await validateScriptWorkspaceAssetsAsync(state);
+  const resolved = await resolveDesktopProjectAssets(state);
+  if (resolved.isErr()) return err(resolved.error);
+  const assetsResult = await validateScriptWorkspaceAssetsAsync(resolved.value);
   if (assetsResult.isErr()) {
     return err(`Custom asset validation failed: ${assetsResult.error}`);
   }
-  return buildScriptPackageFilesUnchecked(state);
+  return buildScriptPackageFilesUnchecked(resolved.value);
 }
 
-export function buildPreviewScriptFiles(
+export async function buildPreviewScriptFiles(
   state: ScriptWorkspaceState,
-): Result<readonly PreviewVfsFile[], string> {
-  const packageResult = buildScriptPackageFiles(state);
+): Promise<Result<readonly PreviewVfsFile[], string>> {
+  const packageResult = await buildScriptPackageFiles(state);
   if (packageResult.isErr()) {
     return err(packageResult.error);
   }
@@ -2661,10 +2656,10 @@ export async function buildPreviewScriptFilesAsync(
   );
 }
 
-export function buildScriptPackageZip(
+export async function buildScriptPackageZip(
   state: ScriptWorkspaceState,
-): Result<Uint8Array, string> {
-  const packageResult = buildScriptPackageFiles(state);
+): Promise<Result<Uint8Array, string>> {
+  const packageResult = await buildScriptPackageFiles(state);
   if (packageResult.isErr()) {
     return err(packageResult.error);
   }
@@ -2672,6 +2667,10 @@ export function buildScriptPackageZip(
   const zipInput: Record<string, Uint8Array> = Object.fromEntries(
     packageResult.value.map((file) => [file.path, file.bytes]),
   );
+
+  const authoring = await collectScriptAuthoringAssets(state, { includeAuthoringSources: true });
+  if (authoring.isErr()) return err(authoring.error);
+  Object.assign(zipInput, authoringArchiveFiles(authoring.value));
 
   return Result.fromThrowable(
     () => zipSync(zipInput, { level: 6 }),
@@ -2690,6 +2689,9 @@ export async function buildScriptPackageZipAsync(
   const zipInput: Record<string, Uint8Array> = Object.fromEntries(
     packageResult.value.map((file) => [file.path, file.bytes]),
   );
+  const authoring = await collectScriptAuthoringAssets(state, { includeAuthoringSources: true });
+  if (authoring.isErr()) return err(authoring.error);
+  Object.assign(zipInput, authoringArchiveFiles(authoring.value));
   return Result.fromThrowable(
     () => zipSync(zipInput, { level: 6 }),
     () => "Failed to build script package zip",
@@ -2768,7 +2770,9 @@ export function importScriptPackageZip(
     return err(unzipResult.error);
   }
 
-  const files = unzipResult.value;
+  const authoring = readAuthoringArchiveFiles(unzipResult.value);
+  if (authoring.isErr()) return err(authoring.error);
+  const files = Object.fromEntries(Object.entries(unzipResult.value).filter(([path]) => !isAuthoringArchivePath(path)));
 
   // Run validation
   const validationResult = validateScriptPackage(
@@ -2928,6 +2932,7 @@ export function importScriptPackageZip(
           ),
       sourceFiles,
       assets,
+      authoringAssets: authoring.value,
       customObjects: objectsResult.value?.objects ?? [],
       params: paramsResult.value?.params ?? [],
       diagnostics: projectJson?.editor.diagnostics ?? [],

@@ -1,7 +1,6 @@
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
-import { parseTGAToCanvas } from "@/utils/tgaImageParser";
-import { errAsync, okAsync, ResultAsync } from "neverthrow";
-import { useEffect, useMemo, useState } from "react";
+import { gameAssetUrl } from "@/assets/gameAssetUrls";
+import { useAssetState } from "@/assets/useAssetState";
 import ottoWaterUrl from "../../../../../games/pangea-ports/games/OttoMatic-Android/Data/Sprites/global/global002.tga?url";
 import ottoSoapUrl from "../../../../../games/pangea-ports/games/OttoMatic-Android/Data/Sprites/global/global003.tga?url";
 import ottoGreenUrl from "../../../../../games/pangea-ports/games/OttoMatic-Android/Data/Sprites/global/global004.tga?url";
@@ -20,13 +19,10 @@ import billySwampUrl from "../../../../../games/pangea-ports/games/BillyFrontier
 import billyPoolUrl from "../../../../../games/pangea-ports/games/BillyFrontier-Android/Data/Sprites/global/global002.png?url";
 import billyGarbageUrl from "../../../../../games/pangea-ports/games/BillyFrontier-Android/Data/Sprites/global/global003.png?url";
 import croMagGlobalModelUrl from "../../../../../games/pangea-ports/games/CroMagRally-Android/Data/Models/global.bg3d?url";
-import { loadBg3dMaterialTexture } from "./embeddedLiquidTexture";
-
-export interface LiquidTextureSource {
-  url: string;
-  format: "bg3d" | "image" | "tga";
-  materialIndex?: number;
-}
+import type { ImageAssetSource as LiquidTextureSource } from "@/assets/imageAssets";
+import { useImageAsset } from "@/assets/useImageAsset";
+export type { ImageAssetSource as LiquidTextureSource } from "@/assets/imageAssets";
+export { useImageAsset as useTextureCanvas } from "@/assets/useImageAsset";
 
 const OTTO_TEXTURES = [
   ottoWaterUrl,
@@ -60,7 +56,7 @@ export function getLiquidTextureSource(
       const filename = OTTO_TEXTURES[liquidType];
       return filename
         ? {
-            url: filename,
+            url: gameAssetUrl(game, `Sprites/global/global${String(liquidType + 2).padStart(3, "0")}.tga`, filename),
             format: "tga",
           }
         : null;
@@ -69,7 +65,7 @@ export function getLiquidTextureSource(
       const filename = BUGDOM_2_TEXTURES[liquidType];
       return filename
         ? {
-            url: filename,
+            url: gameAssetUrl(game, `Sprites/Global/${String(liquidType + 6).padStart(3, "0")}.tga`, filename),
             format: "tga",
           }
         : null;
@@ -78,19 +74,19 @@ export function getLiquidTextureSource(
       const filename = NANOSAUR_2_TEXTURES[Math.min(liquidType, 2)];
       return filename
         ? {
-            url: filename,
+            url: gameAssetUrl(game, `Sprites/global/global${String(Math.min(liquidType, 2) + 5).padStart(3, "0")}.${liquidType >= 2 ? "jpg" : "png"}`, filename),
             format: "image",
           }
         : null;
     }
     case Game.BILLY_FRONTIER: {
       const filename = BILLY_TEXTURES[liquidType];
-      return filename ? { url: filename, format: "image" } : null;
+      return filename ? { url: gameAssetUrl(game, `Sprites/global/global${String(liquidType + 1).padStart(3, "0")}.png`, filename), format: "image" } : null;
     }
     case Game.CRO_MAG:
       return {
-        url: croMagGlobalModelUrl,
-        format: "bg3d",
+        url: gameAssetUrl(game, "Models/global.bg3d", croMagGlobalModelUrl),
+        format: "model",
         materialIndex: 13,
       };
     default:
@@ -98,74 +94,11 @@ export function getLiquidTextureSource(
   }
 }
 
-function loadBrowserImage(url: string): ResultAsync<HTMLCanvasElement, string> {
-  return ResultAsync.fromPromise(
-    new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error(`Could not load ${url}`));
-      image.src = url;
-    }),
-    (error) => String(error),
-  ).andThen((image) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
-    const context = canvas.getContext("2d");
-    if (!context) return errAsync("Canvas unavailable");
-    context.drawImage(image, 0, 0);
-    return okAsync(canvas);
-  });
-}
-
-function loadTga(url: string): ResultAsync<HTMLCanvasElement, string> {
-  return ResultAsync.fromPromise(fetch(url), (error) => String(error))
-    .andThen((response) =>
-      response.ok
-        ? ResultAsync.fromPromise(response.arrayBuffer(), (error) => String(error))
-        : errAsync(`Could not load ${url}`),
-    )
-    .andThen((buffer) => parseTGAToCanvas(buffer));
-}
-
 export function useGameLiquidTexture(
   globals: GlobalsInterface,
   liquidType: number,
 ): HTMLCanvasElement | null {
-  const source = useMemo(
-    () => getLiquidTextureSource(globals.GAME_TYPE, liquidType),
-    [globals, liquidType],
-  );
-  return useTextureCanvas(source);
-}
-
-export function useTextureCanvas(
-  source: LiquidTextureSource | null,
-): HTMLCanvasElement | null {
-  const [loaded, setLoaded] = useState<{
-    url: string;
-    canvas: HTMLCanvasElement;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!source) return;
-    let active = true;
-    const load =
-      source.format === "tga"
-        ? loadTga(source.url)
-        : source.format === "bg3d"
-          ? loadBg3dMaterialTexture(source.url, source.materialIndex ?? -1)
-          : loadBrowserImage(source.url);
-    void load.match(
-      (canvas) => {
-        if (active) setLoaded({ url: source.url, canvas });
-      },
-      () => undefined,
-    );
-    return () => {
-      active = false;
-    };
-  }, [source]);
-
-  return source && loaded?.url === source.url ? loaded.canvas : null;
+  useAssetState();
+  const source = getLiquidTextureSource(globals.GAME_TYPE, liquidType);
+  return useImageAsset(source);
 }

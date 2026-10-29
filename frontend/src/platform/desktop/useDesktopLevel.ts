@@ -9,10 +9,12 @@ import { replaceScriptWorkspace, type ScriptWorkspaceState } from "@/editor/subv
 import { desktopBridge, desktopRequest } from "./client";
 import { desktopGameId } from "./games";
 import { desktopActiveDocumentAtom, desktopConflictOpenAtom, desktopExternalProjectAtom, desktopLevelIdAtom, desktopProjectAtom, desktopProjectCommandsAtom, desktopProjectDirtyAtom } from "./projectState";
-import { loadProjectLevel } from "./projectLoad";
-import type { LevelProjectInput } from "./projectBuild";
+import { guardProjectLoadHandlers, loadProjectLevel } from "./projectLoad";
+import { prepareProjectSave, type LevelProjectInput } from "./projectBuild";
+import { err } from "neverthrow";
 import { readRecovery, saveProjectLevel, testProjectLevel } from "./projectActions";
 import { projectCaptureKey } from "./projectCapture";
+import { mergeExternalSources } from "./mergeExternalSources";
 
 interface DesktopLevelOptions {
   input: LevelProjectInput | null;
@@ -38,28 +40,40 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
   const loaded = useRef("");
   const generation = useRef(0);
   const saving = useRef(false);
+  useEffect(() => () => { generation.current++; }, [project?.folder, project?.revision, levelId]);
   useEffect(() => { latest.current = options; }, [options]);
+  useEffect(() => {
+    if (project && !levelId && loaded.current) {
+      loaded.current = "";
+      savedCapture.current = "";
+      latest.current.clearLevel();
+      setDirty(false);
+    }
+  }, [project, levelId, setDirty]);
 
   const load = useCallback(async (snapshot: ProjectSnapshot, id: string, recovered?: ProjectFile[]) => {
+    const token = ++generation.current;
     const level = snapshot.manifest.levels.find((entry) => entry.id === id);
-    if (!level) return;
+    if (!level) return false;
     if (!recovered && !snapshot.files.some((file) => file.path === level.primary)) {
       latest.current.clearLevel();
       savedCapture.current = "";
       loaded.current = `${snapshot.folder}:${snapshot.revision}:${id}`;
       setDirty(false);
       toast.info("The level file was deleted outside the editor. The document was closed.");
-      return;
+      return false;
     }
-    const token = ++generation.current;
-    const result = await loadProjectLevel(snapshot, level, latest.current.handlers, recovered);
-    if (generation.current !== token) return;
-    if (result.isErr()) { toast.error("Could not open project level", { description: result.error }); return; }
+    const handlers = guardProjectLoadHandlers(latest.current.handlers, () => generation.current === token);
+    const result = await loadProjectLevel(snapshot, level, handlers, recovered);
+    if (generation.current !== token) return false;
+    if (result.isErr()) { toast.error("Could not open project level", { description: result.error }); return false; }
     savedCapture.current = recovered === undefined ? projectCaptureKey(result.value) : "";
     latest.current.setBaseLevel(level.baseLevel);
     latest.current.setScriptStore((store) => replaceScriptWorkspace(store, result.value.workspace));
     loaded.current = `${snapshot.folder}:${snapshot.revision}:${id}`;
     if (recovered) { savedCapture.current = ""; setDirty(true); }
+    else toast.success("Project level opened");
+    return true;
   }, [setDirty]);
 
   useEffect(() => {
@@ -97,8 +111,8 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
 
   const test = useCallback(async (withScripts = true) => {
     const input = latest.current.input;
-    if (input) await testProjectLevel(project, input, withScripts);
-  }, [project]);
+    if (input) await testProjectLevel(project, input, withScripts, levelId);
+  }, [project, levelId]);
 
   const recover = useCallback(async () => {
     if (!project) return;
@@ -113,10 +127,14 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
     const id = parsed.data.levels.findLast((level) => files.value.some((file) => file.path === level.primary))?.id;
     if (!id) { toast.info("The recovery snapshot does not contain a level"); return; }
     const snapshot = { ...project, manifest: parsed.data };
-    setProject(snapshot);
-    setLevelId(id);
-    await load(snapshot, id, files.value);
-  }, [project, load, setLevelId, setProject]);
+    setDirty(true);
+    const restored = await load(snapshot, id, files.value);
+    if (restored) {
+      setProject(snapshot);
+      setLevelId(id);
+      toast.success("Unsaved level recovered");
+    } else setDirty(dirty);
+  }, [project, load, setLevelId, setProject, setDirty, dirty]);
 
   const discard = useCallback(() => {
     savedCapture.current = projectCaptureKey(latest.current.input);
@@ -128,9 +146,21 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
   useEffect(() => {
     if (!desktopBridge()) return;
     setCommands({ save, test, recover, discard, canSave, baseLevel, setBaseLevel });
-    setActiveDocument({ kind: "level", save, discard, recover });
+    setActiveDocument({ kind: "level", save, discard, recover, mergeSources: async (snapshot, paths) => {
+      const input = latest.current.input;
+      if (!input) return false;
+      const merged = await mergeExternalSources(input.workspace, snapshot, paths);
+      if (merged.isErr()) { toast.error(merged.error); return false; }
+      loaded.current = `${snapshot.folder}:${snapshot.revision}:${levelId}`;
+      latest.current.setScriptStore((store) => replaceScriptWorkspace(store, merged.value));
+      setDirty(true);
+      return true;
+    }, capture: () => projectCaptureKey(latest.current.input), prepare: async () => {
+      const input = latest.current.input;
+      return project && input ? prepareProjectSave(project, levelId, input) : err("Load a level before building a conflict review");
+    } });
     return () => { setCommands(null); setActiveDocument(null); };
-  }, [save, test, recover, discard, setCommands, setActiveDocument, baseLevel, canSave, setBaseLevel]);
+  }, [save, test, recover, discard, setCommands, setActiveDocument, baseLevel, canSave, setBaseLevel, levelId, setDirty, project]);
 
   useEffect(() => {
     if (!desktopBridge() || !project || !dirty) return;

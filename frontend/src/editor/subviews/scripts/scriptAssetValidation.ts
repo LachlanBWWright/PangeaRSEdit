@@ -8,6 +8,7 @@ import type { SkeletonResource } from "@/python/structSpecs/skeleton/skeletonInt
 import type { BG3DGeometry, BG3DGroup, BG3DParseResult } from "@/modelParsers/parseBG3D";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
 import { convertGltfAsset } from "./scriptAssetConversion";
+import { nativeModelObjectCount } from "./scriptNativeModelObjects";
 import type {
   ScriptCustomObjectDefinition,
   ScriptWorkspaceState,
@@ -30,6 +31,9 @@ function validateGeometry(
   path: string,
 ): readonly string[] {
   const errors: string[] = [];
+  if (geometry.vertices?.some((vertex) => vertex.some((coordinate) => !Number.isFinite(coordinate)))) {
+    errors.push(`${path}: geometry contains non-finite vertex coordinates`);
+  }
   for (const materialIndex of geometry.layerMaterialNum.slice(0, geometry.numMaterials)) {
     if (
       !Number.isInteger(materialIndex) ||
@@ -161,7 +165,7 @@ function validateAssetBytes(path: string, bytes: Uint8Array): Result<ParsedAsset
     if (structuralErrors.length > 0) return err(structuralErrors.join("; "));
     return ok({
       kind,
-      objectCount: parsed.value.value.groups.length,
+      objectCount: nativeModelObjectCount(parsed.value.value),
       animationCount: parsed.value.value.skeleton?.numAnims,
       jointCount: parsed.value.value.skeleton?.numJoints,
       limbCount: parsed.value.value.skeleton?.num3DMFLimbs,
@@ -197,7 +201,7 @@ async function validateAssetBytesAsync(
     if (structuralErrors.length > 0) return err(structuralErrors.join("; "));
     return ok({
       kind: "gltf",
-      objectCount: parsedNative.value.value.groups.length,
+      objectCount: nativeModelObjectCount(parsedNative.value.value),
       animationCount: parsedNative.value.value.skeleton?.numAnims,
       jointCount: parsedNative.value.value.skeleton?.numJoints,
       limbCount: parsedNative.value.value.skeleton?.num3DMFLimbs,

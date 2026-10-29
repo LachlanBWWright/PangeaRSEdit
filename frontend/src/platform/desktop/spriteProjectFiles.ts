@@ -3,6 +3,7 @@ import { err, ok, Result, ResultAsync, type Result as Outcome } from "neverthrow
 import type { ProjectFile } from "@pangea/desktop-contracts";
 import type { LoadedData, SpriteData } from "@/pages/SpriteViewer/types";
 import type { Palette } from "@/pages/SpriteViewer/utils/paletteUtils";
+import { nativePaletteBytes, nativeSpriteFile } from "./nativeSpriteFiles";
 
 const byteSchema = z.number().int().min(0).max(255);
 const colorSchema = z.object({ r: byteSchema, g: byteSchema, b: byteSchema });
@@ -12,19 +13,25 @@ const frameSchema = z.object({ header: z.object({ width: z.number().int().min(0)
   .refine((frame) => frame.pixels.length === frame.header.width * frame.header.height && (!frame.mask || frame.mask.length === frame.pixels.length));
 const spriteSnapshotSchema = z.object({ kind: z.literal("pangea-sprite"), version: z.literal(1),
   colorTable: z.array(colorSchema).max(256), palette: z.object({ name: z.string(), colors: z.array(colorSchema).max(256) }),
-  shapes: z.array(z.object({ shapeIndex: z.number().int(), frames: z.array(frameSchema).max(4096),
+  shapes: z.array(z.object({ shapeIndex: z.number().int(), flags: z.number().int().optional(), frames: z.array(frameSchema).max(4096),
     animations: z.array(z.object({ animationIndex: z.number(), commands: z.array(z.object({ opcode: z.number(), operand: z.number() })) })) })).max(4096),
 });
 
 export function spriteProjectFiles(stem: string, data: LoadedData, palette: Palette): Outcome<ProjectFile[], string> {
   if (!data) return err("Load a sprite or texture first");
-  const extension = data.type === "sprites" ? ".shapes" : data.type === "tileset" ? ".tileset" : ".tga";
-  const original = { path: `${stem}${extension}`, bytes: new Uint8Array(data.sourceBytes) };
-  if (data.type !== "sprites") return ok([original]);
+  const native = nativeSpriteFile(data, palette);
+  if (native.isErr()) return err(native.error);
+  const original = { path: `${stem}${native.value.extension}`, bytes: native.value.bytes };
+  if (data.type === "tga") return ok([original]);
+  const paletteFile = nativePaletteBytes(palette.colors);
+  if (paletteFile.isErr()) return err(paletteFile.error);
+  const paletteOutput = { path: `${stem}.palette.tga`, bytes: paletteFile.value };
+  if (data.type === "tileset") return ok([original, paletteOutput]);
   const snapshot = { kind: "pangea-sprite", version: 1, colorTable: data.data.colorTable, palette,
     shapes: data.data.shapes.map((shape) => ({ ...shape, frames: shape.frames.map((frame) => ({ ...frame,
       pixels: Array.from(frame.pixels), mask: frame.mask ? Array.from(frame.mask) : undefined })) })) };
-  return ok([{ path: `${stem}.sprite.json`, bytes: new TextEncoder().encode(JSON.stringify(snapshot)) }, original]);
+  return ok([{ path: `${stem}.sprite.json`, bytes: new TextEncoder().encode(JSON.stringify(snapshot)) }, original,
+    paletteOutput]);
 }
 
 export async function readSpriteProject(file: File, companions: File[]): Promise<Outcome<{ data: SpriteData; palette: Palette }, string>> {

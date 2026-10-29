@@ -40,9 +40,11 @@ import {
 import { TerrainItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
+import { CustomObjectToPlaceAtom, SelectedCustomPlacementAtom } from "../scripts/scriptPlacementSelectionState";
 import { ItemStateFlags } from "./ItemStateFlags";
 import { ParameterField } from "./ParameterField";
 import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
+import { itemParameterFields } from "./itemParameterFields";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -57,6 +59,7 @@ export const ItemMenu = memo(function ItemMenu({
   const globals = useAtomValue(Globals);
   const levelNum = useAtomValue(LevelNumber);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  const customSelection = useAtomValue(SelectedCustomPlacementAtom);
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
 
@@ -91,6 +94,10 @@ export const ItemMenu = memo(function ItemMenu({
     });
     setSelectedItem(undefined);
   }, [selectedItem, setItemData, setSelectedItem]);
+
+  if (ENABLE_SCRIPTS && customSelection !== null) {
+    return <div className="flex flex-col gap-2 px-3"><CustomObjectItemPicker /></div>;
+  }
 
   return (
     <div className="flex h-full min-h-full flex-col gap-2 px-3">
@@ -192,8 +199,7 @@ export const ItemMenu = memo(function ItemMenu({
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            {([0, 1, 2, 3] as const).map((i) => {
-              const paramKey = `p${i}` as const;
+            {itemParameterFields.map(({ index: i, key: paramKey }) => {
               const param = selectedItemParams?.[paramKey] ?? "Unknown";
               const value = selectedItemData[paramKey];
               const setValue = (v: number) => {
@@ -279,6 +285,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
   const levelNum = useAtomValue(LevelNumber);
+  const customToPlace = useAtomValue(CustomObjectToPlaceAtom);
 
   useEffect(() => {
     return () => setClickToAddItem(undefined);
@@ -292,7 +299,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     return (
       <>
         <Select
-          value={getItemName(globals, clickToAddItem)}
+          value={clickToAddItem.toString()}
           onValueChange={(e) => {
             const newItemType = parseInt(e);
             setClickToAddItem(newItemType);
@@ -337,7 +344,8 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
 
   return (
     <>
-      <EmptyDataPrompt
+      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
+      {(!ENABLE_SCRIPTS || customToPlace === null) && <EmptyDataPrompt
         title={hasItems ? "No Item Selected" : "No Items"}
         description={
           hasItems
@@ -347,8 +355,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
         buttonText={hasItems ? "Add More Items" : "Add First Item"}
         onInitialize={() => setClickToAddItem(0)}
         fillHeight
-      />
-      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
+      />}
     </>
   );
 }

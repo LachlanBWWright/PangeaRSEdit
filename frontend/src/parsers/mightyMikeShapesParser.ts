@@ -77,6 +77,7 @@ export interface ShapeAnimation {
 
 export interface Shape {
   shapeIndex: number;
+  flags?: number;
   frames: ShapeFrame[];
   animations: ShapeAnimation[];
 }
@@ -468,6 +469,7 @@ function parseShapeList(
 
     shapes.push({
       shapeIndex: i,
+      flags: readI16BE(view, shapeBase),
       frames,
       animations,
     });

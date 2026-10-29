@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { z } from "zod";
 import { relativePathSchema, type HostError } from "@pangea/desktop-contracts";
+import { isAuthoringSourcePath } from "./authoringPaths.ts";
 
 export function failure(message: string, code = "filesystem"): HostError {
   return { code, message };
@@ -54,28 +55,43 @@ export async function atomicWrite(target: string, bytes: Uint8Array): Promise<Re
 }
 
 export interface FileEntry { path: string; hash: string; size: number }
-export async function scanProject(root: string, directory = ""): Promise<Result<FileEntry[], HostError>> {
+export interface CachedFile { size: number; mtime: number; ctime: number; inode: number; hash: string }
+export async function scanProject(root: string, directory = "", cache?: Map<string, CachedFile>): Promise<Result<FileEntry[], HostError>> {
   const listing = await io(() => fs.readdir(path.join(root, directory), { withFileTypes: true }), "Cannot list project files");
   if (listing.isErr()) return err(listing.error);
   const entries: FileEntry[] = [];
   for (const entry of listing.value) {
     const relative = directory ? `${directory}/${entry.name}` : entry.name;
+    if (isAuthoringSourcePath(relative)) continue;
     if (!relativePathSchema.safeParse(relative).success || entry.isSymbolicLink()) continue;
     if (entry.isDirectory()) {
-      const nested = await scanProject(root, relative);
+      const nested = await scanProject(root, relative, cache);
       if (nested.isErr()) return nested;
       entries.push(...nested.value);
     } else if (entry.isFile()) {
       const info = await io(() => fs.stat(path.join(root, relative)), `Cannot inspect ${relative}`);
       if (info.isErr()) return err(info.error);
       if (info.value.size > 128 * 1024 * 1024) return err(failure(`Project file exceeds 128 MiB: ${relative}`, "limit"));
-      const bytes = await io(() => fs.readFile(path.join(root, relative)), `Cannot read ${relative}`);
-      if (bytes.isErr()) return err(bytes.error);
-      entries.push({ path: relative, hash: hash(bytes.value), size: bytes.value.length });
+      const key = path.join(root, relative);
+      const cached = cache?.get(key);
+      const stat = info.value;
+      if (cached && cached.size === stat.size && cached.mtime === stat.mtimeMs && cached.ctime === stat.ctimeMs && cached.inode === stat.ino) {
+        entries.push({ path: relative, hash: cached.hash, size: stat.size });
+      } else {
+        const bytes = await io(() => fs.readFile(key), `Cannot read ${relative}`);
+        if (bytes.isErr()) return err(bytes.error);
+        const digest = hash(bytes.value);
+        cache?.set(key, { size: stat.size, mtime: stat.mtimeMs, ctime: stat.ctimeMs, inode: stat.ino, hash: digest });
+        entries.push({ path: relative, hash: digest, size: bytes.value.length });
+      }
     }
     if (entries.length > 4096) return err(failure("Project exceeds 4096 files", "limit"));
     if (entries.reduce((size, file) => size + file.size, 0) > 512 * 1024 * 1024)
       return err(failure("Project exceeds 512 MiB", "limit"));
+  }
+  if (cache && directory === "") {
+    const live = new Set(entries.map((entry) => path.join(root, entry.path)));
+    for (const key of cache.keys()) if (!live.has(key)) cache.delete(key);
   }
   return ok(entries.sort((left, right) => left.path.localeCompare(right.path)));
 }

@@ -14,6 +14,7 @@ import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { DesktopProjectController } from "@/platform/desktop/DesktopProjectController";
+import { AssetLoadingStatus } from "@/assets/AssetLoadingStatus";
 import { GamesPage } from "@/platform/desktop/GamesPage";
 import { DesktopNavigationGuard } from "@/platform/desktop/DesktopNavigationGuard";
 import { DesktopTitleBar } from "@/platform/desktop/DesktopTitleBar";
@@ -33,6 +34,7 @@ function AppContent() {
           <DesktopTitleBar />
           <Navigation />
           <DesktopProjectController />
+          <AssetLoadingStatus />
           <div className="flex-1 min-h-0 overflow-auto flex flex-col">
             <Routes>
               <Route path="/games" element={<GamesPage />} />

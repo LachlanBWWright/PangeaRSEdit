@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { ResultAsync } from "neverthrow";
 import { toast } from "sonner";
@@ -15,8 +15,9 @@ import { gMightyMikePalette } from "@/utils/mightyMikePalette";
 import { mapErr } from "@/utils/mapErr";
 import { createPalette, type Palette } from "../utils/paletteUtils";
 import type { FileType, LoadedData } from "../types";
+import { readFilePalette } from "../utils/filePalette";
 
-interface LoaderOptions {
+export interface LoaderOptions {
   readonly setLoadedData: Dispatch<SetStateAction<LoadedData>>;
   readonly setLoading: Dispatch<SetStateAction<boolean>>;
   readonly setSelectedShapeIndex: Dispatch<SetStateAction<number>>;
@@ -114,7 +115,17 @@ function paletteToRgba(colors: readonly RGBColor[]): Uint8Array {
 }
 
 export function useSpriteViewerLoaders(options: LoaderOptions) {
-  const loadCustomFileUpload = useCallback(async (file: File, fileType: FileType) => {
+  const generation = useRef(0);
+  useEffect(() => () => { generation.current++; }, []);
+  const loadCustomFileUpload = useCallback(async (file: File, fileType: FileType, paletteFile?: File, isCurrent?: () => boolean) => {
+    const token = ++generation.current;
+    const current = () => generation.current === token && (isCurrent?.() ?? true);
+    const cancelled = () => {
+      if (current()) return false;
+      if (generation.current === token) options.setLoading(false);
+      return true;
+    };
+    if (cancelled()) return;
     const filename = file.name.toLowerCase();
     const extension = fileType === "sprites" ? ".shapes" : fileType === "tga" ? ".tga" : ".tileset";
     if (!filename.endsWith(extension)) {
@@ -123,12 +134,16 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
     }
     options.setLoading(true);
     const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
+    if (cancelled()) return;
     if (bufferResult.isErr()) {
       toast.error(bufferResult.error);
       options.setLoading(false);
       return;
     }
     const buffer = bufferResult.value;
+    const companion = await readFilePalette(paletteFile);
+    if (cancelled()) return;
+    if (companion.isErr()) { toast.error(companion.error); options.setLoading(false); return; }
     if (fileType === "sprites") {
       const result = parseShapesFile(buffer);
       if (result.isErr()) {
@@ -136,10 +151,11 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
         options.setLoading(false);
         return;
       }
+      const border = companion.value ?? await loadBorderPalette();
+      if (cancelled()) return;
       options.setLoadedData({ type: "sprites", data: result.value, filename: file.name, sourceBytes: buffer });
       options.setSelectedShapeIndex(0);
       options.setSelectedFrameIndex(0);
-      const border = await loadBorderPalette();
       if (border) applyPalette(options.setCurrentPalette, "Border Palette", border);
       toast.success(`Loaded: ${result.value.shapes.length} shapes`);
     } else if (fileType === "tga") {
@@ -150,14 +166,27 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
         return;
       }
       options.setLoadedData({ type: "tga", data: result.value, filename: file.name, sourceBytes: buffer });
+      const palette = extractTGAPaletteRaw(buffer);
+      if (palette) options.setCurrentPalette(paletteFromRgba(file.name, Uint8Array.from(palette.colors)));
       toast.success("Loaded TGA image");
     } else {
-      toast.info("Custom tileset upload not yet fully supported. Use the asset browser to load tilesets.");
+      const colors = companion.value ?? await loadBorderPalette();
+      if (cancelled()) return;
+      if (!colors) { options.setLoading(false); return; }
+      const palette = paletteFromRgba(file.name, colors);
+      const parsed = parseTilesetFile(buffer, palette.colors);
+      if (parsed.isErr()) { toast.error(parsed.error); options.setLoading(false); return; }
+      options.setLoadedData({ type: "tileset", data: parsed.value, filename: file.name,
+        gridCanvas: createTilesetGridPreview(parsed.value), sourceBytes: buffer });
+      applyPalette(options.setCurrentPalette, palette.name, colors);
+      options.setSelectedTileIndex(undefined);
+      toast.success("Loaded tileset");
     }
     options.setLoading(false);
   }, [options]);
 
   const loadSpritesFile = useCallback(async (filename: string) => {
+    generation.current++;
     options.setLoading(true);
     const buffer = await fetchBytes(`data/mightymike/shapes/${filename}.shapes`);
     if (!buffer) {
@@ -180,6 +209,7 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
   }, [options]);
 
   const loadTGAFile = useCallback(async (filename: string) => {
+    generation.current++;
     options.setLoading(true);
     const buffer = await fetchBytes(`assets/mightyMike/terrain/${filename}.tga`);
     if (!buffer) {
@@ -193,11 +223,14 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
       return;
     }
     options.setLoadedData({ type: "tga", data: result.value, filename, sourceBytes: buffer });
+    const palette = extractTGAPaletteRaw(buffer);
+    if (palette) options.setCurrentPalette(paletteFromRgba(filename, Uint8Array.from(palette.colors)));
     toast.success(`Loaded TGA: ${filename}`);
     options.setLoading(false);
   }, [options]);
 
   const loadTilesetFile = useCallback(async (filename: string) => {
+    generation.current++;
     options.setLoading(true);
     const paletteBuffer = await fetchBytes("assets/mightyMike/terrain/border.tga");
     if (!paletteBuffer) {
@@ -234,6 +267,7 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
   }, [options]);
 
   const loadPalette = useCallback(async (palette: Palette, updateTileset: boolean) => {
+    generation.current++;
     const sceneName = ["candy", "bargain", "clown", "fairy", "jurassic"].find(
       (name) => palette.name.toLowerCase() === name,
     );
@@ -255,6 +289,7 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
   }, [options]);
 
   const changeTilesetPaletteScene = useCallback(async (sceneName: string) => {
+    generation.current++;
     options.setCurrentTilesetPaletteScene(sceneName);
     const buffer = await fetchBytes(`assets/mightyMike/terrain/${sceneToTga[sceneName] ?? sceneName}.tga`);
     if (!buffer) return;
@@ -270,7 +305,8 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
     toast.success(`Applied ${sceneName} palette to tileset`);
   }, [options]);
 
-  return { loadCustomFileUpload, loadSpritesFile, loadTGAFile, loadTilesetFile, loadPalette, changeTilesetPaletteScene };
+  const cancelUpload = useCallback(() => { generation.current++; options.setLoading(false); }, [options]);
+  return { loadCustomFileUpload, loadSpritesFile, loadTGAFile, loadTilesetFile, loadPalette, changeTilesetPaletteScene, cancelUpload };
 }
 
 function setPaletteFromManager(setCurrentPalette: Dispatch<SetStateAction<Palette>>, name: string): void {

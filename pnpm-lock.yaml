@@ -24,12 +24,18 @@ importers:
       '@pangea/desktop-contracts':
         specifier: workspace:*
         version: link:../packages/desktop-contracts
+      '@pangea/model-codec':
+        specifier: workspace:*
+        version: link:../packages/model-codec
       fflate:
         specifier: ^0.8.2
         version: 0.8.3
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       zod:
         specifier: ^4.2.1
         version: 4.4.3
@@ -214,6 +220,9 @@ importers:
       use-immer:
         specifier: ^0.11.0
         version: 0.11.0(immer@11.1.8)(react@19.2.6)
+      wasmoon:
+        specifier: 1.16.0
+        version: 1.16.0
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.12.1
@@ -3212,6 +3221,9 @@ packages:
 
   '@types/draco3d@1.4.10':
     resolution: {integrity: sha512-AX22jp8Y7wwaBgAixaSvkoG4M/+PlAcm3Qs4OW8yT9DM4xUpWKeFhLueTAyZF39pviAdcDdeJoACapiAceqNcw==}
+
+  '@types/emscripten@1.39.10':
+    resolution: {integrity: sha512-TB/6hBkYQJxsZHSqyeuO1Jt0AB/bW6G7rHt9g7lML7SOF6lbgcHvw/Lr+69iqN0qxgXLhWKScAon73JNnptuDw==}
 
   '@types/eslint-utils@3.0.5':
     resolution: {integrity: sha512-dGOLJqHXpjomkPgZiC7vnVSJtFIOM1Y6L01EyUhzPuD0y0wfIGiqxiGs3buUBfzxLIQHrCvZsIMDaCZ8R5IIoA==}
@@ -6412,6 +6424,10 @@ packages:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
 
+  wasmoon@1.16.0:
+    resolution: {integrity: sha512-FlRLb15WwAOz1A9OQDbf6oOKKSiefi5VK0ZRF2wgH9xk3o5SnU11tNPaOnQuAh1Ucr66cwwvVXaeVRaFdRBt5g==}
+    hasBin: true
+
   watlas@1.0.1:
     resolution: {integrity: sha512-TmB++BFqEQY19cPNby5iszACZd8t6uauB7YdObkqhWarhed79OMPS8wufoDSo0p85A/8QW/aqZwEJf+nD4emSw==}
 
@@ -9146,6 +9162,8 @@ snapshots:
   '@types/doctrine@0.0.9': {}
 
   '@types/draco3d@1.4.10': {}
+
+  '@types/emscripten@1.39.10': {}
 
   '@types/eslint-utils@3.0.5':
     dependencies:
@@ -12701,6 +12719,10 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
+
+  wasmoon@1.16.0:
+    dependencies:
+      '@types/emscripten': 1.39.10
 
   watlas@1.0.1: {}
 

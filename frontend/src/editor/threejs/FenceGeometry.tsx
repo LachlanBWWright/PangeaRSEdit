@@ -13,7 +13,9 @@ import { Globals, GlobalsInterface } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { getFenceHeight } from "@/data/fences/getFenceHeight";
-import { Texture, DoubleSide, TextureLoader, RepeatWrapping, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter } from "three";
+import { Texture, DoubleSide } from "three";
+import { loadFenceTextures } from "@/data/fences/loadFenceTextures";
+import { useAssetState } from "@/assets/useAssetState";
 
 interface FenceGeometryProps extends FenceGeometryInteractionProps {
   fenceData: FenceData;
@@ -141,6 +143,7 @@ interface FenceGroupData {
 }
 
 const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData, topologyVersion, onNubPointerDown, draggingEntity }) => {
+  const { revision } = useAssetState();
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
   const [selectedFenceNub, setSelectedFenceNub] = useAtom(SelectedFenceNub);
@@ -166,38 +169,15 @@ const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, heade
       }
     });
 
-    const textureLoader = new TextureLoader();
-    const loadedTextures = new Map<string, Texture>();
-    let loadedCount = 0;
-
-    if (textureUrls.size === 0) return;
-
-    textureUrls.forEach((url) => {
-      textureLoader.load(
-        url,
-        (texture) => {
-          texture.wrapS = RepeatWrapping;
-          texture.wrapT = ClampToEdgeWrapping;
-          texture.magFilter = LinearFilter;
-          texture.minFilter = LinearMipmapLinearFilter;
-
-          loadedTextures.set(url, texture);
-          loadedCount++;
-
-          if (loadedCount === textureUrls.size) {
-            setTextures(new Map(loadedTextures));
-          }
-        },
-        undefined,
-        () => {
-          loadedCount++;
-          if (loadedCount === textureUrls.size) {
-            setTextures(new Map(loadedTextures));
-          }
-        },
-      );
+    let active = true;
+    let loadedTextures = new Map<string, Texture>();
+    void loadFenceTextures(textureUrls).then((loaded) => {
+      loadedTextures = loaded;
+      if (active) setTextures(loaded);
+      else for (const texture of loaded.values()) texture.dispose();
     });
-  }, [fenceData, globals]);
+    return () => { active = false; for (const texture of loadedTextures.values()) texture.dispose(); };
+  }, [fenceData, globals, revision]);
 
   const fenceGroups = useMemo(() => {
     if (

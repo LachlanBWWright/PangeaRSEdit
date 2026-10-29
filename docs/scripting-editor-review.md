@@ -52,17 +52,44 @@ Lua-folder imports review additions/conflicts before merging; level assignments,
 native bindings/replacements and placements are preserved. Full script-package
 import is explicitly a workspace restore. The production page story covers
 library import followed by an IDE source update, conflict selection and editing
-the accepted source. This remains snapshot import, without live disk sync,
-three-way merging, dependency pinning or multiple named pack workspaces.
+the accepted source. Browser folder imports remain snapshots. Desktop projects
+can open an external editor and reload saved Lua changes while the workspace is
+clean; that is separate from importing a shared library. Shared-library imports
+do not provide three-way merging, dependency pinning or multiple named pack
+workspaces.
 
-Remaining scope includes a live object/ownership/scheduler/budget inspector,
-collision geometry visualization, animated custom asset inspection, explicit
-per-instance parameter semantics, and full native gameplay coverage of every
-asset/mode. Literal helper collection cannot discover computed requires; use full
-script packages for those sources. The current workflow and limitations are in
+The subsequent implementation adds real Lua 5.4 bundle validation in an isolated
+worker, typed definition defaults and per-placement overrides exposed through
+`self.parameters`, editable Otto gameplay starters, and a live read-only inspector
+for object state, ownership, scheduler totals, frame budgets and failures.
+Desktop project assets include animated converted-model previews and named clip
+mapping. These are implemented features, rather than remaining redesign tasks.
+
+The polishing pass completes rejected-command accounting and reload retirement
+budget transfer, guarded shared-library merges with selected editable-asset
+dependencies, and diagnostic actions for exact source and live authored-placement
+mappings. Collision inspection now shows native-rounded dimension projections
+and real-model overlays for mapped global static models and linked desktop
+assets. Native bank candidates are shown without claiming verified level loads.
+Uploaded static models and custom skeletons now have actual geometry overlays,
+animation playback and malformed-upload recovery. Unlinked native level/skeleton
+visuals still use dimension projections; full level collision visualization
+remains separate. Both browser and desktop inspectors now browse all registered
+objects through bounded pages and exact handle lookup.
+
+Full native gameplay coverage of every asset/mode remains outside the evidence
+provided by shared tests and launch probes. Literal helper collection cannot
+infer computed requires; the source editor now supports explicit module
+dependencies that travel with Lua sources and are collected recursively. The
+current workflow and limitations are in
 [the editor guide](../games/pangea-ports/docs/scripting-editor.md).
 
 ### Redesign verification
+
+The results in this section record the original redesign verification, not the
+current checkout's test status. In particular, the startup and lifecycle-parity
+observations below are historical; use the current runtime matrix to reassess
+them rather than treating them as outstanding confirmed defects.
 
 - Frontend TypeScript project build, targeted ESLint, contract consistency,
   and all eight staged scripting-artifact checks pass.

@@ -6,14 +6,17 @@ import {
   loadShapeFrame,
 } from "@/utils/mightyMikeShapeImageLoader";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
+import { useAssetState } from "@/assets/useAssetState";
 
 const FALLBACK_WALK_FRAMES = [0, 1, 2, 3] as const;
 const DIRECTIONAL_WALK_ANIMS = [0, 1, 2, 3] as const;
 const TICK_MS = 220;
 
 export function MightyMikePreview({ className }: { className?: string }) {
+  const { revision } = useAssetState();
   const [tick, setTick] = useState(0);
-  const [frameUrl, setFrameUrl] = useState<string | null>(null);
+  const [frame, setFrame] = useState<{ revision: number; url: string } | null>(null);
+  const [paletteRevision, setPaletteRevision] = useState(-1);
   const [directionalFrameCycles, setDirectionalFrameCycles] = useState<
     Partial<Record<number, readonly number[]>>
   >({});
@@ -35,6 +38,9 @@ export function MightyMikePreview({ className }: { className?: string }) {
     let cancelled = false;
 
     const loadDirectionalFrames = async () => {
+      const palette = await loadBorderPalette();
+      if (cancelled || !palette) return;
+      gMightyMikePalette.loadPaletteFromRGBA(palette);
       const resolvedEntries = await Promise.all(
         DIRECTIONAL_WALK_ANIMS.map(async (animationIndex) => {
           const cycleResult = await getShapeAnimationFrameCycle(
@@ -58,6 +64,7 @@ export function MightyMikePreview({ className }: { className?: string }) {
         nextCycles[animationIndex] = frameCycle;
       }
       setDirectionalFrameCycles(nextCycles);
+      setPaletteRevision(revision);
     };
 
     void loadDirectionalFrames();
@@ -65,20 +72,16 @@ export function MightyMikePreview({ className }: { className?: string }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [revision]);
 
   useEffect(() => {
+    if (paletteRevision !== revision) return;
     let cancelled = false;
 
     const loadPreviewFrame = async () => {
-      const palette = await loadBorderPalette();
-      if (palette) {
-        gMightyMikePalette.loadPaletteFromRGBA(palette);
-      }
-
       const frameResult = await loadShapeFrame("main.shapes", 0, frameIndex);
       if (!cancelled && frameResult.isOk()) {
-        setFrameUrl(frameResult.value.canvas.toDataURL("image/png"));
+        setFrame({ revision, url: frameResult.value.canvas.toDataURL("image/png") });
       }
     };
 
@@ -87,7 +90,7 @@ export function MightyMikePreview({ className }: { className?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [frameIndex]);
+  }, [frameIndex, revision, paletteRevision]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -100,9 +103,9 @@ export function MightyMikePreview({ className }: { className?: string }) {
 
   return (
     <div className={cn("w-full flex items-center justify-center", className)}>
-      {frameUrl ? (
+      {frame?.revision === revision ? (
         <img
-          src={frameUrl}
+          src={frame.url}
           alt="Mighty Mike"
           className="h-full max-h-full object-contain pixelated"
         />

@@ -22,6 +22,7 @@ export default defineConfig(
       "do-refactor.mjs",
       "test-glb-export.ts",
       "dist/**",
+      "dist-desktop/**",
       "coverage/**",
       "coverage-*/**",
       "storybook-static/**",

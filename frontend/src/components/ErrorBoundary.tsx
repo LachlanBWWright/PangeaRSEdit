@@ -8,6 +8,8 @@ interface ErrorBoundaryState {
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
+  onError?: (error: Error) => void;
+  onRetry?: () => void;
 }
 
 export class ErrorBoundary extends React.Component<
@@ -25,6 +27,7 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.props.onError?.(error);
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
@@ -40,7 +43,10 @@ export class ErrorBoundary extends React.Component<
           </p>
           <Button
             variant="destructive"
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={() => {
+              this.props.onRetry?.();
+              this.setState({ hasError: false, error: null });
+            }}
           >
             Try Again
           </Button>

@@ -9,7 +9,8 @@ import { loadProjectScripts } from "./projectBuild";
 import { readProjectFiles } from "./projectLoad";
 import { scriptCaptureKey } from "./projectCapture";
 import { readRecovery } from "./projectActions";
-import { saveProjectScripts } from "./scriptProjectActions";
+import { saveProjectScripts, prepareProjectScripts } from "./scriptProjectActions";
+import { mergeExternalSources } from "./mergeExternalSources";
 
 export function useDesktopProjectScripts(context: ScriptWorkspaceContext) {
   const [project, setProject] = useAtom(desktopProjectAtom);
@@ -68,9 +69,18 @@ export function useDesktopProjectScripts(context: ScriptWorkspaceContext) {
   });
   useEffect(() => {
     if (!desktopBridge() || !project) return;
-    setDocument({ kind: "scripts", save: () => actions.current.save(), recover: () => actions.current.recover(), discard: () => actions.current.discard() });
+    setDocument({ kind: "scripts", save: () => actions.current.save(), recover: () => actions.current.recover(), discard: () => actions.current.discard(),
+      prepare: () => prepareProjectScripts(project, latest.current), capture: () => scriptCaptureKey(latest.current),
+      mergeSources: async (snapshot, paths) => {
+        const merged = await mergeExternalSources(latest.current, snapshot, paths);
+        if (merged.isErr()) { toast.error(merged.error); return false; }
+        loaded.current = `${snapshot.folder}:${snapshot.revision}`;
+        setStore((previous) => replaceScriptWorkspace(previous, merged.value));
+        setDirty(true);
+        return true;
+      } });
     return () => setDocument(null);
-  }, [project, setDocument]);
+  }, [project, setDocument, setStore, setDirty]);
   useEffect(() => {
     if (!desktopBridge() || !project || dirty) return;
     const key = `${project.folder}:${project.revision}`;

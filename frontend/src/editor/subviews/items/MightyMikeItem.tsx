@@ -14,10 +14,9 @@ import {
   type ItemFrameImage,
 } from "@/utils/mightyMikeShapeImageLoader";
 import { CurrentScene } from "@/data/game/gameAtoms";
-import { ResultAsync } from "neverthrow";
+import { useAssetState } from "@/assets/useAssetState";
 import { ItemTypeNumber } from "../shared/nodeVisuals";
 import type { HoverTagInfo } from "../shared/nodeVisuals";
-import { mapErr } from "@/utils/mapErr";
 import {
   createHoverTag,
   getFallbackFrameOffset,
@@ -41,6 +40,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
+  const { revision } = useAssetState();
   const item = useMemo(
     () => selectItem({ Itms: itemData.Itms }, itemIdx),
     [itemData.Itms, itemIdx],
@@ -78,26 +78,14 @@ export const MightyMikeItem = memo(function MightyMikeItem({
 
   // Load item image when toggle is on
   useEffect(() => {
+    let active = true;
     if (!showItemImages || !item) {
-      Promise.resolve().then(() => setItemImageData(null));
-      return;
+      void Promise.resolve().then(() => { if (active) setItemImageData(null); });
+      return () => { active = false; };
     }
     const loadImageData = async () => {
-      const loadResult = await ResultAsync.fromPromise(
-        loadItemImage(item.type, currentScene),
-        mapErr,
-      );
-
-      if (loadResult.isErr()) {
-        console.warn(
-          `Unexpected error loading image for item ${item.type}:`,
-          loadResult.error,
-        );
-        setItemImageData(null);
-        return;
-      }
-
-      const result = loadResult.value;
+      const result = await loadItemImage(item.type, currentScene);
+      if (!active) return;
       if (result.isOk()) {
         setItemImageData(result.value);
       } else {
@@ -110,7 +98,8 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     };
 
     void loadImageData();
-  }, [showItemImages, item, currentScene]);
+    return () => { active = false; };
+  }, [showItemImages, item, currentScene, revision]);
 
   if (item === null || item === undefined) return null;
 

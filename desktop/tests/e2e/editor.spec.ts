@@ -39,6 +39,7 @@ test("desktop starts securely, binds a folder, saves a custom level, and reopens
   await page.getByRole("button", { name: "Project menu", exact: true }).click();
   await page.getByRole("menuitem", { name: /Open Project/ }).click();
   await expect(page.getByRole("menu")).not.toBeVisible();
+  await expect(page.getByText("Project level opened", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Level Actions", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Project menu", exact: true }).click();
   await page.getByRole("menuitem", { name: /Project Settings/ }).click();
@@ -82,6 +83,7 @@ test("desktop starts securely, binds a folder, saves a custom level, and reopens
   await page.getByRole("button", { name: "Project menu", exact: true }).click();
   await page.getByRole("menuitem", { name: /Project Levels/ }).click();
   await page.getByRole("dialog", { name: "Project levels" }).getByRole("button", { name: firstLevel.name, exact: true }).first().click();
+  await expect(page.getByText("Project level opened", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Project menu", exact: true }).click();
   await page.getByRole("menuitem", { name: /Project Settings/ }).click();
   await expect(page.getByRole("combobox", { name: "Native base level" })).toHaveValue("1");

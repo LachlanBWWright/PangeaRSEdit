@@ -9,6 +9,7 @@ import { CustomObjectsPage } from "./CustomObjectsPage";
 import { loadScriptSample, replaceScriptWorkspace, scriptWorkspaceStoreAtom, createScriptWorkspaceContext, ensureScriptWorkspace } from "@/editor/subviews/scripts/scriptWorkspaceState";
 import { createObjectDefinition } from "@/editor/subviews/scripts/scriptObjectActions";
 import { buildScriptLibrary } from "@/editor/subviews/scripts/scriptLibrary";
+import { buildScriptDefinitionBundle } from "@/editor/subviews/scripts/scriptDefinitionBundle";
 
 function CustomObjectsPageStory({ populated = false }: { populated?: boolean }) {
   const [store] = useState(() => {
@@ -81,6 +82,10 @@ export const AutomaticModelPreview: Story = {
     }, { timeout: 30_000 });
     await userEvent.click(canvas.getByRole("button", { name: "Collision" }));
     expect(canvasElement.querySelector(".object-model-thumbnail")).toHaveProperty("naturalWidth", 96);
+    await userEvent.click(canvas.getByRole("radio", { name: /Trigger An overlap/ }));
+    expect(canvas.getByRole("region", { name: "Collision bounds preview" })).toBeVisible();
+    expect(canvas.getByRole("img", { name: /Front.*100 by 100/ })).toBeVisible();
+    await waitFor(() => expect(canvas.getByLabelText("Game model preview").querySelector("canvas")).toBeVisible());
   },
 };
 
@@ -99,6 +104,46 @@ export const NanosaurDefinitions: Story = {
 export const NarrowLibrary: Story = {
   args: { populated: true },
   parameters: { viewport: { defaultViewport: "phone" } },
+};
+
+export const DuplicateAndReviewImport: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const created = createObjectDefinition(ensureScriptWorkspace({}, createScriptWorkspaceContext(OttoGlobals, null)), "Pack lantern", "blank");
+    expect(created.isOk()).toBe(true);
+    if (created.isErr()) return;
+    const archive = buildScriptDefinitionBundle(created.value.state);
+    expect(archive.isOk()).toBe(true);
+    if (archive.isErr()) return;
+    const bytes = new Uint8Array(archive.value.byteLength);
+    bytes.set(archive.value);
+    await userEvent.upload(canvas.getByLabelText("Import objects"), new File([bytes], "objects.zip", { type: "application/zip" }));
+    let dialog = within(await within(document.body).findByRole("dialog"));
+    await waitFor(() => expect(dialog.getByText("No conflicting records found.")).toBeVisible());
+    await userEvent.click(dialog.getByRole("button", { name: "Import objects" }));
+    await waitFor(() => expect(canvas.getByLabelText("Object name")).toHaveValue("Pack lantern"));
+    expect(canvas.getByText("Not validated", { exact: true })).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Duplicate object" }));
+    await waitFor(() => expect(canvas.getByLabelText("Object name")).toHaveValue("Pack lantern copy"));
+    await userEvent.click(canvas.getByRole("checkbox", { name: "Select Pack lantern copy for export" }));
+    expect(canvas.getByRole("button", { name: "Export selected (1)" })).toBeEnabled();
+    const updated = buildScriptDefinitionBundle({ ...created.value.state,
+      customObjects: created.value.state.customObjects.map((object) => ({ ...object, label: "Updated lantern" })),
+    });
+    expect(updated.isOk()).toBe(true);
+    if (updated.isErr()) return;
+    const updatedBytes = new Uint8Array(updated.value.byteLength);
+    updatedBytes.set(updated.value);
+    await userEvent.upload(canvas.getByLabelText("Import objects"), new File([updatedBytes], "updated.zip", { type: "application/zip" }));
+    dialog = within(await within(document.body).findByRole("dialog"));
+    await waitFor(() => expect(dialog.getByText(/existing records conflict/)).toBeVisible());
+    await userEvent.click(dialog.getByRole("radio", { name: /^Replace/ }));
+    await userEvent.click(dialog.getByRole("button", { name: "Import objects" }));
+    await waitFor(() => expect(canvas.getByLabelText("Object name")).toHaveValue("Updated lantern"));
+    await userEvent.click(canvas.getByRole("button", { name: "Undo object import" }));
+    await waitFor(() => expect(canvas.getByLabelText("Object name")).toHaveValue("Pack lantern"));
+    expect(canvas.getByRole("checkbox", { name: "Select Pack lantern copy for export" })).toBeChecked();
+  },
 };
 
 export const SharedPackLibraryAndIdeUpdate: Story = {

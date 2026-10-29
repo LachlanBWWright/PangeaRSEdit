@@ -1,5 +1,6 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Boxes } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BillyFrontierGlobals, Bugdom2Globals, BugdomGlobals, CroMagGlobals, Globals,
@@ -7,10 +8,11 @@ import {
 } from "@/data/globals/globals";
 import { CustomObjectWorkspace } from "@/editor/subviews/scripts/CustomObjectWorkspace";
 import { createScriptWorkspaceContext } from "@/editor/subviews/scripts/scriptWorkspaceState";
-import { desktopProjectAtom } from "@/platform/desktop/projectState";
+import { desktopLevelIdAtom, desktopProjectAtom } from "@/platform/desktop/projectState";
 import { desktopBridge } from "@/platform/desktop/client";
 import { DESKTOP_GAMES } from "@/platform/desktop/games";
 import { useDesktopProjectScripts } from "@/platform/desktop/useDesktopProjectScripts";
+import { inspectCustomObjectPlacementAtom, startCustomObjectPlacementAtom } from "@/editor/subviews/scripts/scriptPlacementNavigation";
 import "@/editor/subviews/scripts/scriptWorkbench.css";
 
 const games: readonly GlobalsInterface[] = [OttoGlobals, BugdomGlobals, Bugdom2Globals, NanosaurGlobals, Nanosaur2Globals, CroMagGlobals, BillyFrontierGlobals, MightyMikeGlobals];
@@ -18,10 +20,15 @@ const games: readonly GlobalsInterface[] = [OttoGlobals, BugdomGlobals, Bugdom2G
 export function CustomObjectsPage() {
   const [globals, setGlobals] = useAtom(Globals);
   const project = useAtomValue(desktopProjectAtom);
+  const levelId = useAtomValue(desktopLevelIdAtom);
+  const level = project?.manifest.levels.find((entry) => entry.id === levelId);
+  const navigate = useNavigate();
+  const startPlacement = useSetAtom(startCustomObjectPlacementAtom);
+  const inspectPlacement = useSetAtom(inspectCustomObjectPlacementAtom);
   const boundGame = desktopBridge() && project ? DESKTOP_GAMES.find((game) => game.id === project.manifest.game) : undefined;
   const activeGlobals = boundGame?.globals ?? globals;
   const availableGames = boundGame ? [boundGame.globals] : games;
-  const context = createScriptWorkspaceContext(activeGlobals, null);
+  const context = createScriptWorkspaceContext(activeGlobals, level?.baseLevel ?? null);
   useDesktopProjectScripts(context);
   return <main className="script-workbench scripting-workspace min-h-full">
     <header className="workbench-toolbar">
@@ -32,6 +39,8 @@ export function CustomObjectsPage() {
         if (next) setGlobals(next);
       }}><SelectTrigger className="w-48" aria-label="Game"><SelectValue /></SelectTrigger><SelectContent>{availableGames.map((game) => <SelectItem key={game.GAME_NAME} value={String(game.GAME_TYPE)}>{game.GAME_NAME}</SelectItem>)}</SelectContent></Select></div>
     </header>
-    <CustomObjectWorkspace key={context.gameId} context={context} />
+    <CustomObjectWorkspace key={context.gameId} context={context}
+      onPlace={level ? (id) => { startPlacement(id); navigate("/"); } : undefined}
+      onSelectPlacement={level ? (id) => { inspectPlacement(id); navigate("/"); } : undefined} />
   </main>;
 }

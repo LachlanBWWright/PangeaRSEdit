@@ -176,7 +176,7 @@ export function parseSkeletonRsrcResult(bytes: ArrayBuffer): ResultAsync<Skeleto
 }
 
 function parseHedrFallback(hexData: string | undefined): HedrRaw | undefined {
-  if (!hexData || hexData.length < 8) {
+  if (!hexData || hexData.length < 16 || hexData.length % 2 !== 0) {
     return undefined;
   }
 
@@ -192,7 +192,7 @@ function parseHedrFallback(hexData: string | undefined): HedrRaw | undefined {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const values: number[] = [];
   for (let i = 0; i < 4 && i * 2 + 2 <= bytes.length; i += 1) {
-    values.push(view.getUint16(i * 2, true));
+    values.push(view.getUint16(i * 2, false));
   }
 
   if (values.length === 4) {

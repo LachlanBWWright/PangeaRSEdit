@@ -11,7 +11,10 @@ export function useTemporaryDirectory() {
   beforeEach(async () => {
     const created = await io(() => fs.mkdtemp(path.join(os.tmpdir(), "pangea-suite-")), "Cannot create fixture");
     expect(created.isOk()).toBe(true);
-    if (created.isOk()) root = created.value;
+    if (created.isErr()) return;
+    const resolved = await io(() => fs.realpath(created.value), "Cannot resolve fixture directory");
+    expect(resolved.isOk()).toBe(true);
+    if (resolved.isOk()) root = resolved.value;
   });
   afterEach(async () => {
     vi.restoreAllMocks();

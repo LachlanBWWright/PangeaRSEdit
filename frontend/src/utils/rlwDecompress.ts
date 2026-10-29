@@ -38,11 +38,13 @@ export interface DecompressedFile {
 export function rlbDecompress(
   compressedBuffer: ArrayBuffer,
 ): Result<DecompressedFile, string> {
+  if (compressedBuffer.byteLength < 8) return err("Packed file header is incomplete");
   const input = new DataView(compressedBuffer);
 
   // Read header
   const decompressedSize = input.getUint32(0, false); // big-endian
   const compressionType = input.getUint32(4, false); // big-endian
+  if (decompressedSize > 128 * 1024 * 1024) return err("Packed file exceeds the 128 MiB limit");
 
   if (compressionType !== PACK_TYPE_RLB) {
     return err("Expected RLB compression (type 0), got: ${compressionType}");
@@ -93,6 +95,7 @@ export function rlbDecompress(
     }
   }
 
+  if (outputPos !== decompressedSize) return err("Packed file data is truncated");
   return ok({ data: output.buffer, decompressedSize, compressionType });
 }
 

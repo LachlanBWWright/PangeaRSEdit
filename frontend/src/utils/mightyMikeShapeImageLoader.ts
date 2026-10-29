@@ -5,7 +5,11 @@
  * All functions return Result types for explicit error handling.
  */
 
-import { mapErr } from "@/utils/mapErr";
+import { fetchAsset } from "@/assets/fetchAsset";
+import { AssetCache } from "@/assets/assetCache";
+import { gameAssetUrl } from "@/assets/gameAssetUrls";
+import { registerAssetCache, getAssetState } from "@/assets/assetState";
+import { Game } from "@/data/globals/globals";
 import {
   parseShapesFile,
   shapeFrameToCanvas,
@@ -17,10 +21,10 @@ import {
   getItemShapesFile,
   getItemSpriteMapping,
 } from "../data/items/mightyMikeItemSpriteMap";
-import { err, ok, ResultAsync, type Result } from "neverthrow";
+import { err, ok, type Result } from "neverthrow";
 import { gMightyMikePalette } from "./mightyMikePalette";
 
-const SHAPES_BASE_PATH = "/PangeaRSEdit/data/mightymike/shapes";
+const SHAPES_BASE_PATH = `${import.meta.env.BASE_URL}data/mightymike/shapes`;
 
 const ANIMOP_FRAME = 1;
 const ANIMOP_END = 2;
@@ -29,6 +33,7 @@ const ANIMOP_GOTO = 5;
 
 // Cache for loaded .shapes files
 const shapesFileCache = new Map<string, ShapesFile>();
+const shapeLoads = new AssetCache<ShapesFile>(() => 1, 16, 16);
 
 /** Canvas plus the sprite's hot-spot offsets from the game's FrameHeader. */
 export interface ItemFrameImage {
@@ -69,6 +74,7 @@ function getGamePaletteColors(): RGBColor[] {
   }
   cachedPaletteRGBA = paletteRGBA;
   cachedPaletteColors = colors;
+  frameCanvasCache.clear();
   return colors;
 }
 
@@ -84,35 +90,14 @@ async function loadShapesFile(
     return ok(cached);
   }
 
-  const url = `${SHAPES_BASE_PATH}/${shapesFilename}`;
-
-  const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
-  if (fetchResult.isErr()) {
-    return err(
-      "Failed to load shapes file '${shapesFilename}': ${fetchResult.error}",
-    );
-  }
-
-  const response = fetchResult.value;
-  if (!response.ok) {
-    return err("HTTP ${response.status}: ${response.statusText}");
-  }
-
-  const bufferResult = await ResultAsync.fromPromise(
-    response.arrayBuffer(),
-    mapErr,
-  );
-  if (bufferResult.isErr()) {
-    return err(
-      "Failed to read buffer from '${shapesFilename}': ${bufferResult.error}",
-    );
-  }
-
-  const result = parseShapesFile(bufferResult.value);
+  const url = gameAssetUrl(Game.MIGHTY_MIKE, `Shapes/${shapesFilename}`, `${SHAPES_BASE_PATH}/${shapesFilename}`);
+  const result = await shapeLoads.get(url, () => fetchAsset(url).andThen((bytes) => parseShapesFile(bytes)
+    .mapErr((message) => ({ code: "decode", url, message }))));
   if (result.isErr()) {
-    return err(result.error);
+    return err(result.error.message);
   }
 
+  if (shapesFileCache.size >= 16) shapesFileCache.clear();
   shapesFileCache.set(shapesFilename, result.value);
   return ok(result.value);
 }
@@ -138,6 +123,8 @@ export async function loadShapeFrame(
   frameIndex = 0,
 ): Promise<Result<ItemFrameImage, string>> {
   const cacheKey = getFrameCacheKey(shapesFilename, shapeIndex, frameIndex);
+  getGamePaletteColors();
+  const revision = getAssetState().revision;
 
   // Check cache first
   const cached = frameCanvasCache.get(cacheKey);
@@ -188,6 +175,11 @@ export async function loadShapeFrame(
   };
 
   // Cache and return at natural pixel size
+  if (revision !== getAssetState().revision) return err("Game assets changed while loading a sprite frame");
+  if (frameCanvasCache.size >= 512) {
+    const oldest = frameCanvasCache.keys().next().value;
+    if (oldest) frameCanvasCache.delete(oldest);
+  }
   frameCanvasCache.set(cacheKey, frameImage);
   return ok(frameImage);
 }
@@ -318,16 +310,20 @@ export async function preloadItemImages(
  * Useful when switching between levels/scenes
  */
 export function clearItemImageCache(): void {
+  shapeLoads.clear();
   shapesFileCache.clear();
   frameCanvasCache.clear();
   cachedPaletteRGBA = null;
   cachedPaletteColors = null;
 }
 
+registerAssetCache(clearItemImageCache);
+
 /**
  * Clear a specific shapes file from cache
  */
 export function clearShapesFileCache(shapesFilename: string): void {
+  shapeLoads.clear();
   shapesFileCache.delete(shapesFilename);
 
   // Also clear all frames from this file

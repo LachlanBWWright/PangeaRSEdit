@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { Group, Object3D } from "three";
 import { Game } from "@/data/globals/globals";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
+import { okAsync, Result, type ResultAsync } from "neverthrow";
+import type { AssetFailure } from "@/assets/assetState";
+import { useAssetState } from "@/assets/useAssetState";
+import { closeAssetWorker } from "@/assets/modelAssets";
+import { gameAssetUrl } from "@/assets/gameAssetUrls";
+import { reportAssetFailure } from "@/assets/assetState";
 import {
   cloneGroupForItemRendering,
   extractSubgroupByIndex,
@@ -215,15 +221,15 @@ function PreviewCarAssembly({
 function loadAttachments(
   gameType: Game,
   worker: Worker,
-): Promise<LoadedPreviewAttachment[]> {
+): ResultAsync<LoadedPreviewAttachment[], AssetFailure> {
   const definitions = PREVIEW_ATTACHMENTS[gameType] ?? [];
   const path = GLOBAL_MODEL_PATH[gameType];
-  const url = path ? `${path}?preview-accessories-v3` : null;
+  const url = path ? gameAssetUrl(gameType, `Models/${gameType === Game.CRO_MAG ? "carparts" : "global"}.bg3d`, path) : null;
   if (!url || definitions.length === 0) {
-    return Promise.resolve([]);
+    return okAsync([]);
   }
 
-  return loadFileGltf(worker, url).then((gltf) => {
+  return loadFileGltf(worker, url).map((gltf) => {
     return definitions.flatMap((definition) => {
       const subgroup = extractSubgroupByIndex(gltf, definition.modelIndex);
       if (!subgroup) {
@@ -241,34 +247,41 @@ export function PreviewAttachments({
   gameType: Game;
   scene: Object3D;
 }) {
+  const { revision } = useAssetState();
   const [attachments, setAttachments] = useState<LoadedPreviewAttachment[]>([]);
   const [attachmentsGame, setAttachmentsGame] = useState<Game | null>(null);
+  const [attachmentsRevision, setAttachmentsRevision] = useState(-1);
 
   useEffect(() => {
-    const worker = new BG3DGltfWorker();
+    const worker = Result.fromThrowable(() => new BG3DGltfWorker(), () => "Cannot start the preview converter")();
+    if (worker.isErr()) {
+      reportAssetFailure({ code: "conversion", url: String(gameType), message: worker.error });
+      return;
+    }
     let active = true;
-    loadAttachments(gameType, worker)
-      .then((loaded) => {
+    void loadAttachments(gameType, worker.value)
+      .match((loaded) => {
         if (active) {
           setAttachments(loaded);
           setAttachmentsGame(gameType);
+          setAttachmentsRevision(revision);
         }
-      })
-      .catch(() => {
+      }, () => {
         if (active) {
           setAttachments([]);
           setAttachmentsGame(gameType);
+          setAttachmentsRevision(revision);
         }
       });
     return () => {
       active = false;
-      worker.terminate();
+      closeAssetWorker(worker.value);
     };
-  }, [gameType]);
+  }, [gameType, revision]);
 
   return (
     <>
-      {attachmentsGame === gameType &&
+      {attachmentsGame === gameType && attachmentsRevision === revision &&
         (gameType === Game.CRO_MAG ? (
           <PreviewCarAssembly scene={scene} attachments={attachments} />
         ) : (

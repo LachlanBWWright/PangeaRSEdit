@@ -1,4 +1,5 @@
 import { strToU8 } from "fflate";
+import { buildObjectParameterDeclarations } from "./scriptObjectParameterDeclarations";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 export type ScriptTypeWorkspace = Pick<ScriptWorkspaceState, "context" | "customObjects" | "behaviorCatalog">;
 import { buildNativeSpawnDeclarations, buildNativeSpawnOverloads } from "./scriptNativeDeclarations";
@@ -307,6 +308,7 @@ function buildRuntimeDeclaration(state: ScriptTypeWorkspace): string {
     "---@class ObjectFrameContext : FrameContext",
     "---@field object ObjectHandle",
     "---@field objectType ObjectTypeId",
+    "---@field definitionId string|nil Custom behavior identity, independent of native actor type.",
     "---@field position Vector3",
     "---@field velocity Vector3|nil",
     "---@field collisionEnabled boolean|nil",
@@ -327,7 +329,9 @@ function buildRuntimeDeclaration(state: ScriptTypeWorkspace): string {
     "",
     "---@class ObjectBehaviorSelf",
     "---@field handle ObjectHandle",
+    "---@field parameters table<string, number|boolean|string> Resolved definition defaults and placement overrides.",
     "",
+    ...buildObjectParameterDeclarations(state.customObjects),
     "---@class CustomObjectBehavior",
     ...SCRIPTING_CONTRACT.objectEvents.map(
       (event) =>
@@ -523,6 +527,8 @@ function buildRuntimeDeclaration(state: ScriptTypeWorkspace): string {
     ...buildApiClassDeclarations("api", state.context.gameId),
     "",
     "---@class PangeaDiagnostics",
+    "---@field commandRejections integer",
+    "---@field callbackFailures integer",
     "---@field memoryUsedBytes integer",
     "---@field memoryLimitBytes integer",
     "---@field activeTimers integer",

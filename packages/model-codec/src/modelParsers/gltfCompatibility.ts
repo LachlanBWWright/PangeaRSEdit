@@ -14,6 +14,8 @@ import { err, ok, Result, ResultAsync, type Result as ResultType } from "neverth
 import { z } from "zod";
 import { mapCodecError as mapErr } from "../schemas/common";
 import { getRigidInfluence } from "./rigidSkinning";
+import { channelTimes, prepareNativeAnimations, NATIVE_ANIMATION_KEYS } from "./animationSampling";
+import { validateNativeSkinOwnership } from "./nativeSkinValidation";
 
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
@@ -58,6 +60,11 @@ export interface GltfCompatibilityWarning {
     | "primitives.extra-skinning"
     | "primitives.rigid-skinning"
     | "animations.unsupported"
+    | "animations.native-interpolation"
+    | "animations.tick-quantization"
+    | "animations.baked"
+    | "animations.nonuniform-scale"
+    | "skins.bind-transform"
     | "nodes.transform-animation";
   readonly message: string;
   readonly count?: number;
@@ -70,7 +77,9 @@ export interface GltfCompatibilityError {
     | "gltf.read-failed"
     | "gltf.missing-dependency"
     | "gltf.unsupported-required-extension"
-    | "gltf.no-convertible-meshes";
+    | "gltf.no-convertible-meshes"
+    | "gltf.unsupported-native-animation"
+    | "gltf.unsupported-native-skinning";
   readonly message: string;
 }
 
@@ -537,26 +546,55 @@ function normalizePrimitives(
 
 function collectAnimationWarnings(document: Document): readonly GltfCompatibilityWarning[] {
   let unsupportedAnimationCount = 0;
+  let nativeRotationCount = 0;
+  let offTickCount = 0;
+  let nonuniformScaleCount = 0;
+  const joints = new Set(document.getRoot().listSkins().flatMap((skin) => skin.listJoints()));
   for (const animation of document.getRoot().listAnimations()) {
+    const nativeMetadata = z.object({ pangears: z.object({ accelerationModes: accelerationModesSchemaForWarnings }).passthrough() }).passthrough().safeParse(animation.getExtras());
     for (const channel of animation.listChannels()) {
-      if (channel.getTargetPath() === "weights") {
+      if (channel.getTargetPath() === "rotation" && !nativeMetadata.success) nativeRotationCount += 1;
+      offTickCount += channelTimes(channel).filter((time) => Math.abs(time * 30 - Math.round(time * 30)) > 0.0001).length;
+      if (channel.getTargetPath() === "scale") {
+        const values = Array.from(channel.getSampler()?.getOutput()?.getArray() ?? []);
+        if (values.some((value, index) => index % 3 === 0 && (Math.abs(value - (values[index + 1] ?? value)) > 0.0001 || Math.abs(value - (values[index + 2] ?? value)) > 0.0001))) nonuniformScaleCount += 1;
+      }
+      const target = channel.getTargetNode();
+      if (channel.getTargetPath() === "weights" || !target || !joints.has(target)) {
         unsupportedAnimationCount += 1;
       }
     }
   }
 
-  if (unsupportedAnimationCount === 0) {
-    return [];
-  }
-
-  return [
-    {
+  const warnings: GltfCompatibilityWarning[] = [];
+  if (unsupportedAnimationCount > 0) warnings.push({
       code: "animations.unsupported",
       message: "Ignored unsupported animation channels during conversion.",
       count: unsupportedAnimationCount,
-    },
-  ];
+    });
+  if (nativeRotationCount > 0) warnings.push({ code: "animations.native-interpolation", message: "Native skeletons interpolate Euler angles instead of glTF quaternion rotations. Preview converted rotations before accepting this approximation.", count: nativeRotationCount });
+  if (offTickCount > 0) warnings.push({ code: "animations.tick-quantization", message: "Rounded animation key times to the native 30 Hz timeline.", count: offTickCount });
+  if (nonuniformScaleCount > 0) warnings.push({ code: "animations.nonuniform-scale", message: "Native skeleton playback interpolates scale uniformly using the Z component. Nonuniform animated scale will deform differently; use uniform scale keys or review and accept the converted motion.", count: nonuniformScaleCount });
+  return warnings;
 }
+
+function collectBindTransformWarnings(document: Document): readonly GltfCompatibilityWarning[] {
+  let count = 0;
+  const matrixComponents = [0, 1, 2, 4, 5, 6, 8, 9, 10];
+  for (const skin of document.getRoot().listSkins()) {
+    const matrices = skin.getInverseBindMatrices()?.getArray();
+    for (let joint = 0; matrices && joint < skin.listJoints().length; joint += 1) {
+      const differs = matrixComponents.some((component) => {
+        const value = matrices[joint * 16 + component];
+        return value === undefined || !Number.isFinite(value) || Math.abs(value - (component % 5 === 0 ? 1 : 0)) > 0.0001;
+      });
+      if (differs) count += 1;
+    }
+  }
+  return count ? [{ code: "skins.bind-transform", count, message: "Rig bind rotations and scales are not fully rebaked into native joint space. Converted deformation may differ; review the native animation preview before accepting this rig." }] : [];
+}
+
+const accelerationModesSchemaForWarnings = z.record(z.string(), z.array(z.number().int()));
 
 function cloneGlbBytes(bytes: Uint8Array): ArrayBuffer {
   const clone = new Uint8Array(bytes.byteLength);
@@ -666,11 +704,15 @@ async function readDocument(
 export async function normalizeGltfAsset(
   fileName: string,
   buffer: ArrayBuffer,
+  maximumAnimationKeys = NATIVE_ANIMATION_KEYS,
 ): Promise<Result<CompatibleGltfAsset, GltfCompatibilityError>> {
   const readResult = await readDocument(fileName, buffer);
   if (readResult.isErr()) {
     return err(readResult.error);
   }
+
+  const animationValidation = prepareNativeAnimations(readResult.value.document, maximumAnimationKeys);
+  if (animationValidation.isErr()) return err(compatibilityError("gltf.unsupported-native-animation", animationValidation.error));
 
   const unsupportedRequiredExtension = getUnsupportedRequiredExtension(
     readResult.value.json,
@@ -688,7 +730,9 @@ export async function normalizeGltfAsset(
     ...getOptionalExtensionWarnings(readResult.value.json),
     ...collectMaterialWarnings(readResult.value.document),
     ...collectAnimationWarnings(readResult.value.document),
+    ...collectBindTransformWarnings(readResult.value.document),
   ];
+  if (animationValidation.value.length > 0) warnings.push({ code: "animations.baked", message: "Baked and reduced animation curves for the native skeleton. Review converted motion before accepting.", count: animationValidation.value.length, details: animationValidation.value });
   const sceneWarnings = await normalizeSceneGraph(readResult.value.document);
   if (sceneWarnings.isErr()) return err(sceneWarnings.error);
   warnings.push(...sceneWarnings.value);
@@ -698,6 +742,8 @@ export async function normalizeGltfAsset(
     return err(primitiveWarnings.error);
   }
   warnings.push(...primitiveWarnings.value);
+  const skinOwnership = validateNativeSkinOwnership(readResult.value.document);
+  if (skinOwnership.isErr()) return err(compatibilityError("gltf.unsupported-native-skinning", skinOwnership.error));
 
   const glbResult = await ResultAsync.fromPromise(
     new WebIO().writeBinary(readResult.value.document),

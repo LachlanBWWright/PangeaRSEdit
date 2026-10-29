@@ -6,8 +6,8 @@ import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { parseLevelDataFile } from "./parseLevelDataFile";
 import { toast } from "sonner";
-import { ResultAsync } from "neverthrow";
-import { mapErr } from "@/utils/mapErr";
+import { fetchAsset } from "@/assets/fetchAsset";
+import { getAssetState } from "@/assets/assetState";
 import { splitLevelData } from "@/data/utils/levelDataUtils";
 
 export interface OpenFileArgs {
@@ -19,6 +19,8 @@ export interface OpenFileArgs {
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setData: (d: AtomicLevelData) => void;
 }
+
+let latestOpen = 0;
 
 export function getTrtTextureUrl(levelUrl: string): string {
   const baseUrl = levelUrl.replace(/\.ter$/i, "");
@@ -37,6 +39,8 @@ export async function openFile({
   setMapImages,
   setData,
 }: OpenFileArgs) {
+  const request = ++latestOpen;
+  const revision = getAssetState().revision;
   let url = rUrl;
   let rsrcName: string;
   const loadToastId = "open-level-progress";
@@ -48,33 +52,20 @@ export async function openFile({
   const name = rsrcName.split("/").pop();
   if (!name) return;
 
-  setGlobals(gameType);
   toast.loading("Loading level files...", {
     id: loadToastId,
     description: name,
   });
 
-  const levelResponseResult = await ResultAsync.fromPromise(
-    fetch(rsrcName),
-    mapErr,
-  );
+  const levelResponseResult = await fetchAsset(rsrcName);
   if (levelResponseResult.isErr()) {
     toast.error("Failed to download level file", {
       id: loadToastId,
-      description: rsrcName,
+      description: levelResponseResult.error.message,
     });
     return;
   }
-  const levelResponse = levelResponseResult.value;
-  if (!levelResponse.ok) {
-    toast.error("Failed to download level file", {
-      id: loadToastId,
-      description: rsrcName,
-    });
-    return;
-  }
-  const file = await levelResponse.blob();
-  setMapFile(new File([file], name));
+  const file = new Blob([levelResponseResult.value]);
 
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     url = getTrtTextureUrl(url);
@@ -106,7 +97,7 @@ export async function openFile({
     return;
   }
   const parsedLevel = parseResult.value;
-  setData(splitLevelData(parsedLevel.levelData));
+  if (request !== latestOpen || revision !== getAssetState().revision) return;
 
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
     if (parsedLevel.mapImages.length === 0) {
@@ -122,8 +113,8 @@ export async function openFile({
       id: loadToastId,
       description: url,
     });
-    const imgResResult = await ResultAsync.fromPromise(fetch(url), mapErr);
-    if (imgResResult.isErr() || !imgResResult.value.ok) {
+    const imgResResult = await fetchAsset(url);
+    if (imgResResult.isErr()) {
       toast.error("Failed to download texture file", {
         id: loadToastId,
         description: url,
@@ -131,15 +122,12 @@ export async function openFile({
       console.error("[terrain] failed to download TRT texture file", {
         gameName: gameType.GAME_NAME,
         url,
-        error: imgResResult.isErr()
-          ? imgResResult.error
-          : imgResResult.value.status,
+        error: imgResResult.error.message,
       });
       return;
     }
-    const img = await imgResResult.value.blob();
-    const imgFile = new File([img], url.split("/").pop() ?? "");
-    const imgBuffer = await imgFile.arrayBuffer();
+    const imgBuffer = imgResResult.value;
+    const imgFile = new File([imgBuffer], url.split("/").pop() ?? "");
     toast.loading("Decoding terrain textures...", {
       id: loadToastId,
       description: imgFile.name,
@@ -172,11 +160,12 @@ export async function openFile({
       fileName: imgFile.name,
       tileCount: tilesResult.value.length,
     });
+    if (request !== latestOpen || revision !== getAssetState().revision) return;
     setMapImagesFile(imgFile);
     setMapImages(canvasesResult.value);
   } else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
-    const imgResResult = await ResultAsync.fromPromise(fetch(url), mapErr);
-    if (imgResResult.isErr() || !imgResResult.value.ok) {
+    const imgResResult = await fetchAsset(url);
+    if (imgResResult.isErr()) {
       toast.error("Failed to download texture file", {
         id: loadToastId,
         description: url,
@@ -184,15 +173,12 @@ export async function openFile({
       console.error("[terrain] failed to download texture file", {
         gameName: gameType.GAME_NAME,
         url,
-        error: imgResResult.isErr()
-          ? imgResResult.error
-          : imgResResult.value.status,
+        error: imgResResult.error.message,
       });
       return;
     }
-    const img = await imgResResult.value.blob();
-    const imgFile = new File([img], url.split("/").pop() ?? "");
-    const imgBuffer = await imgFile.arrayBuffer();
+    const imgBuffer = imgResResult.value;
+    const imgFile = new File([imgBuffer], url.split("/").pop() ?? "");
     toast.loading("Decoding terrain textures...", {
       id: loadToastId,
       description: imgFile.name,
@@ -229,6 +215,7 @@ export async function openFile({
       });
       return;
     }
+    if (request !== latestOpen || revision !== getAssetState().revision) return;
     toast.success("Terrain textures decoded", {
       id: loadToastId,
       description: `${mapImagesResult.value.length} supertiles`,
@@ -244,5 +231,8 @@ export async function openFile({
     setMapImagesFile(new File([], `${baseName}_tiles.bin`));
     setMapImages([...parsedLevel.mapImages]);
   }
+  setGlobals(gameType);
+  setMapFile(new File([file], name));
+  setData(splitLevelData(parsedLevel.levelData));
   toast.success("Level loaded", { id: loadToastId });
 }

@@ -28,6 +28,9 @@ import {
 } from "./rotationUtils";
 import { plainObjectSchema, getNumberField } from "../schemas/common";
 import { z } from "zod";
+import { sampleAnimationChannel, sharedChannelTimes } from "./animationSampling";
+import { animationRestPose } from "./animationRestPose";
+import { parseNativeRotations, recordNativeRotations, unchangedNativeRotation, type NativeRotationTracks } from "./nativeRotationMetadata";
 
 const ANIMATION_EXTRA_NAMESPACE = "pangears";
 const accelerationModesSchema = z.record(z.string(), z.array(z.number().int()));
@@ -77,6 +80,7 @@ interface ProcessedAnimation {
   channels: AnimationChannelData[];
   events: BG3DAnimationEvent[];
   accelerationModes: Record<string, number[]>;
+  nativeRotations: NativeRotationTracks;
 }
 
 interface AnimationChannelData {
@@ -429,6 +433,7 @@ function processSkeletonAnimations(
       channels,
       events,
       accelerationModes,
+      nativeRotations: recordNativeRotations(anim.keyframes),
     };
   });
 }
@@ -623,6 +628,7 @@ function createGltfAnimations(
           value: event.value,
         })),
         accelerationModes: anim.accelerationModes,
+        nativeRotations: anim.nativeRotations,
       },
     });
 
@@ -747,6 +753,12 @@ export function extractAnimationsFromGLTF(
   // We need the joints to map back to bone indices
   const firstSkin = skins[0];
   const joints = firstSkin ? firstSkin.listJoints() : [];
+  if (animations.length === 0 && joints.length > 0) {
+    return [{
+      name: "Bind pose", numAnimEvents: 0, events: [],
+      keyframes: Object.fromEntries(joints.map((joint, index) => [String(index), [animationRestPose(joint, index, bones)]])),
+    }];
+  }
 
   return animations.map((anim) => {
     console.log(`Extracting animation "${anim.getName()}" from glTF`);
@@ -759,6 +771,7 @@ export function extractAnimationsFromGLTF(
     const accelerationModes = namespace?.success
       ? accelerationModesSchema.safeParse(namespace.data.accelerationModes)
       : undefined;
+    const nativeRotations = parseNativeRotations(namespace?.success ? namespace.data.nativeRotations : undefined);
 
     // Process each channel in the animation
     const channels = anim.listChannels();
@@ -767,7 +780,7 @@ export function extractAnimationsFromGLTF(
       const sampler = channel.getSampler();
       const path = channel.getTargetPath();
 
-      if (!target || !sampler) return;
+      if (!target || !sampler || path === "weights") return;
 
       // Find the bone index for this joint
       const boneIndex = joints.indexOf(target);
@@ -786,8 +799,8 @@ export function extractAnimationsFromGLTF(
 
       if (!inputArray || !outputArray) return;
 
-      const times = Array.from(inputArray);
-      const values = Array.from(outputArray);
+      const times = sharedChannelTimes(channels.filter((candidate) => candidate.getTargetNode() === target && candidate.getTargetPath() !== "weights"));
+      const values = times.flatMap((time) => sampleAnimationChannel(channel, time));
 
       // Initialize keyframes for this bone if not exists
       if (!keyframes[boneIndexStr]) {
@@ -803,9 +816,6 @@ export function extractAnimationsFromGLTF(
             ? 3
             : 1;
 
-      // Get bone rest pose for converting relative translations to absolute
-      const bone = bones && boneIndex < bones.length ? bones[boneIndex] : null;
-
       for (let i = 0; i < times.length; i++) {
         const time = times[i];
         if (time === undefined) continue;
@@ -816,38 +826,7 @@ export function extractAnimationsFromGLTF(
         if (!boneKeyframes) continue;
         let keyframe = boneKeyframes.find((kf) => kf.tick === tick);
         if (!keyframe) {
-          // Initialize with bone's LOCAL rest position (computed from absolute coords)
-          // For root bone: localPos = bone.coord
-          // For child bone: localPos = bone.coord - parent.coord
-          let localX = bone?.coordX ?? 0;
-          let localY = bone?.coordY ?? 0;
-          let localZ = bone?.coordZ ?? 0;
-          if (
-            bone &&
-            bones &&
-            bone.parentBone >= 0 &&
-            bone.parentBone < bones.length
-          ) {
-            const parent = bones[bone.parentBone];
-            if (parent) {
-              localX = bone.coordX - parent.coordX;
-              localY = bone.coordY - parent.coordY;
-              localZ = bone.coordZ - parent.coordZ;
-            }
-          }
-          keyframe = {
-            tick,
-            accelerationMode: 1,
-            coordX: localX,
-            coordY: localY,
-            coordZ: localZ,
-            rotationX: 0,
-            rotationY: 0,
-            rotationZ: 0,
-            scaleX: 1,
-            scaleY: 1,
-            scaleZ: 1,
-          };
+          keyframe = { ...animationRestPose(target, boneIndex, bones), tick };
           keyframes[boneIndexStr].push(keyframe);
         }
 
@@ -856,9 +835,9 @@ export function extractAnimationsFromGLTF(
         if (path === "translation") {
           // glTF animation translation is LOCAL (same as Otto kf.coord)
           // No coordinate flip needed - both systems are compatible
-          const glTFX = values[valueIndex] || 0;
-          const glTFY = values[valueIndex + 1] || 0;
-          const glTFZ = values[valueIndex + 2] || 0;
+          const glTFX = values[valueIndex] ?? 0;
+          const glTFY = values[valueIndex + 1] ?? 0;
+          const glTFZ = values[valueIndex + 2] ?? 0;
 
           keyframe.coordX = glTFX;
           keyframe.coordY = glTFY;
@@ -866,21 +845,27 @@ export function extractAnimationsFromGLTF(
         } else if (path === "rotation") {
           // Convert quaternion (x, y, z, w) back to Euler angles (extrinsic XYZ order)
           // This matches Otto's OGLMatrix4x4_SetRotate_XYZ which uses R = Rz * Ry * Rx
-          const qx = values[valueIndex] || 0;
-          const qy = values[valueIndex + 1] || 0;
-          const qz = values[valueIndex + 2] || 0;
-          const qw = values[valueIndex + 3] || 1;
+          const qx = values[valueIndex] ?? 0;
+          const qy = values[valueIndex + 1] ?? 0;
+          const qz = values[valueIndex + 2] ?? 0;
+          const qw = values[valueIndex + 3] ?? 1;
           const [rx, ry, rz] = quaternionToEuler(qx, qy, qz, qw);
-          keyframe.rotationX = rx;
-          keyframe.rotationY = ry;
-          keyframe.rotationZ = rz;
+          const original = unchangedNativeRotation(nativeRotations, boneIndexStr, tick, [qx, qy, qz, qw]);
+          keyframe.rotationX = original?.rotationX ?? rx;
+          keyframe.rotationY = original?.rotationY ?? ry;
+          keyframe.rotationZ = original?.rotationZ ?? rz;
         } else if (path === "scale") {
-          keyframe.scaleX = values[valueIndex] || 1;
-          keyframe.scaleY = values[valueIndex + 1] || 1;
-          keyframe.scaleZ = values[valueIndex + 2] || 1;
+          keyframe.scaleX = values[valueIndex] ?? 1;
+          keyframe.scaleY = values[valueIndex + 1] ?? 1;
+          keyframe.scaleZ = values[valueIndex + 2] ?? 1;
         }
       }
     });
+
+    // Native playback stops at the first joint without keys, including static joints.
+    for (const [index, joint] of joints.entries()) {
+      if (!keyframes[String(index)]?.length) keyframes[String(index)] = [animationRestPose(joint, index, bones)];
+    }
 
     // Sort keyframes by tick for each bone
     Object.values(keyframes).forEach((boneKeyframes) => {

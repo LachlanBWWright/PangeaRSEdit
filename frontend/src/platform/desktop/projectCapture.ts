@@ -11,6 +11,7 @@ function identity(value: object | null): number {
   identities.set(value, nextIdentity);
   return nextIdentity;
 }
+export function assetCaptureKey(token: object | null) { return String(identity(token)); }
 
 export function projectCaptureKey(input: LevelProjectInput | null): string {
   if (!input) return "";

@@ -1,4 +1,5 @@
 import { Game } from "@/data/globals/globals";
+import { versionedAssetUrl } from "@/assets/assetState";
 import type { AnimationInfo } from "@/components/AnimationViewer";
 
 export function getDefaultAnimationName(gameType: Game): string | null {
@@ -22,12 +23,12 @@ export function getDefaultAnimationName(gameType: Game): string | null {
   }
 }
 
-export function resolveGltfUrl(gltfUrl?: string): string | null {
+export function resolveGltfUrl(gltfUrl?: string, revision?: number): string | null {
   if (!gltfUrl) {
     return null;
   }
-  const base = (import.meta.env?.BASE_URL as string | undefined) ?? "/";
-  return base + gltfUrl.replace(/^\//, "");
+  if (/^[a-z][a-z0-9+.-]*:/i.test(gltfUrl)) return gltfUrl;
+  return versionedAssetUrl(import.meta.env.BASE_URL + gltfUrl.replace(/^\//, ""), revision);
 }
 
 export function pickTargetAnimation(

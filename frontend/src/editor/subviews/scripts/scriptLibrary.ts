@@ -3,10 +3,13 @@ import { err, ok, Result } from "neverthrow";
 import { z } from "zod";
 import { scriptBehaviorDefinitionSchema, scriptCustomObjectDefinitionSchema, scriptParameterDefinitionSchema } from "./scriptWorkspaceStateTypes";
 import type { ScriptBehaviorDefinition, ScriptWorkspaceState } from "./scriptWorkspaceState";
-import { collectScriptSources, definitionAssetPaths, isDefinitionAssetPath, isDefinitionSourcePath } from "./scriptDefinitionDependencies";
+import { collectScriptSources, collectSourceDependencies, definitionAssetPaths, isDefinitionAssetPath, isDefinitionSourcePath } from "./scriptDefinitionDependencies";
 import { buildScriptIdeSupportFiles } from "./scriptIdePackage";
 import { buildScriptTypeDeclarationFiles } from "./scriptTypeDeclarations";
 import { validateUploadedScriptAssetAsync } from "./scriptAssetValidation";
+import type { PortableAssets } from "@pangea/desktop-contracts";
+import { authoringArchiveFiles, collectScriptAuthoringAssets, isAuthoringArchivePath, readAuthoringArchiveFiles, type ScriptAuthoringExportOptions } from "./scriptAuthoringAttachments";
+import { resolveDesktopProjectAssets } from "@/platform/desktop/projectScriptAssets";
 
 const sourcePath = z.string().refine(isDefinitionSourcePath);
 const librarySchema = z.object({
@@ -20,9 +23,10 @@ export interface ScriptLibrary {
   manifest: Omit<z.infer<typeof librarySchema>, "behaviors"> & { readonly behaviors: readonly ScriptBehaviorDefinition[] };
   sources: Readonly<Record<string, string>>;
   assets: Readonly<Record<string, Uint8Array>>;
+  authoringAssets?: PortableAssets | null;
 }
 
-export function buildScriptLibrary(state: ScriptWorkspaceState): Result<Uint8Array, string> {
+export function buildScriptLibrary(state: ScriptWorkspaceState, authoringAssets: PortableAssets | null = state.authoringAssets ?? null): Result<Uint8Array, string> {
   const catalogSources = new Set(state.behaviorCatalog.map((behavior) => behavior.sourceFilePath));
   const roots = Object.keys(state.sourceFiles).filter((path) => isDefinitionSourcePath(path)
     && !state.sourceFiles[path]?.readOnly
@@ -43,6 +47,7 @@ export function buildScriptLibrary(state: ScriptWorkspaceState): Result<Uint8Arr
   const schema = Result.fromThrowable(() => z.toJSONSchema(librarySchema), () => "Could not generate the library's JSON schema.")();
   if (schema.isErr()) return err(schema.error);
   const files: Record<string, Uint8Array> = {
+    ...authoringArchiveFiles(authoringAssets),
     "library.json": strToU8(JSON.stringify({ $schema: "./library.schema.json", ...manifest }, null, 2)),
     "library.schema.json": strToU8(JSON.stringify(schema.value, null, 2)),
   };
@@ -54,7 +59,16 @@ export function buildScriptLibrary(state: ScriptWorkspaceState): Result<Uint8Arr
   return Result.fromThrowable(() => zipSync(files, { level: 6 }), () => "Could not export the shared library.")();
 }
 
+export async function buildScriptLibraryAsync(state: ScriptWorkspaceState, options: ScriptAuthoringExportOptions = {}) {
+  const resolved = await resolveDesktopProjectAssets(state);
+  if (resolved.isErr()) return err(resolved.error);
+  const attachment = await collectScriptAuthoringAssets(resolved.value, options);
+  return attachment.isErr() ? err(attachment.error) : buildScriptLibrary(resolved.value, attachment.value);
+}
+
 function validateLibraryReferences(library: ScriptLibrary): Result<true, string> {
+  const dependencies = collectSourceDependencies(library.sources, library.manifest.sources);
+  if (dependencies.isErr()) return err(dependencies.error);
   for (const group of [library.manifest.objects, library.manifest.behaviors, library.manifest.params]) {
     const ids = group.map((entry) => entry.id);
     if (new Set(ids).size !== ids.length) return err("Library contains duplicate IDs.");
@@ -75,13 +89,13 @@ export async function readScriptLibrary(bytes: Uint8Array, gameId: string): Prom
   let unpackedSize = 0;
   let exceedsBudget = false;
   const archive = Result.fromThrowable(() => unzipSync(bytes, { filter: (file) => {
-    if (file.name !== "library.json" && !isDefinitionSourcePath(file.name) && !isDefinitionAssetPath(file.name)) return false;
+    if (file.name !== "library.json" && !isDefinitionSourcePath(file.name) && !isDefinitionAssetPath(file.name) && !isAuthoringArchivePath(file.name)) return false;
     unpackedSize += file.originalSize;
-    if (file.originalSize > 16 * 1024 * 1024 || unpackedSize > 64 * 1024 * 1024) { exceedsBudget = true; return false; }
+    if (file.originalSize > (isAuthoringArchivePath(file.name) ? 128 : 16) * 1024 * 1024 || unpackedSize > 576 * 1024 * 1024) { exceedsBudget = true; return false; }
     return true;
   } }), () => "Could not read the library ZIP.")();
   if (archive.isErr()) return err(archive.error);
-  if (exceedsBudget) return err("Library exceeds the 16 MiB per-file or 64 MiB total budget.");
+  if (exceedsBudget) return err("Library exceeds its extraction budget: 16 MiB per runtime file, 128 MiB per authoring file, or 576 MiB total.");
   const manifestBytes = archive.value["library.json"];
   if (!manifestBytes) return err("Choose a shared library ZIP containing library.json, rather than a workspace backup or object bundle.");
   const json = Result.fromThrowable((): unknown => JSON.parse(strFromU8(manifestBytes)), () => "Could not parse library.json.")();
@@ -107,6 +121,8 @@ export async function readScriptLibrary(bytes: Uint8Array, gameId: string): Prom
       assets[path] = file;
     }
   }
-  const library = { manifest: metadata, sources, assets };
+  const authoring = readAuthoringArchiveFiles(archive.value);
+  if (authoring.isErr()) return err(authoring.error);
+  const library = { manifest: metadata, sources, assets, authoringAssets: authoring.value };
   return validateLibraryReferences(library).map(() => library);
 }

@@ -13,7 +13,7 @@ export function CustomObjectUsage({ workspace, definition, update, onPlace, onSe
 }) {
   const usage = getObjectUsage(workspace, definition.id);
   return <div className="workbench-section">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3>Where this object is used</h3><p className="workbench-muted">One shared definition, separate placements in each level.</p></div>{onPlace && <Button onClick={() => onPlace(definition.id)}>Place in level</Button>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3>Where this object is used</h3><p className="workbench-muted">Appearance, collision and Lua behavior belong to the shared definition. Position and parameter overrides belong to each placement; changing positions here affects only that placement.</p></div>{onPlace && <Button onClick={() => onPlace(definition.id)}>Place in level</Button>}</div>
     {usage.length === 0 && <p className="workbench-notice">No instances yet. {onPlace ? "Place this object, then click its position on the map." : "Open a level and choose this object from its Objects tab to place an instance."}</p>}
     {usage.map((entry, index) => <section key={`${entry.levelKey}-${index}`} className="grid gap-3 rounded-lg border border-slate-700 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h3>{entry.label}</h3><p className="workbench-muted">{entry.levelKey === "current" ? "Unassigned level" : `Level ${entry.levelKey}`}</p></div>

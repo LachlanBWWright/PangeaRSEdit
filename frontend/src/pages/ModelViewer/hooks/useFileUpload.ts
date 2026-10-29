@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { guardModelUpload, type CurrentUploadOptions } from "./guardModelUpload";
 import { toast } from "sonner";
 import type {
   BG3DGltfWorkerMessage,
@@ -48,7 +49,7 @@ export interface UseFileUploadOptions {
   ) => void;
 }
 
-interface UploadRuntime extends UseFileUploadOptions {
+interface UploadRuntime extends CurrentUploadOptions {
   finalizeModelLoad: (
     displayFileName: string,
     result: ModelToGlbWorkerResponse,
@@ -56,7 +57,7 @@ interface UploadRuntime extends UseFileUploadOptions {
 }
 
 function createUploadRuntime(
-  options: UseFileUploadOptions,
+  options: CurrentUploadOptions,
   finalizeModelLoad: UploadRuntime["finalizeModelLoad"],
 ): UploadRuntime {
   return {
@@ -83,10 +84,10 @@ async function applyParsedIfPresent(
 }
 
 function failUpload(
-  runtime: UseFileUploadOptions,
+  runtime: CurrentUploadOptions,
   message: string,
 ): Result<void, string> {
-  toast.error(message);
+  if (runtime.isCurrent()) toast.error(message);
   runtime.onLoadingChange(false);
   return err(message);
 }
@@ -140,7 +141,7 @@ export async function parseGlbImportResult(
 }
 
 async function handleGltfUpload(
-  runtime: UseFileUploadOptions,
+  runtime: CurrentUploadOptions,
   bg3dFile: File,
 ): Promise<Result<void, string>> {
   const gltfBufferResult = await readFileBuffer(bg3dFile, "glTF/GLB file");
@@ -177,6 +178,7 @@ async function handleGltfUpload(
   runtime.onBg3dParsedChange(parsed);
   const textures = await extractTexturesFromBG3D(parsed);
   runtime.onTexturesChange(textures);
+  if (!runtime.isCurrent()) return err("Model load was superseded");
 
   if (
     responseResult.value.warnings &&
@@ -213,7 +215,7 @@ async function handleModelUpload(
   }
 
   const skeletonLoadResult = await loadOptionalSkeleton(skeletonFile);
-  if (skeletonLoadResult.warningMessage !== undefined) {
+  if (runtime.isCurrent() && skeletonLoadResult.warningMessage !== undefined) {
     toast.error(skeletonLoadResult.warningMessage);
   }
 
@@ -253,71 +255,58 @@ async function handleModelUpload(
  * @returns Object containing the uploadFile function
  */
 export function useFileUpload(options: UseFileUploadOptions) {
-  const {
-    onGltfUrlChange,
-    onGltfBufferChange,
-    onBg3dParsedChange,
-    onTexturesChange,
-    onLoadingChange,
-    onUploadStepChange,
-  } = options;
+  const generation = useRef(0);
+  useEffect(() => () => { generation.current++; }, []);
 
   const finalizeModelLoad = useCallback(
     async (
       displayFileName: string,
       result: ModelToGlbWorkerResponse,
+      currentOptions: CurrentUploadOptions,
     ): Promise<Result<void, string>> => {
       await applyParsedIfPresent(
         result.parsed,
-        onBg3dParsedChange,
-        onTexturesChange,
+        currentOptions.onBg3dParsedChange,
+        currentOptions.onTexturesChange,
       );
-
-      onGltfBufferChange(result.result);
+      if (!currentOptions.isCurrent()) return err("Model load was superseded");
+      currentOptions.onGltfBufferChange(result.result);
       const glbBlob = new Blob([result.result], { type: "model/gltf-binary" });
       const url = URL.createObjectURL(glbBlob);
-      onGltfUrlChange(url);
+      currentOptions.onGltfUrlChange(url);
 
       toast.success(`Successfully loaded ${displayFileName}`);
-      onUploadStepChange("completed");
-      onLoadingChange(false);
+      currentOptions.onUploadStepChange("completed");
+      currentOptions.onLoadingChange(false);
       return ok(undefined);
     },
-    [
-      onBg3dParsedChange,
-      onGltfBufferChange,
-      onGltfUrlChange,
-      onLoadingChange,
-      onTexturesChange,
-      onUploadStepChange,
-    ],
+    [],
   );
 
   const uploadFile = useCallback(
     async (
       bg3dFile: File,
       skeletonFile?: File,
+      isCurrent?: () => boolean,
     ): Promise<Result<void, string>> => {
       const selectionResult = validateUploadSelection(bg3dFile, skeletonFile);
       if (selectionResult.isErr())
         return reportInvalidSelection(selectionResult.error);
 
-      onLoadingChange(true);
+      const token = ++generation.current;
+      const current = () => generation.current === token && (isCurrent?.() ?? true);
+      const currentOptions = guardModelUpload(options, current);
+      currentOptions.onLoadingChange(true);
       const selection = selectionResult.value;
-      const runtime = createUploadRuntime(options, finalizeModelLoad);
-
-       if (selection.kind === "gltf")
-         return handleGltfUpload(options, selection.bg3dFile);
-
-      return handleModelUpload(
-        runtime,
-        selection.kind,
-        selection.bg3dFile,
-        selection.skeletonFile,
-      );
+      const runtime = createUploadRuntime(currentOptions, (name, result) => finalizeModelLoad(name, result, currentOptions));
+      const result = selection.kind === "gltf" ? await handleGltfUpload(currentOptions, selection.bg3dFile)
+        : await handleModelUpload(runtime, selection.kind, selection.bg3dFile, selection.skeletonFile);
+      if (generation.current === token && !current()) options.onLoadingChange(false);
+      return current() ? result : err("Model load was superseded");
     },
-    [finalizeModelLoad, onLoadingChange, options],
+    [finalizeModelLoad, options],
   );
 
-  return { uploadFile };
+  const cancelUpload = useCallback(() => { generation.current++; options.onLoadingChange(false); }, [options]);
+  return { uploadFile, cancelUpload };
 }

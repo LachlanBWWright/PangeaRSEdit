@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ScriptCustomObjectDefinition } from "./scriptWorkspaceState";
 import { ScriptNumberField } from "./ScriptNumberField";
+import { CustomObjectCollisionPreview } from "./CustomObjectCollisionPreview";
 
 const presetSchema = z.enum(["solidBox", "triggerBox", "pickup", "enemy", "platform"]);
 const presets = [
@@ -12,7 +13,7 @@ const presets = [
   { id: "platform", label: "Platform", description: "A platform collision category with explicit box dimensions." },
 ];
 
-export function CustomObjectCollision({ definition, onChange }: { definition: ScriptCustomObjectDefinition; onChange: (definition: ScriptCustomObjectDefinition) => void }) {
+export function CustomObjectCollision({ definition, gameId, onChange }: { definition: ScriptCustomObjectDefinition; gameId: string; onChange: (definition: ScriptCustomObjectDefinition) => void }) {
   const collision = definition.collision;
   const selected = collision.kind === "none" ? "none" : collision.preset;
   return <div className="workbench-section">
@@ -23,6 +24,7 @@ export function CustomObjectCollision({ definition, onChange }: { definition: Sc
         onChange({ ...definition, collision: parsed.success ? { kind: "preset", preset: parsed.data, bounds: collision.kind === "preset" ? collision.bounds : { width: 100, height: 100, depth: 100 } } : { kind: "none" } });
       }} /><span><span className="block font-medium">{preset.label}</span><span className="workbench-muted">{preset.description}</span></span>
     </label>)}</fieldset>
-    {collision.kind === "preset" && <div className="workbench-fields">{(["width", "height", "depth"] satisfies readonly ("width" | "height" | "depth")[]).map((axis) => <ScriptNumberField key={axis} label={`Collision ${axis}`} value={collision.bounds?.[axis] ?? 100} min={0.01} max={1000} step={0.1} onChange={(value) => onChange({ ...definition, collision: { ...collision, bounds: { width: 100, height: 100, depth: 100, ...collision.bounds, [axis]: value } } })} />)}</div>}
+    {collision.kind === "preset" && <div className="workbench-fields">{(["width", "height", "depth"] satisfies readonly ("width" | "height" | "depth")[]).filter((axis) => gameId !== "MightyMike-Android" || axis !== "depth").map((axis) => <ScriptNumberField key={axis} label={`Collision ${axis}`} value={collision.bounds?.[axis] ?? 100} min={0.01} max={1000} step={0.1} onChange={(value) => onChange({ ...definition, collision: { ...collision, bounds: { width: 100, height: 100, depth: 100, ...collision.bounds, [axis]: value } } })} />)}</div>}
+    <CustomObjectCollisionPreview definition={definition} gameId={gameId} />
   </div>;
 }

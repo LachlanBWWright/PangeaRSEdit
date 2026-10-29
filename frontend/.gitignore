@@ -25,7 +25,7 @@ dist-ssr
 
 # Test artifacts
 screenshots/
-test-results/
+test-results*/
 playwright-report/
 coverage/
 coverage-storybook/

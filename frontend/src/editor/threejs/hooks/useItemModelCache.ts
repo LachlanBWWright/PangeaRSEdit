@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Group } from "three";
-import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { Game } from "@/data/globals/globals";
 import type { ItemModelKind } from "@/data/items/itemModelTypes";
 import { DEFAULT_ITEM_MODEL_PARAMS } from "@/data/items/itemModelPreview";
 import { getItemModelCacheKey, type ItemModelParams } from "./itemModelCacheKey";
 import { loadResolvedItemModel } from "./itemModelPreviewLoader";
+import { ItemModelSession } from "./itemModelSession";
+import { useAssetState } from "@/assets/useAssetState";
 
 export interface CachedModel {
   readonly gltf: Group | null;
@@ -27,24 +28,12 @@ interface UseItemModelCacheReturn {
 }
 
 export function useItemModelCache(game: Game): UseItemModelCacheReturn {
-  const [modelCache, setModelCache] = useState<Map<string, CachedModel>>(new Map());
-  const modelCacheRef = useRef(modelCache);
-  const inFlightRef = useRef(new Set<string>());
-  const workerRef = useRef<Worker | null>(null);
-
-  useEffect(() => {
-    modelCacheRef.current = modelCache;
-  }, [modelCache]);
-
-  const getWorker = useCallback((): Worker => {
-    if (!workerRef.current) workerRef.current = new BG3DGltfWorker();
-    return workerRef.current;
-  }, []);
-
-  useEffect(() => () => {
-    workerRef.current?.terminate();
-    workerRef.current = null;
-  }, []);
+  const { revision } = useAssetState();
+  const identity = `${game}:${revision}`;
+  const session = useMemo(() => new ItemModelSession(identity), [identity]);
+  useEffect(() => { session.open(); return () => session.close(); }, [session]);
+  const [loaded, setLoaded] = useState<{ identity: string; models: Map<string, CachedModel> } | null>(null);
+  const modelCache = useMemo(() => loaded?.identity === identity ? loaded.models : new Map<string, CachedModel>(), [loaded, identity]);
 
   const loadModel = useCallback(async (
     itemType: number,
@@ -54,28 +43,36 @@ export function useItemModelCache(game: Game): UseItemModelCacheReturn {
     flags?: number,
   ): Promise<Group | null> => {
     const cacheKey = getItemModelCacheKey(game, itemType, params, levelNum, kind, flags);
-    const cached = modelCacheRef.current.get(cacheKey);
+    if (!session.active) return null;
+    const generation = session.generation;
+    const cached = session.models.get(cacheKey);
     if (cached && !cached.loading) return cached.gltf;
-    if (inFlightRef.current.has(cacheKey)) return null;
+    if (session.pending.has(cacheKey)) return null;
 
-    inFlightRef.current.add(cacheKey);
-    setModelCache((previous) => new Map(previous).set(cacheKey, { gltf: null, loading: true }));
-    const result = await loadResolvedItemModel({ game, kind, itemType, levelNum, params, flags }, getWorker());
-    inFlightRef.current.delete(cacheKey);
+    const worker = session.getWorker();
+    if (worker.isErr()) {
+      setLoaded({ identity, models: session.save(cacheKey, { gltf: null, loading: false, error: worker.error }) });
+      return null;
+    }
+    session.pending.add(cacheKey);
+    setLoaded({ identity, models: session.save(cacheKey, { gltf: null, loading: true }) });
+    const result = await loadResolvedItemModel({ game, kind, itemType, levelNum, params, flags }, worker.value);
+    if (!session.active || session.generation !== generation) return null;
+    session.pending.delete(cacheKey);
     if (result.isErr()) {
-      setModelCache((previous) => new Map(previous).set(cacheKey, {
+      setLoaded({ identity, models: session.save(cacheKey, {
         gltf: null,
         loading: false,
         error: result.error.message,
-      }));
+      }) });
       return null;
     }
-    setModelCache((previous) => new Map(previous).set(cacheKey, {
+    setLoaded({ identity, models: session.save(cacheKey, {
       gltf: result.value.scene,
       loading: false,
-    }));
+    }) });
     return result.value.scene;
-  }, [game, getWorker]);
+  }, [game, session, identity]);
 
   const getState = useCallback((itemType: number, params?: ItemModelParams, levelNum?: number, kind: ItemModelKind = "terrainItem", flags?: number) => {
     const key = getItemModelCacheKey(game, itemType, params, levelNum, kind, flags);

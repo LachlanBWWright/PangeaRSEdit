@@ -49,6 +49,7 @@ export function createUndoRedoKeyHandler(
   redoData: () => void,
 ): (e: KeyboardEvent) => void {
   return (e: KeyboardEvent) => {
+    if (e.defaultPrevented || document.activeElement?.closest("input, textarea, select, [contenteditable=true], .monaco-editor")) return;
     if (
       (e.ctrlKey || e.metaKey) &&
       !e.shiftKey &&

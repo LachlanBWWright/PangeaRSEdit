@@ -1,4 +1,5 @@
 import { err, ok, ResultAsync, type Result } from "neverthrow";
+import { fetchAsset } from "@/assets/fetchAsset";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType, Game } from "@/data/globals/globals";
 import { mapErr } from "@/utils/mapErr";
@@ -102,17 +103,8 @@ async function loadMightyMikeCompanionData({
     mapImagesFile = companionTextureFile;
   } else if (fileUrl) {
     const tilesetUrl = fileUrl.replace(/\.map-\d+$/i, ".tileset");
-    const fetchResult = await ResultAsync.fromPromise(fetch(tilesetUrl), mapErr);
-    if (fetchResult.isOk() && fetchResult.value.ok) {
-      const tilesetBytesResult = await ResultAsync.fromPromise(
-        fetchResult.value.arrayBuffer(),
-        mapErr,
-      );
-      if (tilesetBytesResult.isErr()) {
-        return err(
-          `Failed to read Mighty Mike tileset response: ${tilesetBytesResult.error}`,
-        );
-      }
+    const tilesetBytesResult = await fetchAsset(tilesetUrl);
+    if (tilesetBytesResult.isOk()) {
       tilesetBytes = tilesetBytesResult.value;
       mapImagesFile = new File(
         [tilesetBytesResult.value],

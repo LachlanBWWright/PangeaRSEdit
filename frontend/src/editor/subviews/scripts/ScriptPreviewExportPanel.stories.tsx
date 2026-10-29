@@ -1,6 +1,9 @@
 import { expect, fn, userEvent, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ScriptPreviewExportPanel } from "./ScriptPreviewExportPanel";
+import { OttoGlobals } from "@/data/globals/globals";
+import { createScriptWorkspaceContext, loadScriptSample } from "./scriptWorkspaceState";
+import { getScriptWorkspaceRevision } from "./scriptWorkflowEvidence";
 
 const meta = {
   title: "Scripts/Preview and Export Panel",
@@ -65,5 +68,26 @@ export const ExtendedWorkspace: Story = {
     expect(args.onDownloadOriginalCompatible).toHaveBeenCalledTimes(1);
     expect(args.onDownloadScriptPackage).toHaveBeenCalledTimes(1);
     expect(args.onUploadScriptPackage).toHaveBeenCalledTimes(1);
+  },
+};
+
+const workspace = loadScriptSample(createScriptWorkspaceContext(OttoGlobals, 0), "hover-beacon");
+const sourcePath = workspace.customObjects[0]?.sourceFilePath ?? "Data/Scripts/src/user.lua";
+
+export const DraftValidationAndDiagnostic: Story = {
+  args: {
+    ...ExtendedWorkspace.args,
+    workspace,
+    evidence: { validatedRevision: "previous-draft", launchedRevision: getScriptWorkspaceRevision(workspace) },
+    onOpenDiagnostic: fn(),
+    diagnostics: [{ category: "source-validation", severity: "error", code: "lua.syntax", message: "Expected end before return", filePath: sourcePath, line: 17, column: 4 }],
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/Scripting draft changed since validation/)).toBeVisible();
+    await expect(canvas.getByText(/Preview prepared for this scripting draft/)).toBeVisible();
+    await expect(canvas.getByText(/Test with scripts automatically builds/)).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Open source location" }));
+    await expect(args.onOpenDiagnostic).toHaveBeenCalledWith({ kind: "source", path: sourcePath, line: 17, column: 4 });
   },
 };

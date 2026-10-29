@@ -36,6 +36,7 @@ export function parseTilesetFile(
   buffer: ArrayBuffer,
   palette: RGBColor[],
 ): Result<MightyMikeTileset, string> {
+  if (buffer.byteLength < 8) return err("Tileset file is too small");
   // Decompress the tileset data
   const decompressResult = rlbDecompress(buffer);
   if (decompressResult.isErr()) {
@@ -45,10 +46,15 @@ export function parseTilesetFile(
   const decompressed = decompressResult.value.data;
   const view = new DataView(decompressed);
   const bytes = new Uint8Array(decompressed);
+  if (bytes.length < 30) return err("Tileset header is incomplete");
 
   // Read offset pointers (big-endian) - these point to offsets within the data
   const offsetToTileDefinitions = view.getUint32(6, false);
   const offsetToXlateTable = view.getUint32(10, false);
+  if (offsetToTileDefinitions < 30 || offsetToTileDefinitions + 2 > bytes.length
+    || offsetToXlateTable < 30 || offsetToXlateTable + 2 > bytes.length) return err("Invalid tileset section offset");
+  const definitionCount = view.getUint16(offsetToTileDefinitions, false);
+  if (!definitionCount || offsetToTileDefinitions + 2 + definitionCount * 1024 > bytes.length) return err("Invalid tile definition count");
 
   // Skip the count uint16 for each section (as per Mighty Mike source)
   const tileDefCountOffset = offsetToTileDefinitions + 2;
@@ -56,12 +62,14 @@ export function parseTilesetFile(
 
   // Read counts
   const numXlateEntries = view.getUint16(offsetToXlateTable, false);
+  if (offsetToXlateTable + 2 + numXlateEntries * 2 > bytes.length) return err("Incomplete tileset translation table");
 
   // Read and byteswap the xlate table (big-endian int16 values)
   const xlateTable: number[] = [];
   for (let i = 0; i < numXlateEntries; i++) {
     const offset = xlateCountOffset + i * 2;
     const value = view.getInt16(offset, false); // big-endian
+    if (value < 0 || value >= definitionCount) return err("Invalid tile definition reference");
     xlateTable.push(value);
   }
 

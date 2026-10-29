@@ -426,9 +426,9 @@ export function GameCard({
         </div>
 
         <div className="flex-none flex flex-col items-center">
-          {!assets.available ? <div className={cn(GAME_CARD_PREVIEW_HEIGHT_CLASS, "flex flex-col items-center justify-center gap-3 text-center text-sm text-slate-300")}>
-            <p>Stock levels and previews are an optional download.</p>
-            <Button variant="outline" onClick={assets.openDownloads}>Get editor assets</Button>
+          {!assets.levelsAvailable ? <div className={cn(GAME_CARD_PREVIEW_HEIGHT_CLASS, "flex flex-col items-center justify-center gap-3 text-center text-sm text-slate-300")}>
+            <p>Stock levels are an optional download.</p>
+            <Button variant="outline" onClick={assets.openDownloads}>Get game data</Button>
           </div> : isMightyMike ? (
             <MightyMikePreview className={GAME_CARD_PREVIEW_HEIGHT_CLASS} />
           ) : (
@@ -448,7 +448,7 @@ export function GameCard({
             >
               Create Blank Level
             </Button>
-            {assets.available && children}
+            {assets.levelsAvailable && children}
           </div>
         </div>
 

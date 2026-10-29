@@ -10,6 +10,13 @@ import { downloadGame, unpackGame } from "./gameDownload.ts";
 import { findInstallation, installationRecord } from "./gameInstallation.ts";
 import { launchGame } from "./gameLaunch.ts";
 import { EditorAssets } from "./editorAssets.ts";
+import { GameRuns } from "./gameRuns.ts";
+import type { GameRun } from "@pangea/desktop-contracts";
+import { listGameAssetFiles } from "./gameAssetFiles.ts";
+import { upstreamCatalog } from "./upstreamCatalog.ts";
+import { downloadUpstream, unpackUpstream } from "./upstreamDownload.ts";
+
+const cachedInstallationSchema = z.union([installationSchema, installationSchema.extend({ assetRootVersion: z.literal(1) })]);
 
 export class GameStore {
   private catalog: ReleaseManifest[] = [];
@@ -17,20 +24,22 @@ export class GameStore {
   private installations: Installation[] = [];
   private running = new Map<GameId, number>();
   public readonly assets: EditorAssets;
+  public readonly runs: GameRuns;
   constructor(private readonly root: string,
-    private readonly progress: (game: GameId, received: number, total: number) => void) { this.assets = new EditorAssets(root); }
+    private readonly progress: (game: GameId, received: number, total: number) => void,
+    notifyRun: (runs: GameRun[]) => void = () => undefined) { this.assets = new EditorAssets(root, () => this.installations); this.runs = new GameRuns(notifyRun); }
 
   public async load(): Promise<Result<Installation[], HostError>> {
     const info = await statOrMissing(path.join(this.root, "installed.json"));
     if (info.isErr()) return err(info.error);
-    if (!info.value) return ok([]);
+    if (!info.value) { this.installations = []; return ok([]); }
     const bytes = await io(() => fs.readFile(path.join(this.root, "installed.json"), "utf8"), "Cannot read installed games");
     if (bytes.isErr()) return err(bytes.error);
     const json = parseJson(bytes.value);
     if (json.isErr()) return err(json.error);
-    const parsed = z.array(installationSchema).safeParse(json.value);
+    const parsed = z.array(cachedInstallationSchema).safeParse(json.value);
     if (!parsed.success) return err(failure("Invalid installed game registry", "invalid"));
-    this.installations = parsed.data;
+    this.installations = parsed.data.flatMap((entry) => entry.assetRootVersion === 2 ? [entry] : []);
     return ok(this.installations);
   }
 
@@ -40,19 +49,33 @@ export class GameStore {
     return catalog;
   }
 
-  public async install(game: GameId, tag: string, kind: "runtime" | "editor-assets" = "runtime"): Promise<Result<unknown, HostError>> {
+  public assetFiles(game: GameId) {
+    const data = this.assets.dataRoot(game);
+    return data ? listGameAssetFiles(data) : err(failure("Install a native game or fetch stock data to choose replacement targets", "not-installed"));
+  }
+
+  public async readAsset(game: GameId, relative: string): Promise<Result<ProjectFile, HostError>> {
+    const location = await this.assets.nativeFile(game, relative);
+    if (location.isErr()) return err(location.error);
+    const info = await io(() => fs.stat(location.value), "Cannot inspect native asset");
+    if (info.isErr()) return err(info.error);
+    if (!info.value.isFile() || info.value.size > 16 * 1024 * 1024) return err(failure("Native asset exceeds the 16 MiB limit", "limit"));
+    const bytes = await io(() => fs.readFile(location.value), "Cannot read native asset");
+    return bytes.isErr() ? err(bytes.error) : ok({ path: relative, bytes: Uint8Array.from(bytes.value) });
+  }
+
+  public async install(game: GameId, tag: string): Promise<Result<unknown, HostError>> {
     if (this.downloads.size > 0) return err(failure("Wait for the current download to finish", "busy"));
     if (this.running.get(game)) return err(failure("Close this game before updating it", "busy"));
     const release = this.catalog.find((item) => item.tag === tag);
-    const asset = release?.assets.find((item) => item.game === game && item.kind === kind
-      && (kind === "editor-assets" || item.platform === process.platform && (item.arch === process.arch || item.arch === "universal")));
+    const asset = release?.assets.find((item) => item.game === game && item.kind === "runtime"
+      && item.platform === process.platform && (item.arch === process.arch || item.arch === "universal"));
     if (!asset) return err(failure("No compatible package in this release", "unavailable"));
-    const directory = kind === "editor-assets" ? path.join(this.root, "editor-assets", game, randomUUID())
-      : path.join(this.root, game, randomUUID());
-    const created = await io(() => fs.mkdir(directory, { recursive: true }), "Cannot create game installation directory");
-    if (created.isErr()) return err(created.error);
     const controller = new AbortController();
     this.downloads.set(game, controller);
+    const directory = path.join(this.root, game, randomUUID());
+    const created = await io(() => fs.mkdir(directory, { recursive: true }), "Cannot create game installation directory");
+    if (created.isErr()) { this.downloads.delete(game); return err(created.error); }
     const archive = path.join(directory, asset.filename);
     const downloaded = await downloadGame(asset, tag, archive, controller.signal,
       (received) => this.progress(game, received, asset.size));
@@ -61,7 +84,6 @@ export class GameStore {
     else {
       const unpacked = await unpackGame(asset, archive, directory);
       if (unpacked.isErr()) result = err(unpacked.error);
-      else if (kind === "editor-assets") result = await this.assets.register(game, tag, unpacked.value);
       else {
         const found = await findInstallation(unpacked.value, game);
         result = found.isErr() ? err(found.error)
@@ -77,6 +99,38 @@ export class GameStore {
   public cancel(game: GameId): Result<void, HostError> {
     this.downloads.get(game)?.abort();
     return ok(undefined);
+  }
+
+  public async installUpstreamData(game: GameId): Promise<Result<unknown, HostError>> {
+    if (this.downloads.size > 0) return err(failure("Wait for the current download to finish", "busy"));
+    const release = upstreamCatalog().find((item) => item.game === game);
+    if (!release) return err(failure("No upstream stock data is available for this game", "unavailable"));
+    const controller = new AbortController();
+    this.downloads.set(game, controller);
+    const directory = path.join(this.root, "editor-assets", game, randomUUID());
+    const archive = path.join(directory, release.filename);
+    const made = await io(() => fs.mkdir(directory, { recursive: true }), "Cannot create stock data installation");
+    let result: Result<unknown, HostError> = made;
+    if (made.isOk()) {
+      const downloaded = await downloadUpstream(release, archive, controller.signal,
+        (received) => this.progress(game, received, release.size));
+      if (downloaded.isErr()) result = err(downloaded.error);
+      else {
+        const unpacked = await unpackUpstream(release, archive, directory, controller.signal);
+        if (unpacked.isErr()) result = err(unpacked.error);
+        else if (controller.signal.aborted) result = err(failure("Data download cancelled", "cancelled"));
+        else result = await this.assets.register(game, release.version, directory,
+          { source: "upstream", dataRoot: unpacked.value, releaseUrl: release.releaseUrl });
+      }
+    }
+    await io(() => fs.rm(archive, { force: true }), "Cannot remove upstream archive");
+    if (result.isErr()) await io(() => fs.rm(directory, { recursive: true, force: true }), "Cannot clean incomplete stock data");
+    this.downloads.delete(game);
+    return result;
+  }
+
+  public removeAssets(game: GameId) {
+    return this.downloads.has(game) ? err(failure("Cancel the active download first", "busy")) : this.assets.remove(game);
   }
 
   public async locate(game: GameId, folder: string) {
@@ -113,14 +167,16 @@ export class GameStore {
     return ok(next);
   }
 
-  public async launch(game: GameId, files?: ProjectFile[], args: string[] = []): Promise<Result<void, HostError>> {
+  public async launch(game: GameId, files?: ProjectFile[], args: string[] = [], sourceProject: string | null = null): Promise<Result<void, HostError>> {
     const installation = this.installations.find((item) => item.game === game);
     if (!installation) return err(failure("Install or locate this game in Games first", "not-installed"));
+    if ([...this.running.values()].reduce((sum, count) => sum + count, 0) >= 8) return err(failure("Close a running game before launching another", "limit"));
     const runRoot = path.join(this.root, "runs", randomUUID());
+    const run = this.runs.begin(game, () => this.launch(game, files, args, sourceProject), sourceProject);
     this.running.set(game, (this.running.get(game) ?? 0) + 1);
     const released = () => this.running.set(game, Math.max(0, (this.running.get(game) ?? 0) - 1));
-    const result = await launchGame(installation, runRoot, files, args, released);
-    if (result.isErr()) { released(); await io(() => fs.rm(runRoot, { recursive: true, force: true }), "Cannot clean failed test"); }
+    const result = await launchGame(installation, runRoot, files, args, released, run.observer);
+    if (result.isErr()) { this.runs.failed(run.id, result.error.message); released(); await io(() => fs.rm(runRoot, { recursive: true, force: true }), "Cannot clean failed test"); }
     return result;
   }
 }

@@ -19,6 +19,7 @@ import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useItemModelCache";
 import { getItemModelCacheKey } from "./hooks/itemModelCacheKey";
+import { useAssetState } from "@/assets/useAssetState";
 import { cloneGroupForItemRendering } from "./hooks/itemModelLoaderUtils";
 import { getGameMapper } from "@/data/items/mappers";
 import {
@@ -236,6 +237,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const currentGame = globals.GAME_TYPE;
 
   const { modelCache, loadModel } = useItemModelCache(currentGame);
+  const { revision: assetRevision } = useAssetState();
   const items = itemData.Itms?.[1000]?.obj;
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
   const getItemCacheKey = useCallback(
@@ -246,8 +248,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       p2: number,
       p3: number,
     ): string =>
-      getItemModelCacheKey(currentGame, itemType, { p0, p1, p2, p3 }, levelNum),
-    [currentGame, levelNum],
+      getItemModelCacheKey(currentGame, itemType, { p0, p1, p2, p3 }, levelNum, "terrainItem", undefined, assetRevision),
+    [currentGame, levelNum, assetRevision],
   );
   const itemsByCacheKey = useMemo(() => {
     if (!items) return new Map<string, typeof items>();

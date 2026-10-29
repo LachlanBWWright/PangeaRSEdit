@@ -55,11 +55,55 @@ jobs:
       - name: Verify staged scripting WASM artifacts
         run: pnpm run check:scripting-wasm
 
+      - name: Test native editor compatibility probes
+        working-directory: .
+        run: |
+          cmake -S games/pangea-ports/shared/tests/editor_probe -B build/editor-probe-tests
+          cmake --build build/editor-probe-tests --parallel 2
+          ctest --test-dir build/editor-probe-tests --output-on-failure --no-tests=error
+
       - name: Build supported native scripting adapters
         working-directory: .
         env:
           PANGEA_NATIVE_JOBS: "2"
         run: ./scripts/build-pangea-ports.sh --target native
+
+      - name: Test all eight native scripting adapters
+        working-directory: .
+        run: |
+          for entry in \
+            OttoMatic-Android:BUILD_TESTING \
+            Bugdom-android:PANGEA_BUILD_GAMEPLAY_TESTS \
+            Bugdom2-Android:PANGEA_BUILD_SCRIPT_TESTS \
+            Nanosaur-android:PANGEA_BUILD_NATIVE_SCRIPT_TESTS \
+            Nanosaur2-Android:PANGEA_BUILD_GAMEPLAY_TESTS \
+            CroMagRally-Android:PANGEA_BUILD_SCRIPT_ADAPTER_TESTS \
+            BillyFrontier-Android:BUILD_TESTING \
+            MightyMike-Android:PANGEA_GAME_TESTS; do
+            IFS=: read -r game test_option <<< "$entry"
+            game_dir="games/pangea-ports/games/$game"
+            cmake -S "$game_dir" -B "$game_dir/build" "-D$test_option=ON"
+            cmake --build "$game_dir/build" --parallel 2
+            ctest --test-dir "$game_dir/build" --output-on-failure --no-tests=error
+          done
+
+      - name: Test enemy admission with population limits enabled and disabled
+        working-directory: .
+        run: |
+          for limits in OFF ON; do
+            cmake -S games/pangea-ports/games/MightyMike-Android -B games/pangea-ports/games/MightyMike-Android/build -DPANGEA_GAME_TESTS=ON -DPANGEA_ENABLE_ENEMY_LIMITS="$limits"
+            cmake --build games/pangea-ports/games/MightyMike-Android/build --target MikeEnemyLimitsTests --parallel 2
+            ctest --test-dir games/pangea-ports/games/MightyMike-Android/build -R '^mike_enemy_limits$' --output-on-failure --no-tests=error
+            cmake -S games/pangea-ports/games/Nanosaur-android -B games/pangea-ports/games/Nanosaur-android/build -DPANGEA_BUILD_NATIVE_SCRIPT_TESTS=ON -DPANGEA_ENABLE_ENEMY_LIMITS="$limits"
+            cmake --build games/pangea-ports/games/Nanosaur-android/build --target nanosaur_enemy_admission_test --parallel 2
+            ctest --test-dir games/pangea-ports/games/Nanosaur-android/build -R '^nanosaur_enemy_admission$' --output-on-failure --no-tests=error
+            cmake -S games/pangea-ports/games/Nanosaur2-Android -B games/pangea-ports/games/Nanosaur2-Android/build -DPANGEA_BUILD_GAMEPLAY_TESTS=ON -DPANGEA_ENABLE_ENEMY_LIMITS="$limits"
+            cmake --build games/pangea-ports/games/Nanosaur2-Android/build --target Nanosaur2EnemyAdmissionTests Nanosaur2DirectLevelModeTests --parallel 2
+            ctest --test-dir games/pangea-ports/games/Nanosaur2-Android/build -R '^nanosaur2_(enemy_admission|direct_level_mode)$' --output-on-failure --no-tests=error
+          done
+          cmake -S games/pangea-ports/games/MightyMike-Android -B games/pangea-ports/games/MightyMike-Android/build -DPANGEA_ENABLE_ENEMY_LIMITS=OFF
+          cmake -S games/pangea-ports/games/Nanosaur-android -B games/pangea-ports/games/Nanosaur-android/build -DPANGEA_ENABLE_ENEMY_LIMITS=OFF
+          cmake -S games/pangea-ports/games/Nanosaur2-Android -B games/pangea-ports/games/Nanosaur2-Android/build -DPANGEA_ENABLE_ENEMY_LIMITS=OFF
 
       - name: Run shared scripting native and WASM conformance tests
         working-directory: .
@@ -74,6 +118,24 @@ jobs:
 
       - name: Verify frontend test discovery
         run: pnpm run test:discovery
+
+      - name: Check scripting lifetimes with sanitizers
+        working-directory: .
+        run: |
+          cmake -S games/pangea-ports/shared/script -B build/pangea-script-sanitized \
+            -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/pangea-script-sanitized --parallel 2
+          ctest --test-dir build/pangea-script-sanitized --output-on-failure --no-tests=error
+
+      - name: Execute generated object parameters and starter controllers in Lua
+        env:
+          PANGEA_LUA_EXECUTABLE: ${{ github.workspace }}/build/pangea-script/PangeaLuaCli
+        run: >-
+          pnpm exec vitest run --coverage.enabled=false
+          src/editor/subviews/scripts/scriptObjectParameterRuntime.test.ts
+          src/editor/subviews/scripts/scriptOttoObjectStarterRuntime.test.ts
 
       - name: Verify scripting contract drift
         run: pnpm run check:scripting-contract
@@ -156,7 +218,7 @@ jobs:
 
       - name: Run scripting WebAssembly launch matrix
         if: success()
-        run: pnpm exec playwright test tests/e2e/scriptingRuntimeLaunch.spec.ts --project=chromium --workers=1
+        run: pnpm exec playwright test --config playwright.runtime.config.ts --workers=1
 
       - name: Run real-WASM multiplayer browser smoke tests
         if: success()

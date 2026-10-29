@@ -4,7 +4,7 @@ import { replySchema, type DesktopBridge, type HostError, type HostRequest } fro
 
 declare global { interface Window { pangeaDesktop?: DesktopBridge } }
 
-export function desktopBridge(): DesktopBridge | undefined { return window.pangeaDesktop; }
+export function desktopBridge(): DesktopBridge | undefined { return globalThis.window?.pangeaDesktop; }
 
 export async function desktopRequest<T>(request: HostRequest, schema: z.ZodType<T>): Promise<Result<T, HostError>> {
   const bridge = desktopBridge();

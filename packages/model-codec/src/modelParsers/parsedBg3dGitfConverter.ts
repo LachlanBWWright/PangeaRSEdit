@@ -20,6 +20,8 @@ import { decodeJpegNodeResult } from "../utils/jpegDecompress";
 import { codecLogger as console } from "../logger";
 import { z } from "zod";
 import { captureNativeGroups, restoreNativeGroups } from "./nativeGroupHierarchy";
+import { nativeNormal, nativePaletteMatch } from "./nativeSkinPalette";
+import { captureNativeNormalBindings, nativeNormalBinding, readNativeNormalBindings } from "./nativeNormalBindings";
 
 import {
   createSkeletonSystem,
@@ -142,7 +144,10 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   }
 
   const nativeGroups = captureNativeGroups(parsed.groups || []);
-  doc.getRoot().setExtras({ ...doc.getRoot().getExtras(), pangeaNativeHierarchy: nativeGroups.hierarchy });
+  doc.getRoot().setExtras({
+    ...doc.getRoot().getExtras(), pangeaNativeHierarchy: nativeGroups.hierarchy,
+    ...(parsed.skeleton && gltfSkin ? { pangeaNativeNormalBindings: captureNativeNormalBindings(nativeGroups.geometries, parsed.skeleton.bones, gltfSkin.listJoints().map((joint) => joint.getName())) } : {}),
+  });
   const allGeometries = nativeGroups.geometries;
 
   // Build decomposed point list mapping (like Otto's runtime decomposition)
@@ -863,14 +868,10 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
                 const key = `${currentPrimitiveIndex}:${vi}`;
                 if (normalAcc && vi < normalAcc.getCount()) {
                   const normalValues = normalAcc.getElement(vi, []);
-                  const normal: [number, number, number] = [
-                    normalValues[0] ?? 0,
-                    normalValues[1] ?? 0,
-                    normalValues[2] ?? 0,
-                  ];
+                  const normal = nativeNormal(normalValues);
                   const existingNormalIndex = decomposedNormals.findIndex(
                     (existingNormal) =>
-                      reversePointsMatchCloseEnough(normal, existingNormal),
+                      nativePaletteMatch(normal, existingNormal, 0.02),
                   );
                   const normalIndex =
                     existingNormalIndex >= 0
@@ -908,6 +909,7 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
       const boneNormalSets: Set<number>[] = bones.map(() => new Set<number>());
       const pointToJointMap = new Map<number, RigidInfluence>();
       const normalToJointMap = new Map<number, RigidInfluence>();
+      const nativeNormalBindings = readNativeNormalBindings(doc);
 
       let primitiveIndexForSkinning = 0;
       doc
@@ -940,12 +942,15 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
                 const decomposedNormalIndex =
                   vertexToDecomposedNormalIndex.get(key);
                 if (candidate && decomposedNormalIndex !== undefined) {
+                  const binding = nativeNormalBinding(nativeNormalBindings, decomposedNormals[decomposedNormalIndex] ?? []);
+                  if (binding?.joint === null) continue;
+                  const normalOwner = binding ? { ...candidate, jointIndex: binding.joint } : candidate;
                   const previousNormalOwner =
                     normalToJointMap.get(decomposedNormalIndex);
                   if (
-                    shouldReplaceRigidInfluence(previousNormalOwner, candidate)
+                    shouldReplaceRigidInfluence(previousNormalOwner, normalOwner)
                   ) {
-                    normalToJointMap.set(decomposedNormalIndex, candidate);
+                    normalToJointMap.set(decomposedNormalIndex, normalOwner);
                   }
                 }
               }

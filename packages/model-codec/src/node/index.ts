@@ -1,4 +1,5 @@
-export { convertModelFiles, inspectModelFile } from "./conversion";
-export type { ModelConversionOptions, ModelConversionReport } from "./conversion";
-export { readNativeAsset, nativeFormat } from "./native";
-export { readGltf } from "./gltf";
+export { convertModelFiles, inspectModelFile } from "./conversion.js";
+export type { ModelConversionOptions, ModelConversionReport } from "./conversion.js";
+export { readNativeAsset, nativeFormat } from "./native.js";
+export { readGltf } from "./gltf.js";
+export { validateNativeSkeleton } from "./nativeLimits.js";

@@ -5,6 +5,7 @@ import { useSetAtom } from "jotai";
 import { Result } from "neverthrow";
 import type { Group } from "three";
 import { objectModelSnapshotsAtom } from "./objectModelSnapshots";
+import type { CollisionPreviewBounds } from "./scriptCollisionPreview";
 
 function CaptureModelSnapshot({ onCapture }: { onCapture: (snapshot: string) => void }) {
   const frames = useRef(0);
@@ -29,7 +30,7 @@ function CaptureModelSnapshot({ onCapture }: { onCapture: (snapshot: string) => 
   return null;
 }
 
-export function ObjectModelPreview({ scene, snapshotKey }: { scene: Group; snapshotKey: string }) {
+export function ObjectModelPreview({ scene, snapshotKey, scale = 1, collision }: { scene: Group; snapshotKey: string; scale?: number; collision?: CollisionPreviewBounds | null }) {
   const setSnapshots = useSetAtom(objectModelSnapshotsAtom);
   const capture = useCallback((snapshot: string) => {
     setSnapshots((current) => ({ ...Object.fromEntries(Object.entries(current).slice(-63)), [snapshotKey]: snapshot }));
@@ -38,8 +39,11 @@ export function ObjectModelPreview({ scene, snapshotKey }: { scene: Group; snaps
     <Canvas frameloop="demand" camera={{ position: [200, 150, 200], fov: 45 }}>
       <color attach="background" args={["#1c2739"]} /><ambientLight intensity={1} />
       <directionalLight position={[100, 200, 100]} intensity={2} />
-      <Bounds fit clip observe margin={1.4} maxDuration={0}><primitive object={scene} /></Bounds>
-      <OrbitControls makeDefault /><CaptureModelSnapshot key={snapshotKey} onCapture={capture} />
+      <Bounds key={`${scale}:${collision?.width}:${collision?.height}:${collision?.depth}`} fit clip observe margin={1.4} maxDuration={0}>
+        <group scale={scale}><primitive object={scene} /></group>
+        {collision && <mesh><boxGeometry args={[collision.width, collision.height, collision.depth]} /><meshBasicMaterial color="#22d3ee" wireframe depthTest={false} /></mesh>}
+      </Bounds>
+      <OrbitControls makeDefault />{!collision && <CaptureModelSnapshot key={snapshotKey} onCapture={capture} />}
     </Canvas>
   </div>;
 }

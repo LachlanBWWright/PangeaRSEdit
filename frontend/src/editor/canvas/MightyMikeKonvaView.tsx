@@ -47,7 +47,7 @@ import type Konva from "konva";
 import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
-import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
+import { addPlacedItem, computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -80,7 +80,7 @@ export function MightyMikeKonvaView({
 }: MightyMikeKonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  const customObjectPlacement = useCustomObjectPlacement();
+  const customObjectPlacement = useCustomObjectPlacement(headerData, terrainData);
   const tileBrushMode = useAtomValue(getTileBrushModeAtom("mightymike"));
   const setTileBrushMode = useSetAtom(getTileBrushModeAtom("mightymike"));
   const setTileBrushPreview = useSetAtom(tileBrushPreviewAtom);
@@ -261,7 +261,6 @@ export function MightyMikeKonvaView({
           if (customObjectPlacement.objectId !== null) {
             customObjectPlacement.placeAt(
               x,
-              headerData.Hedr[1000].obj.minY ?? 0,
               z,
             );
             return;
@@ -269,16 +268,7 @@ export function MightyMikeKonvaView({
           if (clickToAddItem === undefined) return;
 
           setItemDataNotNull((itemData) => {
-            itemData.Itms[1000].obj.push({
-              x: x,
-              z: z,
-              type: clickToAddItem,
-              flags: 0,
-              p0: 0,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-            });
+            addPlacedItem(itemData, x, z, clickToAddItem);
           });
         }}
         onMouseMove={(e) => {
@@ -326,7 +316,7 @@ export function MightyMikeKonvaView({
           />
         )}
 
-        <CustomScriptPlacements />
+        <CustomScriptPlacements headerData={headerData} terrainData={terrainData} />
 
         {/* Tile brush stamp preview */}
         <TileBrushPreviewLayer

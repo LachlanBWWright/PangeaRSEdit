@@ -1,4 +1,7 @@
 import type { ScriptHookId, ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
+import { objectParameterLua } from "./scriptObjectParameterLua";
+import { resolveObjectParameters } from "./scriptObjectParameters";
+import { placementWorldPosition } from "./scriptPlacementCoordinates";
 
 export function scriptModuleVariable(path: string): string {
   return `__module_${path.replace(/[^a-zA-Z0-9]+/g, "_")}`;
@@ -47,9 +50,10 @@ export function buildLevelPlacementSpawns(state: ScriptWorkspaceState, hook: Scr
   return Object.entries(state.levels).flatMap(([key, level]) => {
     if (!/^\d+$/.test(key) || level.customPlacements.length === 0) return [];
     const spawns = level.customPlacements.flatMap((placement) => {
-      if (!state.customObjects.some((definition) => definition.id === placement.objectId)) return [];
-      const { x, y, z } = placement.position;
-      return [`    pangea.spawn.scripted(${JSON.stringify(placement.objectId)}, { x = ${x}, y = ${y}, z = ${z} })`];
+      const definition = state.customObjects.find((entry) => entry.id === placement.objectId);
+      if (!definition) return [];
+      const { x, y, z } = placementWorldPosition(state.context.gameId, placement.position);
+      return [`    __spawnPlacement(${JSON.stringify(placement.objectId)}, { x = ${x}, y = ${y}, z = ${z} }, ${objectParameterLua(resolveObjectParameters(definition, placement))}, ${JSON.stringify(placement.id)}, ${JSON.stringify(key)})`];
     });
     return [`  if ctx.levelNum == ${Number(key)} then`, ...spawns, "  end"];
   });

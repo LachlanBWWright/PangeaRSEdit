@@ -4,12 +4,37 @@ import { GAME_PORT_CONFIGS } from "./gamePortConfig";
 import {
   getPreviewTerrainPaths,
   resolvePreviewRuntimeAssetPath,
+  buildPreviewAssetBaseUrls,
 } from "./gamePreviewRuntimeTypes";
 import { createPreviewModule } from "./gamePreviewRuntimeLoader";
 import {
   writePreviewCustomFilesToVfs,
   writeTerrainToVfs,
 } from "./gamePreviewRuntimeVfs";
+
+describe("preview runtime asset directories", () => {
+  test.each([
+    { game: Game.OTTO_MATIC, directory: "ottomatic/", script: "OttoMatic.js" },
+    { game: Game.NANOSAUR, directory: "nanosaur/", script: "Nanosaur.js" },
+    { game: Game.BUGDOM, directory: "bugdom/", script: "Bugdom.js" },
+    { game: Game.BUGDOM_2, directory: "bugdom2/", script: "Bugdom2.js" },
+    { game: Game.CRO_MAG, directory: "cromagrally/", script: "CroMagRally.js" },
+    { game: Game.BILLY_FRONTIER, directory: "billyfrontier/", script: "billyfrontier.js" },
+    { game: Game.MIGHTY_MIKE, directory: "mightymike/", script: "MightyMike.js" },
+    { game: Game.NANOSAUR_2, directory: "nanosaur2/", script: "Nanosaur2.js" },
+  ])("resolves $script alongside its generated launch page", ({ game, directory, script }) => {
+    const config = GAME_PORT_CONFIGS[game];
+    const bases = buildPreviewAssetBaseUrls(config);
+    expect(bases).toHaveLength(1);
+    const base = bases[0];
+    expect(base).toBeDefined();
+    if (!base) return;
+    const expected = `${import.meta.env.BASE_URL}generated/pangea-ports/wasm/${directory}`;
+    expect(new URL(config.mainJs, base).pathname).toBe(`${expected}${script}`);
+    expect(new URL("game.wasm", base).pathname).toBe(`${expected}game.wasm`);
+    expect(new URL("game.data", base).pathname).toBe(`${expected}game.data`);
+  });
+});
 
 describe("Mighty Mike preview terrain paths", () => {
   test("injects the edited tileset at the lowercase path used by the game", () => {

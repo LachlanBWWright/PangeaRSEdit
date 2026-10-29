@@ -107,6 +107,7 @@ export function ModelViewer() {
   const [textures, setTextures] = useState<Texture[]>([]);
   const [animations, setAnimations] = useState<AnimationInfo[]>([]);
   const [gltfBuffer, setGltfBuffer] = useState<ArrayBuffer | null>(null);
+  useEffect(() => () => { if (gltfUrl) URL.revokeObjectURL(gltfUrl); }, [gltfUrl]);
   const [gltfAnimationMetadata, setGltfAnimationMetadata] = useState<
     Record<string, GltfAnimationMetadata>
   >({});
@@ -198,7 +199,7 @@ export function ModelViewer() {
   const viewerHistoryRef = useRef(viewerHistory);
   const effectiveModelBaseName = getEffectiveModelBaseName(modelBaseName);
   // Initialize file upload hook
-  const { uploadFile } = useFileUpload({
+  const { uploadFile, cancelUpload } = useFileUpload({
     onGltfUrlChange: setGltfUrl,
     onGltfBufferChange: setGltfBuffer,
     onBg3dParsedChange: setBg3dParsed,
@@ -225,12 +226,14 @@ export function ModelViewer() {
     bg3dFile: File,
     skeletonFile?: File,
     loadedGameLabel?: string,
+    isCurrent?: () => boolean,
   ) => {
+    if (isCurrent && !isCurrent()) return Promise.resolve(err("Model load was superseded"));
     setModelBaseName(bg3dFile.name.replace(/\.[^.]+$/, ""));
     setGameLabel(loadedGameLabel ?? null);
     setModelSourceKind(getModelSourceKind(bg3dFile.name));
-    return uploadFile(bg3dFile, skeletonFile).then((result) => {
-      if (result.isOk()) {
+    return uploadFile(bg3dFile, skeletonFile, isCurrent).then((result) => {
+      if (result.isOk() && (isCurrent?.() ?? true)) {
         setViewerHistory({ past: [], future: [] });
         setModelSessionId((current) => current + 1);
       }
@@ -1407,6 +1410,7 @@ export function ModelViewer() {
   };
 
   const handleClearModel = () => {
+    cancelUpload();
     setGltfUrl(null);
     setGltfBuffer(null);
     setGltfAnimationMetadata({});
@@ -1439,7 +1443,8 @@ export function ModelViewer() {
   return (
     <div className="h-full overflow-hidden p-2 bg-gray-900 text-white">
       <ProjectAssetBinding kind="models" extension="glb|gltf|bg3d|3dmf" changeToken={gltfBuffer ? viewerHistory : null}
-        onOpen={async (file, companions) => { await handleFileUpload(file, companions.find((entry) => entry.name === file.name.replace(/\.[^.]+$/, ".skeleton.rsrc"))); }}
+        onClear={handleClearModel}
+        onOpen={async (file, companions, isCurrent) => { await handleFileUpload(file, companions.find((entry) => entry.name === file.name.replace(/\.[^.]+$/, ".skeleton.rsrc")), undefined, isCurrent); }}
         exportFiles={async (stem) => {
           const buffer = await getCurrentExportBuffer();
           if (buffer.isErr()) return buffer;

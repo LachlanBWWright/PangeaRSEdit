@@ -12,7 +12,7 @@ import {
 } from "./scriptCapabilityMatrix";
 import { scriptHookIdSchema } from "./scriptWorkspaceStateTypes";
 
-export const SCRIPT_CONTRACT_VERSION = 1;
+export const SCRIPT_CONTRACT_VERSION = 2;
 export const SCRIPT_API_VERSION = 1;
 export const SCRIPT_RUNTIME_VERSION = "lua-5.4";
 
@@ -46,6 +46,7 @@ export const SCRIPT_RUNTIME_CAPABILITY_FIELDS = [
   { name: "loadInstructionBudget", luaType: "integer" },
   { name: "eventInstructionBudget", luaType: "integer" },
   { name: "frameInstructionBudget", luaType: "integer" },
+  { name: "aggregateFrameInstructionBudget", luaType: "integer" },
   { name: "timerLimit", luaType: "integer" },
   { name: "taskLimit", luaType: "integer" },
   { name: "subscriptionLimit", luaType: "integer" },

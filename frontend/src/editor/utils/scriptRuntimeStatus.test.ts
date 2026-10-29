@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
 import type { PreviewRuntimeModule } from "./gamePreviewRuntimeTypes";
 import {
   compareNormalizedLifecycleTraces,
@@ -42,14 +41,8 @@ function createModule(values: Readonly<Record<string, unknown>>): PreviewRuntime
   ): unknown {
     void argTypes;
     void args;
-    const value = values[ident];
-    if (returnType === "string") {
-      return z.coerce.string().catch("").parse(value);
-    }
-    if (returnType === "boolean") {
-      return z.coerce.boolean().catch(false).parse(value);
-    }
-    return z.coerce.number().catch(0).parse(value);
+    void returnType;
+    return values[ident];
   }
 
   return {
@@ -73,6 +66,7 @@ describe("queryScriptingStatus", () => {
       budgetExceededCount: 0,
       hooksCalledCount: 4,
       scriptsDisabled: false,
+      statusComplete: true,
     };
     expect(getRuntimeDiagnosticMessage(status, 1)).toBe("traceback");
     expect(getRuntimeDiagnosticMessage({ ...status, lastError: "" }, 1)).toBe(
@@ -117,6 +111,7 @@ describe("queryScriptingStatus", () => {
       budgetExceededCount: 1,
       hooksCalledCount: 9,
       scriptsDisabled: false,
+      statusComplete: true,
     });
   });
 
@@ -130,6 +125,24 @@ describe("queryScriptingStatus", () => {
     expect(status?.enabled).toBe(true);
     expect(status?.bundleLoaded).toBe(false);
     expect(status?.lastError).toBe("traceback");
+    expect(status?.statusComplete).toBe(false);
+  });
+
+  it("does not treat malformed native flags or counters as complete status", () => {
+    const status = queryScriptingStatus(createModule({
+      PangeaScript_GetStatusEnabled: "yes",
+      PangeaScript_GetStatusConfigLoaded: 1,
+      PangeaScript_GetStatusBundleLoaded: 1,
+      PangeaScript_GetStatusActiveScriptPath: "Data/Scripts/dist/main.lua",
+      PangeaScript_GetStatusLastError: "",
+      PangeaScript_GetStatusErrorCount: -1,
+      PangeaScript_GetStatusBudgetExceededCount: Number.NaN,
+      PangeaScript_GetStatusHooksCalledCount: 50,
+      PangeaScript_GetStatusScriptsDisabled: 0,
+    }));
+    expect(status?.statusComplete).toBe(false);
+    expect(status?.enabled).toBe(false);
+    expect(status?.hooksCalledCount).toBe(50);
   });
 
   it("returns null before Emscripten exposes ccall", () => {

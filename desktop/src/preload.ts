@@ -13,5 +13,7 @@ const bridge: DesktopBridge = {
   onProjectChange: (listener) => subscribe("pangea:project-change", listener),
   onTransfer: (listener) => subscribe("pangea:transfer", listener),
   onCommand: (listener) => subscribe("pangea:command", listener),
+  onGameRun: (listener) => subscribe("pangea:game-runs", listener),
+  onAssetProgress: (listener) => subscribe("pangea:asset-progress", listener),
 };
 contextBridge.exposeInMainWorld("pangeaDesktop", bridge);

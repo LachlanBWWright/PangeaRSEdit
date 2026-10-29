@@ -13,6 +13,7 @@ import {
   loadFileGltf,
 } from "./itemModelLoaderUtils";
 import { applyModelPartLocalTransform } from "../itemModelPresentation";
+import { gameAssetBase } from "@/assets/gameAssetUrls";
 
 export interface ItemModelLoadError {
   readonly kind: "unmapped" | "fetch" | "conversion" | "extraction";
@@ -25,20 +26,15 @@ export interface LoadedItemModel {
 }
 
 export const GAME_BASE_PATHS: Record<Game, string> = {
-  [Game.OTTO_MATIC]: `${import.meta.env.BASE_URL}games/ottomatic`,
-  [Game.BUGDOM]: `${import.meta.env.BASE_URL}games/bugdom1`,
-  [Game.BUGDOM_2]: `${import.meta.env.BASE_URL}games/bugdom2`,
-  [Game.NANOSAUR]: `${import.meta.env.BASE_URL}games/nanosaur1`,
-  [Game.NANOSAUR_2]: `${import.meta.env.BASE_URL}games/nanosaur2`,
-  [Game.CRO_MAG]: `${import.meta.env.BASE_URL}games/cromagrally`,
-  [Game.BILLY_FRONTIER]: `${import.meta.env.BASE_URL}games/billyfrontier`,
-  [Game.MIGHTY_MIKE]: `${import.meta.env.BASE_URL}games/mightymike`,
+  [Game.OTTO_MATIC]: gameAssetBase(Game.OTTO_MATIC),
+  [Game.BUGDOM]: gameAssetBase(Game.BUGDOM),
+  [Game.BUGDOM_2]: gameAssetBase(Game.BUGDOM_2),
+  [Game.NANOSAUR]: gameAssetBase(Game.NANOSAUR),
+  [Game.NANOSAUR_2]: gameAssetBase(Game.NANOSAUR_2),
+  [Game.CRO_MAG]: gameAssetBase(Game.CRO_MAG),
+  [Game.BILLY_FRONTIER]: gameAssetBase(Game.BILLY_FRONTIER),
+  [Game.MIGHTY_MIKE]: gameAssetBase(Game.MIGHTY_MIKE),
 };
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "The item model could not be loaded.";
-}
 
 export function loadResolvedItemModel(
   request: ItemModelPreviewRequest,
@@ -58,15 +54,13 @@ export function loadResolvedItemModel(
   const sources = mapping.modelParts && mapping.modelParts.length > 0
     ? mapping.modelParts
     : [undefined];
-  return ResultAsync.fromPromise(
-    Promise.all(sources.map(async (source) => {
+  return ResultAsync.combine(
+    sources.map((source) => {
       const modelSource = source ?? mapping;
       const url = `${GAME_BASE_PATHS[request.game]}/${modelSource.modelPath}/${modelSource.modelFile}`;
-      const gltf = await loadFileGltf(worker, url);
-      return extractSubgroupByIndex(gltf, modelSource.modelIndex, modelSource.groupSize ?? 1);
-    })),
-    (error): ItemModelLoadError => ({ kind: "conversion", message: errorMessage(error) }),
-  ).andThen((parts) => {
+      return loadFileGltf(worker, url).map((gltf) => extractSubgroupByIndex(gltf, modelSource.modelIndex, modelSource.groupSize ?? 1));
+    }),
+  ).mapErr((error): ItemModelLoadError => ({ kind: "conversion", message: error.message })).andThen((parts) => {
     if (parts.some((part) => part === null)) {
       return err<LoadedItemModel, ItemModelLoadError>({
         kind: "extraction",

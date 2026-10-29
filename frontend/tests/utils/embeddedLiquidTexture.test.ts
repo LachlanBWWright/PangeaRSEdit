@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseBG3D } from "@/modelParsers/parseBG3D";
-import { extractEmbeddedTexture } from "@/editor/subviews/water/embeddedLiquidTexture";
+import { extractEmbeddedTexture } from "@/assets/modelTextures";
 
 const CRO_MAG_GLOBAL_MODEL = resolve(
   import.meta.dirname,

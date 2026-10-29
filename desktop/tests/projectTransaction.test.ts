@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { err } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { saveTransaction, recoverInterruptedSave } from "../src/projectTransaction.ts";
 import * as files from "../src/files.ts";
 import { bytes, readFixture, useTemporaryDirectory, writeFixture } from "./fixtures.ts";
@@ -103,6 +103,38 @@ describe("multi-file transactions", () => {
     const removed = await files.statOrMissing(path.join(root(), "new"));
     expect(removed.isOk() && removed.value).toBeNull();
     expect((await recoverInterruptedSave(root())).isOk()).toBe(true);
+  });
+
+  it("recovers the full journal for combined writes, removals and the project manifest", async () => {
+    await writeFixture(root(), "old", "partial");
+    await writeFixture(root(), "new", "partial");
+    const untouched = Array.from({ length: 4096 * 2 - 1 }, (_, index) => ({ path: `unwritten-${index}`, bytes: null }));
+    await writeFixture(root(), journal, JSON.stringify([
+      { path: "old", bytes: Buffer.from("original").toString("base64") },
+      { path: "new", bytes: null },
+      ...untouched,
+    ]));
+    const resolve = files.projectPath;
+    vi.spyOn(files, "projectPath").mockImplementation((folder, relative) => relative.startsWith("unwritten-")
+      ? Promise.resolve(ok(path.join(folder, relative))) : resolve(folder, relative));
+    const remove = fs.rm;
+    vi.spyOn(fs, "rm").mockImplementation((target, options) => String(target).startsWith(path.join(root(), "unwritten-"))
+      ? Promise.resolve() : remove(target, options));
+    expect((await recoverInterruptedSave(root())).isOk()).toBe(true);
+    expect(await readFixture(root(), "old")).toBe("original");
+    const newFile = await files.statOrMissing(path.join(root(), "new"));
+    expect(newFile.isOk() && newFile.value).toBeNull();
+    const remaining = await files.statOrMissing(path.join(root(), journal));
+    expect(remaining.isOk() && remaining.value).toBeNull();
+  });
+
+  it("rejects an unsupported transaction before writing its journal or changing files", async () => {
+    await writeFixture(root(), "existing", "original");
+    const removed = Array.from({ length: 4096 * 2 + 1 }, (_, index) => `obsolete-${index}`);
+    const result = await saveTransaction(root(), [{ path: "existing", bytes: bytes("replacement") }], removed);
+    expect(result.isErr() && result.error.code).toBe("limit");
+    expect(await readFixture(root(), "existing")).toBe("original");
+    expect(await fs.readdir(root())).toEqual(["existing"]);
   });
 
   it.each(["broken JSON", "{}", '[{"path":"../escape","bytes":null}]',

@@ -1,0 +1,72 @@
+name: Native asset robustness
+
+on:
+  pull_request:
+    paths:
+      - games/pangea-ports
+      - games/pangea-ports/**
+      - .github/workflows/native-asset-robustness.yml
+  push:
+    branches: [main]
+    paths:
+      - games/pangea-ports
+      - games/pangea-ports/**
+      - .github/workflows/native-asset-robustness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - game: BillyFrontier-Android
+            options: -DPANGEA_ENABLE_SCRIPTING=ON -DBUILD_TESTING=ON -DPANGEA_SANITIZE_BG3D_CORPUS=ON -DPANGEA_SANITIZE_SKELETON_CORPUS=ON
+            targets: BillyBG3DCorpusTest BillyScriptSkeletonResourcesTest
+            tests: ^BillyBG3DCorpus$|^BillyScriptSkeletonResources
+          - game: Nanosaur-android
+            options: -DPANGEA_ENABLE_SCRIPTING=ON -DPANGEA_BUILD_NATIVE_SCRIPT_TESTS=ON -DSANITIZE=ON
+            targets: nanosaur_3dmf_corpus_test
+            tests: ^nanosaur_3dmf_corpus_
+          - game: MightyMike-Android
+            options: -DPANGEA_GAME_TESTS=ON -DSANITIZE=ON
+            targets: MikeShapesCorpusTests
+            tests: ^mike_shapes_corpus$
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libegl1-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev libxss-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev libibus-1.0-dev \
+            libxkbcommon-dev libwayland-dev
+      - name: Build SDL3 for the parser targets
+        run: |
+          cmake -S games/pangea-ports/games/OttoMatic-Android/extern/SDL -B build/asset-sdl3 \
+            -DCMAKE_BUILD_TYPE=Debug -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST_LIBRARY=OFF
+          cmake --build build/asset-sdl3 --parallel 2
+      - name: Configure actual native loader tests
+        run: |
+          cmake -S games/pangea-ports/games/${{ matrix.game }} -B build/asset-corpus \
+            -DCMAKE_BUILD_TYPE=Debug -DSDL3_DIR="$PWD/build/asset-sdl3" ${{ matrix.options }}
+      - name: Build corpus targets
+        run: cmake --build build/asset-corpus --target ${{ matrix.targets }} --parallel 2
+      - name: Check malformed inputs and valid recovery under sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: ctest --test-dir build/asset-corpus -R '${{ matrix.tests }}' --output-on-failure --no-tests=error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: asset-corpus-${{ matrix.game }}
+          path: build/asset-corpus/Testing/Temporary/

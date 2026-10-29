@@ -6,6 +6,9 @@ import { ProjectStore } from "./projectStore.ts";
 import { GameStore } from "./gameStore.ts";
 import { handleRequest } from "./hostRequests.ts";
 import { APP_ORIGIN, registerRendererProtocol } from "./protocol.ts";
+import { ProjectWatcher } from "./projectWatcher.ts";
+import { PackStore } from "./packStore.ts";
+import { readBlenderExecutable } from "./assetRequests.ts";
 
 protocol.registerSchemesAsPrivileged([{ scheme: "pangea", privileges: {
   standard: true, secure: true, supportFetchAPI: true, stream: true,
@@ -20,9 +23,11 @@ async function start() {
   if (ready.isErr()) { console.error(ready.error.message); app.quit(); return; }
   const root = app.getPath("userData");
   const project = new ProjectStore(path.join(root, "recovery"));
+  project.assets.onProgress((event) => window?.webContents.send("pangea:asset-progress", event));
+  const packs = new PackStore(path.join(root, "packs"));
   const games = new GameStore(path.join(root, "games"), (game, received, total) => {
     window?.webContents.send("pangea:transfer", { game, received, total });
-  });
+  }, (runs) => window?.webContents.send("pangea:game-runs", runs));
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   registerRendererProtocol(app.isPackaged ? path.join(process.resourcesPath, "renderer")
@@ -35,26 +40,20 @@ async function start() {
       || !event.senderFrame.url.startsWith(`${APP_ORIGIN}/`)) return { ok: false, error: failure("Untrusted request", "forbidden") };
     const parsed = hostRequestSchema.safeParse(input);
     if (!parsed.success) return { ok: false, error: failure("Invalid desktop request", "invalid") };
-    if (dirty && ["project.open", "project.create"].includes(parsed.data.operation))
+    if (dirty && ["project.open", "project.create", "project.reopen", "project.restore", "project.copy", "packs.import", "packs.export"].includes(parsed.data.operation))
       return { ok: false, error: failure("Save or discard current project edits before changing projects", "dirty") };
-    const result = await handleRequest(parsed.data, project, games, owner, (value) => { dirty = value; });
+    const result = await handleRequest(parsed.data, project, games, owner, (value) => { dirty = value; }, packs);
     return result.isOk() ? { ok: true, value: result.value } : { ok: false, error: result.error };
   });
   Menu.setApplicationMenu(null);
   createWindow();
-  let checking = false;
-  let previousRevision = "";
-  const timer = setInterval(async () => {
-    if (checking || project.busy() || !project.folder() || !window || window.isDestroyed()) return;
-    checking = true;
-    const snapshot = await project.inspect();
-    if (snapshot.isOk() && snapshot.value.revision !== previousRevision) {
-      previousRevision = snapshot.value.revision;
-      window?.webContents.send("pangea:project-change", snapshot.value);
-    }
-    checking = false;
-  }, 2500);
-  app.on("will-quit", () => clearInterval(timer));
+  const watcher = new ProjectWatcher(project, (snapshot) => {
+    if (window && !window.isDestroyed()) window.webContents.send("pangea:project-change", snapshot);
+  });
+  const assetWatcher = setInterval(() => {
+    void readBlenderExecutable().then((result) => { if (result.isOk()) void project.assets.checkSources(result.value); });
+  }, 5000);
+  app.on("will-quit", () => { watcher.close(); clearInterval(assetWatcher); project.assets.cancel(); });
   app.on("activate", () => { if (!window) createWindow(); });
 }
 

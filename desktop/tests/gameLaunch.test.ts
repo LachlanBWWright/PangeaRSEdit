@@ -11,7 +11,7 @@ import { completeRelease } from "../src/gameCatalog.ts";
 describe("native launch boundary", () => {
   it("does not release another running game's slot when spawning fails", async () => {
     const exited = vi.fn();
-    const result = await launchGame({ game: "OttoMatic", version: "external", managed: false, assetRootVersion: 1,
+    const result = await launchGame({ game: "OttoMatic", version: "external", managed: false, assetRootVersion: 2,
       data: os.tmpdir(), executable: path.join(os.tmpdir(), "pangea-nonexistent-game", "OttoMatic") },
       path.join(os.tmpdir(), "unused-pangea-run"), undefined, [], exited);
     expect(result.isErr()).toBe(true);
@@ -30,10 +30,12 @@ describe("native launch boundary", () => {
     const spawn = vi.spyOn(processes, "startProcess").mockImplementation(() =>
       startProcess(process.execPath, ["-e", "setTimeout(() => process.exit(0), 5000)"], fixture.value));
     const executable = path.join(fixture.value, "installed", "OttoMatic");
-    const launched = await launchGame({ game: "OttoMatic", version: "v1", managed: true, assetRootVersion: 1, data, executable },
+    const launched = await launchGame({ game: "OttoMatic", version: "v1", managed: true, assetRootVersion: 2, data, executable },
       run, [{ path: "Data/level.ter", bytes: new TextEncoder().encode("unsaved editor data") }], ["--level", "0"]);
     expect(launched.isOk()).toBe(true);
-    expect(spawn).toHaveBeenCalledWith(executable, ["--data-dir", path.join(run, "Data"), "--level", "0"], run);
+    expect(spawn).toHaveBeenCalledWith(executable, ["--data-dir", path.join(run, "Data"), "--level", "0"], run, {
+      PANGEA_SCRIPT_INSPECTOR: "1", PANGEA_SCRIPT_INSPECTOR_REQUEST: path.join(run, ".pangea-inspector-request"),
+    });
     const stock = await io(() => fs.readFile(path.join(data, "level.ter"), "utf8"), "Cannot read stock");
     const staged = await io(() => fs.readFile(path.join(run, "Data/level.ter"), "utf8"), "Cannot read staged");
     expect(stock.isOk() && stock.value).toBe("stock");
@@ -52,10 +54,10 @@ describe("native launch boundary", () => {
     expect(validLaunchArguments(["--level"])).toBe(false);
   });
   it("rejects incompatible release contracts", () => {
-    const release = { version: 1, tag: "v1", sourceRevision: "abc", assetRootVersion: 1, scriptContractVersion: 1, assets: [] };
+    const release = { version: 1, tag: "v1", sourceRevision: "abc", assetRootVersion: 2, scriptContractVersion: 2, assets: [] };
     expect(releaseManifestSchema.safeParse(release).success).toBe(true);
-    expect(releaseManifestSchema.safeParse({ ...release, assetRootVersion: 2 }).success).toBe(false);
-    expect(releaseManifestSchema.safeParse({ ...release, scriptContractVersion: 2 }).success).toBe(false);
+    expect(releaseManifestSchema.safeParse({ ...release, assetRootVersion: 1 }).success).toBe(false);
+    expect(releaseManifestSchema.safeParse({ ...release, scriptContractVersion: 1 }).success).toBe(false);
     const incomplete = releaseManifestSchema.safeParse(release);
     expect(incomplete.success && completeRelease(incomplete.data)).toBe(false);
   });

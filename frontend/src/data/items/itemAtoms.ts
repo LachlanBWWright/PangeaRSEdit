@@ -1,9 +1,7 @@
 import { atom } from "jotai";
 
 /** Selected item type for the editor. */
-export const SelectedItem = atom<number | undefined>(undefined);
-/** Item type that should be inserted by the next click. */
-export const ClickToAddItem = atom<number | undefined>(undefined);
+export { SelectedItem, ClickToAddItem } from "./itemSelectionState";
 
 /**
  * Stores the "safe" item types found in the originally loaded level.

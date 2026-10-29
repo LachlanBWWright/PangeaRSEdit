@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      signed:
+        description: Require Windows signing and macOS signing/notarization credentials
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -40,16 +45,114 @@ jobs:
         run: pnpm --dir desktop run check
       - name: Test desktop services
         run: pnpm --dir desktop run test
+      - name: Test release package contracts
+        if: runner.os == 'Linux'
+        run: |
+          python3 scripts/test_editor_game_catalog.py
+          python3 scripts/test_native_packages.py
       - name: Test desktop renderer integration
-        run: pnpm --dir frontend exec vitest run --coverage.enabled=false src/platform/desktop
+        run: >-
+          pnpm --dir frontend exec vitest run --coverage.enabled=false
+          src/platform/desktop src/pages/ModelViewer/hooks/useFileUpload
+          src/pages/ModelViewer/hooks/guardModelUpload src/pages/SpriteViewer/hooks/useSpriteViewerLoaders
+          src/utils/tgaImageParser.test.ts
+      - name: Install Storybook test browser
+        if: runner.os == 'Linux'
+        run: pnpm --dir frontend exec playwright install --with-deps chromium
+      - name: Test desktop production UI stories
+        if: runner.os == 'Linux'
+        run: >-
+          pnpm --dir frontend exec vitest run --config vitest.storybook.config.ts
+          src/platform/desktop/DesktopWorkflows.stories.tsx src/platform/desktop/ProjectManagement.stories.tsx
+          src/platform/desktop/GamesPage.stories.tsx src/platform/desktop/ProjectModelAssets.stories.tsx
+          src/pages/CustomObjectsPage.stories.tsx src/editor/subviews/items/CustomItemPlacement.stories.tsx
+          src/pages/SpriteViewer/components/LinkedSpriteSource.stories.tsx
       - name: Build desktop editor
-        run: pnpm --dir desktop run package
+        run: pnpm --dir desktop run build
+      - name: Package development artifacts
+        if: runner.os == 'Linux' || inputs.signed != true
+        run: pnpm --dir desktop exec electron-builder --publish never
+      - name: Package signed Windows artifacts
+        if: runner.os == 'Windows' && inputs.signed == true
+        shell: pwsh
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if (!$env:CSC_LINK -or !$env:CSC_KEY_PASSWORD) { Write-Error 'Configure WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD repository secrets'; exit 1 }
+          pnpm --dir desktop exec electron-builder --publish never -c.forceCodeSigning=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = Get-ChildItem desktop/release/Pangea-RS-Edit-*.exe | Select-Object -First 1
+          if ((Get-AuthenticodeSignature $installer.FullName).Status -ne 'Valid') { Write-Error 'Installer signature verification failed'; exit 1 }
+      - name: Package signed and notarized macOS artifacts
+        if: runner.os == 'macOS' && inputs.signed == true
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for key in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!key}" ]; then echo "::error::Configure repository secret $key for a signed release"; exit 1; fi
+          done
+          pnpm --dir desktop exec electron-builder --publish never -c.forceCodeSigning=true -c.mac.hardenedRuntime=true -c.mac.notarize=true
+          app_path=$(find desktop/release -maxdepth 2 -name '*.app' -type d -print -quit)
+          codesign --verify --deep --strict "$app_path"
+          spctl --assess --type execute --verbose "$app_path"
+          xcrun stapler validate "$app_path"
+      - name: Generate editor release manifest and checksums
+        run: node desktop/scripts/releaseChecksums.mts
       - name: Test Electron on Linux
         if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm --dir desktop test:e2e
+        run: xvfb-run -a pnpm --dir desktop run test:e2e
       - name: Test Electron on Windows and macOS
         if: runner.os != 'Linux'
-        run: pnpm --dir desktop test:e2e
+        run: pnpm --dir desktop run test:e2e
+      - name: Test packaged Electron on Linux
+        if: runner.os == 'Linux'
+        env:
+          PANGEA_ELECTRON_PACKAGED: "1"
+        run: xvfb-run -a pnpm --dir desktop run test:e2e
+      - name: Test packaged Electron on Windows and macOS
+        if: runner.os != 'Linux'
+        env:
+          PANGEA_ELECTRON_PACKAGED: "1"
+        run: pnpm --dir desktop run test:e2e
+      - name: Install Debian package and test installed app
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo dpkg -i desktop/release/Pangea-RS-Edit-*.deb
+          installed_executable=$(dpkg -L pangea-rs-edit | rg '/pangea-rs-edit$' | head -1)
+          test -x "$installed_executable"
+          PANGEA_ELECTRON_PACKAGED=1 PANGEA_ELECTRON_EXECUTABLE="$installed_executable" xvfb-run -a pnpm --dir desktop run test:e2e
+      - name: Install NSIS package and test installed app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem desktop/release/Pangea-RS-Edit-*.exe | Select-Object -First 1
+          $installDirectory = Join-Path $env:RUNNER_TEMP 'PangeaInstalled'
+          $installed = Start-Process -FilePath $installer.FullName -ArgumentList "/S /D=$installDirectory" -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { Write-Error 'NSIS installation failed'; exit 1 }
+          $env:PANGEA_ELECTRON_PACKAGED = '1'
+          $env:PANGEA_ELECTRON_EXECUTABLE = Join-Path $installDirectory 'pangea-rs-edit.exe'
+          if (!(Test-Path $env:PANGEA_ELECTRON_EXECUTABLE)) { Write-Error 'Installed editor executable is missing'; exit 1 }
+          pnpm --dir desktop run test:e2e
+      - name: Install app from DMG and test installed app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mount_directory="$RUNNER_TEMP/pangea-dmg"
+          installed_directory="$RUNNER_TEMP/pangea-installed"
+          mkdir -p "$mount_directory" "$installed_directory"
+          disk_image=$(find desktop/release -maxdepth 1 -name '*.dmg' -print -quit)
+          hdiutil attach "$disk_image" -readonly -nobrowse -mountpoint "$mount_directory"
+          ditto "$mount_directory/Pangea RS Edit.app" "$installed_directory/Pangea RS Edit.app"
+          hdiutil detach "$mount_directory"
+          installed_executable=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$installed_directory/Pangea RS Edit.app/Contents/Info.plist")
+          PANGEA_ELECTRON_PACKAGED=1 PANGEA_ELECTRON_EXECUTABLE="$installed_directory/Pangea RS Edit.app/Contents/MacOS/$installed_executable" pnpm --dir desktop run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -65,4 +168,6 @@ jobs:
             desktop/release/*.exe
             desktop/release/*.dmg
             desktop/release/*.zip
+            desktop/release/editor-release.json
+            desktop/release/SHA256SUMS.txt
           if-no-files-found: error

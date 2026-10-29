@@ -40,7 +40,7 @@ describe("scripting contract", () => {
   it("keeps API and capability metadata aligned for every adapter", () => {
     expect(validateScriptingContract().isOk()).toBe(true);
     expect(Object.keys(SCRIPTING_CONTRACT.games)).toHaveLength(8);
-    expect(SCRIPTING_CONTRACT.contractVersion).toBe(1);
+    expect(SCRIPTING_CONTRACT.contractVersion).toBe(2);
     expect(SCRIPTING_CONTRACT.apiVersion).toBe(1);
     expect(SCRIPTING_CONTRACT.persistentStorage).toEqual(SCRIPT_PERSISTENCE_LIMITS);
   });

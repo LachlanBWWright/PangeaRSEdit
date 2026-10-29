@@ -1,4 +1,4 @@
-import { mapErr } from "@/utils/mapErr";
+import { useAssetState } from "@/assets/useAssetState";
 /**
  * MightyMikeItemMenu.tsx
  *
@@ -33,7 +33,6 @@ import {
   loadItemImage,
   type ItemFrameImage,
 } from "@/utils/mightyMikeShapeImageLoader";
-import { ResultAsync } from "neverthrow";
 import { TileCanvas } from "../shared/TileCanvas";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
 import {
@@ -47,7 +46,9 @@ import {
 import { MapItemScriptSection } from "@/editor/subviews/scripts/ScriptBindingSection";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
+import { CustomObjectToPlaceAtom, SelectedCustomPlacementAtom } from "../scripts/scriptPlacementSelectionState";
 import { ParameterField } from "./ParameterField";
+import { itemParameterFields } from "./itemParameterFields";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -63,6 +64,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  const customSelection = useAtomValue(SelectedCustomPlacementAtom);
   const [showItemImages, setShowItemImages] = useAtom(ShowMightyMikeItemImages);
   const currentScene = useAtomValue(CurrentScene);
 
@@ -72,6 +74,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
 
   if (itemData.Itms === undefined) return null;
+  if (ENABLE_SCRIPTS && customSelection !== null) return <CustomObjectItemPicker />;
 
   return (
     <div className="flex min-h-full flex-col gap-2">
@@ -150,8 +153,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             </Select>
 
             <div className="grid grid-cols-2 gap-2">
-              {([0, 1, 2, 3] as const).map((i) => {
-                const paramKey = `p${i}` as const;
+              {itemParameterFields.map(({ index: i, key: paramKey }) => {
                 const value = selectedItemData[paramKey];
                 const itemParams = getMightyMikeItemParams(
                   selectedItemData.type,
@@ -233,6 +235,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
   const currentScene = useAtomValue(CurrentScene);
+  const customToPlace = useAtomValue(CustomObjectToPlaceAtom);
 
   const itemValues = useMemo(() => {
     return getMightyMikeItemValues(globals);
@@ -278,7 +281,7 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     );
 
   return (
-    <EmptyDataPrompt
+    ENABLE_SCRIPTS && customToPlace !== null ? null : <EmptyDataPrompt
       title={hasItems ? "No Item Selected" : "No Items"}
       description={
         hasItems
@@ -301,24 +304,16 @@ const MightyMikeItemSelectLabel = memo(function MightyMikeItemSelectLabel({
 }) {
   const globals = useAtomValue(Globals);
   const [previewImage, setPreviewImage] = useState<ItemFrameImage | null>(null);
+  const { revision } = useAssetState();
 
   useEffect(() => {
     let cancelled = false;
 
     const loadPreviewImage = async () => {
-      const loadResult = await ResultAsync.fromPromise(
-        loadItemImage(itemType, scene ?? undefined),
-        mapErr,
-      );
+      const result = await loadItemImage(itemType, scene ?? undefined);
       if (cancelled) {
         return;
       }
-      if (loadResult.isErr()) {
-        setPreviewImage(null);
-        return;
-      }
-
-      const result = loadResult.value;
       if (result.isOk()) {
         setPreviewImage(result.value);
         return;
@@ -331,7 +326,7 @@ const MightyMikeItemSelectLabel = memo(function MightyMikeItemSelectLabel({
     return () => {
       cancelled = true;
     };
-  }, [itemType, scene]);
+  }, [itemType, scene, revision]);
 
   return (
     <div className="flex items-center gap-2">

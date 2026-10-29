@@ -5,6 +5,7 @@ import { err, ok, type Result } from "neverthrow";
 import type { HostError, Installation, ProjectFile } from "@pangea/desktop-contracts";
 import { atomicWrite, failure, io, projectPath } from "./files.ts";
 import { startProcess } from "./processes.ts";
+import type { LaunchObserver } from "./gameRuns.ts";
 
 export function validLaunchArguments(args: string[]): boolean {
   for (let index = 0; index < args.length; index += 2) {
@@ -15,7 +16,7 @@ export function validLaunchArguments(args: string[]): boolean {
   return true;
 }
 
-export async function launchGame(installation: Installation, runRoot: string, files?: ProjectFile[], args: string[] = [], onExit: () => void = () => undefined): Promise<Result<void, HostError>> {
+export async function launchGame(installation: Installation, runRoot: string, files?: ProjectFile[], args: string[] = [], onExit: () => void = () => undefined, observer?: LaunchObserver): Promise<Result<void, HostError>> {
   if (!validLaunchArguments(args)) return err(failure("Unsupported game launch arguments", "invalid"));
   let cwd = path.dirname(installation.executable);
   let launchArgs: string[] = [];
@@ -36,15 +37,16 @@ export async function launchGame(installation: Installation, runRoot: string, fi
     cwd = runRoot;
     launchArgs = ["--data-dir", path.join(runRoot, "Data"), ...args];
   }
-  const child = startProcess(installation.executable, launchArgs, cwd);
+  const inspectorRequest = files ? path.join(runRoot, ".pangea-inspector-request") : undefined;
+  const child = startProcess(installation.executable, launchArgs, cwd, files ? { PANGEA_SCRIPT_INSPECTOR: "1", PANGEA_SCRIPT_INSPECTOR_REQUEST: inspectorRequest ?? "" } : undefined);
   if (child.isErr()) return err(child.error);
   return new Promise((resolve) => {
     let spawned = false;
-    child.value.once("spawn", () => { spawned = true; resolve(ok(undefined)); });
+    child.value.once("spawn", () => { spawned = true; observer?.spawn(child.value, inspectorRequest); resolve(ok(undefined)); });
     child.value.once("error", () => resolve(err(failure("Game failed to launch", "launch"))));
-    child.value.stdout?.resume();
-    child.value.stderr?.resume();
-    child.value.once("close", () => {
+    if (!observer) { child.value.stdout?.resume(); child.value.stderr?.resume(); }
+    child.value.once("close", (code, signal) => {
+      if (spawned) observer?.exit(code, signal);
       if (spawned) onExit();
       if (files) void io(() => fs.rm(runRoot, { recursive: true, force: true }), "Cannot clean test snapshot");
     });

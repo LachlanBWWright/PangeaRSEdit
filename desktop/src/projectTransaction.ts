@@ -8,10 +8,12 @@ import { atomicWrite, failure, io, parseJson, projectPath, statOrMissing } from 
 
 interface PreviousFile { target: string; bytes: Uint8Array | null }
 const JOURNAL = ".pangea/transaction.json";
-const journalSchema = z.array(z.object({ path: relativePathSchema, bytes: z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/).nullable() })).max(4096);
+const MAX_DESTINATIONS = 4096 * 2 + 1;
+const journalSchema = z.array(z.object({ path: relativePathSchema, bytes: z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/).nullable() })).max(MAX_DESTINATIONS);
 
 export async function saveTransaction(root: string, files: ProjectFile[], removed: string[]): Promise<Result<void, HostError>> {
   const names = [...files.map((file) => file.path), ...removed];
+  if (names.length > MAX_DESTINATIONS) return err(failure("Transaction exceeds the supported file and removal limit", "limit"));
   if (new Set(names).size !== names.length || removed.includes(PROJECT_MANIFEST) || names.includes(JOURNAL))
     return err(failure("Duplicate or invalid save destinations", "invalid"));
   if (files.reduce((size, file) => size + file.bytes.length, 0) > 512 * 1024 * 1024)

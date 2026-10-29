@@ -3,8 +3,12 @@ import {
   PixelFormatSrc,
   type BG3DParseResult,
   type BG3DTexture,
+  type BG3DGroup,
+  type BG3DGeometry,
 } from "@/modelParsers/parseBG3D";
-import { err, ok, ResultAsync, type Result } from "neverthrow";
+import { parse3DMF } from "@/modelParsers/parse3dmf";
+import { err, ok, ResultAsync, Result } from "neverthrow";
+import { fetchAsset } from "@/assets/fetchAsset";
 
 export function extractEmbeddedTexture(
   model: BG3DParseResult,
@@ -53,6 +57,11 @@ function decodeRgb(texture: BG3DTexture): Uint8ClampedArray {
 export function embeddedTextureToCanvas(
   texture: BG3DTexture,
 ): Result<HTMLCanvasElement, string> {
+  const count = texture.width * texture.height;
+  if (!Number.isSafeInteger(texture.width) || !Number.isSafeInteger(texture.height) || texture.width <= 0 || texture.height <= 0 || count > 16 * 1024 * 1024)
+    return err("Invalid embedded texture dimensions");
+  const channels = texture.srcPixelFormat === PixelFormatSrc.GL_RGBA ? 4 : texture.srcPixelFormat === PixelFormatSrc.GL_RGB ? 3 : 2;
+  if (texture.pixels.length < count * channels) return err("Embedded texture pixels are incomplete");
   const canvas = document.createElement("canvas");
   canvas.width = texture.width;
   canvas.height = texture.height;
@@ -61,7 +70,7 @@ export function embeddedTextureToCanvas(
 
   let pixels: Uint8ClampedArray;
   if (texture.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
-    pixels = new Uint8ClampedArray(texture.pixels);
+    pixels = new Uint8ClampedArray(texture.pixels.slice(0, count * 4));
   } else if (texture.srcPixelFormat === PixelFormatSrc.GL_RGB) {
     pixels = decodeRgb(texture);
   } else if (
@@ -74,25 +83,32 @@ export function embeddedTextureToCanvas(
 
   const imagePixels = new Uint8ClampedArray(pixels.length);
   imagePixels.set(pixels);
-  context.putImageData(
-    new ImageData(imagePixels, texture.width, texture.height),
-    0,
-    0,
-  );
-  return ok(canvas);
+  return Result.fromThrowable(() => {
+    context.putImageData(new ImageData(imagePixels, texture.width, texture.height), 0, 0);
+    return canvas;
+  }, () => "Could not decode the embedded texture on this canvas")();
 }
 
-export function loadBg3dMaterialTexture(
+export function loadModelMaterialTexture(
   url: string,
   materialIndex: number,
+  modelIndex?: number,
 ): ResultAsync<HTMLCanvasElement, string> {
-  return ResultAsync.fromPromise(fetch(url), (error) => String(error))
-    .andThen((response) =>
-      response.ok
-        ? ResultAsync.fromPromise(response.arrayBuffer(), (error) => String(error))
-        : err(`Could not load ${url}`),
-    )
-    .andThen((buffer) => parseBG3D(buffer))
-    .andThen((model) => extractEmbeddedTexture(model, materialIndex))
+  return fetchAsset(url).mapErr((error) => error.message)
+    .andThen((buffer) => buffer.byteLength >= 4 && new DataView(buffer).getUint32(0) === 0x33444d46 ? parse3DMF(buffer) : parseBG3D(buffer))
+    .andThen((model) => {
+      const geometry = modelIndex === undefined ? undefined : model.groups[0]?.children[modelIndex];
+      const selected = modelIndex === undefined ? materialIndex : geometry ? firstMaterial(geometry) : -1;
+      return extractEmbeddedTexture(model, selected ?? -1);
+    })
     .andThen(embeddedTextureToCanvas);
+}
+
+function firstMaterial(node: BG3DGroup | BG3DGeometry): number | null {
+  if (!("children" in node)) return node.layerMaterialNum[0] ?? null;
+  for (const child of node.children) {
+    const index = firstMaterial(child);
+    if (index !== null) return index;
+  }
+  return null;
 }

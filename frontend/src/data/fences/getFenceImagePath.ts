@@ -1,6 +1,7 @@
 import { Game, GlobalsInterface } from "../globals/globals";
 import { FenceType as Nanosaur2FenceType } from "./nanosaur2FenceType";
 import { getBugdom2FenceImageDefinition } from "./bugdom2FenceImages";
+import { gameAssetUrl } from "@/assets/gameAssetUrls";
 
 function withBaseUrl(path: string): string {
   const base = import.meta.env?.BASE_URL ?? "/";
@@ -50,15 +51,15 @@ const CRO_MAG_FENCE_FILES = [
 
 function getNanosaur2FenceImagePath(fenceType: number): string {
   if (fenceType === Nanosaur2FenceType.LEVEL_1_PINETREE)
-    return withBaseUrl("assets/nanosaur2/fences/pinefence.jpg");
+    return gameAssetUrl(Game.NANOSAUR_2, "Sprites/textures/pinefence.jpg", withBaseUrl("assets/nanosaur2/fences/pinefence.jpg"));
   if (fenceType === Nanosaur2FenceType.LEVEL_2_DUSTDEVIL)
-    return withBaseUrl("assets/nanosaur2/fences/dustdevil.jpg");
-  return withBaseUrl("assets/nanosaur2/fences/blockenemy.png");
+    return gameAssetUrl(Game.NANOSAUR_2, "Sprites/textures/dustdevil.jpg", withBaseUrl("assets/nanosaur2/fences/dustdevil.jpg"));
+  return gameAssetUrl(Game.NANOSAUR_2, "Sprites/textures/blockenemy.png", withBaseUrl("assets/nanosaur2/fences/blockenemy.png"));
 }
 
 function getCroMagFenceImagePath(fenceType: number): string {
   const file = CRO_MAG_FENCE_FILES[fenceType] ?? "desertskin.png";
-  return withBaseUrl(`assets/croMag/fences/${file}`);
+  return gameAssetUrl(Game.CRO_MAG, `Sprites/Fences/${file}`, withBaseUrl(`assets/croMag/fences/${file}`));
 }
 
 /** Returns the fence image path for the active game and fence type. */
@@ -68,17 +69,21 @@ export function getFenceImagePath(
 ): string {
   switch (globals.GAME_TYPE) {
     case Game.OTTO_MATIC:
-      return withBaseUrl(
+      return gameAssetUrl(globals.GAME_TYPE, `Sprites/fence/fence${String(fenceType).padStart(3, "0")}.tga`, withBaseUrl(
         `assets/ottoMatic/fences/fence${String(fenceType).padStart(3, "0")}.png`,
-      );
+      ));
     case Game.BUGDOM:
-      return withBaseUrl(`assets/bugdom/fences/${2000 + fenceType}.jpg`);
-    case Game.BUGDOM_2:
-      return withBaseUrl(getBugdom2FenceImageDefinition(fenceType).publicPath);
-    case Game.BILLY_FRONTIER:
-      return withBaseUrl(
-        `assets/billyFrontier/fences/${BILLY_FRONTIER_FENCE_FILES[fenceType] ?? "global003.png"}`,
-      );
+      return gameAssetUrl(globals.GAME_TYPE, `Images/Textures/${2000 + fenceType}.tga`, withBaseUrl(`assets/bugdom/fences/${2000 + fenceType}.jpg`));
+    case Game.BUGDOM_2: {
+      const definition = getBugdom2FenceImageDefinition(fenceType);
+      const native = definition.sourcePath.split("/Data/")[1] ?? "";
+      return gameAssetUrl(globals.GAME_TYPE, native, withBaseUrl(definition.publicPath));
+    }
+    case Game.BILLY_FRONTIER: {
+      const file = BILLY_FRONTIER_FENCE_FILES[fenceType] ?? "global003.png";
+      return gameAssetUrl(globals.GAME_TYPE, `Sprites/${file.startsWith("stampede") ? "stampede" : "global"}/${file}`,
+        withBaseUrl(`assets/billyFrontier/fences/${file}`));
+    }
     case Game.CRO_MAG:
       return getCroMagFenceImagePath(fenceType);
     case Game.NANOSAUR_2:

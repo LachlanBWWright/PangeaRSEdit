@@ -35,6 +35,7 @@ export interface GameModelSelectorProps {
 }
 
 import { GAMES } from "@/data/games";
+import { useAvailableGameAssets } from "@/platform/desktop/assetAvailability";
 
 function compareGamesByName(left: GameInfo, right: GameInfo): number {
   return left.name.localeCompare(right.name);
@@ -46,12 +47,13 @@ export function GameModelSelector({
   onLoadModel,
   loading,
 }: GameModelSelectorProps) {
+  const { isCatalogAvailable } = useAvailableGameAssets();
   const [selectedGameId, setSelectedGameId] = useState<string>("");
   const [selectedCategory, setSelectedCategory] =
     useState<string>("Characters");
   const [selectedModel, setSelectedModel] = useState<GameModel | null>(null);
 
-  const selectedGame = GAMES.find((game) => game.id === selectedGameId);
+  const selectedGame = GAMES.find((game) => game.id === selectedGameId && isCatalogAvailable(game.id));
 
   // Derive categories and memoize to keep stable identity across renders
   const availableCategories = useMemo(() => {
@@ -193,8 +195,8 @@ export function GameModelSelector({
         <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
           Game
         </label>
-        <Select value={selectedGameId} onValueChange={setSelectedGameId}>
-          <SelectTrigger className="w-full">
+        <Select value={selectedGame?.id ?? ""} onValueChange={(id) => { if (isCatalogAvailable(id)) setSelectedGameId(id); }}>
+          <SelectTrigger className="w-full" aria-label="Game models game">
             <SelectValue placeholder="Select a game" />
           </SelectTrigger>
           <SelectContent>
@@ -202,9 +204,10 @@ export function GameModelSelector({
               <SelectItem
                 key={game.id}
                 value={game.id}
+                disabled={!isCatalogAvailable(game.id)}
                 className="text-white focus:bg-gray-600"
               >
-                {game.name} {game.models.length === 0 && "(No models available)"}
+                {game.name} {!isCatalogAvailable(game.id) ? "(Not downloaded)" : game.models.length === 0 ? "(No models available)" : ""}
               </SelectItem>
             ))}
           </SelectContent>

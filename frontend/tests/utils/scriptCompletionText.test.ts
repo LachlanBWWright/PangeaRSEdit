@@ -79,7 +79,7 @@ describe("script completion text", () => {
     expect(sweep).toBeDefined();
     expect(state).toBeDefined();
     if (!sweep || !state) return;
-    expect(buildApiSignature(sweep)).toBe("pangea.world.sweepBox(bounds: WorldBounds, delta: Vector3, category: string, ignore: ObjectHandle?): CollisionHit|nil");
+    expect(buildApiSignature(sweep)).toBe("pangea.world.sweepBox(bounds: WorldBounds, delta: Vector3, category: string, ignore: ObjectHandle?): CollisionHit|nil, ObjectCommandResult");
     expect(buildApiSignature(state)).toBe("pangea.player.setState(playerNum: number, key: string, value: number|boolean): CommandResult");
     expect(buildApiCompletionInsertText(sweep, (name) => getContextualApiName("pangea.world.", name))).toBe("sweepBox(${1:bounds}, ${2:delta}, ${3:category}, ${4:ignore})");
   });

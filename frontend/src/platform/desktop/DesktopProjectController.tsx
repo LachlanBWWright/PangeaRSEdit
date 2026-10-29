@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { z } from "zod";
-import { assetInstallationSchema, gameIdSchema, hostCommandSchema, projectSnapshotSchema, type GameId } from "@pangea/desktop-contracts";
+import { gameIdSchema, hostCommandSchema, projectSnapshotSchema, type GameId } from "@pangea/desktop-contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -11,24 +11,48 @@ import { desktopActiveDocumentAtom, desktopExternalProjectAtom, desktopLevelIdAt
 import { receiveProjectChange } from "./projectEvents";
 import { ProjectConflict } from "./ProjectConflict";
 import { GamesPage } from "./GamesPage";
-import { desktopGamesOpenAtom, installedEditorAssetsAtom } from "./assetAvailability";
+import { desktopGamesOpenAtom, installedEditorAssetsAtom, installedNativeGameDataAtom } from "./assetAvailability";
+import { editorAssetGames, nativeDataGames } from "./editorAssetGames";
 import { ProjectDetailsDialog } from "./ProjectDetailsDialog";
+import { ProjectFilesDialog } from "./ProjectFilesDialog";
+import { RecentProjectsDialog } from "./RecentProjectsDialog";
+import { GameConsole } from "./GameConsole";
+import { AssetAssignmentsDialog } from "./AssetAssignmentsDialog";
+import { PlayablePacksDialog } from "./PlayablePacksDialog";
+import { loadAssetSources, syncAssetSources } from "./assetSourceState";
 
 export function DesktopProjectController() {
   const store = useStore();
   const setProject = useSetAtom(desktopProjectAtom);
   const setLevelId = useSetAtom(desktopLevelIdAtom);
+  const levelId = useAtomValue(desktopLevelIdAtom);
+  const project = useAtomValue(desktopProjectAtom);
   const dirty = useAtomValue(desktopProjectDirtyAtom);
   const commands = useAtomValue(desktopProjectCommandsAtom);
   const [dialog, setDialog] = useAtom(desktopProjectDialogAtom);
   const setActions = useSetAtom(desktopProjectActionsAtom);
   const [gamesOpen, setGamesOpen] = useAtom(desktopGamesOpenAtom);
   const setInstalledAssets = useSetAtom(installedEditorAssetsAtom);
+  const setNativeData = useSetAtom(installedNativeGameDataAtom);
   const setExternal = useSetAtom(desktopExternalProjectAtom);
   const [name, setName] = useState("My project");
   const [game, setGame] = useState<GameId>("OttoMatic");
   const open = useRef<() => Promise<void>>(async () => undefined);
   const bridge = desktopBridge();
+  useEffect(() => {
+    if (!bridge) return;
+    let current = true;
+    void desktopRequest({ operation: "project.restore" }, z.object({ project: projectSnapshotSchema, levelId: z.string().nullable() }).nullable()).then((result) => {
+      if (!current) return;
+      if (result.isErr()) { toast.error("Could not restore the last project", { description: result.error.message }); return; }
+      if (result.value && !store.get(desktopProjectAtom)) { setLevelId(result.value.levelId); setProject(result.value.project); }
+    });
+    return () => { current = false; };
+  }, [bridge, store, setLevelId, setProject]);
+  useEffect(() => {
+    if (!bridge || !project || (levelId && !project.manifest.levels.some((level) => level.id === levelId))) return;
+    void desktopRequest({ operation: "project.session", levelId }, z.void());
+  }, [bridge, project, levelId]);
   useEffect(() => bridge?.onProjectChange((value) => receiveProjectChange(store, value)), [bridge, store]);
   useEffect(() => { open.current = () => openProject(false); });
   useEffect(() => {
@@ -45,10 +69,13 @@ export function DesktopProjectController() {
   }), [bridge, store, setDialog]);
   useEffect(() => {
     if (!bridge) return;
-    void desktopRequest({ operation: "games.assets" }, z.array(assetInstallationSchema)).then((result) => {
-      if (result.isOk()) setInstalledAssets(result.value.map((entry) => entry.game));
+    void loadAssetSources().then((result) => {
+      if (result.isErr()) { toast.error("Could not load game asset sources", { description: result.error.message }); return; }
+      setInstalledAssets(editorAssetGames(result.value.assets));
+      setNativeData(nativeDataGames(result.value.assets, result.value.games));
+      syncAssetSources(result.value.assets, result.value.games);
     });
-  }, [bridge, setInstalledAssets]);
+  }, [bridge, setInstalledAssets, setNativeData]);
   if (!bridge) return null;
 
   async function openProject(create: boolean) {
@@ -65,6 +92,11 @@ export function DesktopProjectController() {
   return <>
     <ProjectConflict />
     <ProjectDetailsDialog />
+    <ProjectFilesDialog />
+    <RecentProjectsDialog />
+    <GameConsole />
+    <AssetAssignmentsDialog />
+    <PlayablePacksDialog />
     <Dialog open={gamesOpen} onOpenChange={setGamesOpen}><DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Game installations</DialogTitle>
       <DialogDescription>Manage optional games and stock editor assets.</DialogDescription></DialogHeader><GamesPage /></DialogContent></Dialog>
     <Dialog open={dialog === "new"} onOpenChange={(open) => { if (!open) setDialog(null); }}><DialogContent><DialogHeader><DialogTitle>Create folder project</DialogTitle>

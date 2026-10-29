@@ -19,7 +19,7 @@ import { useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
 import { Layer, Stage } from "react-konva";
 import Konva from "konva";
-import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
+import { addPlacedItem, computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
@@ -99,7 +99,7 @@ export function OttoMaticKonvaView({
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
   const setPendingCreation = useSetAtom(PendingCreation);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  const customObjectPlacement = useCustomObjectPlacement();
+  const customObjectPlacement = useCustomObjectPlacement(headerData, terrainData);
   const pendingCreation = useAtomValue(PendingCreation);
   const globals = useAtomValue(Globals);
   const gameFeatures = getGameFeatures(globals.GAME_TYPE);
@@ -167,7 +167,6 @@ export function OttoMaticKonvaView({
       if (customPos && customObjectPlacement.objectId !== null) {
         customObjectPlacement.placeAt(
           Math.round(customPos.x),
-          headerData.Hedr[1000].obj.minY ?? 0,
           Math.round(customPos.y),
         );
         return;
@@ -177,22 +176,12 @@ export function OttoMaticKonvaView({
       const pos = nativeStageRef?.getRelativePointerPosition();
       if (!pos) return;
       setItemDataNotNull((itemData) => {
-        itemData.Itms[1000].obj.push({
-          x: Math.round(pos.x),
-          z: Math.round(pos.y),
-          type: clickToAddItem,
-          flags: 0,
-          p0: 0,
-          p1: 0,
-          p2: 0,
-          p3: 0,
-        });
+        addPlacedItem(itemData, Math.round(pos.x), Math.round(pos.y), clickToAddItem);
       });
     },
     [
       clickToAddItem,
       customObjectPlacement,
-      headerData,
       pendingCreation,
       setItemDataNotNull,
       setPendingCreation,
@@ -347,7 +336,7 @@ export function OttoMaticKonvaView({
                 setSplineData={setSplineDataNotNull}
               />
             )}
-            <CustomScriptPlacements />
+            <CustomScriptPlacements headerData={headerData} terrainData={terrainData} />
             {view === View.supertiles &&
               (gameFeatures.hasPaths || gameFeatures.hasCheckpoints) && (
               <Layer>

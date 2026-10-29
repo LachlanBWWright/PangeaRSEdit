@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,9 @@ import {
 import { Globals } from "@/data/globals/globals";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { ClickToAddItem } from "@/data/items/itemAtoms";
+import { CustomPlacementParameters } from "../scripts/CustomObjectParameters";
+import { openCustomObjectEditorAtom } from "../scripts/scriptAuthoringNavigation";
+import type { UpdateScriptWorkspace } from "../scripts/useScriptWorkspace";
 import {
   CustomObjectToPlaceAtom,
   SelectedCustomPlacementAtom,
@@ -26,8 +29,11 @@ import {
   scriptWorkspaceStoreAtom,
 } from "../scripts/scriptWorkspaceState";
 
+const POSITION_AXES: readonly ("x" | "y" | "z")[] = ["x", "y", "z"];
+
 export function CustomObjectItemPicker() {
   const globals = useAtomValue(Globals);
+  const openObjectEditor = useSetAtom(openCustomObjectEditorAtom);
   const levelNumber = useAtomValue(LevelNumber);
   const [workspaceStore, setWorkspaceStore] = useAtom(scriptWorkspaceStoreAtom);
   const [, setNativeItemType] = useAtom(ClickToAddItem);
@@ -41,6 +47,9 @@ export function CustomObjectItemPicker() {
     workspace.levels[context.levelKey]?.customPlacements.find(
       (placement) => placement.id === selectedPlacementId,
     ) ?? null;
+  const update: UpdateScriptWorkspace = (transform) => setWorkspaceStore((store) =>
+    replaceScriptWorkspace(store, transform(ensureScriptWorkspace(store, context))),
+  );
 
   const updateSelectedPosition = (axis: "x" | "y" | "z", value: string) => {
     if (!selectedPlacement) {
@@ -54,7 +63,7 @@ export function CustomObjectItemPicker() {
     setWorkspaceStore((store) =>
       replaceScriptWorkspace(
         store,
-        moveCustomPlacement(workspace, selectedPlacement.id, position),
+        moveCustomPlacement(ensureScriptWorkspace(store, context), selectedPlacement.id, position),
       ),
     );
   };
@@ -66,7 +75,7 @@ export function CustomObjectItemPicker() {
     setWorkspaceStore((store) =>
       replaceScriptWorkspace(
         store,
-        removeCustomPlacement(workspace, selectedPlacement.id),
+        removeCustomPlacement(ensureScriptWorkspace(store, context), selectedPlacement.id),
       ),
     );
     setSelectedPlacementId(null);
@@ -79,13 +88,19 @@ export function CustomObjectItemPicker() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-2 border-t pt-3 text-center">
+    <div className="flex flex-col gap-2">
       {selectedPlacement && (
         <div className="grid w-full grid-cols-2 gap-2 text-left">
           <p className="col-span-2 text-center text-sm font-medium">
             {selectedPlacement.label}
           </p>
-          {(["x", "y", "z"] as const).map((axis) => (
+          <p className="col-span-2 text-sm text-slate-400">Selected placement — position and overrides affect only this item. Edit definition or behavior changes the shared object across all levels.</p>
+          <div className="col-span-2 flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={() => openObjectEditor({ gameId: context.gameId, definitionId: selectedPlacement.objectId, tab: "appearance" })}>Edit definition</Button>
+            <Button size="sm" variant="secondary" onClick={() => openObjectEditor({ gameId: context.gameId, definitionId: selectedPlacement.objectId, tab: "behavior" })}>Edit behavior</Button>
+            <Button size="sm" variant="ghost" onClick={() => openObjectEditor({ gameId: context.gameId, definitionId: selectedPlacement.objectId, tab: "usage" })}>Find instances</Button>
+          </div>
+          {POSITION_AXES.map((axis) => (
             <div key={axis} className={axis === "z" ? "col-span-2" : ""}>
               <Label htmlFor={`scripted-item-${axis}`}>{axis.toUpperCase()}</Label>
               <Input
@@ -98,6 +113,7 @@ export function CustomObjectItemPicker() {
               />
             </div>
           ))}
+          <div className="col-span-2"><CustomPlacementParameters workspace={workspace} placement={selectedPlacement} update={update} /></div>
           <Button
             className="col-span-2"
             variant="destructive"
@@ -107,7 +123,7 @@ export function CustomObjectItemPicker() {
           </Button>
         </div>
       )}
-      <p className="text-sm font-medium">Scripted items</p>
+      <Label htmlFor="custom-item-type">Custom item</Label>
       <Select
         value={objectId ?? ""}
         onValueChange={(value) => {
@@ -115,8 +131,8 @@ export function CustomObjectItemPicker() {
           setObjectId(value);
         }}
       >
-        <SelectTrigger>
-          <SelectValue placeholder="Select a scripted item" />
+        <SelectTrigger id="custom-item-type">
+          <SelectValue placeholder="Select a custom item" />
         </SelectTrigger>
         <SelectContent>
           {workspace.customObjects.map((definition) => (

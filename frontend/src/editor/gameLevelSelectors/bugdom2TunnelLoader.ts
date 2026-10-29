@@ -1,6 +1,6 @@
 import { toast } from "sonner";
-import { ResultAsync } from "neverthrow";
-import { mapErr } from "@/utils/mapErr";
+import { fetchAsset } from "@/assets/fetchAsset";
+import { getAssetState } from "@/assets/assetState";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 
@@ -19,6 +19,7 @@ export function createBugdom2TunnelLoader({
   fileName: string,
   levelKind: TunnelLevelKind,
 ) => Promise<void> {
+  let latest = 0;
   return async (
     tunnelPath: string,
     fileName: string,
@@ -28,32 +29,12 @@ export function createBugdom2TunnelLoader({
       return;
     }
 
-    const responseResult = await ResultAsync.fromPromise(
-      fetch(tunnelPath),
-      mapErr,
-    );
-    if (responseResult.isErr()) {
-      toast.error(`Failed to fetch ${fileName}`, {
-        description: responseResult.error,
-      });
-      return;
-    }
-
-    const response = responseResult.value;
-    if (!response.ok) {
-      toast.error(`Failed to fetch ${fileName}`, {
-        description: `HTTP ${response.status}: ${response.statusText}`,
-      });
-      return;
-    }
-
-    const bufferResult = await ResultAsync.fromPromise(
-      response.arrayBuffer(),
-      mapErr,
-    );
+    const request = ++latest;
+    const revision = getAssetState().revision;
+    const bufferResult = await fetchAsset(tunnelPath);
     if (bufferResult.isErr()) {
-      toast.error("Failed to read response", {
-        description: bufferResult.error,
+      toast.error(`Failed to fetch ${fileName}`, {
+        description: bufferResult.error.message,
       });
       return;
     }
@@ -64,6 +45,6 @@ export function createBugdom2TunnelLoader({
       return;
     }
 
-    onTunnelLoad(result.value, fileName, levelKind);
+    if (request === latest && revision === getAssetState().revision) onTunnelLoad(result.value, fileName, levelKind);
   };
 }

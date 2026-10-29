@@ -1,5 +1,7 @@
 import { err, ok, type Result } from "neverthrow";
 import type { ScriptCustomObjectDefinition, ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
+import { collectLiteralLuaRequires } from "./scriptLuaRequires";
+import { collectDeclaredLuaDependencies } from "./scriptDeclaredDependencies";
 
 export function definitionAssetPaths(definition: ScriptCustomObjectDefinition): readonly string[] {
   const visual = definition.visual;
@@ -12,19 +14,27 @@ export function collectDefinitionSources(state: ScriptWorkspaceState): Result<re
 }
 
 export function collectScriptSources(state: ScriptWorkspaceState, roots: readonly string[]): Result<readonly string[], string> {
+  return collectSourceDependencies(Object.fromEntries(Object.entries(state.sourceFiles).map(([path, source]) => [path, source.content])), roots);
+}
+
+export function collectSourceDependencies(sources: Readonly<Record<string, string>>, roots: readonly string[]): Result<readonly string[], string> {
   const pending = [...roots];
   const visited = new Set<string>();
   while (pending.length > 0) {
     const path = pending.pop();
     if (!path || visited.has(path)) continue;
-    const source = state.sourceFiles[path];
-    if (!source) return err(`Definition source is missing: ${path}`);
+    const source = sources[path];
+    if (source === undefined) return err(`Definition source is missing: ${path}`);
     visited.add(path);
-    for (const match of source.content.matchAll(/\brequire\s*(?:\(\s*)?["']([^"']+)["']/g)) {
-      const name = match[1];
+    const dependencies = collectLiteralLuaRequires(source);
+    if (dependencies.isErr()) return err(`${path}: ${dependencies.error}`);
+    const declared = collectDeclaredLuaDependencies(source);
+    if (declared.isErr()) return err(`${path}: ${declared.error}`);
+    for (const name of [...dependencies.value, ...declared.value]) {
       if (!name || name === "pangea") continue;
       const dependency = `Data/Scripts/src/${name.replaceAll(".", "/")}.lua`;
-      if (!state.sourceFiles[dependency]) return err(`Missing helper '${name}' required by ${path}. Add it before exporting.`);
+      if (!isDefinitionSourcePath(dependency)) return err(`Invalid helper module '${name}' required by ${path}. Use a module name without path traversal.`);
+      if (sources[dependency] === undefined) return err(`Missing helper '${name}' required by ${path}. Add it before exporting.`);
       pending.push(dependency);
     }
   }

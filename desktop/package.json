@@ -9,7 +9,7 @@
   "desktopName": "pangea-rs-edit.desktop",
   "main": "dist/main.cjs",
   "scripts": {
-    "build:host": "node build.mjs",
+    "build:host": "pnpm --dir ../packages/model-codec run build && node build.mjs",
     "build": "pnpm --dir ../frontend run build:desktop && pnpm run build:host",
     "start": "electron .",
     "check": "tsc --noEmit",
@@ -19,8 +19,10 @@
   },
   "dependencies": {
     "@pangea/desktop-contracts": "workspace:*",
+    "@pangea/model-codec": "workspace:*",
     "fflate": "^0.8.2",
     "neverthrow": "^8.2.0",
+    "sharp": "^0.34.5",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -39,11 +41,13 @@
     "executableName": "pangea-rs-edit",
     "artifactName": "Pangea-RS-Edit-${version}-${arch}.${ext}",
     "asar": true,
+    "asarUnpack": ["node_modules/sharp/**/*", "node_modules/@img/**/*"],
     "files": ["dist/**/*", "package.json"],
     "extraResources": [{ "from": "../frontend/dist-desktop", "to": "renderer" }],
     "linux": { "target": ["AppImage", "deb"], "category": "Development", "syncDesktopName": true, "maintainer": "PangeaRSEdit contributors" },
     "deb": { "packageName": "pangea-rs-edit" },
     "win": { "target": ["nsis"] },
-    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.developer-tools" }
+    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.developer-tools", "notarize": false,
+      "hardenedRuntime": false, "entitlements": "build/entitlements.mac.plist", "entitlementsInherit": "build/entitlements.mac.plist" }
   }
 }

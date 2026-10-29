@@ -30,7 +30,7 @@ const nativeAdapterCases: readonly NativeAdapterCase[] = [
       asset("nanosaur/terrain/Level1.ter"),
       asset("nanosaur/terrain/Level1.trt"),
     ],
-    runtimeUrlPattern: "**/generated/pangea-ports/wasm/nanosaur/Nanosaur.js*",
+    runtimeUrlPattern: "**/generated/pangea-ports/wasm/nanosaur/game/Nanosaur.js*",
   },
   {
     title: "Bugdom",
@@ -51,7 +51,7 @@ const nativeAdapterCases: readonly NativeAdapterCase[] = [
       asset("croMag/terrain/IronAge_Europe.ter.rsrc"),
       asset("croMag/terrain/IronAge_Europe.ter"),
     ],
-    runtimeUrlPattern: "**/generated/pangea-ports/wasm/cromagrally/CroMagRally.js*",
+    runtimeUrlPattern: "**/generated/pangea-ports/wasm/cromagrally/game/CroMagRally.js*",
   },
   {
     title: "Billy Frontier",
@@ -59,7 +59,7 @@ const nativeAdapterCases: readonly NativeAdapterCase[] = [
       asset("billyFrontier/terrain/town_duel.ter.rsrc"),
       asset("billyFrontier/terrain/town_duel.ter"),
     ],
-    runtimeUrlPattern: "**/generated/pangea-ports/wasm/billyfrontier/billyfrontier.js*",
+    runtimeUrlPattern: "**/generated/pangea-ports/wasm/billyfrontier/game/billyfrontier.js*",
   },
   {
     title: "Mighty Mike",
@@ -110,7 +110,7 @@ for (const adapterCase of nativeAdapterCases) {
       .locator('input[type="file"]')
       .setInputFiles([...adapterCase.levelFiles]);
     await expect(
-      page.locator("summary").filter({ hasText: "Level Actions" }),
+      page.getByRole("button", { name: "Level Actions", exact: true }),
     ).toBeVisible({ timeout: 30_000 });
     await page.getByRole("tab", { name: "Scripts", exact: true }).click();
     const dialog = await openScriptWorkspace(page);
@@ -119,18 +119,22 @@ for (const adapterCase of nativeAdapterCases) {
     await dialog
       .getByRole("button", { name: "Test with scripts", exact: true })
       .click();
-    await page.route(adapterCase.runtimeUrlPattern, (route) =>
-      route.abort("failed"),
-    );
+    const abortedLoads: string[] = [];
+    await page.route(adapterCase.runtimeUrlPattern, (route) => {
+      abortedLoads.push(route.request().url());
+      return route.abort("failed");
+    });
     const previewDialog = page.getByRole("dialog").last();
     await previewDialog
       .getByRole("button", { name: "Launch Game", exact: true })
       .click();
+    const monitor = previewDialog.getByRole("complementary", { name: "Scripting runtime monitor" });
+    await expect(monitor.getByRole("status")).toHaveText(/Runtime check failed/, { timeout: 30_000 });
+    await expect(monitor.getByText("Latest error", { exact: true })).toBeVisible();
     await expect(
-      previewDialog.getByText("Last Error:", { exact: true }),
+      monitor.locator("pre").filter({ hasText: "Failed to load" }),
     ).toBeVisible({ timeout: 30_000 });
-    await expect(
-      previewDialog.locator("pre").filter({ hasText: "Failed to load" }),
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(monitor.getByText("Runtime smoke check passed", { exact: true })).toHaveCount(0);
+    expect(abortedLoads).toHaveLength(1);
   });
 }

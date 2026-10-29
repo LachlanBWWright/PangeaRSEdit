@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseTGAToCanvas } from "./tgaImageParser";
+import { nativePaletteBytes } from "@/platform/desktop/nativeSpriteFiles";
 
 function makeTga(options: {
   imageType: number;
@@ -30,6 +31,29 @@ function makeTga(options: {
 }
 
 describe("parseTGAToCanvas", () => {
+  it("reopens the editor's uncompressed indexed palette export", () => {
+    const colors = Array.from({ length: 256 }, (_, index) => ({ r: index, g: 17, b: 255 - index }));
+    const encoded = nativePaletteBytes(colors);
+    expect(encoded.isOk()).toBe(true); if (encoded.isErr()) return;
+    const putImageData = vi.spyOn(CanvasRenderingContext2D.prototype, "putImageData");
+    const result = parseTGAToCanvas(Uint8Array.from(encoded.value).buffer);
+    expect(result.isOk()).toBe(true);
+    expect(Array.from(putImageData.mock.lastCall?.[0].data ?? [])).toEqual(colors.flatMap((color) => [color.r, color.g, color.b, 255]));
+    putImageData.mockRestore();
+  });
+
+  it("rejects indexed images without a palette", () => {
+    const result = parseTGAToCanvas(makeTga({ imageType: 1, width: 1, height: 1, pixelDepth: 8, pixels: [0] }));
+    expect(result.isErr() && result.error).toBe("Indexed TGA requires a color map");
+  });
+
+  it("returns typed errors for incomplete headers and palettes", () => {
+    expect(parseTGAToCanvas(new ArrayBuffer(12)).isErr()).toBe(true);
+    const encoded = nativePaletteBytes(Array.from({ length: 256 }, () => ({ r: 1, g: 2, b: 3 })));
+    expect(encoded.isOk()).toBe(true); if (encoded.isErr()) return;
+    const result = parseTGAToCanvas(Uint8Array.from(encoded.value.subarray(0, 20)).buffer);
+    expect(result.isErr() && result.error).toBe("Incomplete TGA image ID or color map");
+  });
   it("decodes uncompressed BGR pixels and honors top-left origin", () => {
     const putImageData = vi.spyOn(CanvasRenderingContext2D.prototype, "putImageData");
     const result = parseTGAToCanvas(
@@ -130,10 +154,10 @@ describe("parseTGAToCanvas", () => {
 
   it.each([
     [0, "Invalid TGA: image dimensions are zero"],
-    [1, "Unsupported TGA image type: 1 (only types 2, 3, 9, 10, 11 supported)"],
+    [1, "Unsupported TGA image type: 0 (only types 1, 2, 3, 9, 10, 11 supported)"],
   ])("returns a typed error for invalid image type or dimensions", (width, message) => {
     const result = parseTGAToCanvas(
-      makeTga({ imageType: width === 0 ? 2 : 1, width, height: 1, pixelDepth: 24, pixels: [] }),
+      makeTga({ imageType: width === 0 ? 2 : 0, width, height: 1, pixelDepth: 24, pixels: [] }),
     );
     expect(result.isErr() ? result.error : "").toBe(message);
   });

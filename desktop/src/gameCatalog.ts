@@ -13,8 +13,7 @@ const releasesSchema = z.array(z.object({ tag_name: z.string(), draft: z.boolean
 export function completeRelease(manifest: ReleaseManifest): boolean {
   return gameIdSchema.options.every((game) => {
     const assets = manifest.assets.filter((asset) => asset.game === game);
-    return assets.some((asset) => asset.kind === "editor-assets")
-      && ["linux", "win32", "darwin"].every((platform) => assets.some((asset) => asset.kind === "runtime" && asset.platform === platform));
+    return ["linux", "win32", "darwin"].every((platform) => assets.some((asset) => asset.kind === "runtime" && asset.platform === platform));
   });
 }
 
@@ -40,8 +39,9 @@ export async function fetchCatalog(prerelease: boolean): Promise<Result<ReleaseM
     if (value.isErr()) continue;
     const manifest = releaseManifestSchema.safeParse(value.value);
     if (!manifest.success || manifest.data.tag !== release.tag_name || !completeRelease(manifest.data)) continue;
-    if (!manifest.data.assets.every((item) => release.assets.some((asset) => asset.name === item.filename && asset.size === item.size))) continue;
-    manifests.push(manifest.data);
+    const runtimeAssets = manifest.data.assets.filter((item) => item.kind === "runtime");
+    if (!runtimeAssets.every((item) => release.assets.some((asset) => asset.name === item.filename && asset.size === item.size))) continue;
+    manifests.push({ ...manifest.data, assets: runtimeAssets });
   }
   return ok(manifests);
 }

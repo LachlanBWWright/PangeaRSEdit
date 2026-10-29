@@ -50,7 +50,7 @@ import { toast } from "sonner";
 import { CustomScriptPlacements } from "../subviews/CustomScriptPlacements";
 import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPlacement";
 import { NanosaurPathLayer } from "../subviews/tiles/NanosaurPathLayer";
-import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
+import { addPlacedItem, computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -85,7 +85,7 @@ export function Nanosaur1KonvaView({
 }: Nanosaur1KonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  const customObjectPlacement = useCustomObjectPlacement();
+  const customObjectPlacement = useCustomObjectPlacement(headerData, terrainData);
   const globals = useAtomValue(Globals);
 
   const tileBrushMode = useAtomValue(getTileBrushModeAtom("nanosaur1"));
@@ -246,7 +246,6 @@ export function Nanosaur1KonvaView({
           if (customObjectPlacement.objectId !== null) {
             customObjectPlacement.placeAt(
               x,
-              headerData.Hedr[1000].obj.minY ?? 0,
               z,
             );
             return;
@@ -254,16 +253,7 @@ export function Nanosaur1KonvaView({
           if (clickToAddItem === undefined) return;
 
           setItemDataNotNull((itemData) => {
-            itemData.Itms[1000].obj.push({
-              x: x,
-              z: z,
-              type: clickToAddItem,
-              flags: 0,
-              p0: 0,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-            });
+            addPlacedItem(itemData, x, z, clickToAddItem);
           });
         }}
         onMouseMove={(e) => {
@@ -350,7 +340,7 @@ export function Nanosaur1KonvaView({
           />
         )}
 
-        {view !== View.tiles && <CustomScriptPlacements />}
+        {view !== View.tiles && <CustomScriptPlacements headerData={headerData} terrainData={terrainData} />}
         {view === View.collisionPath && (
           <NanosaurPathLayer
             headerData={headerData}

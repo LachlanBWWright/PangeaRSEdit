@@ -3,8 +3,13 @@ import { err, errAsync, ok, okAsync, Result, ResultAsync } from "neverthrow";
 import { mapErr } from "@/utils/mapErr";
 import type { ModelSourceKind } from "./animationEventUtils";
 import { getAnimationSoundAssetPath } from "./animationSoundAssets";
+import { GAME_ASSET_CATALOG, gameIdSchema } from "@pangea/desktop-contracts";
+import { desktopBridge } from "@/platform/desktop/client";
+import { fetchAsset } from "@/assets/fetchAsset";
+import { getAssetState, registerAssetCache } from "@/assets/assetState";
 
 const decodedBufferCache = new Map<string, AudioBuffer>();
+registerAssetCache(() => decodedBufferCache.clear());
 let sharedAudioContext: AudioContext | null = null;
 
 function resolveSoundAssetPath(
@@ -20,6 +25,12 @@ function resolveSoundAssetPath(
 }
 
 function buildMountedAssetUrl(relativePath: string): string {
+  if (desktopBridge()) {
+    for (const game of gameIdSchema.options) {
+      const prefix = `games/${GAME_ASSET_CATALOG[game].port}/Data/`;
+      if (relativePath.startsWith(prefix)) return `/game-assets/${game}/Data/${relativePath.slice(prefix.length)}`;
+    }
+  }
   if (import.meta.env.DEV) {
     return new URL(
       `/games/pangea-ports/${relativePath}`,
@@ -100,6 +111,7 @@ function decodeSoundBuffer(
           );
         }
 
+        if (decodedBufferCache.size >= 64) decodedBufferCache.clear();
         decodedBufferCache.set(assetPath, audioBufferResult.value);
         return okAsync(audioBufferResult.value);
       },
@@ -110,6 +122,7 @@ function decodeSoundBuffer(
     audioContext.decodeAudioData(buffer.slice(0)),
     mapErr,
   ).map((decoded) => {
+    if (decodedBufferCache.size >= 64) decodedBufferCache.clear();
     decodedBufferCache.set(assetPath, decoded);
     return decoded;
   });
@@ -141,23 +154,17 @@ export function playAnimationEventSound(
   }
 
   const assetUrl = buildMountedAssetUrl(assetPath);
+  const revision = getAssetState().revision;
 
   return resumeAudioContext(audioContextResult.value)
     .andThen(() =>
-      ResultAsync.fromPromise(fetch(assetUrl), mapErr).andThen((response) => {
-        if (!response.ok) {
-          return errAsync(
-            `Could not load preview audio (${response.status} ${response.statusText}).`,
-          );
-        }
-
-        return ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
-      }),
+      fetchAsset(assetUrl).mapErr((error) => error.message),
     )
     .andThen((buffer) =>
-      decodeSoundBuffer(audioContextResult.value, assetPath, buffer),
+      decodeSoundBuffer(audioContextResult.value, `${revision}:${assetPath}`, buffer),
     )
     .andThen((decodedBuffer) => {
+      if (revision !== getAssetState().revision) return errAsync("Game data changed during audio loading. Try again.");
       const playbackResult = Result.fromThrowable(() => {
         const source = audioContextResult.value.createBufferSource();
         source.buffer = decodedBuffer;

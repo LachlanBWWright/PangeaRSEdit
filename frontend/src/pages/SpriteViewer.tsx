@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ProjectAssetBinding } from "@/platform/desktop/ProjectAssetBinding";
 import { readSpriteProject, spriteProjectFiles } from "@/platform/desktop/spriteProjectFiles";
+import { nativeSpriteFile } from "@/platform/desktop/nativeSpriteFiles";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Download, Paintbrush, Eraser, Pipette, Eye } from "lucide-react";
@@ -16,6 +17,8 @@ import { PaletteEditor } from "./SpriteViewer/components/PaletteEditor";
 import { EditorField, EditorPanel } from "./SpriteViewer/components/EditorPanel";
 import { TilesetEditor } from "./SpriteViewer/components/TilesetEditor";
 import { SpriteViewerCanvas } from "./SpriteViewer/components/SpriteViewerCanvas";
+import { SpriteSourceImport } from "./SpriteViewer/components/SpriteSourceImport";
+import { LinkedSpriteSource } from "./SpriteViewer/components/LinkedSpriteSource";
 import { clonePalette, createPalette, type Palette } from "./SpriteViewer/utils/paletteUtils";
 import { useSpriteViewerLoaders } from "./SpriteViewer/hooks/useSpriteViewerLoaders";
 import type { EditMode, FileType, LoadedData } from "./SpriteViewer/types";
@@ -38,6 +41,9 @@ function createDefaultPalette(): Palette {
 
 export function SpriteViewer() {
   const [loadedData, setLoadedData] = useState<LoadedData>(null);
+  const [savedSourceData, setSavedSourceData] = useState<LoadedData>(null);
+  const [savedSourcePalette, setSavedSourcePalette] = useState<Palette | null>(null);
+  const [selectedProjectAsset, setSelectedProjectAsset] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadFileType, setUploadFileType] = useState<FileType>("sprites");
   const [assetFileType, setAssetFileType] = useState<FileType>("sprites");
@@ -105,9 +111,11 @@ export function SpriteViewer() {
       toast.error("No asset to download");
       return;
     }
-    const extension = loadedData.type === "sprites" ? ".shapes" : loadedData.type === "tileset" ? ".tileset" : ".tga";
+    const native = nativeSpriteFile(loadedData, currentPalette);
+    if (native.isErr()) { toast.error(native.error); return; }
+    const extension = native.value.extension;
     const filename = loadedData.filename.toLowerCase().endsWith(extension) ? loadedData.filename : `${loadedData.filename}${extension}`;
-    downloadBytes(loadedData.sourceBytes, filename);
+    downloadBytes(Uint8Array.from(native.value.bytes).buffer, filename);
     toast.success(`Downloaded ${filename}`);
   };
 
@@ -185,14 +193,19 @@ export function SpriteViewer() {
   return (
     <div className="h-full overflow-hidden bg-gray-900 p-2 text-white">
       <ProjectAssetBinding kind="sprites" extension="sprite\\.json|shapes|tileset|tga" changeToken={projectChangeToken}
+        savedChangeToken={savedSourceData === loadedData && savedSourcePalette === currentPalette ? projectChangeToken : null}
+        onSelectionChange={setSelectedProjectAsset}
+        onClear={() => { loaders.cancelUpload(); setLoadedData(null); setSelectedShapeIndex(0); setSelectedFrameIndex(0); setSelectedTileIndex(undefined); setShowPaletteEditor(false); }}
         exportFiles={async (stem) => spriteProjectFiles(stem, loadedData, currentPalette)}
-        onOpen={async (file, companions) => {
+        onOpen={async (file, companions, isCurrent) => {
           if (file.name.endsWith(".sprite.json")) {
             const snapshot = await readSpriteProject(file, companions);
+            if (!isCurrent()) return;
             if (snapshot.isErr()) { toast.error(snapshot.error); return; }
             setLoadedData(snapshot.value.data); setCurrentPalette(snapshot.value.palette);
             setSelectedShapeIndex(0); setSelectedFrameIndex(0);
-          } else await loaders.loadCustomFileUpload(file, file.name.endsWith(".tileset") ? "tileset" : file.name.endsWith(".tga") ? "tga" : "sprites");
+          } else await loaders.loadCustomFileUpload(file, file.name.endsWith(".tileset") ? "tileset" : file.name.endsWith(".tga") ? "tga" : "sprites",
+            companions.find((entry) => entry.name === file.name.replace(/\.[^.]+$/, ".palette.tga")), isCurrent);
         }} />
       <ResizablePanelGroup orientation="horizontal" className="h-full w-full min-w-0">
         <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pr-2">
@@ -200,6 +213,10 @@ export function SpriteViewer() {
             <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950/80 px-3 pb-4 pt-2">
               <MightyMikeAssetBrowser selectedType={assetFileType} onTypeChange={setAssetFileType} onAssetSelect={handleAssetSelect} loading={loading} loadedFilename={loadedData?.filename} />
               <FileUploadPanel selectedType={uploadFileType} onTypeChange={setUploadFileType} onFileSelected={loaders.loadCustomFileUpload} loading={loading} />
+              {loadedData?.type === "sprites" && <SpriteSourceImport data={loadedData} palette={currentPalette} selectedShapeIndex={selectedShapeIndex}
+                onApply={(expected, replacement) => setLoadedData((current) => current === expected ? replacement : current)} />}
+              {loadedData?.type === "sprites" && <LinkedSpriteSource data={loadedData} palette={currentPalette} selectedShapeIndex={selectedShapeIndex} nativePath={selectedProjectAsset.replace(/\.sprite\.json$/i, ".shapes")}
+                onSaved={(expected, replacement) => { setLoadedData((current) => current === expected ? replacement : current); setSavedSourceData(replacement); setSavedSourcePalette(currentPalette); }} />}
               {loadedData?.type === "sprites" && <SpriteSidebar loadedData={loadedData} customPalettes={customPalettes} currentPalette={currentPalette} showPaletteEditor={showPaletteEditor} onPaletteSelect={handlePaletteSelect} onNewPalette={handleNewPalette} onPaletteChange={handlePaletteChange} onSavePaletteAsNew={handleSavePaletteAsNew} selectedShapeIndex={selectedShapeIndex} selectedFrameIndex={selectedFrameIndex} onShapeChange={(index) => { setSelectedShapeIndex(index); setSelectedFrameIndex(0); }} onFrameChange={setSelectedFrameIndex} editMode={editMode} onEditModeChange={setEditMode} selectedPaletteColorIndex={selectedPaletteColorIndex} onPaletteColorChange={setSelectedPaletteColorIndex} />}
               {loadedData?.type === "tileset" && <TilesetEditor tileCount={loadedData.data.numTileDefinitions} selectedTileIndex={selectedTileIndex} onSelectTile={setSelectedTileIndex} currentTilesetScene={currentTilesetScene} currentPaletteScene={currentTilesetPaletteScene} onPaletteSceneChange={loaders.changeTilesetPaletteScene} />}
               {loadedData && <DisplayOptionsPanel options={displayOptions} onOptionsChange={setDisplayOptions} showSpriteOptions={loadedData.type === "sprites"} />}
@@ -271,7 +288,7 @@ interface ExportPanelsProps {
 
 function ExportPanels(props: ExportPanelsProps) {
   if (!props.loadedData) return null;
-  return <EditorPanel title="Export">{props.loadedData.type === "sprites" && <><ExportButton label="Download Frame as PNG" onClick={props.onDownloadFrame} /><ExportButton label="Download All Frames as PNG" onClick={props.onDownloadAllFrames} /><ExportButton label="Download Unmodified Source .shapes" onClick={props.onDownloadOriginal} primary /></>}{props.loadedData.type === "tileset" && <><ExportButton label="Download Tile as PNG" onClick={props.onDownloadTile} disabled={props.selectedTileIndex === undefined} /><ExportButton label="Download Preview as PNG" onClick={props.onDownloadTileset} /><ExportButton label="Download All Tiles as PNG" onClick={props.onDownloadAllTiles} /><ExportButton label="Download Original .tileset" onClick={props.onDownloadOriginal} primary /></>}{props.loadedData.type === "tga" && <ExportButton label="Download Original .tga" onClick={props.onDownloadOriginal} primary />}</EditorPanel>;
+  return <EditorPanel title="Export">{props.loadedData.type === "sprites" && <><ExportButton label="Download Frame as PNG" onClick={props.onDownloadFrame} /><ExportButton label="Download All Frames as PNG" onClick={props.onDownloadAllFrames} /><ExportButton label="Download Edited .shapes" onClick={props.onDownloadOriginal} primary /></>}{props.loadedData.type === "tileset" && <><ExportButton label="Download Tile as PNG" onClick={props.onDownloadTile} disabled={props.selectedTileIndex === undefined} /><ExportButton label="Download Preview as PNG" onClick={props.onDownloadTileset} /><ExportButton label="Download All Tiles as PNG" onClick={props.onDownloadAllTiles} /><ExportButton label="Download Edited .tileset" onClick={props.onDownloadOriginal} primary /></>}{props.loadedData.type === "tga" && <ExportButton label="Download Edited .tga" onClick={props.onDownloadOriginal} primary />}</EditorPanel>;
 }
 
 function ExportButton(props: { readonly label: string; readonly onClick: () => void; readonly disabled?: boolean; readonly primary?: boolean }) {

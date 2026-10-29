@@ -78,6 +78,7 @@ import { useDesktopLevel } from "@/platform/desktop/useDesktopLevel";
 import { desktopBridge } from "@/platform/desktop/client";
 import { playInstalledGame } from "@/platform/desktop/projectActions";
 import { desktopLevelIdAtom, desktopProjectAtom } from "@/platform/desktop/projectState";
+import { useEditorDocumentHistory } from "./IntroPrompt/useEditorDocumentHistory";
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
   const match = MIGHTY_MIKE_LEVELS.find(
@@ -100,7 +101,7 @@ function downloadArchive(bytes: Uint8Array, fileName: string): void {
 }
 
 export interface DataHistory {
-  items: AtomicLevelData[];
+  items: readonly AtomicLevelData[];
   index: number;
 }
 
@@ -138,14 +139,7 @@ export function IntroPrompt() {
   const setSafeItemTypes = useSetAtom(SafeItemTypes);
   const setSafeSplineItemTypes = useSetAtom(SafeSplineItemTypes);
 
-  //History of previous states for undo/redo purposes
-  const [dataHistory, setDataHistory] = useImmer<DataHistory>({
-    items: [],
-    index: 0,
-  });
-  //Set to true to block updating history, so that undo/redo doesn't change the history
-  const [blockHistoryUpdate, setBlockHistoryUpdate] =
-    useAtom(BlockHistoryUpdate);
+  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
 
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
   const [mapImagesFile, setMapImagesFile] = useState<undefined | File>(
@@ -269,47 +263,11 @@ export function IntroPrompt() {
     handlers: { setGlobals, setMapFile, setMapImagesFile, setMapImages, setData: setAllAtomicData },
     setBaseLevel: setPreviewLevelNumber, setScriptStore: setScriptWorkspaceStore, clearLevel: clearDesktopLevel });
 
-  //Update History
-  useEffect(() => {
-    //Wipe history for new map
-    if (!headerData) {
-      setDataHistory(() => ({ items: [], index: 0 }));
-    }
-    /*
-    Don't update history if change is coming from undo/redo, or something that 
-    will trigger an immediate change (e.g spline nubs triggering spline points change)
-    */
-    if (blockHistoryUpdate) {
-      setBlockHistoryUpdate(false);
-      return;
-    }
-
-    setDataHistory((draft) => {
-      if (!headerData) return;
-      const currentData = getCurrentAtomicData();
-      //Remove subsequent history
-      draft.items.splice(draft.index + 1, draft.items.length - draft.index - 1);
-      draft.items.push(currentData);
-      draft.index = draft.items.length - 1;
-
-      //Limit history size
-      if (draft.items.length > 10) {
-        draft.items.shift();
-        draft.index -= 1;
-      }
-    });
-  }, [
-    headerData,
-    itemData,
-    liquidData,
-    fenceData,
-    splineData,
-    terrainData,
-    blockHistoryUpdate,
-    getCurrentAtomicData,
-    setBlockHistoryUpdate,
-    setDataHistory,
-  ]);
+  const historyData = useMemo(() => getCurrentAtomicData(), [getCurrentAtomicData]);
+  const { dataHistory, undoData, redoData } = useEditorDocumentHistory({
+    data: historyData, setData: setAllAtomicData, workspace: scriptWorkspace,
+    context: previewScriptContext, file: mapFile, game: globals.GAME_TYPE, level: previewLevelNumber,
+  });
 
   // When a terrain file is loaded, infer the level number from the filename
   // so the "Preview in Game" dialog opens at the correct level by default.
@@ -368,34 +326,6 @@ export function IntroPrompt() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [mapFile]);
-
-  const undoData = () => {
-    if (dataHistory.index > 0) {
-      // Read target item BEFORE setDataHistory so we use the current (correct) index
-      const historyItem = dataHistory.items[dataHistory.index - 1];
-      setDataHistory((draft) => {
-        draft.index -= 1;
-      });
-      if (historyItem) {
-        setAllAtomicData(historyItem);
-        setBlockHistoryUpdate(true);
-      }
-    }
-  };
-
-  const redoData = () => {
-    if (dataHistory.index < dataHistory.items.length - 1) {
-      // Read target item BEFORE setDataHistory so we use the current (correct) index
-      const historyItem = dataHistory.items[dataHistory.index + 1];
-      setDataHistory((draft) => {
-        draft.index += 1;
-      });
-      if (historyItem) {
-        setAllAtomicData(historyItem);
-        setBlockHistoryUpdate(true);
-      }
-    }
-  };
 
   const saveMap = useCallback(async () => {
     if (
@@ -525,7 +455,6 @@ export function IntroPrompt() {
         blankLevel.terrainData,
       );
       setMapImages(mapImagesArray);
-      setDataHistory(() => ({ items: [blankAtomicData], index: 0 }));
       setBlockHistoryUpdate(true);
       const portConfig = GAME_PORT_CONFIGS[gameType.GAME_TYPE];
       setPreviewLevelNumber(portConfig?.defaultLevel ?? 0);
@@ -534,7 +463,6 @@ export function IntroPrompt() {
       setGlobals,
       setAllAtomicData,
       setBlockHistoryUpdate,
-      setDataHistory,
       setMapFile,
       setMapImages,
       setMapImagesFile,

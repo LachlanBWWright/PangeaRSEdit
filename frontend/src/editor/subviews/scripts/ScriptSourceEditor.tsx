@@ -14,9 +14,11 @@ interface Props {
   workspace: ScriptWorkspaceState;
   path: string;
   update: UpdateScriptWorkspace;
+  initialLine?: number;
+  initialColumn?: number;
 }
 
-export function ScriptSourceEditor({ workspace, path, update }: Props) {
+export function ScriptSourceEditor({ workspace, path, update, initialLine = 0, initialColumn = 1 }: Props) {
   const [referenceOpen, setReferenceOpen] = useState(true);
   const status = useSyncExternalStore(
     (listener) => scriptLspClient.subscribe(listener),
@@ -55,13 +57,14 @@ export function ScriptSourceEditor({ workspace, path, update }: Props) {
       <div className="min-w-0">
       <div className="workbench-source">
         <div className="workbench-source-toolbar">
-          <div><p className="workbench-source-path">{path.replace("Data/Scripts/", "")}</p><p className="workbench-muted">{readOnly ? "Generated output" : dirty ? "Changes kept in this workspace" : "Source saved"}</p></div>
+          <div><p className="workbench-source-path">{path.replace("Data/Scripts/", "")}</p><p className="workbench-muted">{readOnly ? "Generated output" : dirty ? "Draft kept in workspace · beyond revert checkpoint" : "Matches workspace revert checkpoint · not a disk-save confirmation"}</p></div>
           {!readOnly && <div className="flex gap-2">
             <Button size="sm" variant="ghost" disabled={!dirty} onClick={() => update((state) => revertScriptSourceFile(state, path))}>Revert</Button>
-            <Button size="sm" disabled={!dirty} onClick={() => update((state) => saveScriptSourceFile(state, path))}>Save source</Button>
+            <Button size="sm" disabled={!dirty} title="Update the workspace revert checkpoint. Save the project separately to write files to disk." onClick={() => update((state) => saveScriptSourceFile(state, path))}>Save source</Button>
           </div>}
         </div>
         <Editor height="400px" language="lua" path={`file:///workspace/${path}`} value={content}
+          onMount={(editor) => { if (initialLine > 0) { editor.setPosition({ lineNumber: initialLine, column: Math.max(1, initialColumn) }); editor.revealLineInCenter(initialLine); editor.focus(); } }}
           onChange={(value) => { if (value !== undefined && !readOnly) update((state) => updateScriptSourceContent(state, path, value)); }}
           theme="vs-dark" options={{ readOnly, minimap: { enabled: false }, fontSize: 13, wordWrap: "on", scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2, ariaLabel: "Lua source editor" }} />
       </div>

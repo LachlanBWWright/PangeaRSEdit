@@ -8,6 +8,8 @@ export function changeObjectVisual(definition: ScriptCustomObjectDefinition, val
   const parsed = objectVisualKindSchema.safeParse(value);
   if (!parsed.success) return definition;
   const kind = parsed.data;
+  if (kind === definition.visual.kind) return definition;
+  definition = { ...definition, assetId: undefined, assetAnimations: undefined };
   const format = getCustomModelFormat(gameId);
   if (format === "shapes" && (kind === "nativeSkeleton" || kind === "customSkeleton")) return definition;
   if (kind === "none") return { ...definition, visual: { kind } };

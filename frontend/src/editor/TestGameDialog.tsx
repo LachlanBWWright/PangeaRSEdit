@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/select";
 import { Game } from "../data/globals/globals";
 import { GamePreviewHost } from "./GamePreviewHost";
+import { ScriptRuntimeMonitor } from "./ScriptRuntimeMonitor";
+import { queryScriptInspector, queryScriptObjects, type ScriptObjectQuery } from "./utils/scriptInspector";
+import { queryScriptState } from "./utils/scriptState";
+import type { ScriptStateQuery } from "@pangea/desktop-contracts";
+import type { ScriptInspectorSnapshot } from "@pangea/desktop-contracts";
 import { GAME_DISPLAY_NAMES, levelLabel } from "./utils/gamePreviewRuntime";
 import { GAME_PORT_CONFIGS, getLevelIndex } from "./utils/gamePortConfig";
 import {
@@ -87,14 +92,23 @@ export function TestGameDialog(props: Props) {
     : "";
 
   const [scriptStatus, setScriptStatus] = useState<PangeaScriptStatusJS | null>(null);
+  const [inspector, setInspector] = useState<ScriptInspectorSnapshot | null>(null);
+  const [inspectorError, setInspectorError] = useState<string | undefined>(undefined);
   const [runtimeDiagnosticMessage, setRuntimeDiagnosticMessage] = useState<string | null>(null);
   const [runtimeInitialized, setRuntimeInitialized] = useState(false);
   const activePreviewModuleRef = useRef<PreviewRuntimeModule | null>(null);
+  const queryObjects = useCallback((query: ScriptObjectQuery) => queryScriptObjects(selectScriptingStatusModule(activePreviewModuleRef.current, window.Module ?? null), query), []);
+  const queryState = useCallback((query: ScriptStateQuery) => queryScriptState(selectScriptingStatusModule(activePreviewModuleRef.current, window.Module ?? null), query), []);
   const lastReportedScriptError = useRef("");
   const lastReportedScriptErrorCount = useRef(0);
   const handlePreviewRuntimeModule = useCallback(
     (module: PreviewRuntimeModule | null): void => {
       activePreviewModuleRef.current = module;
+      setInspector(null);
+      setInspectorError(undefined);
+      setScriptStatus(null);
+      setRuntimeInitialized(false);
+      if (module) setRuntimeDiagnosticMessage(null);
     },
     [],
   );
@@ -131,12 +145,14 @@ export function TestGameDialog(props: Props) {
         ),
       );
       setScriptStatus(status);
+      const inspected = queryScriptInspector(selectScriptingStatusModule(activePreviewModuleRef.current, window.Module ?? null));
+      setInspector(inspected.isOk() ? inspected.value : null);
+      setInspectorError(inspected.isErr() ? inspected.error : undefined);
       const runtimeError = status
         ? getRuntimeDiagnosticMessage(status, lastReportedScriptErrorCount.current)
         : null;
       if (runtimeError && runtimeError !== lastReportedScriptError.current) {
         lastReportedScriptError.current = runtimeError;
-        setRuntimeDiagnosticMessage(runtimeError);
         onScriptRuntimeDiagnostic?.(runtimeError);
         onScriptRuntimeFailure?.({
           category: "runtime-traceback",
@@ -198,6 +214,7 @@ export function TestGameDialog(props: Props) {
         </DialogHeader>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {!normalLaunch && <Button variant="secondary" onClick={() => onOpenChange(false)}>Back to editing</Button>}
           {!normalLaunch && (
             <>
               <label
@@ -270,130 +287,7 @@ export function TestGameDialog(props: Props) {
           </div>
 
           {previewStarted && customFiles && customFiles.length > 0 && (
-            <div className="w-80 border rounded-md border-slate-800 bg-slate-950/90 p-4 flex flex-col gap-4 overflow-y-auto max-h-full text-xs text-slate-300">
-              <div className="font-semibold text-slate-100 text-sm border-b border-slate-800 pb-2">
-                Scripting Runtime Monitor
-              </div>
-
-              {scriptStatus ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span>Host Status:</span>
-                    <span
-                      className={`font-semibold ${
-                        scriptStatus.scriptsDisabled
-                          ? "text-red-400"
-                          : scriptStatus.enabled
-                            ? "text-green-400"
-                            : "text-slate-400"
-                      }`}
-                    >
-                      {scriptStatus.scriptsDisabled
-                        ? "DISABLED (Too Many Errors)"
-                        : scriptStatus.enabled
-                          ? "ACTIVE"
-                          : "INACTIVE"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span>Config File:</span>
-                    <span
-                      className={`font-medium ${
-                        scriptStatus.configLoaded ? "text-green-400" : "text-amber-400"
-                      }`}
-                    >
-                      {scriptStatus.configLoaded ? "LOADED" : "NOT FOUND"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span>Bundle Status:</span>
-                    <span
-                      className={`font-medium ${
-                        scriptStatus.bundleLoaded ? "text-green-400" : "text-amber-400"
-                      }`}
-                    >
-                      {scriptStatus.bundleLoaded ? "LOADED" : "NOT FOUND"}
-                    </span>
-                  </div>
-
-                  {scriptStatus.configLoaded && scriptStatus.bundleLoaded && scriptStatus.hooksCalledCount > 0 && (
-                    <div className="rounded border border-green-900 bg-green-950/20 p-2 text-green-300 flex items-center gap-2">
-                      <span className="text-sm">✓</span>
-                      <span>Runtime Smoke Check: PASSED</span>
-                    </div>
-                  )}
-
-                  <div className="border-t border-slate-800 pt-2 space-y-1 text-[11px] text-slate-400">
-                    <div>Active path:</div>
-                    <div className="text-slate-200 truncate" title={scriptStatus.activeScriptPath}>
-                      {scriptStatus.activeScriptPath}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-800 pt-2 grid grid-cols-2 gap-2 text-center">
-                    <div className="bg-slate-900/50 p-2 rounded border border-slate-800">
-                      <div className="text-[10px] text-slate-500">Hooks Called</div>
-                      <div className="text-lg font-bold text-slate-200">
-                        {scriptStatus.hooksCalledCount}
-                      </div>
-                    </div>
-                    <div className="bg-slate-900/50 p-2 rounded border border-slate-800">
-                      <div className="text-[10px] text-slate-500">Errors</div>
-                      <div
-                        className={`text-lg font-bold ${
-                          scriptStatus.errorCount > 0 ? "text-red-400" : "text-slate-200"
-                        }`}
-                      >
-                        {scriptStatus.errorCount}
-                      </div>
-                    </div>
-                  </div>
-
-                  {scriptStatus.budgetExceededCount > 0 && (
-                    <div className="rounded border border-amber-900 bg-amber-950/20 p-2 text-amber-300">
-                      Budget Exceeded: {scriptStatus.budgetExceededCount} times
-                    </div>
-                  )}
-
-                  {(scriptStatus.lastError || runtimeDiagnosticMessage) && (
-                    <div className="border-t border-slate-800 pt-2 space-y-1">
-                      <div className="text-red-400 font-medium">Last Error:</div>
-                      <pre className="bg-slate-900 p-2 rounded text-[10px] text-red-200 overflow-x-auto whitespace-pre-wrap max-h-32">
-                        {scriptStatus.lastError || runtimeDiagnosticMessage}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ) : runtimeDiagnosticMessage ? (
-                <div className="border-t border-slate-800 pt-2 space-y-1">
-                  <div className="text-red-400 font-medium">Last Error:</div>
-                  <pre className="bg-slate-900 p-2 rounded text-[10px] text-red-200 overflow-x-auto whitespace-pre-wrap max-h-32">
-                    {runtimeDiagnosticMessage}
-                  </pre>
-                </div>
-              ) : (
-                <div className="text-slate-500 italic text-center py-4">
-                  Querying scripting status...
-                </div>
-              )}
-
-              <div className="border-t border-slate-800 pt-3 flex-1 flex flex-col min-h-0">
-                <div className="font-semibold text-slate-200 mb-2">Injected VFS Files</div>
-                <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-                  {customFiles.map((file) => (
-                    <div
-                      key={file.path}
-                      className="p-1.5 rounded bg-slate-900/50 border border-slate-800/80 text-[10px] text-slate-400 font-mono truncate"
-                      title={file.path}
-                    >
-                      {file.path}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <ScriptRuntimeMonitor key={`${gameType}:${runToken}`} status={scriptStatus} previewError={runtimeDiagnosticMessage} files={customFiles} inspector={runtimeInitialized ? inspector : null} inspectorError={inspectorError} queryObjects={queryObjects} queryState={queryState} navigationContext={{ game: gameType, onSelectPlacement: () => onOpenChange(false) }} />
           )}
         </div>
       </DialogContent>

@@ -38,7 +38,7 @@ const gameArtifacts: readonly GameArtifact[] = [
     entrypoint: "bugdom2/Bugdom2.html",
     entrypointScript: "Bugdom2.js",
     scriptingApiMarkers: ["PangeaScript_IsEnabled", "PangeaScript_SetStartupScript"],
-    requiredExports: ["Bugdom2Script_ProbeTerrainReplacementJS", "Bugdom2Script_ProbeDamageJS", "Bugdom2Script_ProbeFirstSplineJS", "Bugdom2Script_ProbeFirstSplineReplacementJS"],
+    requiredExports: ["Bugdom2Script_ProbeTerrainReplacementJS", "Bugdom2Script_ProbeDamageJS", "Bugdom2Script_ProbeNativeDamageJS", "Bugdom2Script_ProbeFirstSplineJS", "Bugdom2Script_ProbeFirstSplineReplacementJS"],
   },
   {
     gameId: "CroMagRally-Android",
@@ -152,7 +152,9 @@ async function validateArtifacts(): Promise<Result<true, string>> {
       if (relativePath.endsWith(".js")) {
         const source = readTextArtifact(resolve(process.cwd(), artifactRoot, relativePath));
         if (source.isErr()) return err(`${game.gameId}: ${source.error}`);
-        const missingMarker = game.scriptingApiMarkers.find(
+        const missingMarker = [...game.scriptingApiMarkers, "PangeaScript_GetStatusInspectorJSON",
+          "PangeaScript_GetObjectInspectorPageJSON", "PangeaScript_GetObjectInspectorJSON",
+          "PangeaScript_GetObjectStateInspectorJSON"].find(
           (marker) => !source.value.includes(marker),
         );
         if (missingMarker !== undefined) {

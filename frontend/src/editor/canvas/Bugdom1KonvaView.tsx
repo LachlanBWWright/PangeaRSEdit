@@ -60,7 +60,7 @@ import { useCustomObjectPlacement } from "../subviews/scripts/useCustomObjectPla
 import { BugdomVertexColorOverlay } from "../subviews/bugdom/BugdomVertexColorOverlay";
 import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
 import { bugdomTerrainModeAtom } from "@/data/terrain/bugdomTerrainModeAtoms";
-import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
+import { addPlacedItem, computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 
 export interface StageData {
   scale: number;
@@ -107,7 +107,7 @@ export function Bugdom1KonvaView({
   const pendingCreation = useAtomValue(PendingCreation);
   const setPendingCreation = useSetAtom(PendingCreation);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  const customObjectPlacement = useCustomObjectPlacement();
+  const customObjectPlacement = useCustomObjectPlacement(headerData, terrainData);
   const globals = useAtomValue(Globals);
   const showRoof = useAtomValue(ShowRoofInTopology);
   const terrainMode = useAtomValue(bugdomTerrainModeAtom);
@@ -289,7 +289,6 @@ export function Bugdom1KonvaView({
       if (customObjectPlacement.objectId !== null) {
         customObjectPlacement.placeAt(
           x,
-          headerData.Hedr[1000].obj.minY ?? 0,
           z,
         );
         return;
@@ -297,16 +296,7 @@ export function Bugdom1KonvaView({
       if (clickToAddItem === undefined) return;
 
       setItemDataNotNull((itemData) => {
-        itemData.Itms[1000].obj.push({
-          x: x,
-          z: z,
-          type: clickToAddItem,
-          flags: 0,
-          p0: 0,
-          p1: 0,
-          p2: 0,
-          p3: 0,
-        });
+        addPlacedItem(itemData, x, z, clickToAddItem);
       });
     },
     [
@@ -315,7 +305,6 @@ export function Bugdom1KonvaView({
       pendingCreation,
       clickToAddItem,
       customObjectPlacement,
-      headerData,
       setPendingCreation,
       setItemDataNotNull,
     ],
@@ -491,7 +480,7 @@ export function Bugdom1KonvaView({
                 setSplineData={setSplineDataNotNull}
               />
             )}
-            <CustomScriptPlacements />
+            <CustomScriptPlacements headerData={headerData} terrainData={terrainData} />
           </>
         )}
 

@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Result, err, ok } from "neverthrow";
+import { readRuntimeSource } from "./readRuntimeSource";
 import {
   SCRIPT_API_VERSION,
   SCRIPT_CONTRACT_VERSION,
@@ -99,7 +99,7 @@ const adapterHookCalls: Readonly<Record<string, string>> = {
   onMapItem: "PangeaScript_CallMapItemHook",
   onObjectFrame: "PangeaScript_CallObjectFrame",
   onTriggerEnter: "PangeaScript_CallObjectTrigger",
-  onPickupCollected: "PangeaScript_CallObjectTrigger",
+  onPickupCollected: "PangeaScript_CallPickupHook",
   onWeaponHit: "PangeaScript_CallWeaponHitHook",
   onDamage: "PangeaScript_CallDamageHook",
   onDamageApplied: "PangeaScript_CallDamageAppliedHook",
@@ -599,13 +599,6 @@ const indexedPlayerTriggerAdapters: readonly {
     playerTable: "gPlayerInfo[index].objNode",
   },
 ];
-
-function readRuntimeSource(path: string): Result<string, string> {
-  return Result.fromThrowable(
-    () => readFileSync(path, "utf8"),
-    () => `Could not read runtime contract source: ${path}`,
-  )();
-}
 
 function parseVersion(source: string, macro: string): Result<number, string> {
   const match = source.match(

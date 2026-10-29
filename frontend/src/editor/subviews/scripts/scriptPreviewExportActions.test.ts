@@ -1,3 +1,5 @@
+// @vitest-environment node
+import "../../../../tests/setup/scriptLuaValidation";
 import { describe, expect, it, vi } from "vitest";
 import { strToU8, unzipSync } from "fflate";
 import { okAsync } from "neverthrow";

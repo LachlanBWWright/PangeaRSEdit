@@ -1,7 +1,6 @@
 import { basename, dirname, extname, resolve, relative, isAbsolute } from "node:path";
 import { Document, Format, NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
-import { unpartition } from "@gltf-transform/functions";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { normalizeGltfAsset, formatGltfCompatibilityWarnings } from "../modelParsers/gltfCompatibility";
 import { boundaryMessage, copyArrayBuffer, external } from "./boundaries";
@@ -26,12 +25,18 @@ export function readGltf(path: string): ResultAsync<Document, string> {
 }
 
 function writeGlb(document: Document): ResultAsync<Uint8Array, string> {
-  return external(() => document.transform(unpartition())).andThen(() => external(() => createIO().writeBinary(document)));
+  const buffers = document.getRoot().listBuffers();
+  const first = buffers[0];
+  if (first) {
+    for (const accessor of document.getRoot().listAccessors()) accessor.setBuffer(first);
+    for (const buffer of buffers.slice(1)) buffer.dispose();
+  }
+  return external(() => createIO().writeBinary(document));
 }
 
-export function prepareNativeDocument(document: Document, allowLossy: boolean): ResultAsync<{ document: Document; warnings: readonly string[] }, string> {
+export function prepareNativeDocument(document: Document, allowLossy: boolean, maximumAnimationKeys = 60): ResultAsync<{ document: Document; warnings: readonly string[] }, string> {
   return validateNativeTextures(document).asyncAndThen(() => writeGlb(document))
-    .andThen((bytes) => ResultAsync.fromSafePromise(normalizeGltfAsset("input.glb", copyArrayBuffer(bytes))).andThen((result) => result).mapErr((error) => error.message))
+    .andThen((bytes) => ResultAsync.fromSafePromise(normalizeGltfAsset("input.glb", copyArrayBuffer(bytes), maximumAnimationKeys)).andThen((result) => result).mapErr((error) => error.message))
     .andThen((normalized) => {
       const warnings = formatGltfCompatibilityWarnings(normalized.warnings);
       if (warnings.length > 0 && !allowLossy) return err(`Native conversion requires these changes:\n${warnings.join("\n")}\nUse --allow-lossy to accept them.`);

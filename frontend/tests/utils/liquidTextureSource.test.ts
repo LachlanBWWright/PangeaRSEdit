@@ -55,7 +55,7 @@ describe("getLiquidTextureSource", () => {
   it("loads Cro-Mag water from the embedded global model material", () => {
     const source = getLiquidTextureSource(Game.CRO_MAG, 0);
 
-    expect(source?.format).toBe("bg3d");
+    expect(source?.format).toBe("model");
     expect(source?.materialIndex).toBe(13);
     expect(source?.url.endsWith("global.bg3d")).toBe(true);
   });

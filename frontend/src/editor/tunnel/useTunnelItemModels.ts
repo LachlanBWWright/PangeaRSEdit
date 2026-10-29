@@ -1,143 +1,49 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { useEffect, useMemo, useState } from "react";
+import { Result } from "neverthrow";
 import { Group } from "three";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
-import {
-  cloneGroupForItemRendering,
-  extractSubgroupByIndex,
-  loadFileGltf,
-} from "@/editor/threejs/hooks/itemModelLoaderUtils";
-import { mapErr } from "@/utils/mapErr";
+import { cloneGroupForItemRendering, extractSubgroupByIndex } from "@/editor/threejs/hooks/itemModelLoaderUtils";
+import { closeAssetWorker, loadFileGltf } from "@/assets/modelAssets";
+import { gameAssetUrl } from "@/assets/gameAssetUrls";
+import { useAssetState } from "@/assets/useAssetState";
+import { reportAssetFailure, versionedAssetUrl } from "@/assets/assetState";
+import { Game } from "@/data/globals/globals";
 import type { TunnelData } from "@/data/tunnelParser/types";
 
-interface TunnelItemModelCacheEntry {
-  readonly state: "loading" | "ready" | "error";
-  readonly scene: Group | null;
-  readonly error: string | null;
-}
+interface TunnelModels { url: string; scenes: ReadonlyMap<number, Group> }
 
-function getModelFilePath(isPlumbing: boolean): string {
-  return isPlumbing
-    ? "/PangeaRSEdit/games/bugdom2/models/Level4_Plumbing.bg3d"
-    : "/PangeaRSEdit/games/bugdom2/models/Level7_Gutter.bg3d";
-}
-
-export function useTunnelItemModels(
-  tunnelData: TunnelData,
-  isPlumbing: boolean,
-): {
+export function useTunnelItemModels(tunnelData: TunnelData, isPlumbing: boolean): {
   readonly getSceneForType: (itemType: number) => Group | null;
   readonly isLoadingType: (itemType: number) => boolean;
 } {
-  const [cache, setCache] = useState<Map<number, TunnelItemModelCacheEntry>>(
-    new Map(),
-  );
-  const workerRef = useRef<Worker | null>(null);
-  const inFlightTypesRef = useRef<Set<number>>(new Set());
-
-  const modelFilePath = useMemo(
-    () => getModelFilePath(isPlumbing),
-    [isPlumbing],
-  );
-
-  const uniqueItemTypes = useMemo(() => {
-    const unique = new Set<number>();
-    for (const item of tunnelData.items) {
-      unique.add(item.type);
-    }
-    return Array.from(unique.values());
-  }, [tunnelData.items]);
+  const { revision } = useAssetState();
+  const filename = isPlumbing ? "Level4_Plumbing.bg3d" : "Level7_Gutter.bg3d";
+  const url = versionedAssetUrl(gameAssetUrl(Game.BUGDOM_2, `Models/${filename}`, `${import.meta.env.BASE_URL}games/bugdom2/models/${filename}`), revision);
+  const types = useMemo(() => [...new Set(tunnelData.items.map((item) => item.type))], [tunnelData.items]);
+  const [loaded, setLoaded] = useState<TunnelModels | null>(null);
 
   useEffect(() => {
-    if (workerRef.current === null) {
-      workerRef.current = new BG3DGltfWorker();
-    }
-
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const worker = workerRef.current;
-    if (worker === null) {
+    let active = true;
+    const worker = Result.fromThrowable(() => new BG3DGltfWorker(), () => "Cannot start the model converter")();
+    if (worker.isErr()) {
+      reportAssetFailure({ code: "conversion", url, message: worker.error });
       return;
     }
-
-    for (const itemType of uniqueItemTypes) {
-      const existing = cache.get(itemType);
-      if (
-        existing &&
-        (existing.state === "loading" || existing.state === "ready")
-      ) {
-        continue;
+    void loadFileGltf(worker.value, url).match((gltf) => {
+      if (!active) return;
+      const scenes = new Map<number, Group>();
+      for (const type of types) {
+        const group = extractSubgroupByIndex(gltf, type, 1);
+        if (group) scenes.set(type, cloneGroupForItemRendering(group));
+        else reportAssetFailure({ code: "missing-model", url, message: `Model ${type} is missing from ${filename}` });
       }
-      if (inFlightTypesRef.current.has(itemType)) {
-        continue;
-      }
-      inFlightTypesRef.current.add(itemType);
-
-      void ResultAsync.fromPromise(loadFileGltf(worker, modelFilePath), mapErr)
-        .andThen((gltf) => {
-          const extracted = extractSubgroupByIndex(gltf, itemType, 1);
-          if (extracted === null) {
-            return errAsync(
-              `Model index ${String(itemType)} not found in ${modelFilePath}`,
-            );
-          }
-
-          return okAsync(cloneGroupForItemRendering(extracted));
-        })
-        .match(
-          (scene) => {
-            inFlightTypesRef.current.delete(itemType);
-            setCache((previous) => {
-              const next = new Map(previous);
-              next.set(itemType, {
-                state: "ready",
-                scene,
-                error: null,
-              });
-              return next;
-            });
-          },
-          (error) => {
-            inFlightTypesRef.current.delete(itemType);
-            setCache((previous) => {
-              const next = new Map(previous);
-              next.set(itemType, {
-                state: "error",
-                scene: null,
-                error,
-              });
-              return next;
-            });
-          },
-        );
-    }
-  }, [cache, modelFilePath, uniqueItemTypes]);
-
-  const getSceneForType = (itemType: number): Group | null => {
-    const entry = cache.get(itemType);
-    if (!entry || entry.state !== "ready") {
-      return null;
-    }
-    return entry.scene;
-  };
-
-  const isLoadingType = (itemType: number): boolean => {
-    if (inFlightTypesRef.current.has(itemType)) {
-      return true;
-    }
-    const entry = cache.get(itemType);
-    return entry?.state === "loading";
-  };
+      setLoaded({ url, scenes });
+    }, () => { if (active) setLoaded({ url, scenes: new Map() }); });
+    return () => { active = false; closeAssetWorker(worker.value); };
+  }, [url, types, filename]);
 
   return {
-    getSceneForType,
-    isLoadingType,
+    getSceneForType: (type) => loaded?.url === url ? loaded.scenes.get(type) ?? null : null,
+    isLoadingType: () => loaded?.url !== url,
   };
 }

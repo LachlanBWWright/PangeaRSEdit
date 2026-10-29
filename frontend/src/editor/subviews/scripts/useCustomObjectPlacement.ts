@@ -11,20 +11,22 @@ import {
   scriptWorkspaceStoreAtom,
 } from "./scriptWorkspaceState";
 import { CustomObjectToPlaceAtom } from "./scriptPlacementSelectionState";
+import { sampleItemTerrainHeight } from "../items/itemTerrainHeight";
+import type { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 
 interface CustomObjectPlacementMode {
   readonly objectId: string | null;
-  readonly placeAt: (x: number, y: number, z: number) => boolean;
+  readonly placeAt: (x: number, z: number) => boolean;
 }
 
-export function useCustomObjectPlacement(): CustomObjectPlacementMode {
+export function useCustomObjectPlacement(headerData: HeaderData, terrainData: TerrainData): CustomObjectPlacementMode {
   const globals = useAtomValue(Globals);
   const levelNumber = useAtomValue(LevelNumber);
   const objectId = useAtomValue(CustomObjectToPlaceAtom);
   const setWorkspaceStore = useSetAtom(scriptWorkspaceStoreAtom);
 
   const placeAt = useCallback(
-    (x: number, y: number, z: number) => {
+    (x: number, z: number) => {
       if (!ENABLE_SCRIPTS || objectId === null) {
         return false;
       }
@@ -42,12 +44,14 @@ export function useCustomObjectPlacement(): CustomObjectPlacementMode {
         didPlace = true;
         return replaceScriptWorkspace(
           store,
-          placeCustomObject(workspace, objectId, definition.label, { x, y, z }),
+          placeCustomObject(workspace, objectId, definition.label, {
+            x, y: sampleItemTerrainHeight(x, z, headerData, terrainData, globals), z,
+          }),
         );
       });
       return didPlace;
     },
-    [globals, levelNumber, objectId, setWorkspaceStore],
+    [globals, levelNumber, objectId, setWorkspaceStore, headerData, terrainData],
   );
 
   return {

@@ -26,6 +26,26 @@ function setup() {
 }
 
 describe("private asset protocol", () => {
+  it("prefers selected native data over bundled copies and reports missing native assets explicitly", async () => {
+    const { handler, assets } = setup();
+    if (!handler) return;
+    const dataRoot = path.join(root(), "original");
+    await writeFixture(dataRoot, "models/level.bg3d", "native");
+    await writeFixture(root(), "games/ottomatic/models/level.bg3d", "bundled");
+    await writeFixture(root(), "games/ottomatic/models/missing.bg3d", "bundled only");
+    await assets.register("OttoMatic", "original", dataRoot, {
+      source: "upstream", dataRoot, releaseUrl: "https://example.com/data.zip",
+    });
+    const response = await handler(new Request("pangea://editor/games/ottomatic/models/level.bg3d"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Pangea-Asset-Source")).toBe("native:OttoMatic");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(electron.fetch).toHaveBeenCalledWith(pathToFileURL(path.join(dataRoot, "models/level.bg3d")).href);
+    const missing = await handler(new Request("pangea://editor/games/ottomatic/models/missing.bg3d"));
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toMatchObject({ code: "missing" });
+    expect(electron.fetch).toHaveBeenCalledTimes(1);
+  });
   it.each(["/", "/index.html", "/PangeaRSEdit/index.html"])("serves renderer entry point %s with security headers", async (route) => {
     await writeFixture(root(), "index.html", "renderer");
     const { handler } = setup();
@@ -37,6 +57,7 @@ describe("private asset protocol", () => {
     expect(response.headers.get("Cross-Origin-Opener-Policy")).toBe("same-origin");
     expect(response.headers.get("Cross-Origin-Embedder-Policy")).toBe("require-corp");
     expect(response.headers.get("Content-Security-Policy")).toContain("default-src 'self'");
+    expect(response.headers.get("Content-Security-Policy")).toContain("connect-src 'self' blob: https: wss:");
   });
 
   it.each([
@@ -81,9 +102,9 @@ describe("private asset protocol", () => {
     const { handler, assets } = setup();
     if (!handler) return;
     const installed = path.join(root(), "stock");
-    await writeFixture(installed, "OttoMatic/Data/level.ter", "stock level");
+    await writeFixture(installed, "assets/ottoMatic/terrain/level.ter", "stock level");
     expect((await assets.register("OttoMatic", "v1", installed)).isOk()).toBe(true);
-    expect((await handler(new Request("pangea://editor/OttoMatic/Data/level.ter"))).status).toBe(200);
-    expect(electron.fetch).toHaveBeenCalledWith(pathToFileURL(path.join(installed, "OttoMatic/Data/level.ter")).href);
+    expect((await handler(new Request("pangea://editor/assets/ottoMatic/terrain/level.ter"))).status).toBe(200);
+    expect(electron.fetch).toHaveBeenCalledWith(pathToFileURL(path.join(installed, "assets/ottoMatic/terrain/level.ter")).href);
   });
 });

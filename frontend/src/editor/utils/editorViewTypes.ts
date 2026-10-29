@@ -19,7 +19,7 @@ import type {
  * Data history for undo/redo functionality
  */
 export interface DataHistory {
-  items: unknown[];
+  items: readonly unknown[];
   index: number;
 }
 

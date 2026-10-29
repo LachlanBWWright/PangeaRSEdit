@@ -3,9 +3,10 @@ import { Result, err, ok, type Result as Outcome } from "neverthrow";
 import { failure } from "./files.ts";
 import type { HostError } from "@pangea/desktop-contracts";
 
-export function startProcess(executable: string, args: string[], cwd: string) {
+export function startProcess(executable: string, args: string[], cwd: string, environment?: Readonly<Record<string, string>>) {
   return Result.fromThrowable(() => spawn(executable, args, {
     cwd, shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+    env: environment ? { ...process.env, ...environment } : process.env,
   }), () => failure("Cannot start executable", "launch"))();
 }
 

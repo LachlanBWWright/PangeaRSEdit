@@ -71,7 +71,7 @@ export function KonvaView({
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  const customObjectPlacement = useCustomObjectPlacement();
+  const customObjectPlacement = useCustomObjectPlacement(headerData, terrainData);
   const globals = useAtomValue(Globals);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -122,19 +122,17 @@ export function KonvaView({
       if (customObjectPlacement.objectId !== null) {
         customObjectPlacement.placeAt(
           position.x,
-          headerData.Hedr[1000].obj.minY ?? 0,
           position.z,
         );
         return;
       }
       if (clickToAddItem === undefined) return;
 
-      // Updater<T | null> can be safely cast to Updater<T> when component only renders when data is non-null
-      (setItemData as Updater<ItemData>)((itemData) => { // eslint-disable-line @typescript-eslint/no-unsafe-type-assertion
-        addPlacedItem(itemData, position.x, position.z, clickToAddItem);
+      setItemData((itemData) => {
+        if (itemData) addPlacedItem(itemData, position.x, position.z, clickToAddItem);
       });
     },
-    [clickToAddItem, customObjectPlacement, headerData, setItemData],
+    [clickToAddItem, customObjectPlacement, setItemData],
   );
 
   const handleStageDblClick = useCallback(() => {

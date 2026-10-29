@@ -7,6 +7,7 @@ test("cancelled folder selection leaves the editor usable without binding a proj
   });
   await page.getByRole("button", { name: "Project menu", exact: true }).click();
   await page.getByRole("menuitem", { name: /Open Project/ }).click();
+  await expect(page.getByRole("menu")).not.toBeVisible();
   const result = await page.evaluate(() => window.pangeaDesktop?.request({ operation: "project.inspect" }));
   expect(result).toMatchObject({ ok: false, error: { code: "no-project" } });
   await page.getByRole("button", { name: "Project menu", exact: true }).click();

@@ -9,7 +9,7 @@ import { readFixture, useTemporaryDirectory, writeFixture } from "./fixtures.ts"
 const root = useTemporaryDirectory();
 function installation(managed: boolean): Installation {
   return { game: "OttoMatic", version: "v1", executable: path.join(root(), "OttoMatic/version/OttoMatic"),
-    data: path.join(root(), "OttoMatic/version/Data"), assetRootVersion: 1, managed };
+    data: path.join(root(), "OttoMatic/version/Data"), assetRootVersion: 2, managed };
 }
 const games = () => new GameStore(root(), () => undefined);
 
@@ -36,6 +36,22 @@ describe("offline installations", () => {
     await writeFixture(root(), "installed.json", JSON.stringify([record]));
     const loaded = await games().load();
     expect(loaded.isOk() && loaded.value).toEqual([record]);
+  });
+
+  it.each([false, true])("ignores epoch-one cached runtimes while preserving current=%s installations and external files", async (includeCurrent) => {
+    const previous = { ...installation(false), assetRootVersion: 1 };
+    const current: Installation = { ...installation(true), game: "Bugdom", version: "epoch-two" };
+    const records = includeCurrent ? [previous, current] : [previous];
+    const originalRegistry = JSON.stringify(records);
+    await writeFixture(root(), "installed.json", originalRegistry);
+    await writeFixture(previous.data, "stock.dat", "external stock");
+    const store = games();
+    const loaded = await store.load();
+    expect(loaded.isOk() && loaded.value).toEqual(includeCurrent ? [current] : []);
+    const rejected = await store.launch("OttoMatic");
+    expect(rejected.isErr() && rejected.error.code).toBe("not-installed");
+    expect(await readFixture(previous.data, "stock.dat")).toBe("external stock");
+    expect(await readFixture(root(), "installed.json")).toBe(originalRegistry);
   });
 
   it.each([false, true])("removing managed=%s persists removal and respects installation ownership", async (managed) => {

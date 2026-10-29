@@ -5,9 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Globals } from "@/data/globals/globals";
 import { LevelNumber } from "@/data/globals/levelNumber";
-import { ActiveView } from "@/data/globals/activeViewAtom";
-import { ClickToAddItem } from "@/data/items/itemAtoms";
-import { View } from "@/editor/viewEnum";
 import { TestGameDialog } from "@/editor/TestGameDialog";
 import { DefineBehaviorModal } from "./DefineBehaviorModal";
 import { CustomObjectWorkspace } from "./CustomObjectWorkspace";
@@ -19,7 +16,10 @@ import { ScriptPreviewExportPanel } from "./ScriptPreviewExportPanel";
 import { ScriptSampleLibrary } from "./ScriptSampleLibrary";
 import { ScriptHookApiExplorer } from "./ScriptHookApiExplorer";
 import { ScriptLibraryTools } from "./ScriptLibraryTools";
-import { CustomObjectToPlaceAtom, SelectedCustomPlacementAtom } from "./scriptPlacementSelectionState";
+import { openCustomObjectEditorAtom, useScriptsSection, type ScriptsSection } from "./scriptAuthoringNavigation";
+import { ScriptWorkflowStatus } from "./ScriptWorkflowStatus";
+import { openScriptDiagnostic } from "./scriptDiagnosticActions";
+import { inspectCustomObjectPlacementAtom, startCustomObjectPlacementAtom } from "./scriptPlacementNavigation";
 import { useScriptWorkspace } from "./useScriptWorkspace";
 import { useScriptRuntimeActions, type ScriptLevelInput } from "./useScriptRuntimeActions";
 import {
@@ -27,10 +27,10 @@ import {
   getWorkspaceWarnings, setScriptActiveFile, type ScriptHookId,
 } from "./scriptWorkspaceState";
 import { getScriptAllowedTags, summarizeScriptWorkspace } from "./scriptWorkspaceSelectors";
+import { getMetadataResource } from "../metadata/metadataResource";
 import "./scriptWorkbench.css";
 
-type ScriptsTab = "events" | "objects" | "source" | "reference" | "test";
-const tabs: readonly { id: ScriptsTab; label: string }[] = [
+const tabs: readonly { id: ScriptsSection; label: string }[] = [
   { id: "events", label: "Level events" }, { id: "objects", label: "Objects" },
   { id: "source", label: "Lua source" }, { id: "test", label: "Test & export" },
   { id: "reference", label: "API reference" },
@@ -42,15 +42,16 @@ export function ScriptsMenu(input: ScriptLevelInput) {
   const context = useMemo(() => createScriptWorkspaceContext(globals, levelNumber), [globals, levelNumber]);
   const { workspace, update, persist } = useScriptWorkspace(context);
   const actions = useScriptRuntimeActions({ ...input, globals, levelNumber, workspace, update, persist });
-  const [tab, setTab] = useState<ScriptsTab>("events");
+  const { tab, setTab } = useScriptsSection(context.gameId);
+  const [sourceLocation, setSourceLocation] = useState<{ path: string; line: number; column: number } | null>(null);
   const [creating, setCreating] = useState<{ target: "global" | "objectType"; hook: ScriptHookId } | null>(null);
   const upload = useRef<HTMLInputElement>(null);
-  const setActiveView = useSetAtom(ActiveView);
-  const setObjectToPlace = useSetAtom(CustomObjectToPlaceAtom);
-  const setNativeItem = useSetAtom(ClickToAddItem);
-  const setSelectedPlacement = useSetAtom(SelectedCustomPlacementAtom);
+  const startPlacement = useSetAtom(startCustomObjectPlacementAtom);
+  const inspectPlacement = useSetAtom(inspectCustomObjectPlacementAtom);
+  const openObjectEditor = useSetAtom(openCustomObjectEditorAtom);
   const summary = summarizeScriptWorkspace(workspace);
   const openSource = (path: string) => {
+    setSourceLocation(null);
     update((state) => setScriptActiveFile(state, path));
     setTab("source");
   };
@@ -63,6 +64,7 @@ export function ScriptsMenu(input: ScriptLevelInput) {
         <Button disabled={actions.busy} onClick={() => void actions.test(true)}><Play size={15} className="mr-2" />{actions.busy ? "Preparing…" : "Test level"}</Button>
       </div>
     </header>
+    {tab !== "test" && <ScriptWorkflowStatus workspace={workspace} evidence={actions.evidence} />}
     {tab === "events" && <div className="workbench-events">
       <ScriptLevelEvents workspace={workspace} update={update} onCreate={(hook) => setCreating({ target: "global", hook })} onOpenSource={openSource} />
       <div className="grid content-start gap-6 min-w-0">
@@ -71,18 +73,24 @@ export function ScriptsMenu(input: ScriptLevelInput) {
         <ScriptSampleLibrary workspace={workspace} update={update} />
       </div>
     </div>}
-    {tab === "objects" && <CustomObjectWorkspace key={context.gameId} context={context} onPlace={(id) => {
-      setNativeItem(undefined); setSelectedPlacement(null); setObjectToPlace(id); setActiveView(View.items);
+    {tab === "objects" && <CustomObjectWorkspace key={context.gameId} context={context} nativeMetadata={getMetadataResource(input.terrainData, globals.GAME_TYPE)?.properties} onPlace={(id) => {
+      startPlacement(id);
       toast.info("Click the map to place this object.");
-    }} onSelectPlacement={(id) => { setSelectedPlacement(id); setObjectToPlace(null); setActiveView(View.items); }} />}
-    {tab === "source" && <ScriptSourceWorkspace workspace={workspace} update={update} onError={toast.error} />}
+    }} onSelectPlacement={inspectPlacement} />}
+    {tab === "source" && <ScriptSourceWorkspace workspace={workspace} update={update} onError={toast.error} location={sourceLocation} />}
     {tab === "reference" && <div className="p-4"><ScriptHookApiExplorer workspace={workspace} gameId={context.gameId} supportedHooks={context.supportedHooks} onCreateHook={(hook) => setCreating({ target: "global", hook })} /></div>}
     {tab === "test" && <div className="p-4 md:p-6">
       <div className="mb-6"><ScriptLibraryTools workspace={workspace} update={update} /></div>
       <ScriptPreviewExportPanel isPreparingPreview={actions.busy} onPreview={(withScripts) => void actions.test(withScripts)} onCompile={actions.build}
         onDownloadExtendedPackage={() => void actions.exportPackage("extended")} onDownloadOriginalCompatible={() => void actions.exportPackage("original")}
         onDownloadScriptPackage={() => void actions.exportPackage("scripts")} onUploadScriptPackage={() => upload.current?.click()}
-        statusLog={workspace.statusLog} levelKey={context.levelKey} sourcePathOptions={Object.keys(workspace.sourceFiles)} warnings={getWorkspaceWarnings(workspace)} hasScripts={summary.hasScripts} diagnostics={workspace.diagnostics} />
+        statusLog={workspace.statusLog} levelKey={context.levelKey} sourcePathOptions={Object.keys(workspace.sourceFiles)} warnings={getWorkspaceWarnings(workspace)} hasScripts={summary.hasScripts} diagnostics={workspace.diagnostics}
+        workspace={workspace} evidence={actions.evidence} onOpenDiagnostic={(target) => openScriptDiagnostic(target, {
+          openSource: (location) => { update((state) => setScriptActiveFile(state, location.path)); setSourceLocation(location); setTab("source"); },
+          openDefinition: (definitionId) => openObjectEditor({ gameId: context.gameId, definitionId, tab: "appearance" }),
+          inspectPlacement,
+          openEvents: () => setTab("events"),
+        })} />
       <input ref={upload} type="file" className="hidden" accept=".zip" aria-label="Upload Script Package" onChange={(event) => { const file = event.target.files?.[0]; if (file) void actions.importPackage(file); event.target.value = ""; }} />
     </div>}
     <DefineBehaviorModal key={creating ? `${creating.target}-${creating.hook}` : "closed"} open={creating !== null} onOpenChange={(open) => { if (!open) setCreating(null); }}

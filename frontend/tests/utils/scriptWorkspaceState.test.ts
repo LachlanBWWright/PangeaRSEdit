@@ -1,4 +1,6 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
+import "../setup/scriptLuaValidation";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { strToU8, unzipSync, zipSync } from "fflate";
@@ -27,6 +29,7 @@ import {
   buildScriptPackageZip,
   buildScriptPackageZipAsync,
   compileScriptWorkspace,
+  compileScriptWorkspaceAsync,
   createCustomObjectFromBehavior,
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
@@ -113,6 +116,8 @@ describe("scriptWorkspaceState", () => {
     const cleared = replaceLuaLSDiagnostics(withDiagnostics, "main.lua", []);
 
     expect(withDiagnostics.diagnostics).toHaveLength(1);
+    expect(summarizeScriptWorkspace(withDiagnostics).buildErrorCount).toBe(0);
+    expect(summarizeScriptWorkspace(withDiagnostics).previewReady).toBe(true);
     expect(cleared.diagnostics).toEqual([]);
   });
 
@@ -181,7 +186,7 @@ describe("scriptWorkspaceState", () => {
     );
 
     expect(classified.diagnostics.map((diagnostic) => diagnostic.category)).toEqual(categories);
-    expect(summarizeScriptWorkspace(classified).buildErrorCount).toBe(3);
+    expect(summarizeScriptWorkspace(classified).buildErrorCount).toBe(2);
   });
 
   it("advertises implemented core runtime capabilities for every game", () => {
@@ -230,7 +235,7 @@ describe("scriptWorkspaceState", () => {
     );
   });
 
-  it("rejects malformed model assets before synchronous export", () => {
+  it("rejects malformed model assets before export", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const sample = loadScriptSample(context, "hover-beacon");
     const definition = sample.customObjects[0];
@@ -255,19 +260,19 @@ describe("scriptWorkspaceState", () => {
       "malformed.bg3d",
     );
 
-    const result = buildScriptPackageFiles(state);
+    const result = await buildScriptPackageFiles(state);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toContain("Custom asset validation failed");
     }
   });
 
-  it("builds preview files for the Otto humans jump sample", () => {
+  it("builds preview files for the Otto humans jump sample", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 3);
     const state = loadScriptSample(context, "otto-humans-jump");
 
-    const previewFilesResult = buildPreviewScriptFiles(state);
-    const packageFilesResult = buildScriptPackageFiles(state);
+    const previewFilesResult = await buildPreviewScriptFiles(state);
+    const packageFilesResult = await buildScriptPackageFiles(state);
 
     expect(previewFilesResult.isOk()).toBe(true);
     expect(packageFilesResult.isOk()).toBe(true);
@@ -567,7 +572,7 @@ describe("scriptWorkspaceState", () => {
     expect(declaration?.content).toContain("---@field modeCanAdvance boolean|nil");
   });
 
-  it("exports terrain bindings into the bindings sidecar", () => {
+  it("exports terrain bindings into the bindings sidecar", async () => {
     const context = createScriptWorkspaceContext(Bugdom2Globals, 2);
     let state = ensureScriptWorkspace({}, context);
 
@@ -583,7 +588,7 @@ describe("scriptWorkspaceState", () => {
       },
     );
 
-    const packageFilesResult = buildScriptPackageFiles(state);
+    const packageFilesResult = await buildScriptPackageFiles(state);
 
     expect(packageFilesResult.isOk()).toBe(true);
     if (packageFilesResult.isErr()) {
@@ -631,11 +636,11 @@ describe("scriptWorkspaceState", () => {
     });
   });
 
-  it("round-trips an extended script package through zip import", () => {
+  it("round-trips an extended script package through zip import", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const state = loadScriptSample(context, "hover-beacon");
 
-    const zipResult = buildScriptPackageZip(state);
+    const zipResult = await buildScriptPackageZip(state);
     expect(zipResult.isOk()).toBe(true);
     if (zipResult.isErr()) {
       return;
@@ -657,7 +662,7 @@ describe("scriptWorkspaceState", () => {
     expect(importedResult.value.sampleId).toBe("hover-beacon");
   });
 
-  it("round-trips bindings and placements for every authored level", () => {
+  it("round-trips bindings and placements for every authored level", async () => {
     const firstContext = createScriptWorkspaceContext(OttoGlobals, 1);
     const secondContext = createScriptWorkspaceContext(OttoGlobals, 2);
     let state = ensureScriptWorkspace({}, firstContext);
@@ -690,7 +695,7 @@ describe("scriptWorkspaceState", () => {
       "return {}",
     );
 
-    const packageResult = buildScriptPackageZip(state);
+    const packageResult = await buildScriptPackageZip(state);
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
     const importedResult = importScriptPackageZip(
@@ -713,9 +718,24 @@ describe("scriptWorkspaceState", () => {
     ).toEqual(["Level two item"]);
   });
 
-  it("rejects a package that drops a declared level sidecar", () => {
+  it("rejects project metadata from the previous runtime contract epoch", async () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 0);
+    const packageResult = await buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
+    expect(packageResult.isOk()).toBe(true);
+    if (packageResult.isErr()) return;
+    const project = packageResult.value.find((file) => file.path === "Data/Scripts/config/project.json");
+    expect(project).toBeDefined();
+    if (!project) return;
+    const parsed = scriptProjectSchema.safeParse(decodeJson(project.bytes));
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.contractVersion).toBe(2);
+    expect(scriptProjectSchema.safeParse({ ...parsed.data, contractVersion: 1 }).success).toBe(false);
+  });
+
+  it("rejects a package that drops a declared level sidecar", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
-    const packageResult = buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
+    const packageResult = await buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
 
@@ -734,9 +754,9 @@ describe("scriptWorkspaceState", () => {
     );
   });
 
-  it("rejects tampered packages using the deterministic package manifest", () => {
+  it("rejects tampered packages using the deterministic package manifest", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
-    const packageResult = buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
+    const packageResult = await buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
 
@@ -758,9 +778,9 @@ describe("scriptWorkspaceState", () => {
     expect(validationResult.error).toContain("content hash mismatch");
   });
 
-  it("keeps networked scripting behind an explicit deterministic-runtime gate", () => {
+  it("keeps networked scripting behind an explicit deterministic-runtime gate", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
-    const packageResult = buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
+    const packageResult = await buildScriptPackageFiles(loadScriptSample(context, "hover-beacon"));
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
 
@@ -916,9 +936,9 @@ describe("scriptWorkspaceState", () => {
     expect(importedResult.error).toContain("Script source files must be Lua");
   });
 
-  it("migrates legacy callback packages into Lua 5.4 source", () => {
+  it("migrates legacy callback packages into Lua 5.4 source", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
-    const packageResult = buildScriptPackageZip(
+    const packageResult = await buildScriptPackageZip(
       loadScriptSample(context, "log-level-start"),
     );
     expect(packageResult.isOk()).toBe(true);
@@ -981,8 +1001,8 @@ describe("scriptWorkspaceState", () => {
       objectId: "sample.hoverBeacon",
       position: { x: 0, y: 160, z: 0 },
     });
-    expect(bundle).toContain('pangea.spawn.scripted("sample.hoverBeacon"');
-    expect(bundle).toContain('ctx.objectType == "sample.hoverBeacon"');
+    expect(bundle).toContain('__spawnPlacement("sample.hoverBeacon"');
+    expect(bundle).toContain('(ctx.definitionId or ctx.objectType) == "sample.hoverBeacon"');
     expect(bundle).not.toContain(
       '__hasTag(ctx.tags, "editor.custom.hoverBeacon")',
     );
@@ -994,7 +1014,7 @@ describe("scriptWorkspaceState", () => {
       state.sourceFiles["Data/Scripts/src/objects/sample-hoverbeacon.lua"]
         ?.content,
     ).toContain("pangea.object.setRotation");
-    expect(bundle).toContain("handler({ handle = ctx.object }, ctx)");
+    expect(bundle).toContain("handler({ handle = ctx.object, parameters = parameters }, ctx)");
     expect(bundle).toContain('["animationEvent"] = "onAnimationEvent"');
     expect(bundle).toContain('["animationComplete"] = "onAnimationComplete"');
     expect(bundle).toContain('["triggerEnter"] = "onTriggerEnter"');
@@ -1005,7 +1025,7 @@ describe("scriptWorkspaceState", () => {
     expect(bundle).toContain('["checkpointReset"] = "onCheckpointReset"');
   });
 
-  it("exports semantic collision bounds with custom objects", () => {
+  it("exports semantic collision bounds with custom objects", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const sample = loadScriptSample(context, "hover-beacon");
     const definition = sample.customObjects[0];
@@ -1020,7 +1040,7 @@ describe("scriptWorkspaceState", () => {
         bounds: { width: 2, height: 3, depth: 4 },
       },
     });
-    const packageResult = buildScriptPackageFiles(state);
+    const packageResult = await buildScriptPackageFiles(state);
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
 
@@ -1092,7 +1112,7 @@ describe("scriptWorkspaceState", () => {
     });
   });
 
-  it("reports a warning for external require paths", () => {
+  it("rejects unresolved bundled modules before execution", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 1);
     let state = ensureScriptWorkspace({}, context);
 
@@ -1109,17 +1129,16 @@ describe("scriptWorkspaceState", () => {
       ].join("\n"),
     );
 
-    const compileResult = compileScriptWorkspace(state);
-    expect(compileResult.isOk()).toBe(true);
-    if (compileResult.isErr()) {
-      return;
-    }
-
-    expect(
-      compileResult.value.diagnostics.some(
-        (diagnostic) => diagnostic.code === "preview.require",
-      ),
-    ).toBe(true);
+    const compileResult = await compileScriptWorkspaceAsync(state);
+    expect(compileResult.isErr()).toBe(true);
+    if (compileResult.isOk()) return;
+    expect(compileResult.error.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: "lua.module",
+        filePath: "Data/Scripts/src/external.lua",
+        message: expect.stringContaining("Bundled module not found: unsupported-package"),
+      }),
+    ]));
   });
 
   it("adds user-defined behaviors to the catalog", () => {
@@ -1276,7 +1295,7 @@ describe("scriptWorkspaceState", () => {
     expect(bundle).toContain("onUpdate");
   });
 
-  it("includes custom placements in exported sidecar files", () => {
+  it("includes custom placements in exported sidecar files", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 1);
     let state = ensureScriptWorkspace({}, context);
 
@@ -1286,7 +1305,7 @@ describe("scriptWorkspaceState", () => {
       z: 75,
     });
 
-    const packageFilesResult = buildScriptPackageFiles(state);
+    const packageFilesResult = await buildScriptPackageFiles(state);
     expect(packageFilesResult.isOk()).toBe(true);
     if (packageFilesResult.isErr()) {
       return;
@@ -1456,7 +1475,7 @@ describe("scriptWorkspaceState", () => {
     },
   ])(
     "compiles and validates the $name Lua sample",
-    ({ globals, sample, level, sourcePath, tag, formula, amplitude }) => {
+    async ({ globals, sample, level, sourcePath, tag, formula, amplitude }) => {
       const context = createScriptWorkspaceContext(globals, level);
       const state = loadScriptSample(context, sample);
 
@@ -1476,7 +1495,7 @@ describe("scriptWorkspaceState", () => {
       const errors = diagnostics.filter((d) => d.severity === "error");
       expect(errors).toHaveLength(0);
 
-      const packageFilesResult = buildScriptPackageFiles(compileResult.value);
+      const packageFilesResult = await buildScriptPackageFiles(compileResult.value);
       expect(packageFilesResult.isOk()).toBe(true);
       if (packageFilesResult.isErr()) {
         return;
@@ -1496,14 +1515,14 @@ describe("scriptWorkspaceState", () => {
     },
   );
 
-  it("rejects replacements that reference missing objects", () => {
+  it("rejects replacements that reference missing objects", async () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 3);
     const state = loadScriptSample(context, "otto-humans-jump");
     const compileResult = compileScriptWorkspace(state);
     expect(compileResult.isOk()).toBe(true);
     if (compileResult.isErr()) return;
 
-    const packageFilesResult = buildScriptPackageFiles(compileResult.value);
+    const packageFilesResult = await buildScriptPackageFiles(compileResult.value);
     expect(packageFilesResult.isOk()).toBe(true);
     if (packageFilesResult.isErr()) return;
 
@@ -1552,7 +1571,7 @@ describe("scriptWorkspaceState", () => {
     expect(validationResult.error).toContain("missing.object");
   });
 
-  it("serializes Mighty Mike map replacements as map-scoped records", () => {
+  it("serializes Mighty Mike map replacements as map-scoped records", async () => {
     const context = createScriptWorkspaceContext(MightyMikeGlobals, 1);
     const state = loadScriptSample(context, "mightymike-box-bob");
     const withObject = createCustomObjectFromBehavior(
@@ -1577,7 +1596,7 @@ describe("scriptWorkspaceState", () => {
     const compileResult = compileScriptWorkspace(replaced);
     expect(compileResult.isOk()).toBe(true);
     if (compileResult.isErr()) return;
-    const packageResult = buildScriptPackageFiles(compileResult.value);
+    const packageResult = await buildScriptPackageFiles(compileResult.value);
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
 

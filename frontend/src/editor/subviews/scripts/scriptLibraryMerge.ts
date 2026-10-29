@@ -1,7 +1,8 @@
 import { err, ok, type Result } from "neverthrow";
 import { addScriptAsset, upsertScriptSourceFile, saveScriptSourceFile, type ScriptWorkspaceState } from "./scriptWorkspaceState";
 import type { ScriptLibrary } from "./scriptLibrary";
-import { definitionAssetPaths } from "./scriptDefinitionDependencies";
+import { collectScriptSources, definitionAssetPaths } from "./scriptDefinitionDependencies";
+import { validateScriptAuthoringSelection } from "./scriptAuthoringAttachments";
 
 export interface ScriptImportChange {
   key: string;
@@ -60,6 +61,8 @@ export function mergeScriptLibrary(state: ScriptWorkspaceState, library: ScriptL
     if (accepted.has(`asset:${path}`)) next = addScriptAsset(next, path, bytes, path.split("/").at(-1) ?? path);
   }
   const paths = library.manifest.moduleOrder.filter((path) => next.sourceFiles[path]);
+  const dependencies = collectScriptSources(next, Object.keys(library.sources).filter((path) => accepted.has(`source:${path}`)));
+  if (dependencies.isErr()) return err(dependencies.error);
   for (const object of next.customObjects.filter((entry) => accepted.has(`object:${entry.id}`))) {
     if (!next.sourceFiles[object.sourceFilePath]) return err(`Select the source for ${object.label} as well: ${object.sourceFilePath}`);
     for (const path of definitionAssetPaths(object)) {
@@ -70,5 +73,7 @@ export function mergeScriptLibrary(state: ScriptWorkspaceState, library: ScriptL
     if (!next.sourceFiles[behavior.sourceFilePath]) return err(`Select the source for ${behavior.label} as well: ${behavior.sourceFilePath}`);
   }
   if (Object.values(next.assets).reduce((size, asset) => size + asset.bytes.byteLength, 0) > 64 * 1024 * 1024) return err("The merged workspace would exceed its 64 MiB asset budget.");
+  const editable = validateScriptAuthoringSelection(next, library, accepted);
+  if (editable.isErr()) return err(editable.error);
   return ok({ ...next, activeFilePath: state.activeFilePath, moduleOrder: [...new Set([...state.moduleOrder, ...paths, ...next.moduleOrder])], statusLog: [...next.statusLog, "Imported shared content; level assignments and placements preserved."].slice(-20) });
 }

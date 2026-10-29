@@ -15,6 +15,16 @@ import { DataType } from "@/data/globals/globals";
 import { Result as BoundaryResult } from "neverthrow";
 import { compileScriptWorkspace, scriptLevelStateSchema } from "@/editor/subviews/scripts/scriptWorkspaceState";
 
+export function guardProjectLoadHandlers(handlers: Omit<OpenFileArgs, "url" | "gameType">, isCurrent: () => boolean): Omit<OpenFileArgs, "url" | "gameType"> {
+  return {
+    setGlobals: (globals) => { if (isCurrent()) handlers.setGlobals(globals); },
+    setMapFile: (file) => { if (isCurrent()) handlers.setMapFile(file); },
+    setMapImagesFile: (file) => { if (isCurrent()) handlers.setMapImagesFile(file); },
+    setMapImages: (images) => { if (isCurrent()) handlers.setMapImages(images); },
+    setData: (data) => { if (isCurrent()) handlers.setData(data); },
+  };
+}
+
 export async function readProjectFiles(project: ProjectSnapshot, paths?: string[]) {
   return desktopRequest({ operation: "project.read", paths: paths ?? project.files.map((file) => file.path) }, z.array(fileSchema));
 }

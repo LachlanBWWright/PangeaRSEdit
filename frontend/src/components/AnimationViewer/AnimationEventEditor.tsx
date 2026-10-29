@@ -35,11 +35,13 @@ import {
 import { hasAnimationEventSoundPreview } from "./animationSoundPlayer";
 
 interface AnimationEventEditorProps {
-  selectedAnimationInfo: AnimationInfo | null;
+  selectedAnimationInfo: Pick<AnimationInfo, "name"> | null;
   selectedEvents: AnimationEvent[];
   selectedEventIndex: number | null;
   gameLabel?: string | null;
   modelSourceKind?: ModelSourceKind | null;
+  maxEvents?: number;
+  supportedEventTypes?: readonly number[];
   onSelectEvent: (index: number) => void;
   onAddEvent: () => void;
   onUpdateEvent: (index: number, event: AnimationEvent) => void;
@@ -53,6 +55,8 @@ export function AnimationEventEditor({
   selectedEventIndex,
   gameLabel,
   modelSourceKind,
+  maxEvents,
+  supportedEventTypes,
   onSelectEvent,
   onAddEvent,
   onUpdateEvent,
@@ -214,6 +218,7 @@ export function AnimationEventEditor({
                         Time
                       </div>
                       <Input
+                        aria-label={`Event ${index + 1} time`}
                         type="text"
                         inputMode="numeric"
                         value={event.time.toString()}
@@ -233,11 +238,11 @@ export function AnimationEventEditor({
                         value={type.toString()}
                         onValueChange={handleTypeChange}
                       >
-                        <SelectTrigger className="h-8 w-full min-w-0">
+                        <SelectTrigger aria-label={`Event ${index + 1} type`} className="h-8 w-full min-w-0">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="max-h-60">
-                          {Object.entries(ANIMEVENT_TYPE_CONFIG).map(
+                          {Object.entries(ANIMEVENT_TYPE_CONFIG).filter(([value]) => !supportedEventTypes || supportedEventTypes.includes(Number(value))).map(
                             ([value, config]) => (
                               <SelectItem
                                 key={value}
@@ -261,7 +266,7 @@ export function AnimationEventEditor({
                           value={event.value.toString()}
                           onValueChange={handleValueChange}
                         >
-                          <SelectTrigger className="h-8 w-full min-w-0">
+                          <SelectTrigger aria-label={`Event ${index + 1} value`} className="h-8 w-full min-w-0">
                             <SelectValue placeholder="Select value" />
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
@@ -277,6 +282,7 @@ export function AnimationEventEditor({
                         </Select>
                       ) : (
                         <Input
+                          aria-label={`Event ${index + 1} value`}
                           type="text"
                           inputMode="numeric"
                           value={event.value.toString()}
@@ -299,7 +305,7 @@ export function AnimationEventEditor({
         <p className="text-xs text-gray-400">No animation events found.</p>
       )}
 
-      <Button size="sm" className="w-full" onClick={onAddEvent}>
+      <Button size="sm" className="w-full" disabled={maxEvents !== undefined && selectedEvents.length >= maxEvents} onClick={onAddEvent}>
         Add Event
       </Button>
     </div>

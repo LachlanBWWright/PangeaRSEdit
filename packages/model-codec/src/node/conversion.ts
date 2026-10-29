@@ -10,6 +10,9 @@ import { BG3D_EXPORT_TARGETS } from "../modelParsers/bg3dExportTargets";
 import { nativeFormat, readNativeAsset, isSkeletonPath } from "./native";
 import { prepareGltfFiles, prepareNativeDocument, readGltfAsset, type OutputFile } from "./gltf";
 import { writeOutputFiles } from "./files";
+import { applyImportTransform, type ModelImportTransform } from "./importTransform.js";
+import { validateNativeSkeleton } from "./nativeLimits.js";
+import { applyNativeRecipe, materialName, readDocumentAnimationEvents, type NativeAssetRecipe } from "./nativeRecipe.js";
 
 export interface ModelConversionOptions {
   readonly skeleton?: string;
@@ -18,6 +21,8 @@ export interface ModelConversionOptions {
   readonly target?: string;
   readonly allowLossy?: boolean;
   readonly force?: boolean;
+  readonly transform?: ModelImportTransform;
+  readonly appearance?: NativeAssetRecipe;
 }
 export interface ModelConversionReport { readonly files: readonly string[]; readonly warnings: readonly string[]; }
 interface LoadedModel { readonly document: Document; readonly parsed?: BG3DParseResult; readonly inputs: readonly string[]; }
@@ -36,6 +41,8 @@ function prepareNativeFiles(parsed: BG3DParseResult, output: string, options: Mo
   const target = BG3D_EXPORT_TARGETS.find((candidate) => candidate.id === targetId);
   if (!target) return errAsync(`Unknown target '${targetId}'. Choose ${BG3D_EXPORT_TARGETS.map((candidate) => candidate.id).join(", ")}.`);
   if ((target.companionExtension === "bg3d") !== (format === "bg3d")) return errAsync(`Target ${targetId} requires ${target.companionExtension === "bg3d" ? "BG3D" : "3DMF"} geometry.`);
+  const skeletonValidation = validateNativeSkeleton(parsed.skeleton, targetId);
+  if (skeletonValidation.isErr()) return errAsync(skeletonValidation.error);
   const bytes = format === "bg3d" ? ok(bg3dParsedToBG3D(parsed)) : bg3dParsedTo3DMF(parsed);
   if (bytes.isErr()) return errAsync(bytes.error);
   const files: OutputFile[] = [{ path: output, bytes: new Uint8Array(bytes.value) }];
@@ -54,9 +61,17 @@ export function convertModelFiles(input: string, output: string, options: ModelC
   if (!nativeFormat(output) && outputExtension !== ".glb" && outputExtension !== ".gltf") return errAsync(`Unsupported output format: ${output}`);
   if (!nativeFormat(output) && (options.skeletonOutput || options.target)) return errAsync("--target and --skeleton-output apply only to native output.");
   return loadModel(input, options).andThen((asset) => {
+    if (options.transform) {
+      const transformed = applyImportTransform(asset.document, options.transform);
+      if (transformed.isErr()) return errAsync(transformed.error);
+    }
     if (!nativeFormat(output)) return prepareGltfFiles(asset.document, output).andThen((files) => writeOutputFiles(files, asset.inputs, options.force ?? false)).map((files) => ({ files, warnings: [] }));
-    const normalized = asset.parsed ? okAsync({ document: asset.document, warnings: [] }) : prepareNativeDocument(asset.document, options.allowLossy ?? false);
-    return normalized.andThen((prepared) => prepareNativeFiles(asset.parsed ?? gltfToBG3D(prepared.document), output, options)
+    const parsed = options.transform ? undefined : asset.parsed;
+    const target = options.target ?? (nativeFormat(output) === "3dmf" ? "bugdom" : "ottomatic");
+    const maximumAnimationKeys = ["ottomatic", "cromag", "bugdom", "nanosaur"].includes(target) ? 15 : 60;
+    const normalized = parsed ? okAsync({ document: asset.document, warnings: [] }) : prepareNativeDocument(asset.document, options.allowLossy ?? false, maximumAnimationKeys);
+    return normalized.andThen((prepared) => applyNativeRecipe(parsed ?? gltfToBG3D(prepared.document), prepared.document,
+      options.appearance ?? {}, target).asyncAndThen((adjusted) => prepareNativeFiles(adjusted, output, options))
       .andThen((files) => writeOutputFiles(files, asset.inputs, options.force ?? false))
       .map((files) => ({ files, warnings: prepared.warnings })));
   });
@@ -70,8 +85,9 @@ export function inspectModelFile(input: string, options: ModelConversionOptions 
       scenes: root.listScenes().length,
       meshes: root.listMeshes().map((mesh) => ({ name: mesh.getName(), primitives: mesh.listPrimitives().length, vertices: mesh.listPrimitives().reduce((count, primitive) => count + (primitive.getAttribute("POSITION")?.getCount() ?? 0), 0) })),
       materials: root.listMaterials().length, textures: root.listTextures().length,
+      materialNames: root.listMaterials().map((entry, index) => materialName(entry.getName(), index)),
       skins: root.listSkins().map((skin) => ({ name: skin.getName(), joints: skin.listJoints().length })),
-      animations: root.listAnimations().map((animation) => ({ name: animation.getName(), channels: animation.listChannels().length })),
+      animations: root.listAnimations().map((animation) => ({ name: animation.getName(), channels: animation.listChannels().length, events: readDocumentAnimationEvents(animation) })),
     };
   });
 }

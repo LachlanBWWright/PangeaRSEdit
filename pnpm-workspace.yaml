@@ -12,3 +12,4 @@ allowBuilds:
   '@swc/core': false
   esbuild: false
   sharp: false
+  electron-winstaller: false

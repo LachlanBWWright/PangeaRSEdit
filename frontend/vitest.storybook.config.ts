@@ -35,6 +35,7 @@ export default defineConfig({
       "immer",
       "jpeg-js",
       "jotai",
+      "konva",
       "monaco-editor",
       "pngjs/browser",
       "react-konva",

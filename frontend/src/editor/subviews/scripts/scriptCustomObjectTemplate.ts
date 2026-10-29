@@ -1,3 +1,5 @@
+import { customObjectSelfType } from "./scriptObjectParameterDeclarations";
+
 export const CUSTOM_OBJECT_EXPORT_PLACEHOLDER = "__PANGEA_CUSTOM_OBJECT_EXPORT__";
 
 export function buildCustomObjectSourceTemplate(label: string): string {
@@ -27,5 +29,5 @@ export function materializeCustomObjectSourceTemplate(
   template: string,
   exportName: string,
 ): string {
-  return template.replaceAll(CUSTOM_OBJECT_EXPORT_PLACEHOLDER, exportName);
+  return template.replaceAll(CUSTOM_OBJECT_EXPORT_PLACEHOLDER, exportName).replaceAll("---@param self ObjectBehaviorSelf", `---@param self ${customObjectSelfType({ exportName })}`);
 }

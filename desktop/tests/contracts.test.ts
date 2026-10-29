@@ -27,6 +27,7 @@ describe("renderer request validation", () => {
     { operation: "project.save", revision: "r", manifest, files: [], removed: [".git/config"] },
     { operation: "project.recover", action: "delete-all" },
     { operation: "games.install", game: "OttoMatic", tag: "v1", kind: "unknown" },
+    { operation: "games.install", game: "OttoMatic", tag: "v1", kind: "editor-assets" },
     { operation: "games.test", game: "OttoMatic", args: Array.from({ length: 13 }, () => "0"), files: [] },
     { operation: "host.dirty", dirty: "true" },
   ])("rejects malformed requests: %j", (request) => {

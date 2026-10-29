@@ -1,4 +1,8 @@
 import { z } from "zod";
+import type { PortableAssets } from "@pangea/desktop-contracts";
+import { MAX_OBJECT_ANIMATION_ACTIONS, objectAnimationActionSchema, objectAnimationActionsSchema } from "./scriptAnimationLimits";
+import { scriptObjectParameterSchema, scriptObjectParameterValueSchema, type ScriptObjectParameterValue } from "./scriptObjectParameterTypes";
+export type { ScriptObjectParameter, ScriptObjectParameterValue } from "./scriptObjectParameterTypes";
 
 export const scriptHookIdSchema = z.enum([
   "onDialogueResult",
@@ -263,6 +267,7 @@ export const scriptParameterDefinitionSchema = z.object({
 
 const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("none") }),
+  z.object({ kind: z.literal("nativeActor"), spawnId: z.string().min(1), scale: z.number().positive().max(100) }),
   z.object({
     kind: z.literal("nativeDisplayGroup"),
     group: z.enum(["global", "levelSpecific"]),
@@ -274,7 +279,7 @@ const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
     kind: z.literal("customDisplayGroup"),
     modelPath: z
       .string()
-      .regex(/^Data\/Scripts\/assets\/models\/[a-zA-Z0-9._/-]+\.(bg3d|3dmf|shapes)$/),
+      .regex(/^Data\/Scripts\/assets\/(models|project)\/[a-zA-Z0-9._/-]+\.(bg3d|3dmf|shapes)$/),
     modelObject: z.number().int().nonnegative(),
     scale: z.number().positive().max(100),
     slot: z.number().int().min(0).max(32767),
@@ -291,14 +296,14 @@ const scriptCustomObjectVisualSchema = z.discriminatedUnion("kind", [
     kind: z.literal("customSkeleton"),
     modelPath: z
       .string()
-      .regex(/^Data\/Scripts\/assets\/skeletons\/[a-zA-Z0-9._/-]+\.(bg3d|3dmf)$/),
+      .regex(/^Data\/Scripts\/assets\/(skeletons|project)\/[a-zA-Z0-9._/-]+\.(bg3d|3dmf)$/),
     skeletonPath: z
       .string()
       .regex(
-        /^Data\/Scripts\/assets\/skeletons\/[a-zA-Z0-9._/-]+\.skeleton$/,
+        /^Data\/Scripts\/assets\/(skeletons|project)\/[a-zA-Z0-9._/-]+\.skeleton$/,
       ),
-    animations: z.record(z.string().min(1), z.number().int().nonnegative()),
-    initialAnimation: z.string().min(1),
+    animations: objectAnimationActionsSchema,
+    initialAnimation: objectAnimationActionSchema,
     animationSpeed: z.number().positive().max(100),
     scale: z.number().positive().max(100),
     slot: z.number().int().min(0).max(32767),
@@ -328,6 +333,10 @@ export const scriptCustomObjectDefinitionSchema = z.object({
   tags: z.array(z.string()),
   compatibility: z.enum(["preview-ready", "extended-only"]),
   description: z.string().min(1),
+  assetId: z.string().min(1).optional(),
+  assetAnimations: z.record(objectAnimationActionSchema, z.string().min(1)).refine((value) => Object.keys(value).length <= MAX_OBJECT_ANIMATION_ACTIONS, "Objects support at most 16 animation actions.").optional(),
+  controllerOwnership: z.enum(["native", "script"]).optional(),
+  parameterDefinitions: z.array(scriptObjectParameterSchema).optional(),
   visual: scriptCustomObjectVisualSchema.default({ kind: "none" }),
   collision: scriptCustomObjectCollisionSchema.default({ kind: "none" }),
 });
@@ -346,6 +355,7 @@ export interface ScriptCustomObjectPlacement {
     readonly z: number;
   };
   readonly levelKey: string;
+  readonly parameterOverrides?: Readonly<Record<string, ScriptObjectParameterValue>>;
 }
 
 export const scriptCustomObjectPlacementSchema = z.object({
@@ -354,6 +364,7 @@ export const scriptCustomObjectPlacementSchema = z.object({
   label: z.string().min(1),
   position: vector3Schema,
   levelKey: z.string().min(1),
+  parameterOverrides: z.record(z.string(), scriptObjectParameterValueSchema).optional(),
 });
 
 export const scriptTerrainReplacementSchema = z.object({
@@ -480,6 +491,7 @@ export interface ScriptWorkspaceState {
   readonly customObjects: readonly ScriptCustomObjectDefinition[];
   readonly params: readonly ScriptParameterDefinition[];
   readonly assets: Readonly<Record<string, ScriptAssetFile>>;
+  readonly authoringAssets?: PortableAssets | null;
   readonly diagnostics: readonly ScriptDiagnostic[];
   readonly statusLog: readonly string[];
   readonly sampleId: string | null;
@@ -488,7 +500,7 @@ export interface ScriptWorkspaceState {
 
 export const scriptProjectSchema = z.object({
   schemaVersion: z.literal(1),
-  contractVersion: z.literal(1).default(1),
+  contractVersion: z.literal(2).default(2),
   gameId: z.string().min(1),
   entryCompiledPath: z.string().min(1),
   editor: z.object({
