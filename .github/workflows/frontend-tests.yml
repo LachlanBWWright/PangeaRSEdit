@@ -220,6 +220,15 @@ jobs:
         if: success()
         run: pnpm exec playwright test --config playwright.runtime.config.ts --workers=1
 
+      - name: Upload scripting runtime packages and failure traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripting-runtime-results
+          path: frontend/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Run real-WASM multiplayer browser smoke tests
         if: success()
         continue-on-error: true

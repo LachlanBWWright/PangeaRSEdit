@@ -10,6 +10,7 @@ export default defineConfig({
   testMatch: [
     "scriptingRuntimeLaunch.spec.ts",
     "customItemRuntime.spec.ts",
+    "brainPortWorkflow.spec.ts",
     "scriptingPersistenceRestart.spec.ts",
     "runtimeStartup.spec.ts",
     "runtimeReloadAcceptance.spec.ts",

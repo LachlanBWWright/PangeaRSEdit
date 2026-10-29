@@ -19,6 +19,7 @@
     "lint": "eslint .",
     "pretest": "npm run build:terrain-codec && npm run build:games",
     "test": "vitest",
+    "test:scripting:brain-port": "playwright test --config=playwright.runtime.config.ts brainPortWorkflow.spec.ts",
     "test:coverage": "bash ./scripts/run-test-coverage.sh",
     "test:discovery": "node ./scripts/check-test-discovery.mjs",
     "check:scripting-contract": "tsx scripts/check-scripting-contract.ts",

@@ -30,7 +30,7 @@ export async function loadScriptSampleFromUI(workspace: Locator, sample = "log-l
 export async function buildScriptWorkspaceFromUI(workspace: Locator): Promise<void> {
   await workspace.getByRole("button", { name: "Test & export", exact: true }).click();
   await workspace.getByRole("button", { name: "Rebuild bundle", exact: true }).click();
-  await expect(workspace.getByText("Bundle generated; test in game to verify behavior").first()).toBeVisible();
+  await expect(workspace.getByText("Lua 5.4 syntax, modules and behavior exports validated; test in game to verify behavior").first()).toBeVisible({ timeout: 30_000 });
 }
 
 export async function createScriptObjectFromUI(page: Page, workspace: Locator, name: string): Promise<void> {

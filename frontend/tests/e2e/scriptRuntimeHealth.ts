@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { z } from "zod";
 import { Result } from "neverthrow";
-import { scriptInspectorSchema, type ScriptInspectorSnapshot } from "@pangea/desktop-contracts";
+import { scriptInspectorSchema, type ScriptInspectorSnapshot, type ScriptInspectorPage } from "@pangea/desktop-contracts";
 
 export function runtimeObjectDefinition(object: ScriptInspectorSnapshot["objects"][number]): string {
   return object.definition || object.type;
@@ -62,6 +62,29 @@ export async function expectRuntimeHealthy(page: Page, messages: readonly string
 export async function runtimeInspector(page: Page) {
   const raw = await page.evaluate(() => window.Module?.ccall?.("PangeaScript_GetStatusInspectorJSON", "string", [], []));
   return parseInspector(raw);
+}
+
+export async function runtimeObjects(page: Page) {
+  const result = await page.evaluate(async () => {
+    const modulePath = "/PangeaRSEdit/src/editor/utils/scriptInspector.ts";
+    const inspector: typeof import("../../src/editor/utils/scriptInspector") = await import(modulePath);
+    const objects: ScriptInspectorPage["objects"] = [];
+    let offset: number | null = 0;
+    let total = 0;
+    for (let request = 0; offset !== null && request < 256; request++) {
+      const queried = inspector.queryScriptObjects(window.Module ?? null, { offset, scriptedOnly: false });
+      if (queried.isErr()) return { error: queried.error, objects, complete: false, total };
+      objects.push(...queried.value.objects);
+      total = queried.value.total;
+      offset = queried.value.nextOffset;
+    }
+    return { error: "", objects, complete: offset === null, total };
+  });
+  expect(result.error).toBe("");
+  expect(result.complete, "Native object pagination must finish").toBe(true);
+  expect(result.objects).toHaveLength(result.total);
+  expect(new Set(result.objects.map((object) => `${object.id}:${object.generation}`)).size).toBe(result.total);
+  return result.objects;
 }
 
 function parseInspector(raw: unknown) {
