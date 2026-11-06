@@ -8,20 +8,27 @@ import type { BG3DParseResult } from "@/modelParsers/parseBG3D";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 import { validateParsedNativeModel } from "./scriptAssetValidation";
 import { selectNativeModelObject } from "./scriptNativeModelObjects";
+import { loadCustomThumbnailBytes } from "../items/customItemThumbnailSource";
+import type { Game } from "@/data/globals/globals";
 
 export async function parseUploadedObjectModel(
   visual: { readonly modelPath: string; readonly modelObject: number; readonly skeletonPath: string },
   assets: ScriptWorkspaceState["assets"],
+  game?: Game,
 ): Promise<Result<BG3DParseResult, string>> {
-  const model = assets[visual.modelPath];
-  if (!model) return err(`Upload the model ${visual.modelPath} to preview collision.`);
   if (visual.modelPath.toLowerCase().endsWith(".shapes")) return err("Shapes use the sprite-plane collision projections above.");
-  const buffer = Uint8Array.from(model.bytes).buffer;
+  const model = assets[visual.modelPath];
+  const loaded = model ? ok(Uint8Array.from(model.bytes).buffer) : game !== undefined
+    ? await loadCustomThumbnailBytes(game, visual.modelPath, assets) : err(`Upload the model ${visual.modelPath} to preview collision.`);
+  if (loaded.isErr()) return err(loaded.error);
+  const buffer = loaded.value;
   let parsed: Result<BG3DParseResult, string>;
   if (visual.skeletonPath) {
     const skeleton = assets[`${visual.skeletonPath}.rsrc`];
-    if (!skeleton) return err(`Upload the skeleton ${visual.skeletonPath}.rsrc to preview animation and collision.`);
-    parsed = await parseBG3DWithSkeleton(buffer, Uint8Array.from(skeleton.bytes).buffer);
+    const resource = skeleton ? ok(Uint8Array.from(skeleton.bytes).buffer) : game !== undefined
+      ? await loadCustomThumbnailBytes(game, `${visual.skeletonPath}.rsrc`, assets) : err(`Upload the skeleton ${visual.skeletonPath}.rsrc to preview animation and collision.`);
+    if (resource.isErr()) return err(resource.error);
+    parsed = await parseBG3DWithSkeleton(buffer, resource.value);
   } else {
     parsed = visual.modelPath.toLowerCase().endsWith(".3dmf") ? parse3DMF(buffer) : parseBG3D(buffer);
   }

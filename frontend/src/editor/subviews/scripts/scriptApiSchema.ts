@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { appendPresentationHook, PRESENTATION_APIS } from "./scriptPresentationApi";
 import { GAMEPLAY_APIS } from "./scriptGameplayApi";
+import { ENCOUNTER_APIS } from "./scriptEncounterApi";
 import { billyFrontierItemTypeParams as billyItemParams, itemTypeNames as billyItemTypeNames } from "@/data/items/billyFrontierItemType";
 import { bugdomItemTypeParams as bugdomItemParams, itemTypeNames as bugdomItemTypeNames } from "@/data/items/bugdomItemType";
 import { bugdom2ItemTypeParams as bugdom2ItemParams, itemTypeNames as bugdom2ItemTypeNames } from "@/data/items/bugdom2ItemType";
@@ -1366,16 +1367,17 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     { name: "pangea.time.frame", description: "Returns the current frame number.", parameters: [], returnType: "number" },
     { name: "pangea.time.delta", description: "Returns the current frame delta in seconds.", parameters: [], returnType: "number" },
     { name: "pangea.time.level", description: "Returns elapsed level time in seconds.", parameters: [], returnType: "number" },
-    { name: "pangea.time.after", description: "Schedules a one-shot budgeted callback using level time.", parameters: [{ name: "delaySeconds", type: "number" }, { name: "callback", type: "function" }], returnType: "number" },
-    { name: "pangea.time.every", description: "Schedules a drift-resistant repeating callback using level time.", parameters: [{ name: "intervalSeconds", type: "number" }, { name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.time.after", description: "Schedules a one-shot budgeted callback using level time. Returns nil and a failure result for invalid arguments or exhausted capacity.", parameters: [{ name: "delaySeconds", type: "number" }, { name: "callback", type: "function" }], returnType: "integer|nil, CommandResult" },
+    { name: "pangea.time.every", description: "Schedules a drift-resistant repeating callback using level time. Returns nil and a failure result for invalid arguments or exhausted capacity.", parameters: [{ name: "intervalSeconds", type: "number" }, { name: "callback", type: "function" }], returnType: "integer|nil, CommandResult" },
     { name: "pangea.time.cancel", description: "Cancels a one-shot or repeating timer.", parameters: [{ name: "timerId", type: "number" }], returnType: "boolean" },
     { name: "pangea.time.isActive", description: "Checks whether a timer remains scheduled.", parameters: [{ name: "timerId", type: "number" }], returnType: "boolean" },
-    { name: "pangea.task.start", description: "Starts a budgeted coroutine task immediately.", parameters: [{ name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.task.start", description: "Starts a budgeted coroutine task immediately. Invalid arguments or exhausted capacity return nil and a failure result; callback errors still propagate.", parameters: [{ name: "callback", type: "function" }], returnType: "integer|nil, CommandResult" },
     { name: "pangea.task.wait", description: "Suspends the current task for a level-time delay.", parameters: [{ name: "delaySeconds", type: "number" }], returnType: "nil" },
     { name: "pangea.task.cancel", description: "Cancels a suspended task.", parameters: [{ name: "taskId", type: "number" }], returnType: "boolean" },
     { name: "pangea.task.isActive", description: "Checks whether a task remains suspended or runnable.", parameters: [{ name: "taskId", type: "number" }], returnType: "boolean" },
-    { name: "pangea.events.on", description: "Subscribes to a script-local event.", parameters: [{ name: "eventName", type: "string" }, { name: "callback", type: "function" }], returnType: "number" },
-    { name: "pangea.events.once", description: "Subscribes for the next matching event emission only.", parameters: [{ name: "eventName", type: "string" }, { name: "callback", type: "function" }], returnType: "number" },
+    { name: "pangea.events.on", description: "Subscribes to a script-local event. Returns nil and a failure result for invalid arguments or exhausted subscription capacity.", parameters: [{ name: "eventName", type: "string" }, { name: "callback", type: "function" }], returnType: "integer|nil, CommandResult" },
+    { name: "pangea.events.once", description: "Subscribes for one emission. Returns nil and a failure result for invalid arguments or exhausted subscription capacity.", parameters: [{ name: "eventName", type: "string" }, { name: "callback", type: "function" }], returnType: "integer|nil, CommandResult" },
+    { name: "pangea.events.isActive", description: "Reports whether a subscription is still active, including automatic removal of once listeners and owner cleanup.", parameters: [{ name: "subscription", type: "number" }], returnType: "boolean" },
     { name: "pangea.events.off", description: "Removes an event subscription.", parameters: [{ name: "subscriptionId", type: "number" }], returnType: "boolean" },
     { name: "pangea.events.emit", description: "Synchronously emits an event with a read-only payload.", parameters: [{ name: "eventName", type: "string" }, { name: "payload", type: "unknown", optional: true }], returnType: "number" },
     { name: "pangea.random.number", description: "Returns a deterministic number from zero through one.", parameters: [], returnType: "number" },
@@ -1637,6 +1639,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       ],
       returnType: "ObjectHandle|nil",
     },
+    { name: "pangea.spawn.scriptedResult", description: "Spawns a scripted object with structured diagnostics and optional explicit native, world or ground placement. Invalid arguments return failure; placement failure removes the new object.", parameters: [{ name: "id", type: "string" }, { name: "position", type: "vector3" }, { name: "options", type: "table", optional: true }], returnType: "ObjectCommandResult" },
     {
       name: "pangea.object.position",
       description: "Gets the position of an object.",
@@ -1708,7 +1711,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     { name: "pangea.object.health", description: "Returns native object health when the adapter exposes it, without granting mutation authority.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "number|nil" },
     { name: "pangea.object.damage", description: "Returns native object damage contribution when the adapter exposes it, without granting mutation authority.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "number|nil" },
     { name: "pangea.object.state", description: "Returns mutable script-owned state scoped to an object generation.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "table|nil" },
-    { name: "pangea.object.captureCheckpoint", description: "Captures a bounded deep copy of script-owned object state for checkpoint/reset restoration.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "boolean" },
+    { name: "pangea.object.captureCheckpoint", description: "Captures a bounded deep copy of script-owned object state. Returns false for unsupported values or limits and preserves the previous checkpoint on failure.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "boolean" },
     { name: "pangea.object.restoreCheckpoint", description: "Restores the object's script-owned state from its captured checkpoint baseline.", parameters: [{ name: "handle", type: "objectHandle" }], returnType: "boolean" },
     {
       name: "pangea.object.setPosition",
@@ -1794,6 +1797,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
       returnType: "ObjectCommandResult",
       command: OBJECT_COMMAND_METADATA.delete,
     },
+    ...ENCOUNTER_APIS,
   ],
   games: [
     {
@@ -1868,7 +1872,7 @@ export const AUTHORITATIVE_API_SCHEMA: ApiSchemaType = ApiSchema.parse({
     {
       gameId: "CroMagRally-Android",
       gameName: "Cro-Mag Rally",
-      supportedHooks: ["onGameStart", "onGameShutdown", "onRaceLoad", "onRaceStart", "onRaceFrame", "onRaceComplete", "onRaceUnload", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onDamage", "onDamageApplied", "onPlayerSpawn", "onCheckpointReached", "onLapComplete", "onRaceFinish", "onDeath"],
+      supportedHooks: ["onGameStart", "onGameShutdown", "onRaceLoad", "onRaceStart", "onRaceFrame", "onRaceComplete", "onRaceUnload", "onTerrainItem", "onObjectFrame", "onPickupCollected", "onTriggerEnter", "onWeaponHit", "onDamage", "onDamageApplied", "onPlayerSpawn", "onCheckpointReached", "onLapComplete", "onRaceFinish", "onDeath"],
       contextFields: [
         { name: "mode", type: "stringUnion", unionValues: ["local", "practice", "network", "tag1", "tag2", "survival", "capture"], optional: true },
         { name: "trackName", type: "string", optional: true },

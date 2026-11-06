@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { zipSync } from "fflate";
 import { ResultAsync } from "neverthrow";
 import {
@@ -10,8 +10,6 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { UploadPrompt } from "./UploadPrompt";
-import { EditorView } from "./EditorView";
-import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import {
@@ -74,11 +72,15 @@ import {
 } from "./subviews/scripts/scriptWorkspaceState";
 import { summarizeScriptWorkspace } from "./subviews/scripts/scriptWorkspaceSelectors";
 import { createScriptItemDemoWorkspace } from "./subviews/scripts/scriptItemDemoLevel";
+import { useScriptingSampleLevel } from "./useScriptingSampleLevel";
+import { knownBaseLevel, nativeLevelNumber } from "./utils/previewLevelNumbers";
 import { useDesktopLevel } from "@/platform/desktop/useDesktopLevel";
 import { desktopBridge } from "@/platform/desktop/client";
-import { playInstalledGame } from "@/platform/desktop/projectActions";
 import { desktopLevelIdAtom, desktopProjectAtom } from "@/platform/desktop/projectState";
 import { useEditorDocumentHistory } from "./IntroPrompt/useEditorDocumentHistory";
+
+const EditorView = lazy(() => import("./EditorView").then((module) => ({ default: module.EditorView })));
+const TunnelEditor = lazy(() => import("./tunnel/TunnelEditor").then((module) => ({ default: module.TunnelEditor })));
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
   const match = MIGHTY_MIKE_LEVELS.find(
@@ -167,7 +169,7 @@ export function IntroPrompt() {
   >(undefined);
 
   const previewScriptContext = useMemo(
-    () => createScriptWorkspaceContext(globals, previewLevelNumber),
+    () => createScriptWorkspaceContext(globals, nativeLevelNumber(globals.GAME_TYPE, previewLevelNumber)),
     [globals, previewLevelNumber],
   );
   const currentScriptContext = useMemo(
@@ -259,9 +261,10 @@ export function IntroPrompt() {
     setMapFile(undefined); setMapImages(undefined); setMapImagesFile(undefined);
     setAllAtomicData(splitLevelData(null));
   }, [setAllAtomicData]);
-  const { test: testDesktopLevel } = useDesktopLevel({ input: desktopInput,
+  const { test: testDesktopLevel, play: playDesktopGame } = useDesktopLevel({ input: desktopInput,
     handlers: { setGlobals, setMapFile, setMapImagesFile, setMapImages, setData: setAllAtomicData },
     setBaseLevel: setPreviewLevelNumber, setScriptStore: setScriptWorkspaceStore, clearLevel: clearDesktopLevel });
+  const scriptingSamples = useScriptingSampleLevel({ setGlobals, setMapFile, setMapImagesFile, setMapImages, setData: setAllAtomicData }, setScriptWorkspaceStore, setPreviewLevelNumber);
 
   const historyData = useMemo(() => getCurrentAtomicData(), [getCurrentAtomicData]);
   const { dataHistory, undoData, redoData } = useEditorDocumentHistory({
@@ -280,7 +283,7 @@ export function IntroPrompt() {
       globals.GAME_TYPE,
       mapFile.name,
     );
-    const level = (desktopBridge() ? boundBaseLevel : undefined) ?? inferred ?? portConfig?.defaultLevel ?? 0;
+    const level = (desktopBridge() ? boundBaseLevel : undefined) ?? knownBaseLevel(mapFile) ?? inferred ?? portConfig?.defaultLevel ?? 0;
     Promise.resolve().then(() => setPreviewLevelNumber(level));
   }, [mapFile, globals.GAME_TYPE, boundBaseLevel]);
 
@@ -528,7 +531,7 @@ export function IntroPrompt() {
   const prepareTestLevel = useCallback(
     (customFiles?: readonly PreviewVfsFile[], fromMainMenu = false) => {
       if (desktopBridge()) {
-        if (fromMainMenu && desktopInput) void playInstalledGame(desktopInput);
+        if (fromMainMenu && desktopInput) void playDesktopGame();
         else void testDesktopLevel(customFiles !== undefined);
         return;
       }
@@ -626,7 +629,7 @@ export function IntroPrompt() {
           setTerrainTextureBytes(null);
         });
     },
-    [getCurrentAtomicData, globals, mapImages, previewLevelNumber, desktopInput, testDesktopLevel],
+    [getCurrentAtomicData, globals, mapImages, previewLevelNumber, desktopInput, testDesktopLevel, playDesktopGame],
   );
 
   const handleTestLevel = useCallback(() => {
@@ -901,14 +904,16 @@ export function IntroPrompt() {
 
   if (tunnelData) {
     return (
-      <TunnelEditor
-        tunnelData={tunnelData}
-        fileName={tunnelFileName}
-        isPlumbing={tunnelLevelKind === "plumbing"}
-        tunnelLevelKind={tunnelLevelKind}
-        onUpdateTunnelData={handleTunnelDataUpdate}
-        onClose={handleTunnelClose}
-      />
+      <Suspense fallback={<p role="status" className="p-6 text-slate-300">Loading tunnel editor…</p>}>
+        <TunnelEditor
+          tunnelData={tunnelData}
+          fileName={tunnelFileName}
+          isPlumbing={tunnelLevelKind === "plumbing"}
+          tunnelLevelKind={tunnelLevelKind}
+          onUpdateTunnelData={handleTunnelDataUpdate}
+          onClose={handleTunnelClose}
+        />
+      </Suspense>
     );
   }
 
@@ -925,6 +930,8 @@ export function IntroPrompt() {
         setTunnelLevelKind={setTunnelLevelKind}
         onCreateBlankLevel={handleCreateBlankLevel}
         onCreateScriptItemDemoLevel={handleCreateScriptItemDemoLevel}
+        onOpenScriptingSample={(sample) => void scriptingSamples.openSample(sample)}
+        sampleLoading={scriptingSamples.loading}
       />
     );
 
@@ -937,25 +944,27 @@ export function IntroPrompt() {
       />
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
       {mapImages && headerData && terrainData ? (
-        <EditorView
-          headerData={headerData}
-          setHeaderData={setHeaderDataNonNull}
-          itemData={itemData}
-          setItemData={setItemData}
-          liquidData={liquidData}
-          setLiquidData={setLiquidData}
-          fenceData={fenceData}
-          setFenceData={setFenceData}
-          splineData={splineData}
-          setSplineData={setSplineData}
-          terrainData={terrainData}
-          setTerrainData={setTerrainDataNonNull}
-          mapImages={mapImages}
-          setMapImages={setMapImages}
-          undoData={undoData}
-          redoData={redoData}
-          dataHistory={dataHistory}
-        />
+        <Suspense fallback={<p role="status" className="p-6 text-slate-300">Loading level editor…</p>}>
+          <EditorView
+            headerData={headerData}
+            setHeaderData={setHeaderDataNonNull}
+            itemData={itemData}
+            setItemData={setItemData}
+            liquidData={liquidData}
+            setLiquidData={setLiquidData}
+            fenceData={fenceData}
+            setFenceData={setFenceData}
+            splineData={splineData}
+            setSplineData={setSplineData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainDataNonNull}
+            mapImages={mapImages}
+            setMapImages={setMapImages}
+            undoData={undoData}
+            redoData={redoData}
+            dataHistory={dataHistory}
+          />
+        </Suspense>
       ) : (
         <p>Loading...</p>
       )}

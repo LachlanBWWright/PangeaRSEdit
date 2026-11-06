@@ -10,9 +10,9 @@ function ResourceContext({ source, callback, line }: ResourceLocation) {
   return <span className="block break-all text-slate-400">{source ? `${source}${line ? `:${line}` : ""}` : "Source unavailable"}{callback && ` · ${callback}`}</span>;
 }
 
-export function ScriptObjectResourceDetails({ resources }: { resources: ObjectResources }) {
+export function ScriptObjectResourceDetails({ resources, level = false }: { resources: ObjectResources; level?: boolean }) {
   return <div className="space-y-2">
-    <p className="text-slate-400">Owned by this exact object generation. Times use the level clock.</p>
+    <p className="text-slate-400">{level ? "Owned by the level." : "Owned by this exact object generation."} Times use the level clock.</p>
     <details><summary>Timers ({resources.timers.total})</summary>
       <ul className="space-y-2 py-2">{resources.timers.entries.map((timer) => <li key={timer.id}>
         #{timer.id} · {timer.repeating ? `Every ${timer.intervalSeconds.toFixed(2)}s` : "Once"} · due in {Math.max(0, timer.dueTimeSeconds - resources.timeSeconds).toFixed(2)}s

@@ -49,6 +49,12 @@ export const Fence = memo(
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
     const globals = useAtomValue(Globals);
     const snappingEnabled = useAtomValue(NubSnappingEnabled);
+    const snapTargets = useMemo(
+      () => snappingEnabled
+        ? getFenceNubSnapTargets(fenceData, liquidData, fenceIdx)
+        : [],
+      [fenceData, liquidData, fenceIdx, snappingEnabled],
+    );
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
@@ -212,11 +218,7 @@ export const Fence = memo(
             onPreviewNub={handlePreviewNub}
             setNub={handleSetNub}
             snappingEnabled={snappingEnabled}
-            snapTargets={getFenceNubSnapTargets(
-              fenceData,
-              liquidData,
-              fenceIdx,
-            )}
+            snapTargets={snapTargets}
           />
         ))}
 

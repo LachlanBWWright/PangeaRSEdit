@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ItemData } from "@/python/structSpecs/LevelTypes";
+import { ItemData, TerrainItem } from "@/python/structSpecs/LevelTypes";
 import { Group, Image as KonvaImage, Rect } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
@@ -27,7 +27,7 @@ import { ShowItemThumbnailPreviews } from "@/data/canvasView/canvasDisplaySettin
 import { useCanvasItemThumbnail } from "../canvasItemThumbnail";
 
 export const Item = memo(function Item({
-  itemData,
+  item,
   headerData,
   terrainData,
   setItemData,
@@ -35,7 +35,7 @@ export const Item = memo(function Item({
   selected,
   onHoverChange,
 }: {
-  itemData: ItemData;
+  item: TerrainItem | undefined;
   headerData: HeaderData;
   terrainData: TerrainData;
   setItemData: Updater<ItemData>;
@@ -43,7 +43,6 @@ export const Item = memo(function Item({
   selected: boolean;
   onHoverChange: (tag: HoverTagInfo | null) => void;
 }) {
-  const item = itemData.Itms[1000].obj[itemIdx];
   const setSelectedItem = useSetAtom(SelectedItem);
   const globals = useAtomValue(Globals);
   const levelNumber = useAtomValue(LevelNumber);

@@ -39,6 +39,6 @@ export async function readIdeLuaFolder(files: readonly File[], gameId: string): 
   if (!Object.keys(sources).length) return err("No editable Lua sources found. Choose the exported project folder or its src folder. Generated main.lua is excluded.");
   return ok({
     manifest: { kind: "pangea-script-library", version: 1, gameId, objects: [], behaviors: [], params: [], sources: Object.keys(sources), assets: [], moduleOrder: Object.keys(sources) },
-    sources, assets: {},
+    sources, assets: {}, sourceOnly: true,
   });
 }

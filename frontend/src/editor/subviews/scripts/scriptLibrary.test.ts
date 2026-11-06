@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Result } from "neverthrow";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { OttoGlobals } from "@/data/globals/globals";
-import { applyGlobalBehavior, createScriptWorkspaceContext, ensureScriptWorkspace, placeCustomObject, upsertScriptSourceFile } from "./scriptWorkspaceState";
+import { applyGlobalBehavior, createScriptWorkspaceContext, ensureScriptWorkspace, placeCustomObject, upsertScriptSourceFile, setScriptSourceExecutionScope } from "./scriptWorkspaceState";
 import { createObjectDefinition } from "./scriptObjectActions";
 import { buildScriptLibrary, readScriptLibrary } from "./scriptLibrary";
 import { mergeScriptLibrary, scriptLibraryChanges } from "./scriptLibraryMerge";
@@ -50,7 +50,23 @@ describe("shared script libraries and IDE updates", () => {
     if (imported.isErr()) { expect.fail(imported.error); return; }
     expect(imported.value.sources["Data/Scripts/src/helpers/new.lua"]).toContain("42");
     expect(imported.value.manifest.moduleOrder).toContain("Data/Scripts/src/helpers/new.lua");
+    expect(imported.value.manifest.sourceScopes?.["Data/Scripts/src/helpers/new.lua"]).toBe("helper");
     expect((await readScriptLibrary(edited.value, "Nanosaur-android")).isErr()).toBe(true);
+  });
+
+  it("preserves existing scope during source-only IDE updates and keeps newly added files as helpers", async () => {
+    const path = "Data/Scripts/src/driver.lua";
+    const helperPath = "Data/Scripts/src/helpers/new.lua";
+    const base = setScriptSourceExecutionScope(upsertScriptSourceFile(ensureScriptWorkspace({}, context), path, "return {}"), path, "game");
+    const incoming = await readIdeLuaFolder([
+      sourceFile(`pack/${path}`, "return { version = 2 }"),
+      sourceFile(`pack/${helperPath}`, "return { onFrame = function() end }"),
+    ], context.gameId);
+    if (incoming.isErr()) { expect.fail(incoming.error); return; }
+    const merged = mergeScriptLibrary(base, incoming.value, new Set([`source:${path}`, `source:${helperPath}`]));
+    if (merged.isErr()) { expect.fail(merged.error); return; }
+    expect(merged.value.sourceFiles[path]?.executionScope).toBe("game");
+    expect(merged.value.sourceFiles[helperPath]?.executionScope).toBe("helper");
   });
 
   it("reviews source conflicts and applies changes without replacing levels or unrelated work", async () => {

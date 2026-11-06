@@ -5,7 +5,7 @@
 
 import { MenuEmptyState } from "./MenuEmptyState";
 import { useAtomValue } from "jotai";
-import { CustomObjectItemPicker } from "./items/CustomObjectItemPicker";
+import { ItemPlacementPicker } from "./items/ItemPlacementPicker";
 import { CustomObjectToPlaceAtom } from "./scripts/scriptPlacementSelectionState";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 
@@ -50,7 +50,7 @@ export function EmptyFencePrompt({ onInitialize }: { onInitialize: () => void })
 export function EmptyItemPrompt({ onInitialize }: { onInitialize: () => void }) {
   const customToPlace = useAtomValue(CustomObjectToPlaceAtom);
   return <div className="flex min-h-full flex-col gap-2 px-3">
-    {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
+    <ItemPlacementPicker onNativeSelection={onInitialize} resetOnUnmount={false} />
     {(!ENABLE_SCRIPTS || customToPlace === null) && <EmptyDataPrompt
       title="No Items"
       description="This level doesn't have any item data yet. Add the item list to get started."

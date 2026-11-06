@@ -345,6 +345,13 @@ export type ScriptCustomObjectDefinition = z.infer<
   typeof scriptCustomObjectDefinitionSchema
 >;
 
+export const scriptPlacementActivationSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("always") }),
+  z.object({ kind: z.literal("near-player"), radius: z.number().finite().positive() }),
+]);
+
+export type ScriptPlacementActivation = z.infer<typeof scriptPlacementActivationSchema>;
+
 export interface ScriptCustomObjectPlacement {
   readonly id: string;
   readonly objectId: string;
@@ -356,6 +363,7 @@ export interface ScriptCustomObjectPlacement {
   };
   readonly levelKey: string;
   readonly parameterOverrides?: Readonly<Record<string, ScriptObjectParameterValue>>;
+  readonly activation?: ScriptPlacementActivation;
 }
 
 export const scriptCustomObjectPlacementSchema = z.object({
@@ -365,6 +373,7 @@ export const scriptCustomObjectPlacementSchema = z.object({
   position: vector3Schema,
   levelKey: z.string().min(1),
   parameterOverrides: z.record(z.string(), scriptObjectParameterValueSchema).optional(),
+  activation: scriptPlacementActivationSchema.optional(),
 });
 
 export const scriptTerrainReplacementSchema = z.object({
@@ -415,6 +424,7 @@ export interface ScriptSourceFile {
   readonly readOnly: boolean;
   readonly role: "generated-entry" | "generated-assignment" | "user";
   readonly ownerId?: string;
+  readonly executionScope?: "helper" | "game";
 }
 
 export interface ScriptCompiledFile {
@@ -506,6 +516,7 @@ export const scriptProjectSchema = z.object({
   editor: z.object({
     activeFilePath: z.string().min(1),
     moduleOrder: z.array(z.string().min(1)),
+    sourceScopes: z.record(z.string(), z.enum(["helper", "game"])).optional(),
     behaviorCatalog: z.array(scriptBehaviorDefinitionSchema),
     diagnostics: z.array(scriptDiagnosticSchema),
     levels: z.record(z.string(), scriptLevelStateSchema),

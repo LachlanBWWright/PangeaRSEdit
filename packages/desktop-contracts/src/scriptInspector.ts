@@ -31,6 +31,7 @@ const nativeFrameCosts = z.object({
   })).max(32),
 });
 export const scriptDiagnosticsSchema = z.object({
+  commandRejections: z.object({ count, last: attribution.extend({ message: z.string().max(512) }) }).optional(),
   lastFailure: attribution.extend({
     kind: z.enum(["none", "callback-error", "budget-exceeded", "rejected-command"]),
     message: z.string().max(512),
@@ -65,7 +66,9 @@ export const scriptInspectorSchema = z.object({
   commandRejections: count.optional(), callbackFailures: count.optional(),
   runtime: z.object({ memoryUsedBytes: count, memoryLimitBytes: count, timers: count, timerLimit: count,
     tasks: count, taskLimit: count, subscriptions: count, subscriptionLimit: count, frame: count,
-    loadBudget: count, eventBudget: count, frameBudget: count, diagnostics: scriptDiagnosticsSchema.optional() }),
+    loadBudget: count, eventBudget: count, frameBudget: count, diagnostics: scriptDiagnosticsSchema.optional(),
+    levelState: z.record(z.string().max(96), z.string().max(256)).optional(),
+    levelResources: scriptObjectResourcesSchema.optional() }),
   registeredObjects: count, objects: z.array(scriptInspectorObjectSchema).max(64), truncated: z.boolean(),
 });
 export type ScriptInspectorSnapshot = z.infer<typeof scriptInspectorSchema>;

@@ -690,6 +690,13 @@ function parseLuaBindings(source: string): Result<readonly string[], string> {
   const operationBindings = parsePlayerOperationBindings(source);
   if (operationBindings.isErr()) return err(operationBindings.error);
   bindings.push(...operationBindings.value);
+  if (source.includes('"pangea.resources", lua_resource_library') && source.includes('"pangea.resources"')) {
+    const library = readRuntimeSource(resolve(process.cwd(), "../games/pangea-ports/shared/script/pangea_resources.lua"));
+    if (library.isErr()) return err(library.error);
+    for (const match of library.value.matchAll(/^function resources\.([a-zA-Z][a-zA-Z0-9]*)\(/gm)) {
+      if (match[1]) bindings.push(`pangea.resources.${match[1]}`);
+    }
+  }
   return ok([...new Set(bindings)].sort());
 }
 

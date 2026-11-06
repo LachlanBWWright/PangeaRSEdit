@@ -19,10 +19,12 @@ import { Nanosaur2Levels } from "@/editor/gameLevelSelectors/Nanosaur2Levels";
 import { BillyFrontierLevels } from "@/editor/gameLevelSelectors/BillyFrontierLevels";
 import { MightyMikeLevels } from "@/editor/gameLevelSelectors/MightyMikeLevels";
 import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
+import type { ScriptingSampleLevel } from "../subviews/scripts/scriptSampleLevels";
 
 export interface LevelComponentProps {
   readonly openFile: (url: string, gameType: GlobalsInterface) => void;
   readonly onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
+  readonly onOpenScriptingSample?: (sample: ScriptingSampleLevel) => void;
   readonly onTunnelLoad?: (
     data: TunnelData,
     fileName: string,
@@ -35,8 +37,8 @@ interface GameConfig {
   readonly globals: GlobalsInterface;
 }
 
-const OttoLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
-  <OttoLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
+const OttoLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel, onOpenScriptingSample }: LevelComponentProps) => (
+  <OttoLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} onOpenScriptingSample={onOpenScriptingSample} />
 );
 const BugdomLevelWrapper = ({ openFile, onCreateScriptItemDemoLevel }: LevelComponentProps) => (
   <BugdomLevels openFile={openFile} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />

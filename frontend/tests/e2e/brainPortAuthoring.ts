@@ -34,7 +34,8 @@ export async function authorBrainPort(page: Page, archivePath: string) {
   await workspace.getByRole("button", { name: "Edit behavior", exact: true }).click();
   await workspace.locator(".monaco-editor").click();
   await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.insertText(await readFile(fixturePath("../fixtures/brainPort.lua"), "utf8"));
+  const source = await readFile(fixturePath("../../src/editor/subviews/scripts/scriptOttoSpawner.lua"), "utf8");
+  await page.keyboard.insertText(source.replaceAll("__PANGEA_CUSTOM_OBJECT_EXPORT__", "custom_brain_port"));
   await workspace.getByRole("button", { name: "Save source", exact: true }).click();
   await expect(workspace.getByRole("button", { name: "Save source", exact: true })).toBeDisabled();
   await page.keyboard.press("Escape");

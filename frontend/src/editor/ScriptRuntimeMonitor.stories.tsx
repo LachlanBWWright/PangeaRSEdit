@@ -199,6 +199,33 @@ export const FrameBudgetAttribution: Story = {
   },
 };
 
+const levelInspector = inspectorFailure("none");
+export const LevelEncounterAndHandledRejection: Story = {
+  args: { inspector: { ...levelInspector, objects: [], registeredObjects: 0,
+    runtime: { ...levelInspector.runtime,
+      levelState: { sample: "bugdom2-course", phase: "running", progress: "2" },
+      levelResources: { timeSeconds: 12,
+        timers: { entries: [], total: 0, truncated: false },
+        tasks: { entries: [], total: 0, truncated: false },
+        subscriptions: { entries: [{ id: 1, event: "player.mounted", once: false,
+          source: "Data/Scripts/src/levels/bugdom2-course.lua", callback: "", line: 12 }], total: 1, truncated: false } },
+      diagnostics: levelInspector.runtime.diagnostics ? { ...levelInspector.runtime.diagnostics,
+        commandRejections: { count: 1, last: { callback: "onFrame", source: "Data/Scripts/src/levels/bugdom2-course.lua",
+          line: 24, object: null, message: "pangea.spawn.native: required level skeleton is unavailable" } } } : undefined,
+    } } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByText("Level state", { exact: true }));
+    expect(canvas.getByText("bugdom2-course", { exact: true })).toBeVisible();
+    await userEvent.click(canvas.getByText("Level resources", { exact: true }));
+    expect(canvas.getByText("Owned by the level.", { exact: false })).toBeVisible();
+    await userEvent.click(canvas.getByText("Rejected commands (1)", { exact: true }));
+    expect(canvas.getByText("pangea.spawn.native: required level skeleton is unavailable", { exact: true })).toBeVisible();
+    expect(canvas.queryByRole("region", { name: "Latest Lua diagnostic" })).not.toBeInTheDocument();
+    expect(canvas.getByRole("status")).toHaveTextContent("Runtime smoke check passed");
+  },
+};
+
 const diagnosticWorkspace = loadScriptSample(createScriptWorkspaceContext(OttoGlobals, 0), "hover-beacon");
 const diagnosticPlacement = diagnosticWorkspace.levels["0"]?.customPlacements[0];
 const diagnosticDefinition = diagnosticWorkspace.customObjects[0];

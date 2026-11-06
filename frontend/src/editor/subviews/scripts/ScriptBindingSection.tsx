@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Globals } from "@/data/globals/globals";
-import { LevelNumber } from "@/data/globals/levelNumber";
+import { scriptLevelNumberAtom } from "./scriptLevelNumber";
 import { ActiveView } from "@/data/globals/activeViewAtom";
 import { View } from "@/editor/viewEnum";
 import {
@@ -106,7 +106,7 @@ type ScriptBindingPanelProps =
 function ScriptBindingPanel(props: ScriptBindingPanelProps) {
   const { title, targetKind, selectionLabel } = props;
   const globals = useAtomValue(Globals);
-  const levelNumber = useAtomValue(LevelNumber);
+  const levelNumber = useAtomValue(scriptLevelNumberAtom);
   const setActiveView = useSetAtom(ActiveView);
   const [workspaceStore, setWorkspaceStore] = useAtom(scriptWorkspaceStoreAtom);
 

@@ -52,8 +52,24 @@ interface ItemScreenshotQuery {
   readonly params?: Partial<Record<ParamSlot, number>>;
 }
 
-const STATIC_ITEM_SCREENSHOT_MANIFEST =
-  GENERATED_ITEM_SCREENSHOT_MANIFEST as readonly ItemScreenshotManifestEntry[];
+let staticManifest: Result<readonly ItemScreenshotManifestEntry[], string> | undefined;
+const manifestIndexes = new WeakMap<readonly ItemScreenshotManifestEntry[], ReadonlyMap<string, ItemScreenshotManifestEntry>>();
+
+function screenshotKey(game: Game, kind: ItemScreenshotKind, itemType: number, variant: string): string {
+  return `${game}:${kind}:${itemType}:${variant}`;
+}
+
+function screenshotIndex(manifest: readonly ItemScreenshotManifestEntry[]): ReadonlyMap<string, ItemScreenshotManifestEntry> {
+  const cached = manifestIndexes.get(manifest);
+  if (cached) return cached;
+  const index = new Map<string, ItemScreenshotManifestEntry>();
+  for (const entry of manifest) {
+    const key = screenshotKey(entry.game, entry.kind, entry.itemType, entry.variantKey);
+    if (!index.has(key)) index.set(key, entry);
+  }
+  manifestIndexes.set(manifest, index);
+  return index;
+}
 
 function normalizeVariantParts(
   levelNum: number | undefined,
@@ -97,7 +113,8 @@ export function getItemScreenshotManifest(): Result<
   readonly ItemScreenshotManifestEntry[],
   string
 > {
-  return parseItemScreenshotManifest(STATIC_ITEM_SCREENSHOT_MANIFEST);
+  staticManifest ??= parseItemScreenshotManifest(GENERATED_ITEM_SCREENSHOT_MANIFEST);
+  return staticManifest;
 }
 
 export function findBestItemScreenshot(
@@ -109,25 +126,8 @@ export function findBestItemScreenshot(
     params: query.params,
   });
 
-  const exactMatch =
-    manifest.find(
-      (entry) =>
-        entry.game === query.game &&
-        entry.kind === query.kind &&
-        entry.itemType === query.itemType &&
-        entry.variantKey === exactVariantKey,
-    ) ?? null;
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  const defaultMatch =
-    manifest.find(
-      (entry) =>
-        entry.game === query.game &&
-        entry.kind === query.kind &&
-        entry.itemType === query.itemType &&
-        entry.variantKey === "default",
-    ) ?? null;
-  return defaultMatch;
+  const index = screenshotIndex(manifest);
+  return index.get(screenshotKey(query.game, query.kind, query.itemType, exactVariantKey))
+    ?? index.get(screenshotKey(query.game, query.kind, query.itemType, "default"))
+    ?? null;
 }

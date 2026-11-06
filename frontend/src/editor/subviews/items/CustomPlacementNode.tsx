@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Group, Rect, Image as KonvaImage } from "react-konva";
 import { useAtomValue } from "jotai";
 import { Game, Globals } from "@/data/globals/globals";
-import { LevelNumber } from "@/data/globals/levelNumber";
+import { scriptLevelNumberAtom } from "../scripts/scriptLevelNumber";
 import { ShowItemThumbnailPreviews } from "@/data/canvasView/canvasDisplaySettingsAtoms";
 import { ShowMightyMikeItemImages } from "./MightyMikeItemMenu";
 import { useCustomItemThumbnail } from "./useCustomItemThumbnail";
@@ -22,7 +22,7 @@ interface Props {
 
 export const CustomPlacementNode = memo(function CustomPlacementNode({ placement, definition, assets, metadata, selected, onSelect, onMove, onHover }: Props) {
   const globals = useAtomValue(Globals);
-  const level = useAtomValue(LevelNumber);
+  const level = useAtomValue(scriptLevelNumberAtom);
   const showThumbnails = useAtomValue(ShowItemThumbnailPreviews);
   const showSprites = useAtomValue(ShowMightyMikeItemImages);
   const mightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;

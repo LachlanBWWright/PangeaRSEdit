@@ -2,7 +2,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Layer } from "react-konva";
 import { memo, useCallback, useEffect } from "react";
 import { Globals } from "@/data/globals/globals";
-import { LevelNumber } from "@/data/globals/levelNumber";
+import { scriptLevelNumberAtom } from "./scripts/scriptLevelNumber";
 import { createScriptWorkspaceContext, ensureScriptWorkspace, moveCustomPlacement, removeCustomPlacement, replaceScriptWorkspace, scriptWorkspaceStoreAtom } from "./scripts/scriptWorkspaceState";
 import { SelectedCustomPlacementAtom } from "./scripts/scriptPlacementSelectionState";
 import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
@@ -18,7 +18,7 @@ const emptyPlacements: readonly ScriptCustomObjectPlacement[] = [];
 
 export const CustomScriptPlacements = memo(function CustomScriptPlacements({ headerData, terrainData }: { headerData: HeaderData; terrainData: TerrainData }) {
   const globals = useAtomValue(Globals);
-  const levelNumber = useAtomValue(LevelNumber);
+  const levelNumber = useAtomValue(scriptLevelNumberAtom);
   const [workspaceStore, setWorkspaceStore] = useAtom(scriptWorkspaceStoreAtom);
   const [selectedId, setSelectedId] = useAtom(SelectedCustomPlacementAtom);
   const setHover = useSetAtom(ActiveHoverTag);

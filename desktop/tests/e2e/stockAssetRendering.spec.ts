@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { ResultAsync } from "neverthrow";
 import { test, expect } from "./desktopFixture.ts";
 
-test("original Otto data supplies the home model and every visible Earth Farm pool", async ({ desktop }) => {
+test("original Otto data supplies the home model and every visible Earth Farm pool", async ({ desktop }, testInfo) => {
   const profile = await desktop.application.evaluate(({ app }) => app.getPath("userData"));
   const dataRoot = path.resolve("../games/pangea-ports/games/OttoMatic-Android/Data");
   const registry = path.join(profile, "games");
@@ -44,13 +44,11 @@ test("original Otto data supplies the home model and every visible Earth Farm po
   await card.locator('input[type="file"]').setInputFiles([
     path.join(dataRoot, "Terrain/EarthFarm.ter.rsrc"), path.join(dataRoot, "Terrain/EarthFarm.ter"),
   ]);
-  await page.getByRole("tab", { name: "Water", exact: true }).click();
+  await page.getByRole("tab", { name: "Items", exact: true }).click();
   const canvas = page.locator(".konvajs-content");
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
   if (!bounds) return;
-  await page.mouse.click(bounds.x + 947, bounds.y + 206);
-  await expect(page.getByText("Water Body 0 (Blue Water)", { exact: true })).toBeVisible();
   await expect.poll(async () => {
     const screenshot = await ResultAsync.fromPromise(canvas.screenshot(), () => "Cannot capture rendered pools");
     if (screenshot.isErr()) return 0;
@@ -64,6 +62,14 @@ test("original Otto data supplies the home model and every visible Earth Farm po
       return (data[offset + 1] ?? 0) > red + 20 && (data[offset + 2] ?? 0) > red + 20;
     }).length;
   }, { timeout: 15_000 }).toBe(5);
+  await testInfo.attach("textured-earth-farm-pools", { body: await canvas.screenshot(), contentType: "image/png" });
+  const waterTab = page.getByRole("tab", { name: "Water", exact: true });
+  await waterTab.click();
+  const waterBounds = await canvas.boundingBox();
+  expect(waterBounds).not.toBeNull();
+  if (!waterBounds) return;
+  await page.mouse.click(waterBounds.x + 947, waterBounds.y + 206);
+  await expect(page.getByText("Water Body 0 (Blue Water)", { exact: true })).toBeVisible();
 });
 
 test("missing original assets show an actionable error and recover after data is repaired", async ({ desktop }) => {

@@ -12,7 +12,8 @@ import { desktopActiveDocumentAtom, desktopConflictOpenAtom, desktopExternalProj
 import { guardProjectLoadHandlers, loadProjectLevel } from "./projectLoad";
 import { prepareProjectSave, type LevelProjectInput } from "./projectBuild";
 import { err } from "neverthrow";
-import { readRecovery, saveProjectLevel, testProjectLevel } from "./projectActions";
+import { playInstalledGame, readRecovery, saveProjectLevel, testProjectLevel } from "./projectActions";
+import { openPreviewGameSetupAtom } from "./assetAvailability";
 import { projectCaptureKey } from "./projectCapture";
 import { mergeExternalSources } from "./mergeExternalSources";
 
@@ -32,6 +33,7 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
   const [levelId, setLevelId] = useAtom(desktopLevelIdAtom);
   const [dirty, setDirty] = useAtom(desktopProjectDirtyAtom);
   const setCommands = useSetAtom(desktopProjectCommandsAtom);
+  const openGameSetup = useSetAtom(openPreviewGameSetupAtom);
   const setActiveDocument = useSetAtom(desktopActiveDocumentAtom);
   const external = useAtomValue(desktopExternalProjectAtom);
   const setConflictOpen = useSetAtom(desktopConflictOpenAtom);
@@ -111,8 +113,12 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
 
   const test = useCallback(async (withScripts = true) => {
     const input = latest.current.input;
-    if (input) await testProjectLevel(project, input, withScripts, levelId);
-  }, [project, levelId]);
+    if (input) await testProjectLevel(project, input, withScripts, levelId, openGameSetup);
+  }, [project, levelId, openGameSetup]);
+  const play = useCallback(async () => {
+    const input = latest.current.input;
+    if (input) await playInstalledGame(input, openGameSetup);
+  }, [openGameSetup]);
 
   const recover = useCallback(async () => {
     if (!project) return;
@@ -175,5 +181,5 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
     }, 15_000);
     return () => window.clearInterval(timer);
   }, [project, levelId, dirty, setProject]);
-  return { test };
+  return { test, play };
 }

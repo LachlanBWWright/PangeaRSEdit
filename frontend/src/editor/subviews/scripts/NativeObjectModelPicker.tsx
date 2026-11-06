@@ -12,6 +12,7 @@ import type { ScriptCustomObjectDefinition } from "./scriptWorkspaceState";
 import { getCollisionPreviewBounds } from "./scriptCollisionPreview";
 import { isScriptGlobalModelFile } from "./scriptNativeModelGuidance";
 import { createNativeDefinitionScene } from "./scriptNativeModelScene";
+import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 
 export function NativeObjectModelPicker({ globals, gameId, definition, onChange, previewOnly = false }: {
   globals: GlobalsInterface;
@@ -46,7 +47,7 @@ export function NativeObjectModelPicker({ globals, gameId, definition, onChange,
         if (option) onChange({ ...definition, visual: { ...visual, group: "global", modelObject: option.index } });
       }}><SelectTrigger id={`native-model-${definition.id}`}><SelectValue /></SelectTrigger><SelectContent>
         {!selected && <SelectItem value="current">Current {visual.group === "global" ? "global" : "level"} model ({visual.modelObject})</SelectItem>}
-        {options.map((option) => <SelectItem key={option.type} value={String(option.type)}>{option.label}</SelectItem>)}
+        {options.map((option) => <SelectItem key={option.type} value={String(option.type)}><ItemThumbnail game={globals.GAME_TYPE} kind="terrainItem" itemType={option.type} label={option.label} compact /></SelectItem>)}
       </SelectContent></Select>
       <p className="workbench-muted">Named choices use the game's mapped global models. Level-specific models depend on the loaded level.</p>
     </div>}

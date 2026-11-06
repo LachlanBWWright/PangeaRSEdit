@@ -16,9 +16,11 @@ const upstream: UpstreamDataRelease = {
   downloadUrl: "https://github.com/Jorio/OttoMatic/releases/download/4.0.1/OttoMatic-4.0.1-windows-x64.zip",
 };
 
-export function installDesktopStoryBridge(offline = false, transfer: "success" | "failure" | "cancel" = "success", legacyAssets = false): () => void {
+export function installDesktopStoryBridge(offline = false, transfer: "success" | "failure" | "cancel" = "success", legacyAssets = false, missingRuntime = false): () => void {
   const previous = window.pangeaDesktop;
   let installedData = false;
+  let runtimeInstalled = !missingRuntime;
+  const installedGames = () => runtimeInstalled ? [{ game: "OttoMatic", version: "v0.9.0", executable: "/games/OttoMatic", data: "/games/Data", managed: true, assetRootVersion: 2 }] : [];
   let attempts = 0;
   let onTransfer: (value: unknown) => void = () => undefined;
   let cancel: (() => void) | undefined;
@@ -42,7 +44,8 @@ export function installDesktopStoryBridge(offline = false, transfer: "success" |
         }
         case "games.cancel": cancel?.(); return { ok: true, value: undefined };
         case "games.remove-assets": installedData = false; return { ok: true, value: [] };
-        case "games.installed": return { ok: true, value: [{ game: "OttoMatic", version: "v0.9.0", executable: "/games/OttoMatic", data: "/games/Data", managed: true, assetRootVersion: 2 }] };
+        case "games.installed": return { ok: true, value: installedGames() };
+        case "games.install": runtimeInstalled = true; return { ok: true, value: installedGames() };
         case "games.locate": return { ok: true, value: [{ game: "OttoMatic", version: "external", executable: "/local/OttoMatic", data: "/local/Data", managed: false, assetRootVersion: 2 }] };
         case "games.catalog": return offline ? { ok: false, error: { code: "network", message: "Cannot check game releases. Installed games remain available offline." } } : { ok: true, value: [release] };
         case "games.play": return { ok: true, value: undefined };

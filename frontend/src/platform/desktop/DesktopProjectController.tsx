@@ -11,7 +11,7 @@ import { desktopActiveDocumentAtom, desktopExternalProjectAtom, desktopLevelIdAt
 import { receiveProjectChange } from "./projectEvents";
 import { ProjectConflict } from "./ProjectConflict";
 import { GamesPage } from "./GamesPage";
-import { desktopGamesOpenAtom, installedEditorAssetsAtom, installedNativeGameDataAtom } from "./assetAvailability";
+import { desktopGamesOpenAtom, desktopPreviewGameSetupAtom, installedEditorAssetsAtom, installedNativeGameDataAtom } from "./assetAvailability";
 import { editorAssetGames, nativeDataGames } from "./editorAssetGames";
 import { ProjectDetailsDialog } from "./ProjectDetailsDialog";
 import { ProjectFilesDialog } from "./ProjectFilesDialog";
@@ -32,6 +32,7 @@ export function DesktopProjectController() {
   const [dialog, setDialog] = useAtom(desktopProjectDialogAtom);
   const setActions = useSetAtom(desktopProjectActionsAtom);
   const [gamesOpen, setGamesOpen] = useAtom(desktopGamesOpenAtom);
+  const [previewGame, setPreviewGame] = useAtom(desktopPreviewGameSetupAtom);
   const setInstalledAssets = useSetAtom(installedEditorAssetsAtom);
   const setNativeData = useSetAtom(installedNativeGameDataAtom);
   const setExternal = useSetAtom(desktopExternalProjectAtom);
@@ -97,8 +98,8 @@ export function DesktopProjectController() {
     <GameConsole />
     <AssetAssignmentsDialog />
     <PlayablePacksDialog />
-    <Dialog open={gamesOpen} onOpenChange={setGamesOpen}><DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Game installations</DialogTitle>
-      <DialogDescription>Manage optional games and stock editor assets.</DialogDescription></DialogHeader><GamesPage /></DialogContent></Dialog>
+    <Dialog open={gamesOpen} onOpenChange={(open) => { setGamesOpen(open); if (!open) setPreviewGame(null); }}><DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Game installations</DialogTitle>
+      <DialogDescription>Manage optional games and stock editor assets.</DialogDescription></DialogHeader><GamesPage previewGame={previewGame ?? undefined} /></DialogContent></Dialog>
     <Dialog open={dialog === "new"} onOpenChange={(open) => { if (!open) setDialog(null); }}><DialogContent><DialogHeader><DialogTitle>Create folder project</DialogTitle>
       <DialogDescription>Choose one game for this project. Levels and custom assets stay in your selected folder.</DialogDescription></DialogHeader>
       <label className="grid gap-2">Name<input className="rounded border p-2 bg-slate-900" maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>

@@ -1,4 +1,4 @@
-import { Input } from "@/components/ui/input";
+import { ScriptNumberField } from "./ScriptNumberField";
 import { Button } from "@/components/ui/button";
 import type { ScriptCustomObjectDefinition, ScriptCustomObjectPlacement, ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
 import type { ScriptObjectParameter, ScriptObjectParameterValue } from "./scriptObjectParameterTypes";
@@ -6,15 +6,15 @@ import { resolveObjectParameters, setCustomObjectParameterDefault, setCustomPlac
 import type { UpdateScriptWorkspace } from "./useScriptWorkspace";
 import { getParameterInheritance, placementCount } from "./scriptObjectScope";
 
-function ParameterScope({ workspace, definition, parameter }: { workspace: ScriptWorkspaceState; definition: ScriptCustomObjectDefinition; parameter: ScriptObjectParameter }) {
+export function ParameterScope({ workspace, definition, parameter }: { workspace: ScriptWorkspaceState; definition: ScriptCustomObjectDefinition; parameter: ScriptObjectParameter }) {
   const scope = getParameterInheritance(workspace, definition, parameter);
   return <p className="workbench-muted">Changing this default updates {placementCount(scope.inheriting)} across all levels; overrides remain on {placementCount(scope.overridden)}. New placements inherit it.{scope.replacementRules > 0 && ` ${scope.replacementRules} native replacement ${scope.replacementRules === 1 ? "rule also uses" : "rules also use"} this default; runtime instance counts vary.`}</p>;
 }
 
-function ParameterControl({ parameter, value, onChange }: { parameter: ScriptObjectParameter; value: ScriptObjectParameterValue; onChange: (value: ScriptObjectParameterValue) => void }) {
+export function ParameterControl({ parameter, value, onChange }: { parameter: ScriptObjectParameter; value: ScriptObjectParameterValue; onChange: (value: ScriptObjectParameterValue) => void }) {
   if (parameter.kind === "boolean") return <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={value === true} onChange={(event) => onChange(event.target.checked)} />{parameter.label}</label>;
   if (parameter.kind === "enum") return <label className="grid gap-1 text-sm">{parameter.label}<select className="h-9 rounded border border-slate-600 bg-slate-900 px-2" value={String(value)} onChange={(event) => onChange(event.target.value)}>{parameter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
-  return <label className="grid gap-1 text-sm">{parameter.label}<Input type="number" min={parameter.min} max={parameter.max} step={parameter.step ?? "any"} value={String(value)} onChange={(event) => { if (event.target.value !== "") onChange(event.target.valueAsNumber); }} /></label>;
+  return <ScriptNumberField label={parameter.label} min={parameter.min ?? -Number.MAX_VALUE} max={parameter.max ?? Number.MAX_VALUE} step={parameter.step ?? "any"} value={Number(value)} onChange={onChange} />;
 }
 
 export function CustomObjectParameters({ workspace, definition, update, onError }: { workspace: ScriptWorkspaceState; definition: ScriptCustomObjectDefinition; update: UpdateScriptWorkspace; onError: (message: string) => void }) {

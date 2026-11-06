@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Globals } from "@/data/globals/globals";
 import { LevelNumber } from "@/data/globals/levelNumber";
+import { scriptLevelNumberAtom } from "./scriptLevelNumber";
 import { TestGameDialog } from "@/editor/TestGameDialog";
 import { DefineBehaviorModal } from "./DefineBehaviorModal";
 import { CustomObjectWorkspace } from "./CustomObjectWorkspace";
@@ -38,10 +39,11 @@ const tabs: readonly { id: ScriptsSection; label: string }[] = [
 
 export function ScriptsMenu(input: ScriptLevelInput) {
   const globals = useAtomValue(Globals);
-  const levelNumber = useAtomValue(LevelNumber) ?? null;
+  const previewLevelNumber = useAtomValue(LevelNumber) ?? null;
+  const levelNumber = useAtomValue(scriptLevelNumberAtom) ?? null;
   const context = useMemo(() => createScriptWorkspaceContext(globals, levelNumber), [globals, levelNumber]);
   const { workspace, update, persist } = useScriptWorkspace(context);
-  const actions = useScriptRuntimeActions({ ...input, globals, levelNumber, workspace, update, persist });
+  const actions = useScriptRuntimeActions({ ...input, globals, levelNumber: previewLevelNumber, workspace, update, persist });
   const { tab, setTab } = useScriptsSection(context.gameId);
   const [sourceLocation, setSourceLocation] = useState<{ path: string; line: number; column: number } | null>(null);
   const [creating, setCreating] = useState<{ target: "global" | "objectType"; hook: ScriptHookId } | null>(null);
@@ -105,7 +107,7 @@ export function ScriptsMenu(input: ScriptLevelInput) {
         });
         setTab("source");
       }} />
-    <TestGameDialog open={actions.previewOpen} onOpenChange={actions.setPreviewOpen} gameType={globals.GAME_TYPE} levelNumber={levelNumber ?? 0} onLevelNumberChange={() => undefined}
+    <TestGameDialog open={actions.previewOpen} onOpenChange={actions.setPreviewOpen} gameType={globals.GAME_TYPE} levelNumber={previewLevelNumber ?? 0} onLevelNumberChange={() => undefined}
       terrainDataBytes={actions.preview?.dataBytes ?? null} terrainRsrcBytes={actions.preview?.rsrcBytes ?? null} terrainTextureBytes={actions.preview?.textureBytes ?? null} customFiles={actions.preview?.customFiles ?? []}
       onScriptRuntimeFailure={actions.reportFailure} onPreviewRuntimeFailure={actions.reportFailure} />
   </div>;

@@ -3,6 +3,7 @@ import { err, ok, Result } from "neverthrow";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { z } from "zod";
 import { buildObjectParameterRuntime } from "./scriptObjectParameterLua";
+import { buildPlacementActivationRuntime } from "./scriptPlacementActivationLua";
 import { validateObjectParameters } from "./scriptObjectParameters";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
 import type { PreviewVfsFile } from "@/editor/utils/gamePreviewRuntimeTypes";
@@ -983,8 +984,10 @@ function buildGeneratedEntryModule(
   state: ScriptWorkspaceState,
   context: ScriptWorkspaceContext,
 ): string {
+  const scopedModulePaths = getScopedModulePaths(state);
   const runtimeModules = state.moduleOrder.filter(
-    (path) => path !== GENERATED_ENTRY_PATH,
+    (path) => path !== GENERATED_ENTRY_PATH
+      && (state.sourceFiles[path]?.executionScope !== "helper" || scopedModulePaths.has(path)),
   );
   const objectTypeBehaviors = state.behaviorCatalog.filter(
     (behavior) =>
@@ -995,7 +998,6 @@ function buildGeneratedEntryModule(
   const objectTypeModulePaths = new Set(
     objectTypeBehaviors.map((behavior) => behavior.sourceFilePath),
   );
-  const scopedModulePaths = getScopedModulePaths(state);
   const globalRuntimeModules = runtimeModules.filter(
     (path) => !objectTypeModulePaths.has(path) && !scopedModulePaths.has(path)
       && state.sourceFiles[path]?.role !== "generated-assignment"
@@ -1280,6 +1282,7 @@ function buildGeneratedEntryModule(
     "",
     "local entry = {}",
     buildObjectParameterRuntime(state),
+    buildPlacementActivationRuntime(state),
     "local function __hasTag(tags, expected)",
     "  for _, tag in ipairs(tags or {}) do",
     "    if tag == expected then",
@@ -1432,6 +1435,7 @@ function cloneCustomPlacement(
     position: { ...placement.position },
     levelKey: placement.levelKey,
     parameterOverrides: placement.parameterOverrides ? { ...placement.parameterOverrides } : undefined,
+    activation: placement.activation ? { ...placement.activation } : undefined,
   };
 }
 
@@ -1695,7 +1699,7 @@ export function upsertScriptSourceFile(
         content,
         language: inferLanguage(),
       }
-    : createSourceFile(path, content, role, ownerId);
+    : { ...createSourceFile(path, content, role, ownerId), executionScope: "helper" };
 
   const nextOrder = state.moduleOrder.includes(path)
     ? state.moduleOrder
@@ -1710,6 +1714,19 @@ export function upsertScriptSourceFile(
     },
     state.context,
   );
+}
+
+export function setScriptSourceExecutionScope(
+  state: ScriptWorkspaceState,
+  path: string,
+  executionScope: "helper" | "game",
+): ScriptWorkspaceState {
+  const file = state.sourceFiles[path];
+  if (!file || file.readOnly) return state;
+  return refreshGeneratedEntry({
+    ...state,
+    sourceFiles: { ...state.sourceFiles, [path]: { ...file, executionScope } },
+  }, state.context);
 }
 
 export function updateScriptSourceContent(
@@ -2456,6 +2473,7 @@ function buildRuntimeLevelsJson(
 function buildProjectJson(
   state: ScriptWorkspaceState,
 ): z.infer<typeof scriptProjectSchema> {
+  const scopedPaths = getScopedModulePaths(state);
   return {
     schemaVersion: 1,
     contractVersion: SCRIPT_CONTRACT_VERSION,
@@ -2466,6 +2484,9 @@ function buildProjectJson(
       moduleOrder: state.moduleOrder.filter(
         (path) => path !== GENERATED_ENTRY_PATH,
       ),
+      sourceScopes: Object.fromEntries(Object.values(state.sourceFiles).map((file) => [file.path,
+        file.executionScope ?? (scopedPaths.has(file.path) ? "helper" : "game"),
+      ])),
       behaviorCatalog: state.behaviorCatalog.map(cloneBehaviorDefinition),
       diagnostics: [...state.diagnostics],
       levels: cloneLevelMap(state.levels),
@@ -2834,7 +2855,7 @@ export function importScriptPackageZip(
   const migratedSources = importedFiles.map(([path, fileBytes]) => {
     if (isLuaSourcePath(path)) {
       return ok({
-        file: createSourceFile(path, strFromU8(fileBytes), "user"),
+        file: { ...createSourceFile(path, strFromU8(fileBytes), "user"), executionScope: projectJson?.editor.sourceScopes?.[path] },
         warnings: [] as readonly string[],
       });
     }

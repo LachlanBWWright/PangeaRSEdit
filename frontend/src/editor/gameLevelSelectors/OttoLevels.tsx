@@ -2,13 +2,17 @@ import { Button } from "@/components/ui/button";
 import { LevelGrid } from "../LevelGrid";
 import { OttoGlobals, type GlobalsInterface } from "@/data/globals/globals";
 import { ScriptItemDemoButton } from "./levelSelectorRender";
+import type { ScriptingSampleLevel } from "../subviews/scripts/scriptSampleLevels";
+import { ScriptingSampleButtons } from "./ScriptingSampleButtons";
 
 export function OttoLevels({
   openFile,
   onCreateScriptItemDemoLevel,
+  onOpenScriptingSample,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
   onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
+  onOpenScriptingSample?: (sample: ScriptingSampleLevel) => void;
 }) {
   return (
     <LevelGrid title="Otto Matic Levels">
@@ -83,6 +87,7 @@ export function OttoLevels({
         Level 10
       </Button>
       <ScriptItemDemoButton globals={OttoGlobals} onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel} />
+      <ScriptingSampleButtons globals={OttoGlobals} onOpen={onOpenScriptingSample} />
     </LevelGrid>
   );
 }

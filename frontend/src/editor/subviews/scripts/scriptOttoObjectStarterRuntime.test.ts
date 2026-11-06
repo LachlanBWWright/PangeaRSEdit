@@ -16,14 +16,48 @@ local function command(name, value)
   values[name] = value
   return { ok = true }
 end
-local pangea = { object = {}, player = {}, world = {}, level = {}, events = {}, log = {} }
+local pangea = { object = {}, player = {}, world = {}, level = {}, events = {}, log = {}, time = {}, spawn = {} }
+local timers, nextTimer, children = {}, 0, {}
+function pangea.log.info() end
+function pangea.time.every(interval, callback)
+  nextTimer = nextTimer + 1; timers[nextTimer] = callback; return nextTimer
+end
+function pangea.time.cancel(id) timers[id] = nil end
+local function tick()
+  for id, callback in pairs(timers) do callback() end
+end
+function pangea.object.exists(handle) return not handle.deleted end
+function pangea.object.lifeState(handle) return handle.deleted and 'removed' or 'alive' end
+function pangea.object.capabilities() return {opacity=true} end
+function pangea.object.geometry() return {groundOffset={y=0}} end
+function pangea.object.acquireControl(handle)
+  handle.token=1; command('control',true); return {ok=true,token=1}
+end
+function pangea.object.hasControl(handle,token) return handle.token==token end
+function pangea.object.releaseControl(handle,token)
+  handle.token=nil; handle.opacity=1; return command('control',false)
+end
+function pangea.spawn.nativeResult(kind, location)
+  assert(kind == 'ottomatic.brainAlien')
+  values.spawnPositions = values.spawnPositions or {}
+  values.spawnPositions[#values.spawnPositions + 1] = {x = location.x, z = location.z}
+  local child = {id = #children + 2, generation = 1}
+  children[#children + 1] = child
+  return {ok = true, primary = child}
+end
 function pangea.log.warn(message) error(message) end
-function pangea.object.state() return state end
-function pangea.object.position() return position end
+function pangea.object.state(handle)
+  if handle.id == 1 then return state end
+  handle.state = handle.state or {}; return handle.state
+end
+function pangea.object.position() return {x = position.x, y = position.y, z = position.z} end
+function pangea.object.bounds() return {min={y=position.y}} end
 function pangea.object.type(other) return other.type end
 function pangea.object.setScriptControlledResult(handle, value) return command('control', value) end
 function pangea.object.setHealthResult(handle, value) return command('health', value) end
 function pangea.object.setDamageResult(handle, value) return command('damage', value) end
+function pangea.object.setOpacityResult(handle, value) handle.opacity = value; return command('opacity', value) end
+function pangea.object.setAnimationResult(handle, value) return command('animation', value) end
 function pangea.object.setRotationResult(handle, value) return command('rotation', value) end
 function pangea.object.setPositionResult(handle, value)
   position = value
@@ -33,7 +67,7 @@ function pangea.object.moveKinematic(handle, delta, category)
   assert(category == 'solid')
   return command('move', delta)
 end
-function pangea.object.deleteResult() return command('delete') end
+function pangea.object.deleteResult(handle) handle.deleted = true; return command('delete') end
 function pangea.player.get(index) assert(index == 0); return player end
 function pangea.player.healResult(index, amount) return command('heal', amount) end
 function pangea.player.setScoreResult(index, score) return command('score', score) end
@@ -45,6 +79,92 @@ local function require(name) assert(name == 'pangea'); return pangea end
 `;
 
 const cases = [
+  { id: "spawner", assertions: `
+self.parameters.quota = 0
+self.parameters.maxAlive = 1
+object.onSpawn(self, {levelNum = 0})
+for i = 1, 20 do
+  tick()
+  assert(state.spawned == i, 'unlimited spawner must replenish beyond three aliens')
+  assert(not state.completed)
+  local location = values.spawnPositions[i]
+  assert(location.x * location.x + location.z * location.z <= 450 * 450 + 1, 'spawn points must stay near the port')
+  children[i].deleted = true
+end
+player.position.x = 10000
+tick()
+assert(state.spawned == 20, 'distant players must not trigger spawning')
+player.position.x = 1000
+tick()
+assert(state.spawned == 21, 'returning must resume the same spawner')
+object.onDestroy(self, {})
+assert(next(timers) == nil and children[21].deleted)
+` },
+  { id: "spawner", assertions: `
+object.onSpawn(self, {levelNum = 0})
+assert(values.health == 2 and values.damage == 0, 'port must be damageable without contact damage')
+tick()
+assert(children[1].opacity == 0, 'arrival starts transparent')
+object.onUpdate(self, {deltaSeconds = 0.6})
+assert(children[1].opacity == 0.5 and values.control == true)
+object.onUpdate(self, {deltaSeconds = 0.6})
+assert(children[1].opacity == 1 and values.control == false, 'native AI resumes after arrival')
+assert(#state.arrivals == 0)
+object.onDestroy(self, {})
+assert(children[1].deleted and next(timers) == nil)
+` },
+  { id: "spawner", assertions: `
+self.parameters.quota = 3
+object.onSpawn(self, {levelNum = 0})
+object.onActivate(self, {levelNum = 0})
+object.onStreamIn(self, {levelNum = 0})
+assert(nextTimer == 1, 'activation must not duplicate timers')
+self.parameters.maxAlive = 1
+tick(); tick()
+assert(state.spawned == 1, 'living quota must prevent another alien')
+assert(children[1].state.origin == 'independent-brain-port')
+children[1].deleted = true
+tick()
+assert(state.spawned == 2)
+object.onCheckpointReset(self, {levelNum = 0})
+assert(state.spawned == 2, 'preserve must retain progress')
+children[2].deleted = true
+tick()
+assert(state.completed and state.spawned == 3 and next(timers) == nil, 'quota must stop timer')
+object.onCheckpointReset(self, {levelNum = 0})
+assert(next(timers) == nil, 'completed preserve must remain stopped')
+self.parameters.checkpointPolicy = 'restart'
+object.onCheckpointReset(self, {levelNum = 0})
+assert(state.spawned == 0 and children[3].deleted and next(timers) ~= nil)
+tick()
+assert(state.spawned == 1)
+object.onDestroy(self, {})
+assert(children[4].deleted and next(timers) == nil, 'destroy must clean owned aliens and timer')
+state = {}
+object.onActivate(self, {levelNum = 0})
+tick()
+assert(state.spawned == 1, 'reactivation after cleared state must restart')
+object.onDeactivate(self, {})
+assert(children[5].deleted and next(timers) == nil)
+state = {}; self.parameters.checkpointPolicy = 'preserve'; self.parameters.maxAlive = 3
+object.onSpawn(self, {levelNum = 0})
+tick()
+local baselineChild = state.children[1]
+local baselineTimer = state.timer
+tick()
+local postCheckpointChild = state.children[2]
+assert(postCheckpointChild and not postCheckpointChild.deleted)
+state = {spawned = 1, children = {baselineChild}, timer = baselineTimer}
+object.onCheckpointReset(self, {levelNum = 0})
+assert(postCheckpointChild.deleted and not baselineChild.deleted, 'preserve must remove aliens created after snapshot')
+tick()
+local replacementChild = state.children[2]
+state = {spawned = 1, children = {baselineChild}, timer = state.timer}
+self.parameters.checkpointPolicy = 'restart'
+object.onCheckpointReset(self, {levelNum = 0})
+assert(baselineChild.deleted and replacementChild.deleted, 'restart must remove both baseline and later aliens')
+assert(state.spawned == 0)
+` },
   { id: "enemy", assertions: `
 object.onSpawn(self, { levelTimeSeconds = 10 })
 assert(values.health == 1 and values.damage == 0.1 and values.control == true)

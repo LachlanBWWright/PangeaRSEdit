@@ -1,23 +1,14 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Globals } from "@/data/globals/globals";
-import { LevelNumber } from "@/data/globals/levelNumber";
-import { ClickToAddItem } from "@/data/items/itemAtoms";
+import { scriptLevelNumberAtom } from "../scripts/scriptLevelNumber";
 import { CustomPlacementParameters } from "../scripts/CustomObjectParameters";
+import { CustomPlacementActivation } from "../scripts/CustomPlacementActivation";
 import { openCustomObjectEditorAtom } from "../scripts/scriptAuthoringNavigation";
 import type { UpdateScriptWorkspace } from "../scripts/useScriptWorkspace";
 import {
-  CustomObjectToPlaceAtom,
   SelectedCustomPlacementAtom,
 } from "../scripts/scriptPlacementSelectionState";
 import {
@@ -34,10 +25,8 @@ const POSITION_AXES: readonly ("x" | "y" | "z")[] = ["x", "y", "z"];
 export function CustomObjectItemPicker() {
   const globals = useAtomValue(Globals);
   const openObjectEditor = useSetAtom(openCustomObjectEditorAtom);
-  const levelNumber = useAtomValue(LevelNumber);
+  const levelNumber = useAtomValue(scriptLevelNumberAtom);
   const [workspaceStore, setWorkspaceStore] = useAtom(scriptWorkspaceStoreAtom);
-  const [, setNativeItemType] = useAtom(ClickToAddItem);
-  const [objectId, setObjectId] = useAtom(CustomObjectToPlaceAtom);
   const [selectedPlacementId, setSelectedPlacementId] = useAtom(
     SelectedCustomPlacementAtom,
   );
@@ -81,8 +70,6 @@ export function CustomObjectItemPicker() {
     setSelectedPlacementId(null);
   };
 
-  useEffect(() => () => setObjectId(null), [setObjectId]);
-
   if (workspace.customObjects.length === 0) {
     return null;
   }
@@ -114,6 +101,7 @@ export function CustomObjectItemPicker() {
             </div>
           ))}
           <div className="col-span-2"><CustomPlacementParameters workspace={workspace} placement={selectedPlacement} update={update} /></div>
+          <div className="col-span-2"><CustomPlacementActivation placement={selectedPlacement} update={update} /></div>
           <Button
             className="col-span-2"
             variant="destructive"
@@ -122,33 +110,6 @@ export function CustomObjectItemPicker() {
             Delete Item
           </Button>
         </div>
-      )}
-      <Label htmlFor="custom-item-type">Custom item</Label>
-      <Select
-        value={objectId ?? ""}
-        onValueChange={(value) => {
-          setNativeItemType(undefined);
-          setObjectId(value);
-        }}
-      >
-        <SelectTrigger id="custom-item-type">
-          <SelectValue placeholder="Select a custom item" />
-        </SelectTrigger>
-        <SelectContent>
-          {workspace.customObjects.map((definition) => (
-            <SelectItem key={definition.id} value={definition.id}>
-              {definition.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {objectId !== null && (
-        <>
-          <p className="text-sm">Click on the canvas to add the selected item</p>
-          <Button variant="destructive" onClick={() => setObjectId(null)}>
-            Stop Adding Items
-          </Button>
-        </>
       )}
     </div>
   );

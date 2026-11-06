@@ -7,7 +7,7 @@ interface GameAssetDefinition {
 
 export const GAME_ASSET_CATALOG: Readonly<Record<GameId, GameAssetDefinition>> = {
   OttoMatic: { assets: "ottoMatic", game: "ottomatic", port: "OttoMatic-Android", home: { filename: "OttoMatic.glb", model: "Otto.bg3d", skeleton: "Otto.skeleton.rsrc" } },
-  Bugdom: { assets: "bugdom", game: "bugdom1", port: "Bugdom-android", home: { filename: "Bugdom1.glb", model: "Skippy.3dmf", skeleton: "Skippy.skeleton.rsrc" } },
+  Bugdom: { assets: "bugdom", game: "bugdom1", port: "Bugdom-android", home: { filename: "Bugdom1.glb", model: "DoodleBug.3dmf", skeleton: "DoodleBug.skeleton.rsrc" } },
   Bugdom2: { assets: "bugdom2", game: "bugdom2", port: "Bugdom2-Android", home: { filename: "Bugdom2.glb", model: "Grasshopper.bg3d", skeleton: "Skip_Explore.skeleton.rsrc" } },
   Nanosaur: { assets: "nanosaur", game: "nanosaur1", port: "Nanosaur-android", home: { filename: "Nanosaur1.glb", model: "Deinon.3dmf", skeleton: "Deinon.skeleton.rsrc" } },
   Nanosaur2: { assets: "nanosaur2", game: "nanosaur2", port: "Nanosaur2-Android", home: { filename: "Nanosaur2.glb", model: "nano.bg3d", skeleton: "nano.skeleton.rsrc" } },

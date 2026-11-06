@@ -56,7 +56,7 @@ describe("scripting workbench", () => {
       expect(context.supportedHooks).toContain("onDialogueResult");
       expect(context.supportedHooks).toContain("onDamage");
     }
-    expect(createScriptWorkspaceContext(CroMagGlobals, 0).supportedHooks).not.toContain("onWeaponHit");
+    expect(createScriptWorkspaceContext(CroMagGlobals, 0).supportedHooks).toContain("onWeaponHit");
   });
 
   it("round-trips physical skeleton resources and recursive helper dependencies", () => {

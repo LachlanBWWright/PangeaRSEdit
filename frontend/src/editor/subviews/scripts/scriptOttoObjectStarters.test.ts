@@ -34,10 +34,10 @@ describe("Otto gameplay object starters", () => {
     if (imported.isOk()) expect(imported.value.definitions).toEqual([definition]);
   });
 
-  it("offers the four gameplay starters for Otto without changing other games' catalogs", () => {
+  it("offers the gameplay starters for Otto without changing other games' catalogs", () => {
     const otto = ensureScriptWorkspace({}, createScriptWorkspaceContext(OttoGlobals, 0));
     const nanosaur = ensureScriptWorkspace({}, createScriptWorkspaceContext(NanosaurGlobals, 0));
-    expect(otto.behaviorCatalog.filter((entry) => entry.id.startsWith("otto.custom."))).toHaveLength(4);
+    expect(otto.behaviorCatalog.filter((entry) => entry.id.startsWith("otto.custom."))).toHaveLength(5);
     expect(nanosaur.behaviorCatalog.some((entry) => entry.id.startsWith("otto.custom."))).toBe(false);
   });
 });

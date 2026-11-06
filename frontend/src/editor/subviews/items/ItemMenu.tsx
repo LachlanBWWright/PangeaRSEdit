@@ -8,7 +8,7 @@ import {
   SafeItemTypes,
   FilterToSafeItems,
 } from "../../../data/items/itemAtoms";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -45,6 +45,7 @@ import { ItemStateFlags } from "./ItemStateFlags";
 import { ParameterField } from "./ParameterField";
 import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
 import { itemParameterFields } from "./itemParameterFields";
+import { ItemPlacementPicker } from "./ItemPlacementPicker";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -287,65 +288,18 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const levelNum = useAtomValue(LevelNumber);
   const customToPlace = useAtomValue(CustomObjectToPlaceAtom);
 
-  useEffect(() => {
-    return () => setClickToAddItem(undefined);
-  }, [setClickToAddItem]);
-
   const itemValues = useMemo(() => {
     return getAllItemValues(globals);
   }, [globals]);
 
-  if (clickToAddItem !== undefined)
-    return (
-      <>
-        <Select
-          value={clickToAddItem.toString()}
-          onValueChange={(e) => {
-            const newItemType = parseInt(e);
-            setClickToAddItem(newItemType);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select an item" />
-          </SelectTrigger>
-          <SelectContent>
-            {itemValues.map((key) => (
-              <SelectItem
-                key={key}
-                className="text-white"
-                value={key.toString()}
-              >
-                <ItemThumbnail
-                  game={globals.GAME_TYPE}
-                  kind="terrainItem"
-                  itemType={key}
-                  label={`${getItemName(globals, key)} — ${getItemLevelSupportLabel(
-                    globals.GAME_TYPE,
-                    "terrainItem",
-                    key,
-                    levelNum,
-                  )}`}
-                  compact
-                />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <p>Click on the Canvas to add the selected item</p>
-        <Button
-          variant="destructive"
-          onClick={() => setClickToAddItem(undefined)}
-        >
-          Stop Adding Items
-        </Button>
-      </>
-    );
-
   return (
     <>
-      {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
-      {(!ENABLE_SCRIPTS || customToPlace === null) && <EmptyDataPrompt
+      <ItemPlacementPicker itemValues={itemValues} renderNativeItem={(key) => <ItemThumbnail
+        game={globals.GAME_TYPE} kind="terrainItem" itemType={key}
+        label={`${getItemName(globals, key)} — ${getItemLevelSupportLabel(globals.GAME_TYPE, "terrainItem", key, levelNum)}`}
+        levelNum={levelNum} compact
+      />} />
+      {clickToAddItem === undefined && (!ENABLE_SCRIPTS || customToPlace === null) && <EmptyDataPrompt
         title={hasItems ? "No Item Selected" : "No Items"}
         description={
           hasItems

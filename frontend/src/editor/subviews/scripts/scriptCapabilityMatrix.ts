@@ -297,7 +297,7 @@ export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
     pickupEvents: "supported",
     pickupScoreEffects: "unsupported",
     weaponScoreEffects: "unsupported",
-    weaponHitEvents: "unsupported",
+    weaponHitEvents: "supported",
     nativeSpawn: "supported",
     scriptedSpawn: "supported",
     playerLookup: "supported",

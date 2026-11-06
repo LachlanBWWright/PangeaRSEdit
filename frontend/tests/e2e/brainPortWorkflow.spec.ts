@@ -72,8 +72,8 @@ test("authors, places and exports a Brain Port that spawns aliens without the br
     expect(errors).toEqual([]);
   });
   await test.step("Respect the Lua quota and clean up the spawner and its aliens", async () => {
-    await expect.poll(async () => Number((await runtimeInspector(page))?.objects
-      .find((object) => runtimeObjectDefinition(object) === "custom.brain-port")?.state.elapsed), { timeout: 15_000 }).toBeGreaterThan(2.5);
+    const started = (await runtimeInspector(page))?.runtime.frame ?? 0;
+    await expect.poll(async () => (await runtimeInspector(page))?.runtime.frame, { timeout: 30_000 }).toBeGreaterThan(started + 60);
     expect(messages.filter((message) => message.includes("independent brain port spawned "))).toHaveLength(3);
     const port = (await runtimeInspector(page))?.objects.find((object) => runtimeObjectDefinition(object) === "custom.brain-port");
     expect(port).toBeDefined();

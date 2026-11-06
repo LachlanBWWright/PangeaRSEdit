@@ -29,7 +29,14 @@ export function scriptLibraryChanges(state: ScriptWorkspaceState, library: Scrip
   return [
     ...Object.entries(library.sources).flatMap(([path, content]) => {
       const existing = state.sourceFiles[path]?.content;
-      return existing === content ? [] : [{ key: `source:${path}`, kind: "source", label: path, before: existing ?? null, after: content } satisfies ScriptImportChange];
+      const previousScope = state.sourceFiles[path]?.executionScope ?? "game";
+      const nextScope = library.sourceOnly ? previousScope : library.manifest.sourceScopes?.[path] ?? "game";
+      if (existing === content && previousScope === nextScope) return [];
+      const scopeChanged = previousScope !== nextScope;
+      return [{ key: `source:${path}`, kind: "source", label: path,
+        before: existing === undefined ? null : scopeChanged ? `Execution scope: ${previousScope}\n\n${existing}` : existing,
+        after: scopeChanged ? `Execution scope: ${nextScope}\n\n${content}` : content,
+      } satisfies ScriptImportChange];
     }),
     ...recordChanges("object", state.customObjects, library.manifest.objects),
     ...recordChanges("behavior", state.behaviorCatalog, library.manifest.behaviors),
@@ -55,7 +62,11 @@ export function mergeScriptLibrary(state: ScriptWorkspaceState, library: ScriptL
     params: mergeRecords("parameter", state.params, library.manifest.params, accepted),
   };
   for (const [path, content] of Object.entries(library.sources)) {
-    if (accepted.has(`source:${path}`)) next = saveScriptSourceFile(upsertScriptSourceFile(next, path, content), path);
+    if (accepted.has(`source:${path}`)) {
+      next = saveScriptSourceFile(upsertScriptSourceFile(next, path, content), path);
+      const file = next.sourceFiles[path];
+      if (file && !library.sourceOnly) next = { ...next, sourceFiles: { ...next.sourceFiles, [path]: { ...file, executionScope: library.manifest.sourceScopes?.[path] } } };
+    }
   }
   for (const [path, bytes] of Object.entries(library.assets)) {
     if (accepted.has(`asset:${path}`)) next = addScriptAsset(next, path, bytes, path.split("/").at(-1) ?? path);

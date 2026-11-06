@@ -1002,7 +1002,7 @@ describe("scriptWorkspaceState", () => {
       position: { x: 0, y: 160, z: 0 },
     });
     expect(bundle).toContain('__spawnPlacement("sample.hoverBeacon"');
-    expect(bundle).toContain('(ctx.definitionId or ctx.objectType) == "sample.hoverBeacon"');
+    expect(bundle).toContain('__definitionForObject(ctx) == "sample.hoverBeacon"');
     expect(bundle).not.toContain(
       '__hasTag(ctx.tags, "editor.custom.hoverBeacon")',
     );

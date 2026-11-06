@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function ScriptSourceEditor({ workspace, path, update, initialLine = 0, initialColumn = 1 }: Props) {
-  const [referenceOpen, setReferenceOpen] = useState(true);
+  const [referenceOpen, setReferenceOpen] = useState(false);
   const status = useSyncExternalStore(
     (listener) => scriptLspClient.subscribe(listener),
     () => scriptLspClient.getStatus(),
@@ -52,25 +52,26 @@ export function ScriptSourceEditor({ workspace, path, update, initialLine = 0, i
   const diagnostics = workspace.diagnostics.filter((entry) => entry.filePath === path);
   return (
     <div className="script-editor-workspace">
-      <div className="flex flex-wrap items-center justify-between gap-2"><p className="workbench-muted">Lua module editor · Ctrl+Space for completion</p><Button size="sm" variant="ghost" aria-expanded={referenceOpen} onClick={() => setReferenceOpen(!referenceOpen)}>{referenceOpen ? "Hide API reference" : "Show API reference"}</Button></div>
       <div className={referenceOpen ? "script-code-reference" : "min-w-0"}>
       <div className="min-w-0">
       <div className="workbench-source">
         <div className="workbench-source-toolbar">
-          <div><p className="workbench-source-path">{path.replace("Data/Scripts/", "")}</p><p className="workbench-muted">{readOnly ? "Generated output" : dirty ? "Draft kept in workspace · beyond revert checkpoint" : "Matches workspace revert checkpoint · not a disk-save confirmation"}</p></div>
-          {!readOnly && <div className="flex gap-2">
+          <div><p className="workbench-source-path">{path.replace("Data/Scripts/", "")}</p><p className="workbench-muted">{readOnly ? "Generated output" : dirty ? "Draft changed" : "No draft changes"}</p></div>
+          <div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" aria-expanded={referenceOpen} onClick={() => setReferenceOpen(!referenceOpen)}>{referenceOpen ? "Hide API reference" : "Show API reference"}</Button>
+          {!readOnly && <>
             <Button size="sm" variant="ghost" disabled={!dirty} onClick={() => update((state) => revertScriptSourceFile(state, path))}>Revert</Button>
             <Button size="sm" disabled={!dirty} title="Update the workspace revert checkpoint. Save the project separately to write files to disk." onClick={() => update((state) => saveScriptSourceFile(state, path))}>Save source</Button>
-          </div>}
+          </>}</div>
         </div>
-        <Editor height="400px" language="lua" path={`file:///workspace/${path}`} value={content}
+        <div className="script-code-surface"><Editor height="100%" language="lua" path={`file:///workspace/${path}`} value={content}
           onMount={(editor) => { if (initialLine > 0) { editor.setPosition({ lineNumber: initialLine, column: Math.max(1, initialColumn) }); editor.revealLineInCenter(initialLine); editor.focus(); } }}
           onChange={(value) => { if (value !== undefined && !readOnly) update((state) => updateScriptSourceContent(state, path, value)); }}
-          theme="vs-dark" options={{ readOnly, minimap: { enabled: false }, fontSize: 13, wordWrap: "on", scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2, ariaLabel: "Lua source editor" }} />
+          theme="vs-dark" options={{ readOnly, minimap: { enabled: false }, fontSize: 13, wordWrap: "on", scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2, ariaLabel: "Lua source editor" }} /></div>
       </div>
       </div>
       {referenceOpen && <ScriptHookApiExplorer workspace={workspace} gameId={workspace.context.gameId} supportedHooks={workspace.context.supportedHooks} />}
       </div>
+      {!readOnly && <details className="workbench-disclosure"><summary>Saving and recovery</summary><p>Save source keeps a checkpoint for Revert in this workspace. Use Save All in a desktop project to write files to disk, or export a script package in the browser.</p></details>}
       <p className="workbench-muted" role="status">Lua intelligence: {getLuaIntelligenceStatus(hasConfiguredApiEndpoint(), status)}. Build the bundle, then test in game to verify behavior.</p>
       {status === "unavailable" && scriptLspClient.lastError && <p className="text-xs text-amber-300">{scriptLspClient.lastError}</p>}
       <details className="text-xs text-slate-400"><summary className="cursor-pointer">Code assistance and shortcuts</summary><div className="mt-2 grid gap-2">

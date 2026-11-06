@@ -2,7 +2,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { Globals } from "@/data/globals/globals";
-import { LevelNumber } from "@/data/globals/levelNumber";
+import { scriptLevelNumberAtom } from "./scriptLevelNumber";
 import {
   createScriptWorkspaceContext,
   ensureScriptWorkspace,
@@ -21,7 +21,7 @@ interface CustomObjectPlacementMode {
 
 export function useCustomObjectPlacement(headerData: HeaderData, terrainData: TerrainData): CustomObjectPlacementMode {
   const globals = useAtomValue(Globals);
-  const levelNumber = useAtomValue(LevelNumber);
+  const levelNumber = useAtomValue(scriptLevelNumberAtom);
   const objectId = useAtomValue(CustomObjectToPlaceAtom);
   const setWorkspaceStore = useSetAtom(scriptWorkspaceStoreAtom);
 

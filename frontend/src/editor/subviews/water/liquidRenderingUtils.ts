@@ -218,12 +218,13 @@ export function buildLiquidBodyCanvas(
     }
   }
 
+  ctx.fillStyle = pattern;
+  ctx.fillRect(minX, minY, width, height);
+  // Apply coverage to painted water so the intermediate white mask never becomes visible.
+  ctx.globalCompositeOperation = "destination-in";
   ctx.filter = `blur(${Math.max(1, cellSize / 2)}px)`;
   ctx.drawImage(coverageCanvas, minX, minY);
   ctx.filter = "none";
-  ctx.globalCompositeOperation = "source-in";
-  ctx.fillStyle = pattern;
-  ctx.fillRect(minX, minY, width, height);
 
   ctx.restore();
   ctx.globalCompositeOperation = "source-over";

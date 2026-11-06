@@ -39,22 +39,25 @@ export function getScopedModulePaths(state: ScriptWorkspaceState): ReadonlySet<s
   return new Set([
     ...assigned,
     ...state.customObjects.map((entry) => entry.sourceFilePath),
-    ...state.behaviorCatalog.map((entry) => entry.sourceFilePath),
+    ...state.behaviorCatalog.filter((entry) => state.sourceFiles[entry.sourceFilePath]?.executionScope !== "game").map((entry) => entry.sourceFilePath),
   ]);
 }
 
 export function buildLevelPlacementSpawns(state: ScriptWorkspaceState, hook: ScriptHookId): readonly string[] {
   const start = state.context.supportedHooks.includes("onLevelStart") ? "onLevelStart"
     : state.context.supportedHooks.includes("onAreaStart") ? "onAreaStart" : "onRaceStart";
+  if (hook === "onFrame") return ["  __updateNearPlacements(ctx)"];
+  if (hook === "onLevelUnload" || hook === "onGameShutdown") return ["  __resetNearPlacements()"];
   if (hook !== start) return [];
-  return Object.entries(state.levels).flatMap(([key, level]) => {
+  const spawns = Object.entries(state.levels).flatMap(([key, level]) => {
     if (!/^\d+$/.test(key) || level.customPlacements.length === 0) return [];
     const spawns = level.customPlacements.flatMap((placement) => {
       const definition = state.customObjects.find((entry) => entry.id === placement.objectId);
-      if (!definition) return [];
+      if (!definition || placement.activation?.kind === "near-player") return [];
       const { x, y, z } = placementWorldPosition(state.context.gameId, placement.position);
       return [`    __spawnPlacement(${JSON.stringify(placement.objectId)}, { x = ${x}, y = ${y}, z = ${z} }, ${objectParameterLua(resolveObjectParameters(definition, placement))}, ${JSON.stringify(placement.id)}, ${JSON.stringify(key)})`];
     });
     return [`  if ctx.levelNum == ${Number(key)} then`, ...spawns, "  end"];
   });
+  return ["  __resetNearPlacements()", ...spawns, "  __updateNearPlacements(ctx)"];
 }

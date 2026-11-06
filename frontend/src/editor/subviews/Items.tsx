@@ -60,7 +60,7 @@ export const Items = memo(
             key={itemIdx}
             headerData={headerData}
             terrainData={terrainData}
-            itemData={itemData}
+            item={itemData.Itms[1000].obj[itemIdx]}
             setItemData={setItemData}
             itemIdx={itemIdx}
             selected={selectedItem === itemIdx}

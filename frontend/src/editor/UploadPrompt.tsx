@@ -7,6 +7,7 @@ import { AtomicLevelData, splitLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
 import { GameCarousel } from "./gameCards/GameCarousel";
 import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
+import type { ScriptingSampleLevel } from "./subviews/scripts/scriptSampleLevels";
 /* import { Separator } from "@/components/ui/separator";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
@@ -21,6 +22,8 @@ export function UploadPrompt({
   setTunnelLevelKind,
   onCreateBlankLevel,
   onCreateScriptItemDemoLevel,
+  onOpenScriptingSample,
+  sampleLoading = false,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
@@ -32,6 +35,8 @@ export function UploadPrompt({
   setTunnelLevelKind: (kind: TunnelLevelKind) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
   onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
+  onOpenScriptingSample?: (sample: ScriptingSampleLevel) => void;
+  sampleLoading?: boolean;
 }) {
   const [, setGlobals] = useAtom(Globals);
 
@@ -79,7 +84,8 @@ export function UploadPrompt({
           <IntroText />
         </div>
 
-        <div className="w-full flex-1 min-h-0">
+        {sampleLoading && <p role="status">Preparing scripting sample…</p>}
+        <fieldset disabled={sampleLoading} aria-busy={sampleLoading} className="w-full min-w-0 flex-1 min-h-0">
           <GameCarousel
             showAllGames={true}
             handleOpenFile={handleOpenFile}
@@ -92,8 +98,9 @@ export function UploadPrompt({
             setTunnelLevelKind={setTunnelLevelKind}
             onCreateBlankLevel={onCreateBlankLevel}
             onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel}
+            onOpenScriptingSample={onOpenScriptingSample}
           />
-        </div>
+        </fieldset>
       </div>
     </div>
   );

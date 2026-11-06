@@ -44,6 +44,11 @@ export function ScriptDiagnostics({ diagnostics, navigation }: { diagnostics: Di
       <AttributionDetails entry={failure} navigation={navigation} />
       <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words">{failure.message}</pre>
     </section>}
+    {diagnostics.commandRejections && diagnostics.commandRejections.count > 0 && <details className="rounded border border-slate-700 p-2">
+      <summary>Rejected commands ({diagnostics.commandRejections.count})</summary>
+      <AttributionDetails entry={diagnostics.commandRejections.last} navigation={navigation} />
+      <p className="break-words">{diagnostics.commandRejections.last.message}</p>
+    </details>}
     <FrameUsage title="Current frame" frame={diagnostics.frame} navigation={navigation} />
     {diagnostics.previousFrame && <FrameUsage title="Previous frame" frame={diagnostics.previousFrame} navigation={navigation} />}
   </div>;

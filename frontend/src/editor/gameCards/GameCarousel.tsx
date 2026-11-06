@@ -16,6 +16,9 @@ import {
 } from "@/editor/gameCards/gameCarouselConfig";
 import type { ParsedLevelDataFile } from "@/editor/loadLogic/parseLevelDataFile";
 
+import type { ScriptingSampleLevel } from "../subviews/scripts/scriptSampleLevels";
+import { ScriptingSampleButtons } from "../gameLevelSelectors/ScriptingSampleButtons";
+
 export function GameCarousel({
   showAllGames,
   handleOpenFile,
@@ -28,6 +31,7 @@ export function GameCarousel({
   setTunnelLevelKind,
   onCreateBlankLevel,
   onCreateScriptItemDemoLevel,
+  onOpenScriptingSample,
 }: {
   showAllGames: boolean;
   handleOpenFile: (url: string, gameType: GlobalsInterface) => void;
@@ -45,6 +49,7 @@ export function GameCarousel({
   setTunnelLevelKind: (kind: TunnelLevelKind) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
   onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
+  onOpenScriptingSample?: (sample: ScriptingSampleLevel) => void;
 }) {
   const games = getCarouselGames(showAllGames);
 
@@ -74,6 +79,7 @@ export function GameCarousel({
             setTunnelLevelKind={setTunnelLevelKind}
             onCreateBlankLevel={onCreateBlankLevel}
             onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel}
+            onOpenScriptingSample={onOpenScriptingSample}
           />
         ))}
       </CarouselContent>
@@ -95,6 +101,7 @@ function GameCarouselItem({
   setTunnelLevelKind,
   onCreateBlankLevel,
   onCreateScriptItemDemoLevel,
+  onOpenScriptingSample,
 }: {
   game: { title: string; globals: GlobalsInterface };
   handleOpenFile: (url: string, gameType: GlobalsInterface) => void;
@@ -112,6 +119,7 @@ function GameCarouselItem({
   setTunnelLevelKind: (kind: TunnelLevelKind) => void;
   onCreateBlankLevel: (gameType: GlobalsInterface) => void;
   onCreateScriptItemDemoLevel: (gameType: GlobalsInterface) => void;
+  onOpenScriptingSample?: (sample: ScriptingSampleLevel) => void;
 }) {
   // Look up component from module-level map
   const LevelComponent = LEVEL_COMPONENTS_MAP[game.title];
@@ -153,8 +161,10 @@ function GameCarouselItem({
         <LevelComponent
           openFile={handleOpenFile}
           onCreateScriptItemDemoLevel={onCreateScriptItemDemoLevel}
+          onOpenScriptingSample={onOpenScriptingSample}
           onTunnelLoad={handleTunnelLoad}
         />
+        {game.globals.GAME_NAME !== "Otto Matic" && <ScriptingSampleButtons globals={game.globals} onOpen={onOpenScriptingSample} />}
       </GameCard>
     </CarouselItem>
   );

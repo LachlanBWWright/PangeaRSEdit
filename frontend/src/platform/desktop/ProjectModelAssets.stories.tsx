@@ -5,7 +5,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Globals, OttoGlobals } from "@/data/globals/globals";
 import { CustomObjectAppearance } from "@/editor/subviews/scripts/CustomObjectAppearance";
 import { changeObjectVisual } from "@/editor/subviews/scripts/scriptObjectVisuals";
-import { createScriptWorkspaceContext, loadScriptSample } from "@/editor/subviews/scripts/scriptWorkspaceState";
+import { createScriptWorkspaceContext, loadScriptSample, type ScriptWorkspaceState } from "@/editor/subviews/scripts/scriptWorkspaceState";
 import { desktopProjectAtom, desktopProjectDirtyAtom } from "./projectState";
 import { workflowProject } from "./workflowFixtures.stories.support";
 import { installModelAssetStoryBridge, storyModelAsset } from "./modelAssets.stories.support";
@@ -17,7 +17,7 @@ import { z } from "zod";
 import { desktopRequest } from "./client";
 
 function ObjectAppearanceStory({ collision = false }: { collision?: boolean }) {
-  const [workspace, setWorkspace] = useState(() => {
+  const [workspace, setWorkspace] = useState<ScriptWorkspaceState>(() => {
     const sample = loadScriptSample(createScriptWorkspaceContext(OttoGlobals, 0), "hover-beacon");
     return { ...sample, customObjects: sample.customObjects.map((definition) => {
       if (!collision) return changeObjectVisual(definition, "customDisplayGroup", sample.context.gameId);
@@ -30,7 +30,7 @@ function ObjectAppearanceStory({ collision = false }: { collision?: boolean }) {
   if (collision) return <div className="workbench-section mx-auto max-w-4xl p-6"><CustomObjectCollision definition={definition} gameId={workspace.context.gameId} onChange={(next) => setWorkspace({ ...workspace, customObjects: [next] })} /><ProjectObjectCollisionModelPreview definition={definition} /></div>;
   return <div className="workbench-section mx-auto max-w-4xl p-6"><CustomObjectAppearance workspace={workspace}
     definition={definition}
-    uploading={false} onUpload={() => undefined} onChange={(next) => setWorkspace({ ...workspace, customObjects: workspace.customObjects.map((entry) => entry.id === next.id ? next : entry) })} /></div>;
+    uploading={false} update={setWorkspace} onUpload={() => undefined} onChange={(next) => setWorkspace({ ...workspace, customObjects: workspace.customObjects.map((entry) => entry.id === next.id ? next : entry) })} /></div>;
 }
 
 const meta = {

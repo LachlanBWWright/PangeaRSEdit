@@ -11,6 +11,11 @@ const BUGDOM_FAMILY_SKELETONS: readonly (readonly number[])[] = [
 ];
 const NANOSAUR_SKELETONS = ["Ptera", "Rex", "Stego", "Deinon", "Tricer", "Diloph"];
 
+export function classicSkeletonNames(game: Game): readonly string[] {
+  if (game === Game.BUGDOM) return BUGDOM_SKELETONS;
+  return game === Game.NANOSAUR ? NANOSAUR_SKELETONS : [];
+}
+
 export const CLASSIC_NATIVE_MODEL_COUNTS: Readonly<Record<string, number>> = {
   "Global_Models1.3dmf": 14,
   "Global_Models2.3dmf": 15,

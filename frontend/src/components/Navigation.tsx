@@ -9,7 +9,6 @@ import {
   FlaskConical,
   Boxes,
   ClipboardList,
-  Network,
 } from "lucide-react";
 import {
   editorNavbarLeftAtom,
@@ -20,6 +19,7 @@ import {
 import { UserMenu } from "@/components/UserMenu";
 import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { SettingsMenu } from "@/components/SettingsMenu";
+import { MultiplayerNavigationLink } from "./MultiplayerNavigationLink";
 
 export function Navigation() {
   const location = useLocation();
@@ -84,18 +84,7 @@ export function Navigation() {
               </Link>
             </Button>
             {featureFlags.multiplayer && (
-              <Button
-                asChild
-                variant={
-                  location.pathname === "/multiplayer" ? "default" : "ghost"
-                }
-                className="flex items-center gap-2"
-              >
-                <Link to="/multiplayer" className="text-white">
-                  <Network className="w-4 h-4" />
-                  <span>Multiplayer</span>
-                </Link>
-              </Button>
+              <MultiplayerNavigationLink active={location.pathname === "/multiplayer"} />
             )}
             {featureFlags.scripting && (
               <Button

@@ -11,6 +11,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const MissingPreviewGame: Story = {
+  args: { previewGame: "OttoMatic" },
+  beforeEach: () => installDesktopStoryBridge(false, "success", false, true),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Set up game preview" })).toBeVisible();
+    const game = within(canvas.getByRole("region", { name: "Otto Matic" }));
+    await expect(game.getByRole("button", { name: "Download and install" })).toBeEnabled();
+    await expect(game.getByRole("button", { name: "Locate existing" })).toBeEnabled();
+    await expect(canvas.queryByRole("region", { name: "Bugdom" })).not.toBeInTheDocument();
+    await userEvent.click(game.getByRole("button", { name: "Download and install" }));
+    await expect(game.getByText(/Installed: v0.9.0/)).toBeVisible();
+    await expect(game.getByRole("button", { name: /^Play$/ })).toBeEnabled();
+  },
+};
+
 export const InstalledAndAvailable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

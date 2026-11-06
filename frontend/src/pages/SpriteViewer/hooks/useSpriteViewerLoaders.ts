@@ -133,7 +133,10 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
       return;
     }
     options.setLoading(true);
-    const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
+    const [bufferResult, companion] = await Promise.all([
+      ResultAsync.fromPromise(file.arrayBuffer(), mapErr),
+      readFilePalette(paletteFile),
+    ]);
     if (cancelled()) return;
     if (bufferResult.isErr()) {
       toast.error(bufferResult.error);
@@ -141,8 +144,6 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
       return;
     }
     const buffer = bufferResult.value;
-    const companion = await readFilePalette(paletteFile);
-    if (cancelled()) return;
     if (companion.isErr()) { toast.error(companion.error); options.setLoading(false); return; }
     if (fileType === "sprites") {
       const result = parseShapesFile(buffer);
@@ -186,9 +187,13 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
   }, [options]);
 
   const loadSpritesFile = useCallback(async (filename: string) => {
-    generation.current++;
+    const token = ++generation.current;
     options.setLoading(true);
-    const buffer = await fetchBytes(`data/mightymike/shapes/${filename}.shapes`);
+    const [buffer, border] = await Promise.all([
+      fetchBytes(`data/mightymike/shapes/${filename}.shapes`),
+      loadBorderPalette(),
+    ]);
+    if (generation.current !== token) return;
     if (!buffer) {
       options.setLoading(false);
       return;
@@ -202,7 +207,6 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
     options.setLoadedData({ type: "sprites", data: result.value, filename, sourceBytes: buffer });
     options.setSelectedShapeIndex(0);
     options.setSelectedFrameIndex(0);
-    const border = await loadBorderPalette();
     if (border) applyPalette(options.setCurrentPalette, "Border Palette", border);
     toast.success(`Loaded ${filename}: ${result.value.shapes.length} shapes`);
     options.setLoading(false);
@@ -230,10 +234,14 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
   }, [options]);
 
   const loadTilesetFile = useCallback(async (filename: string) => {
-    generation.current++;
+    const token = ++generation.current;
     options.setLoading(true);
-    const paletteBuffer = await fetchBytes("assets/mightyMike/terrain/border.tga");
-    if (!paletteBuffer) {
+    const [paletteBuffer, buffer] = await Promise.all([
+      fetchBytes("assets/mightyMike/terrain/border.tga"),
+      fetchBytes(`assets/mightyMike/terrain/${filename}.tileset`),
+    ]);
+    if (generation.current !== token) return;
+    if (!paletteBuffer || !buffer) {
       options.setLoading(false);
       return;
     }
@@ -245,11 +253,6 @@ export function useSpriteViewerLoaders(options: LoaderOptions) {
     }
     const rgba = paletteToRgba(palette);
     gMightyMikePalette.loadPaletteFromRGBA(rgba);
-    const buffer = await fetchBytes(`assets/mightyMike/terrain/${filename}.tileset`);
-    if (!buffer) {
-      options.setLoading(false);
-      return;
-    }
     const correctedPalette = paletteFromRgba(filename, gMightyMikePalette.getPaletteAsRGBA()).colors;
     const result = parseTilesetFile(buffer, correctedPalette);
     if (result.isErr()) {

@@ -43,6 +43,7 @@ import {
 import { regenerateDerivedLevelData } from "@/data/saveMap/regenerateDerivedLevelData";
 import { metadataResourceSchema } from "@/validation/levelDataSchemas";
 import { getFeatureFlags } from "@/config/featureFlags";
+import { prepareLiquidResources } from "./prepareLiquidResources";
 
 function notify(
   onProgress: ((progress: LevelIoProgress) => void) | undefined,
@@ -221,7 +222,9 @@ function serializeResourceForkBytes(
   metadataEnabled: boolean,
 ): Result<Uint8Array, LevelIoError> {
   const sanitized = prepareMetadataResourceForFork(
-    sanitizeResourceForkJson(withoutLevelMetadata(levelData, metadataEnabled)),
+    sanitizeResourceForkJson(prepareLiquidResources(
+      withoutLevelMetadata(levelData, metadataEnabled), globals.LIQD_NUBS,
+    )),
   );
   const validation = validateResourceForkJson(sanitized);
   if (validation.isErr()) {

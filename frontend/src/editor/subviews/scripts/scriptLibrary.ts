@@ -10,6 +10,7 @@ import { validateUploadedScriptAssetAsync } from "./scriptAssetValidation";
 import type { PortableAssets } from "@pangea/desktop-contracts";
 import { authoringArchiveFiles, collectScriptAuthoringAssets, isAuthoringArchivePath, readAuthoringArchiveFiles, type ScriptAuthoringExportOptions } from "./scriptAuthoringAttachments";
 import { resolveDesktopProjectAssets } from "@/platform/desktop/projectScriptAssets";
+import { getScopedModulePaths } from "./scriptLevelRouting";
 
 const sourcePath = z.string().refine(isDefinitionSourcePath);
 const librarySchema = z.object({
@@ -17,6 +18,7 @@ const librarySchema = z.object({
   objects: z.array(scriptCustomObjectDefinitionSchema), behaviors: z.array(scriptBehaviorDefinitionSchema),
   params: z.array(scriptParameterDefinitionSchema), sources: z.array(sourcePath),
   assets: z.array(z.string().refine(isDefinitionAssetPath)), moduleOrder: z.array(sourcePath),
+  sourceScopes: z.record(z.string(), z.enum(["helper", "game"])).optional(),
 });
 
 export interface ScriptLibrary {
@@ -24,6 +26,7 @@ export interface ScriptLibrary {
   sources: Readonly<Record<string, string>>;
   assets: Readonly<Record<string, Uint8Array>>;
   authoringAssets?: PortableAssets | null;
+  readonly sourceOnly?: boolean;
 }
 
 export function buildScriptLibrary(state: ScriptWorkspaceState, authoringAssets: PortableAssets | null = state.authoringAssets ?? null): Result<Uint8Array, string> {
@@ -34,12 +37,16 @@ export function buildScriptLibrary(state: ScriptWorkspaceState, authoringAssets:
   const closure = collectScriptSources(state, roots);
   if (closure.isErr()) return err(closure.error);
   const paths = [...closure.value];
+  const scopedPaths = getScopedModulePaths(state);
   const sources = Object.fromEntries(paths.map((path) => [path, state.sourceFiles[path]?.content ?? ""]));
   const manifest: ScriptLibrary["manifest"] = {
     kind: "pangea-script-library", version: 1, gameId: state.context.gameId,
     objects: [...state.customObjects], behaviors: state.behaviorCatalog.filter((behavior) => paths.includes(behavior.sourceFilePath)),
     params: [...state.params], sources: paths.sort(), assets: Object.keys(state.assets).sort(),
     moduleOrder: state.moduleOrder.filter((path) => paths.includes(path)),
+    sourceScopes: Object.fromEntries(paths.map((path) => [path,
+      state.sourceFiles[path]?.executionScope ?? (scopedPaths.has(path) ? "helper" : "game"),
+    ])),
   };
   const library = { manifest, sources, assets: Object.fromEntries(Object.entries(state.assets).map(([path, asset]) => [path, asset.bytes])) };
   const valid = validateLibraryReferences(library);
@@ -105,7 +112,10 @@ export async function readScriptLibrary(bytes: Uint8Array, gameId: string): Prom
   if (manifest.data.gameId !== gameId) return err(`This library targets ${manifest.data.gameId}; select that game before importing.`);
   const declared = manifest.data;
   const discovered = Object.keys(archive.value).filter((path) => isDefinitionSourcePath(path) && !declared.sources.includes(path));
-  const metadata = { ...declared, sources: [...declared.sources, ...discovered], moduleOrder: [...declared.moduleOrder, ...discovered] };
+  const discoveredScopes: Readonly<Record<string, "helper">> = Object.fromEntries(discovered.map((path) => [path, "helper"]));
+  const metadata = { ...declared, sources: [...declared.sources, ...discovered], moduleOrder: [...declared.moduleOrder, ...discovered],
+    sourceScopes: { ...declared.sourceScopes, ...discoveredScopes },
+  };
   const sources: Record<string, string> = {};
   const assets: Record<string, Uint8Array> = {};
   let total = 0;

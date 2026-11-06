@@ -9,7 +9,7 @@ import { inspectorNavigationSnapshot } from "./scriptDiagnosticNavigation";
 import { ScriptInstanceState } from "./ScriptInstanceState";
 import type { QueryScriptState } from "./utils/scriptState";
 import { ScriptNativePerformance } from "./ScriptNativePerformance";
-import { ScriptObjectResources } from "./ScriptObjectResources";
+import { ScriptObjectResources, ScriptObjectResourceDetails } from "./ScriptObjectResources";
 
 interface Props { snapshot: ScriptInspectorSnapshot | null; unavailable?: string; navigationContext?: ScriptNavigationContext; queryObjects?: QueryScriptObjects; queryState?: QueryScriptState }
 
@@ -41,6 +41,13 @@ export function ScriptInspector({ snapshot, unavailable, navigationContext = {},
     </dl>
     {snapshot.lastError && <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words text-red-300">{snapshot.lastError}</pre>}
     <ScriptDiagnostics diagnostics={runtime.diagnostics} navigation={navigation} />
+    {runtime.levelState && <details className="rounded border border-slate-700 p-2">
+      <summary>Level state</summary>
+      <dl className="mt-2 space-y-1">{Object.entries(runtime.levelState).map(([key,value]) => <div key={key} className="flex flex-wrap justify-between gap-2 break-all"><dt>{key}</dt><dd>{value}</dd></div>)}</dl>
+    </details>}
+    {runtime.levelResources && <details className="rounded border border-slate-700 p-2">
+      <summary>Level resources</summary><ScriptObjectResourceDetails resources={runtime.levelResources} level />
+    </details>}
     <ScriptNativePerformance costs={snapshot.nativeCosts} />
     {queryObjects && <div className="space-y-2">
       <label className="flex items-center gap-2"><input type="checkbox" checked={request.scriptedOnly} onChange={(event) => { setSelection(""); setHistory([]); setRequest({ offset: 0, scriptedOnly: event.target.checked }); }} />Scripted objects only</label>

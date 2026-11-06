@@ -44,12 +44,17 @@ async function mount() {
   const options: LoaderOptions = { setLoadedData: vi.fn(), setLoading: vi.fn(), setSelectedShapeIndex: vi.fn(),
     setSelectedFrameIndex: vi.fn(), setSelectedTileIndex: vi.fn(), setCurrentTilesetScene: vi.fn(),
     setCurrentTilesetPaletteScene: vi.fn(), setCurrentPalette: vi.fn() };
-  let upload: ((file: File, type: FileType, palette?: File, current?: () => boolean) => Promise<void>) | undefined;
-  function Binding() { upload = useSpriteViewerLoaders(options).loadCustomFileUpload; return null; }
+  let loaders: ReturnType<typeof useSpriteViewerLoaders> | undefined;
+  function Binding() { loaders = useSpriteViewerLoaders(options); return null; }
   const container = document.createElement("div"); document.body.append(container);
   root = createRoot(container);
   await act(async () => root?.render(<Binding />));
-  return { options, upload: (file: File, type: FileType, current?: () => boolean) => upload?.(file, type, undefined, current) };
+  return { options,
+    upload: (file: File, type: FileType, current?: () => boolean, palette?: File) => loaders?.loadCustomFileUpload(file, type, palette, current),
+    loadSprites: (filename: string) => loaders?.loadSpritesFile(filename),
+    loadTileset: (filename: string) => loaders?.loadTilesetFile(filename),
+    cancel: () => loaders?.cancelUpload(),
+  };
 }
 
 it("does not restore sprite bytes or palette after a project expires during file reading", async () => {
@@ -104,4 +109,82 @@ it("does not commit sprite file completion after unmount", async () => {
   expect(options.setLoadedData).not.toHaveBeenCalled();
   expect(options.setCurrentPalette).not.toHaveBeenCalled();
   expect(options.setLoading).not.toHaveBeenCalled();
+});
+
+it("starts sprite and border requests together and discards both after cancellation", async () => {
+  const shape = deferred<Response>();
+  const border = deferred<Response>();
+  const fetcher = vi.fn((url: string) => url.endsWith(".shapes") ? shape.promise : border.promise);
+  vi.stubGlobal("fetch", fetcher);
+  const { options, loadSprites, cancel } = await mount();
+  const globalPalette = vi.spyOn(gMightyMikePalette, "loadPaletteFromRGBA");
+  const pending = loadSprites("old");
+  expect(fetcher.mock.calls).toEqual([
+    ["data/mightymike/shapes/old.shapes"],
+    ["assets/mightyMike/terrain/border.tga"],
+  ]);
+  cancel();
+  vi.mocked(options.setLoading).mockClear();
+  await act(async () => {
+    shape.resolve(new Response(new ArrayBuffer(1)));
+    border.resolve(new Response(paletteBytes()));
+    await pending;
+  });
+  expect(parseShapesFile).not.toHaveBeenCalled();
+  expect(options.setLoadedData).not.toHaveBeenCalled();
+  expect(globalPalette).not.toHaveBeenCalled();
+  expect(options.setLoading).not.toHaveBeenCalled();
+});
+
+it("starts tileset bytes while its palette is pending and ignores completion after unmount", async () => {
+  const bytes = deferred<Response>();
+  const palette = deferred<Response>();
+  const fetcher = vi.fn((url: string) => url.endsWith(".tileset") ? bytes.promise : palette.promise);
+  vi.stubGlobal("fetch", fetcher);
+  const { options, loadTileset } = await mount();
+  const globalPalette = vi.spyOn(gMightyMikePalette, "loadPaletteFromRGBA");
+  const pending = loadTileset("candy");
+  expect(fetcher.mock.calls).toEqual([
+    ["assets/mightyMike/terrain/border.tga"],
+    ["assets/mightyMike/terrain/candy.tileset"],
+  ]);
+  await act(async () => root?.unmount()); root = null;
+  vi.mocked(options.setLoading).mockClear();
+  await act(async () => {
+    palette.resolve(new Response(paletteBytes()));
+    bytes.resolve(new Response(new ArrayBuffer(1)));
+    await pending;
+  });
+  expect(options.setLoadedData).not.toHaveBeenCalled();
+  expect(globalPalette).not.toHaveBeenCalled();
+  expect(options.setLoading).not.toHaveBeenCalled();
+});
+
+it("commits sprite data and its border palette when the paired requests complete", async () => {
+  const border = deferred<Response>();
+  vi.stubGlobal("fetch", vi.fn((url: string) => url.endsWith(".shapes")
+    ? Promise.resolve(new Response(new ArrayBuffer(1))) : border.promise));
+  const { options, loadSprites } = await mount();
+  const pending = loadSprites("player");
+  expect(options.setLoadedData).not.toHaveBeenCalled();
+  await act(async () => { border.resolve(new Response(paletteBytes())); await pending; });
+  expect(options.setLoadedData).toHaveBeenCalledWith(expect.objectContaining({ type: "sprites", filename: "player" }));
+  expect(options.setCurrentPalette).toHaveBeenCalledOnce();
+  expect(options.setLoading).toHaveBeenLastCalledWith(false);
+});
+
+it("reads uploaded sprites and their companion palette concurrently", async () => {
+  const bytes = deferred<ArrayBuffer>();
+  const main = new AssetFile("custom.shapes", bytes.promise);
+  const palette = new AssetFile("palette.tga", Promise.resolve(paletteBytes()));
+  const readMain = vi.spyOn(main, "arrayBuffer");
+  const readPalette = vi.spyOn(palette, "arrayBuffer");
+  const { options, upload } = await mount();
+  const pending = upload(main, "sprites", undefined, palette);
+  expect(readMain).toHaveBeenCalledOnce();
+  expect(readPalette).toHaveBeenCalledOnce();
+  await act(async () => { bytes.resolve(new ArrayBuffer(1)); await pending; });
+  expect(options.setLoadedData).toHaveBeenCalledOnce();
+  expect(options.setCurrentPalette).toHaveBeenCalledOnce();
+  expect(options.setLoading).toHaveBeenLastCalledWith(false);
 });

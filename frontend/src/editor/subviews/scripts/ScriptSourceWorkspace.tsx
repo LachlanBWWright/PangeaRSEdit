@@ -12,6 +12,7 @@ import { ScriptLibraryTools } from "./ScriptLibraryTools";
 import { desktopBridge } from "@/platform/desktop/client";
 import { DesktopScriptSource } from "@/platform/desktop/DesktopScriptSource";
 import { ScriptModuleDependencies } from "./ScriptModuleDependencies";
+import { ScriptSourceScope } from "./ScriptSourceScope";
 
 export function ScriptSourceWorkspace({ workspace, update, onError, location }: {
   workspace: ScriptWorkspaceState; update: UpdateScriptWorkspace;
@@ -39,6 +40,7 @@ export function ScriptSourceWorkspace({ workspace, update, onError, location }: 
       <ScriptLibraryTools workspace={workspace} update={update} />
     </aside>
     <div className="grid content-start gap-5 min-w-0">
+      {active && <ScriptSourceScope workspace={workspace} path={active.path} update={update} />}
       {active ? desktopBridge() ? <DesktopScriptSource path={active.path} content={active.content} initialLine={activeLocation?.line} /> : <ScriptSourceEditor key={`${active.path}:${activeLocation?.line ?? 0}:${activeLocation?.column ?? 0}`} workspace={workspace} path={active.path} update={update} initialLine={activeLocation?.line} initialColumn={activeLocation?.column} /> : <p className="workbench-notice">Choose a source file from the list to edit it.</p>}
       {active && <ScriptModuleDependencies workspace={workspace} path={active.path} update={update} />}
       <details className="rounded-lg border border-slate-700 p-4"><summary className="cursor-pointer font-medium">Create branching dialogue</summary><div className="mt-4"><ScriptDialoguePanel gameId={workspace.context.gameId} onSave={(draft) => saveDialogueToWorkspace(workspace, draft, (next) => update(() => next), onError)} /></div></details>

@@ -13,6 +13,7 @@ interface Props {
   entries: readonly ObjectLibraryEntry[];
   selectedId: string | undefined;
   exportIds: readonly string[];
+  exportMode: boolean;
   search: string;
   onSearch: (value: string) => void;
   onSelect: (id: string) => void;
@@ -25,10 +26,10 @@ export function ObjectLibraryList(props: Props) {
       <Search size={15} className="absolute left-3 top-3 text-slate-400" />
       <Input aria-label="Search objects" placeholder="Find an object" className="pl-9" value={props.search} onChange={(event) => props.onSearch(event.target.value)} />
     </div>
-    <p className="workbench-muted mt-2 text-xs">Check objects to export a selection.</p>
+    {props.exportMode && <p className="workbench-muted mt-2 text-xs">Check objects to export a selection.</p>}
     <div className="object-library-list">{props.entries.map(({ definition, snapshot, readiness }) =>
       <div key={definition.id} className="flex items-start gap-1">
-        <input type="checkbox" className="mt-4 shrink-0" aria-label={`Select ${definition.label} for export`} checked={props.exportIds.includes(definition.id)} onChange={(event) => props.onToggleExport(definition.id, event.target.checked)} />
+        {props.exportMode && <input type="checkbox" className="mt-4 shrink-0" aria-label={`Select ${definition.label} for export`} checked={props.exportIds.includes(definition.id)} onChange={(event) => props.onToggleExport(definition.id, event.target.checked)} />}
         <button type="button" className="object-library-item min-w-0" aria-pressed={props.selectedId === definition.id} onClick={() => props.onSelect(definition.id)}>
           {snapshot ? <img src={snapshot} alt="" className="object-model-thumbnail" /> : <Box size={18} />}
           <span className="min-w-0">

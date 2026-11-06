@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { loadAssetSources, syncAssetSources } from "./assetSourceState";
 import { resetAssets } from "@/assets/assetState";
 import { useSetAtom } from "jotai";
 import { z } from "zod";
 import { assetInstallationSchema, hostInfoSchema, installationSchema, releaseManifestSchema, transferSchema, upstreamDataReleaseSchema, type GameId, type Installation, type ReleaseManifest, type UpstreamDataRelease } from "@pangea/desktop-contracts";
 import { toast } from "sonner";
+import type { Result } from "neverthrow";
+import type { HostError } from "@pangea/desktop-contracts";
 import { Button } from "@/components/ui/button";
 import { desktopBridge, desktopRequest } from "./client";
 import { DESKTOP_GAMES } from "./games";
@@ -12,7 +14,7 @@ import { installedEditorAssetsAtom, installedNativeGameDataAtom } from "./assetA
 import { GameDataSource } from "./GameDataSource";
 import { editorAssetGames, nativeDataGames } from "./editorAssetGames";
 
-export function GamesPage() {
+export function GamesPage({ previewGame }: { previewGame?: GameId }) {
   const setInstalledAssets = useSetAtom(installedEditorAssetsAtom);
   const setNativeData = useSetAtom(installedNativeGameDataAtom);
   const [installed, setInstalled] = useState<Installation[]>([]);
@@ -48,14 +50,19 @@ export function GamesPage() {
     syncAssetSources(assets, installed);
   }, [assets, installed, sourcesReady, setNativeData]);
 
-  async function checkReleases() {
+  const receiveReleases = useCallback((result: Result<ReleaseManifest[], HostError>) => {
     setCatalogError("");
-    const result = await desktopRequest({ operation: "games.catalog", prerelease }, z.array(releaseManifestSchema));
     if (result.isErr()) { setCatalogError(result.error.message); return; }
     setReleases(result.value);
     setSelected(result.value[0]?.tag ?? "");
     if (!result.value.length) setCatalogError("No complete compatible releases have been published yet. You can locate an existing compatible build.");
+  }, []);
+  function checkReleases() {
+    return desktopRequest({ operation: "games.catalog", prerelease }, z.array(releaseManifestSchema)).then(receiveReleases);
   }
+  useEffect(() => {
+    if (previewGame && bridge) void desktopRequest({ operation: "games.catalog", prerelease }, z.array(releaseManifestSchema)).then(receiveReleases);
+  }, [previewGame, bridge, prerelease, receiveReleases]);
   async function manage(game: GameId, operation: "games.install" | "games.locate" | "games.remove") {
     setBusy(game); setProgress("");
     const result = await desktopRequest(operation === "games.install" ? { operation, game, tag: selected, kind: "runtime" } : { operation, game }, z.array(installationSchema));
@@ -77,8 +84,8 @@ export function GamesPage() {
   }
 
   return <main className="mx-auto max-w-5xl p-6 text-white space-y-5">
-    <h1 className="text-2xl font-semibold">Games</h1>
-    <p className="text-slate-300">Install only the games you want. Downloads are verified, updates are explicit, and installed games work offline.</p>
+    <h1 className="text-2xl font-semibold">{previewGame ? "Set up game preview" : "Games"}</h1>
+    <p className="text-slate-300">{previewGame ? "Install or locate the playable game, then close this window and choose Preview in Game again. Downloading stock editor data alone does not install the playable game." : "Install only the games you want. Downloads are verified, updates are explicit, and installed games work offline."}</p>
     {bridge ? <>
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => void checkReleases()}>Check releases</Button>
@@ -88,7 +95,7 @@ export function GamesPage() {
       </div>
       {catalogError && <p role="status" className="text-amber-200">{catalogError}</p>}
       {dataError && <p role="alert" className="text-amber-200">{dataError} You can retry the download; installed data is retained.</p>}
-      <div className="grid gap-4 sm:grid-cols-2">{DESKTOP_GAMES.map((game) => {
+      <div className="grid gap-4 sm:grid-cols-2">{DESKTOP_GAMES.filter((game) => !previewGame || game.id === previewGame).map((game) => {
         const installation = installed.find((item) => item.game === game.id);
         const release = releases.find((item) => item.tag === selected);
         const runtime = release?.assets.find((asset) => asset.game === game.id && asset.kind === "runtime" && asset.platform === host?.platform && (asset.arch === host.arch || asset.arch === "universal"));

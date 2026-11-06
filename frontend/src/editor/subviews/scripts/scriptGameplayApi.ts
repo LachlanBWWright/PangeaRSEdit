@@ -1,5 +1,6 @@
 import type { ApiFunction } from "./scriptApiSchema";
 import { PLAYER_OPERATION_APIS, PLAYER_OPERATION_DECLARATIONS } from "./scriptPlayerOperations";
+import { OBJECT_SERVICE_APIS, OBJECT_SERVICE_DECLARATIONS } from "./scriptObjectServicesApi";
 
 const handle = { name: "handle", type: "objectHandle" } satisfies ApiFunction["parameters"][number];
 const player = { name: "playerNum", type: "number" } satisfies ApiFunction["parameters"][number];
@@ -22,6 +23,13 @@ function gameplayCommand(capability: string, validation: string[]): NonNullable<
 }
 
 export function gameplayParameterType(namespace: string, method: string, parameter: string): string | undefined {
+  if (namespace === "combat" && method === "apply" && parameter === "attribution") return "CombatAttribution";
+  if (namespace === "player" && method === "list" && parameter === "options") return "PlayerListOptions";
+  if (namespace === "spatial" && method === "findGround") return parameter === "options" ? "GroundPlacementOptions" : "Vector3[]";
+  if (namespace === "spatial" && method === "crossing" && parameter === "shape") return "CrossingShape";
+  if (namespace === "spawn" && method === "canSpawn" && parameter === "id") return "NativeSpawnId";
+  if (namespace === "spawn" && parameter === "options") return "SpawnOptions";
+  if (namespace === "resources" && parameter === "options") return "ResourceOptions";
   if (namespace === "world" && parameter === "bounds") return "WorldBounds";
   if (namespace === "object" && method === "attach" && parameter === "options") return "AttachmentOptions";
   if (namespace === "object" && parameter === "joint") return "integer";
@@ -31,6 +39,7 @@ export function gameplayParameterType(namespace: string, method: string, paramet
 }
 
 export const GAMEPLAY_APIS: ApiFunction[] = [
+  ...OBJECT_SERVICE_APIS,
   ...PLAYER_OPERATION_APIS,
   { name: "pangea.input.get", description: "Reads semantic gameplay input for a player; unavailable input returns nil. Call during the frame before object simulation.", parameters: [{ ...player, optional: true }], returnType: "GameplayInput|nil" },
   { name: "pangea.world.sampleTerrain", description: "Samples native terrain height, normal and optional water height at world x/z without moving an actor.", parameters: [{ name: "x", type: "number" }, { name: "z", type: "number" }], returnType: "TerrainSample|nil" },
@@ -54,9 +63,11 @@ export const GAMEPLAY_APIS: ApiFunction[] = [
   ...objectMutation("setScriptControlled", { name: "enabled", type: "boolean" }, "boolean controller ownership"),
   ...objectMutation("setHealth", { name: "health", type: "number" }, "finite nonnegative health"),
   ...objectMutation("setDamage", { name: "damage", type: "number" }, "finite nonnegative damage"),
+  ...[false, true].map((result): ApiFunction => ({ name: `pangea.object.setOpacity${result ? "Result" : ""}`, description: "Sets rendering opacity from 0 (transparent) to 1 (opaque), without changing collision or controller ownership. Supported by the seven 3D adapters; Mighty Mike rejects the operation.", parameters: [handle, { name: "opacity", type: "number" }], returnType: result ? "ObjectCommandResult" : "boolean", command: gameplayCommand("object-opacity", ["generation-checked handle", "finite opacity in range 0..1", "adapter opacity support"]) })),
 ];
 
 export const GAMEPLAY_DECLARATIONS: readonly string[] = [
+  ...OBJECT_SERVICE_DECLARATIONS,
   ...PLAYER_OPERATION_DECLARATIONS,
   "---@class GameplayCapabilities",
   "---@field input boolean",
@@ -78,6 +89,9 @@ export const GAMEPLAY_DECLARATIONS: readonly string[] = [
   "---@class KinematicResult : CommandResult",
   "---@field position Vector3|nil",
   "---@field contacts CollisionHit[]",
+  "---@field appliedDelta Vector3|nil",
+  "---@field completed boolean|nil Whether the requested displacement was fully applied.",
+  "---@field blocked boolean|nil A successful query can still be blocked.",
   "---@class GameplayStateField",
   "---@field key string",
   '---@field type "number"|"boolean"',

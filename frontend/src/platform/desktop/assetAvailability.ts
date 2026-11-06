@@ -8,6 +8,11 @@ import { useAssetState } from "@/assets/useAssetState";
 export const installedEditorAssetsAtom = atom<readonly GameId[]>([]);
 export const installedNativeGameDataAtom = atom<readonly GameId[]>([]);
 export const desktopGamesOpenAtom = atom(false);
+export const desktopPreviewGameSetupAtom = atom<GameId | null>(null);
+export const openPreviewGameSetupAtom = atom(null, (_get, set, game: GameId) => {
+  set(desktopPreviewGameSetupAtom, game);
+  set(desktopGamesOpenAtom, true);
+});
 
 export function useAvailableGameAssets() {
   useAssetState();

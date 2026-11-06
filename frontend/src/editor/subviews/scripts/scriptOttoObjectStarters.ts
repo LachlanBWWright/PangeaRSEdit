@@ -1,4 +1,6 @@
 import type { ScriptBehaviorDefinition, ScriptCustomObjectDefinition } from "./scriptWorkspaceStateTypes";
+import spawner from "./scriptOttoSpawner.lua?raw";
+import actorArrival from "./scriptActorArrival.lua?raw";
 
 const prelude = `local pangea = require("pangea")
 local object = {}
@@ -126,6 +128,7 @@ function starter(id: string, label: string, description: string, template: strin
 }
 
 export const OTTO_OBJECT_STARTERS: readonly ScriptBehaviorDefinition[] = [
+  starter("spawner", "Brain Alien spawner", "A destructible port whose aliens fade in and walk out before native AI takes over. Set a finite total or keep spawning, with a separate living limit.", `local pangea = require("pangea")\n${actorArrival}\n${spawner}`),
   starter("enemy", "Enemy", "Chases the player across terrain, takes weapon damage and deals contact damage. Choose its appearance separately.", enemy),
   starter("pickup", "Pickup", "Gives health, fuel or score once when the player touches it.", pickup),
   starter("trigger", "Trigger", "Emits a custom.trigger event or completes the level when entered.", trigger),
@@ -134,6 +137,18 @@ export const OTTO_OBJECT_STARTERS: readonly ScriptBehaviorDefinition[] = [
 
 type Defaults = Pick<ScriptCustomObjectDefinition, "collision" | "parameterDefinitions">;
 export function ottoStarterDefaults(id: string): Defaults | undefined {
+  if (id === "otto.custom.spawner") return {
+    collision: { kind: "preset", preset: "enemy", bounds: { width: 240, height: 400, depth: 240 } },
+    parameterDefinitions: [
+      { kind: "number", id: "health", label: "Port health", defaultValue: 2, min: 0.1, max: 100, step: 0.1 },
+      { kind: "number", id: "arrivalDuration", label: "Arrival time (seconds)", defaultValue: 1.2, min: 0.1, max: 10, step: 0.1 },
+      { kind: "number", id: "spawnInterval", label: "Spawn interval (seconds)", defaultValue: 0.4, min: 0.1, max: 600, step: 0.1 },
+      { kind: "number", id: "quota", label: "Total aliens", description: "0 keeps replenishing aliens; a positive number limits the total spawned during this encounter.", defaultValue: 0, min: 0, max: 1000, step: 1 },
+      { kind: "number", id: "maxAlive", label: "Maximum living aliens", defaultValue: 3, min: 1, max: 1000, step: 1 },
+      { kind: "number", id: "spawnRange", label: "Spawn range", description: "Only spawn while a living player is this close. The port itself stays in the level.", defaultValue: 2500, min: 100, max: 20000, step: 100 },
+      { kind: "enum", id: "checkpointPolicy", label: "Checkpoint reset", defaultValue: "preserve", options: [{ value: "preserve", label: "Preserve encounter progress" }, { value: "restart", label: "Restart encounter and remove aliens" }] },
+    ],
+  };
   if (id === "otto.custom.enemy") return {
     collision: { kind: "preset", preset: "enemy", bounds: { width: 100, height: 150, depth: 100 } },
     parameterDefinitions: [

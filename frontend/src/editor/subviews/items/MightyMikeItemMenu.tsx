@@ -49,6 +49,7 @@ import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 import { CustomObjectToPlaceAtom, SelectedCustomPlacementAtom } from "../scripts/scriptPlacementSelectionState";
 import { ParameterField } from "./ParameterField";
 import { itemParameterFields } from "./itemParameterFields";
+import { ItemPlacementPicker } from "./ItemPlacementPicker";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -98,7 +99,6 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             )}
           </Toggle>
           <AddItemMenu hasItems={itemCount > 0} />
-          {ENABLE_SCRIPTS && <CustomObjectItemPicker />}
         </>
       ) : (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-2 gap-y-1 text-sm">
@@ -241,47 +241,10 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     return getMightyMikeItemValues(globals);
   }, [globals]);
 
-  if (clickToAddItem !== undefined)
-    return (
-      <>
-        <Select
-          value={clickToAddItem.toString()}
-          onValueChange={(e) => {
-            const newItemType = parseInt(e);
-            setClickToAddItem(newItemType);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select an item" />
-          </SelectTrigger>
-          <SelectContent>
-            {itemValues.map((key) => (
-              <SelectItem
-                key={key}
-                className="text-white"
-                value={key.toString()}
-              >
-                <MightyMikeItemSelectLabel
-                  itemType={key}
-                  scene={currentScene}
-                />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <p className="text-sm">Click on the Canvas to add the selected item</p>
-        <Button
-          variant="destructive"
-          onClick={() => setClickToAddItem(undefined)}
-        >
-          Stop Adding Items
-        </Button>
-      </>
-    );
-
   return (
-    ENABLE_SCRIPTS && customToPlace !== null ? null : <EmptyDataPrompt
+    <>
+    <ItemPlacementPicker itemValues={itemValues} renderNativeItem={(itemType) => <MightyMikeItemSelectLabel itemType={itemType} scene={currentScene} />} />
+    {clickToAddItem === undefined && (!ENABLE_SCRIPTS || customToPlace === null) && <EmptyDataPrompt
       title={hasItems ? "No Item Selected" : "No Items"}
       description={
         hasItems
@@ -291,7 +254,8 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
       buttonText={hasItems ? "Add More Items" : "Add First Item"}
       onInitialize={() => setClickToAddItem(0)}
       fillHeight
-    />
+    />}
+    </>
   );
 }
 

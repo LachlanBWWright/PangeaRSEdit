@@ -11,6 +11,7 @@ const itemModelMappingPreviewDefault =
   import.meta.env.VITE_ITEM_MODEL_MAPPING_PREVIEW_ENABLED === "true";
 const scriptItemDemoLevelsDefault =
   import.meta.env.VITE_SCRIPT_ITEM_DEMO_LEVELS_ENABLED === "true";
+const sampleScriptingLevelsDefault = import.meta.env.VITE_SAMPLE_SCRIPTING_LEVELS_ENABLED === "true";
 const levelValidationDefault =
   import.meta.env.VITE_LEVEL_VALIDATION_ENABLED === "true";
 const levelOutputCacheDefault =
@@ -24,6 +25,7 @@ export const featureFlagsSchema = z.object({
   scripting: z.boolean().default(scriptingDefault),
   itemModelMappingPreview: z.boolean().default(itemModelMappingPreviewDefault),
   scriptItemDemoLevels: z.boolean().default(scriptItemDemoLevelsDefault),
+  sampleScriptingLevels: z.boolean().default(sampleScriptingLevelsDefault),
   levelValidation: z.boolean().default(levelValidationDefault),
   levelOutputCache: z.boolean().default(levelOutputCacheDefault),
   levelMetadata: z.boolean().default(levelMetadataDefault),
@@ -37,6 +39,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   scripting: scriptingDefault,
   itemModelMappingPreview: itemModelMappingPreviewDefault,
   scriptItemDemoLevels: scriptItemDemoLevelsDefault,
+  sampleScriptingLevels: sampleScriptingLevelsDefault,
   levelValidation: levelValidationDefault,
   levelOutputCache: levelOutputCacheDefault,
   levelMetadata: levelMetadataDefault,

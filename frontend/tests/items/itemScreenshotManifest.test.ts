@@ -3,10 +3,34 @@ import { Game } from "@/data/globals/globals";
 import {
   buildItemScreenshotVariantKey,
   findBestItemScreenshot,
+  getItemScreenshotManifest,
   parseItemScreenshotManifest,
 } from "@/data/items/itemScreenshotManifest";
 
 describe("itemScreenshotManifest", () => {
+  it("validates the bundled manifest once and shares its result across thumbnail renders", () => {
+    const first = getItemScreenshotManifest();
+    expect(first.isOk()).toBe(true);
+    expect(getItemScreenshotManifest()).toBe(first);
+  });
+
+  it("keeps manifests isolated and preserves first-match precedence for duplicate keys", () => {
+    const bundled = getItemScreenshotManifest();
+    if (bundled.isErr()) return;
+    const entry = bundled.value[0];
+    expect(entry).toBeDefined();
+    if (!entry) return;
+    const first = { ...entry, variantKey: "default", imageUrl: "/first.png" };
+    const second = { ...first, imageUrl: "/second.png" };
+    const manifest = [first, second];
+    const query = { game: entry.game, kind: entry.kind, itemType: entry.itemType };
+    expect(findBestItemScreenshot(manifest, query)).toBe(first);
+    expect(findBestItemScreenshot([second], query)).toBe(second);
+    expect(findBestItemScreenshot(manifest, query)).toBe(first);
+    expect(findBestItemScreenshot([], query)).toBeNull();
+    expect(findBestItemScreenshot(manifest, { ...query, itemType: -1 })).toBeNull();
+  });
+
   it("builds deterministic exact variant keys", () => {
     expect(
       buildItemScreenshotVariantKey({

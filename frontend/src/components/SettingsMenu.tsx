@@ -148,6 +148,17 @@ export function SettingsMenu() {
           </span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
+          checked={featureFlags.sampleScriptingLevels}
+          onCheckedChange={(sampleScriptingLevels) => saveFeatureFlags({ ...featureFlags, sampleScriptingLevels })}
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <WandSparkles className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+          <span><span className="block font-medium">Sample scripting levels</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">Show playable level variants with Lua examples. Opening a sample enables scripting.</span>
+          </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
           checked={featureFlags.levelMetadata}
           onCheckedChange={(levelMetadata) =>
             saveFeatureFlags({ ...featureFlags, levelMetadata })

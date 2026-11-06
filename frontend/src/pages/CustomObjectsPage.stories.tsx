@@ -69,12 +69,18 @@ export const AutomaticModelPreview: Story = {
     await userEvent.click(within(dialog).getByRole("button", { name: "Create object" }));
     await userEvent.click(canvas.getByRole("combobox", { name: "Appearance" }));
     await userEvent.click(within(document.body).getByRole("option", { name: "Game model" }));
-    await userEvent.click(canvas.getByRole("combobox", { name: "Game model" }));
-    await userEvent.click(within(document.body).getByRole("option", { name: "Checkpoint" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Change model" }));
+    let chooser = within(await within(document.body).findByRole("dialog"));
+    await userEvent.click(await chooser.findByRole("button", { name: "Next models" }));
+    await userEvent.click(chooser.getByRole("button", { name: "Next models" }));
+    await userEvent.click(chooser.getByRole("button", { name: "Select Checkpoint" }));
+    await userEvent.click(chooser.getByRole("button", { name: "Use Checkpoint" }));
     await waitFor(() => expect(canvasElement.querySelector(".object-model-thumbnail"), canvasElement.textContent ?? "Object library").not.toBeNull(), { timeout: 8_000 });
     const firstSnapshot = canvasElement.querySelector(".object-model-thumbnail")?.getAttribute("src");
-    await userEvent.click(canvas.getByRole("combobox", { name: "Game model" }));
-    await userEvent.click(within(document.body).getByRole("option", { name: "Exit Rocket" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Change model" }));
+    chooser = within(await within(document.body).findByRole("dialog"));
+    await userEvent.click(await chooser.findByRole("button", { name: "Select Exit Rocket" }));
+    await userEvent.click(chooser.getByRole("button", { name: "Use Exit Rocket" }));
     await waitFor(() => {
       const thumbnail = canvasElement.querySelector(".object-model-thumbnail");
       expect(thumbnail).toHaveProperty("naturalWidth", 96);
@@ -85,7 +91,7 @@ export const AutomaticModelPreview: Story = {
     await userEvent.click(canvas.getByRole("radio", { name: /Trigger An overlap/ }));
     expect(canvas.getByRole("region", { name: "Collision bounds preview" })).toBeVisible();
     expect(canvas.getByRole("img", { name: /Front.*100 by 100/ })).toBeVisible();
-    await waitFor(() => expect(canvas.getByLabelText("Game model preview").querySelector("canvas")).toBeVisible());
+    await waitFor(() => expect(canvas.getByLabelText("Uploaded model collision preview").querySelector("canvas")).toBeVisible());
   },
 };
 
@@ -95,8 +101,9 @@ export const NanosaurDefinitions: Story = {
     const canvas = within(canvasElement);
     expect(canvas.getByLabelText("Object name")).toHaveValue("Hover Beacon");
     await userEvent.click(canvas.getByRole("combobox", { name: "Appearance" }));
-    await userEvent.click(within(document.body).getByRole("option", { name: "Uploaded 3DMF model" }));
+    await userEvent.click(within(document.body).getByRole("option", { name: "Uploaded model" }));
     expect(canvas.getByLabelText("Upload model").getAttribute("accept")).toBe(".3dmf");
+    await userEvent.click(canvas.getByText("Asset files"));
     expect(canvas.getByText(/Needed: Data\/Scripts\/assets\/models\/custom.3dmf/)).toBeVisible();
   },
 };
@@ -104,6 +111,20 @@ export const NanosaurDefinitions: Story = {
 export const NarrowLibrary: Story = {
   args: { populated: true },
   parameters: { viewport: { defaultViewport: "phone" } },
+};
+
+export const FullHeightLibrary: Story = {
+  render: () => <div className="flex h-[1100px] min-h-0 flex-col bg-gray-900"><CustomObjectsPageStory /></div>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const sidebar = canvas.getByRole("complementary", { name: "Object library" });
+    const page = canvas.getByRole("main");
+    await expect(sidebar).toBeVisible();
+    await expect(page.getBoundingClientRect().height).toBeGreaterThan(1000);
+    const workspace = sidebar.parentElement;
+    expect(workspace).not.toBeNull();
+    if (workspace) await expect(Math.abs(sidebar.getBoundingClientRect().bottom - workspace.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
+  },
 };
 
 export const DuplicateAndReviewImport: Story = {
@@ -122,11 +143,18 @@ export const DuplicateAndReviewImport: Story = {
     await waitFor(() => expect(dialog.getByText("No conflicting records found.")).toBeVisible());
     await userEvent.click(dialog.getByRole("button", { name: "Import objects" }));
     await waitFor(() => expect(canvas.getByLabelText("Object name")).toHaveValue("Pack lantern"));
+    await userEvent.click(canvas.getByText(/^Status:/));
     expect(canvas.getByText("Not validated", { exact: true })).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "Duplicate object" }));
     await waitFor(() => expect(canvas.getByLabelText("Object name")).toHaveValue("Pack lantern copy"));
+    expect(canvas.queryByRole("checkbox", { name: "Select Pack lantern copy for export" })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Export objects" }));
     await userEvent.click(canvas.getByRole("checkbox", { name: "Select Pack lantern copy for export" }));
     expect(canvas.getByRole("button", { name: "Export selected (1)" })).toBeEnabled();
+    await userEvent.click(canvas.getByRole("button", { name: "Done selecting" }));
+    expect(canvas.queryByRole("checkbox", { name: "Select Pack lantern copy for export" })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Export objects" }));
+    expect(canvas.getByRole("checkbox", { name: "Select Pack lantern copy for export" })).toBeChecked();
     const updated = buildScriptDefinitionBundle({ ...created.value.state,
       customObjects: created.value.state.customObjects.map((object) => ({ ...object, label: "Updated lantern" })),
     });

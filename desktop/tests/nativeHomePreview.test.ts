@@ -9,6 +9,29 @@ import type { GameId } from "@pangea/desktop-contracts";
 const temporary: string[] = [];
 afterEach(async () => { await Promise.all(temporary.splice(0).map((root) => fs.rm(root, { recursive: true, force: true }))); });
 
+it("uses Bugdom's DoodleBug player for the home card", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "pangea-bugdom-player-"));
+  temporary.push(root);
+  const dataRoot = path.join(root, "Data");
+  await fs.mkdir(path.join(dataRoot, "Skeletons"), { recursive: true });
+  const source = path.resolve("../games/pangea-ports/games/Bugdom-android/Data/Skeletons");
+  for (const name of ["DoodleBug.3dmf", "DoodleBug.skeleton.rsrc"]) {
+    await fs.copyFile(path.join(source, name), path.join(dataRoot, "Skeletons", name));
+  }
+  const assets = new EditorAssets(root);
+  expect((await assets.register("Bugdom", "original", root, {
+    source: "upstream", dataRoot, releaseUrl: "https://example.com/original.zip",
+  })).isOk()).toBe(true);
+  const preview = await assets.resolve("glbModels/Bugdom1.glb");
+  expect(preview).not.toBeNull();
+  if (!preview) return;
+  const decoded = await readGltf(preview);
+  expect(decoded.isOk()).toBe(true);
+  if (decoded.isErr()) return;
+  expect(decoded.value.getRoot().listMeshes().length).toBeGreaterThan(0);
+  expect(decoded.value.getRoot().listAnimations().length).toBeGreaterThan(0);
+}, 60_000);
+
 it("derives and caches an animated home preview from downloaded Otto stock data", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "pangea-native-preview-"));
   temporary.push(root);

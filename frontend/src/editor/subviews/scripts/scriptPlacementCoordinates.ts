@@ -14,5 +14,6 @@ const gameGlobals: Readonly<Record<string, GlobalsInterface>> = {
 export function placementWorldPosition(gameId: string, position: { x: number; y: number; z: number }) {
   const globals = gameGlobals[gameId];
   const scale = globals ? globals.TILE_INGAME_SIZE / globals.TILE_SIZE : 1;
+  if (gameId === "MightyMike-Android") return { x: position.x * scale, y: position.z * scale, z: position.y };
   return { x: position.x * scale, y: position.y, z: position.z * scale };
 }

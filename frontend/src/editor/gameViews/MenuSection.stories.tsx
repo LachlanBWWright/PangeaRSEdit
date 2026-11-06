@@ -60,6 +60,7 @@ export const ScriptingWorkflow: Story = {
       expect(canvas.getByRole("button", { name: "Restore native item" })).toBeVisible();
     }
     await userEvent.click(canvas.getByRole("button", { name: "Lua source" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Show API reference" }));
     expect(canvas.getByRole("region", { name: "Lua API reference" })).toBeVisible();
     await userEvent.type(canvas.getByLabelText("New helper module"), "workflow");
     await userEvent.click(canvas.getByRole("button", { name: "Add file" }));

@@ -13,7 +13,7 @@ import { ItemMenu } from "./ItemMenu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getFeatureFlags, setFeatureFlags } from "@/config/featureFlags";
 import { createScriptWorkspaceContext, ensureScriptWorkspace, loadScriptSample, replaceScriptWorkspace, scriptWorkspaceStoreAtom } from "../scripts/scriptWorkspaceState";
-import { SelectedCustomPlacementAtom } from "../scripts/scriptPlacementSelectionState";
+import { CustomObjectToPlaceAtom, SelectedCustomPlacementAtom } from "../scripts/scriptPlacementSelectionState";
 import { ClickToAddItem } from "@/data/items/itemAtoms";
 import type { HeaderData, ItemData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -85,11 +85,38 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const SwitchItemKinds: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const picker = await canvas.findByRole("combobox", { name: "Item" }, { timeout: 30000 });
+    await userEvent.click(picker);
+    const nativeOption = within(document.body).getAllByRole("option")[0];
+    if (!nativeOption) return;
+    await userEvent.click(nativeOption);
+    expect(storyStore.get(ClickToAddItem)).toBeDefined();
+    expect(storyStore.get(CustomObjectToPlaceAtom)).toBeNull();
+    await userEvent.click(picker);
+    await userEvent.click(within(document.body).getByRole("option", { name: /Hover Beacon/i }));
+    expect(storyStore.get(ClickToAddItem)).toBeUndefined();
+    expect(storyStore.get(CustomObjectToPlaceAtom)).toBe("sample.hoverBeacon");
+    await userEvent.click(picker);
+    const nextNativeOption = within(document.body).getAllByRole("option")[0];
+    if (!nextNativeOption) return;
+    await userEvent.click(nextNativeOption);
+    expect(storyStore.get(ClickToAddItem)).toBeDefined();
+    expect(storyStore.get(CustomObjectToPlaceAtom)).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Stop Adding Items" }));
+    expect(storyStore.get(ClickToAddItem)).toBeUndefined();
+    expect(storyStore.get(CustomObjectToPlaceAtom)).toBeNull();
+    expect(canvas.getAllByRole("combobox")).toHaveLength(1);
+  },
+};
+
 export const PlaceSelectEditDelete: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getByRole("combobox", { name: "Custom item" })).toBeVisible(), { timeout: 30000 });
-    await userEvent.click(canvas.getByRole("combobox", { name: "Custom item" }));
+    await waitFor(() => expect(canvas.getByRole("combobox", { name: "Item" })).toBeVisible(), { timeout: 30000 });
+    await userEvent.click(canvas.getByRole("combobox", { name: "Item" }));
     await userEvent.click(within(document.body).getByRole("option", { name: /Hover Beacon/i }));
     expect(storyStore.get(ClickToAddItem)).toBeUndefined();
     const mapCanvas = canvasElement.querySelector("canvas");
@@ -107,6 +134,14 @@ export const PlaceSelectEditDelete: Story = {
     await userEvent.clear(x);
     await userEvent.type(x, "400");
     expect(placements()[0]?.position.x).toBe(400);
+    await userEvent.click(canvas.getByRole("combobox", { name: "Activation" }));
+    await userEvent.click(within(document.body).getByRole("option", { name: "Near a player" }));
+    const radius = canvas.getByRole("spinbutton", { name: "Activation radius (world units)" });
+    await userEvent.clear(radius);
+    await userEvent.type(radius, "4500");
+    await userEvent.tab();
+    expect(placements()[0]?.activation).toEqual({ kind: "near-player", radius: 4500 });
+    expect(placements()[1]?.activation).toBeUndefined();
     await userEvent.click(canvas.getByRole("button", { name: "Delete Item" }));
     await waitFor(() => expect(placements()).toHaveLength(1));
     expect(storyStore.get(SelectedCustomPlacementAtom)).toBeNull();
@@ -116,8 +151,8 @@ export const PlaceSelectEditDelete: Story = {
 export const DragLikeNativeItems: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getByRole("combobox", { name: "Custom item" })).toBeVisible(), { timeout: 30000 });
-    await userEvent.click(canvas.getByRole("combobox", { name: "Custom item" }));
+    await waitFor(() => expect(canvas.getByRole("combobox", { name: "Item" })).toBeVisible(), { timeout: 30000 });
+    await userEvent.click(canvas.getByRole("combobox", { name: "Item" }));
     await userEvent.click(within(document.body).getByRole("option", { name: /Hover Beacon/i }));
     const mapCanvas = canvasElement.querySelector("canvas");
     expect(mapCanvas).not.toBeNull();
@@ -157,9 +192,9 @@ export const PlaceFromObjectLibrary: Story = {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole("button", { name: "Place in level" })).toBeVisible(), { timeout: 30000 });
     await userEvent.click(canvas.getByRole("button", { name: "Place in level" }));
-    await waitFor(() => expect(canvas.getByRole("combobox", { name: "Custom item" })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole("combobox", { name: "Item" })).toBeVisible());
     expect(storyStore.get(ActiveView)).toBe(View.items);
-    expect(canvas.getByRole("combobox", { name: "Custom item" })).toHaveTextContent("Hover Beacon");
+    expect(canvas.getByRole("combobox", { name: "Item" })).toHaveTextContent("Hover Beacon");
     const mapCanvas = canvasElement.querySelector("canvas");
     expect(mapCanvas).not.toBeNull();
     if (!mapCanvas) return;
@@ -175,7 +210,7 @@ export const PlaceWithoutNativeItemList: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole("button", { name: "Add Item List" })).toBeVisible(), { timeout: 30000 });
-    await userEvent.click(canvas.getByRole("combobox", { name: "Custom item" }));
+    await userEvent.click(canvas.getByRole("combobox", { name: "Item" }));
     await userEvent.click(within(document.body).getByRole("option", { name: /Hover Beacon/i }));
     expect(canvas.queryByRole("button", { name: "Add Item List" })).toBeNull();
     const mapCanvas = canvasElement.querySelector("canvas");

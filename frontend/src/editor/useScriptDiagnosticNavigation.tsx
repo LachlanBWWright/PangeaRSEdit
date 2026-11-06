@@ -3,7 +3,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { toast } from "sonner";
 import type { ScriptInspectorSnapshot } from "@pangea/desktop-contracts";
 import { Globals, type Game } from "@/data/globals/globals";
-import { LevelNumber } from "@/data/globals/levelNumber";
+import { scriptLevelNumberAtom } from "./subviews/scripts/scriptLevelNumber";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { desktopBridge } from "@/platform/desktop/client";
 import { desktopProjectAtom } from "@/platform/desktop/projectState";
@@ -19,7 +19,7 @@ export interface ScriptNavigationContext { game?: Game; unavailable?: string; pl
 
 export function useScriptDiagnosticNavigation(snapshot: ScriptInspectorSnapshot | null, context: ScriptNavigationContext) {
   const globals = useAtomValue(Globals);
-  const level = useAtomValue(LevelNumber) ?? null;
+  const level = useAtomValue(scriptLevelNumberAtom) ?? null;
   const workspaceContext = useMemo(() => createScriptWorkspaceContext(globals, level), [globals, level]);
   const { workspace, update } = useScriptWorkspace(workspaceContext);
   const project = useAtomValue(desktopProjectAtom);

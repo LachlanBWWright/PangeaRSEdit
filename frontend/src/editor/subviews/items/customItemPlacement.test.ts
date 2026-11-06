@@ -25,7 +25,9 @@ describe.each(games)("$GAME_NAME shared native/custom placement", (globals) => {
     expect(items.Itms[1000].obj[count]).toEqual({ x: 37, z: 91, type: 3, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 });
     const context = createScriptWorkspaceContext(globals, 0);
     expect(placementWorldPosition(context.gameId, { x: globals.TILE_SIZE, y: 42, z: globals.TILE_SIZE * 2 }))
-      .toEqual({ x: globals.TILE_INGAME_SIZE, y: 42, z: globals.TILE_INGAME_SIZE * 2 });
+      .toEqual(context.gameId === "MightyMike-Android"
+        ? { x: globals.TILE_INGAME_SIZE, y: globals.TILE_INGAME_SIZE * 2, z: 42 }
+        : { x: globals.TILE_INGAME_SIZE, y: 42, z: globals.TILE_INGAME_SIZE * 2 });
   });
 });
 

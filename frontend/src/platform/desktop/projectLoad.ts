@@ -11,6 +11,7 @@ import { splitLevelData } from "@/data/utils/levelDataUtils";
 import { parseNanosaurTerrainWithWorker } from "@/data/level-io/nanosaurTerrainWorkerClient";
 import { imagePayloadsToCanvases } from "@/data/level-io/terrainImageSnapshots";
 import { createScriptWorkspaceContext, ensureScriptWorkspace } from "@/editor/subviews/scripts/scriptWorkspaceState";
+import { nativeLevelNumber } from "@/editor/utils/previewLevelNumbers";
 import { DataType } from "@/data/globals/globals";
 import { Result as BoundaryResult } from "neverthrow";
 import { compileScriptWorkspace, scriptLevelStateSchema } from "@/editor/subviews/scripts/scriptWorkspaceState";
@@ -35,7 +36,7 @@ export async function loadProjectLevel(project: ProjectSnapshot, level: ProjectL
   if (!game) return err("Unknown project game");
   const files = recovered ? ok(recovered) : await readProjectFiles(project, project.files.filter((file) => file.path.startsWith("Data/Scripts/") || level.files.includes(file.path)).map((file) => file.path));
   if (files.isErr()) return err("Could not read project level files");
-  const scripts = await loadProjectScripts(files.value, createScriptWorkspaceContext(game.globals, level.baseLevel));
+  const scripts = await loadProjectScripts(files.value, createScriptWorkspaceContext(game.globals, nativeLevelNumber(game.globals.GAME_TYPE, level.baseLevel)));
   if (scripts.isErr()) return err(scripts.error);
   const bindingFile = files.value.find((file) => file.path === `.pangea/levels/${level.id}/bindings.json`);
   let workspace = scripts.value;

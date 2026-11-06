@@ -9,6 +9,7 @@ import { APP_ORIGIN, registerRendererProtocol } from "./protocol.ts";
 import { ProjectWatcher } from "./projectWatcher.ts";
 import { PackStore } from "./packStore.ts";
 import { readBlenderExecutable } from "./assetRequests.ts";
+import { Result } from "neverthrow";
 
 protocol.registerSchemesAsPrivileged([{ scheme: "pangea", privileges: {
   standard: true, secure: true, supportFetchAPI: true, stream: true,
@@ -17,6 +18,8 @@ protocol.registerSchemesAsPrivileged([{ scheme: "pangea", privileges: {
 let window: BrowserWindow | null = null;
 let dirty = false;
 let closing = false;
+let closeDialogPending = false;
+let quitRequested = false;
 
 async function start() {
   const ready = await io(() => app.whenReady(), "Electron could not start");
@@ -91,16 +94,41 @@ function createWindow() {
   });
   created.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   created.webContents.on("will-navigate", (event, url) => { if (!url.startsWith(`${APP_ORIGIN}/`)) event.preventDefault(); });
+  created.webContents.on("will-prevent-unload", (event) => {
+    if (!closing) {
+      // Electron suppresses the browser confirmation; this event needs a synchronous decision.
+      const answer = Result.fromThrowable(() => dialog.showMessageBoxSync(created, {
+        type: "warning", buttons: ["Keep editing", "Close without saving"],
+        defaultId: 0, cancelId: 0, noLink: true,
+        message: "Close the editor without saving?",
+        detail: "A level is open and may have unsaved changes. Save your work before closing to keep your edits.",
+      }), () => failure("Cannot show close dialog"))();
+      closing = answer.isOk() && answer.value === 1;
+      if (!closing) quitRequested = false;
+    }
+    // Preventing this Electron event permits the unload the renderer blocked.
+    if (closing) event.preventDefault();
+  });
   created.on("close", (event) => {
     if (!dirty || closing) return;
     event.preventDefault();
+    if (closeDialogPending) return;
+    closeDialogPending = true;
     void io(() => dialog.showMessageBox(created, { type: "warning", buttons: ["Keep editing", "Close without saving"],
       defaultId: 0, cancelId: 0, message: "Project has unsaved changes", detail: "Recent recovery snapshots are retained. Use Save All to save project files." }), "Cannot show close dialog")
-      .map((answer) => { if (answer.response === 1) { closing = true; created.close(); } });
+      .then((answer) => {
+        closeDialogPending = false;
+        if (answer.isErr() || answer.value.response !== 1) { quitRequested = false; return; }
+        if (created.isDestroyed()) return;
+        closing = true;
+        if (quitRequested) app.quit();
+        else created.close();
+      });
   });
-  created.on("closed", () => { window = null; dirty = false; closing = false; });
+  created.on("closed", () => { window = null; dirty = false; closing = false; closeDialogPending = false; });
   void io(() => created.loadURL(`${APP_ORIGIN}/index.html`), "Cannot load editor").mapErr((error) => { console.error(error.message); return error; });
 }
 
+app.on("before-quit", () => { quitRequested = true; });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 void start();
