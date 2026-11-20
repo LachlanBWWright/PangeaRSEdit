@@ -7,6 +7,7 @@ const multiplayerDefault = import.meta.env.VITE_MULTIPLAYER_ENABLED === "true";
 const multiplayerDebugDefault =
   import.meta.env.VITE_MULTIPLAYER_DEBUG_ENABLED === "true";
 const scriptingDefault = import.meta.env.VITE_SCRIPTING_ENABLED === "true";
+const luaEngineDefault = import.meta.env.VITE_LUA_ENGINE_ENABLED === "true";
 const itemModelMappingPreviewDefault =
   import.meta.env.VITE_ITEM_MODEL_MAPPING_PREVIEW_ENABLED === "true";
 const scriptItemDemoLevelsDefault =
@@ -23,6 +24,7 @@ export const featureFlagsSchema = z.object({
   multiplayer: z.boolean().default(multiplayerDefault),
   multiplayerDebug: z.boolean().default(multiplayerDebugDefault),
   scripting: z.boolean().default(scriptingDefault),
+  luaEngine: z.boolean().default(luaEngineDefault),
   itemModelMappingPreview: z.boolean().default(itemModelMappingPreviewDefault),
   scriptItemDemoLevels: z.boolean().default(scriptItemDemoLevelsDefault),
   sampleScriptingLevels: z.boolean().default(sampleScriptingLevelsDefault),
@@ -37,6 +39,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   multiplayer: multiplayerDefault,
   multiplayerDebug: multiplayerDebugDefault,
   scripting: scriptingDefault,
+  luaEngine: luaEngineDefault,
   itemModelMappingPreview: itemModelMappingPreviewDefault,
   scriptItemDemoLevels: scriptItemDemoLevelsDefault,
   sampleScriptingLevels: sampleScriptingLevelsDefault,

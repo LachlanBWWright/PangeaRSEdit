@@ -10,6 +10,9 @@ import { ProjectWatcher } from "./projectWatcher.ts";
 import { PackStore } from "./packStore.ts";
 import { readBlenderExecutable } from "./assetRequests.ts";
 import { Result } from "neverthrow";
+import { EnginePreview } from "./enginePreview.ts";
+import { readWindowState, rememberWindowState, type WindowState } from "./windowState.ts";
+import { handleWindowFailures } from "./windowFailures.ts";
 
 protocol.registerSchemesAsPrivileged([{ scheme: "pangea", privileges: {
   standard: true, secure: true, supportFetchAPI: true, stream: true,
@@ -20,11 +23,20 @@ let dirty = false;
 let closing = false;
 let closeDialogPending = false;
 let quitRequested = false;
+let savedWindowState: WindowState | null = null;
 
 async function start() {
   const ready = await io(() => app.whenReady(), "Electron could not start");
   if (ready.isErr()) { console.error(ready.error.message); app.quit(); return; }
   const root = app.getPath("userData");
+  savedWindowState = await readWindowState(root);
+  const engineName = process.platform === "win32" ? "PangeaSandbox.exe" : "PangeaSandbox";
+  const engine = new EnginePreview(app.isPackaged
+    ? [path.join(process.resourcesPath, "engine", engineName)]
+    : [path.resolve(app.getAppPath(), "../.tmp/pangea-sandbox", engineName),
+      path.resolve(app.getAppPath(), "../games/pangea-ports/games/PangeaSandbox/build", engineName)],
+  path.join(root, "engine-previews"), path.join(root, "engine-saves"),
+  !app.isPackaged && process.env.PANGEA_SANDBOX_NATIVE_TEST === "1", app.isPackaged);
   const project = new ProjectStore(path.join(root, "recovery"));
   project.assets.onProgress((event) => window?.webContents.send("pangea:asset-progress", event));
   const packs = new PackStore(path.join(root, "packs"));
@@ -43,9 +55,15 @@ async function start() {
       || !event.senderFrame.url.startsWith(`${APP_ORIGIN}/`)) return { ok: false, error: failure("Untrusted request", "forbidden") };
     const parsed = hostRequestSchema.safeParse(input);
     if (!parsed.success) return { ok: false, error: failure("Invalid desktop request", "invalid") };
+    if (parsed.data.operation === "host.close") {
+      if (dirty) return { ok: false, error: failure("Save or discard edits before closing", "dirty") };
+      closing = true;
+      setImmediate(() => { if (quitRequested) app.quit(); else if (!owner.isDestroyed()) owner.close(); });
+      return { ok: true, value: undefined };
+    }
     if (dirty && ["project.open", "project.create", "project.reopen", "project.restore", "project.copy", "packs.import", "packs.export"].includes(parsed.data.operation))
       return { ok: false, error: failure("Save or discard current project edits before changing projects", "dirty") };
-    const result = await handleRequest(parsed.data, project, games, owner, (value) => { dirty = value; }, packs);
+    const result = await handleRequest(parsed.data, project, games, owner, (value) => { dirty = value; }, packs, engine);
     return result.isOk() ? { ok: true, value: result.value } : { ok: false, error: result.error };
   });
   Menu.setApplicationMenu(null);
@@ -56,12 +74,21 @@ async function start() {
   const assetWatcher = setInterval(() => {
     void readBlenderExecutable().then((result) => { if (result.isOk()) void project.assets.checkSources(result.value); });
   }, 5000);
-  app.on("will-quit", () => { watcher.close(); clearInterval(assetWatcher); project.assets.cancel(); });
+  let engineStopped = false;
+  app.on("will-quit", (event) => {
+    if (!engineStopped) {
+      event.preventDefault();
+      void engine.shutdown().then(() => { engineStopped = true; app.quit(); });
+      return;
+    }
+    watcher.close(); clearInterval(assetWatcher); project.assets.cancel();
+  });
   app.on("activate", () => { if (!window) createWindow(); });
 }
 
 function createWindow() {
   const created = new BrowserWindow({ width: 1440, height: 960, minWidth: 900, minHeight: 640,
+    ...(savedWindowState ? { x: savedWindowState.x, y: savedWindowState.y, width: savedWindowState.width, height: savedWindowState.height } : {}),
     title: "Pangea RS Edit", backgroundColor: "#0f172a",
     titleBarStyle: "hidden",
     titleBarOverlay: { color: "#111827", symbolColor: "#cbd5e1", height: 36 },
@@ -70,6 +97,10 @@ function createWindow() {
       nodeIntegration: false, contextIsolation: true, sandbox: true },
   });
   window = created;
+  if (savedWindowState) created.setBounds({ x: savedWindowState.x, y: savedWindowState.y, width: savedWindowState.width, height: savedWindowState.height });
+  if (savedWindowState?.maximized) created.maximize();
+  rememberWindowState(created, app.getPath("userData"), (state) => { savedWindowState = state; });
+  handleWindowFailures(created, () => { dirty = false; closing = false; quitRequested = false; });
   created.webContents.on("before-input-event", (event, input) => {
     const modifier = process.platform === "darwin" ? input.meta : input.control;
     if (input.type !== "keyDown" || !modifier || input.alt) return;
@@ -114,10 +145,11 @@ function createWindow() {
     event.preventDefault();
     if (closeDialogPending) return;
     closeDialogPending = true;
-    void io(() => dialog.showMessageBox(created, { type: "warning", buttons: ["Keep editing", "Close without saving"],
+    void io(() => dialog.showMessageBox(created, { type: "warning", buttons: ["Keep editing", "Close without saving", "Save and close"],
       defaultId: 0, cancelId: 0, message: "Project has unsaved changes", detail: "Recent recovery snapshots are retained. Use Save All to save project files." }), "Cannot show close dialog")
       .then((answer) => {
         closeDialogPending = false;
+        if (answer.isOk() && answer.value.response === 2) { created.webContents.send("pangea:command", "close"); return; }
         if (answer.isErr() || answer.value.response !== 1) { quitRequested = false; return; }
         if (created.isDestroyed()) return;
         closing = true;

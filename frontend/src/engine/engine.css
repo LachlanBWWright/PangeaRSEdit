@@ -1,0 +1,62 @@
+.engine-workspace { --engine-edge:#405363; color:#edf0e4; background:#111c27; flex:1; min-height:0; display:flex; flex-direction:column; font-size:13px; }
+.engine-toolbar { display:flex; gap:20px; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--engine-edge); flex-wrap:wrap; }
+.engine-toolbar h1 { font-size:22px; font-weight:600; margin:2px 0 0; letter-spacing:-.5px; }
+.engine-eyebrow { color:#e6b257; font-size:10px; letter-spacing:2px; }
+.engine-toolbar-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.engine-native-status { flex-basis:100%; color:#e6b257; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.engine-workspace button { border:1px solid var(--engine-edge); border-radius:4px; padding:7px 10px; background:#203342; text-align:left; cursor:pointer; }
+.engine-workspace button:hover { background:#30495d; }
+.engine-workspace button:disabled { opacity:.45; cursor:default; }
+.engine-workspace button:focus-visible, .engine-workspace input:focus-visible, .engine-workspace select:focus-visible { outline:2px solid #e6b257; outline-offset:2px; }
+.engine-workspace .engine-primary { color:#18222b; background:#e6b257; font-weight:600; border-color:#e6b257; }
+.engine-workspace .engine-primary:hover { background:#f0c36e; color:#18222b; }
+.engine-workbench { flex:1; min-height:500px; display:grid; grid-template-columns:210px minmax(260px, .9fr) minmax(360px, 1.25fr); overflow:hidden; }
+.engine-package-panel { padding:16px 12px; border-right:1px solid var(--engine-edge); overflow:auto; }
+.engine-workspace h2 { font-size:12px; font-weight:600; margin:0; }
+.engine-package-panel h2 { margin:0 0 12px; }
+.engine-workspace label { display:flex; flex-direction:column; gap:5px; color:#b9c7cc; font-size:12px; margin-bottom:12px; }
+.engine-workspace input, .engine-workspace select { width:100%; min-width:0; background:#111c27; color:#edf0e4; border:1px solid var(--engine-edge); border-radius:3px; padding:7px; }
+.engine-file-list { display:flex; flex-direction:column; margin:0 -12px 24px; }
+.engine-file-list button { border:0; border-radius:0; background:transparent; font-family:monospace; font-size:11px; padding:9px 12px; overflow:hidden; text-overflow:ellipsis; }
+.engine-file-list button[aria-current] { background:#263d4d; color:#e6b257; box-shadow:inset 2px 0 #e6b257; }
+.engine-file-tools { margin-bottom:24px; border-top:1px solid var(--engine-edge); border-bottom:1px solid var(--engine-edge); }
+.engine-file-tools summary { padding-left:0; }
+.engine-file-tools form { margin:12px 0; }
+.engine-file-tools .engine-muted { padding:8px 0; }
+.engine-file-removal { padding:8px; border-left:2px solid #e6b257; }
+.engine-file-removal p { overflow-wrap:anywhere; margin-bottom:8px; }
+.engine-file-removal button { margin:0 4px 4px 0; }
+.engine-entities { margin:16px 0; padding-top:12px; border-top:1px solid var(--engine-edge); }
+.engine-workspace .engine-checkbox { flex-direction:row; align-items:center; gap:8px; }
+.engine-workspace .engine-checkbox input { width:auto; }
+.engine-source, .engine-preview { min-width:0; min-height:0; display:flex; flex-direction:column; }
+.engine-source { border-right:1px solid var(--engine-edge); }
+.engine-pane-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px; min-height:42px; background:#1b2b3a; border-bottom:1px solid var(--engine-edge); }
+.engine-pane-heading span { color:#99afb9; font-size:11px; }
+.engine-code-editor { flex:1; min-height:300px; display:flex; flex-direction:column; overflow:hidden; }
+.engine-code-editor > section { flex:1; min-height:0; }
+.engine-muted { color:#99afb9; font-size:12px; padding:10px 12px; margin:0; line-height:1.6; }
+.engine-preview iframe { border:0; width:100%; flex:1; min-height:420px; background:#0b1118; }
+.engine-inspector { padding:12px; max-height:350px; overflow:auto; border-bottom:1px solid var(--engine-edge); }
+.engine-inspector .engine-muted { padding:8px 0; }
+.engine-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.engine-inspector fieldset { padding:10px; margin:8px 0; border:1px solid var(--engine-edge); }
+.engine-workspace summary { padding:9px 12px; cursor:pointer; color:#83bea5; }
+.engine-diagnostic { padding:12px; margin:0; white-space:pre-wrap; color:#ffc58c; max-height:140px; overflow:auto; border-top:1px solid var(--engine-edge); }
+.engine-status { padding:9px 16px; border-top:1px solid var(--engine-edge); color:#e6b257; white-space:pre-wrap; }
+.engine-missing { padding:28px; display:grid; gap:16px; color:#b9c7cc; line-height:1.6; }
+.engine-missing code { white-space:pre-wrap; overflow-wrap:anywhere; color:#e6b257; }
+@media(max-width:1100px) { .engine-workbench { grid-template-columns:180px minmax(0,1fr); overflow:auto; } .engine-preview { grid-column:2; border-top:1px solid var(--engine-edge); } .engine-package-panel { grid-row:span 2; } .engine-source { min-height:460px; } }
+@media(max-width:650px) { .engine-workbench { display:flex; flex-direction:column; } .engine-package-panel { max-height:250px; border-bottom:1px solid var(--engine-edge); flex-shrink:0; } .engine-source { flex-shrink:0; } .engine-toolbar { padding:12px; } .engine-preview { min-height:500px; flex-shrink:0; } }
+.engine-link { border:1px solid #405363; border-radius:4px; padding:7px 10px; display:inline-flex; align-items:center; color:#edf0e4; }
+.engine-level-tools { display:flex; flex-wrap:wrap; align-items:center; gap:16px; padding:12px 20px; border-bottom:1px solid #405363; }
+.engine-level-tools label { margin:0; max-width:180px; }
+.engine-level-tools fieldset { display:flex; gap:4px; }
+.engine-level-tools legend { font-size:12px; color:#b9c7cc; margin-bottom:5px; }
+.engine-level-tools button[aria-pressed=true] { border-color:#e6b257; color:#e6b257; }
+.engine-level-layout { flex:1; min-height:450px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); overflow:auto; }
+.engine-level-map { padding:16px; min-width:0; overflow:auto; }
+.engine-scene-map { position:relative; width:100%; max-height:550px; min-height:100px; border:1px solid #405363; overflow:hidden; touch-action:none; }
+.engine-scene-map canvas, .engine-scene-map svg { position:absolute; width:100%; height:100%; inset:0; }
+.engine-scene-map svg { pointer-events:none; }
+@media(max-width:900px) { .engine-level-layout { grid-template-columns:minmax(0,1fr); } .engine-level-map { overflow:visible; } .engine-level-layout .engine-preview { min-height:500px; grid-column:1; } }

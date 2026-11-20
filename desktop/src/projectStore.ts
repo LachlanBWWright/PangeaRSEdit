@@ -141,7 +141,8 @@ export class ProjectStore {
     const recovery = await statOrMissing(path.join(this.recoveryRoot, `${hash(root)}.zip`));
     if (this.root !== root) return err(failure("Project changed while reading its files", "conflict"));
     const snapshot = { folder: root, manifest: manifest.data, files: entries.value,
-      revision: revisionOf(entries.value), recoveryAvailable: recovery.isOk() && recovery.value !== null };
+      revision: revisionOf(entries.value), recoveryAvailable: recovery.isOk() && recovery.value !== null,
+      recoveryUpdatedAt: recovery.isOk() && recovery.value ? recovery.value.mtimeMs : undefined };
     if (captureVersions) await this.versions.capture(snapshot.folder, snapshot.files);
     if (this.root !== root) return err(failure("Project changed while reading its files", "conflict"));
     return ok(snapshot);

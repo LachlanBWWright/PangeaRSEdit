@@ -1,6 +1,7 @@
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import { z } from "zod";
 import type { ScriptWorkspaceState } from "./scriptWorkspaceState";
 import { SCRIPTING_CONTRACT } from "./scriptContract";
@@ -40,6 +41,8 @@ declare global {
   }
 }
 
+// Child editor effects can start the CDN loader before a parent's setup effect.
+loader.config({ monaco });
 let configured = false;
 
 function mapLspLocation(location: LspLocation): monaco.languages.Location {
@@ -219,12 +222,11 @@ export function ensureScriptMonacoConfigured(): void {
   }
 
   window.MonacoEnvironment = {
-    getWorker() {
-      return new editorWorker();
+    getWorker(_moduleId, label) {
+      return label === "json" ? new jsonWorker() : new editorWorker();
     },
   };
 
-  loader.config({ monaco });
   configured = true;
 }
 

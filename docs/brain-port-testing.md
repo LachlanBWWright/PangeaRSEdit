@@ -30,14 +30,32 @@ the runtime's object deletion API to verify destruction and alien cleanup.
 Runtime diagnostics and failure traces are
 retained in Playwright's output directory.
 
-`frontend/tests/fixtures/brainPort.lua` owns the spawning logic. It deliberately
+`frontend/src/editor/subviews/scripts/scriptOttoSpawner.lua` owns the production
+starter's spawning logic, shared by the authoring test and Storybook. It deliberately
 uses ordinary native Brain Aliens, keeping their native movement and combat;
 the port itself only reuses a display model. It does not invoke `AddBrainPort`,
 the boss's portal controller, or elite-alien boss logic. The three-spawn quota
-and short interval keep this acceptance example deterministic; they are Lua
-choices, not engine limits.
+and short interval keep this acceptance example deterministic; they are named
+behavior settings, not engine limits.
+
+The separate `sampleScriptingLevels.spec.ts` covers the playable sample's
+continuous mode: total quota zero, at most three living aliens, a persistent
+port, pausing outside spawn range, and replenishment on return within range.
+It also checks that deleting an alien frees a spawn slot. The sample uses the
+native port's draw slot so its transparent model draws before the aliens.
+`sampleSpawnerRange.spec.ts` isolates the same checks without the editor. Its
+driver moves the port relative to a script-controlled stationary player, so
+native player physics cannot undo the distance change between timer ticks.
 
 The package reimport and game launch use test plumbing rather than the preview
-dialog. Existing Otto editor tests separately exercise that dialog. This test
+dialog. Existing Otto editor tests separately exercise that dialog. The authoring test
 does not establish visual correctness from a screenshot, native combat parity,
-Electron asset availability, or multi-instance behavior.
+or Electron asset availability.
+
+The same command also runs `brainPortEncounter.spec.ts`: two placements exported
+and reimported through the production package API use different spawn intervals
+and restart/preserve checkpoint policies. The real engine resets the checkpoint,
+then the test moves the player away and back to verify activation, fresh handles,
+retained overrides and child cleanup. Deleting one port must leave the other
+spawning independently. Final checks require no surviving port children, timers,
+tasks, subscriptions or Lua errors.

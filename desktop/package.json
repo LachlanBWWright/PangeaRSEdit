@@ -15,7 +15,7 @@
     "check": "tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
-    "package": "pnpm run build && electron-builder --publish never"
+    "package": "pnpm run build && node build.mjs --require-engine && electron-builder --publish never"
   },
   "dependencies": {
     "@pangea/desktop-contracts": "workspace:*",
@@ -43,7 +43,7 @@
     "asar": true,
     "asarUnpack": ["node_modules/sharp/**/*", "node_modules/@img/**/*"],
     "files": ["dist/**/*", "package.json"],
-    "extraResources": [{ "from": "../frontend/dist-desktop", "to": "renderer" }],
+    "extraResources": [{ "from": "../frontend/dist-desktop", "to": "renderer" }, { "from": "dist-native", "to": "." }],
     "linux": { "target": ["AppImage", "deb"], "category": "Development", "syncDesktopName": true, "maintainer": "PangeaRSEdit contributors" },
     "deb": { "packageName": "pangea-rs-edit" },
     "win": { "target": ["nsis"] },

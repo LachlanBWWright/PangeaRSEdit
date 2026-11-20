@@ -5,6 +5,8 @@ import games from "@/../../games/pangea-ports/docs/script-game-matrix.md?raw";
 import config from "@/../../games/pangea-ports/docs/script-config.md?raw";
 import editor from "@/../../games/pangea-ports/docs/scripting-editor.md?raw";
 import libraries from "@/../../games/pangea-ports/docs/script-library-workflow.md?raw";
+import objects from "@/../../games/pangea-ports/docs/object-services.md?raw";
+import samples from "@/../../games/pangea-ports/docs/sample-encounters.md?raw";
 
 export interface ScriptGuide {
   file: string;
@@ -14,6 +16,8 @@ export interface ScriptGuide {
 }
 
 export const SCRIPT_GUIDES: readonly ScriptGuide[] = [
+  { file: "sample-encounters.md", title: "Playable sample encounters", description: "Open, edit and play Lua encounters across all eight games.", content: samples },
+  { file: "object-services.md", title: "Object services and resource groups", description: "Spawn placement, control leases, collision geometry, lifecycle, cancellation and cross-game support.", content: objects },
   { file: "scripting-runtime.md", title: "Runtime and lifecycle", description: "Modules, hooks, contexts, handles, ownership, scheduling, budgets and errors.", content: runtime },
   { file: "script-examples.md", title: "Working Lua examples", description: "Startup, custom objects, timers, persistence and native interception.", content: examples },
   { file: "lua-scripting.md", title: "Full API and gameplay semantics", description: "All functions, presentation, dialogue, input, world queries and controller ownership.", content: overview },

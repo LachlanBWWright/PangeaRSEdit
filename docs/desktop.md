@@ -34,6 +34,14 @@ credentials are not supplied by the repository; successful signed CI runs are
 still required before distributing signed releases. Each build emits
 `editor-release.json` and `SHA256SUMS.txt` alongside its installers.
 
+Installer packaging requires the native Lua Engine. Build it with
+`python3 games/pangea-ports/games/PangeaSandbox/build.py --dependencies --configure --build --package --configuration Release`
+before running the desktop package command. Staging uses the game's `dist/`
+distribution for the host platform and architecture. Set `PANGEA_ENGINE_DIRECTORY`
+to select an explicit distribution folder instead. Temporary release folders are
+never selected implicitly. Development host builds can omit the Engine and report
+that omission; `node build.mjs --require-engine` fails when it is missing.
+
 The desktop renderer uses `frontend/dist-desktop/`; the browser continues to use
 `frontend/dist/`. Desktop builds exclude the large public game and stock asset
 directories. Electron itself is still included in the application package.
@@ -195,8 +203,21 @@ offer a review of additions, changes and deletions before choosing disk or edito
 content. Closing a review retains the pending conflict. Unsaved route changes and
 window closure are guarded.
 
+Project switching and route navigation offer Save, Discard and Keep editing when
+the current document has changes. Closing a dirty window also offers Save and
+close. Failed saves keep the document open. The project bar exposes Levels,
+Files, Assignments, Save and Test, along with document status and the last
+successful recovery time. Window bounds and maximized state persist between
+launches; offscreen bounds fall back to the default window.
+
+Renderer crashes, hangs and page-loading failures offer a reload and an optional
+diagnostic JSON export. Reload reopens saved project state; available recovery
+snapshots remain separate. Diagnostics include the failure reason, platform,
+architecture, Electron version and time.
+
 Recovery snapshots are written periodically under Electron's user-data directory,
-separately from project files. **Recover Unsaved Work** restores a level snapshot;
+separately from project files. Reopening a project with a snapshot offers restore,
+keep for later or deletion and displays its timestamp. **Recover Unsaved Work** restores a level snapshot;
 **Project Assets** offers asset recovery. Recovery does not replace an explicit
 save. Git operations are handled by the external editor; there is no built-in Git UI.
 

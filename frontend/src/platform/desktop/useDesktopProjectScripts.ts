@@ -48,7 +48,7 @@ export function useDesktopProjectScripts(context: ScriptWorkspaceContext) {
     const captured = latest.current;
     const result = await saveProjectScripts(project, captured, recovery);
     if (result.isErr()) toast.error(result.error);
-    else if (result.value === null) setProject((current) => current ? { ...current, recoveryAvailable: true } : current);
+    else if (result.value === null) setProject((current) => current?.folder === project.folder ? { ...current, recoveryAvailable: true, recoveryUpdatedAt: Date.now() } : current);
     else {
       saved.current = scriptCaptureKey(captured);
       loaded.current = `${result.value.folder}:${result.value.revision}`;

@@ -15,11 +15,12 @@ export interface ProjectCommands {
 export const desktopProjectAtom = atom<ProjectSnapshot | null>(null);
 export const desktopLevelIdAtom = atom<string | null>(null);
 export const desktopProjectDirtyAtom = atom(false);
+export const desktopTransitionAtom = atom<{ resolve: (proceed: boolean) => void } | null>(null);
 export const desktopExternalProjectAtom = atom<ProjectSnapshot | null>(null);
 export const desktopConflictOpenAtom = atom(false);
 export const desktopProjectCommandsAtom = atom<ProjectCommands | null>(null);
 export interface DesktopDocument {
-  kind: "level" | "models" | "sprites" | "scripts";
+  kind: "level" | "models" | "sprites" | "scripts" | "engine";
   save: () => Promise<void>;
   discard: () => void;
   recover?: () => Promise<void>;

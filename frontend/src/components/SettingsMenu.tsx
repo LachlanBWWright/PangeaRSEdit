@@ -10,6 +10,8 @@ import {
   WandSparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAtomValue } from "jotai";
+import { desktopActiveDocumentAtom, desktopProjectDirtyAtom } from "@/platform/desktop/projectState";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -30,6 +32,9 @@ function saveFeatureFlags(flags: FeatureFlags): void {
 
 export function SettingsMenu() {
   const featureFlags = useFeatureFlags();
+  const activeDocument = useAtomValue(desktopActiveDocumentAtom);
+  const dirty = useAtomValue(desktopProjectDirtyAtom);
+  const engineHasEdits = activeDocument?.kind === "engine" && dirty;
 
   return (
     <DropdownMenu>
@@ -114,6 +119,17 @@ export function SettingsMenu() {
               Show experimental scripting tools in the level editor.
             </span>
           </span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={featureFlags.luaEngine}
+          disabled={engineHasEdits}
+          onCheckedChange={(luaEngine) => saveFeatureFlags({ ...featureFlags, luaEngine })}
+          onSelect={(event) => event.preventDefault()}
+          className="items-start py-2 focus:bg-slate-700/60"
+        >
+          <FlaskConical className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+          <span><span className="block font-medium">Lua Engine level editor</span>
+            <span className="mt-0.5 block text-xs leading-4 text-slate-400">{engineHasEdits ? "Download your package or leave the workspace before disabling." : "Edit engine scenes and try existing terrain in the experimental Lua engine."}</span></span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
           checked={featureFlags.itemModelMappingPreview}

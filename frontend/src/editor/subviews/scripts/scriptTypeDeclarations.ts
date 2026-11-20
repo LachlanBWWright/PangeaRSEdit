@@ -782,7 +782,7 @@ export function buildScriptTypeDeclarationFiles(
     {
       path: "Data/Scripts/types/pangea-games.lua",
       content: [
-        '---@alias GameId "BillyFrontier-Android"|"Bugdom-android"|"Bugdom2-Android"|"CroMagRally-Android"|"MightyMike-Android"|"Nanosaur-android"|"Nanosaur2-Android"|"OttoMatic-Android"',
+        '---@alias GameId "BillyFrontier-Android"|"Bugdom-android"|"Bugdom2-Android"|"CroMagRally-Android"|"MightyMike-Android"|"Nanosaur-android"|"Nanosaur2-Android"|"OttoMatic-Android"|"PangeaSandbox"',
         "",
         "---@class PangeaGameApi",
         "---@field id GameId",

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FEATURE_FLAGS, featureFlagsSchema } from "./featureFlags";
 
+describe("Lua Engine feature flag", () => {
+  it("is off by default independently of scripting and migrates older settings", () => {
+    expect(DEFAULT_FEATURE_FLAGS.luaEngine).toBe(false);
+    const flags = featureFlagsSchema.safeParse({ scripting: true });
+    expect(flags.success && flags.data.luaEngine).toBe(false);
+  });
+});
+
 describe("sample scripting levels feature flag", () => {
   it("keeps playable samples hidden by default and migrates older settings", () => {
     expect(DEFAULT_FEATURE_FLAGS.sampleScriptingLevels).toBe(false);

@@ -1,3 +1,4 @@
+import "../../../tests/setup/scriptLuaValidationDom";
 import { expect, it, vi } from "vitest";
 import { OttoGlobals } from "@/data/globals/globals";
 import { createBlankLevel } from "@/data/levelTemplates";

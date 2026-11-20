@@ -9,9 +9,29 @@ import { SCRIPT_GUIDES, portableScriptGuide } from "./scriptGuides";
 import { scriptGuideBlocks, scriptGuideSections } from "./scriptGuideBlocks";
 import { createScriptWorkspaceContext, ensureScriptWorkspace } from "./scriptWorkspaceState";
 import { MightyMikeGlobals, NanosaurGlobals } from "@/data/globals/globals";
+import { buildScriptTypeDeclarationFiles } from "./scriptTypeDeclarations";
 
 describe("full Lua API documentation", () => {
   const state = ensureScriptWorkspace({}, createScriptWorkspaceContext(NanosaurGlobals, 0));
+  it("exports resource module types and the shared object-services guide", () => {
+    const declarations = buildScriptTypeDeclarationFiles(state);
+    const runtime = declarations.find((file) => file.path.endsWith("pangea-runtime.lua"))?.content;
+    expect(runtime).toContain("---@class PangeaResourcesApi");
+    expect(runtime).toContain("---@field resources PangeaResourcesApi");
+    expect(runtime).toContain("---@field object ObjectHandle|nil");
+    expect(runtime).toContain("---@class ControlLeaseResult : ObjectCommandResult");
+    expect(runtime).toContain("---@field spatial PangeaSpatialApi");
+    expect(runtime).toContain("---@field combat PangeaCombatApi");
+    expect(runtime).toContain("---@class GroundPlacementOptions");
+    expect(runtime).toContain("---@class CombatAttribution");
+    expect(runtime).toContain("---@field attackKind AttackKind");
+    expect(runtime).toContain("attribution: CombatAttribution|nil");
+    expect(runtime).toContain("---@field off fun(self:ResourceGroup, subscription:integer):boolean");
+    expect(runtime).toContain("---@alias CrossingShape SphereCrossing|BoxCrossing|CheckpointCrossing");
+    expect(runtime).toContain("---@field list fun(options: PlayerListOptions|nil): PangeaPlayerSnapshot[]");
+    expect(declarations.find((file) => file.path === "Data/Scripts/types/pangea/resources.lua")?.content).toContain("---@type PangeaResourcesApi");
+    expect(SCRIPT_GUIDES.find((guide) => guide.file === "object-services.md")?.content).toContain("keepOnOwnerDestroy");
+  });
   it("covers every contract function, hook and object method with inherited types", () => {
     const reference = buildFullApiReference(state);
     for (const api of AUTHORITATIVE_API_SCHEMA.apis) expect(reference).toContain(`### ${api.name}\n`);

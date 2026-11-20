@@ -12,10 +12,14 @@ import type { PackStore } from "./packStore.ts";
 import { upstreamCatalog } from "./upstreamCatalog.ts";
 import { handleAssetRequest } from "./assetRequests.ts";
 import { handleSpriteRequest } from "./spriteRequests.ts";
+import type { EnginePreview } from "./enginePreview.ts";
 
 export async function handleRequest(request: HostRequest, project: ProjectStore, games: GameStore,
-  window: BrowserWindow, markDirty: (dirty: boolean) => void, packs: PackStore): Promise<Result<unknown, HostError>> {
+  window: BrowserWindow, markDirty: (dirty: boolean) => void, packs: PackStore, engine: EnginePreview): Promise<Result<unknown, HostError>> {
   switch (request.operation) {
+    case "engine.preview": return engine.launch(request.files);
+    case "engine.preview-stop": return engine.stop();
+    case "engine.preview-status": return engine.status();
     case "sprites.list": case "sprites.link": case "sprites.read": case "sprites.commit": case "sprites.external":
     case "sprites.configure-editor": return handleSpriteRequest(request, project, window);
     case "assets.list": case "assets.pending": case "assets.preview": case "assets.import": case "assets.import-buffer": case "assets.reimport":
@@ -97,6 +101,7 @@ export async function handleRequest(request: HostRequest, project: ProjectStore,
       return folder.isErr() ? err(folder.error) : games.locate(request.game, folder.value);
     }
     case "host.dirty": markDirty(request.dirty); return ok(undefined);
+    case "host.close": return err(failure("Close requires the owning window", "forbidden"));
     case "host.info": return ok({ platform: process.platform, arch: process.arch });
   }
 }

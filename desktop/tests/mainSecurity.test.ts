@@ -8,7 +8,8 @@ const electron = vi.hoisted(() => {
     root: "", frame,
     contents: { mainFrame: frame, on: vi.fn(), setWindowOpenHandler: vi.fn(), send: vi.fn() },
     handle: vi.fn<(channel: string, handler: (event: RequestEvent, input: unknown) => Promise<unknown>) => void>(),
-    appOn: vi.fn<(event: string, handler: () => void) => void>(),
+    appOn: vi.fn<(event: string, handler: (event: { preventDefault: () => void }) => void) => void>(),
+    quit: vi.fn<() => void>(),
     loadURL: vi.fn(async () => undefined),
     permissionRequest: vi.fn<(handler: (contents: unknown, permission: string, callback: (granted: boolean) => void) => void) => void>(),
     permissionCheck: vi.fn<(handler: () => boolean) => void>(),
@@ -18,7 +19,7 @@ const electron = vi.hoisted(() => {
 
 vi.mock("electron", () => ({
   app: { whenReady: async () => undefined, getPath: () => electron.root, getAppPath: () => electron.root,
-    on: electron.appOn, quit: vi.fn(), isPackaged: false },
+    on: electron.appOn, quit: electron.quit, isPackaged: false },
   BrowserWindow: class {
     webContents = electron.contents;
     loadURL = electron.loadURL;
@@ -40,13 +41,20 @@ beforeEach(async () => {
   electron.frame.url = "pangea://editor/index.html";
   electron.handle.mockClear();
   electron.appOn.mockClear();
+  electron.quit.mockReset();
+  electron.quit.mockImplementation(() => {
+    electron.appOn.mock.calls.find(([event]) => event === "will-quit")?.[1]({ preventDefault: vi.fn() });
+  });
   electron.loadURL.mockClear();
   electron.openFolder.mockClear();
   electron.windowOn.mockClear();
   await import("../src/main.ts");
   await vi.waitFor(() => expect(electron.loadURL).toHaveBeenCalledWith("pangea://editor/index.html"));
 });
-afterEach(() => { electron.appOn.mock.calls.find(([event]) => event === "will-quit")?.[1](); });
+afterEach(async () => {
+  electron.quit();
+  await vi.waitFor(() => expect(electron.quit).toHaveBeenCalledTimes(2));
+});
 
 function request(input: unknown, sender: object = electron.contents, frame: object | null = electron.frame) {
   const handler = electron.handle.mock.calls[0]?.[1];
@@ -60,9 +68,9 @@ describe("actual main-process IPC authorization", () => {
   });
 
   it("rejects requests after the owning window is closed", async () => {
-    const closed = electron.windowOn.mock.calls.find(([event]) => event === "closed")?.[1];
-    expect(closed).toBeDefined();
-    closed?.();
+    const closed = electron.windowOn.mock.calls.filter(([event]) => event === "closed");
+    expect(closed.length).toBeGreaterThan(0);
+    for (const [, handler] of closed) handler();
     expect(await request({ operation: "host.info" })).toMatchObject({ ok: false, error: { code: "forbidden" } });
   });
 
@@ -87,6 +95,7 @@ describe("actual main-process IPC authorization", () => {
       expect(await request({ operation, id: "a".repeat(64), name: "Guarded", game: "OttoMatic", folder: "/project", revision: "saved" })).toMatchObject({ ok: false, error: { code: "dirty" } });
     }
     expect(electron.openFolder).not.toHaveBeenCalled();
+    expect(await request({ operation: "host.close" })).toMatchObject({ ok: false, error: { code: "dirty" } });
   });
 
   it("configures renderer isolation, denies new windows, and rejects permissions", () => {

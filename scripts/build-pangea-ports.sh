@@ -115,6 +115,7 @@ wasm_dir_for_port() {
     BillyFrontier-Android) echo "billyfrontier" ;;
     MightyMike-Android) echo "mightymike" ;;
     Nanosaur2-Android) echo "nanosaur2" ;;
+    PangeaSandbox) echo "sandbox" ;;
     *) echo "" ;;
   esac
 }
@@ -252,6 +253,9 @@ game_input_fingerprint() {
 
 wasm_assets_are_complete() {
   local destination="$1"
+  if [[ -f "$destination/PangeaSandbox.html" ]]; then
+    [[ -s "$destination/PangeaSandbox.host.js" && -s "$destination/PangeaSandbox.ui.css" && -s "$destination/PangeaSandbox.data" ]] || return 1
+  fi
   compgen -G "$destination/*.js" >/dev/null &&
     compgen -G "$destination/*.wasm" >/dev/null
 }
@@ -324,7 +328,7 @@ build_game() {
 
   echo "Copying built assets to $DEST …"
   if [[ "$DRY_RUN" -eq 0 ]]; then
-    find "$STAGE_TMP" -type f \( -name "*.js" -o -name "*.wasm" -o -name "*.data" -o -name "*.html" \) | while read -r file; do
+    find "$STAGE_TMP" -type f \( -name "*.js" -o -name "*.wasm" -o -name "*.data" -o -name "*.html" -o -name "*.css" \) | while read -r file; do
       cp -v "$file" "$DEST/"
     done
   else

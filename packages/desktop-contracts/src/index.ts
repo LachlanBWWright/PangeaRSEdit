@@ -29,6 +29,26 @@ export const fileSchema = z.object({
   bytes: z.instanceof(Uint8Array).refine((bytes) => bytes.byteLength <= 128 * 1024 * 1024),
 });
 export type ProjectFile = z.infer<typeof fileSchema>;
+export const enginePreviewFilesSchema = z.array(fileSchema).min(1).max(128).superRefine((files, context) => {
+  const paths = new Set<string>();
+  let size = 0;
+  for (const file of files) {
+    const key = file.path.toLowerCase();
+    if (paths.has(key)) context.addIssue({ code: "custom", message: "Duplicate engine package path" });
+    paths.add(key);
+    size += file.bytes.byteLength;
+  }
+  for (const key of paths) {
+    const parts = key.split("/");
+    for (let length = 1; length < parts.length; length += 1) {
+      if (paths.has(parts.slice(0, length).join("/"))) context.addIssue({ code: "custom", message: "Engine package contains a file/directory collision" });
+    }
+  }
+  if (!paths.has("package.json")) context.addIssue({ code: "custom", message: "Engine package requires package.json" });
+  if (size > 256 * 1024 * 1024) context.addIssue({ code: "custom", message: "Engine package exceeds 256 MiB" });
+});
+export const enginePreviewStatusSchema = z.object({ running: z.boolean(), pid: z.number().int().positive().nullable(), available: z.boolean(), message: z.string() });
+export type EnginePreviewStatus = z.infer<typeof enginePreviewStatusSchema>;
 export const projectLevelSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),
   name: z.string().min(1).max(120),
@@ -61,6 +81,7 @@ export const projectSnapshotSchema = z.object({
   revision: z.string(),
   files: z.array(z.object({ path: relativePathSchema, hash: z.string(), size: z.number() })),
   recoveryAvailable: z.boolean(),
+  recoveryUpdatedAt: z.number().optional(),
 });
 export type ProjectSnapshot = z.infer<typeof projectSnapshotSchema>;
 export const failureSchema = z.object({
@@ -107,7 +128,7 @@ export type UpstreamDataRelease = z.infer<typeof upstreamDataReleaseSchema>;
 export const assetInstallationSchema = z.object({ game: gameIdSchema, version: z.string(), root: z.string(),
   source: z.enum(["editor", "upstream"]).default("editor"), dataRoot: z.string().optional(), releaseUrl: z.string().url().optional() });
 export const hostInfoSchema = z.object({ platform: z.string(), arch: z.string() });
-export const hostCommandSchema = z.enum(["save", "open", "new"]);
+export const hostCommandSchema = z.enum(["save", "open", "new", "close"]);
 export const transferSchema = z.object({ game: gameIdSchema, received: z.number(), total: z.number() });
 export const packLevelInputSchema = z.object({ id: projectLevelSchema.shape.id, name: z.string().min(1).max(120),
   args: z.array(z.string()).max(12), files: z.array(fileSchema).max(4096) });
@@ -131,6 +152,9 @@ export const conflictReviewSchema = z.object({ id: z.string().uuid(), revision: 
 export type ConflictReview = z.infer<typeof conflictReviewSchema>;
 export const conflictChoiceSchema = z.object({ path: relativePathSchema, choice: z.enum(["editor", "disk", "merged"]), text: z.string().max(262144).optional() });
 export const hostRequestSchema = z.discriminatedUnion("operation", [
+  z.object({ operation: z.literal("engine.preview"), files: enginePreviewFilesSchema }),
+  z.object({ operation: z.literal("engine.preview-stop") }),
+  z.object({ operation: z.literal("engine.preview-status") }),
   z.object({ operation: z.literal("project.open") }),
   ...assetPipelineRequests,
   ...spritePipelineRequests,
@@ -181,6 +205,7 @@ export const hostRequestSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("games.test"), game: gameIdSchema, args: z.array(z.string()).max(12),
     files: z.array(fileSchema).max(4096) }),
   z.object({ operation: z.literal("host.dirty"), dirty: z.boolean() }),
+  z.object({ operation: z.literal("host.close") }),
   z.object({ operation: z.literal("host.info") }),
 ]);
 export type HostRequest = z.infer<typeof hostRequestSchema>;

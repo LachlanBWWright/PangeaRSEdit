@@ -10,6 +10,8 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { UploadPrompt } from "./UploadPrompt";
+import { useEngineTerrainExport, useEngineTerrainPreview } from "@/engine/useEngineTerrainExport";
+import type { EnginePackage } from "@/engine/enginePackage";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import {
@@ -80,6 +82,7 @@ import { desktopLevelIdAtom, desktopProjectAtom } from "@/platform/desktop/proje
 import { useEditorDocumentHistory } from "./IntroPrompt/useEditorDocumentHistory";
 
 const EditorView = lazy(() => import("./EditorView").then((module) => ({ default: module.EditorView })));
+const EngineTerrainPreviewDialog = lazy(() => import("@/engine/EngineTerrainPreviewDialog").then((module) => ({ default: module.EngineTerrainPreviewDialog })));
 const TunnelEditor = lazy(() => import("./tunnel/TunnelEditor").then((module) => ({ default: module.TunnelEditor })));
 
 function getCanonicalMightyMikeFilename(fileName: string): string {
@@ -144,6 +147,7 @@ export function IntroPrompt() {
   const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
 
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
+  const [engineTerrainPreview, setEngineTerrainPreview] = useState<EnginePackage | null>(null);
   const [mapImagesFile, setMapImagesFile] = useState<undefined | File>(
     undefined,
   );
@@ -827,6 +831,9 @@ export function IntroPrompt() {
     );
   }, [getCurrentAtomicData, globals, mapFile]);
 
+  const handleExportEngineTerrain = useEngineTerrainExport(headerData, terrainData, globals, mapFile?.name ?? "Untitled");
+  const handlePreviewEngineTerrain = useEngineTerrainPreview(headerData, terrainData, globals, mapFile?.name ?? "Untitled", setEngineTerrainPreview);
+
   const handleConfirmNewMap = useCallback(() => {
     setNewMapConfirmOpen(false);
     clearAllState();
@@ -853,6 +860,8 @@ export function IntroPrompt() {
             onDownloadScriptPackage={handleDownloadScriptPackage}
             onUploadScriptPackage={handleUploadScriptPackage}
             onSaveToCloud={handleSaveToCloud}
+            onExportEngineTerrain={terrainData?.YCrd[1000]?.obj.length ? handleExportEngineTerrain : undefined}
+            onPreviewEngineTerrain={terrainData?.YCrd[1000]?.obj.length ? handlePreviewEngineTerrain : undefined}
           />
           {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
             <TestGameDialog
@@ -878,6 +887,9 @@ export function IntroPrompt() {
     globals.GAME_TYPE,
     handleDownload,
     handleSaveToCloud,
+    handleExportEngineTerrain,
+    handlePreviewEngineTerrain,
+    terrainData?.YCrd,
     handleTestLevel,
     handlePreviewFromMainMenu,
     handlePreviewFromMainMenuWithScripts,
@@ -937,6 +949,7 @@ export function IntroPrompt() {
 
   return (
     <div className="flex flex-col gap-2 text-white overflow-hidden min-w-full flex-1 min-h-0">
+      {engineTerrainPreview && <Suspense fallback={<p role="status">Preparing engine preview…</p>}><EngineTerrainPreviewDialog packageData={engineTerrainPreview} onClose={() => setEngineTerrainPreview(null)} /></Suspense>}
       <NewMapConfirmDialog
         open={newMapConfirmOpen}
         onOpenChange={setNewMapConfirmOpen}

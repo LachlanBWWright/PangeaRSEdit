@@ -28,10 +28,11 @@ test("automatic recovery survives an application restart and restores unsaved le
   if (!resumed) return;
   page = resumed.page;
   await expect(page.getByText("Project level opened", { exact: true })).toBeVisible();
+  const recovery = page.getByRole("dialog", { name: "Unsaved work is available" });
+  await expect(recovery).toBeVisible();
+  await expect(recovery).toContainText("Recovery project");
+  await recovery.getByRole("button", { name: "Restore level", exact: true }).click();
   await expect(page.getByRole("button", { name: "Level Actions", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Project menu", exact: true }).click();
-  await page.getByRole("menuitem", { name: /Recover Unsaved Work/ }).click();
-  await expect(page.getByRole("menu")).not.toBeVisible();
   await expect(page.getByText("Unsaved level recovered", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByLabel("Unsaved changes", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Project menu", exact: true }).click();

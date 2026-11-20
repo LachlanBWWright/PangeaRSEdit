@@ -28,6 +28,7 @@
     "vitest.storybook.config.ts",
     "vite.config.ts",
     "desktopAssets.ts",
+    "engineRuntimeAssets.ts",
     "scripts/dev/capture-item-screenshots.ts"
   ]
 }

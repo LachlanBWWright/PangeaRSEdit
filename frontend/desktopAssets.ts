@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Plugin } from "vite";
+import { engineRuntimeAssets } from "./engineRuntimeAssets";
 
 export function desktopAssets(publicRoot: string): Plugin {
   return { name: "desktop-lightweight-assets", apply: "build", buildStart() {
@@ -11,5 +12,9 @@ export function desktopAssets(publicRoot: string): Plugin {
       this.emitFile({ type: "asset", fileName: `data/${path.relative(root, source).split(path.sep).join("/")}`, source: fs.readFileSync(source) });
     }
     this.emitFile({ type: "asset", fileName: "favicon.ico", source: fs.readFileSync(path.join(publicRoot, "favicon.ico")) });
+    engineRuntimeAssets(publicRoot).match(
+      (files) => { for (const file of files) this.emitFile({ type: "asset", ...file }); },
+      (message) => this.warn(message),
+    );
   } };
 }

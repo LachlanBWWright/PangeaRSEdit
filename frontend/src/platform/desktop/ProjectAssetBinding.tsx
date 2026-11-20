@@ -50,6 +50,7 @@ export function ProjectAssetBinding(props: Props) {
   const requestGeneration = useRef(0);
   const mounted = useRef(false);
   const backup = useRef<() => Promise<void>>(async () => undefined);
+  const recover = useRef<() => Promise<void>>(async () => undefined);
   const save = useRef<() => Promise<void>>(async () => undefined);
   const discard = useRef<() => void>(() => undefined);
   const open = useRef<(relative: string) => Promise<void>>(async () => undefined);
@@ -63,7 +64,7 @@ export function ProjectAssetBinding(props: Props) {
     void desktopRequest({ operation: "assets.list" }, z.array(projectAssetSchema)).then((result) => { if (current && result.isOk()) setAssetCatalog({ folder: project.folder, items: result.value }); });
     return () => { current = false; };
   }, [project, props.kind]);
-  useEffect(() => { backup.current = () => saveAsset(true); save.current = () => saveAsset(); open.current = (relative) => openAsset(relative); });
+  useEffect(() => { backup.current = () => saveAsset(true); save.current = () => saveAsset(); open.current = (relative) => openAsset(relative); recover.current = recoverAsset; });
   useEffect(() => { discard.current = () => {
     savedToken.current = latest.current.changeToken;
     loadedRevision.current = "";
@@ -72,7 +73,7 @@ export function ProjectAssetBinding(props: Props) {
   }; }, [setDirty]);
   useEffect(() => {
     if (!desktopBridge()) return;
-    setActiveDocument({ kind: props.kind, save: () => save.current(), discard: () => discard.current(),
+    setActiveDocument({ kind: props.kind, save: () => save.current(), discard: () => discard.current(), recover: () => recover.current(),
       capture: () => assetCaptureKey(latest.current.changeToken), prepare: async () => {
         const state = review.current;
         if (!latest.current.changeToken) return err("Open an asset before building a conflict review");
@@ -166,7 +167,7 @@ export function ProjectAssetBinding(props: Props) {
     if (recovery) {
       const result = await desktopRequest({ operation: "project.backup", manifest: project.manifest, files: files.value }, z.void());
       if (result.isErr()) toast.error(result.error.message);
-      else setProject((current) => current ? { ...current, recoveryAvailable: true } : current);
+      else setProject((current) => current?.folder === project.folder ? { ...current, recoveryAvailable: true, recoveryUpdatedAt: Date.now() } : current);
     } else {
       const result = await desktopRequest({ operation: "project.save", revision: project.revision, manifest: project.manifest, files: files.value, removed: [] }, projectSnapshotSchema);
       if (result.isErr()) toast.error(result.error.message);

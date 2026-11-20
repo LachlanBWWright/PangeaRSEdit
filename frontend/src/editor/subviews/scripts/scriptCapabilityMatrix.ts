@@ -88,6 +88,18 @@ export interface GameCapabilityRow {
   readonly multiplayer: ScriptCapabilityStatus;
 }
 
+export const ENGINE_CAPABILITIES: GameCapabilityRow = {
+  levelHooks: "supported", globalFrameHooks: "supported", objectFrameHooks: "supported", scriptedSpawn: "supported",
+  objectCollision: "supported", timeAPIs: "supported", logging: "supported", statusReporting: "supported", persistence: "supported",
+  terrainItemHooks: "unsupported", splineItemHooks: "unsupported", mapItemHooks: "unsupported", objectTriggerEvents: "unsupported",
+  objectAnimationCompletionEvents: "unsupported", objectAnimationMarkerEvents: "unsupported", checkpointEvents: "unsupported",
+  raceProgressEvents: "unsupported", objectiveEvents: "unsupported", damageEvents: "unsupported", playerLifecycleEvents: "unsupported",
+  pickupEvents: "unsupported", pickupScoreEffects: "unsupported", weaponScoreEffects: "unsupported", weaponHitEvents: "unsupported",
+  nativeSpawn: "unsupported", playerLookup: "unsupported", playerScore: "unsupported", playerLives: "unsupported",
+  playerInventory: "unsupported", playerForm: "unsupported", playerCommands: "unsupported", playerInvulnerability: "unsupported",
+  raceMetadata: "unsupported", objectiveMetadata: "unsupported", levelMetadata: "unsupported", multiplayer: "unsupported",
+};
+
 export const CAPABILITY_MATRIX: Record<string, GameCapabilityRow> = {
   "OttoMatic-Android": {
     levelHooks: "supported",
@@ -438,7 +450,7 @@ export function getCapability(
   gameId: string,
   key: ScriptCapabilityKey,
 ): ScriptCapabilityStatus {
-  const row = CAPABILITY_MATRIX[gameId] ?? DEFAULT_CAPABILITY_ROW;
+  const row = gameId === "PangeaSandbox" ? ENGINE_CAPABILITIES : CAPABILITY_MATRIX[gameId] ?? DEFAULT_CAPABILITY_ROW;
   return row[key];
 }
 

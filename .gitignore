@@ -5,6 +5,7 @@
 # Common ignores
 .DS_Store
 .tmp/
+.tmp-model-picker-*.log
 node_modules/
 __pycache__/
 *.py[cod]
@@ -12,6 +13,7 @@ plans/
 dist/
 frontend/dist-desktop/
 desktop/release/
+desktop/dist-native/
 desktop/test-results/
 build/pangea-script/
 build/pangea-script-wasm/

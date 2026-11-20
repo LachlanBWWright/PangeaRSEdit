@@ -1,3 +1,4 @@
+import "../../../tests/setup/scriptLuaValidationDom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { createStore, Provider } from "jotai";

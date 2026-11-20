@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { desktopBridge, desktopRequest } from "./client";
 import { DESKTOP_GAMES } from "./games";
-import { desktopActiveDocumentAtom, desktopExternalProjectAtom, desktopLevelIdAtom, desktopProjectActionsAtom, desktopProjectAtom, desktopProjectCommandsAtom, desktopProjectDialogAtom, desktopProjectDirtyAtom } from "./projectState";
+import { desktopActiveDocumentAtom, desktopExternalProjectAtom, desktopLevelIdAtom, desktopProjectActionsAtom, desktopProjectAtom, desktopProjectDialogAtom } from "./projectState";
 import { receiveProjectChange } from "./projectEvents";
 import { ProjectConflict } from "./ProjectConflict";
 import { GamesPage } from "./GamesPage";
@@ -20,6 +20,8 @@ import { GameConsole } from "./GameConsole";
 import { AssetAssignmentsDialog } from "./AssetAssignmentsDialog";
 import { PlayablePacksDialog } from "./PlayablePacksDialog";
 import { loadAssetSources, syncAssetSources } from "./assetSourceState";
+import { requestDocumentTransition, saveDocumentAndClose } from "./documentTransitions";
+import { ProjectRecoveryPrompt } from "./ProjectRecoveryPrompt";
 
 export function DesktopProjectController() {
   const store = useStore();
@@ -27,8 +29,6 @@ export function DesktopProjectController() {
   const setLevelId = useSetAtom(desktopLevelIdAtom);
   const levelId = useAtomValue(desktopLevelIdAtom);
   const project = useAtomValue(desktopProjectAtom);
-  const dirty = useAtomValue(desktopProjectDirtyAtom);
-  const commands = useAtomValue(desktopProjectCommandsAtom);
   const [dialog, setDialog] = useAtom(desktopProjectDialogAtom);
   const setActions = useSetAtom(desktopProjectActionsAtom);
   const [gamesOpen, setGamesOpen] = useAtom(desktopGamesOpenAtom);
@@ -65,6 +65,7 @@ export function DesktopProjectController() {
     const parsed = hostCommandSchema.safeParse(value);
     if (!parsed.success) return;
     if (parsed.data === "save") void store.get(desktopActiveDocumentAtom)?.save();
+    else if (parsed.data === "close") void saveDocumentAndClose(store);
     else if (parsed.data === "open") void open.current();
     else setDialog("new");
   }), [bridge, store, setDialog]);
@@ -80,10 +81,10 @@ export function DesktopProjectController() {
   if (!bridge) return null;
 
   async function openProject(create: boolean) {
-    if (dirty) { toast.error("Save or discard edits before opening another project"); return; }
+    if (!await requestDocumentTransition(store)) return;
     const result = await desktopRequest(create ? { operation: "project.create", name, game } : { operation: "project.open" }, projectSnapshotSchema);
     if (result.isErr()) { if (result.error.code !== "cancelled") toast.error(result.error.message); return; }
-    commands?.discard();
+    store.get(desktopActiveDocumentAtom)?.discard();
     setExternal(null);
     setLevelId(result.value.manifest.levels[0]?.id ?? null);
     setProject(result.value);
@@ -91,6 +92,7 @@ export function DesktopProjectController() {
   }
 
   return <>
+    <ProjectRecoveryPrompt />
     <ProjectConflict />
     <ProjectDetailsDialog />
     <ProjectFilesDialog />

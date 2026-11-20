@@ -86,6 +86,11 @@ export function Navigation() {
             {featureFlags.multiplayer && (
               <MultiplayerNavigationLink active={location.pathname === "/multiplayer"} />
             )}
+            {featureFlags.luaEngine && (
+              <Button asChild variant={location.pathname.startsWith("/engine") ? "default" : "ghost"}>
+                <Link to="/engine" className="text-white">Lua Engine</Link>
+              </Button>
+            )}
             {featureFlags.scripting && (
               <Button
                 asChild

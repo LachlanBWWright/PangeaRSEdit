@@ -175,7 +175,7 @@ export function useDesktopLevel(options: DesktopLevelOptions) {
       if (!input || saving.current) return;
       saving.current = true;
       void saveProjectLevel(project, levelId, input, () => undefined, true).then((created) => {
-        if (created) setProject((current) => current ? { ...current, recoveryAvailable: true } : current);
+        if (created) setProject((current) => current?.folder === project.folder ? { ...current, recoveryAvailable: true, recoveryUpdatedAt: Date.now() } : current);
         saving.current = false;
       });
     }, 15_000);

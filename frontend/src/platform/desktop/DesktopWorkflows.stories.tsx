@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, within, waitFor } from "storybook/test";
 import { Provider, createStore } from "jotai";
 import { MemoryRouter } from "react-router-dom";
 import { ok } from "neverthrow";
 import { DesktopProjectController } from "./DesktopProjectController";
+import { DesktopProjectBar } from "./DesktopProjectBar";
+import { DesktopTitleBar } from "./DesktopTitleBar";
 import { desktopActiveDocumentAtom, desktopConflictOpenAtom, desktopConsoleOpenAtom, desktopExternalProjectAtom, desktopLevelIdAtom, desktopProjectAtom, desktopProjectDialogAtom, desktopProjectDirtyAtom } from "./projectState";
 import { installWorkflowBridge, workflowProject } from "./workflowFixtures.stories.support";
 
@@ -12,6 +14,11 @@ const meta = { title: "Desktop/Workflows", component: DesktopProjectController, 
   decorators: [(Story, context) => {
     const store = createStore();
     store.set(desktopProjectAtom, workflowProject); store.set(desktopLevelIdAtom, "farm");
+    if (context.name === "Recovery Snapshot") {
+      store.set(desktopProjectAtom, { ...workflowProject, recoveryAvailable: true, recoveryUpdatedAt: Date.UTC(2026, 10, 15, 2, 0) });
+      store.set(desktopActiveDocumentAtom, { kind: "level", save: async () => undefined, discard: () => undefined,
+        recover: async () => { store.set(desktopProjectDirtyAtom, true); } });
+    }
     if (context.name === "Native Console") store.set(desktopConsoleOpenAtom, true);
     if (context.name === "Asset Assignments") store.set(desktopProjectDialogAtom, "assignments");
     if (context.name === "Playable Packs") store.set(desktopProjectDialogAtom, "packs");
@@ -26,6 +33,19 @@ const meta = { title: "Desktop/Workflows", component: DesktopProjectController, 
 } satisfies Meta<typeof DesktopProjectController>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const ProjectNavigation: Story = { render: () => <><DesktopTitleBar /><DesktopProjectBar /><DesktopProjectController /></>, play: async () => {
+  const bar = within(within(document.body).getByRole("navigation", { name: "Project workspace" }));
+  await userEvent.click(bar.getByRole("button", { name: /^Files$/ }));
+  await waitFor(() => expect(within(document.body).getByRole("dialog", { name: "Project files" })).toBeVisible());
+} };
+
+export const RecoverySnapshot: Story = { play: async () => {
+  const dialog = within(within(document.body).getByRole("dialog", { name: "Unsaved work is available" }));
+  await expect(dialog.getByRole("button", { name: "Restore level" })).toBeEnabled();
+  await userEvent.click(dialog.getByRole("button", { name: "Restore level" }));
+  await waitFor(() => expect(within(document.body).queryByRole("dialog", { name: "Unsaved work is available" })).not.toBeInTheDocument());
+} };
 
 export const NativeConsole: Story = { play: async () => {
   const ui = within(within(document.body).getByRole("dialog", { name: "Native game console" }));

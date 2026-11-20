@@ -30,6 +30,8 @@ interface LevelActionMenuProps {
   onDownloadScriptPackage?: () => void;
   onUploadScriptPackage?: () => void;
   onSaveToCloud: () => void;
+  onExportEngineTerrain?: () => void;
+  onPreviewEngineTerrain?: () => void;
 }
 
 export function LevelActionMenu({
@@ -45,6 +47,8 @@ export function LevelActionMenu({
   onDownloadScriptPackage,
   onUploadScriptPackage,
   onSaveToCloud,
+  onExportEngineTerrain,
+  onPreviewEngineTerrain,
 }: LevelActionMenuProps) {
   const featureFlags = useFeatureFlags();
   const scriptingEnabled = featureFlags.scripting;
@@ -95,6 +99,12 @@ export function LevelActionMenu({
             Preview from Main Menu (scripts)
           </DropdownMenuItem>
         )}
+        {featureFlags.luaEngine && onPreviewEngineTerrain && <DropdownMenuItem onSelect={onPreviewEngineTerrain}>
+          <Gamepad2 className="h-4 w-4" />Preview terrain in Lua Engine
+        </DropdownMenuItem>}
+        {featureFlags.luaEngine && onExportEngineTerrain && <DropdownMenuItem onSelect={onExportEngineTerrain}>
+          <Package className="h-4 w-4" />Export terrain to Lua Engine
+        </DropdownMenuItem>}
         <DropdownMenuItem onSelect={onDownload}>
           <Download className="h-4 w-4" />
           Download Level

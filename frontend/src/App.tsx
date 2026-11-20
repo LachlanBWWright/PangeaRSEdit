@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AssetLoadingStatus } from "@/assets/AssetLoadingStatus";
 import { DesktopNavigationGuard } from "@/platform/desktop/DesktopNavigationGuard";
 import { DesktopTitleBar } from "@/platform/desktop/DesktopTitleBar";
+import { DesktopProjectBar } from "@/platform/desktop/DesktopProjectBar";
 import { desktopBridge } from "@/platform/desktop/client";
 
 const LevelEditor = lazy(() => import("./pages/LevelEditor").then((module) => ({ default: module.LevelEditor })));
@@ -19,6 +20,8 @@ const ItemAuditPage = lazy(() => import("./pages/ItemAuditPage").then((module) =
 const MultiplayerPage = lazy(() => import("./pages/Multiplayer").then((module) => ({ default: module.MultiplayerPage })));
 const CustomObjectsPage = lazy(() => import("./pages/CustomObjectsPage").then((module) => ({ default: module.CustomObjectsPage })));
 const GamesPage = lazy(() => import("./platform/desktop/GamesPage").then((module) => ({ default: module.GamesPage })));
+const GeneralEnginePage = lazy(() => import("./pages/GeneralEnginePage").then((module) => ({ default: module.GeneralEnginePage })));
+const EngineLevelEditorPage = lazy(() => import("./pages/EngineLevelEditorPage").then((module) => ({ default: module.EngineLevelEditorPage })));
 const DesktopProjectController = lazy(() => import("./platform/desktop/DesktopProjectController").then((module) => ({ default: module.DesktopProjectController })));
 
 export function App() {
@@ -33,6 +36,7 @@ function AppContent() {
       <div className="dark flex flex-col h-screen bg-gray-900">
         <DesktopTitleBar />
         <Navigation />
+        {desktopBridge() ? <DesktopProjectBar /> : null}
         {desktopBridge() ? <Suspense fallback={null}><DesktopProjectController /></Suspense> : null}
         <AssetLoadingStatus />
         <div className="flex-1 min-h-0 overflow-auto flex flex-col">
@@ -52,6 +56,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/games" element={<GamesPage />} />
+      <Route path="/engine" element={featureFlags.luaEngine ? <GeneralEnginePage /> : <Navigate to="/" replace />} />
+      <Route path="/engine/levels" element={featureFlags.luaEngine ? <EngineLevelEditorPage /> : <Navigate to="/" replace />} />
       <Route path="/" element={<LevelEditor />} />
       <Route path="/model-viewer" element={<ModelViewer />} />
       <Route path="/sprite-viewer" element={<SpriteViewer />} />

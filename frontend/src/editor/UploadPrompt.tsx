@@ -5,6 +5,7 @@ import { parseLevelDataFile } from "./loadLogic/parseLevelDataFile";
 import { useAtom } from "jotai";
 import { AtomicLevelData, splitLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
+import { EngineLevelEntry } from "@/engine/EngineLevelEntry";
 import { GameCarousel } from "./gameCards/GameCarousel";
 import type { TunnelData, TunnelLevelKind } from "@/data/tunnelParser/types";
 import type { ScriptingSampleLevel } from "./subviews/scripts/scriptSampleLevels";
@@ -84,6 +85,7 @@ export function UploadPrompt({
           <IntroText />
         </div>
 
+        <EngineLevelEntry />
         {sampleLoading && <p role="status">Preparing scripting sample…</p>}
         <fieldset disabled={sampleLoading} aria-busy={sampleLoading} className="w-full min-w-0 flex-1 min-h-0">
           <GameCarousel
