@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { zipSync } from "fflate";
-import { ResultAsync } from "neverthrow";
 import {
   HeaderData,
   ItemData,
@@ -839,58 +838,51 @@ export function IntroPrompt() {
     setProcessed(true);
   }, [setBlockHistoryUpdate]);
 
-  const handleSaveToCloud = useCallback(() => {
+  const handleSaveToCloud = useCallback(async () => {
     const cloudToastId = "save-to-cloud";
     toast.loading("Checking sign-in…", { id: cloudToastId });
-    void new ResultAsync(getMe()).match(
-      () => {
-        const snapshot = getCurrentAtomicData();
-        const combinedDataResult = combineLevelData(snapshot);
-        if (combinedDataResult.isErr()) {
-          toast.error("Could not save: level data error", {
-            id: cloudToastId,
-            description: combinedDataResult.error,
-          });
-          return;
-        }
+    const authResult = await getMe();
+    if (authResult.isErr()) {
+      toast.error("Sign in to save to cloud", {
+        id: cloudToastId,
+        description: "Use the account button in the top right.",
+        action: {
+          label: "Sign in",
+          onClick: () => {
+            window.location.href = getGoogleSignInUrl(window.location.href);
+          },
+        },
+      });
+      return;
+    }
 
-        toast.loading("Saving to cloud…", { id: cloudToastId });
-        void new ResultAsync(
-          createSavedLevel({
-            gameName: String(globals.GAME_TYPE),
-            levelId: mapFile?.name ?? "unknown",
-            displayName: mapFile?.name ?? "Untitled Level",
-            payload: combinedDataResult.value,
-            sourceFileMetadata: mapFile
-              ? { fileName: mapFile.name, fileSize: mapFile.size }
-              : undefined,
-          }),
-        ).match(
-          () => {
-            markDataSaved(snapshot);
-            toast.success("Level saved to cloud!", { id: cloudToastId });
-          },
-          (error) => {
-            toast.error("Save failed", {
-              id: cloudToastId,
-              description: error.message,
-            });
-          },
-        );
-      },
-      () => {
-        toast.error("Sign in to save to cloud", {
-          id: cloudToastId,
-          description: "Use the account button in the top right.",
-          action: {
-            label: "Sign in",
-            onClick: () => {
-              window.location.href = getGoogleSignInUrl(window.location.href);
-            },
-          },
-        });
-      },
-    );
+    const snapshot = getCurrentAtomicData();
+    const combinedDataResult = combineLevelData(snapshot);
+    if (combinedDataResult.isErr()) {
+      toast.error("Could not save: level data error", {
+        id: cloudToastId,
+        description: combinedDataResult.error,
+      });
+      return;
+    }
+
+    toast.loading("Saving to cloud…", { id: cloudToastId });
+    const saved = await createSavedLevel({
+      gameName: String(globals.GAME_TYPE),
+      levelId: mapFile?.name ?? "unknown",
+      displayName: mapFile?.name ?? "Untitled Level",
+      payload: combinedDataResult.value,
+      sourceFileMetadata: mapFile
+        ? { fileName: mapFile.name, fileSize: mapFile.size }
+        : undefined,
+    });
+    if (saved.isErr()) {
+      toast.error("Save failed", { id: cloudToastId, description: saved.error.message });
+      return;
+    }
+
+    markDataSaved(snapshot);
+    toast.success("Level saved to cloud!", { id: cloudToastId });
   }, [getCurrentAtomicData, globals, mapFile, markDataSaved]);
 
   const handleConfirmNewMap = useCallback(() => {
