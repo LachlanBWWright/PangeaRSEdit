@@ -38,6 +38,8 @@ export function HierarchyNodeItem({
             variant="ghost"
             size="sm"
             className="w-4 h-4 p-0 text-gray-300 hover:text-white"
+            aria-label={`${expanded ? "Collapse" : "Expand"} ${node.name}`}
+            aria-expanded={expanded}
             onClick={() => setExpanded((value) => !value)}
           >
             {expanded ? (
@@ -54,6 +56,7 @@ export function HierarchyNodeItem({
           variant="ghost"
           size="sm"
           className="w-5 h-5 p-0 hover:bg-gray-600"
+          aria-label={`${visible ? "Hide" : "Show"} ${node.name}`}
           onClick={handleVisibilityToggle}
           title={visible ? "Hide node" : "Show node"}
         >
@@ -74,11 +77,11 @@ export function HierarchyNodeItem({
         <div className="flex items-center gap-1 flex-none">
           {node.polyCount !== undefined && (
             <span
-              className="text-xs text-gray-500 tabular-nums"
+              className="text-xs text-gray-300 tabular-nums"
               title={`${node.polyCount.toLocaleString()} triangles`}
               aria-label={`${node.polyCount.toLocaleString()} triangles`}
             >
-              {node.polyCount.toLocaleString()}▾
+              {node.polyCount.toLocaleString()}
             </span>
           )}
           <span className="text-xs text-gray-400 capitalize px-1 py-0.5 bg-gray-700 rounded">

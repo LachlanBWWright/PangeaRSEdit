@@ -879,6 +879,28 @@ describe("scriptWorkspaceState", () => {
     expect(importedResult.error).toContain("Script source files must be Lua");
   });
 
+  it("accepts edited Lua from an IDE archive and generates a fresh package manifest", async () => {
+    const context = createScriptWorkspaceContext(OttoGlobals, 4);
+    const exported = buildScriptPackageZip(loadScriptSample(context, "log-level-start"));
+    if (exported.isErr()) return expect.fail(exported.error);
+
+    const files = unzipSync(exported.value);
+    expect(files[".vscode/extensions.json"]).toBeDefined();
+    const newSourcePath = "Data/Scripts/src/ide-round-trip.lua";
+    const newSource = "return { greeting = 'edited externally' }";
+    files[newSourcePath] = strToU8(newSource);
+    const originalManifest = files[SCRIPT_PACKAGE_MANIFEST_PATH];
+    expect(validateScriptPackageForNetwork(files, context).isErr()).toBe(true);
+
+    const imported = await importScriptPackageZipAsync(zipSync(files), context);
+    if (imported.isErr()) return expect.fail(imported.error);
+    expect(imported.value.sourceFiles[newSourcePath]?.content).toBe(newSource);
+
+    const repackaged = buildScriptPackageZip(imported.value);
+    if (repackaged.isErr()) return expect.fail(repackaged.error);
+    expect(unzipSync(repackaged.value)[SCRIPT_PACKAGE_MANIFEST_PATH]).not.toEqual(originalManifest);
+  });
+
   it("migrates legacy callback packages into Lua 5.4 source", () => {
     const context = createScriptWorkspaceContext(OttoGlobals, 4);
     const packageResult = buildScriptPackageZip(
@@ -886,8 +908,9 @@ describe("scriptWorkspaceState", () => {
     );
     expect(packageResult.isOk()).toBe(true);
     if (packageResult.isErr()) return;
-    const files = unzipSync(packageResult.value);
-    delete files[SCRIPT_PACKAGE_MANIFEST_PATH];
+    const files = Object.fromEntries(
+      Object.entries(unzipSync(packageResult.value)).filter(([path]) => path !== SCRIPT_PACKAGE_MANIFEST_PATH),
+    );
     files["Data/Scripts/src/legacy.ts"] = strToU8(
       "export function onLevelStart(): void {}",
     );

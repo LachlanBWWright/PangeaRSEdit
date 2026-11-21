@@ -3,11 +3,13 @@ import type { ScriptWorkspaceState } from "./scriptWorkspaceStateTypes";
 
 export const SCRIPT_IDE_README_PATH = "README.md";
 export const SCRIPT_IDE_CONFIG_PATH = ".luarc.json";
+export const SCRIPT_IDE_EXTENSIONS_PATH = ".vscode/extensions.json";
 export const SCRIPT_IDE_EXAMPLE_PATH = "Data/Scripts/examples/hello.lua";
 
 export const SCRIPT_IDE_SUPPORT_PATHS = [
   SCRIPT_IDE_README_PATH,
   SCRIPT_IDE_CONFIG_PATH,
+  SCRIPT_IDE_EXTENSIONS_PATH,
   SCRIPT_IDE_EXAMPLE_PATH,
 ] as const;
 
@@ -36,7 +38,8 @@ This package was exported from PangeaRSEdit for ${level}.
 1. Open this folder in VS Code or another Lua-aware editor.
 2. Install LuaLS (the Lua Language Server) or a compatible Lua extension.
 3. Edit files under \`Data/Scripts/src/\`.
-4. Return to PangeaRSEdit and upload the complete package ZIP.
+4. ZIP the contents of this folder with the Data folder at the archive root.
+   Upload the ZIP in PangeaRSEdit.
 5. Compile the package, review diagnostics, and preview it in the game.
 
 The generated declarations in \`Data/Scripts/types/\` provide completion and
@@ -88,6 +91,10 @@ export function buildScriptIdeSupportFiles(
   return [
     { path: SCRIPT_IDE_README_PATH, bytes: strToU8(buildIdeReadme(state)) },
     { path: SCRIPT_IDE_CONFIG_PATH, bytes: strToU8(buildLuaLsConfig()) },
+    {
+      path: SCRIPT_IDE_EXTENSIONS_PATH,
+      bytes: strToU8('{"recommendations":["sumneko.lua"]}\n'),
+    },
     { path: SCRIPT_IDE_EXAMPLE_PATH, bytes: strToU8(buildStarterExample()) },
   ];
 }

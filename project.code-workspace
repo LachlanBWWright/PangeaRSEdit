@@ -2,20 +2,12 @@
   "folders": [
     {
       "path": "."
-    },
-    {
-      "path": "frontend"
-    },
-    {
-      "path": "backend/rsrcdump/rsrcdump-ts"
     }
   ],
-  "settings": {
-    // Minimal workspace settings for the frontend
-  },
   "extensions": {
     "recommendations": [
-      "hbenl.vscode-vitest"
+      "vitest.explorer",
+      "sumneko.lua"
     ]
   }
 }

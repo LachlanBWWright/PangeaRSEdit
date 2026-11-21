@@ -2854,7 +2854,7 @@ export function importScriptPackageZip(
   const validationResult = validateScriptPackage(
     files,
     context,
-    { ...validationOptions, allowLegacySources: true },
+    { ...validationOptions, allowLegacySources: true, allowEditedArchive: true },
   );
   if (validationResult.isErr()) {
     return err(validationResult.error);

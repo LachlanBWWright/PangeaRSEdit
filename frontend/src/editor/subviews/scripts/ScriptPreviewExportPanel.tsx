@@ -42,17 +42,18 @@ export function ScriptPreviewExportPanel({
         <Card className="border-sky-900 bg-sky-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-sky-200">
-              Prefer VS Code or another IDE?
+              Edit in an external IDE
             </CardTitle>
             <CardDescription className="text-xs text-sky-300/80">
-              Download the script package, edit the Lua source in your IDE, then upload the complete ZIP here.
-              It includes LuaLS settings, generated declarations, and a starter example.
+              Extract the package and open the folder in your IDE. LuaLS reads the included settings and game declarations.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-2 text-xs text-sky-100/80">
-            <p>1. Download Script Package</p>
-            <p>2. Edit files under Data/Scripts/src/</p>
-            <p>3. Upload Script Package, compile, and preview</p>
+          <CardContent className="space-y-3 text-xs text-sky-100/80">
+            <p>Edit files in <code>Data/Scripts/src/</code>. Rezip the folder contents with <code>Data/</code> at the archive root, then upload the ZIP for validation and compilation.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={onDownloadScriptPackage}>Download Script Package</Button>
+              <Button variant="outline" onClick={onUploadScriptPackage}>Upload Script Package</Button>
+            </div>
           </CardContent>
         </Card>
         {warnings.length > 0 && (
@@ -111,12 +112,6 @@ export function ScriptPreviewExportPanel({
             </Button>
             <Button variant="outline" onClick={onDownloadOriginalCompatible}>
               Download Original-Compatible Level
-            </Button>
-            <Button variant="outline" onClick={onDownloadScriptPackage}>
-              Download Script Package
-            </Button>
-            <Button variant="outline" onClick={onUploadScriptPackage}>
-              Upload Script Package
             </Button>
           </CardContent>
         </Card>

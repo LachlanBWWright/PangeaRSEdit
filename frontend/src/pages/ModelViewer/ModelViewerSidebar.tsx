@@ -14,6 +14,7 @@ import type { UvLayout } from "@/modelEditing/uv/uvTypes";
 import type { Texture, UploadStep } from "./types";
 import type { ViewerInteractionMode, GizmoMode } from "@/components/model-viewer/types";
 import type { BoneInfluenceRow } from "@/components/AnimationViewer/rigToolsState";
+import { downloadEditorContext } from "@/utils/editorContext";
 
 interface ModelViewerSidebarProps {
   gltfUrl: string | null;
@@ -108,7 +109,7 @@ export function ModelViewerSidebar(props: ModelViewerSidebarProps) {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-      <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950/80 px-3 pb-4 pt-2">
+      <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gray-900 px-3 pb-4 pt-2">
         <ModelUploadPanel
           gltfUrl={gltfUrl} loading={loading} uploadStep={uploadStep}
           pendingBg3dFile={pendingBg3dFile} fileInputRef={fileInputRef}
@@ -117,8 +118,18 @@ export function ModelViewerSidebar(props: ModelViewerSidebarProps) {
           handleSkeletonFileSelect={handleSkeletonFileSelect}
           handleSkipSkeleton={handleSkipSkeleton} handleFileUpload={handleFileUpload}
           modelBaseName={modelBaseName} onModelBaseNameChange={onModelBaseNameChange}
-          exportTargets={[...exportTargets, { id: "glb", label: "GLB" }]}
+          exportTargets={[{ id: "glb", label: "GLB (.glb)" }, ...exportTargets]}
           handleDownloadSelectedExport={handleDownloadSelectedExport}
+          onDownloadContext={scene && (() => downloadEditorContext({
+            kind: "model",
+            name: modelBaseName,
+            game: gameLabel,
+            sourceFormat: modelSourceKind,
+            selectedBone: props.selectedBoneName,
+            hierarchy: modelNodes,
+            animations,
+            textureCount: textures.length,
+          }))}
           handleClearModel={handleClearModel} onCancelSelection={onCancelSelection}
         />
         {gltfUrl && <VisualizationOptions

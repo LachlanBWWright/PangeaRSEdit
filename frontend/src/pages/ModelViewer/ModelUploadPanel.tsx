@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -6,14 +6,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Download, Upload, X, Info } from "lucide-react";
+import { Download, FileJson, Upload, X, Info } from "lucide-react";
 import { GameModelSelector } from "@/components/GameModelSelector";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import type { UploadStep } from "./types";
 import {
   getUploadDropzoneText,
@@ -49,6 +51,7 @@ interface Props {
   onModelBaseNameChange: (baseName: string) => void;
   exportTargets: { id: string; label: string }[];
   handleDownloadSelectedExport: (targetId: string) => void | Promise<void>;
+  onDownloadContext?: () => void;
   handleClearModel: () => void;
   onCancelSelection: () => void;
 }
@@ -69,10 +72,12 @@ export function ModelUploadPanel({
   onModelBaseNameChange,
   exportTargets,
   handleDownloadSelectedExport,
+  onDownloadContext,
   handleClearModel,
   onCancelSelection,
 }: Props) {
   const [exportOpen, setExportOpen] = useState(false);
+  const exportNameId = useId();
   const fileAccept = ".bg3d,.3dmf,.glb,.gltf";
   const awaitingSkeleton =
     uploadStep === "select-skeleton" && pendingBg3dFile !== null;
@@ -103,16 +108,17 @@ export function ModelUploadPanel({
                     Model file selected: <strong>{pendingBg3dFile.name}</strong>
                   </div>
                 )}
-                <div
-                  className="cursor-pointer rounded-lg border-2 border-dashed border-gray-600 p-8 text-center transition-colors hover:border-gray-500"
+                <button
+                  type="button"
+                  className="w-full cursor-pointer rounded-lg border-2 border-dashed border-gray-600 p-6 text-center transition-colors hover:border-gray-500 focus-visible:ring-2 focus-visible:ring-ring"
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload className="mx-auto mb-4 h-12 w-12 text-gray-400" />
-                  <p className="mb-2 text-gray-400">{dropzoneTitle}</p>
-                  <p className="text-sm text-gray-500">{dropzoneBody}</p>
-                </div>
+                  <Upload className="mx-auto mb-3 size-8 text-gray-400" aria-hidden="true" />
+                  <span className="mb-1 block font-medium text-gray-100">{dropzoneTitle}</span>
+                  <span className="block text-sm text-gray-300">{dropzoneBody}</span>
+                </button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -153,7 +159,7 @@ export function ModelUploadPanel({
                 )}
 
                 {loading && (
-                  <p className="text-center text-gray-400">Loading model...</p>
+                  <p role="status" className="text-center text-gray-300">Loading model…</p>
                 )}
               </div>
             </section>
@@ -161,11 +167,10 @@ export function ModelUploadPanel({
         ) : (
           <div className="space-y-2">
             <div className="space-y-2">
-              <div className="text-xs uppercase tracking-wide text-gray-400">
-                Export basename
-              </div>
+              <Label htmlFor={exportNameId}>Export filename</Label>
               <div className="flex items-center gap-2">
                 <Input
+                  id={exportNameId}
                   value={modelBaseName}
                   onChange={(e) => onModelBaseNameChange(e.target.value)}
                   className="bg-gray-700 border-gray-600 text-white"
@@ -177,26 +182,22 @@ export function ModelUploadPanel({
                       type="button"
                       variant="icon"
                       size="icon"
-                      aria-label="Export basename help"
+                      aria-label="Export filename help"
                       className="h-7 w-7 min-h-7 min-w-7 rounded-full"
                     >
                       <Info className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-xs text-left">
-                    Used for download filenames, and for the generated Alias
-                    resource target name in the skeleton.rsrc file. In some
-                    games, a wrong name may cause crashing. I.E. if the
-                    accompanying BG3D file is called 'Otto.bg3d', the base name
-                    must be 'Otto', as the game loads the skeleton.rsrc file
-                    first, and tries to find the BG3D model with the Alias.
+                    Keep the model and skeleton filenames together. The skeleton
+                    points to the model by name, such as Otto.bg3d.
                   </TooltipContent>
                 </Tooltip>
               </div>
             </div>
             <div className="space-y-3">
-              <Popover open={exportOpen} onOpenChange={setExportOpen}>
-                <PopoverTrigger asChild>
+              <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+                <DialogTrigger asChild>
                   <Button
                     type="button"
                     className="w-full justify-center bg-blue-600 font-medium text-white shadow-sm hover:bg-blue-500"
@@ -206,15 +207,15 @@ export function ModelUploadPanel({
                       Export model
                     </span>
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 border-gray-700 bg-gray-900 text-white">
+                </DialogTrigger>
+                <DialogContent
+                  className="w-[calc(100%-2rem)] max-w-sm rounded-lg border-gray-700 bg-gray-900 p-4 text-white"
+                >
                   <div className="space-y-3">
-                    <div>
-                      <DialogTitle className="text-sm font-medium">
-                        Select export target
-                      </DialogTitle>
-                      <DialogDescription className="text-xs text-gray-400">
-                        Download starts as soon as you choose a target.
+                    <div className="space-y-1 pr-8">
+                      <DialogTitle>Export model</DialogTitle>
+                      <DialogDescription className="text-gray-300">
+                        Choose GLB for 3D tools or a game for its native format.
                       </DialogDescription>
                     </div>
                     <div className="grid gap-2">
@@ -234,9 +235,13 @@ export function ModelUploadPanel({
                       ))}
                     </div>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
             </div>
+            <Button type="button" variant="outline" className="w-full" onClick={onDownloadContext} disabled={!onDownloadContext}>
+              <FileJson className="size-4" aria-hidden="true" />
+              Download model context
+            </Button>
             <Button
               onClick={() => handleClearModel()}
               variant="destructive"

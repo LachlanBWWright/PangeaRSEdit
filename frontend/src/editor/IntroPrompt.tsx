@@ -21,6 +21,7 @@ import {
   type GlobalsInterface,
 } from "../data/globals/globals";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
+import { downloadEditorContext } from "@/utils/editorContext";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import { toast } from "sonner";
 import { errorSchema } from "@/schemas/common";
@@ -876,6 +877,22 @@ export function IntroPrompt() {
     clearAllState();
   }, [clearAllState]);
 
+  const mapWidth = headerData?.Hedr[1000].obj.mapWidth ?? 0;
+  const mapHeight = headerData?.Hedr[1000].obj.mapHeight ?? 0;
+  const itemCount = itemData?.Itms?.[1000]?.obj.length ?? 0;
+  const fenceCount = fenceData?.Fenc?.[1000]?.obj.length ?? 0;
+  const splineCount = splineData?.Spln?.[1000]?.obj.length ?? 0;
+  const gameName = globals.GAME_NAME;
+  const handleDownloadContext = useCallback(() => {
+    downloadEditorContext({
+      kind: "level",
+      game: gameName,
+      previewLevelIndex: previewLevelNumber,
+      dimensions: { width: mapWidth, height: mapHeight },
+      objectCounts: { items: itemCount, fences: fenceCount, splines: splineCount },
+    });
+  }, [gameName, previewLevelNumber, mapWidth, mapHeight, itemCount, fenceCount, splineCount]);
+
   useEffect(() => {
     const left =
       mapFile && mapImages && !tunnelData ? (
@@ -893,6 +910,7 @@ export function IntroPrompt() {
             onPreviewFromMainMenu={handlePreviewFromMainMenu}
             onPreviewFromMainMenuWithScripts={handlePreviewFromMainMenuWithScripts}
             onDownload={handleDownload}
+            onDownloadContext={handleDownloadContext}
             onDownloadExtendedPackage={handleDownloadExtendedPackage}
             onDownloadScriptPackage={handleDownloadScriptPackage}
             onUploadScriptPackage={handleUploadScriptPackage}
@@ -921,6 +939,7 @@ export function IntroPrompt() {
   }, [
     globals.GAME_TYPE,
     handleDownload,
+    handleDownloadContext,
     handleSaveToCloud,
     handleTestLevel,
     handlePreviewFromMainMenu,

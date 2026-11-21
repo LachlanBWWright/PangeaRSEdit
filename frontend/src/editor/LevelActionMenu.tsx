@@ -14,6 +14,7 @@ import {
   FileCode,
   Upload,
   Package,
+  FileJson,
 } from "lucide-react";
 import { useFeatureFlags } from "@/config/useFeatureFlags";
 
@@ -26,6 +27,7 @@ interface LevelActionMenuProps {
   onPreviewFromMainMenu?: () => void;
   onPreviewFromMainMenuWithScripts?: () => void;
   onDownload: () => void;
+  onDownloadContext?: () => void;
   onDownloadExtendedPackage?: () => void;
   onDownloadScriptPackage?: () => void;
   onUploadScriptPackage?: () => void;
@@ -41,6 +43,7 @@ export function LevelActionMenu({
   onPreviewFromMainMenu,
   onPreviewFromMainMenuWithScripts,
   onDownload,
+  onDownloadContext,
   onDownloadExtendedPackage,
   onDownloadScriptPackage,
   onUploadScriptPackage,
@@ -99,6 +102,12 @@ export function LevelActionMenu({
           <Download className="h-4 w-4" />
           Download Level
         </DropdownMenuItem>
+        {onDownloadContext && (
+          <DropdownMenuItem onSelect={onDownloadContext}>
+            <FileJson className="h-4 w-4" aria-hidden="true" />
+            Download level context
+          </DropdownMenuItem>
+        )}
         {scriptingEnabled && hasScripts && onDownloadExtendedPackage && (
           <DropdownMenuItem onSelect={onDownloadExtendedPackage}>
             <Package className="h-4 w-4" />

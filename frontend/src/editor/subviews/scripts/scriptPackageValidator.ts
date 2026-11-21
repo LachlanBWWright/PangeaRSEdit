@@ -136,6 +136,7 @@ export interface PackageValidationError {
 export interface ScriptPackageValidationOptions {
   readonly assetsPrevalidated?: boolean;
   readonly allowLegacySources?: boolean;
+  readonly allowEditedArchive?: boolean;
 }
 
 function parseJsonBytes(bytes: Uint8Array): Result<unknown, string> {
@@ -253,7 +254,7 @@ export function validateScriptPackage(
       );
       if (!manifestParse.success) {
         errors.push(`Invalid package manifest: ${manifestParse.error.message}`);
-      } else {
+      } else if (!options.allowEditedArchive) {
         const manifest = manifestParse.data;
         const actualFileCount = Object.keys(files).filter(
           (path) => path !== SCRIPT_PACKAGE_MANIFEST_PATH,
