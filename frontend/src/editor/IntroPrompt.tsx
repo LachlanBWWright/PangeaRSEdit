@@ -20,7 +20,7 @@ import {
   Game,
   type GlobalsInterface,
 } from "../data/globals/globals";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import { toast } from "sonner";
 import { errorSchema } from "@/schemas/common";
@@ -136,8 +136,8 @@ export function IntroPrompt() {
     index: 0,
   });
   //Set to true to block updating history, so that undo/redo doesn't change the history
-  const [blockHistoryUpdate, setBlockHistoryUpdate] =
-    useAtom(BlockHistoryUpdate);
+  const historyStore = useStore();
+  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
 
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
   const [mapImagesFile, setMapImagesFile] = useState<undefined | File>(
@@ -259,7 +259,8 @@ export function IntroPrompt() {
     Don't update history if change is coming from undo/redo, or something that 
     will trigger an immediate change (e.g spline nubs triggering spline points change)
     */
-    if (blockHistoryUpdate) {
+    // Consuming the flag must not trigger another history update.
+    if (historyStore.get(BlockHistoryUpdate)) {
       setBlockHistoryUpdate(false);
       return;
     }
@@ -285,7 +286,7 @@ export function IntroPrompt() {
     fenceData,
     splineData,
     terrainData,
-    blockHistoryUpdate,
+    historyStore,
     getCurrentAtomicData,
     setBlockHistoryUpdate,
     setDataHistory,

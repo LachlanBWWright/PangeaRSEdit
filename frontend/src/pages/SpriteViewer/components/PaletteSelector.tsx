@@ -61,7 +61,7 @@ export function PaletteSelector({
   return (
     <EditorPanel title="Palettes" contentClassName="space-y-2">
       <Select value={selectedValue} onValueChange={handleValueChange}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger aria-label="Palette" className="w-full">
             <SelectValue placeholder="Select a palette" />
           </SelectTrigger>
           <SelectContent>

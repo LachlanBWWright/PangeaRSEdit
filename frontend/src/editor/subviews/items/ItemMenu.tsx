@@ -29,6 +29,7 @@ import {
   deleteSelectedItem,
   filterSafeItemValues,
   getAllItemValues,
+  getParamLabel,
   getParamTooltip,
   getSelectedItem,
   getSelectedItemParams,
@@ -42,6 +43,7 @@ import { ENABLE_SCRIPTS } from "@/config/featureFlags";
 import { CustomObjectItemPicker } from "./CustomObjectItemPicker";
 import { ItemStateFlags } from "./ItemStateFlags";
 import { ParameterField } from "./ParameterField";
+import { MapSelection } from "../shared/MapSelection";
 import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
 
 export const ItemMenu = memo(function ItemMenu({
@@ -61,7 +63,8 @@ export const ItemMenu = memo(function ItemMenu({
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
 
   const selectedItemData = getSelectedItem(itemData, selectedItem);
-  const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
+  const items = itemData.Itms?.[1000]?.obj ?? [];
+  const itemCount = items.length;
   const selectedItemParams = getSelectedItemParams(
     globals,
     selectedItemData?.type,
@@ -94,6 +97,13 @@ export const ItemMenu = memo(function ItemMenu({
 
   return (
     <div className="flex h-full min-h-full flex-col gap-2 px-3">
+      {itemCount > 0 && (
+        <MapSelection label="Placed item" selected={selectedItem} onSelect={setSelectedItem}>
+          {items.map((item, index) => (
+            <option key={index} value={index}>{index + 1}. {getItemName(globals, item.type)}</option>
+          ))}
+        </MapSelection>
+      )}
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu hasItems={itemCount > 0} />
       ) : (
@@ -101,6 +111,7 @@ export const ItemMenu = memo(function ItemMenu({
           <span className="text-gray-400">X</span>
           <Input
             type="number"
+            aria-label="Item X position"
             className="h-7 text-xs"
             value={selectedItemData.x}
             onChange={(e) => {
@@ -114,6 +125,7 @@ export const ItemMenu = memo(function ItemMenu({
           <span className="text-gray-400">Z</span>
           <Input
             type="number"
+            aria-label="Item Z position"
             className="h-7 text-xs"
             value={selectedItemData.z}
             onChange={(e) => {
@@ -133,7 +145,7 @@ export const ItemMenu = memo(function ItemMenu({
             value={selectedItemData.type.toString() ?? ""}
             onValueChange={handleTypeChange}
           >
-            <SelectTrigger>
+            <SelectTrigger aria-label="Item type">
               <SelectValue placeholder="Select an item" />
             </SelectTrigger>
             <SelectContent>
@@ -207,7 +219,7 @@ export const ItemMenu = memo(function ItemMenu({
                   className="flex flex-col gap-2 rounded border border-gray-700 bg-gray-900/30 p-2"
                 >
                   <ParamTooltip
-                    label={<span>{`Parameter ${i}`}</span>}
+                    label={<span>{getParamLabel(i, param)}</span>}
                     tooltip={getParamTooltip(param)}
                     defaultCitation={
                       typeof param === "string" || !param
@@ -292,13 +304,13 @@ function AddItemMenu({ hasItems }: { hasItems: boolean }) {
     return (
       <>
         <Select
-          value={getItemName(globals, clickToAddItem)}
+          value={String(clickToAddItem)}
           onValueChange={(e) => {
             const newItemType = parseInt(e);
             setClickToAddItem(newItemType);
           }}
         >
-          <SelectTrigger>
+          <SelectTrigger aria-label="Item type to add">
             <SelectValue placeholder="Select an item" />
           </SelectTrigger>
           <SelectContent>

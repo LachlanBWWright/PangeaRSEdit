@@ -5,6 +5,7 @@ import { Download, Paintbrush, Eraser, Pipette, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { shapeFrameToCanvas } from "@/parsers/mightyMikeShapesParser";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useWorkspaceOrientation } from "@/components/editor/useWorkspaceOrientation";
 import { FileUploadPanel } from "./SpriteViewer/components/FileUploadPanel";
 import { MightyMikeAssetBrowser } from "./SpriteViewer/components/MightyMikeAssetBrowser";
 import { SpriteControls } from "./SpriteViewer/components/SpriteControls";
@@ -35,6 +36,7 @@ function createDefaultPalette(): Palette {
 }
 
 export function SpriteViewer() {
+  const orientation = useWorkspaceOrientation();
   const [loadedData, setLoadedData] = useState<LoadedData>(null);
   const [loading, setLoading] = useState(false);
   const [uploadFileType, setUploadFileType] = useState<FileType>("sprites");
@@ -181,8 +183,8 @@ export function SpriteViewer() {
 
   return (
     <div className="h-full overflow-hidden bg-gray-900 p-2 text-white">
-      <ResizablePanelGroup orientation="horizontal" className="h-full w-full min-w-0">
-        <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pr-2">
+      <ResizablePanelGroup orientation={orientation} className="h-full w-full min-w-0">
+        <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pb-2 md:pr-2 md:pb-0">
           <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
             <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950/80 px-3 pb-4 pt-2">
               <MightyMikeAssetBrowser selectedType={assetFileType} onTypeChange={setAssetFileType} onAssetSelect={handleAssetSelect} loading={loading} loadedFilename={loadedData?.filename} />
@@ -195,7 +197,7 @@ export function SpriteViewer() {
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={70} minSize={35} className="min-h-0 pl-2">
+        <ResizablePanel defaultSize={70} minSize={35} className="min-h-0 pt-2 md:pt-0 md:pl-2">
           <SpriteViewerCanvas loadedData={loadedData} onLoadedDataChange={setLoadedData} selectedShapeIndex={selectedShapeIndex} selectedFrameIndex={selectedFrameIndex} selectedTileIndex={selectedTileIndex} currentPalette={currentPalette} displayOptions={displayOptions} onDisplayOptionsChange={setDisplayOptions} editMode={editMode} selectedPaletteColorIndex={selectedPaletteColorIndex} onPaletteColorChange={setSelectedPaletteColorIndex} />
         </ResizablePanel>
       </ResizablePanelGroup>

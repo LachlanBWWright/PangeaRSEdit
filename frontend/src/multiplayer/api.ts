@@ -218,10 +218,14 @@ export async function getLobby(
 }
 
 export async function getLobbyPreview(
-  lobbyId: string,
+  lobbyIdOrCode: string,
 ): Promise<Result<MultiplayerLobbyPreview, MultiplayerApiError>> {
+  const encodedIdOrCode = encodeURIComponent(lobbyIdOrCode);
+  const lobbyPath = z.uuid().safeParse(lobbyIdOrCode).success
+    ? encodedIdOrCode
+    : `by-code/${encodedIdOrCode}`;
   const response = await fetchJson(
-    `${BASE_PATH}/${encodeURIComponent(lobbyId)}/preview`,
+    `${BASE_PATH}/${lobbyPath}/preview`,
     {
       method: "GET",
       headers: {

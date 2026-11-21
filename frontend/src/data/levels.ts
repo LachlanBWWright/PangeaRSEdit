@@ -1,4 +1,5 @@
 import level1hardRsrc from "./levelFiles/level1Hard/EarthFarm.ter.rsrc?url";
+import level1hardPreview from "./levelFiles/level1Hard/preview.jpg";
 import { Game } from "./globals/globals";
 import { GAME_PORT_CONFIGS } from "@/editor/utils/gamePortConfig";
 
@@ -11,6 +12,7 @@ export interface Level {
   description: string;
   category?: string;
   difficulty?: "Easy" | "Medium" | "Hard";
+  previewImage?: { readonly src: string; readonly alt: string };
   terFile?: string;
   rsrcFile?: string;
   /** The level index to launch in the game preview for this custom level */
@@ -39,6 +41,10 @@ export const levelsData: Level[] = [
     category: "Level 1",
     summary: "A harder version of Level 1's first level.",
     description: "Farms have tractors, right?",
+    previewImage: {
+      src: level1hardPreview,
+      alt: "Overhead view of Earth Farm’s fenced paths and hay bales",
+    },
     rsrcFile: level1hardRsrc,
     previewLevelNumber: 0,
   },

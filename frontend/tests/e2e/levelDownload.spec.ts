@@ -58,7 +58,7 @@ test.describe("Custom Levels", () => {
 
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
     await levelCard
-      .getByRole("button", { name: "Download", exact: true })
+      .getByRole("button", { name: "Download level", exact: true })
       .click();
 
     const download = await downloadPromise;
@@ -71,7 +71,7 @@ test.describe("Custom Levels", () => {
     const levelCard = cardByHeading(page, "Level 1 Hard");
 
     await levelCard
-      .getByRole("button", { name: "Play Level in Browser", exact: true })
+      .getByRole("button", { name: "Play in browser", exact: true })
       .click();
 
     const dialog = page.getByRole("dialog");

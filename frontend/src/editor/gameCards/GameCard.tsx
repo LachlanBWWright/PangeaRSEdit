@@ -437,13 +437,14 @@ export function GameCard({
 
         <div className="flex min-h-0 flex-1 flex-col text-base min-w-40">
           <div className="overflow-y-auto min-h-0 flex-1 space-y-2">
+            {children}
             <Button
               className="w-full"
+              variant="outline"
               onClick={() => onCreateBlankLevel(globals)}
             >
               Create Blank Level
             </Button>
-            {children}
           </div>
         </div>
 

@@ -107,7 +107,7 @@ export function MightyMikePreview({ className }: { className?: string }) {
           className="h-full max-h-full object-contain pixelated"
         />
       ) : (
-        <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="flex h-full items-center justify-center text-gray-300">
           Preview
         </div>
       )}

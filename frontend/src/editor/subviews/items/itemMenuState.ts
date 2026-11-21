@@ -143,6 +143,13 @@ export function deleteSelectedItem(
   data.Itms[1000].obj.splice(selectedItem, 1);
 }
 
+export function getParamLabel(index: number, param: ParamDescription | undefined): string {
+  const fallback = `Parameter ${index}`;
+  if (!param || param === "Unknown" || param === "Unused") return fallback;
+  if (param.type === "Bit Flags") return `Flags for parameter ${index}`;
+  return param.description || fallback;
+}
+
 export function getParamTooltip(param: ParamDescription): string {
   if (param === "Unknown" || param === "Unused") {
     return "";

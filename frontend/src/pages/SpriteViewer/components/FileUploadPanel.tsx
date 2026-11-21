@@ -51,7 +51,7 @@ export function FileUploadPanel({
             }
           }}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger aria-label="File type" className="w-full">
             <SelectValue placeholder="Select file type" />
           </SelectTrigger>
           <SelectContent>

@@ -86,8 +86,8 @@ export function MiniThreeView({
       <ErrorBoundary>
         <Suspense
           fallback={
-            <div className="flex items-center justify-center h-full text-gray-500">
-              Loading...
+            <div className="flex h-full items-center justify-center text-gray-300">
+              Loading preview…
             </div>
           }
         >
@@ -118,11 +118,11 @@ export function MiniThreeView({
               autoRotateSpeed={1.5}
             />
           ) : mounted ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex h-full items-center justify-center text-gray-300">
               No Model
             </div>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex h-full items-center justify-center text-gray-300">
               Preview
             </div>
           )}

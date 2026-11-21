@@ -56,7 +56,7 @@ export function SpriteControls({
                 }
               }}
             >
-              <SelectTrigger className="flex-1">
+              <SelectTrigger aria-label="Sprite shape" className="flex-1">
                 <SelectValue placeholder="Select a shape" />
               </SelectTrigger>
               <SelectContent>

@@ -44,15 +44,10 @@ export function DownloadLevels() {
   return (
     <div className="h-full overflow-auto bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col gap-2 mb-8 text-center">
+        <div className="mb-8 flex max-w-2xl flex-col gap-2">
           <h1 className="text-4xl font-bold text-white pb-2">Custom Levels</h1>
-          <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-            Play and download custom levels for various Pangea Software games.
-            Downloaded files go in the{" "}
-            <code className="bg-gray-700 px-1 rounded">Data/Terrain</code>{" "}
-            folder inside the game files to replace the corresponding level.
-          </p>
-          <p className="text-gray-300 text-lg max-w-3xl mx-auto">
+          <p className="text-gray-300">Play Pangea games and try fan-made levels.</p>
+          <p className="text-sm text-gray-300">
             To submit a level, open a{" "}
             <a
               href="https://github.com/LachlanBWWright/PangeaRSEdit/discussions"
@@ -78,7 +73,7 @@ export function DownloadLevels() {
             Desktop and Android packages are rebuilt nightly. Choose a platform
             on any game card to download its current build.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
             {ALL_GAME_CONFIGS.map((config) => (
               <GameLaunchCard
                 key={config.game}

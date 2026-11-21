@@ -17,7 +17,8 @@ import { PendingCreation } from "@/data/creation/pendingCreationAtom";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
-import { Layer, Stage } from "react-konva";
+import { Layer } from "react-konva";
+import { KeyboardMapStage } from "./KeyboardMapStage";
 import Konva from "konva";
 import { computeWheelZoomStage, isPointerWithinMap } from "./konvaViewState";
 import { Updater } from "use-immer";
@@ -221,7 +222,7 @@ export function OttoMaticKonvaView({
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
-      <Stage
+      <KeyboardMapStage
         width={containerSize.width}
         height={containerSize.height}
         scaleX={stage.scale}
@@ -378,7 +379,7 @@ export function OttoMaticKonvaView({
           tilesPerUnit={globals.TILES_PER_SUPERTILE}
           onResize={onResize}
         />
-      </Stage>
+      </KeyboardMapStage>
     </div>
   );
 }

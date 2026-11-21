@@ -3,6 +3,7 @@ import type { Dispatch, MouseEvent, RefObject, SetStateAction } from "react";
 import { Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 import { EditorZoomControls } from "@/components/editor/EditorZoomControls";
+import { KeyboardCanvas } from "@/components/editor/KeyboardCanvas";
 import { getSteppedZoom, getWheelZoom } from "@/components/editor/editorZoomState";
 import type { ShapeFrame } from "@/parsers/mightyMikeShapesParser";
 import { editShapeFramePixel, type SpritePixelEdit } from "../utils/spritePixelEditing";
@@ -10,6 +11,15 @@ import { getSpritePixelIndex, renderImageCanvas, renderSpriteCanvas } from "../u
 import type { DisplayOptions } from "./DisplayOptionsPanel";
 import type { Palette } from "../utils/paletteUtils";
 import type { EditMode, LoadedData, SpriteRenderParams } from "../types";
+
+function getCanvasCoordinates(event: MouseEvent<HTMLCanvasElement>) {
+  const canvas = event.currentTarget;
+  const bounds = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - bounds.left) * canvas.width / bounds.width,
+    y: (event.clientY - bounds.top) * canvas.height / bounds.height,
+  };
+}
 
 interface SpriteViewerCanvasProps {
   readonly loadedData: LoadedData;
@@ -154,12 +164,14 @@ export function SpriteViewerCanvas({
   const handleCanvasMouseDown = (event: MouseEvent<HTMLCanvasElement>) => {
     if (editMode === "view" || event.button !== 0 || event.altKey) return;
     isPaintingRef.current = true;
-    editPixelAtCanvasPos(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
+    const { x, y } = getCanvasCoordinates(event);
+    editPixelAtCanvasPos(x, y);
   };
 
   const handleCanvasMouseMove = (event: MouseEvent<HTMLCanvasElement>) => {
     if (!isPaintingRef.current || editMode === "view" || editMode === "eyedropper") return;
-    editPixelAtCanvasPos(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
+    const { x, y } = getCanvasCoordinates(event);
+    editPixelAtCanvasPos(x, y);
   };
 
   const handleCanvasMouseUp = () => {
@@ -211,6 +223,14 @@ export function SpriteViewerCanvas({
       viewportCursor={viewportCursor}
       panOffset={panOffset}
       canvasRef={canvasRef}
+      getInitialPoint={() => {
+        const params = renderParamsRef.current;
+        if (!params || loadedData?.type !== "sprites") return;
+        return {
+          x: params.originX + (params.spriteW / 2 - params.spriteOffsetX) * params.zoom,
+          y: params.originY + (params.spriteH / 2 - params.spriteOffsetY) * params.zoom,
+        };
+      }}
       onZoomOut={() => changeZoom(-1)}
       onZoomIn={() => changeZoom(1)}
       onResetZoom={() =>
@@ -233,6 +253,7 @@ interface ResizableViewportProps {
   readonly viewportCursor: string;
   readonly panOffset: { x: number; y: number };
   readonly canvasRef: RefObject<HTMLCanvasElement | null>;
+  readonly getInitialPoint: () => { x: number; y: number } | undefined;
   readonly onZoomOut: () => void;
   readonly onZoomIn: () => void;
   readonly onResetZoom: () => void;
@@ -251,6 +272,7 @@ function ResizableViewport({
   viewportCursor,
   panOffset,
   canvasRef,
+  getInitialPoint,
   onZoomOut,
   onZoomIn,
   onResetZoom,
@@ -268,7 +290,7 @@ function ResizableViewport({
           <p className="truncate text-sm font-medium text-gray-100">
             {loadedData?.filename ?? "Sprite Editor"}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-300">
             {loadedTypeLabel} | {displayOptions.zoomLevel.toFixed(1)}x
           </p>
         </div>
@@ -292,14 +314,16 @@ function ResizableViewport({
             className="flex items-center justify-center p-8 min-w-full min-h-full"
             style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)` }}
           >
-            <canvas
-              ref={canvasRef}
-              style={{ imageRendering: "pixelated" }}
-              onMouseDown={onCanvasMouseDown}
-              onMouseMove={onCanvasMouseMove}
-              onMouseUp={onCanvasMouseUp}
-              onMouseLeave={onCanvasMouseUp}
-            />
+            <KeyboardCanvas label="Sprite canvas" surfaceSelector="canvas" getInitialPoint={getInitialPoint}>
+              <canvas
+                ref={canvasRef}
+                style={{ imageRendering: "pixelated" }}
+                onMouseDown={onCanvasMouseDown}
+                onMouseMove={onCanvasMouseMove}
+                onMouseUp={onCanvasMouseUp}
+                onMouseLeave={onCanvasMouseUp}
+              />
+            </KeyboardCanvas>
           </div>
         </div>
       ) : (

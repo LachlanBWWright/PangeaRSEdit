@@ -42,6 +42,8 @@ export interface LobbyBrowserProps {
   readonly busy: boolean;
   readonly isPreloading: boolean;
   readonly lobbyListErrorText: string | null;
+  readonly actionErrorText: string | null;
+  readonly hasPublicLobbies: boolean;
   readonly displayedPublicLobbies: readonly MultiplayerLobbySummary[];
   readonly joinGameFilter: JoinGameFilter;
   readonly joinModeFilter: JoinModeFilter;
@@ -61,6 +63,7 @@ export interface LobbyBrowserProps {
 export interface MultiplayerSessionViewProps {
   readonly lobby: MultiplayerLobbyDetails;
   readonly activeMatchConfigPresent: boolean;
+  readonly uiState: MultiplayerUiState;
   readonly showDebugOverlay: boolean;
   readonly localParticipantId: string | null;
   readonly localPlayerIndex: number | null;

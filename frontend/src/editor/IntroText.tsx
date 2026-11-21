@@ -7,14 +7,14 @@ export function IntroText() {
       <p className="text-sm text-gray-300">
         A level editor for Pangea Software games. Built using{" "}
         <a
-          className="underline text-blue-600 hover:text-blue-800 visited:text-purple-600"
+          className="text-sky-300 underline hover:text-sky-200 visited:text-violet-300"
           href="https://github.com/jorio/rsrcdump"
         >
           RSRCDump
         </a>{" "}
         by Jorio.{" "}
         <a
-          className="underline text-blue-600 hover:text-blue-800 visited:text-purple-600"
+          className="text-sky-300 underline hover:text-sky-200 visited:text-violet-300"
           href="https://github.com/LachlanBWWright/PangeaRSEdit"
         >
           View this project on GitHub

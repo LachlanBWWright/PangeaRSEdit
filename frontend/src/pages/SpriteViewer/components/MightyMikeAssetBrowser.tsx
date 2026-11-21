@@ -97,7 +97,7 @@ export function MightyMikeAssetBrowser({
               }
             }}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger aria-label="Asset type" className="w-full">
               <SelectValue placeholder="Select asset type" />
             </SelectTrigger>
             <SelectContent>
@@ -125,7 +125,7 @@ export function MightyMikeAssetBrowser({
             }}
             disabled={loading}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger aria-label="Select asset" className="w-full">
               <SelectValue placeholder="Select a file..." />
             </SelectTrigger>
             <SelectContent>

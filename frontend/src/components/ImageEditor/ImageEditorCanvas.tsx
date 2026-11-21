@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Redo, Undo } from "lucide-react";
-import { Image, Layer, Line, Stage } from "react-konva";
+import { Image, Layer, Line } from "react-konva";
+import { KeyboardMapStage } from "@/editor/canvas/KeyboardMapStage";
 import type Konva from "konva";
 import type { RefObject } from "react";
 import type { BrushStroke } from "./types";
@@ -63,7 +64,7 @@ export function ImageEditorCanvas({
   );
 
   return (
-    <div className="flex-1 bg-gray-900 rounded overflow-hidden relative">
+    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded bg-gray-900">
       <div className="absolute top-4 right-4 z-10 flex flex-row items-center gap-2 bg-gray-800/90 p-1.5 rounded-lg shadow-xl border border-gray-700">
         <div className="flex items-center gap-1 border-r border-gray-700 pr-2 mr-1">
           <Button
@@ -109,7 +110,8 @@ export function ImageEditorCanvas({
           }}
         >
           <div className="m-auto shadow-2xl border border-gray-800">
-            <Stage
+            <KeyboardMapStage
+              canvasLabel="Texture canvas"
               ref={stageRef}
               width={image.width * scale}
               height={image.height * scale}
@@ -160,7 +162,7 @@ export function ImageEditorCanvas({
                   />
                 )}
               </Layer>
-            </Stage>
+            </KeyboardMapStage>
           </div>
         </div>
       </div>

@@ -312,7 +312,7 @@ export function ScriptCustomObjectsPanel({
       <CardContent className={compact ? "px-0" : "grid gap-3"}>
         <div className={compact ? "grid gap-5 lg:grid-cols-[minmax(18rem,0.7fr)_minmax(0,1.8fr)]" : "grid gap-3"}>
         <div className={compact ? "rounded-lg border border-slate-800 bg-slate-900/60 p-4" : "contents"}>
-        {compact ? <div className="mb-3"><p className="text-sm font-medium text-white">Create a definition</p><p className="mt-1 text-xs text-slate-400">Choose a behavior, name the reusable object, then configure its appearance on the right.</p></div> : null}
+        {compact ? <h2 className="mb-3 text-sm font-medium text-white">Create an object</h2> : null}
         <div className="grid gap-2">
           <Label htmlFor="custom-object-behavior">Object script</Label>
           <Select
@@ -331,8 +331,10 @@ export function ScriptCustomObjectsPanel({
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2 md:grid-cols-2">
-          <div className="grid gap-2">
+        <div className="grid gap-2">
+          <details className="order-last text-sm text-slate-300">
+            <summary className="cursor-pointer">Object identifier</summary>
+            <div className="mt-2 grid gap-2">
             <Label htmlFor="custom-object-id">Object id</Label>
             <Input
               id="custom-object-id"
@@ -344,9 +346,10 @@ export function ScriptCustomObjectsPanel({
               placeholder="Generated from the label"
               readOnly
             />
-          </div>
+            </div>
+          </details>
           <div className="grid gap-2">
-            <Label htmlFor="custom-object-label">Label</Label>
+            <Label htmlFor="custom-object-label">Object name</Label>
             <Input
               id="custom-object-label"
               value={customObjectLabel}
@@ -369,7 +372,7 @@ export function ScriptCustomObjectsPanel({
         </div>
         </div>
         <div className="min-w-0">
-        {compact ? <div className="mb-3"><p className="text-sm font-medium text-white">Definitions</p><p className="mt-1 text-xs text-slate-400">Shared by every level in this game.</p></div> : null}
+        {compact ? <h2 className="mb-3 text-sm font-medium text-white">Objects in this game</h2> : null}
         {showLevelInstances ? (
           <ScriptCustomObjectInstancesPanel
             placements={customObjectPlacements}
@@ -380,7 +383,7 @@ export function ScriptCustomObjectsPanel({
         {compact && customObjectOptions.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-4 py-8 text-center">
             <p className="text-sm font-medium text-slate-300">No definitions yet</p>
-            <p className="mt-1 text-xs text-slate-500">Create one from the form on the left, or import a definition bundle.</p>
+            <p className="mt-1 text-xs text-slate-300">Create an object or import a definition bundle.</p>
           </div>
         ) : null}
         {customObjectOptions.map((objectDefinition) => (

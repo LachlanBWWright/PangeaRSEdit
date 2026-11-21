@@ -6,7 +6,7 @@ import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { Globals } from "@/data/globals/globals";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { Stage } from "react-konva";
+import { KeyboardMapStage } from "./KeyboardMapStage";
 import Konva from "konva";
 import { isRenderableContainerSize } from "@/hooks/useContainerSize";
 import { Updater } from "use-immer";
@@ -198,7 +198,7 @@ export function KonvaView({
           flexShrink: 0,
         }}
       >
-        <Stage
+        <KeyboardMapStage
           width={containerSize.width}
           height={containerSize.height}
           scaleX={stage.scale}
@@ -238,7 +238,7 @@ export function KonvaView({
             mapImages={mapImages}
             view={view}
           />
-        </Stage>
+        </KeyboardMapStage>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { ParamDescription, FlagDescription } from "@/data/items/itemParams";
 import { parseU8 } from "@/utils/numberParsers";
+import { getParamLabel } from "./itemMenuState";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,18 @@ interface ParameterFieldProps {
   onFlagChange?: (flag: FlagDescription, checked: boolean) => void;
 }
 
+function RawParameter({ value, onValueChange }: Pick<ParameterFieldProps, "value" | "onValueChange">) {
+  return (
+    <details className="text-xs text-muted-foreground">
+      <summary className="cursor-pointer">Advanced</summary>
+      <label className="mt-2 flex items-center gap-2">
+        <span className="shrink-0">Raw value</span>
+        <Input type="number" className="h-7 w-24 text-xs" value={value} onChange={(event) => onValueChange(parseU8(event.target.value))} />
+      </label>
+    </details>
+  );
+}
+
 export function ParameterField({
   paramIndex,
   param,
@@ -30,6 +43,7 @@ export function ParameterField({
   onValueChange,
   onFlagChange,
 }: ParameterFieldProps) {
+  const accessibleName = getParamLabel(paramIndex, param);
   if (param && typeof param !== "string" && param.type === "TypeSelector") {
     const options = Object.entries(param.options).map(([rawValue, label]) => ({
       value: Number.parseInt(rawValue, 10),
@@ -40,7 +54,7 @@ export function ParameterField({
     return (
       <div className="flex flex-col gap-2">
         <Select value={value.toString()} onValueChange={(next) => onValueChange(parseU8(next))}>
-          <SelectTrigger className="h-7 text-xs">
+          <SelectTrigger aria-label={accessibleName} className="h-7 text-xs">
             <SelectValue placeholder="Select a value" />
           </SelectTrigger>
           <SelectContent>
@@ -51,20 +65,12 @@ export function ParameterField({
             )}
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value.toString()}>
-                {option.value}: {option.label}
+                {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">Raw value</span>
-          <Input
-            type="number"
-            className="h-7 text-xs"
-            value={value.toString()}
-            onChange={(event) => onValueChange(parseU8(event.target.value))}
-          />
-        </div>
+        <RawParameter value={value} onValueChange={onValueChange} />
       </div>
     );
   }
@@ -79,7 +85,7 @@ export function ParameterField({
     return (
       <div className="flex flex-col gap-2">
         <Select value={value.toString()} onValueChange={(next) => onValueChange(parseU8(next))}>
-          <SelectTrigger className="h-7 text-xs">
+          <SelectTrigger aria-label={accessibleName} className="h-7 text-xs">
             <SelectValue placeholder="Select rotation" />
           </SelectTrigger>
           <SelectContent>
@@ -90,20 +96,12 @@ export function ParameterField({
             )}
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value.toString()}>
-                {option.value}: {option.degrees}°
+                {option.degrees}°
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">Raw value</span>
-          <Input
-            type="number"
-            className="h-7 text-xs"
-            value={value.toString()}
-            onChange={(event) => onValueChange(parseU8(event.target.value))}
-          />
-        </div>
+        <RawParameter value={value} onValueChange={onValueChange} />
       </div>
     );
   }
@@ -138,15 +136,7 @@ export function ParameterField({
             );
           })}
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          <p>Value:</p>
-          <Input
-            type="number"
-            className="w-24"
-            value={value.toString()}
-            onChange={(e) => onValueChange(parseU8(e.target.value))}
-          />
-        </div>
+        <RawParameter value={value} onValueChange={onValueChange} />
       </div>
     );
   }
@@ -155,6 +145,7 @@ export function ParameterField({
     <Input
       key={`input-${paramIndex}`}
       type="number"
+      aria-label={accessibleName}
       className="col-span-3"
       value={value.toString()}
       onChange={(e) => onValueChange(parseU8(e.target.value))}

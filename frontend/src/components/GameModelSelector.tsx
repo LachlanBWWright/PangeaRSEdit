@@ -194,7 +194,7 @@ export function GameModelSelector({
           Game
         </label>
         <Select value={selectedGameId} onValueChange={setSelectedGameId}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger aria-label="Game" className="w-full">
             <SelectValue placeholder="Select a game" />
           </SelectTrigger>
           <SelectContent>
@@ -218,7 +218,7 @@ export function GameModelSelector({
             Category
           </label>
           <Select value={effectiveCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-full">
+            <SelectTrigger aria-label="Category" className="w-full">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
@@ -254,7 +254,7 @@ export function GameModelSelector({
               }}
               disabled={loading}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger aria-label="Model" className="w-full">
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>

@@ -16,6 +16,10 @@ public interface IMultiplayerLobbyService
         Guid lobbyId,
         CancellationToken cancellationToken);
 
+    Task<AppResult<MultiplayerLobbyDetails>> GetLobbyByJoinCodeAsync(
+        string joinCode,
+        CancellationToken cancellationToken);
+
     Task<AppResult<MultiplayerLobbyDetails>> JoinLobbyAsync(
         JoinLobbyRequest request,
         CancellationToken cancellationToken);

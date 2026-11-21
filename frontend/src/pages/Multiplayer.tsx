@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errAsync, okAsync } from "neverthrow";
-import {
-  createAndConnectHubClient,
-  type MultiplayerHubClient,
-} from "@/multiplayer/hub";
+import { MultiplayerHubClient } from "@/multiplayer/hub";
 import {
   heartbeatLobby,
   listLobbies,
@@ -100,6 +97,7 @@ export function MultiplayerPage() {
   });
   const [errorText, setErrorText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [connectedPeers, setConnectedPeers] = useState<ReadonlySet<string>>(new Set());
   const [lobbyListErrorText, setLobbyListErrorText] = useState<string | null>(
     null,
   );
@@ -258,6 +256,7 @@ export function MultiplayerPage() {
     nextLobby: MultiplayerLobbyDetails,
   ): Promise<void> => {
     closeRtcSessions();
+    setConnectedPeers(new Set());
     setUiState("connecting-peer");
     setForceLocalRuntimeTransport(shouldForceLocalTransport());
     const participantId = nextLobby.participantId;
@@ -324,26 +323,7 @@ export function MultiplayerPage() {
       hubClientRef.current = null;
     }
 
-    const connectResult = await createAndConnectHubClient(
-      nextLobby.id,
-      participantId,
-      events,
-    );
-    if (connectResult.isErr()) {
-      setErrorText(connectResult.error.message);
-      setStatusText("Connection failed");
-      return;
-    }
-
-    hubClientRef.current = connectResult.value;
-    setConnectionStatus(getConnectionStatus(connectResult.value));
-    setStatusText("Connected");
-    setUiState("in-lobby");
-
-    if (!canUseWebRtc) {
-      return;
-    }
-
+    const hubClient = new MultiplayerHubClient(events);
     const isLocalHost = nextLobby.hostParticipantId === participantId;
     const createConnectionForHost = (peerParticipantId: string) => {
       void peerParticipantId;
@@ -361,61 +341,54 @@ export function MultiplayerPage() {
       return okAsync(created.value);
     };
 
-    if (isLocalHost) {
+    if (canUseWebRtc && isLocalHost) {
       hostSessionRef.current = createHostSession({
         createPeerConnection: createConnectionForHost,
         sendOffer: (targetParticipantId, sdp) =>
-          connectResult.value
+          hubClient
             .sendOffer(nextLobby.id, targetParticipantId, sdp)
             .mapErr((error) => error.message),
         sendIceCandidate: (targetParticipantId, candidate) =>
-          connectResult.value
+          hubClient
             .sendIceCandidate(nextLobby.id, targetParticipantId, candidate)
             .mapErr((error) => error.message),
-        onStateChanged: (_, state) => {
+        onStateChanged: (peerParticipantId, state) => {
           setRtcStatusText(state);
+          if (state !== "connected") {
+            setConnectedPeers((peers) => {
+              if (!peers.has(peerParticipantId)) return peers;
+              const remaining = new Set(peers);
+              remaining.delete(peerParticipantId);
+              return remaining;
+            });
+          }
           if (state === "failed") {
-            setForceLocalRuntimeTransport(true);
-            setStatusText(
-              "WebRTC failed, switched to local fallback transport",
-            );
+            setErrorText("Could not connect to a player. Ask them to leave and rejoin the lobby.");
           }
         },
         onError: setErrorText,
         onDataChannelOpened: (peerParticipantId, channels) => {
           bindHostRuntimeDataChannels(peerParticipantId, channels);
+          setConnectedPeers((peers) => new Set(peers).add(peerParticipantId));
           setRtcStatusText("connected");
         },
       });
 
-      for (const player of nextLobby.players) {
-        if (player.participantId === participantId) {
-          continue;
-        }
-        observeRtcResult(
-          hostSessionRef.current.startPeer(player.participantId),
-          "Unable to connect peer",
-          setErrorText,
-        );
-      }
-    } else {
+    } else if (canUseWebRtc) {
       clientSessionRef.current = createClientSession({
         createPeerConnection: createConnectionForClient,
         sendAnswer: (targetParticipantId, sdp) =>
-          connectResult.value
+          hubClient
             .sendAnswer(nextLobby.id, targetParticipantId, sdp)
             .mapErr((error) => error.message),
         sendIceCandidate: (targetParticipantId, candidate) =>
-          connectResult.value
+          hubClient
             .sendIceCandidate(nextLobby.id, targetParticipantId, candidate)
             .mapErr((error) => error.message),
         onStateChanged: (state) => {
           setRtcStatusText(state);
           if (state === "failed") {
-            setForceLocalRuntimeTransport(true);
-            setStatusText(
-              "WebRTC failed, switched to local fallback transport",
-            );
+            setErrorText("Could not connect to the host. Leave the lobby and try joining again.");
           }
         },
         onError: setErrorText,
@@ -424,6 +397,30 @@ export function MultiplayerPage() {
           setRtcStatusText("connected");
         },
       });
+    }
+
+    const connectResult = await hubClient.connect().andThen(() =>
+      hubClient.joinLobby(nextLobby.id, participantId),
+    );
+    if (connectResult.isErr()) {
+      await hubClient.disconnect();
+      closeRtcSessions();
+      setErrorText(connectResult.error.message);
+      setStatusText("Connection failed");
+      return;
+    }
+
+    hubClientRef.current = hubClient;
+    setConnectionStatus(getConnectionStatus(hubClient));
+    setStatusText("Connected");
+    setUiState("in-lobby");
+
+    const hostSession = hostSessionRef.current;
+    if (hostSession) {
+      for (const player of nextLobby.players) {
+        if (player.participantId === participantId) continue;
+        observeRtcResult(hostSession.startPeer(player.participantId), "Unable to connect peer", setErrorText);
+      }
     }
   };
 
@@ -482,16 +479,22 @@ export function MultiplayerPage() {
   });
   const currentHudModel = buildHudModel(currentMatchKind, currentMatchPhase);
   const readyPlayerCount = lobby ? countReadyPlayers(lobby) : 0;
+  const canConnectMatch = shouldUseMockHub() || forceLocalRuntimeTransport ||
+    lobby?.players.every((player) => player.participantId === localParticipantId || connectedPeers.has(player.participantId));
   const canStartLobby = Boolean(
     isHost &&
     lobby &&
+    lobby.state === "open" &&
     lobby.players.length >= 2 &&
+    canConnectMatch &&
     readyPlayerCount === lobby.players.length,
   );
   const canForceStartLobby = Boolean(
     isHost &&
     lobby &&
+    lobby.state === "open" &&
     lobby.players.length >= 2 &&
+    canConnectMatch &&
     readyPlayerCount < lobby.players.length,
   );
   const canEndMatch = Boolean(isHost && lobby?.state === "started");
@@ -582,6 +585,8 @@ export function MultiplayerPage() {
           busy={busy}
           isPreloading={uiState === "preloading-game"}
           lobbyListErrorText={lobbyListErrorText}
+          actionErrorText={errorText}
+          hasPublicLobbies={publicLobbies.length > 0}
           displayedPublicLobbies={displayedPublicLobbies}
           joinGameFilter={joinGameFilter}
           joinModeFilter={joinModeFilter}
@@ -607,6 +612,7 @@ export function MultiplayerPage() {
         <MultiplayerSessionView
           lobby={lobby}
           activeMatchConfigPresent={Boolean(activeMatchConfig)}
+          uiState={uiState}
           showDebugOverlay={showDebugOverlay}
           localParticipantId={localParticipantId}
           localPlayerIndex={localParticipant?.playerIndex ?? null}
@@ -616,7 +622,9 @@ export function MultiplayerPage() {
           displayedPingMs={displayedPingMs}
           currentMatchKind={currentMatchKind}
           hudLabel={hudLabel}
-          statusText={statusText}
+          statusText={isHost && lobby.state === "open" && lobby.players.length >= 2 && !canConnectMatch
+            ? "Waiting for players to connect…"
+            : statusText}
           errorText={errorText}
           isHost={isHost}
           readyPlayerCount={readyPlayerCount}

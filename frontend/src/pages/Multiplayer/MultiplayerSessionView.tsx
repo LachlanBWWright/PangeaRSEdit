@@ -7,6 +7,10 @@ export function MultiplayerSessionView(props: MultiplayerSessionViewProps) {
     <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_21rem]">
       <MultiplayerGameStage
         activeMatchConfigPresent={props.activeMatchConfigPresent}
+        uiState={props.uiState}
+        lobby={props.lobby}
+        errorText={props.errorText}
+        isHost={props.isHost}
         gameCanvasRef={props.gameCanvasRef}
       />
       <MultiplayerSessionSidebar

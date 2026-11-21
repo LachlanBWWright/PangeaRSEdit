@@ -4,7 +4,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, OrbitControls } from "@react-three/drei";
 import { Box3, Group, MathUtils, Mesh, Vector3 } from "three";
 import { Boxes, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -113,9 +113,10 @@ function ParameterControls({ mapping, params, flags, onParam, onFlags }: { mappi
     }
     const parameterKey = ITEM_PARAMETER_KEYS.find((key) => key === control.key);
     if (!parameterKey) return null;
-    if (control.domain.kind === "enum") return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Select value={String(control.value)} onValueChange={(value) => onParam(parameterKey, Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{control.domain.values.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
+    const inputId = `model-preview-param-${parameterKey}`;
+    if (control.domain.kind === "enum") return <div className="space-y-1" key={control.key}><Label htmlFor={inputId} className="text-slate-300">{control.domain.summary}</Label><Select value={String(control.value)} onValueChange={(value) => onParam(parameterKey, Number(value))}><SelectTrigger id={inputId}><SelectValue /></SelectTrigger><SelectContent>{control.domain.values.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
     const min = control.domain.kind === "integer" ? control.domain.min : undefined; const max = control.domain.kind === "integer" ? control.domain.max : undefined;
-    return <div className="space-y-1" key={control.key}><Label className="text-slate-300">{control.domain.summary}</Label><Input type="number" min={min} max={max} value={control.value} onChange={(event) => onParam(parameterKey, Number(event.target.value))} /></div>;
+    return <div className="space-y-1" key={control.key}><Label htmlFor={inputId} className="text-slate-300">{control.domain.summary}</Label><Input id={inputId} type="number" min={min} max={max} value={control.value} onChange={(event) => onParam(parameterKey, Number(event.target.value))} /></div>;
   })}</div>;
 }
 
@@ -162,5 +163,112 @@ export function ItemModelViewer() {
   const loadPreview = useCallback(async () => { if (gameId === null || itemType === null || !mapping) return; const version = requestVersion.current + 1; requestVersion.current = version; setLoading(true); setError(null); const loaded = await loadModel(itemType, params, levelNum, kind, flags); if (version !== requestVersion.current) return; if (!loaded) { setLoading(false); setError(`Unable to load ${mapping.modelFile}. Check the mapping and model asset.`); return; } const displayed = presentItemModel(loaded, mapping, params); setScene(displayed); setBounds(boundsFor(displayed)); setFitVersion((current) => current + 1); setLoading(false); }, [flags, gameId, itemType, kind, levelNum, loadModel, mapping, params]);
   const audit = gameId === null || itemType === null ? undefined : getItemModelAuditEntry(gameId, kind, itemType);
   const stats = statsFor(scene); const requestText = gameId === null || itemType === null ? "Select a game and item" : JSON.stringify({ game: gameId, kind, itemType, levelNum, params, flags });
-  return <div className="flex h-full min-h-0 gap-4 bg-gray-900 p-4">{!captureMode && <Card className="w-[26rem] shrink-0 overflow-auto border-gray-700 bg-gray-800"><CardHeader><CardTitle className="flex items-center gap-2 text-white"><Boxes className="h-5 w-5" />Item-to-model mapping preview</CardTitle><p className="text-sm text-slate-400">Experimental diagnostic view using the editor’s shared mapping and model pipeline.</p></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label className="text-slate-300">Game</Label><Select value={gameId === null ? "" : String(gameId)} onValueChange={(value) => reset(Number(value), kind)}><SelectTrigger><SelectValue placeholder="Select a game" /></SelectTrigger><SelectContent>{GAME_OPTIONS.map((option) => <SelectItem key={option.id} value={String(option.id)}>{option.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label className="text-slate-300">Item kind</Label><Select value={kind} onValueChange={(value) => reset(gameId, value === "splineItem" ? "splineItem" : "terrainItem")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{KINDS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>{selectedGame && <><div className="space-y-2"><Label className="text-slate-300">Search items</Label><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or numeric type" /></div><div className="space-y-2"><Label className="text-slate-300">Item</Label><div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-1"><Button type="button" size="icon" variant="outline" aria-label="Previous item" disabled={selectedVisibleIndex <= 0} onClick={() => selectAdjacentItem(-1)}><ChevronLeft className="h-4 w-4" /></Button><Select value={itemType === null ? "" : String(itemType)} onValueChange={(value) => selectItem(Number(value))}><SelectTrigger><SelectValue placeholder="Select an item" /></SelectTrigger><SelectContent>{visibleItems.map((item) => <SelectItem key={item.type} value={String(item.type)}>{item.type}: {item.name}{item.hasMapping ? " ✓" : item.auditDisposition ? ` — audited ${item.auditDisposition}` : " — unmapped"}</SelectItem>)}</SelectContent></Select><Button type="button" size="icon" variant="outline" aria-label="Next item" disabled={selectedVisibleIndex < 0 || selectedVisibleIndex >= visibleItems.length - 1} onClick={() => selectAdjacentItem(1)}><ChevronRight className="h-4 w-4" /></Button></div></div></>}{levelDependent && <div className="space-y-2"><Label className="text-slate-300">Level</Label><Select value={levelNum === undefined ? "" : String(levelNum)} onValueChange={(value) => { invalidatePreview(); setLevelNum(Number(value)); }}><SelectTrigger><SelectValue placeholder="Choose a level" /></SelectTrigger><SelectContent>{Array.from({ length: 11 }, (_, level) => <SelectItem key={level} value={String(level)}>{level}</SelectItem>)}</SelectContent></Select></div>}<ParameterControls mapping={mapping} params={params} flags={flags} onFlags={(value) => { invalidatePreview(); setFlags(value); }} onParam={(key, value) => { invalidatePreview(); setParams((current) => ({ ...current, [key]: value })); }} /><Button className="w-full" disabled={loading || !mapping} onClick={() => void loadPreview()}>{loading ? "Loading model…" : "Load model"}</Button>{error && <p role="alert" className="text-sm text-red-300">{error}</p>}<MappingSummary game={gameId ?? Game.OTTO_MATIC} mapping={mapping} audit={audit} /><div className="rounded border border-slate-700 bg-slate-900/50 p-2 text-xs text-slate-400"><div>Normalized request</div><code className="break-all">{requestText}</code></div>{stats && <div className="text-xs text-slate-400">Vertices: {stats.vertices} · Faces: {stats.faces}</div>}<Button variant="ghost" className="w-full" onClick={() => { invalidatePreview(); setError(null); }}><RotateCcw className="mr-2 h-4 w-4" />Clear preview</Button></CardContent></Card>}<div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-slate-700"><ModelViewport scene={scene} bounds={bounds} version={fitVersion} /></div></div>;
+  const selectedItem = items.find((item) => item.type === itemType);
+
+  return (
+    <div className={captureMode
+      ? "flex h-full min-h-0 bg-gray-900 p-4"
+      : "grid min-h-full gap-4 bg-gray-900 p-4 md:h-full md:min-h-0 md:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]"}
+    >
+      {!captureMode && (
+        <Card className="min-w-0 border-gray-700 bg-gray-800 md:overflow-y-auto">
+          <CardHeader>
+            <h1 className="flex items-center gap-2 text-lg font-semibold text-white">
+              <Boxes className="size-5" aria-hidden="true" />
+              Item model preview
+            </h1>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="model-preview-game">Game</Label>
+              <Select value={gameId === null ? "" : String(gameId)} onValueChange={(value) => reset(Number(value), kind)}>
+                <SelectTrigger id="model-preview-game"><SelectValue placeholder="Select a game" /></SelectTrigger>
+                <SelectContent>
+                  {GAME_OPTIONS.map((option) => <SelectItem key={option.id} value={String(option.id)}>{option.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="model-preview-kind">Item kind</Label>
+              <Select value={kind} onValueChange={(value) => reset(gameId, value === "splineItem" ? "splineItem" : "terrainItem")}>
+                <SelectTrigger id="model-preview-kind"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {KINDS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedGame && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="model-preview-search">Search items</Label>
+                  <Input id="model-preview-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or numeric type" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model-preview-item">Item</Label>
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-1">
+                    <Button type="button" size="icon" variant="outline" aria-label="Previous item" disabled={selectedVisibleIndex <= 0} onClick={() => selectAdjacentItem(-1)}>
+                      <ChevronLeft aria-hidden="true" />
+                    </Button>
+                    <Select value={itemType === null ? "" : String(itemType)} onValueChange={(value) => selectItem(Number(value))}>
+                      <SelectTrigger id="model-preview-item"><SelectValue placeholder="Select an item" /></SelectTrigger>
+                      <SelectContent>
+                        {visibleItems.map((item) => (
+                          <SelectItem key={item.type} value={String(item.type)}>
+                            {item.name} ({item.type}){item.hasMapping ? "" : ` (${item.auditDisposition ?? "unmapped"})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" size="icon" variant="outline" aria-label="Next item" disabled={selectedVisibleIndex < 0 || selectedVisibleIndex >= visibleItems.length - 1} onClick={() => selectAdjacentItem(1)}>
+                      <ChevronRight aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+            {levelDependent && (
+              <div className="space-y-2">
+                <Label htmlFor="model-preview-level">Level</Label>
+                <Select value={levelNum === undefined ? "" : String(levelNum)} onValueChange={(value) => { invalidatePreview(); setLevelNum(Number(value)); }}>
+                  <SelectTrigger id="model-preview-level"><SelectValue placeholder="Choose a level" /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 11 }, (_, level) => <SelectItem key={level} value={String(level)}>{level}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <ParameterControls
+              mapping={mapping}
+              params={params}
+              flags={flags}
+              onFlags={(value) => { invalidatePreview(); setFlags(value); }}
+              onParam={(key, value) => { invalidatePreview(); setParams((current) => ({ ...current, [key]: value })); }}
+            />
+            <Button className="w-full" disabled={loading || !mapping} onClick={() => void loadPreview()}>
+              {loading ? "Loading model…" : "Load model"}
+            </Button>
+            {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
+            {selectedItem && (
+              <section className="space-y-2 border-t border-gray-700 pt-3">
+                <h2 className="font-semibold">{selectedItem.name}</h2>
+                <p className="text-sm text-slate-300">{mapping ? mapping.modelFile : audit?.reason ?? "No model mapping available."}</p>
+                <details className="space-y-2 text-sm text-slate-300">
+                  <summary className="cursor-pointer">Mapping details</summary>
+                  <MappingSummary game={gameId ?? Game.OTTO_MATIC} mapping={mapping} audit={audit} />
+                  <code className="block break-all text-xs">{requestText}</code>
+                  {stats && <p className="text-xs">Vertices {stats.vertices}, faces {stats.faces}</p>}
+                </details>
+              </section>
+            )}
+            <Button variant="ghost" className="w-full" onClick={() => { invalidatePreview(); setError(null); }}>
+              <RotateCcw className="size-4" />Clear preview
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      <div className="min-h-72 min-w-0 flex-1 overflow-hidden rounded border border-slate-700 md:min-h-0">
+        <ModelViewport scene={scene} bounds={bounds} version={fitVersion} />
+      </div>
+    </div>
+  );
 }

@@ -17,7 +17,7 @@ test.describe("game custom-object library", () => {
 
   test("exposes a compact game library without level navigation or placement controls", async ({ page }) => {
     await expect(page.getByRole("combobox", { name: "Game" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create Custom Object Script" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create object script" })).toBeVisible();
     await expect(page.getByText("Game-wide definitions · instances are placed per level")).toBeVisible();
     await expect(page.getByText("Instances on this level")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Levels", exact: true })).toHaveCount(0);
@@ -30,7 +30,7 @@ test.describe("game custom-object library", () => {
   });
 
   test("opens the custom-object script creation flow", async ({ page }) => {
-    await page.getByRole("button", { name: "Create Custom Object Script" }).click();
+    await page.getByRole("button", { name: "Create object script" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create Script" })).toBeVisible();
     await expect(page.locator("#target")).toHaveText("Custom Object");

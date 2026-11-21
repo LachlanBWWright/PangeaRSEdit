@@ -114,7 +114,7 @@ export function MultiplayerSessionSidebar({
 
   return (
     <aside className="min-h-0 border-l border-border pl-4">
-      <div className="min-h-0 max-h-full overflow-hidden text-xs">
+      <div className="min-h-0 max-h-full overflow-y-auto text-xs">
         <Tabs defaultValue="lobby" className="min-h-0">
           {showDebugOverlay ? (
             <TabsList className="h-9 bg-transparent p-0">
@@ -161,7 +161,7 @@ export function MultiplayerSessionSidebar({
             {canEditSelection ? (
               <div className="grid gap-2">
                 <div className="grid gap-1">
-                  <Label>Mode</Label>
+                  <Label htmlFor="session-mode">Mode</Label>
                   <Select
                     value={lobby.mode}
                     disabled={busy}
@@ -173,7 +173,7 @@ export function MultiplayerSessionSidebar({
                       );
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="session-mode">
                       <SelectValue placeholder="Select mode" />
                     </SelectTrigger>
                     <SelectContent>
@@ -186,7 +186,7 @@ export function MultiplayerSessionSidebar({
                   </Select>
                 </div>
                 <div className="grid gap-1">
-                  <Label>Map</Label>
+                  <Label htmlFor="session-map">Map</Label>
                   <Select
                     value={lobby.trackOrLevel}
                     disabled={busy}
@@ -198,7 +198,7 @@ export function MultiplayerSessionSidebar({
                       );
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="session-map">
                       <SelectValue placeholder="Select map" />
                     </SelectTrigger>
                     <SelectContent>
@@ -212,7 +212,7 @@ export function MultiplayerSessionSidebar({
                 </div>
                 {usesCroMagTagDuration(lobby.gameId, lobby.mode) ? (
                   <div className="grid gap-1">
-                    <Label>Tag Duration</Label>
+                    <Label htmlFor="session-tag-duration">Tag duration</Label>
                     <Select
                       value={String(lobby.tagDurationMinutes)}
                       disabled={busy}
@@ -224,7 +224,7 @@ export function MultiplayerSessionSidebar({
                         );
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="session-tag-duration">
                         <SelectValue placeholder="Select tag duration" />
                       </SelectTrigger>
                       <SelectContent>
@@ -290,6 +290,7 @@ export function MultiplayerSessionSidebar({
             <div className="flex gap-2">
               <Input
                 value={chatDraft}
+                aria-label="Lobby chat message"
                 placeholder="Send a message"
                 onChange={(event) => {
                   onChatDraftChange(event.target.value);

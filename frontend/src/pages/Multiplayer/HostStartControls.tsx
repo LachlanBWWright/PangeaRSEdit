@@ -34,10 +34,11 @@ export function HostStartControls({
       <Button
         type="button"
         size="sm"
+        variant={isHost || localParticipantIsReady ? "outline" : "default"}
         disabled={busy || !hasLocalParticipant}
         onClick={onToggleReady}
       >
-        {localParticipantIsReady ? "Set Not Ready" : "Set Ready"}
+        {localParticipantIsReady ? "Set not ready" : "Set ready"}
       </Button>
       {isHost ? (
         <>
@@ -47,7 +48,7 @@ export function HostStartControls({
             disabled={busy || !canStart}
             onClick={onStart}
           >
-            Start
+            Start match
           </Button>
           {canForceStart ? (
             <Button

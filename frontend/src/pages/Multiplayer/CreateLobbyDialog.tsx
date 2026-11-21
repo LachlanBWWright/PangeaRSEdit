@@ -30,6 +30,9 @@ interface CreateLobbyDialogProps {
   readonly open: boolean;
   readonly formState: LobbyFormState;
   readonly busy: boolean;
+  readonly pendingText: string;
+  readonly errorText: string | null;
+  readonly onCloseAutoFocus: () => void;
   readonly onOpenChange: (open: boolean) => void;
   readonly onFormStateChange: (nextState: LobbyFormState) => void;
   readonly onCreate: () => void;
@@ -39,25 +42,44 @@ export function CreateLobbyDialog({
   open,
   formState,
   busy,
+  pendingText,
+  errorText,
+  onCloseAutoFocus,
   onOpenChange,
   onFormStateChange,
   onCreate,
 }: CreateLobbyDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!busy) onOpenChange(nextOpen);
+    }}>
+      <DialogContent
+        className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto]"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          onCloseAutoFocus();
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>Create Lobby</DialogTitle>
+          <DialogTitle>Create lobby</DialogTitle>
           <DialogDescription>
             Choose the match setup, then invite others with the join code.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <form
+          id="multiplayer-create-form"
+          className="grid min-h-0 content-start gap-4 overflow-y-auto px-1 py-1"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!busy) onCreate();
+          }}
+        >
           <div className="space-y-2">
-            <Label htmlFor="multiplayer-create-display-name">Display Name</Label>
+            <Label htmlFor="multiplayer-create-display-name">Display name</Label>
             <Input
               id="multiplayer-create-display-name"
+              disabled={busy}
               value={formState.displayName}
               onChange={(event) => {
                 onFormStateChange({
@@ -69,8 +91,9 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Game</Label>
+            <Label htmlFor="multiplayer-create-game">Game</Label>
             <Select
+              disabled={busy}
               value={formState.gameId}
               onValueChange={(nextGameId) => {
                 onFormStateChange(
@@ -78,7 +101,7 @@ export function CreateLobbyDialog({
                 );
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-game">
                 <SelectValue placeholder="Select game" />
               </SelectTrigger>
               <SelectContent>
@@ -89,14 +112,15 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Mode</Label>
+            <Label htmlFor="multiplayer-create-mode">Mode</Label>
             <Select
+              disabled={busy}
               value={formState.mode}
               onValueChange={(nextMode) => {
                 onFormStateChange(buildUpdatedLobbyModeState(formState, nextMode));
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-mode">
                 <SelectValue placeholder="Select mode" />
               </SelectTrigger>
               <SelectContent>
@@ -110,8 +134,9 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Track / Level</Label>
+            <Label htmlFor="multiplayer-create-map">Map</Label>
             <Select
+              disabled={busy}
               value={formState.trackOrLevel}
               onValueChange={(value) => {
                 onFormStateChange({
@@ -120,8 +145,8 @@ export function CreateLobbyDialog({
                 });
               }}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select track or level" />
+              <SelectTrigger id="multiplayer-create-map">
+                <SelectValue placeholder="Select a map" />
               </SelectTrigger>
               <SelectContent>
                 {getTrackOptions(formState.gameId, formState.mode).map((option) => (
@@ -135,8 +160,9 @@ export function CreateLobbyDialog({
 
           {usesCroMagTagDuration(formState.gameId, formState.mode) ? (
             <div className="space-y-2">
-              <Label>Tag Duration</Label>
+              <Label htmlFor="multiplayer-create-duration">Tag duration</Label>
               <Select
+                disabled={busy}
                 value={String(formState.tagDurationMinutes)}
                 onValueChange={(value) => {
                   onFormStateChange({
@@ -145,7 +171,7 @@ export function CreateLobbyDialog({
                   });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger id="multiplayer-create-duration">
                   <SelectValue placeholder="Select tag duration" />
                 </SelectTrigger>
                 <SelectContent>
@@ -160,8 +186,9 @@ export function CreateLobbyDialog({
           ) : null}
 
           <div className="space-y-2">
-            <Label>Max Players</Label>
+            <Label htmlFor="multiplayer-create-capacity">Max players</Label>
             <Select
+              disabled={busy}
               value={String(formState.maxPlayers)}
               onValueChange={(value) => {
                 onFormStateChange({
@@ -170,7 +197,7 @@ export function CreateLobbyDialog({
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-capacity">
                 <SelectValue placeholder="Select max players" />
               </SelectTrigger>
               <SelectContent>
@@ -184,8 +211,9 @@ export function CreateLobbyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Lobby Visibility</Label>
+            <Label htmlFor="multiplayer-create-visibility">Lobby visibility</Label>
             <Select
+              disabled={busy}
               value={formState.isPublic ? "public" : "private"}
               onValueChange={(value) => {
                 onFormStateChange({
@@ -194,7 +222,7 @@ export function CreateLobbyDialog({
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="multiplayer-create-visibility">
                 <SelectValue placeholder="Select lobby visibility" />
               </SelectTrigger>
               <SelectContent>
@@ -203,16 +231,18 @@ export function CreateLobbyDialog({
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        <div className="flex justify-end">
+        </form>
+        <div className="grid justify-items-end gap-2">
+          {busy ? <p role="status" className="text-sm text-muted-foreground">{pendingText}</p> : null}
+          {errorText ? (
+            <p role="alert" className="text-sm text-destructive">{errorText} Check your settings or try again.</p>
+          ) : null}
           <Button
-            type="button"
-            size="default"
+            type="submit"
+            form="multiplayer-create-form"
             disabled={busy}
-            onClick={onCreate}
           >
-            Create Lobby
+            Create lobby
           </Button>
         </div>
       </DialogContent>

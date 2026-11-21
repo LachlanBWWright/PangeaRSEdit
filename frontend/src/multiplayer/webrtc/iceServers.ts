@@ -5,8 +5,8 @@ import { getParticipantToken } from "@/multiplayer/api";
 
 const iceServerSchema = z.object({
   urls: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
-  username: z.string().optional(),
-  credential: z.string().optional(),
+  username: z.string().nullish(),
+  credential: z.string().nullish(),
 });
 
 const iceServerListSchema = z.object({
@@ -16,8 +16,8 @@ const iceServerListSchema = z.object({
 function mapIceServer(server: z.infer<typeof iceServerSchema>): RTCIceServer {
   return {
     urls: server.urls,
-    username: server.username,
-    credential: server.credential,
+    username: server.username ?? undefined,
+    credential: server.credential ?? undefined,
   };
 }
 

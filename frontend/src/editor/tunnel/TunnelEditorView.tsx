@@ -339,8 +339,8 @@ export function TunnelEditorView({
         onSave={handleSave}
       />
 
-      <div className="flex flex-1 min-h-0">
-        <div className="relative flex-1 min-w-0">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div className="relative min-h-0 min-w-0 flex-1">
           <div className="absolute left-2 top-2 z-10">
             <TunnelViewerOptionsMenu
               showWater={showWater}
@@ -385,7 +385,7 @@ export function TunnelEditorView({
             onUpdateItemSplineIndex={handleDragItemSplineIndex}
           />
         </div>
-        <div className="w-80 min-w-0 bg-gray-900 border-l border-gray-700 flex flex-col">
+        <div className="flex h-[min(42dvh,22rem)] min-w-0 shrink-0 flex-col border-t border-gray-700 bg-gray-900 md:h-auto md:w-80 md:border-t-0 md:border-l">
           <div className="flex-1 min-h-0 overflow-hidden">
             {activeTab === "items" && (
               <TunnelItemEditor

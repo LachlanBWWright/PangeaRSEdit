@@ -58,7 +58,7 @@ const Toast = forwardRef<
   return (
     <ToastRoot
       ref={ref}
-      className={cn(toastVariants({ variant }), className)}
+      className={cn(toastVariants({ variant }), "motion-reduce:animate-none! motion-reduce:transition-none!", className)}
       {...props}
     />
   );

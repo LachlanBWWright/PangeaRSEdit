@@ -1,16 +1,8 @@
-import { Link, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAtomValue } from "jotai";
+import { Box, Boxes, ChevronDown, ClipboardList, Download, FlaskConical, Image, Map, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Map,
-  Box,
-  Download,
-  Image,
-  FlaskConical,
-  Boxes,
-  ClipboardList,
-  Network,
-} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   editorNavbarLeftAtom,
   editorNavbarActionsAtom,
@@ -22,158 +14,65 @@ import { useFeatureFlags } from "@/config/useFeatureFlags";
 import { SettingsMenu } from "@/components/SettingsMenu";
 
 export function Navigation() {
-  const location = useLocation();
-  const featureFlags = useFeatureFlags();
+  const { pathname } = useLocation();
+  const flags = useFeatureFlags();
   const editorNavbarOpen = useAtomValue(editorNavbarOpenAtom);
   const editorNavbarLeft = useAtomValue(editorNavbarLeftAtom);
   const editorNavbarActions = useAtomValue(editorNavbarActionsAtom);
   const editorNavbarTabs = useAtomValue(editorNavbarTabsAtom);
-  const showEditorNavbar = location.pathname === "/" && editorNavbarOpen;
+  const showEditorNavbar = pathname === "/" && editorNavbarOpen;
+  const destinations = [
+    { to: "/", label: "Level Editor", icon: Map, enabled: true },
+    { to: "/model-viewer", label: "Model Viewer", icon: Box, enabled: true },
+    { to: "/sprite-viewer", label: "Sprite Editor", icon: Image, enabled: true },
+    { to: "/multiplayer", label: "Multiplayer", icon: Network, enabled: flags.multiplayer },
+    { to: "/custom-objects", label: "Custom Objects", icon: Boxes, enabled: flags.scripting },
+    { to: "/download-levels", label: "Custom Levels", icon: Download, enabled: true },
+    { to: "/item-model-mapping-preview", label: "Item Models", icon: Boxes, enabled: flags.itemModelMappingPreview },
+    { to: "/test-models", label: "Test Models", icon: FlaskConical, enabled: flags.itemModelMappingPreview },
+    { to: "/item-audit", label: "Item Audit", icon: ClipboardList, enabled: flags.itemModelMappingPreview },
+  ].filter(({ enabled }) => enabled);
+  const current = destinations.find(({ to }) => to === pathname);
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-1 min-h-14 flex items-center gap-2 md:gap-4 overflow-visible">
+    <nav aria-label={showEditorNavbar ? "Editor toolbar" : "Main navigation"} className="sticky top-0 z-50 flex min-h-14 flex-wrap items-center gap-2 border-b border-slate-700 bg-slate-800 px-2 py-1 md:px-4">
       {showEditorNavbar ? (
-        <div className="flex-1 min-w-0 overflow-visible">
-          <div className="flex items-center gap-2 md:gap-4 whitespace-nowrap w-full pr-1 overflow-visible">
-            {editorNavbarLeft}
-            {editorNavbarTabs && (
-              <div className="flex flex-1 min-w-0 overflow-x-auto items-stretch rounded-md bg-muted p-1 text-muted-foreground border border-border">
-                {editorNavbarTabs}
-              </div>
-            )}
-            <div className="relative flex items-center gap-2 shrink-0 overflow-visible">
-              {editorNavbarActions}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          {editorNavbarLeft}
+          {editorNavbarTabs && (
+            <div className="order-last flex min-w-0 basis-full overflow-x-auto rounded-md border border-border bg-muted p-1 text-muted-foreground xl:order-none xl:flex-1">
+              {editorNavbarTabs}
             </div>
-          </div>
+          )}
+          <div className="relative ml-auto flex min-w-0 flex-wrap items-center gap-2">{editorNavbarActions}</div>
         </div>
       ) : (
-        <div className="flex-1 min-w-0 overflow-x-auto">
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap min-w-max pr-1">
-            <Button
-              asChild
-              variant={location.pathname === "/" ? "default" : "ghost"}
-              className="flex items-center gap-2"
-            >
-              <Link to="/" className="text-white">
-                <Map className="w-4 h-4" />
-                <span>Level Editor</span>
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant={
-                location.pathname === "/model-viewer" ? "default" : "ghost"
-              }
-              className="flex items-center gap-2"
-            >
-              <Link to="/model-viewer" className="text-white">
-                <Box className="w-4 h-4" />
-                <span>Model Viewer</span>
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant={
-                location.pathname === "/sprite-viewer" ? "default" : "ghost"
-              }
-              className="flex items-center gap-2"
-            >
-              <Link to="/sprite-viewer" className="text-white">
-                <Image className="w-4 h-4" />
-                <span>Sprite Editor</span>
-              </Link>
-            </Button>
-            {featureFlags.multiplayer && (
-              <Button
-                asChild
-                variant={
-                  location.pathname === "/multiplayer" ? "default" : "ghost"
-                }
-                className="flex items-center gap-2"
-              >
-                <Link to="/multiplayer" className="text-white">
-                  <Network className="w-4 h-4" />
-                  <span>Multiplayer</span>
-                </Link>
+        <>
+          <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-2 xl:flex">
+            {destinations.map(({ to, label, icon: Icon }) => (
+              <Button key={to} asChild variant={pathname === to ? "default" : "ghost"}>
+                <NavLink to={to} end><Icon aria-hidden="true" />{label}</NavLink>
               </Button>
-            )}
-            {featureFlags.scripting && (
-              <Button
-                asChild
-                variant={
-                  location.pathname === "/custom-objects" ? "default" : "ghost"
-                }
-                className="flex items-center gap-2"
-              >
-                <Link to="/custom-objects" className="text-white">
-                  <Boxes className="w-4 h-4" />
-                  <span>Custom Objects</span>
-                </Link>
-              </Button>
-            )}
-            <Button
-              asChild
-              variant={
-                location.pathname === "/download-levels" ? "default" : "ghost"
-              }
-              className="flex items-center gap-2"
-            >
-              <Link to="/download-levels" className="text-white">
-                <Download className="w-4 h-4" />
-                <span>Custom Levels</span>
-              </Link>
-            </Button>
-            {featureFlags.itemModelMappingPreview && (
-              <>
-                <Button
-                  asChild
-                  variant={
-                    location.pathname === "/item-model-mapping-preview" ? "default" : "ghost"
-                  }
-                  className="flex items-center gap-2"
-                >
-                  <Link to="/item-model-mapping-preview" className="text-white">
-                    <Boxes className="w-4 h-4" />
-                    <span>Item Models</span>
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  variant={
-                    location.pathname === "/test-models" ? "default" : "ghost"
-                  }
-                  className="flex items-center gap-2"
-                >
-                  <Link to="/test-models" className="text-white">
-                    <FlaskConical className="w-4 h-4" />
-                    <span>Test Models</span>
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  variant={
-                    location.pathname === "/item-audit" ? "default" : "ghost"
-                  }
-                  className="flex items-center gap-2"
-                >
-                  <Link to="/item-audit" className="text-white">
-                    <ClipboardList className="w-4 h-4" />
-                    <span>Item Audit</span>
-                  </Link>
-                </Button>
-              </>
-            )}
+            ))}
           </div>
-        </div>
+          <div className="flex min-w-0 flex-1 items-center gap-1 xl:hidden">
+            {current && <span className="truncate px-2 text-sm font-semibold" aria-current="page">{current.label}</span>}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost">More <ChevronDown aria-hidden="true" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {destinations.map(({ to, label, icon: Icon }) => (
+                  <DropdownMenuItem key={to} asChild>
+                    <NavLink to={to} end><Icon aria-hidden="true" className="size-4" />{label}</NavLink>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-1"><SettingsMenu /><UserMenu /></div>
+        </>
       )}
-      <div
-        className={
-          showEditorNavbar ? "hidden" : "ml-auto flex shrink-0 items-center gap-1"
-        }
-      >
-        <SettingsMenu />
-        <UserMenu />
-      </div>
     </nav>
   );
 }

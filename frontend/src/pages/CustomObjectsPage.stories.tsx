@@ -46,7 +46,7 @@ export const GameLibrary: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(canvasElement.querySelector('[aria-label="Game"]')?.textContent).toContain("Otto Matic");
-    expect(canvas.getByRole("button", { name: "Create Custom Object Script" })).toBeVisible();
+    expect(canvas.getByRole("button", { name: "Create object script" })).toBeVisible();
     expect(canvas.queryByText("Instances on this level")).toBeNull();
     expect(canvas.queryByText("Levels")).toBeNull();
 
@@ -54,7 +54,7 @@ export const GameLibrary: Story = {
     await userEvent.click(within(document.body).getByRole("option", { name: "Bugdom 2" }));
     expect(canvasElement.querySelector('[aria-label="Game"]')?.textContent).toContain("Bugdom 2");
 
-    await userEvent.click(canvas.getByRole("button", { name: "Create Custom Object Script" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Create object script" }));
     expect(document.querySelector('[role="dialog"][data-state="open"]')).toBeTruthy();
     expect(document.querySelector('[role="dialog"] h2')?.textContent).toContain("Create Script");
   },

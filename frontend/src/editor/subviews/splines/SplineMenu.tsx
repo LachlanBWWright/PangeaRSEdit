@@ -3,11 +3,12 @@ import {
   SplineData,
   HeaderData,
 } from "@/python/structSpecs/LevelTypes";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 
 import {
   SelectedSpline,
   SelectedSplineItem,
+  SelectedSplineNub,
 } from "../../../data/splines/splineAtoms";
 import { SPLINE_KEY_BASE } from "./splineUtils";
 import { memo, useEffect } from "react";
@@ -29,6 +30,7 @@ import { initSplineItem } from "@/editor/subviews/splines/editSplineItemMenuStat
 import { ItemThumbnail } from "@/components/items/ItemThumbnail";
 import { LevelNumber } from "@/data/globals/levelNumber";
 import { getItemLevelSupportLabel } from "@/data/items/itemLevelSupport";
+import { MapSelection } from "../shared/MapSelection";
 
 const ADD_SPLINE_ITEM_VALUE = "AddSplineItem";
 const NO_SPLINE_ITEM_SELECTED_VALUE = "NoneSelected";
@@ -42,26 +44,38 @@ export const SplineMenu = memo(function SplineMenu({
   headerData?: HeaderData;
   setHeaderData?: Updater<HeaderData>;
 }) {
-  const selectedSpline = useAtomValue(SelectedSpline);
+  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const setSelectedSplineNub = useSetAtom(SelectedSplineNub);
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
   const globals = useAtomValue(Globals);
   const levelNum = useAtomValue(LevelNumber);
-  const hasSplines = (splineData.Spln?.[1000]?.obj?.length ?? 0) > 0;
+  const splines = splineData.Spln?.[1000]?.obj ?? [];
+  const hasSplines = splines.length > 0;
+  const splineSelection = hasSplines && (
+    <MapSelection label="Placed spline" selected={selectedSpline} onSelect={(index) => {
+      setSelectedSpline(index);
+      setSelectedSplineNub(null);
+    }}>
+      {splines.map((_, index) => <option key={index} value={index}>Spline {index + 1}</option>)}
+    </MapSelection>
+  );
 
   useEffect(() => {
     setSelectedSplineItem(undefined);
   }, [selectedSpline, setSelectedSplineItem]);
 
-  if (selectedSpline === undefined) {
-    return <AddNewSplineMenu setSplineData={setSplineData} hasSplines={hasSplines} />;
-  }
+  const splineItemData = selectedSpline === undefined
+    ? null
+    : splineData.SpIt?.[SPLINE_KEY_BASE + selectedSpline]?.obj ?? null;
 
-  const splineItemData =
-    splineData.SpIt?.[SPLINE_KEY_BASE + selectedSpline]?.obj ?? null;
-
-  if (splineItemData === null) {
-    return <AddNewSplineMenu setSplineData={setSplineData} hasSplines={hasSplines} />;
+  if (selectedSpline === undefined || splineItemData === null) {
+    return (
+      <div className="flex min-h-full min-w-0 flex-col gap-4 p-2">
+        {splineSelection}
+        <AddNewSplineMenu setSplineData={setSplineData} hasSplines={hasSplines} />
+      </div>
+    );
   }
 
   const selectedItem =
@@ -135,6 +149,7 @@ export const SplineMenu = memo(function SplineMenu({
 
   return (
     <div className="flex min-h-full min-w-0 flex-col gap-4 p-2">
+      {splineSelection}
       <section className="min-w-0">
         <EditSplineMenu splineData={splineData} setSplineData={setSplineData} />
       </section>

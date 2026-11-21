@@ -91,6 +91,19 @@ public sealed class MultiplayerLobbiesController(
     public async Task<IActionResult> GetLobbyPreviewAsync(Guid id, CancellationToken cancellationToken)
     {
         var result = await lobbyService.GetLobbyAsync(id, cancellationToken);
+        return MapLobbyPreview(result);
+    }
+
+    [HttpGet("by-code/{joinCode}/preview")]
+    [EnableRateLimiting("multiplayer-read")]
+    public async Task<IActionResult> GetLobbyPreviewByCodeAsync(string joinCode, CancellationToken cancellationToken)
+    {
+        var result = await lobbyService.GetLobbyByJoinCodeAsync(joinCode, cancellationToken);
+        return MapLobbyPreview(result);
+    }
+
+    private IActionResult MapLobbyPreview(AppResult<MultiplayerLobbyDetails> result)
+    {
         if (!result.IsSuccess || result.Value is null)
         {
             return ToErrorStatus(result.ErrorCode ?? AppErrors.LobbyNotFound);

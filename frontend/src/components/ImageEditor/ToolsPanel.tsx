@@ -129,7 +129,7 @@ export function ToolsPanel({
   };
 
   return (
-    <div className="w-64 bg-gray-800 rounded p-4 space-y-6 overflow-y-auto">
+    <div className="max-h-[min(30dvh,16rem)] shrink-0 space-y-6 overflow-y-auto rounded bg-gray-800 p-4 md:max-h-none md:w-64">
       <div className="space-y-3">
         <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
           Brush Settings

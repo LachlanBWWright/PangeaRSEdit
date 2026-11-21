@@ -170,7 +170,7 @@ export function useMultiplayerLobbyActions(
       input.setBusy(false);
       return;
     }
-    await joinPreflightedLobby(input, resolvedLobbyId);
+    await joinPreflightedLobby(input, previewResult.value.id);
   };
 
   const handleQuickJoinLobby = async (

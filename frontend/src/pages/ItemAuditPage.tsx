@@ -233,7 +233,7 @@ export function ItemAuditPage() {
         <div className="space-y-4">
           <div className="grid gap-4 border-b border-gray-800 pb-4 md:grid-cols-2">
             <div>
-              <Label>Game</Label>
+              <Label htmlFor="audit-game">Game</Label>
               <Select
                 value={String(selectedGame)}
                 onValueChange={(value) => {
@@ -248,7 +248,7 @@ export function ItemAuditPage() {
                   }
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger id="audit-game">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -260,8 +260,10 @@ export function ItemAuditPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col items-end justify-end gap-2">
+            <div className="flex flex-col items-start justify-end gap-2 md:items-end">
+              <Label htmlFor="audit-report">Import audit report</Label>
               <Input
+                id="audit-report"
                 type="file"
                 accept="application/json"
                 className="max-w-xs"
@@ -280,8 +282,8 @@ export function ItemAuditPage() {
 
           {currentEntry && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <ItemThumbnail
                     game={selectedGame}
                     kind="terrainItem"
@@ -294,22 +296,28 @@ export function ItemAuditPage() {
                   <p className="text-sm text-gray-400">
                     Item {currentIndex + 1} of {entries.length}
                   </p>
-                  <h3 className="text-lg font-semibold">
+                  <h2 className="text-lg font-semibold">
                     {currentEntry.itemType}: {currentEntry.itemName}
-                  </h3>
+                  </h2>
                   <p className="text-sm text-gray-400">
                     Model mapping:{" "}
                     {previewMapping?.modelFile
-                      ? `${previewMapping.modelPath}/${previewMapping.modelFile}`
+                      ? previewMapping.modelFile
                       : "Not mapped"}
                   </p>
+                  {previewMapping?.modelFile && (
+                    <details className="text-sm text-gray-300">
+                      <summary className="cursor-pointer">Model source</summary>
+                      <code className="break-all">{previewMapping.modelPath}/{previewMapping.modelFile}</code>
+                    </details>
+                  )}
                   {currentEntry.screenshot ? (
                     <p className="text-sm text-gray-400">
                       Screenshot: {currentEntry.screenshot.verificationStatus} (
                       {currentEntry.screenshot.variantKey})
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-500">Screenshot: no screenshot</p>
+                    <p className="text-sm text-gray-300">No screenshot available</p>
                   )}
                   </div>
                 </div>
@@ -347,8 +355,9 @@ export function ItemAuditPage() {
                 <div className="grid grid-cols-2 gap-2 border-b border-gray-800 pb-4 md:grid-cols-4">
                   {previewParamKeys.map((key) => (
                   <div key={`preview-${key}`} className="space-y-1">
-                    <Label>{key.toUpperCase()} Preview</Label>
+                    <Label htmlFor={`audit-preview-${key}`}>{key.toUpperCase()} preview</Label>
                     <Input
+                      id={`audit-preview-${key}`}
                       type="number"
                       value={previewParams[key]}
                       onChange={(event) =>
@@ -496,8 +505,9 @@ export function ItemAuditPage() {
               </div>
 
               <div className="space-y-2 border-b border-gray-800 py-3">
-                <Label>Notes</Label>
+                <Label htmlFor="audit-notes">Notes</Label>
                 <textarea
+                  id="audit-notes"
                   className="w-full min-h-[80px] rounded border border-gray-700 bg-gray-900 p-2 text-white"
                   value={currentDecision?.notes ?? ""}
                   onChange={(event) =>

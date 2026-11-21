@@ -79,14 +79,20 @@ export function ScriptHookApiExplorer({
                 Create handler
               </Button>
             </div>
-            <p className="mt-2 text-xs text-slate-300">
-              Context: <code>{hook.contextType}</code> · Returns: <code>{hook.returnType}</code>
-            </p>
+            <details className="mt-2 text-xs text-slate-300">
+              <summary className="cursor-pointer">Hook signature</summary>
+              <p className="mt-1 break-words">Context <code>{hook.contextType}</code></p>
+              <p className="break-words">Returns <code>{hook.returnType}</code></p>
+            </details>
           </div>
         )) : apis.map((api) => (
           <div key={api.name} className="rounded-lg border border-slate-800 bg-slate-950/70 p-3">
-            <p className="font-medium text-white"><code>{buildApiSignature(api)}</code></p>
+            <p className="break-words font-medium text-white"><code>{api.name}</code></p>
             <p className="mt-1 text-xs text-slate-400">{api.description ?? "No description available."}</p>
+            <details className="mt-2 text-xs text-slate-300">
+              <summary className="cursor-pointer">Function signature</summary>
+              <code className="mt-1 block break-all">{buildApiSignature(api)}</code>
+            </details>
             {api.command && (
               <p className="mt-2 text-[11px] text-amber-300">
                 Applies during {api.command.applicationPhase}; capability: {api.command.capability}.

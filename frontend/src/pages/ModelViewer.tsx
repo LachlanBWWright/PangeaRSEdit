@@ -14,6 +14,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { useWorkspaceOrientation } from "@/components/editor/useWorkspaceOrientation";
 import { ResultAsync, err, ok } from "neverthrow";
 
 import {
@@ -94,6 +95,7 @@ type ViewerHistoryAction =
     };
 
 export function ModelViewer() {
+  const orientation = useWorkspaceOrientation();
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
   const [modelSessionId, setModelSessionId] = useState(0);
   const [modelBaseName, setModelBaseName] = useState<string>("model");
@@ -1432,8 +1434,8 @@ export function ModelViewer() {
 
   return (
     <div className="h-full overflow-hidden p-2 bg-gray-900 text-white">
-      <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pr-2">
+      <ResizablePanelGroup orientation={orientation} className="h-full w-full">
+        <ResizablePanel defaultSize={30} minSize={20} className="min-h-0 min-w-0 pb-2 md:pr-2 md:pb-0">
           <ModelViewerSidebar
             gltfUrl={gltfUrl}
             loading={loading}
@@ -1508,7 +1510,7 @@ export function ModelViewer() {
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={70} minSize={35} className="min-h-0 pl-2">
+        <ResizablePanel defaultSize={70} minSize={35} className="min-h-0 pt-2 md:pt-0 md:pl-2">
           <ModelViewerViewport
             gltfUrl={gltfUrl}
             scene={scene}

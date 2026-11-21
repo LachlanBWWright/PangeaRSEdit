@@ -35,10 +35,11 @@ export function MultiplayerLobbyFilters({
   onRefresh,
 }: MultiplayerLobbyFiltersProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div>
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 sm:w-fit sm:grid-cols-[10rem_10rem_auto]">
+      <div className="min-w-0">
         <Label className="sr-only">Game filter</Label>
         <Select
+          disabled={busy}
           value={joinGameFilter}
           onValueChange={(value) => {
             onJoinGameFilterChange(toJoinGameFilter(value));
@@ -46,7 +47,7 @@ export function MultiplayerLobbyFilters({
         >
           <SelectTrigger
             aria-label="Game filter"
-            className="h-9 w-40"
+            className="h-9 w-full min-w-0"
           >
             <SelectValue placeholder="Filter by game" />
           </SelectTrigger>
@@ -60,9 +61,10 @@ export function MultiplayerLobbyFilters({
         </Select>
       </div>
 
-      <div>
+      <div className="min-w-0">
         <Label className="sr-only">Mode filter</Label>
         <Select
+          disabled={busy}
           value={joinModeFilter}
           onValueChange={(value) => {
             onJoinModeFilterChange(toJoinModeFilter(value));
@@ -70,7 +72,7 @@ export function MultiplayerLobbyFilters({
         >
           <SelectTrigger
             aria-label="Mode filter"
-            className="h-9 w-40"
+            className="h-9 w-full min-w-0"
           >
             <SelectValue placeholder="Filter by mode" />
           </SelectTrigger>

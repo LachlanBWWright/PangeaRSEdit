@@ -19,6 +19,7 @@ import {
   SplineType,
 } from "@/data/splines/splineTypeDetection";
 import { removeSplineAtIndex } from "@/editor/subviews/splines/editSplineMenuState";
+import { MapSelection } from "../shared/MapSelection";
 
 export function EditSplineMenu({
   splineData,
@@ -65,6 +66,11 @@ export function EditSplineMenu({
     <>
       {selectedSpline !== undefined && (
         <>
+          {splineNubs.length > 0 && (
+            <MapSelection label="Spline point" selected={selectedSplineNub ?? undefined} onSelect={(index) => setSelectedSplineNub(index ?? null)}>
+              {splineNubs.map((_, index) => <option key={index} value={index}>Point {index + 1}</option>)}
+            </MapSelection>
+          )}
           {selectedNubData && selectedSplineNub !== null && (
             <>
               <p className="text-sm font-medium">

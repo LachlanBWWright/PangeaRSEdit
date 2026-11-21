@@ -23,6 +23,7 @@ import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
 import { SnappingToggle } from "../shared/SnappingToggle";
+import { MapSelection } from "../shared/MapSelection";
 import {
   canFinalizeCreation,
   finalizeFenceFromPoints,
@@ -81,7 +82,18 @@ export const FenceMenu = memo(function FenceMenu({
     selectedFence !== undefined
       ? fenceData.Fenc?.[1000]?.obj?.[selectedFence]
       : null;
-  const fenceCount = fenceData.Fenc?.[1000]?.obj?.length ?? 0;
+  const fences = fenceData.Fenc?.[1000]?.obj ?? [];
+  const hasFences = fences.length > 0;
+  const fenceSelection = hasFences && (
+    <MapSelection label="Placed fence" selected={selectedFence} onSelect={(index) => {
+      setSelectedFence(index);
+      setSelectedFenceNub(null);
+    }}>
+      {fences.map((fence, index) => (
+        <option key={index} value={index}>{index + 1}. {getFenceName(globals, fence.fenceType)}</option>
+      ))}
+    </MapSelection>
+  );
 
   const fencePreviewPath =
     fenceDataObj && fenceDataObj !== undefined
@@ -91,7 +103,6 @@ export const FenceMenu = memo(function FenceMenu({
   const numNubs = fenceDataObj?.numNubs ?? 0;
 
   if (fenceDataObj === null || fenceDataObj === undefined) {
-    const hasFences = fenceCount > 0;
     const isPendingFenceCreation = pendingCreation?.kind === "fence";
     const pendingPoints = isPendingFenceCreation ? pendingCreation.points : [];
 
@@ -146,28 +157,33 @@ export const FenceMenu = memo(function FenceMenu({
     }
 
     return (
-      <EmptyDataPrompt
-        title={hasFences ? "No Fence Selected" : "No Fences"}
-        description={
-          hasFences
-            ? "Select a fence on the canvas or add another one."
-            : "This level doesn't have any fences yet. Add your first fence to get started."
-        }
-        buttonText={hasFences ? "Add New Fence" : "Add First Fence"}
-        onInitialize={() => setPendingCreation({ kind: "fence", points: [] })}
-        fillHeight
-      />
+      <div className="flex min-h-full flex-col gap-2 px-3">
+        {fenceSelection}
+        <EmptyDataPrompt
+          title={hasFences ? "No Fence Selected" : "No Fences"}
+          description={
+            hasFences
+              ? "Select a placed fence or add another one."
+              : "This level doesn't have any fences yet. Add your first fence to get started."
+          }
+          buttonText={hasFences ? "Add New Fence" : "Add First Fence"}
+          onInitialize={() => setPendingCreation({ kind: "fence", points: [] })}
+          fillHeight
+        />
+      </div>
     );
   }
 
   return (
-    <div
-      className={
-        fencePreviewPath
-          ? "grid h-full min-h-0 min-w-0 w-full grid-cols-[minmax(0,1fr)_12rem] gap-2 px-3"
-          : "flex h-full min-h-0 min-w-0 w-full flex-col gap-2 px-3"
-      }
-    >
+    <div className="flex min-h-full flex-col gap-2 px-3">
+      {fenceSelection}
+      <div
+        className={
+          fencePreviewPath
+            ? "grid min-h-0 min-w-0 flex-1 gap-2 md:grid-cols-[minmax(0,1fr)_12rem]"
+            : "flex min-h-0 min-w-0 flex-1 flex-col gap-2"
+        }
+      >
       <div className="flex min-h-0 min-w-0 flex-col gap-2">
         <p>
           Fence {selectedFence} ({numNubs} points)
@@ -187,7 +203,7 @@ export const FenceMenu = memo(function FenceMenu({
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Fence type">
                 <SelectValue>
                   <span className="flex items-center gap-2">
                     {fencePreviewPath && (
@@ -265,6 +281,11 @@ export const FenceMenu = memo(function FenceMenu({
                 selectedFenceNub !== null ? nubs[selectedFenceNub] : null;
               return (
                 <>
+                  {nubs.length > 0 && (
+                    <MapSelection label="Fence point" selected={selectedFenceNub ?? undefined} onSelect={(index) => setSelectedFenceNub(index ?? null)}>
+                      {nubs.map((_, index) => <option key={index} value={index}>Point {index + 1}</option>)}
+                    </MapSelection>
+                  )}
                   {selectedNubCoords && selectedFenceNub !== null && (
                     <>
                       <p className="text-sm font-medium">
@@ -400,6 +421,7 @@ export const FenceMenu = memo(function FenceMenu({
           ) : null}
         </div>
       )}
+      </div>
     </div>
   );
 });

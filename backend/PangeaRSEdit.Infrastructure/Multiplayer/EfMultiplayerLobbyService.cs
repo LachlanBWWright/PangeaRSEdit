@@ -126,6 +126,28 @@ public sealed class EfMultiplayerLobbyService(
         return AppResult<MultiplayerLobbyDetails>.Success(MapDetails(lobby));
     }
 
+    public async Task<AppResult<MultiplayerLobbyDetails>> GetLobbyByJoinCodeAsync(
+        string joinCode,
+        CancellationToken cancellationToken)
+    {
+        var normalizedCode = joinCode.Trim().ToUpperInvariant();
+        if (normalizedCode.Length != 6)
+        {
+            return AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyNotFound);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var matches = await dbContext.MultiplayerLobbies
+            .AsNoTracking()
+            .Include(x => x.Players.OrderBy(p => p.PlayerIndex))
+            .Where(x => x.JoinCode == normalizedCode && x.State == "open")
+            .ToListAsync(cancellationToken);
+        var activeMatches = matches.Where(x => x.ExpiresAt > now).Take(2).ToArray();
+        return activeMatches.Length == 1
+            ? AppResult<MultiplayerLobbyDetails>.Success(MapDetails(activeMatches[0]))
+            : AppResult<MultiplayerLobbyDetails>.Failure(AppErrors.LobbyNotFound);
+    }
+
     public async Task<AppResult<MultiplayerLobbyDetails>> JoinLobbyAsync(
         JoinLobbyRequest request,
         CancellationToken cancellationToken)

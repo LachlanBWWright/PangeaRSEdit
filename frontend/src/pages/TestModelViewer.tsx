@@ -10,7 +10,7 @@ import React, { useState, useCallback, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { Group, Mesh, BufferGeometry } from "three";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -676,18 +676,18 @@ export function TestModelViewer() {
   };
 
   return (
-    <div className="flex h-full gap-4 p-4 bg-gray-900">
+    <div className="flex min-h-full flex-col gap-4 bg-gray-900 p-4 md:h-full md:flex-row">
       {/* Controls Panel */}
-      <Card className="w-80 shrink-0 bg-gray-800 border-gray-700">
+      <Card className="min-w-0 shrink-0 border-gray-700 bg-gray-800 md:w-80 md:overflow-y-auto">
         <CardHeader>
-          <CardTitle className="text-white">Test Model Viewer</CardTitle>
+          <h1 className="text-lg font-semibold text-white">Test model viewer</h1>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Game Selector */}
           <div className="space-y-2">
-            <Label className="text-gray-300">Game</Label>
+            <Label htmlFor="test-model-game" className="text-gray-300">Game</Label>
             <Select value={selectedGame} onValueChange={handleGameChange}>
-              <SelectTrigger>
+              <SelectTrigger id="test-model-game">
                 <SelectValue placeholder="Select a game" />
               </SelectTrigger>
               <SelectContent>
@@ -706,13 +706,13 @@ export function TestModelViewer() {
 
           {/* Model File Selector - Combined models and skeletons */}
           <div className="space-y-2">
-            <Label className="text-gray-300">Model File</Label>
+            <Label htmlFor="test-model-file" className="text-gray-300">Model file</Label>
             <Select
               value={selectedFileKey}
               onValueChange={handleFileChange}
               disabled={!gameConfig || allFiles.length === 0}
             >
-              <SelectTrigger>
+              <SelectTrigger id="test-model-file">
                 <SelectValue
                   placeholder={
                     allFiles.length ? "Select a file" : "No files available"
@@ -814,7 +814,7 @@ export function TestModelViewer() {
           )}
 
           {/* Info */}
-          <div className="text-xs text-gray-500 space-y-1">
+          <div className="space-y-1 text-xs text-gray-300">
             <p>• Select a game to see available model files</p>
             <p>• BG3D files contain multiple sub-models</p>
             <p>• Use index selector to browse models after loading</p>
@@ -824,7 +824,7 @@ export function TestModelViewer() {
       </Card>
 
       {/* 3D Canvas - Fixed camera far plane for clipping */}
-      <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
+      <div className="min-h-72 min-w-0 flex-1 overflow-hidden rounded-lg bg-gray-800 md:min-h-0">
         <Canvas
           camera={{ position: [300, 200, 300], fov: 50, near: 1, far: 50000 }}
           style={{ background: "#1a1a2e" }}

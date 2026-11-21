@@ -338,14 +338,14 @@ export function ImageEditor({
         if (!open) handleClose();
       }}
     >
-      <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white pr-14">
+      <DialogContent className="flex h-[85dvh] max-w-6xl flex-col text-white sm:pr-14">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-white">
             Image Editor - {imageName || "Untitled"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-1 gap-4 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden md:flex-row md:gap-4">
           <ToolsPanel
             brushSize={brushSize}
             setBrushSize={setBrushSize}

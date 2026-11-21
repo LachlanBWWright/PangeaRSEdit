@@ -40,7 +40,15 @@ export function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
   });
 
   return (
-    <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
+    <Card className="overflow-hidden border-gray-700 bg-gray-800 transition-colors hover:border-gray-600">
+      {level.previewImage && (
+        <img
+          src={level.previewImage.src}
+          alt={level.previewImage.alt}
+          loading="lazy"
+          className="aspect-[3/2] w-full border-b border-gray-700 object-cover"
+        />
+      )}
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -66,31 +74,31 @@ export function LevelCard({ level, onPlayInBrowser }: LevelCardProps) {
       </CardHeader>
       <CardContent className="pt-0">
         <div className="mb-2 flex flex-col gap-2">
-          <Button
-            onClick={handleDownload}
-            className="flex w-full items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
-          >
-            <Download className="h-4 w-4" />
-            Download
-          </Button>
           {canPlay ? (
             <Button
               onClick={handlePlayInBrowser}
               disabled={isFetchingPlay}
-              variant="outline"
               className="flex w-full items-center gap-2"
             >
               {isFetchingPlay ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
               ) : (
                 <Play className="h-4 w-4" />
               )}
-              {isFetchingPlay ? "Loading..." : "Play Level in Browser"}
+              {isFetchingPlay ? "Loading level…" : "Play in browser"}
             </Button>
           ) : null}
+          <Button onClick={handleDownload} variant={canPlay ? "outline" : "default"}>
+            <Download className="size-4" />
+            Download level
+          </Button>
+          <p className="text-xs text-gray-300">
+            To install, replace the corresponding level file in <code>Data/Terrain</code>.
+          </p>
         </div>
         <Button
           variant="ghost"
+          aria-expanded={isExpanded}
           onClick={() => setIsExpanded((value) => !value)}
           className="w-full justify-between p-3 text-gray-300 hover:bg-gray-700 hover:text-white"
         >

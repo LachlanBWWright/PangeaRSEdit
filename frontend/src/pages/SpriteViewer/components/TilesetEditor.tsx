@@ -58,7 +58,7 @@ export function TilesetEditor({
               value={currentPaletteScene ?? ""}
               onValueChange={(value) => onPaletteSceneChange(value)}
             >
-            <SelectTrigger className="w-full">
+            <SelectTrigger aria-label="Palette scene" className="w-full">
                 <SelectValue placeholder="Select a palette scene" />
               </SelectTrigger>
             <SelectContent>

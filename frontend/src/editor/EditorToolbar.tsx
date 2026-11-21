@@ -55,7 +55,7 @@ export function EditorToolbar({
   return (
     <>
       <Tabs value={currentValue} onValueChange={handleValueChange}>
-        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
+        <TabsList className="flex h-auto w-full flex-wrap gap-1 max-md:[&>*]:w-auto md:grid md:grid-flow-col md:auto-cols-fr">
           {showFences && <TabsTrigger className="w-full" value="fences">Fences</TabsTrigger>}
           {showWater && <TabsTrigger className="w-full" value="water">Water</TabsTrigger>}
           <TabsTrigger className="w-full" value="items">Items</TabsTrigger>

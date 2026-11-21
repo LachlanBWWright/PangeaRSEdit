@@ -12,7 +12,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
 import { useContainerSize } from "@/hooks/useContainerSize";
-import { Stage } from "react-konva";
+import { KeyboardMapStage } from "./KeyboardMapStage";
 import {
   MapResizeEdgeControls,
   type MapResizeDirection,
@@ -337,7 +337,7 @@ export function Bugdom1KonvaView({
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
-      <Stage
+      <KeyboardMapStage
         width={containerSize.width}
         height={containerSize.height}
         scaleX={stage.scale}
@@ -521,7 +521,7 @@ export function Bugdom1KonvaView({
           tilesPerUnit={globals.TILES_PER_SUPERTILE}
           onResize={onResize}
         />
-      </Stage>
+      </KeyboardMapStage>
     </div>
   );
 }

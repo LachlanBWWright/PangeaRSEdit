@@ -83,6 +83,37 @@ public sealed class MultiplayerLobbyApiTests : IClassFixture<PangeaApiFactory>
     }
 
     [Fact]
+    public async Task PrivateLobby_IsUnlistedAndCanBeJoinedWithItsCode()
+    {
+        var host = _factory.CreateClient();
+        var created = await host.PostAsJsonAsync("/api/multiplayer/lobbies", new
+        {
+            gameId = "cromagrally",
+            mode = "multiplayerRace",
+            trackOrLevel = "1",
+            maxPlayers = 2,
+            displayName = "Host",
+            isPublic = false
+        });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        using var lobby = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var lobbyId = lobby.RootElement.GetProperty("id").GetGuid();
+        var joinCode = lobby.RootElement.GetProperty("joinCode").GetString()!;
+
+        var guest = _factory.CreateClient();
+        var listed = await guest.GetStringAsync("/api/multiplayer/lobbies");
+        Assert.DoesNotContain(lobbyId.ToString(), listed);
+        var preview = await guest.GetAsync($"/api/multiplayer/lobbies/by-code/{joinCode.ToLowerInvariant()}/preview");
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+        using var resolved = JsonDocument.Parse(await preview.Content.ReadAsStringAsync());
+        Assert.Equal(lobbyId, resolved.RootElement.GetProperty("id").GetGuid());
+        Assert.True(resolved.RootElement.GetProperty("canJoin").GetBoolean());
+
+        var joined = await guest.PostAsJsonAsync($"/api/multiplayer/lobbies/{lobbyId}/join", new { displayName = "Guest" });
+        Assert.Equal(HttpStatusCode.OK, joined.StatusCode);
+    }
+
+    [Fact]
     public async Task JoinLobby_AssignsNextPlayerIndex()
     {
         var hostClient = _factory.CreateClient();

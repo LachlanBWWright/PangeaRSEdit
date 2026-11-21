@@ -180,7 +180,7 @@ export function CustomObjectsPage() {
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
           <Boxes className="h-4 w-4 text-slate-300" />
-          <span className="text-sm font-medium text-white">Custom objects</span>
+          <h1 className="text-lg font-semibold text-white">Custom objects</h1>
           <Select value={String(globals.GAME_TYPE)} onValueChange={(value) => {
             const nextGlobals = GAME_OPTIONS.find((candidate) => String(candidate.GAME_TYPE) === value);
             if (nextGlobals) setGlobals(nextGlobals);
@@ -190,11 +190,10 @@ export function CustomObjectsPage() {
               {GAME_OPTIONS.map((option) => <SelectItem key={option.GAME_NAME} value={String(option.GAME_TYPE)}>{option.GAME_NAME}</SelectItem>)}
             </SelectContent>
           </Select>
-          <span className="text-xs text-slate-500">Game-wide definitions · instances are placed per level</span>
-          <div className="ml-auto flex items-center gap-2">
-            <Button onClick={() => setCreateScriptOpen(true)} className="h-8">Create Custom Object Script</Button>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <Button onClick={() => setCreateScriptOpen(true)} className="h-8">Create object script</Button>
             <Button variant="secondary" onClick={exportDefinitions} className="h-8">Export definitions</Button>
-            <label className="inline-flex h-8 cursor-pointer items-center rounded-md bg-secondary px-3 text-xs font-medium text-secondary-foreground hover:bg-secondary/80">
+            <label className="inline-flex h-8 cursor-pointer items-center rounded-md bg-secondary px-3 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 focus-within:ring-2 focus-within:ring-ring">
               Import bundle
               <Input type="file" accept=".zip" className="sr-only" onChange={(event) => {
                 const file = event.target.files?.[0];

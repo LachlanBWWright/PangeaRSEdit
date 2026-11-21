@@ -116,6 +116,7 @@ export function useMultiplayerGameRuntime(
     if (!launchSpec) {
       queueMicrotask(() => {
         setErrorText(`Unsupported multiplayer game: ${matchConfig.gameId}`);
+        setUiState("disconnected");
       });
       return;
     }
@@ -124,6 +125,7 @@ export function useMultiplayerGameRuntime(
     if (!canvas) {
       queueMicrotask(() => {
         setErrorText("Game canvas is not ready");
+        setUiState("disconnected");
       });
       return;
     }

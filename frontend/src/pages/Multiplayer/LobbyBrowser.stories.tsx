@@ -75,6 +75,8 @@ function LobbyBrowserStory() {
         busy={false}
         isPreloading={false}
         lobbyListErrorText={null}
+        actionErrorText={null}
+        hasPublicLobbies
         displayedPublicLobbies={displayedPublicLobbies}
         joinGameFilter={joinGameFilter}
         joinModeFilter={joinModeFilter}

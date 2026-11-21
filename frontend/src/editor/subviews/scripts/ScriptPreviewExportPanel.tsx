@@ -80,27 +80,22 @@ export function ScriptPreviewExportPanel({
           <CardHeader>
             <CardTitle className="text-white">Preview and Export</CardTitle>
             <CardDescription>
-              Preview injects the generated bundle and sidecars into the
-              existing browser runtime path. Original-compatible exports omit
-              scripts conservatively; extended packages include both the native
-              level files and Data/Scripts payload.
+              Test the level in your browser. Choose an extended package to
+              share the level with scripts, or an original-compatible level
+              for the original game.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {hasScripts ? (
               <>
                 <Button
-                  onClick={() => onPreview(false)}
-                  disabled={isPreparingPreview}
-                  variant="secondary"
-                >
-                  Preview in Game (No Scripts)
-                </Button>
-                <Button
                   onClick={() => onPreview(true)}
                   disabled={isPreparingPreview}
                 >
                   {isPreparingPreview ? "Preparing Preview..." : "Preview with Scripts"}
+                </Button>
+                <Button onClick={() => onPreview(false)} disabled={isPreparingPreview} variant="secondary">
+                  Preview in Game (No Scripts)
                 </Button>
               </>
             ) : (
@@ -150,15 +145,9 @@ export function ScriptPreviewExportPanel({
         </Card>
       </div>
 
-      <Card className="border-slate-800 bg-slate-950/70">
-        <CardHeader>
-          <CardTitle className="text-white">Package Contents</CardTitle>
-          <CardDescription>
-            These are the editor-owned files that the Scripts workspace writes
-            into Data/Scripts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-2">
+      <details className="self-start rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+        <summary className="cursor-pointer font-semibold text-white">Package contents</summary>
+        <ul className="mt-3 space-y-1 text-xs text-slate-200">
           {[
             "Data/Scripts/config/project.json",
             "Data/Scripts/config/levels.json",
@@ -171,15 +160,10 @@ export function ScriptPreviewExportPanel({
             ),
             "Data/Scripts/dist/main.lua",
           ].map((path) => (
-            <div
-              key={path}
-              className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-200"
-            >
-              {path}
-            </div>
+            <li key={path} className="break-all"><code>{path}</code></li>
           ))}
-        </CardContent>
-      </Card>
+        </ul>
+      </details>
     </div>
   );
 }
