@@ -38,9 +38,9 @@ export function Navigation() {
     <nav aria-label={showEditorNavbar ? "Editor toolbar" : "Main navigation"} className="sticky top-0 z-50 flex min-h-14 flex-wrap items-center gap-2 border-b border-slate-700 bg-slate-800 px-2 py-1 md:px-4">
       {showEditorNavbar ? (
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          {editorNavbarLeft}
+          {editorNavbarLeft && <div className="min-w-0 max-w-full flex-[1_1_9rem] xl:max-w-xs">{editorNavbarLeft}</div>}
           {editorNavbarTabs && (
-            <div className="order-last flex min-w-0 basis-full overflow-x-auto rounded-md border border-border bg-muted p-1 text-muted-foreground xl:order-none xl:flex-1">
+            <div className="order-last flex min-w-0 basis-full overflow-x-auto rounded-md border border-border bg-muted p-1 text-muted-foreground xl:order-none xl:flex-1 [&_[role=tablist]]:min-w-max [&_[role=tablist]]:auto-cols-max">
               {editorNavbarTabs}
             </div>
           )}

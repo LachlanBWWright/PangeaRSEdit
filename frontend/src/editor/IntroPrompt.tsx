@@ -12,7 +12,6 @@ import {
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { TunnelEditor } from "./tunnel/TunnelEditor";
-import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import {
   Globals,
@@ -37,6 +36,8 @@ import type { TunnelData } from "@/data/tunnelParser/types";
 import { prepareDownloadData } from "./utils/introPromptUtils";
 import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
 import { NewMapConfirmDialog } from "./IntroPrompt/NewMapConfirmDialog";
+import { LevelToolbarIdentity } from "./IntroPrompt/LevelToolbarIdentity";
+import { useLevelSaveStatus } from "./IntroPrompt/useLevelSaveStatus";
 import { TestGameDialog } from "./TestGameDialog";
 import { LevelActionMenu } from "./LevelActionMenu";
 import {
@@ -192,6 +193,8 @@ export function IntroPrompt() {
       terrainData,
     };
   }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
+  const { hasUnsavedChanges, markDataSaved, markImagesSaved, resetSavedLevel } =
+    useLevelSaveStatus(getCurrentAtomicData(), mapImages);
 
   // Helper to set all atomic data from AtomicLevelData
   const setAllAtomicData = useCallback(
@@ -228,6 +231,16 @@ export function IntroPrompt() {
       setSafeSplineItemTypes,
     ],
   );
+
+  const loadMapData = useCallback((data: AtomicLevelData) => {
+    setAllAtomicData(data);
+    markDataSaved(data);
+  }, [setAllAtomicData, markDataSaved]);
+
+  const loadMapImages = useCallback((images: HTMLCanvasElement[]) => {
+    setMapImages(images);
+    markImagesSaved(images);
+  }, [markImagesSaved]);
 
   // Wrapper for header which EditorView expects non-null updates for
   const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
@@ -396,7 +409,8 @@ export function IntroPrompt() {
 
     const saveToastId = "save-map";
     toast.loading("Processing map data...", { id: saveToastId });
-    const combinedDataResult = combineLevelData(getCurrentAtomicData());
+    const snapshot = getCurrentAtomicData();
+    const combinedDataResult = combineLevelData(snapshot);
 
     if (combinedDataResult.isErr()) {
       toast.error("Download failed", {
@@ -427,13 +441,15 @@ export function IntroPrompt() {
       },
       toast: ({ title, description }) => {
         if (title === "Map Downloaded!") {
+          markDataSaved(snapshot);
+          if (mapImages) markImagesSaved(mapImages);
           toast.success(title, { id: saveToastId, description });
           return;
         }
         toast.error(title, { id: saveToastId, description });
       },
     });
-  }, [mapFile, mapImagesFile, mapImages, globals, getCurrentAtomicData]);
+  }, [mapFile, mapImagesFile, mapImages, globals, getCurrentAtomicData, markDataSaved, markImagesSaved]);
 
   useEffect(() => {
     if (!processed) return;
@@ -452,6 +468,7 @@ export function IntroPrompt() {
 
   // Clear all state helper
   const clearAllState = useCallback(() => {
+    resetSavedLevel();
     setMapFile(undefined);
     setAllAtomicData(splitLevelData(null));
     setMapImages(undefined);
@@ -465,7 +482,7 @@ export function IntroPrompt() {
     setTerrainDataBytes(undefined);
     setTerrainRsrcBytes(undefined);
     setTerrainTextureBytes(undefined);
-  }, [setAllAtomicData, setLevelNumber]);
+  }, [resetSavedLevel, setAllAtomicData, setLevelNumber]);
 
   const handleCreateBlankLevel = useCallback(
     (gameType: GlobalsInterface, includePlayerStart = false) => {
@@ -482,6 +499,7 @@ export function IntroPrompt() {
         return;
       }
       const blankLevel = result.value;
+      resetSavedLevel();
       const blankAtomicData: AtomicLevelData = {
         headerData: blankLevel.headerData,
         itemData: blankLevel.itemData,
@@ -512,6 +530,7 @@ export function IntroPrompt() {
       setPreviewLevelNumber(portConfig?.defaultLevel ?? 0);
     },
     [
+      resetSavedLevel,
       setGlobals,
       setAllAtomicData,
       setBlockHistoryUpdate,
@@ -825,7 +844,8 @@ export function IntroPrompt() {
     toast.loading("Checking sign-in…", { id: cloudToastId });
     void new ResultAsync(getMe()).match(
       () => {
-        const combinedDataResult = combineLevelData(getCurrentAtomicData());
+        const snapshot = getCurrentAtomicData();
+        const combinedDataResult = combineLevelData(snapshot);
         if (combinedDataResult.isErr()) {
           toast.error("Could not save: level data error", {
             id: cloudToastId,
@@ -847,6 +867,7 @@ export function IntroPrompt() {
           }),
         ).match(
           () => {
+            markDataSaved(snapshot);
             toast.success("Level saved to cloud!", { id: cloudToastId });
           },
           (error) => {
@@ -870,7 +891,7 @@ export function IntroPrompt() {
         });
       },
     );
-  }, [getCurrentAtomicData, globals, mapFile]);
+  }, [getCurrentAtomicData, globals, mapFile, markDataSaved]);
 
   const handleConfirmNewMap = useCallback(() => {
     setNewMapConfirmOpen(false);
@@ -896,7 +917,11 @@ export function IntroPrompt() {
   useEffect(() => {
     const left =
       mapFile && mapImages && !tunnelData ? (
-        <Button onClick={() => setNewMapConfirmOpen(true)}>←New Map</Button>
+        <LevelToolbarIdentity
+          fileName={mapFile.name}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onNewMap={() => setNewMapConfirmOpen(true)}
+        />
       ) : null;
     const editorActions =
       mapFile && mapImages && !tunnelData ? (
@@ -938,6 +963,7 @@ export function IntroPrompt() {
     setEditorNavbarActions(editorActions);
   }, [
     globals.GAME_TYPE,
+    hasUnsavedChanges,
     handleDownload,
     handleDownloadContext,
     handleSaveToCloud,
@@ -984,8 +1010,8 @@ export function IntroPrompt() {
         mapFile={mapFile}
         setMapFile={setMapFile}
         setMapImagesFile={setMapImagesFile}
-        setMapImages={setMapImages}
-        setData={setAllAtomicData}
+        setMapImages={loadMapImages}
+        setData={loadMapData}
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
         setTunnelLevelKind={setTunnelLevelKind}
